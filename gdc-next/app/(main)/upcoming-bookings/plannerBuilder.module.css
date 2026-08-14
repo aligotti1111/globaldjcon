@@ -1,561 +1,654 @@
-/* The visual planner editor. It has to LOOK like the client's page — same dark
- * sheet, same inputs — because the whole point is that the DJ edits the actual
- * page, not a settings screen. The controls are dead (disabled, empty); the
- * only live things are the grip, the label, and the hide/delete actions.
+'use client';
+
+// The visual planner editor.
+//
+// NOT a list of settings. It renders the ACTUAL client form — the real labels,
+// the real controls, empty — and the DJ rearranges the page itself. A checklist
+// with up/down arrows made you imagine the result; this IS the result, with a
+// grip on the side of every question.
+//
+// Each question shows:
+//   · a drag handle (desktop) + up/down arrows (touch — drag fights scroll)
+//   · the real control it will show the client, disabled and empty, so the
+//     page reads exactly as they'll see it
+//   · a pencil (and click-to-rename) on the label
+//   · an Enable / Disable text toggle, and (for the DJ's own additions) delete
+//
+// The DJ's business logo sits at the very top — the same one shown on the
+// client's planner and the contract. Uploading here writes users.contract_logo_url
+// via /api/dj/logo, exactly like the account-settings uploader, so it updates
+// everywhere at once. Removing offers a choice: everywhere, or just this client.
+//
+// The data rules from lib/planner still hold and the SERVER still enforces them
+// — this is the friendly front of the same constrained edit:
+//   · a stock question is DISABLED, never deleted (responses are keyed by id).
+//   · only a custom field the DJ added can be removed.
+//   · types are shown, never changed (a live field's answers are stored in the
+//     old type's shape).
+//   · Guest of honour / Do NOT play / Notes are draggable here, but the server
+//     re-pins them (first / last) on save — so the DJ sees a lock, not a fight.
+
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import type { PlannerField, PlannerFieldType } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isSection } from '@/lib/planner';
+import { createClient } from '@/lib/supabase/client';
+import styles from './plannerBuilder.module.css';
+
+const ADDABLE: { type: PlannerFieldType; label: string }[] = [
+  { type: 'text', label: 'Short text' },
+  { type: 'longtext', label: 'Paragraph' },
+  { type: 'time', label: 'Time' },
+  { type: 'song', label: 'One song' },
+  { type: 'songlist', label: 'Song list' },
+  { type: 'textlist', label: 'Text list' },
+  { type: 'people', label: 'People' },
+  { type: 'yesno', label: 'Yes / no' },
+];
+
+/** The pinned three — locked in position by the server, so shown with a lock. */
+const isPinned = (id: string) =>
+  id === HONOREE_FIELD_ID || id === DO_NOT_PLAY_FIELD_ID || id === NOTES_FIELD_ID;
+
+/** Break a one-line address into stacked lines: street on top, "City, ST ZIP"
+ *  under it. "26 Blythe Place, Staten Island, NY 10306" → two lines. */
+function addressLines(a: string): string[] {
+  const parts = a.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length <= 1) return [a.trim()];
+  return [parts[0], parts.slice(1).join(', ')];
+}
+
+/** A sleek line-icon pencil (Feather "edit-3"), inherits currentColor. */
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export default function PlannerBuilder({
+  fields, eventType, bookingId,
+  onPatch, onReorder, onRemove, onAdd,
+}: {
+  fields: PlannerField[];
+  eventType: string | null;
+  // The booking this editor was opened from. Used for the per-client logo hide.
+  bookingId?: string | null;
+  onPatch: (id: string, p: Partial<PlannerField>) => void;
+  // Takes the WHOLE reordered array — the builder rebuilds it so the modal
+  // stays dumb about which fields are hidden from the editor.
+  onReorder: (next: PlannerField[]) => void;
+  onRemove: (id: string) => void;
+  onAdd: (type: PlannerFieldType) => void;
+}) {
+  // The row being dragged, and the row it's hovering over — for the drop line.
+  const [dragI, setDragI] = useState<number | null>(null);
+  const [overI, setOverI] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+
+  // ── The DJ's business logo ────────────────────────────────────────────────
+  // Same shared field (users.contract_logo_url) and same upload path as the
+  // account-settings uploader — so setting it here shows it everywhere.
+  const [userId, setUserId] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoMsg, setLogoMsg] = useState<string | null>(null);
+  const [showRemove, setShowRemove] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // The DJ's business address (users.address) — the SAME field the account
+  // settings and invoices use. It shows at the top of the planner, opposite the
+  // logo; here the DJ can add it if they never set one, or fix it.
+  const [address, setAddress] = useState<string | null>(null);
+  const [editingAddr, setEditingAddr] = useState(false);
+  const [addrDraft, setAddrDraft] = useState('');
+  const [addrBusy, setAddrBusy] = useState(false);
+  const [addrMsg, setAddrMsg] = useState<string | null>(null);
+  // The DJ's business phone (users.phone) — display only; set in account
+  // settings, shown stacked under the address, same as the live planner.
+  const [phone, setPhone] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !active) return;
+        setUserId(user.id);
+        const { data } = await supabase
+          .from('users')
+          .select('contract_logo_url, address, phone')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (active) {
+          const row = data as { contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
+          setLogoUrl(row?.contract_logo_url || null);
+          setAddress(row?.address?.trim() || null);
+          setPhone(row?.phone?.trim() || null);
+        }
+      } catch { /* logo + address are optional */ }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  // Save the address to the shared users.address — same write the account
+  // settings page makes, so it updates the planner AND the invoices at once.
+  async function saveAddress() {
+    if (!userId) return;
+    const val = addrDraft.trim();
+    setAddrBusy(true);
+    setAddrMsg(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({ address: val } as unknown as never)
+        .eq('id', userId);
+      if (error) throw error;
+      setAddress(val || null);
+      setEditingAddr(false);
+      setAddrMsg(val ? '✓ Address saved — shows at the top of your planners.' : '✓ Address cleared.');
+    } catch {
+      setAddrMsg('Could not save the address — try again.');
+    } finally {
+      setAddrBusy(false);
+    }
+  }
+
+  async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    if (!file.type.startsWith('image/')) { setLogoMsg('Logo must be an image.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setLogoMsg('Logo is too large (max 4MB).'); return; }
+    setLogoMsg(null);
+    setLogoBusy(true);
+    try {
+      const supabase = createClient();
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${userId}/contract_logo_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = `${data.publicUrl}?t=${Date.now()}`;
+      // 'set' also clears every per-booking hide, so a new logo shows everywhere.
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'set', url }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setLogoUrl(url);
+      setShowRemove(false);
+      setLogoMsg('✓ Logo saved — shows on your planners and contracts.');
+    } catch {
+      setLogoMsg('Logo upload failed — try again.');
+    } finally {
+      setLogoBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  // Remove everywhere — clears the shared field.
+  async function removeEverywhere() {
+    setLogoBusy(true);
+    setLogoMsg(null);
+    try {
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'clear' }),
+      });
+      if (!res.ok) throw new Error('remove failed');
+      setLogoUrl(null);
+      setShowRemove(false);
+      setLogoMsg('✓ Logo removed everywhere.');
+    } catch {
+      setLogoMsg('Could not remove — try again.');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  // Hide on THIS client's planner only — leaves the logo everywhere else.
+  // Only works once the planner has been sent (there's a booking_planners row);
+  // before that the API says so, and we surface it.
+  async function hideThisPlanner() {
+    if (!bookingId) { setLogoMsg('Open this from a booking to hide it for one client.'); return; }
+    setLogoBusy(true);
+    setLogoMsg(null);
+    try {
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'hide', bookingId }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setLogoMsg(j?.error || 'Could not hide it here.'); setLogoBusy(false); return; }
+      setShowRemove(false);
+      setLogoMsg("✓ Hidden on this client's planner. It still shows everywhere else.");
+    } catch {
+      setLogoMsg('Could not hide it here — try again.');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  // PREFILLED FIELDS ARE NOT QUESTIONS. Setup time, music start/end, cocktail
+  // start — the client sees these as read-only facts in the "Your booking"
+  // strip, filled from the booking. They are not things the DJ curates, so they
+  // don't belong in the editable list.
+  //
+  // But they must survive the save: dropping them from the array would delete
+  // them from the template. So they're ANCHORED — held at their exact index —
+  // and the editable questions reorder around them. They're shown, dimmed, in a
+  // read-only "Your booking" strip so the DJ sees the whole page.
+  const anchored = (f: PlannerField) => !!f.prefill;
+  const editable = fields.filter((f) => !anchored(f));
+
+  // The "Your booking" strip — the SAME facts the live planner shows the client,
+  // pulled off the booking. There's no booking behind a template, so these are
+  // placeholders; the point is the DJ sees every detail the client will, in
+  // order. Weddings read as a reception and carry the ceremony + cocktail rows.
+  const isWed = eventType === 'weddings';
+  const bookingDetailRows: string[] = [
+    'Event',
+    'Date',
+    ...(isWed ? ['Ceremony', 'Cocktail hour'] : []),
+    isWed ? 'Reception start' : 'Start time',
+    isWed ? 'Reception end' : 'End time',
+    'Venue',
+    'Guests',
+    'Booked by',
+    'Your number',
+  ];
+
+  // Reorder the editable subsequence, leave anchored fields pinned to their
+  // absolute slots, hand the whole thing back.
+  function reorderEditable(fromE: number, toE: number) {
+    if (fromE === toE || fromE < 0 || toE < 0 || fromE >= editable.length || toE >= editable.length) return;
+    const moved = [...editable];
+    const [row] = moved.splice(fromE, 1);
+    moved.splice(toE, 0, row);
+    let k = 0;
+    onReorder(fields.map((f) => (anchored(f) ? f : moved[k++])));
+  }
+
+  return (
+    <div className={styles.wrap}>
+      {/* Logo on the LEFT, business address stacked on the RIGHT — the top of the
+          planner, exactly as the client sees it. */}
+      <div className={styles.brandTop}>
+        <div className={styles.brandLeft}>
+          {logoUrl ? (
+            <div className={styles.logoRow}>
+              <button
+                type="button"
+                className={styles.logoBtn}
+                disabled={logoBusy}
+                onClick={() => fileRef.current?.click()}
+                title="Replace your logo"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt="Your logo" className={styles.logo} />
+              </button>
+              <button
+                type="button"
+                className={styles.logoRemove}
+                disabled={logoBusy}
+                onClick={() => setShowRemove((v) => !v)}
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.addLogo}
+              disabled={logoBusy}
+              onClick={() => fileRef.current?.click()}
+            >
+              {logoBusy ? 'Uploading…' : '+ Add your logo'}
+            </button>
+          )}
+        </div>
+
+        <div className={styles.brandRight}>
+          {editingAddr ? (
+            <div className={styles.addrEditRow}>
+              <input
+                className={styles.addrInput}
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                value={addrDraft}
+                disabled={addrBusy}
+                placeholder="123 Main St, City, ST 00000"
+                onChange={(e) => setAddrDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void saveAddress(); if (e.key === 'Escape') setEditingAddr(false); }}
+              />
+              <button type="button" className={styles.addrSave} disabled={addrBusy} onClick={() => void saveAddress()}>
+                {addrBusy ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className={styles.addrCancel} disabled={addrBusy} onClick={() => setEditingAddr(false)} aria-label="Cancel">✕</button>
+            </div>
+          ) : address ? (
+            <button
+              type="button"
+              className={styles.addrShow}
+              title="Edit your business address"
+              onClick={() => { setAddrDraft(address); setEditingAddr(true); }}
+            >
+              <span className={styles.addrText}>
+                {addressLines(address).map((line, i) => (
+                  <span key={i}>{line}</span>
+                ))}
+              </span>
+              <PencilIcon />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.addrAdd}
+              onClick={() => { setAddrDraft(''); setEditingAddr(true); }}
+            >
+              + Add your business address
+            </button>
+          )}
+          {/* The business phone from account settings, stacked under the address
+              (display only — it's set in account settings, like the invoice). */}
+          {phone && !editingAddr ? <div className={styles.addrPhone}>{phone}</div> : null}
+        </div>
+      </div>
+
+      {showRemove && (
+        <div className={styles.logoChoice}>
+          <span className={styles.logoChoiceQ}>Remove the logo…</span>
+          <button type="button" className={styles.logoChoiceBtn} disabled={logoBusy} onClick={removeEverywhere}>
+            Everywhere
+          </button>
+          <button type="button" className={styles.logoChoiceBtn} disabled={logoBusy} onClick={hideThisPlanner}>
+            Just this client
+          </button>
+          <button type="button" className={styles.logoChoiceCancel} disabled={logoBusy} onClick={() => setShowRemove(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
+      {addrMsg && <div className={styles.logoMsg}>{addrMsg}</div>}
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
+
+      {/* The page's own header, faint — so the DJ is looking at the client's
+          actual page, chrome and all, not a bare list floating in a modal. */}
+      <div className={styles.pageHead}>
+        <div className={styles.brand}>Global DJ Connect</div>
+        <div className={styles.pageTitle}>Planner &amp; Playlist</div>
+        <div className={styles.pageSub}>This is exactly what your client sees. Drag to reorder; tap the pencil (or the question) to rename it.</div>
+      </div>
+
+      {/* Your booking — the SAME read-only facts the client sees on the live
+          planner, filled from the booking. Shown here as labels (there's no
+          booking behind a template), so the DJ sees the whole page and doesn't
+          turn any of these into questions. Weddings carry ceremony + cocktail
+          and read as a reception. */}
+      <div className={styles.known}>
+        <div className={styles.knownHead}>Your booking</div>
+        {bookingDetailRows.map((k) => (
+          <div key={k} className={styles.knownRow}>
+            <span className={styles.knownK}>{k}</span>
+            <span className={styles.knownV}>filled in from the booking</span>
+          </div>
+        ))}
+        <div className={styles.knownNote}>
+          These are filled in for your client automatically — they don&rsquo;t appear as questions.
+        </div>
+      </div>
+
+      <div className={styles.list}>
+        {editable.map((f, i) => {
+          const pinned = isPinned(f.id);
+          const dragging = dragI === i;
+          const over = overI === i && dragI !== null && dragI !== i;
+
+          // A SECTION HEADING — not a question, and not a row you shuffle. It's a
+          // full-width HERO BANNER that splits the form into parts (e.g. the
+          // ceremony questions above, the reception below). Fixed in place; the
+          // questions reorder around it. Rename via the pencil — nothing else.
+          if (isSection(f)) {
+            return (
+              <div key={f.id} className={styles.sectionBanner}>
+                {editing === f.id ? (
+                  <input
+                    className={styles.sectionBannerEdit}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    autoFocus
+                    value={f.label}
+                    onChange={(e) => onPatch(f.id, { label: e.target.value })}
+                    onBlur={() => setEditing(null)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
+                  />
+                ) : (
+                  <>
+                    <span className={styles.sectionBannerText}>{f.label || 'Section'}</span>
+                    <button
+                      type="button"
+                      className={styles.sectionBannerEditBtn}
+                      title="Rename this section"
+                      aria-label={`Rename the "${f.label || 'section'}" heading`}
+                      onClick={() => setEditing(f.id)}
+                    ><PencilIcon /></button>
+                  </>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={f.id}
+              className={[
+                styles.field,
+                f.hidden ? styles.hidden : '',
+                dragging ? styles.dragging : '',
+                over ? styles.over : '',
+              ].join(' ')}
+              // Whole row is draggable via the handle only (draggable set on the
+              // handle would still need the row to carry the events).
+              onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
+              onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
+            >
+              <div className={styles.rail}>
+                <span
+                  className={styles.grip}
+                  // Desktop drag. Touch users get the arrows below instead.
+                  draggable={!pinned}
+                  onDragStart={() => setDragI(i)}
+                  onDragEnd={() => { setDragI(null); setOverI(null); }}
+                  aria-hidden="true"
+                >⠿</span>
+                <div className={styles.arrows}>
+                  <button type="button" className={styles.arrow}
+                    aria-label="Move up" disabled={pinned || i === 0}
+                    onClick={() => reorderEditable(i, i - 1)}>↑</button>
+                  <button type="button" className={styles.arrow}
+                    aria-label="Move down" disabled={pinned || i === editable.length - 1}
+                    onClick={() => reorderEditable(i, i + 1)}>↓</button>
+                </div>
+              </div>
+
+              <div className={styles.body}>
+                <div className={styles.labelRow}>
+                  {editing === f.id ? (
+                    <input
+                      className={styles.labelEdit}
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                      autoFocus
+                      value={f.label}
+                      onChange={(e) => onPatch(f.id, { label: e.target.value })}
+                      onBlur={() => setEditing(null)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.label}
+                      style={{ flex: '0 1 auto' }}
+                      onClick={() => setEditing(f.id)}
+                      title="Click to rename"
+                    >
+                      {f.label || 'Untitled question'}
+                      {f.required ? <span className={styles.req}>required</span> : null}
+                      {f.is_custom ? <span className={styles.mine}>yours</span> : null}
+                    </button>
+                  )}
+
+                  {/* Pencil — right next to the title, a visible outlined chip so
+                      it plainly reads as "you can rename this". Clicking the
+                      title works too, but the pencil is what a DJ looks for. */}
+                  {editing !== f.id ? (
+                    <button
+                      type="button"
+                      className={styles.editPencil}
+                      title="Rename this question"
+                      aria-label={`Rename "${f.label || 'this question'}"`}
+                      onClick={() => setEditing(f.id)}
+                    ><PencilIcon /></button>
+                  ) : null}
+
+                  <div className={styles.acts} style={{ marginLeft: 'auto' }}>
+                    {pinned ? (
+                      <span className={styles.lock} title="Stays in place — locked position">🔒</span>
+                    ) : null}
+                    {/* Enable / Disable — a text button, not an eye. A disabled
+                        question keeps its answers but collapses to just its
+                        title, so the page reads as the client will see it. */}
+                    <button
+                      type="button"
+                      className={styles.toggle}
+                      title={f.hidden ? 'Turn on — your client will see this' : 'Turn off — hide from your client'}
+                      onClick={() => onPatch(f.id, { hidden: !f.hidden })}
+                    >{f.hidden ? 'Enable' : 'Disable'}</button>
+                    {f.is_custom ? (
+                      <button
+                        type="button"
+                        className={styles.act}
+                        title="Delete this question"
+                        onClick={() => onRemove(f.id)}
+                      >🗑</button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* A disabled question collapses — no help, no control, just the
+                    title above — so the DJ sees exactly what drops off the page. */}
+                {!f.hidden && (
+                  <>
+                    {f.help ? <div className={styles.help}>{f.help}</div> : null}
+                    {/* The real control, empty and disabled — the whole point. */}
+                    <FieldPreview field={f} />
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add a question — the same dashed "+ Add another" the client sees on a
+          list field, so it reads as part of the page. */}
+      <div className={styles.addWrap}>
+        {addOpen ? (
+          <div className={styles.addMenu}>
+            {ADDABLE.map((a) => (
+              <button
+                key={a.type}
+                type="button"
+                className={styles.addPick}
+                onClick={() => { onAdd(a.type); setAddOpen(false); }}
+              >{a.label}</button>
+            ))}
+            <button type="button" className={styles.addCancel} onClick={() => setAddOpen(false)}>Cancel</button>
+          </div>
+        ) : (
+          <button type="button" className={styles.addBtn} onClick={() => setAddOpen(true)}>
+            + Add a question
+          </button>
+        )}
+      </div>
+
+      <p className={styles.foot}>
+        Saves to <strong>your {eventType || 'default'} planner</strong> — every {eventType || 'booking'} after
+        this uses it, with no clicks. Turned-off questions are kept, not deleted.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The client's control, rendered EMPTY and DISABLED.
+ *
+ * Deliberately a separate, dumb mirror of the client's `Control` rather than a
+ * shared component: the client's is interactive, saves, searches Deezer, plays
+ * previews. None of that belongs in a preview, and importing it would drag all
+ * of it in. This shows the SHAPE — a text line, a time dropdown, a song box, a
+ * people grid — which is all the DJ needs to grasp the page.
  */
-
-.wrap {
-  display: flex;
-  flex-direction: column;
+function FieldPreview({ field }: { field: PlannerField }) {
+  switch (field.type) {
+    case 'longtext':
+      return <div className={`${styles.pv} ${styles.pvArea}`} />;
+    case 'time':
+    case 'select':
+      return <div className={`${styles.pv} ${styles.pvSelect}`}><span>{field.type === 'time' ? 'Select a time…' : 'Select…'}</span></div>;
+    case 'yesno':
+      return (
+        <div className={styles.pvYesno}>
+          <span className={styles.pvToggle}>Yes</span>
+          <span className={styles.pvToggle}>No</span>
+        </div>
+      );
+    case 'song':
+      return <div className={`${styles.pv} ${styles.pvSong}`}><span>♪ Search a song, or type it</span></div>;
+    case 'songlist':
+      return (
+        <div className={styles.pvStack}>
+          <div className={`${styles.pv} ${styles.pvSong}`}><span>♪ Search a song, or type it</span></div>
+          <span className={styles.pvAdd}>+ Add another</span>
+        </div>
+      );
+    case 'textlist':
+      return (
+        <div className={styles.pvStack}>
+          <div className={styles.pv} />
+          <span className={styles.pvAdd}>+ Add another</span>
+        </div>
+      );
+    case 'people':
+      return (
+        <div className={styles.pvStack}>
+          <div className={styles.pvPeople}>
+            <span>Name</span><span>Role</span><span>Say it like</span>
+          </div>
+          <span className={styles.pvAdd}>+ Add another</span>
+        </div>
+      );
+    case 'timeline':
+      return (
+        <div className={styles.pvStack}>
+          <div className={styles.pvTimeline}>
+            <span className={styles.pvTimeCell}>Time…</span>
+            <div className={styles.pv} style={{ flex: 1 }} />
+          </div>
+          <span className={styles.pvAdd}>+ Add another</span>
+        </div>
+      );
+    case 'link':
+      return <div className={styles.pv}><span className={styles.pvPh}>https://…</span></div>;
+    default:
+      return <div className={styles.pv} />;
+  }
 }
-
-/* The DJ's logo at the top of the editor — where the client sees it. Wrapped in
-   a button so clicking it replaces the logo. */
-.logoBtn {
-  display: block;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-.logoBtn:disabled { cursor: wait; opacity: .6; }
-.logo {
-  display: block;
-  max-height: 60px;
-  max-width: 200px;
-  width: auto;
-  object-fit: contain;
-}
-/* Shown instead when no logo is set — a way to add one right from here. */
-.addLogo {
-  align-self: flex-start;
-  margin-bottom: 1rem;
-  padding: .5rem .8rem;
-  border: 1px dashed rgba(0, 224, 164, .45);
-  border-radius: 8px;
-  background: rgba(0, 224, 164, .06);
-  color: #00e0a4;
-  font-family: inherit;
-  font-size: .8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.addLogo:hover { background: rgba(0, 224, 164, .14); }
-
-/* Logo + a quiet Remove beside it. */
-.logoRow { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
-.logoRemove {
-  background: none; border: none; color: #6c6c86; font-family: inherit;
-  font-size: .78rem; text-decoration: underline; cursor: pointer; padding: .2rem;
-}
-.logoRemove:hover { color: #ff7676; }
-
-/* The remove choice: delete everywhere vs hide on this one planner. */
-.logoChoice {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
-  margin: -.4rem 0 1rem; padding: .6rem .7rem;
-  border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px;
-  background: rgba(255, 255, 255, .02);
-}
-.logoChoiceQ { font-size: .8rem; color: #9d9db5; }
-.logoChoiceBtn {
-  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 6px; color: #e8e8f0; font-family: inherit; font-size: .78rem;
-  padding: .35rem .6rem; cursor: pointer;
-}
-.logoChoiceBtn:hover { border-color: rgba(0, 224, 164, .4); color: #00e0a4; }
-.logoChoiceBtn:disabled { opacity: .5; cursor: wait; }
-.logoChoiceCancel {
-  background: none; border: none; color: #6c6c86; font-family: inherit;
-  font-size: .78rem; text-decoration: underline; cursor: pointer;
-}
-.logoMsg { font-size: .8rem; color: #8a8aa0; margin: -.4rem 0 1rem; }
-
-/* ── Brand row: logo left, business address stacked on the right ───────── */
-.brandTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.brandLeft { flex: 0 1 auto; min-width: 0; }
-.brandRight { flex: 0 1 auto; display: flex; justify-content: flex-end; }
-
-/* ── Business address ─────────────────────────────────────────────────── */
-/* When it's set: the address (stacked) + a pencil, click to edit. */
-.addrShow {
-  display: inline-flex; align-items: flex-start; gap: .4rem;
-  max-width: 100%; background: none; border: none; padding: .1rem 0;
-  color: #c9c9de; font-family: inherit; font-size: .82rem; line-height: 1.4;
-  cursor: pointer;
-}
-.addrShow:hover { color: #fff; }
-.addrShow:hover :global(svg) { color: #00e0a4; }
-.addrText { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
-.addrText span { display: block; }
-/* When it's empty: a dashed add button, matching + Add your logo. */
-.addrAdd {
-  align-self: flex-start; padding: .5rem .8rem;
-  border: 1px dashed rgba(0, 224, 164, .45); border-radius: 8px;
-  background: rgba(0, 224, 164, .06); color: #00e0a4;
-  font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
-}
-.addrAdd:hover { background: rgba(0, 224, 164, .14); }
-/* Editing. */
-.addrEditRow { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-.addrInput {
-  flex: 1 1 16rem; min-width: 0; background: #0a0a10;
-  border: 1px solid rgba(0, 224, 164, .5); border-radius: 6px;
-  color: #f2f2f7; font-family: inherit; font-size: .85rem; padding: .4rem .55rem;
-  outline: none;
-}
-.addrSave {
-  flex: 0 0 auto; background: rgba(0, 224, 164, .14);
-  border: 1px solid rgba(0, 224, 164, .5); border-radius: 6px;
-  color: #00e0a4; font-family: inherit; font-size: .78rem; font-weight: 600;
-  padding: .38rem .8rem; cursor: pointer;
-}
-.addrSave:hover { background: rgba(0, 224, 164, .24); }
-.addrCancel {
-  flex: 0 0 auto; background: none; border: none; color: #6c6c86;
-  font-size: .9rem; cursor: pointer; padding: .2rem .35rem;
-}
-.addrCancel:hover { color: #ff7676; }
-
-/* ── The page's own header, faint ─────────────────────────────────────── */
-
-.pageHead {
-  padding-bottom: .9rem;
-  margin-bottom: .9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-}
-.brand {
-  font-family: var(--font-space-mono), monospace;
-  font-size: .56rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: #00e0a4;
-  margin-bottom: .35rem;
-}
-.pageTitle {
-  font-family: var(--font-bebas), sans-serif;
-  font-size: 1.5rem;
-  letter-spacing: .04em;
-  color: #f2f2f7;
-}
-.pageSub {
-  font-size: .76rem;
-  color: #75758d;
-  margin-top: .2rem;
-}
-
-/* ── Your booking (read-only strip) ───────────────────────────────────── */
-/* Mirrors the client page's top strip so the DJ arranges the whole page. Flat
-   and dim — it's here so they DON'T have to deal with it. */
-
-.known {
-  margin: 0 0 1.1rem;
-  padding: 0 0 .9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
-}
-.knownHead {
-  font-family: var(--font-space-mono), monospace;
-  font-size: .56rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: #4e4e66;
-  margin-bottom: .3rem;
-}
-.knownRow {
-  display: flex;
-  gap: .7rem;
-  align-items: baseline;
-  font-size: .82rem;
-}
-.knownK { flex: 0 0 130px; color: #5e5e77; font-size: .76rem; }
-.knownV { color: #4a4a60; font-style: italic; min-width: 0; }
-.knownNote {
-  margin: .5rem 0 0;
-  font-size: .72rem;
-  color: #4e4e66;
-  line-height: 1.5;
-}
-
-
-/* ── List ─────────────────────────────────────────────────────────────── */
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
-
-.field {
-  display: flex;
-  gap: .5rem;
-  border: 1px solid rgba(255, 255, 255, .08);
-  border-radius: 10px;
-  padding: .6rem .7rem .7rem;
-  background: rgba(255, 255, 255, .015);
-}
-/* Off, not gone. Greyed, struck, but sitting in place so the DJ can turn it
-   back — hiding exists to protect answers keyed to the field id. */
-.hidden { opacity: .5; }
-.hidden .label { text-decoration: line-through; }
-
-/* The row being dragged, and the gap that opens above the drop target. */
-.dragging { opacity: .4; }
-.over { border-top: 2px solid #00e0a4; }
-
-/* ── Drag rail ────────────────────────────────────────────────────────── */
-
-.rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .3rem;
-  flex-shrink: 0;
-  padding-top: .1rem;
-}
-
-.grip {
-  color: #5e5e77;
-  font-size: 1rem;
-  cursor: grab;
-  line-height: 1;
-  user-select: none;
-}
-.grip:active { cursor: grabbing; }
-
-/* The touch fallback. Drag fights the page scroll on a phone; arrows never do.
-   Hidden on a pointer that hovers (a mouse); shown on touch. */
-.arrows { display: none; flex-direction: column; gap: 1px; }
-@media (hover: none) {
-  .grip { display: none; }
-  .arrows { display: flex; }
-}
-.arrow {
-  width: 22px;
-  height: 20px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 4px;
-  color: #8a8aa0;
-  font-size: .7rem;
-  cursor: pointer;
-  line-height: 1;
-}
-.arrow:disabled { opacity: .25; cursor: default; }
-
-/* ── Body ─────────────────────────────────────────────────────────────── */
-
-.body { flex: 1; min-width: 0; }
-
-.labelRow {
-  display: flex;
-  align-items: baseline;
-  gap: .5rem;
-}
-
-/* The label is a button — click it to rename in place. Looks like the client's
-   field label until you touch it. */
-.label {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: .96rem;
-  font-weight: 500;
-  color: #f2f2f7;
-  cursor: text;
-  display: flex;
-  align-items: baseline;
-  gap: .4rem;
-  flex-wrap: wrap;
-}
-.label:hover { color: #fff; }
-
-.labelEdit {
-  flex: 1;
-  min-width: 0;
-  background: #0a0a10;
-  border: 1px solid rgba(0, 224, 164, .5);
-  border-radius: 6px;
-  padding: .3rem .5rem;
-  color: #f2f2f7;
-  font-family: inherit;
-  font-size: .96rem;
-  outline: none;
-}
-
-.req {
-  font-size: .56rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #f5a623;
-  border: 1px solid rgba(245, 166, 35, .35);
-  border-radius: 3px;
-  padding: .03rem .28rem;
-}
-.mine {
-  font-size: .56rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #00e0a4;
-  border: 1px solid rgba(0, 224, 164, .4);
-  border-radius: 3px;
-  padding: .03rem .28rem;
-}
-
-.acts {
-  display: flex;
-  align-items: center;
-  gap: .1rem;
-  flex-shrink: 0;
-}
-.act {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: .9rem;
-  padding: .1rem .25rem;
-  border-radius: 5px;
-  opacity: .8;
-}
-.act:hover { opacity: 1; background: rgba(255, 255, 255, .06); }
-.lock { font-size: .8rem; padding: .1rem .2rem; opacity: .6; }
-
-/* The rename pencil — a clean line icon beside the title. Quiet muted grey by
-   default so it reads as a subtle affordance, not a chunky button; lifts to neon
-   on hover to confirm it's a control. */
-.editPencil {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  background: none;
-  border: none;
-  border-radius: 7px;
-  color: #6f6f88;
-  cursor: pointer;
-  padding: 0;
-  transition: color .12s ease, background .12s ease;
-}
-.editPencil svg { display: block; }
-.editPencil:hover { color: #00e0a4; background: rgba(255, 255, 255, .05); }
-.editPencil:active { transform: translateY(.5px); }
-
-/* A section HERO BANNER — not a question, not a draggable row. Full-width, bold,
-   with a neon wash, so it plainly divides the form into parts (ceremony above,
-   reception below). Fixed in place; the questions reorder around it. */
-.sectionBanner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .6rem;
-  margin: .8rem 0 .2rem;
-  padding-bottom: .55rem;
-  border-bottom: 1px solid rgba(140, 140, 170, .25);
-}
-.sectionBannerText {
-  font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
-  font-size: 1.5rem;
-  line-height: 1;
-  letter-spacing: .04em;
-  color: #f2f2f7;
-}
-.sectionBannerEditBtn {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  background: none;
-  border: none;
-  border-radius: 7px;
-  color: #6f6f88;
-  cursor: pointer;
-  padding: 0;
-  transition: color .12s ease, background .12s ease;
-}
-.sectionBannerEditBtn svg { display: block; }
-.sectionBannerEditBtn:hover { color: #00e0a4; background: rgba(255, 255, 255, .05); }
-.sectionBannerEdit {
-  flex: 1 1 auto;
-  min-width: 0;
-  background: #0a0a10;
-  border: 1px solid rgba(0, 224, 164, .5);
-  border-radius: 6px;
-  padding: .3rem .5rem;
-  color: #f2f2f7;
-  font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
-  font-size: 1.4rem;
-  letter-spacing: .04em;
-  outline: none;
-}
-
-/* The enable/disable toggle — a text button, not an eye. Quiet by default so it
-   doesn't shout over the question; the label is the point. */
-.toggle {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 5px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: .68rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: #9d9db5;
-  padding: .18rem .5rem;
-  white-space: nowrap;
-}
-.toggle:hover { color: #f2f2f7; border-color: rgba(255, 255, 255, .3); }
-
-.help {
-  font-size: .74rem;
-  color: #75758d;
-  margin: .15rem 0 .4rem;
-}
-
-/* ── Field previews — dead controls, real shapes ──────────────────────── */
-
-.pv {
-  background: #0a0a10;
-  border: 1px solid #23233a;
-  border-radius: 7px;
-  padding: .55rem .7rem;
-  min-height: 1.1rem;
-  color: #4a4a60;
-  font-size: .86rem;
-  margin-top: .3rem;
-}
-.pvArea { min-height: 2.6rem; }
-.pvPh { color: #3a3a4a; }
-
-.pvSelect {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.pvSelect::after {
-  content: '';
-  width: 0; height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid #4a4a60;
-}
-
-.pvSong { color: #5e5e77; }
-
-.pvStack { display: flex; flex-direction: column; gap: .3rem; margin-top: .3rem; }
-.pvStack .pv { margin-top: 0; }
-
-.pvAdd {
-  font-size: .8rem;
-  color: rgba(0, 224, 164, .55);
-  padding-left: .1rem;
-}
-
-.pvYesno { display: flex; gap: .4rem; margin-top: .3rem; }
-.pvToggle {
-  min-width: 64px;
-  text-align: center;
-  background: #0a0a10;
-  border: 1px solid #23233a;
-  border-radius: 7px;
-  padding: .45rem .8rem;
-  color: #5e5e77;
-  font-size: .84rem;
-}
-
-.pvPeople {
-  display: grid;
-  grid-template-columns: 1.6fr 1.2fr 1.2fr;
-  gap: .4rem;
-}
-.pvPeople span {
-  background: #0a0a10;
-  border: 1px solid #23233a;
-  border-radius: 7px;
-  padding: .45rem .6rem;
-  color: #4a4a60;
-  font-size: .8rem;
-}
-
-.pvTimeline { display: flex; gap: .4rem; }
-.pvTimeCell {
-  flex: 0 0 110px;
-  background: #0a0a10;
-  border: 1px solid #23233a;
-  border-radius: 7px;
-  padding: .45rem .6rem;
-  color: #4a4a60;
-  font-size: .8rem;
-}
-
-/* ── Add ──────────────────────────────────────────────────────────────── */
-
-.addWrap { margin-top: .7rem; }
-
-.addBtn {
-  width: 100%;
-  background: rgba(255, 255, 255, .03);
-  border: 1px dashed rgba(255, 255, 255, .2);
-  border-radius: 8px;
-  color: #9d9db5;
-  font-family: inherit;
-  font-size: .86rem;
-  padding: .7rem;
-  cursor: pointer;
-}
-.addBtn:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
-
-.addMenu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-  align-items: center;
-  border: 1px dashed rgba(255, 255, 255, .2);
-  border-radius: 8px;
-  padding: .6rem;
-}
-.addPick {
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 5px;
-  color: #9d9db5;
-  font-family: inherit;
-  font-size: .76rem;
-  padding: .3rem .55rem;
-  cursor: pointer;
-}
-.addPick:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
-.addCancel {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: #6c6c86;
-  font-family: inherit;
-  font-size: .76rem;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.foot {
-  font-size: .78rem;
-  line-height: 1.55;
-  color: #75758d;
-  margin: 1rem 0 0;
-}
-.foot strong { color: #e8e8f0; }
