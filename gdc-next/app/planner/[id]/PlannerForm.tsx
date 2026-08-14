@@ -81,7 +81,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, djPhone = null, known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -96,6 +96,8 @@ export default function PlannerForm({
   /** The DJ's business/mailing address (users.address). Shown at the top, to the
    *  right of the logo. When absent, the logo centres on its own. */
   djAddress?: string | null;
+  /** The DJ's business phone (users.phone) — shown stacked under the address. */
+  djPhone?: string | null;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
   /** DJ preview — the REAL page, read-only. No saving, no submit. */
@@ -283,21 +285,26 @@ export default function PlannerForm({
           {/* The DJ's own logo and business address at the very top — so the
               client sees THEIR brand. Logo left, address right; if there's no
               address the logo centres on its own, and vice-versa. */}
-          {(logoUrl || djAddress) ? (
-            <div className={`${styles.brandRow} ${logoUrl && djAddress ? '' : styles.brandRowSolo}`}>
+          {(logoUrl || djAddress || djPhone) ? (
+            <div className={`${styles.brandRow} ${logoUrl && (djAddress || djPhone) ? '' : styles.brandRowSolo}`}>
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
               ) : null}
-              {djAddress ? (
-                <address className={styles.djAddress}>
-                  {djAddress.split(',').map((s) => s.trim()).filter(Boolean).reduce<string[]>((lines, part, i, arr) => {
-                    // Street on line one, "City, ST ZIP" under it.
-                    if (i === 0) lines.push(part);
-                    else if (i === 1) lines.push(arr.slice(1).join(', '));
-                    return lines;
-                  }, []).map((line, i) => <span key={i}>{line}</span>)}
-                </address>
+              {(djAddress || djPhone) ? (
+                <div className={styles.djContact}>
+                  {djAddress ? (
+                    <address className={styles.djAddress}>
+                      {djAddress.split(',').map((s) => s.trim()).filter(Boolean).reduce<string[]>((lines, part, i, arr) => {
+                        // Street on line one, "City, ST ZIP" under it.
+                        if (i === 0) lines.push(part);
+                        else if (i === 1) lines.push(arr.slice(1).join(', '));
+                        return lines;
+                      }, []).map((line, i) => <span key={i}>{line}</span>)}
+                    </address>
+                  ) : null}
+                  {djPhone ? <div className={styles.djPhone}>{djPhone}</div> : null}
+                </div>
               ) : null}
             </div>
           ) : null}
