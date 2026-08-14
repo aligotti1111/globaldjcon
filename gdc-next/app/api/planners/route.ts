@@ -99,7 +99,49 @@ export async function GET(req: Request) {
     if (!g.ok) return g.res;
     const { userId, db, admin } = g;
 
-    const bookingId = new URL(req.url).searchParams.get('bookingId') || '';
+    const url = new URL(req.url);
+    const bookingId = url.searchParams.get('bookingId') || '';
+
+    // ── No-booking mode ── Used by the Planner & Playlist section in Booking
+    // Settings and by the editor/preview it opens: manage the DJ's templates
+    // with no booking to prefill from. With no eventType we return just the
+    // template LIST; with one we compose that template (NO prefill — there's no
+    // booking data, so the preview shows the raw fields) for the editor/preview.
+    if (!bookingId) {
+      const templates = await loadTemplates(db, userId);
+      const raw = url.searchParams.get('eventType');
+      const mapTemplates = () => templates.map((t) => ({
+        id: t.id, name: t.name, eventType: t.event_type,
+        isStandard: t.is_standard, isMine: !t.is_standard && t.dj_id === userId,
+        count: visibleFields(t.fields || []).length,
+      }));
+      if (raw === null) {
+        return NextResponse.json({ templates: mapTemplates() });
+      }
+      const wantType = raw.trim() || null;
+      const { base, override } = pickTemplate(templates, userId, wantType);
+      if (!base) {
+        return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
+      }
+      const fields = composeFields(base.fields || [], override?.fields || []);
+      const resolved = override || base;
+      return NextResponse.json({
+        resolved: {
+          id: resolved.id, name: resolved.name, eventType: resolved.event_type,
+          isStandard: resolved.is_standard, isMine: !resolved.is_standard && resolved.dj_id === userId,
+        },
+        editEventType: wantType,
+        fields,
+        prefillCount: 0,
+        prefilledIds: [],
+        recipient: { name: null, email: null, hasAccount: false },
+        eventType: wantType,
+        bookingType: null,
+        event: { date: null, venue: null },
+        templates: mapTemplates(),
+      });
+    }
+
     if (!/^[0-9a-f-]{36}$/i.test(bookingId)) {
       return NextResponse.json({ error: 'Not found.' }, { status: 404 });
     }
