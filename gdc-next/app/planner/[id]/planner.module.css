@@ -53,15 +53,31 @@
 
 /* The DJ's business/mailing address, top-right of the header. Quiet — it's
    letterhead, not a headline. Right-aligned to sit opposite the logo. */
+/* Address + phone, stacked, top-right opposite the logo. */
+.djContact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 55%;
+}
+.brandRowSolo .djContact { align-items: center; max-width: 100%; }
 .djAddress {
   font-style: normal;
   text-align: right;
   font-size: .78rem;
   line-height: 1.45;
   color: var(--muted, #8a8aa0);
-  max-width: 55%;
 }
 .djAddress span { display: block; }
+.djPhone {
+  margin-top: .15rem;
+  text-align: right;
+  font-size: .78rem;
+  line-height: 1.45;
+  color: var(--muted, #8a8aa0);
+}
+.brandRowSolo .djAddress,
+.brandRowSolo .djPhone { text-align: center; }
 .brandRowSolo .djAddress { text-align: center; max-width: 100%; }
 
 /* Download PDF — top-right of the header, so client and DJ can grab a copy at
@@ -641,6 +657,7 @@ select.input {
 
   .brand { color: #000 !important; }
   .djAddress { color: #000 !important; }
+  .djPhone { color: #000 !important; }
   .title { color: #000 !important; font-size: 1.7rem; }
   .sub { color: #000 !important; }
   .intro,
