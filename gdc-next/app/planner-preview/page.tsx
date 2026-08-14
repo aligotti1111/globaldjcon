@@ -119,12 +119,16 @@ export default async function PlannerPreviewPage({
     const { base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB);
     if (!baseNB) notFound();
     // The QUESTIONS a client actually answers: drop the fields the booking
-    // fills in — the ceremony toggle/start & cocktail (dropFieldsAnsweredByBooking)
-    // and every prefill field (music start/end, day-of contact). These show in
-    // the "Your booking" panel instead, exactly like the live planner.
+    // fills in — the ceremony toggle/start & every prefill field (music
+    // start/end, day-of contact). Those show in the "Your booking" panel.
+    //
+    // No booking here, so we ASSUME ceremony + cocktail exist: this is a
+    // template preview, and a DJ inspecting "Wedding (with ceremony)" wants to
+    // see the ceremony questions the template carries. On a real booking these
+    // appear only when that booking actually has a ceremony / cocktail hour.
     const fieldsNB = dropFieldsAnsweredByBooking(
       visibleFields(composeFields(baseNB.fields || [], overNB?.fields || [])),
-      { ceremony_needed: false, cocktail_needed: false },
+      { ceremony_needed: true, cocktail_needed: true },
     ).filter((f) => !f.prefill);
     // The "Your booking" panel at the top, under the logo — the same facts the
     // live planner shows, with placeholder values since this template preview
