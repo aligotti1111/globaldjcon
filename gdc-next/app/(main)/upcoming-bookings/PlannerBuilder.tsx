@@ -35,14 +35,11 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './plannerBuilder.module.css';
 
 const ADDABLE: { type: PlannerFieldType; label: string }[] = [
-  { type: 'text', label: 'Short text' },
-  { type: 'longtext', label: 'Paragraph' },
-  { type: 'time', label: 'Time' },
-  { type: 'song', label: 'One song' },
-  { type: 'songlist', label: 'Song list' },
-  { type: 'textlist', label: 'Text list' },
-  { type: 'people', label: 'People' },
-  { type: 'yesno', label: 'Yes / no' },
+  { type: 'longtext', label: 'Write Question - Response Field : text' },
+  { type: 'time', label: 'Time sensitive question' },
+  { type: 'songlist', label: 'Question requiring multiple songs as response' },
+  { type: 'people', label: 'Question requiring list of names' },
+  { type: 'yesno', label: 'Question requiring yes or no response' },
 ];
 
 /** The pinned three — locked in position by the server, so shown with a lock. */
