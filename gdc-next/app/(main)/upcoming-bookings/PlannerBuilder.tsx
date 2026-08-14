@@ -30,7 +30,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isSection } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isSection, titleCaseLabel } from '@/lib/planner';
 import { createClient } from '@/lib/supabase/client';
 import styles from './plannerBuilder.module.css';
 
@@ -433,7 +433,7 @@ export default function PlannerBuilder({
                   />
                 ) : (
                   <>
-                    <span className={styles.sectionBannerText}>{f.label || 'Section'}</span>
+                    <span className={styles.sectionBannerText}>{f.label ? titleCaseLabel(f.label) : 'Section'}</span>
                     <button
                       type="button"
                       className={styles.sectionBannerEditBtn}
@@ -500,7 +500,7 @@ export default function PlannerBuilder({
                       onClick={() => setEditing(f.id)}
                       title="Click to rename"
                     >
-                      {f.label || 'Untitled question'}
+                      {f.label ? titleCaseLabel(f.label) : 'Untitled question'}
                       {f.required ? <span className={styles.req}>required</span> : null}
                       {f.is_custom ? <span className={styles.mine}>yours</span> : null}
                     </button>
