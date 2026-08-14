@@ -59,9 +59,9 @@
   font-size: .78rem;
   line-height: 1.45;
   color: var(--muted, #8a8aa0);
-  white-space: pre-line;
   max-width: 55%;
 }
+.djAddress span { display: block; }
 .brandRowSolo .djAddress { text-align: center; max-width: 100%; }
 
 /* Download PDF — top-right of the header, so client and DJ can grab a copy at
