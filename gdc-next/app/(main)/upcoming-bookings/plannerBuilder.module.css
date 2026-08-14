@@ -72,6 +72,47 @@
 }
 .logoMsg { font-size: .8rem; color: #8a8aa0; margin: -.4rem 0 1rem; }
 
+/* ── Business address ─────────────────────────────────────────────────── */
+.addrBlock { margin: -.2rem 0 1rem; }
+/* When it's set: the address text + a pencil, click to edit. */
+.addrShow {
+  display: inline-flex; align-items: center; gap: .5rem;
+  max-width: 100%; background: none; border: none; padding: .1rem 0;
+  color: #c9c9de; font-family: inherit; font-size: .82rem; line-height: 1.4;
+  text-align: left; cursor: pointer;
+}
+.addrShow:hover { color: #fff; }
+.addrShow:hover :global(svg) { color: #00e0a4; }
+.addrText { white-space: pre-line; }
+/* When it's empty: a dashed add button, matching + Add your logo. */
+.addrAdd {
+  align-self: flex-start; padding: .5rem .8rem;
+  border: 1px dashed rgba(0, 224, 164, .45); border-radius: 8px;
+  background: rgba(0, 224, 164, .06); color: #00e0a4;
+  font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+}
+.addrAdd:hover { background: rgba(0, 224, 164, .14); }
+/* Editing. */
+.addrEditRow { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.addrInput {
+  flex: 1 1 16rem; min-width: 0; background: #0a0a10;
+  border: 1px solid rgba(0, 224, 164, .5); border-radius: 6px;
+  color: #f2f2f7; font-family: inherit; font-size: .85rem; padding: .4rem .55rem;
+  outline: none;
+}
+.addrSave {
+  flex: 0 0 auto; background: rgba(0, 224, 164, .14);
+  border: 1px solid rgba(0, 224, 164, .5); border-radius: 6px;
+  color: #00e0a4; font-family: inherit; font-size: .78rem; font-weight: 600;
+  padding: .38rem .8rem; cursor: pointer;
+}
+.addrSave:hover { background: rgba(0, 224, 164, .24); }
+.addrCancel {
+  flex: 0 0 auto; background: none; border: none; color: #6c6c86;
+  font-size: .9rem; cursor: pointer; padding: .2rem .35rem;
+}
+.addrCancel:hover { color: #ff7676; }
+
 /* ── The page's own header, faint ─────────────────────────────────────── */
 
 .pageHead {
