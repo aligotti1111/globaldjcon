@@ -31,6 +31,7 @@ import {
   type Track,
   type Person,
   type TimelineRow,
+  HONOREE_FIELD_ID,
 } from '@/lib/planner';
 
 // Every 30 minutes, 24 hours. Same options the booking form uses — a client
@@ -557,7 +558,10 @@ function Control({
       return <TextList value={(value as string[]) || []} onChange={onChange} />;
 
     case 'people':
-      return <PeopleList value={(value as Person[]) || []} onChange={onChange} />;
+      // The Guest of Honor is, by definition, the honoree — a Role column there
+      // is redundant, so drop it for that field. Other people lists (couple,
+      // bridal party, family) keep Role.
+      return <PeopleList value={(value as Person[]) || []} onChange={onChange} showRole={field.id !== HONOREE_FIELD_ID} />;
 
     case 'timeline':
       return <Timeline value={(value as TimelineRow[]) || []} onChange={onChange} />;
@@ -877,10 +881,11 @@ function TextList({
 // ─────────────────────────────────────────────────────────────────────────
 
 function PeopleList({
-  value, onChange,
+  value, onChange, showRole = true,
 }: {
   value: Person[];
   onChange: (v: Person[]) => void;
+  showRole?: boolean;
 }) {
   const [rows, setRows] = useState<Person[]>(() =>
     value.length ? value : [{ name: '' }]);
@@ -903,15 +908,17 @@ function PeopleList({
 
   return (
     <div className={styles.list}>
-      <div className={styles.peopleHead}>
-        <span>Name</span><span>Role</span><span>Say it like</span><span />
+      <div className={`${styles.peopleHead}${showRole ? '' : ` ${styles.noRole}`}`}>
+        <span>Name</span>{showRole && <span>Role</span>}<span>Say it like</span><span />
       </div>
       {rows.map((p, i) => (
-        <div key={i} className={styles.peopleRow}>
+        <div key={i} className={`${styles.peopleRow}${showRole ? '' : ` ${styles.noRole}`}`}>
           <input className={styles.input} placeholder="Name"
             value={p.name || ''} onChange={(e) => set(i, { name: e.target.value })} />
-          <input className={styles.input} placeholder="Role"
-            value={p.role || ''} onChange={(e) => set(i, { role: e.target.value })} />
+          {showRole && (
+            <input className={styles.input} placeholder="Role"
+              value={p.role || ''} onChange={(e) => set(i, { role: e.target.value })} />
+          )}
           <input className={styles.input} placeholder="optional"
             value={p.pronunciation || ''} onChange={(e) => set(i, { pronunciation: e.target.value })} />
           <div className={styles.rowTools}>

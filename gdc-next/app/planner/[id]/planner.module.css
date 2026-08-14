@@ -303,6 +303,12 @@ select.input {
   align-items: center;
 }
 
+/* Guest of Honor drops the Role column — three columns instead of four. */
+.peopleHead.noRole,
+.peopleRow.noRole {
+  grid-template-columns: 1.6fr 1.2fr 108px;
+}
+
 .timeRow {
   display: grid;
   grid-template-columns: 130px 1fr 108px;
@@ -546,7 +552,8 @@ select.input {
      column about 90px wide — narrower than the word "pronunciation" and far
      too narrow to type a name into. Rows, not columns. */
   .peopleHead { display: none; }
-  .peopleRow {
+  .peopleRow,
+  .peopleRow.noRole {
     grid-template-columns: 1fr;
     gap: .3rem;
     padding: .6rem;
