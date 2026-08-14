@@ -117,7 +117,13 @@ export default async function PlannerPreviewPage({
     const wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
     const { base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB);
     if (!baseNB) notFound();
-    const fieldsNB = visibleFields(composeFields(baseNB.fields || [], overNB?.fields || []));
+    // Drop PREFILL fields (music start/end, cocktail hour, ceremony start,
+    // day-of contact, …). On a real send those auto-fill from the booking's
+    // agreed times and the client never answers them — showing them here as
+    // blank questions makes the planner look like it re-asks things you already
+    // agreed on. So the settings preview shows ONLY what a client actually fills.
+    const fieldsNB = visibleFields(composeFields(baseNB.fields || [], overNB?.fields || []))
+      .filter((f) => !f.prefill);
     return (
       <PlannerForm
         plannerId="preview"
