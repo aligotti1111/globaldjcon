@@ -66,15 +66,21 @@ function fmtDate(d: string | null): string {
 // never drop to a second line — that wrapping was the "mess".
 const rowStyle: CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '.5rem',
-  flexWrap: 'nowrap', padding: '.5rem 0',
+  flexWrap: 'nowrap', padding: '.5rem .6rem',
   borderTop: '1px solid rgba(140,140,170,.14)',
+  borderRadius: 8, transition: 'background .15s, box-shadow .15s',
+};
+// The selected planner is highlighted so it's obvious which one Send will use.
+const rowSelectedStyle: CSSProperties = {
+  background: 'rgba(0,245,196,.10)',
+  boxShadow: 'inset 0 0 0 1px rgba(0,245,196,.45)',
+  borderTopColor: 'transparent',
 };
 const nameStyle: CSSProperties = {
   flex: '1 1 auto', minWidth: 0,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   fontWeight: 600, fontSize: '.9rem', cursor: 'pointer',
 };
-const chipWrapStyle: CSSProperties = { flex: '0 0 auto', display: 'inline-flex' };
 const iconBtnStyle: CSSProperties = {
   flex: '0 0 auto',
   background: 'none', border: 'none', cursor: 'pointer',
@@ -279,7 +285,7 @@ export default function PlannerSendModal({
                 const selected = rowSelected(t);
                 const isAuto = t.id === data.resolved.id;
                 return (
-                  <div key={t.id} style={rowStyle}>
+                  <div key={t.id} style={selected ? { ...rowStyle, ...rowSelectedStyle } : rowStyle}>
                     <span
                       role="radio"
                       aria-checked={selected}
@@ -330,8 +336,6 @@ export default function PlannerSendModal({
                         >
                           {t.name}
                         </span>
-                        {isAuto && <span style={chipWrapStyle}><span className={styles.tagAuto}>auto</span></span>}
-                        {!isAuto && t.isMine && <span style={chipWrapStyle}><span className={styles.tag}>yours</span></span>}
                         <button
                           type="button"
                           onClick={() => startRename(t)}
