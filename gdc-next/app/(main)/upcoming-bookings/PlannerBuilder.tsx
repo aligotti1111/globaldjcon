@@ -1,4 +1,4 @@
-'use client';
+='use client';
 
 // The visual planner editor.
 //
@@ -108,6 +108,9 @@ export default function PlannerBuilder({
   const [addrDraft, setAddrDraft] = useState('');
   const [addrBusy, setAddrBusy] = useState(false);
   const [addrMsg, setAddrMsg] = useState<string | null>(null);
+  // The DJ's business phone (users.phone) — display only; set in account
+  // settings, shown stacked under the address, same as the live planner.
+  const [phone, setPhone] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -119,13 +122,14 @@ export default function PlannerBuilder({
         setUserId(user.id);
         const { data } = await supabase
           .from('users')
-          .select('contract_logo_url, address')
+          .select('contract_logo_url, address, phone')
           .eq('id', user.id)
           .maybeSingle();
         if (active) {
-          const row = data as { contract_logo_url?: string | null; address?: string | null } | null;
+          const row = data as { contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
           setLogoUrl(row?.contract_logo_url || null);
           setAddress(row?.address?.trim() || null);
+          setPhone(row?.phone?.trim() || null);
         }
       } catch { /* logo + address are optional */ }
     })();
@@ -354,6 +358,9 @@ export default function PlannerBuilder({
               + Add your business address
             </button>
           )}
+          {/* The business phone from account settings, stacked under the address
+              (display only — it's set in account settings, like the invoice). */}
+          {phone && !editingAddr ? <div className={styles.addrPhone}>{phone}</div> : null}
         </div>
       </div>
 
