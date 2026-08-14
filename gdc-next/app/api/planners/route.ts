@@ -25,6 +25,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import {
   pickTemplate,
+  pickTemplateById,
   composeFields,
   applyPrefill,
   visibleFields,
@@ -115,16 +116,27 @@ export async function GET(req: Request) {
         isStandard: t.is_standard, isMine: !t.is_standard && t.dj_id === userId,
         count: visibleFields(t.fields || []).length,
       }));
-      if (raw === null) {
+      // A specific template id disambiguates types with more than one template
+      // (weddings: with / without ceremony). When present it wins over eventType.
+      const templateId = url.searchParams.get('templateId');
+      if (raw === null && !templateId) {
         return NextResponse.json({ templates: mapTemplates() });
       }
-      const wantType = raw.trim() || null;
-      const { base, override } = pickTemplate(templates, userId, wantType);
-      if (!base) {
+      let base: ReturnType<typeof pickTemplate>['base'];
+      let override: ReturnType<typeof pickTemplate>['override'];
+      if (templateId) {
+        const r = pickTemplateById(templates, userId, templateId);
+        if (!r) return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
+        base = r.base; override = r.override;
+      } else {
+        ({ base, override } = pickTemplate(templates, userId, raw!.trim() || null));
+      }
+      if (!base && !override) {
         return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
       }
-      const fields = composeFields(base.fields || [], override?.fields || []);
-      const resolved = override || base;
+      const fields = composeFields(base?.fields || [], override?.fields || []);
+      const resolved = override || base!;
+      const wantType = resolved.event_type;
       return NextResponse.json({
         resolved: {
           id: resolved.id, name: resolved.name, eventType: resolved.event_type,
