@@ -92,6 +92,15 @@ export default function PlannerBuilder({
   const [showRemove, setShowRemove] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  // The DJ's business address (users.address) — the SAME field the account
+  // settings and invoices use. It shows at the top of the planner, opposite the
+  // logo; here the DJ can add it if they never set one, or fix it.
+  const [address, setAddress] = useState<string | null>(null);
+  const [editingAddr, setEditingAddr] = useState(false);
+  const [addrDraft, setAddrDraft] = useState('');
+  const [addrBusy, setAddrBusy] = useState(false);
+  const [addrMsg, setAddrMsg] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -102,16 +111,42 @@ export default function PlannerBuilder({
         setUserId(user.id);
         const { data } = await supabase
           .from('users')
-          .select('contract_logo_url')
+          .select('contract_logo_url, address')
           .eq('id', user.id)
           .maybeSingle();
         if (active) {
-          setLogoUrl((data as { contract_logo_url?: string | null } | null)?.contract_logo_url || null);
+          const row = data as { contract_logo_url?: string | null; address?: string | null } | null;
+          setLogoUrl(row?.contract_logo_url || null);
+          setAddress(row?.address?.trim() || null);
         }
-      } catch { /* logo is optional */ }
+      } catch { /* logo + address are optional */ }
     })();
     return () => { active = false; };
   }, []);
+
+  // Save the address to the shared users.address — same write the account
+  // settings page makes, so it updates the planner AND the invoices at once.
+  async function saveAddress() {
+    if (!userId) return;
+    const val = addrDraft.trim();
+    setAddrBusy(true);
+    setAddrMsg(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({ address: val } as unknown as never)
+        .eq('id', userId);
+      if (error) throw error;
+      setAddress(val || null);
+      setEditingAddr(false);
+      setAddrMsg(val ? '✓ Address saved — shows at the top of your planners.' : '✓ Address cleared.');
+    } catch {
+      setAddrMsg('Could not save the address — try again.');
+    } finally {
+      setAddrBusy(false);
+    }
+  }
 
   async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -266,6 +301,49 @@ export default function PlannerBuilder({
       )}
       {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
+
+      {/* Business address — shows at the top of the planner, opposite the logo.
+          Add it here if it was never set, or fix it. Same field as account
+          settings & invoices, so a change here shows up on those too. */}
+      <div className={styles.addrBlock}>
+        {editingAddr ? (
+          <div className={styles.addrEditRow}>
+            <input
+              className={styles.addrInput}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              value={addrDraft}
+              disabled={addrBusy}
+              placeholder="123 Main St, City, ST 00000"
+              onChange={(e) => setAddrDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void saveAddress(); if (e.key === 'Escape') setEditingAddr(false); }}
+            />
+            <button type="button" className={styles.addrSave} disabled={addrBusy} onClick={() => void saveAddress()}>
+              {addrBusy ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" className={styles.addrCancel} disabled={addrBusy} onClick={() => setEditingAddr(false)} aria-label="Cancel">✕</button>
+          </div>
+        ) : address ? (
+          <button
+            type="button"
+            className={styles.addrShow}
+            title="Edit your business address"
+            onClick={() => { setAddrDraft(address); setEditingAddr(true); }}
+          >
+            <span className={styles.addrText}>{address}</span>
+            <PencilIcon />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.addrAdd}
+            onClick={() => { setAddrDraft(''); setEditingAddr(true); }}
+          >
+            + Add your business address
+          </button>
+        )}
+        {addrMsg && <div className={styles.logoMsg}>{addrMsg}</div>}
+      </div>
 
       {/* The page's own header, faint — so the DJ is looking at the client's
           actual page, chrome and all, not a bare list floating in a modal. */}
