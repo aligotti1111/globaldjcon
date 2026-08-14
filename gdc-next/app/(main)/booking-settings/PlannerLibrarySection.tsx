@@ -73,6 +73,19 @@ const inputStyle: CSSProperties = {
   padding: '.35rem .5rem', fontSize: '.85rem',
 };
 
+/** Cluster templates by event type so all rows of a type sit together (the two
+ *  wedding planners land next to each other), keeping first-seen order otherwise. */
+function groupByEventType(list: TemplateLite[]): TemplateLite[] {
+  const order: string[] = [];
+  const groups = new Map<string, TemplateLite[]>();
+  for (const t of list) {
+    const key = t.eventType ?? '~base~';
+    if (!groups.has(key)) { groups.set(key, []); order.push(key); }
+    groups.get(key)!.push(t);
+  }
+  return order.flatMap((k) => groups.get(k)!);
+}
+
 export default function PlannerLibrarySection() {
   const [templates, setTemplates] = useState<TemplateLite[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -86,7 +99,7 @@ export default function PlannerLibrarySection() {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { setErr(j?.error || 'Could not load planners.'); return; }
       setErr(null);
-      setTemplates(Array.isArray(j.templates) ? j.templates : []);
+      setTemplates(groupByEventType(Array.isArray(j.templates) ? j.templates : []));
     } catch {
       setErr('Could not load planners.');
     }
