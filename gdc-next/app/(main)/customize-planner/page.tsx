@@ -53,10 +53,11 @@ export default function CustomizePlannerPage() {
         const apiUrl = hasBooking
           ? `/api/planners?bookingId=${bId}${et && et.trim() ? `&eventType=${encodeURIComponent(et)}` : ''}`
           // A specific template id (weddings: with / without ceremony) takes
-          // priority over event type, which can't tell the two apart.
+          // priority over event type, which can't tell the two apart. Without an
+          // id we still send the name so the API can disambiguate on it.
           : tid
             ? `/api/planners?templateId=${encodeURIComponent(tid)}`
-            : `/api/planners?eventType=${encodeURIComponent(et && et.trim() ? et.trim() : '')}`;
+            : `/api/planners?eventType=${encodeURIComponent(et && et.trim() ? et.trim() : '')}${q.get('name') ? `&name=${encodeURIComponent(q.get('name') as string)}` : ''}`;
         const res = await fetch(apiUrl);
         const j = await res.json().catch(() => ({}));
         if (!res.ok) { setErr(j?.error || 'Could not open the planner.'); setLoaded(true); return; }
