@@ -180,17 +180,29 @@
 
 .field { min-width: 0; }
 
-/* A break between parts of the form — e.g. "Reception" after the ceremony
-   questions on a wedding. The parent .fields gap already spaces it; the extra
-   top margin and rule make the two groups read as two groups, not one long list. */
+/* A hero banner between parts of the form — e.g. "Reception" after the ceremony
+   questions on a wedding. Identical treatment to the editor's section banner so
+   the client's page and the DJ's edit view read the same: full-width, bold,
+   neon-washed, so the two groups plainly divide. */
 .section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.2rem;
+  margin: .8rem 0 .2rem;
+  padding: .9rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 224, 164, .3);
+  background:
+    linear-gradient(135deg, rgba(0, 224, 164, .18), rgba(0, 224, 164, .04) 60%, rgba(0, 224, 164, .12));
+  box-shadow: inset 0 0 0 1px rgba(0, 224, 164, .06), 0 6px 18px rgba(0, 0, 0, .25);
   font-family: var(--font-bebas), sans-serif;
-  font-size: 1.5rem;
-  letter-spacing: .04em;
-  color: var(--white, #fff);
-  margin: .6rem 0 -.4rem;
-  padding-bottom: .55rem;
-  border-bottom: 1px solid rgba(140, 140, 170, .2);
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #eafff8;
 }
 
 /* Greyed, not hidden. The question stays on screen so they can undo it — and
