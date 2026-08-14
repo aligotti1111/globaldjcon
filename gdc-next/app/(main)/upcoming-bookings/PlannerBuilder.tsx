@@ -49,6 +49,18 @@ const ADDABLE: { type: PlannerFieldType; label: string }[] = [
 const isPinned = (id: string) =>
   id === HONOREE_FIELD_ID || id === DO_NOT_PLAY_FIELD_ID || id === NOTES_FIELD_ID;
 
+/** A sleek line-icon pencil (Feather "edit-3"), inherits currentColor. */
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
 export default function PlannerBuilder({
   fields, eventType, bookingId,
   onPatch, onReorder, onRemove, onAdd,
@@ -341,7 +353,7 @@ export default function PlannerBuilder({
                         title="Rename this section"
                         aria-label={`Rename the "${f.label || 'section'}" heading`}
                         onClick={() => setEditing(f.id)}
-                      >✎</button>
+                      ><PencilIcon /></button>
                     ) : null}
                     <span className={styles.sectionTag} style={{ marginLeft: 'auto' }}>Section</span>
                   </div>
@@ -419,7 +431,7 @@ export default function PlannerBuilder({
                       title="Rename this question"
                       aria-label={`Rename "${f.label || 'this question'}"`}
                       onClick={() => setEditing(f.id)}
-                    >✎</button>
+                    ><PencilIcon /></button>
                   ) : null}
 
                   <div className={styles.acts} style={{ marginLeft: 'auto' }}>

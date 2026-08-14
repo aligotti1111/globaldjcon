@@ -281,26 +281,27 @@
 .act:hover { opacity: 1; background: rgba(255, 255, 255, .06); }
 .lock { font-size: .8rem; padding: .1rem .2rem; opacity: .6; }
 
-/* The rename pencil — an outlined chip right beside the title so a DJ can SEE
-   the title is editable, not a bare glyph that reads as decoration. Neon tint
+/* The rename pencil — a clean line icon beside the title. Quiet muted grey by
+   default so it reads as a subtle affordance, not a chunky button; lifts to neon
    on hover to confirm it's a control. */
 .editPencil {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  background: rgba(0, 224, 164, .1);
-  border: 1px solid rgba(0, 224, 164, .45);
-  border-radius: 6px;
-  color: #00e0a4;
-  font-size: .82rem;
-  line-height: 1;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: #6f6f88;
   cursor: pointer;
   padding: 0;
+  transition: color .12s ease, background .12s ease;
 }
-.editPencil:hover { background: rgba(0, 224, 164, .22); border-color: #00e0a4; }
+.editPencil svg { display: block; }
+.editPencil:hover { color: #00e0a4; background: rgba(255, 255, 255, .05); }
+.editPencil:active { transform: translateY(.5px); }
 
 /* A section-heading row in the builder — a divider, not a question. Quieter box,
    a heavier rule under the title, and a small "Section" tag so the DJ reads it
