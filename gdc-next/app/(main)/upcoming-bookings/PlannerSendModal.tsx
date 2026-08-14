@@ -101,16 +101,19 @@ const dotStyle = (on: boolean): CSSProperties => ({
   cursor: 'pointer',
 });
 // Date · Event · Venue on ONE row at the top.
+// One line: force row + nowrap (overrides the .summary class's column) so
+// Date · Event · Venue sit on a single condensed strip.
 const infoRowStyle: CSSProperties = {
-  display: 'flex', flexWrap: 'wrap', gap: '1.25rem',
-  alignItems: 'baseline', padding: '.1rem 0 .5rem',
+  display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '1.1rem',
+  alignItems: 'baseline', padding: '.6rem .9rem', overflow: 'hidden',
 };
+const infoItemStyle: CSSProperties = { whiteSpace: 'nowrap', minWidth: 0, display: 'inline-flex', alignItems: 'baseline' };
 const infoLabelStyle: CSSProperties = {
-  fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em',
+  fontSize: '.58rem', fontWeight: 700, letterSpacing: '.08em',
   textTransform: 'uppercase', color: 'var(--muted, #8a8aa0)',
-  marginRight: '.4rem',
+  marginRight: '.35rem', flexShrink: 0,
 };
-const infoValStyle: CSSProperties = { fontSize: '.9rem', fontWeight: 600 };
+const infoValStyle: CSSProperties = { fontSize: '.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
 export default function PlannerSendModal({
   bookingId, onClose, onSent,
@@ -253,16 +256,16 @@ export default function PlannerSendModal({
             {/* Event info at the TOP, all on one row — date, kind of party,
                 venue — so the DJ is sure they're on the right booking. */}
             <div className={styles.summary} style={infoRowStyle}>
-              <span>
+              <span style={{ ...infoItemStyle, flexShrink: 0 }}>
                 <span style={infoLabelStyle}>Date</span>
                 <span style={infoValStyle}>{fmtDate(data.event.date)}</span>
               </span>
-              <span>
+              <span style={{ ...infoItemStyle, flexShrink: 0 }}>
                 <span style={infoLabelStyle}>Event</span>
                 <span style={infoValStyle}>{data.eventType ? (MOB_EVENT_LABELS[data.eventType] || '—') : '—'}</span>
               </span>
               {data.event.venue && (
-                <span>
+                <span style={{ ...infoItemStyle, flexShrink: 1 }}>
                   <span style={infoLabelStyle}>Venue</span>
                   <span style={infoValStyle}>{data.event.venue}</span>
                 </span>
