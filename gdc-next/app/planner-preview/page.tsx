@@ -73,14 +73,15 @@ function fmtDate(d: string | null): string {
 export default async function PlannerPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bookingId?: string; eventType?: string; templateId?: string }>;
+  searchParams: Promise<{ bookingId?: string; eventType?: string; templateId?: string; name?: string }>;
 }) {
   const sp = await searchParams;
   const bookingId = sp.bookingId || '';
   // A specific template id — the Preview button knows the exact row clicked, so
   // it passes this to tell the two wedding templates (with / without ceremony)
-  // apart, which event type alone can't do.
+  // apart, which event type alone can't do. The name is a fallback discriminator.
   const templateId = (sp.templateId || '').trim();
+  const wantName = (sp.name || '').trim();
   // Resolve by EVENT TYPE, the same key Customize saves under — NOT a fixed
   // planner id. Saving a customization creates a NEW row with a new id, so a
   // preview pinned to an id would keep showing the old (stock) template. By
@@ -133,6 +134,16 @@ export default async function PlannerPreviewPage({
     } else {
       wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
       ({ base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB));
+      // Disambiguate by name when a type has more than one template.
+      if (wantName && wantTypeNB) {
+        const sameType = templates.filter((t) => t.event_type === wantTypeNB);
+        if (sameType.length > 1) {
+          const byName =
+            sameType.find((t) => t.dj_id === user.id && !t.is_standard && t.name === wantName) ??
+            sameType.find((t) => t.name === wantName);
+          if (byName) overNB = byName;
+        }
+      }
     }
     if (!baseNB && !overNB) notFound();
     // The QUESTIONS a client actually answers: drop the fields the booking
