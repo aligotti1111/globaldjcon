@@ -83,8 +83,6 @@ export default async function PlannerPreviewPage({
   //   · key present, value   → that event type
   //   · key present, empty    → the base/default planner (event_type null)
   const rawType = sp.eventType;
-  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) notFound();
-
   // DJ session — this is the DJ looking, not the client. No capability URL here.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -93,9 +91,52 @@ export default async function PlannerPreviewPage({
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
 
-  // The booking — same columns the client page and request route read. Kept to
-  // columns known to exist: a mistyped column makes PostgREST return null for
-  // the WHOLE row (see the dj_name lesson), which would blank the preview.
+  // The DJ's display name and brand logo — same as the client would see. Read
+  // up front because BOTH the booking and no-booking previews need it.
+  const { data: djData } = await admin
+    .from('users')
+    .select('name, contract_logo_url')
+    .eq('id', user.id)
+    .maybeSingle();
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
+  const djName = dj?.name || 'your DJ';
+  const logoUrl = dj?.contract_logo_url || null;
+
+  // Templates the DJ can use: stock + their own. Resolve EXACTLY as the send
+  // does so the preview equals what would be delivered.
+  const { data: tData } = await db
+    .from('planners')
+    .select('id, dj_id, name, event_type, is_standard, fields')
+    .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
+  const templates = (tData as unknown as PlannerTemplate[] | null) || [];
+
+  // ── No-booking preview ── Opened from Booking Settings → Planner & Playlist.
+  // There's no booking to prefill from, so render the RAW fields only: no
+  // "Your booking" strip, no answers, no test-send button.
+  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) {
+    const wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
+    const { base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB);
+    if (!baseNB) notFound();
+    const fieldsNB = visibleFields(composeFields(baseNB.fields || [], overNB?.fields || []));
+    return (
+      <PlannerForm
+        plannerId="preview"
+        fields={fieldsNB}
+        initialResponses={{}}
+        initialStatus="sent"
+        djName={djName}
+        hostName={null}
+        eventDateLabel=""
+        venueName={null}
+        logoUrl={logoUrl}
+        known={[]}
+        preview
+      />
+    );
+  }
+
+  // ── Booking preview ── the real booking, prefilled. Same columns the client
+  // page and request route read (a mistyped column blanks the whole row).
   const { data: bData } = await admin
     .from('bookings')
     .select('id, dj_id, event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time')
@@ -119,26 +160,6 @@ export default async function PlannerPreviewPage({
   if (!b) notFound();
   // Theirs, or nobody's. 404 not 403 — don't confirm a booking id exists.
   if (b.dj_id !== user.id) notFound();
-
-  // The DJ's display name and brand logo — same as the client would see.
-  const { data: djData } = await admin
-    .from('users')
-    .select('name, contract_logo_url')
-    .eq('id', user.id)
-    .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
-  const djName = dj?.name || 'your DJ';
-  // No booking_planner row exists in preview, so no per-booking logo hide to
-  // honour — just the DJ's shared brand logo.
-  const logoUrl = dj?.contract_logo_url || null;
-
-  // Templates the DJ can use: stock + their own. Resolve EXACTLY as the send
-  // does so the preview equals what would be delivered.
-  const { data: tData } = await db
-    .from('planners')
-    .select('id, dj_id, name, event_type, is_standard, fields')
-    .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
-  const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
   // wantType, mirroring /api/planners GET and the Customize editor exactly:
   const wantType = rawType === undefined ? b.event_type : (rawType.trim() ? rawType.trim() : null);
