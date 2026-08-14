@@ -23,8 +23,9 @@ import styles from './planner.module.css';
 import {
   isNa,
   responseValue,
-  askedFields,
+  layoutFields,
   infoFields,
+  isSection,
   titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
@@ -201,7 +202,11 @@ export default function PlannerForm({
 
   const progress = useMemo(() => {
     let answered = 0;
+    let total = 0;
     for (const f of fields) {
+      // Section headings are structure, not questions — never counted.
+      if (isSection(f)) continue;
+      total++;
       const r = responses[f.id];
       if (!r) continue;
       if (isNa(r)) { answered++; continue; }
@@ -211,7 +216,7 @@ export default function PlannerForm({
       if (Array.isArray(v) && v.length === 0) continue;
       answered++;
     }
-    return { answered, total: fields.length };
+    return { answered, total };
   }, [fields, responses]);
 
   async function submit() {
@@ -241,8 +246,9 @@ export default function PlannerForm({
 
   // If we know it, show it; if we don't, ask it. Derived from the responses, so
   // the same field is a fact on a booking that has a start time and a question
-  // on one that doesn't.
-  const asked = askedFields(fields, responses);
+  // on one that doesn't. `layout` is the questions PLUS any section headings
+  // that group them, in order; `info` are the facts shown in the strip above.
+  const layout = layoutFields(fields, responses);
   const info = infoFields(fields, responses);
 
   return (
@@ -351,14 +357,23 @@ export default function PlannerForm({
         )}
 
         <div className={styles.fields}>
-          {asked.map((f) => (
-            <Field
-              key={f.id}
-              field={f}
-              response={responses[f.id]}
-              onValue={(v) => setValue(f.id, v)}
-              onNa={(na) => setNa(f.id, na)}
-            />
+          {layout.map((f) => (
+            isSection(f) ? (
+              // A break between parts of the form — e.g. "Reception" after the
+              // ceremony questions on a wedding. Not a question: a heading with
+              // a little gap above it, so the two groups read as two groups.
+              <div key={f.id} className={styles.section}>
+                {titleCaseLabel(f.label)}
+              </div>
+            ) : (
+              <Field
+                key={f.id}
+                field={f}
+                response={responses[f.id]}
+                onValue={(v) => setValue(f.id, v)}
+                onNa={(na) => setNa(f.id, na)}
+              />
+            )
           ))}
         </div>
 

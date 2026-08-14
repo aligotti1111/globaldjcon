@@ -180,6 +180,19 @@
 
 .field { min-width: 0; }
 
+/* A break between parts of the form — e.g. "Reception" after the ceremony
+   questions on a wedding. The parent .fields gap already spaces it; the extra
+   top margin and rule make the two groups read as two groups, not one long list. */
+.section {
+  font-family: var(--font-bebas), sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .04em;
+  color: var(--white, #fff);
+  margin: .6rem 0 -.4rem;
+  padding-bottom: .55rem;
+  border-bottom: 1px solid rgba(140, 140, 170, .2);
+}
+
 /* Greyed, not hidden. The question stays on screen so they can undo it — and
    so the form doesn't silently reflow under someone who mis-tapped. */
 .fieldNa { opacity: .45; }
