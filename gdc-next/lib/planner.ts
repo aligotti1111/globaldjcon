@@ -334,6 +334,34 @@ export function pickTemplate(
 }
 
 /**
+ * Resolve a SPECIFIC template by id, not by event type.
+ *
+ * Event type alone is ambiguous when one type has more than one template — a
+ * wedding has a "with ceremony" and a "without ceremony" version, both
+ * event_type 'weddings', so pickTemplate (which takes the first match) can't
+ * tell them apart. The Preview and Edit buttons in the template list know the
+ * exact row the DJ clicked, so they pass its id and resolve here instead.
+ *
+ * The chosen row is the override; the base is still the DJ's own base planner
+ * (or the stock base) so the generic questions merge in. If the chosen row IS a
+ * base (event_type null), it stands alone with no override.
+ */
+export function pickTemplateById(
+  all: PlannerTemplate[],
+  djId: string,
+  templateId: string,
+): { base: PlannerTemplate | null; override: PlannerTemplate | null } | null {
+  const chosen = all.find((t) => t.id === templateId);
+  if (!chosen) return null;
+  if (chosen.event_type == null) return { base: chosen, override: null };
+  const base =
+    all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type == null) ??
+    all.find((t) => t.is_standard && t.event_type == null) ??
+    null;
+  return { base, override: chosen };
+}
+
+/**
  * Compose the field list actually sent to a client.
  *
  * base + override, then Do NOT play and Notes RE-PINNED to the end.
