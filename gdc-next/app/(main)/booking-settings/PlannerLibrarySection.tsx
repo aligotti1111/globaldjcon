@@ -94,12 +94,14 @@ export default function PlannerLibrarySection() {
   useEffect(() => { void load(); }, []);
 
   function openPreview(t: TemplateLite) {
-    const qs = new URLSearchParams();
+    // Pass the exact row id — event type alone can't tell the two wedding
+    // templates (with / without ceremony) apart.
+    const qs = new URLSearchParams({ templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
-    window.open(`/planner-preview${qs.toString() ? `?${qs}` : ''}`, '_blank');
+    window.open(`/planner-preview?${qs}`, '_blank');
   }
   function openEdit(t: TemplateLite) {
-    const qs = new URLSearchParams({ name: t.name });
+    const qs = new URLSearchParams({ name: t.name, templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
     window.open(`/customize-planner?${qs}`, '_blank');
   }
