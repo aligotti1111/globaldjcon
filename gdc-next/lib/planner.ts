@@ -25,7 +25,12 @@ export type PlannerFieldType =
   | 'timeline'    // TimelineRow[] — the run of show. ORDER IS THE DATA.
   | 'yesno'
   | 'select'
-  | 'link';       // a url they paste — e.g. their Spotify playlist
+  | 'link'        // a url they paste — e.g. their Spotify playlist
+  | 'section';    // NOT a question — a heading that splits the form into parts.
+                  // Renders as a title with a gap above it; never answered, never
+                  // counted, never prefilled. e.g. a "Reception" break on the
+                  // wedding-with-ceremony planner between the ceremony questions
+                  // and the reception ones. `label` is the heading text.
 
 /**
  * PrefillKey — something we already know from the booking.
@@ -244,7 +249,7 @@ export function dropFieldsAnsweredByBooking(
 ): PlannerField[] {
   const hasCeremony = !!booking.ceremony_needed;
   const hasCocktail = !!booking.cocktail_needed;
-  return fields.filter((f) => {
+  const kept = fields.filter((f) => {
     // Ceremony toggle + start time — always on the booking. Never ask them.
     if (BOOKING_ANSWERED_IDS.has(f.id)) return false;
     // Ceremony song picks — only when the booking actually has a ceremony.
@@ -252,6 +257,30 @@ export function dropFieldsAnsweredByBooking(
     // Cocktail hour — only when the booking actually has one.
     if (!hasCocktail && COCKTAIL_FIELD_IDS.has(f.id)) return false;
     return true;
+  });
+  // Dropping ceremony/cocktail questions can leave a section heading with
+  // nothing under it (e.g. a "Ceremony" break on a booking with no ceremony).
+  // A heading over an empty stretch is worse than no heading — strip it.
+  return stripEmptySections(kept);
+}
+
+/** A structural heading, not a question. */
+export const isSection = (f: PlannerField): boolean => f.type === 'section';
+
+/**
+ * Drop any section heading with no real field beneath it — i.e. a `section`
+ * immediately followed by another `section` or the end of the list. Runs after
+ * fields are dropped (booking-answered, hidden, or moved to the "Your booking"
+ * strip) so a heading never floats over an empty stretch.
+ */
+export function stripEmptySections(fields: PlannerField[]): PlannerField[] {
+  return fields.filter((f, i) => {
+    if (!isSection(f)) return true;
+    for (let j = i + 1; j < fields.length; j++) {
+      if (isSection(fields[j])) break;   // next heading, nothing in between
+      return true;                        // a real field follows — keep it
+    }
+    return false;                         // ran off the end with nothing — drop
   });
 }
 /**
@@ -342,12 +371,18 @@ export function composeFields(
     (f) => f.id !== HONOREE_FIELD_ID && !pinnedIds.has(f.id),
   );
 
-  return [
-    ...honoree,
-    ...keptRest,
-    ...overrideRest,
-    ...pinned,
-  ];
+  // A SECTIONED override (e.g. the wedding-with-ceremony planner) owns its own
+  // running order — ceremony questions, then a "Reception" heading, then the
+  // reception ones. Left in the default order the base questions (setup time,
+  // genres, must-plays) would wedge in BEFORE the ceremony block and break the
+  // grouping. So when the override carries a heading, its fields come first and
+  // the base's generic questions fall in under the last heading (Reception),
+  // where they belong. Non-sectioned templates keep the original order.
+  const sectioned = override.some(isSection);
+
+  return sectioned
+    ? [...honoree, ...overrideRest, ...keptRest, ...pinned]
+    : [...honoree, ...keptRest, ...overrideRest, ...pinned];
 }
 
 /** Everything a client actually sees. Hidden fields are not sent. */
@@ -396,12 +431,28 @@ export function isInfoField(f: PlannerField, responses: PlannerResponses): boole
   return !!f.prefill && hasAnswer(r);
 }
 
-/** The questions. What the client is actually being asked. */
+/** The questions. What the client is actually being asked. Section headings are
+ *  not questions, so they're excluded here — progress counts real answers only. */
 export function askedFields(
   fields: PlannerField[],
   responses: PlannerResponses,
 ): PlannerField[] {
-  return visibleFields(fields).filter((f) => !isInfoField(f, responses));
+  return visibleFields(fields).filter((f) => !isSection(f) && !isInfoField(f, responses));
+}
+
+/**
+ * The form as it's laid out for the client: the questions AND the section
+ * headings that group them, in order, with any heading that's left empty
+ * (its questions dropped or moved to the "Your booking" strip) removed. This is
+ * what PlannerForm renders — headings stay in place among the questions, unlike
+ * `askedFields`, which is questions only, for counting.
+ */
+export function layoutFields(
+  fields: PlannerField[],
+  responses: PlannerResponses,
+): PlannerField[] {
+  const rows = visibleFields(fields).filter((f) => isSection(f) || !isInfoField(f, responses));
+  return stripEmptySections(rows);
 }
 
 /** The facts. What we already know, shown but not asked. */
