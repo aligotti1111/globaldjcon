@@ -29,17 +29,40 @@
   margin-bottom: 2rem;
 }
 
+/* Logo + business address share one row at the very top: logo left, address
+   right. When only one is present, .brandRowSolo centres it. */
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.brandRowSolo { justify-content: center; }
+
 /* The DJ's business logo at the very top of the planner. Capped so a big upload
-   can't dominate the page; centred on mobile-first single column. */
+   can't dominate the page. */
 .djLogo {
   display: block;
   max-height: 64px;
   max-width: 220px;
   width: auto;
   object-fit: contain;
-  /* Centered at the top of the planner. */
-  margin: 0 auto 1rem;
+  margin: 0;
 }
+
+/* The DJ's business/mailing address, top-right of the header. Quiet — it's
+   letterhead, not a headline. Right-aligned to sit opposite the logo. */
+.djAddress {
+  font-style: normal;
+  text-align: right;
+  font-size: .78rem;
+  line-height: 1.45;
+  color: var(--muted, #8a8aa0);
+  white-space: pre-line;
+  max-width: 55%;
+}
+.brandRowSolo .djAddress { text-align: center; max-width: 100%; }
 
 /* Download PDF — top-right of the header, so client and DJ can grab a copy at
    any time. Quiet outline; it's a utility, not the point of the page. */
@@ -629,6 +652,7 @@ select.input {
   }
 
   .brand { color: #000 !important; }
+  .djAddress { color: #000 !important; }
   .title { color: #000 !important; font-size: 1.7rem; }
   .sub { color: #000 !important; }
   .intro,
