@@ -129,7 +129,22 @@ export async function GET(req: Request) {
         if (!r) return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
         base = r.base; override = r.override;
       } else {
-        ({ base, override } = pickTemplate(templates, userId, raw!.trim() || null));
+        const wt = raw!.trim() || null;
+        ({ base, override } = pickTemplate(templates, userId, wt));
+        // Disambiguate by NAME when a type has more than one template (weddings:
+        // with / without ceremony) and no id was passed. pickTemplate takes the
+        // first match by type, so without this the "no ceremony" editor would
+        // resolve to the "with ceremony" row.
+        const wantName = (url.searchParams.get('name') || '').trim();
+        if (wantName && wt) {
+          const sameType = templates.filter((t) => t.event_type === wt);
+          if (sameType.length > 1) {
+            const byName =
+              sameType.find((t) => t.dj_id === userId && !t.is_standard && t.name === wantName) ??
+              sameType.find((t) => t.name === wantName);
+            if (byName) override = byName;
+          }
+        }
       }
       if (!base && !override) {
         return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
