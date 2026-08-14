@@ -141,15 +141,13 @@ export default function PlannerLibrarySection() {
                 <>
                   <span style={nameStyle} title={t.name}>{t.name}</span>
                   <span style={countStyle}>{t.count} questions</span>
-                  {t.isMine && (
-                    <button
-                      type="button"
-                      onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
-                      style={iconBtnStyle}
-                      title="Rename"
-                      aria-label={`Rename ${t.name}`}
-                    >✎</button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
+                    style={iconBtnStyle}
+                    title="Rename"
+                    aria-label={`Rename ${t.name}`}
+                  >✎</button>
                   <button type="button" onClick={() => openPreview(t)} style={miniBtnStyle}>Preview</button>
                   <button type="button" onClick={() => openEdit(t)} style={miniBtnStyle}>Edit Template</button>
                 </>
