@@ -239,7 +239,12 @@ export const DO_NOT_PLAY_FIELD_ID = 'do_not_play';
 // ceremony start TIME both live on the booking, so the planner never asks either.
 const BOOKING_ANSWERED_IDS = new Set(['w_ceremony_needed', 'w_ceremony_start']);
 // Ceremony SONG picks — real questions, but only when there IS a ceremony.
-const CEREMONY_FIELD_IDS = new Set(['w_processional', 'w_recessional']);
+const CEREMONY_FIELD_IDS = new Set([
+  'w_prelude',           // as guests arrive and are seated
+  'w_processional',      // walking down the aisle
+  'w_register_signing',  // signing the register / unity ritual
+  'w_recessional',       // walking back up, married
+]);
 // Cocktail-hour fields — only when the booking actually has a cocktail hour.
 const COCKTAIL_FIELD_IDS = new Set(['w_cocktail_start']);
 
