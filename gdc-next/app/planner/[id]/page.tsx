@@ -1,63 +1,49 @@
-// /planner/[id] — the client's Planner & Playlist.
+// /planner-preview — the DJ's read-only look at the REAL client planner.
 //
-// WHY THIS PAGE EXISTS
-// The DJ needs to know what to play, when to play it, and what to never play.
-// That's a conversation currently held over text messages, phone calls and a
-// Google Doc someone's mother made. This is the form that ends it.
+// WHY THIS EXISTS
+// The send modal's "Preview" has to be the ACTUAL page the client fills in —
+// same header, same logo, same "Your booking" strip, same questions with their
+// real controls — not a summary list of field labels. So this renders the very
+// same <PlannerForm> component the client uses, in `preview` mode: nothing
+// saves, there's no Send button, and a banner makes clear it's a look.
 //
-// NO LOGIN. Clients don't have accounts and never will. The planner id is an
-// unguessable UUID — a capability URL, exactly like the DocuSeal signing link
-// and /pay/[id] we already email them. It exposes this booking's planner to
-// whoever holds it, which is precisely what the email containing it already
-// does. No new exposure.
+// It resolves the template the same way the send does — pickTemplate →
+// composeFields → applyPrefill — but keyed by EVENT TYPE (?eventType), not a
+// planner id. That's deliberate: Customize saves a new DJ-owned row (new id)
+// per event type, so resolving by type is what lets a just-saved change appear
+// here. No eventType param → the booking's own type (the "auto" planner).
 //
-// A client booking one party is not joining a platform. Making them create an
-// account to tell you their first dance is how you don't get told their first
-// dance.
-//
-// It reads with the ADMIN client because there is no session to read with.
-// Opening the link now records a soft "viewed" timestamp for the DJ (a page
-// view, not an email pixel — no deliverability cost). Only the client TYPING
-// records actual answers.
+// DJ-ONLY. This reads with the DJ's session and refuses any booking that isn't
+// theirs — the opposite of /planner/[id], which is a no-login capability URL
+// for the client. No planner row is created; nothing is emailed.
 
-import { notFound } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { recordStageView } from '@/lib/recordView';
-import { visibleFields, type PlannerField, type PlannerResponses } from '@/lib/planner';
+import {
+  pickTemplate,
+  composeFields,
+  applyPrefill,
+  visibleFields,
+  dropFieldsAnsweredByBooking,
+  type PlannerField,
+  type PlannerTemplate,
+} from '@/lib/planner';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
-import PlannerForm from './PlannerForm';
-
-// Prefilled time questions that only ever echoed the booking's own start/end
-// (and wedding cocktail) — now shown once in the "Your booking" strip instead of
-// asked. Filtered from any planner's fields so they never double up.
-const LEGACY_TIME_FIELD_IDS = new Set(['music_start', 'music_end', 'w_cocktail_start']);
+import PlannerForm from '../planner/[id]/PlannerForm';
+import PreviewTestButton from './PreviewTestButton';
 
 export const runtime = 'nodejs';
-// Per-planner state, and the client's own answers. Never cached, never
-// prerendered — a cached planner page would serve one client another's answers.
 export const dynamic = 'force-dynamic';
 
-// A planner link should never turn up in a search result.
+// A preview link should never turn up in a search result.
 export const metadata = {
-  title: 'Planner & Playlist — Global DJ Connect',
+  title: 'Preview — Planner & Playlist',
   robots: { index: false, follow: false },
 };
 
-interface PlannerRow {
-  id: string;
-  booking_id: string;
-  dj_id: string;
-  fields: PlannerField[];
-  responses: PlannerResponses;
-  status: 'sent' | 'partial' | 'submitted';
-  submitted_at: string | null;
-  // Per-booking logo off-switch — set when the DJ hides the logo on just this
-  // client's planner.
-  logo_hidden: boolean | null;
-}
-
-/** "19:30:00" -> "7:30 PM". The DB stores seconds; nobody reads clocks in 24h. */
+/** "19:30:00" -> "7:30 PM". */
 function fmtTime(t: string | null): string {
   if (!t) return '';
   const [hRaw, m] = t.split(':');
@@ -68,47 +54,127 @@ function fmtTime(t: string | null): string {
   return `${h12}:${m || '00'} ${ampm}`;
 }
 
+function fmtRange(s: string | null, e: string | null): string {
+  const a = fmtTime(s), b = fmtTime(e);
+  if (a && b) return `${a} – ${b}`;
+  return a || b || '';
+}
+
 function fmtDate(d: string | null): string {
   if (!d) return '';
-  // T12:00:00, not bare — `new Date('2026-07-25')` parses as UTC midnight and
-  // renders as the 24th in every US timezone. Same bug we already fixed on the
-  // check memo.
+  // T12:00:00, not bare — a bare date parses as UTC midnight and renders a day
+  // early in every US timezone.
   return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
 }
 
-export default async function PlannerPage({
-  params,
+export default async function PlannerPreviewPage({
+  searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  searchParams: Promise<{ bookingId?: string; eventType?: string }>;
 }) {
-  const { id } = await params;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const sp = await searchParams;
+  const bookingId = sp.bookingId || '';
+  // Resolve by EVENT TYPE, the same key Customize saves under — NOT a fixed
+  // planner id. Saving a customization creates a NEW row with a new id, so a
+  // preview pinned to an id would keep showing the old (stock) template. By
+  // type, pickTemplate always finds the DJ's latest saved version.
+  //   · key absent          → use the booking's own event type (the "auto" row)
+  //   · key present, value   → that event type
+  //   · key present, empty    → the base/default planner (event_type null)
+  const rawType = sp.eventType;
+  // DJ session — this is the DJ looking, not the client. No capability URL here.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?redirect=/planner-preview`);
 
   const admin = createAdminClient();
-  // booking_planners postdates the generated types/supabase.ts, so the typed
-  // client rejects .from('booking_planners') outright. One cast for the new
-  // table — same house pattern as /api/payments and /pay/[id].
   const db = admin as unknown as SupabaseClient;
 
-  const { data: pData } = await db
-    .from('booking_planners')
-    .select('id, booking_id, dj_id, fields, responses, status, submitted_at, logo_hidden')
-    .eq('id', id)
+  // The DJ's display name and brand logo — same as the client would see. Read
+  // up front because BOTH the booking and no-booking previews need it.
+  const { data: djData } = await admin
+    .from('users')
+    .select('name, contract_logo_url, address')
+    .eq('id', user.id)
     .maybeSingle();
-  const planner = pData as unknown as PlannerRow | null;
-  if (!planner) notFound();
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null } | null;
+  const djName = dj?.name || 'your DJ';
+  const logoUrl = dj?.contract_logo_url || null;
+  const djAddress = dj?.address?.trim() || null;
 
-  // Client opened their planner — record the view (skips the DJ's own visits).
-  await recordStageView(planner.booking_id, 'planner', planner.dj_id);
+  // Templates the DJ can use: stock + their own. Resolve EXACTLY as the send
+  // does so the preview equals what would be delivered.
+  const { data: tData } = await db
+    .from('planners')
+    .select('id, dj_id, name, event_type, is_standard, fields')
+    .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
+  const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
+  // ── No-booking preview ── Opened from Booking Settings → Planner & Playlist.
+  // There's no booking to prefill from, so render the RAW fields only: no
+  // "Your booking" strip, no answers, no test-send button.
+  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) {
+    const wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
+    const { base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB);
+    if (!baseNB) notFound();
+    // The QUESTIONS a client actually answers: drop the fields the booking
+    // fills in — the ceremony toggle/start & every prefill field (music
+    // start/end, day-of contact). Those show in the "Your booking" panel.
+    //
+    // No booking here, so we ASSUME ceremony + cocktail exist: this is a
+    // template preview, and a DJ inspecting "Wedding (with ceremony)" wants to
+    // see the ceremony questions the template carries. On a real booking these
+    // appear only when that booking actually has a ceremony / cocktail hour.
+    const fieldsNB = dropFieldsAnsweredByBooking(
+      visibleFields(composeFields(baseNB.fields || [], overNB?.fields || [])),
+      { ceremony_needed: true, cocktail_needed: true },
+    ).filter((f) => !f.prefill);
+    // The "Your booking" panel at the top, under the logo — the same facts the
+    // live planner shows, with placeholder values since this template preview
+    // has no booking attached. Weddings label the window "Reception" and carry
+    // the Ceremony + Cocktail rows.
+    const isWeddingNB = wantTypeNB === 'weddings';
+    const knownNB: { k: string; v: string }[] = [
+      { k: 'Event', v: wantTypeNB ? (MOB_EVENT_LABELS[wantTypeNB] || '—') : '—' },
+      { k: 'Date', v: '—' },
+      ...(isWeddingNB ? [{ k: 'Ceremony', v: '—' }, { k: 'Cocktail hour', v: '—' }] : []),
+      { k: isWeddingNB ? 'Reception start' : 'Start time', v: '—' },
+      { k: isWeddingNB ? 'Reception end' : 'End time', v: '—' },
+      { k: 'Venue', v: '—' },
+      { k: 'Guests', v: '—' },
+      { k: 'Booked by', v: '—' },
+      { k: 'Your number', v: '—' },
+    ];
+    return (
+      <PlannerForm
+        plannerId="preview"
+        fields={fieldsNB}
+        initialResponses={{}}
+        initialStatus="sent"
+        djName={djName}
+        hostName={null}
+        eventDateLabel=""
+        venueName={null}
+        logoUrl={logoUrl}
+        djAddress={djAddress}
+        known={knownNB}
+        preview
+      />
+    );
+  }
+
+  // ── Booking preview ── the real booking, prefilled. Same columns the client
+  // page and request route read (a mistyped column blanks the whole row).
   const { data: bData } = await admin
     .from('bookings')
-    .select('event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, package_title, event_type, event_details, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, ceremony_same_room, requester_name')
-    .eq('id', planner.booking_id)
+    .select('id, dj_id, event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time')
+    .eq('id', bookingId)
     .maybeSingle();
-  const booking = bData as unknown as {
+  const b = bData as unknown as (Record<string, unknown> & {
+    dj_id: string | null;
+    event_type: string | null;
     event_date: string | null;
     start_time: string | null;
     end_time: string | null;
@@ -116,115 +182,85 @@ export default async function PlannerPage({
     venue_address: string | null;
     guest_count: number | null;
     phone: string | null;
-    package_title: string | null;
-    // The friendly-labelled kind of party (weddings, birthday, …) — shown at the
-    // top so the client knows the planner was written for THEIR event.
-    event_type: string | null;
-    // The event-type detail the client entered on the booking form — "25th
-    // Anniversary", "College Graduation", "Guest of honor age: 30 · Surprise
-    // party: Yes". Null for event types with no sub-question.
-    event_details: string | null;
-    // Weddings can carry a cocktail hour — its own start time, shown in the strip.
-    cocktail_needed: boolean | null;
+    requester_name: string | null;
     cocktail_start_time: string | null;
-    // Weddings can also carry a ceremony — separate, independent option, its own
-    // start time, shown in the strip alongside the cocktail hour.
     ceremony_needed: boolean | null;
     ceremony_start_time: string | null;
-    ceremony_same_room: boolean | null;
-    requester_name: string | null;
-  } | null;
+  }) | null;
+  if (!b) notFound();
+  // Theirs, or nobody's. 404 not 403 — don't confirm a booking id exists.
+  if (b.dj_id !== user.id) notFound();
 
-  // `name`, NOT `dj_name`. There is no users.dj_name — it's a column on BOOKINGS
-  // and a contract placeholder. Selecting it made PostgREST reject the query,
-  // which returned null, which silently fell back to "your DJ" on every planner
-  // ever sent. A wrong column in a select doesn't throw; it hands you nothing,
-  // and a fallback that reads fine is how it goes unnoticed.
-  const { data: djData } = await admin
-    .from('users')
-    .select('name, contract_logo_url')
-    .eq('id', planner.dj_id)
-    .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
-  const djName = dj?.name || 'your DJ';
-  // The DJ's single business logo (users.contract_logo_url) — shown at the top
-  // of the planner so it's clearly THEIR page. Suppressed if the DJ hid the logo
-  // on THIS client's planner (logo_hidden).
-  const djLogo = planner.logo_hidden ? null : (dj?.contract_logo_url || null);
+  // wantType, mirroring /api/planners GET and the Customize editor exactly:
+  const wantType = rawType === undefined ? b.event_type : (rawType.trim() ? rawType.trim() : null);
 
-  // Hidden fields never reach the browser. Filtering here rather than in the
-  // form means a hidden question isn't sitting in the page source of a document
-  // we hand to a stranger.
-  //
-  // Also drop the legacy time fields. Music start/end were prefilled straight
-  // from the booking's start/end — i.e. the same times now shown in the strip
-  // above — and the wedding cocktail start likewise. They were duplicates, so
-  // they're filtered here so ALREADY-SENT planners (whose snapshot still carries
-  // them) dedupe too, not just planners sent after the template SQL.
-  const fields = visibleFields(planner.fields ?? []).filter(
-    (f) => !LEGACY_TIME_FIELD_IDS.has(f.id),
+  // Resolve by type — base + the DJ's override for that type if they have one.
+  // This is what makes a just-saved customization show up: pickTemplate returns
+  // the DJ's row (whatever its id) over the stock one.
+  const { base, override } = pickTemplate(templates, user.id, wantType);
+  if (!base) notFound();
+
+  // Strip the questions the booking already answers (ceremony toggle always;
+  // ceremony / cocktail fields when the booking has none) so the preview equals
+  // exactly what the client will be asked.
+  const composed = dropFieldsAnsweredByBooking(
+    composeFields(base.fields || [], override?.fields || []),
+    b,
   );
 
-  /**
-   * What we already know, from the booking itself — not from a question.
-   *
-   * None of this was ever a field. We have it because they booked; asking for
-   * it again is asking a client to type our own database back to us, and every
-   * question they scroll past costs an answer on the ones that matter.
-   *
-   * Empty values are dropped rather than rendered as "—": a blank row is a
-   * question mark, and this block exists to remove question marks.
-   */
-  // Times, labelled for the event. A general party has a start and an end; a
-  // wedding's start/end ARE the reception, and it may have a cocktail hour
-  // before it. These come straight off the booking — the same start_time /
-  // end_time it was booked with — so they're shown here, never asked, and never
-  // duplicated as separate "music starts / ends" questions.
-  const isWedding = booking?.event_type === 'weddings';
-  const startLabel = isWedding ? 'Reception start' : 'Start time';
-  const endLabel = isWedding ? 'Reception end' : 'End time';
-  const showCocktail = isWedding && !!booking?.cocktail_needed && !!booking?.cocktail_start_time;
-  // Ceremony is a SEPARATE, independent option — same gate shape as cocktail.
-  const showCeremony = isWedding && !!booking?.ceremony_needed && !!booking?.ceremony_start_time;
+  // Real prefill, same helper and args as the send — so the preview's "Your
+  // booking" answers are the ones the client would actually see filled in.
+  const responses = applyPrefill(
+    composed,
+    b as unknown as Parameters<typeof applyPrefill>[1],
+    djName,
+    {},
+  );
 
+  const fields: PlannerField[] = visibleFields(composed);
+
+  // What we already know from the booking — the read-only "Your booking" strip.
+  // Weddings read as a reception with an optional cocktail hour; everything else
+  // is a single start–end.
+  const isWedding = b.event_type === 'weddings';
+  const eventLabel = b.event_type ? (MOB_EVENT_LABELS[b.event_type] || '') : '';
   const known: { k: string; v: string }[] = [
-    // Event type first — the client should see at a glance the planner was
-    // written for their kind of party.
-    { k: 'Event', v: booking?.event_type ? (MOB_EVENT_LABELS[booking.event_type] || '') : '' },
-    { k: 'Date', v: fmtDate(booking?.event_date ?? null) },
-    ...(showCeremony
-      ? [{ k: 'Ceremony', v: fmtTime(booking?.ceremony_start_time ?? null) }]
+    { k: 'Event', v: eventLabel },
+    { k: 'Date', v: fmtDate(b.event_date) },
+    ...(isWedding && b.ceremony_needed && b.ceremony_start_time
+      ? [{ k: 'Ceremony', v: fmtTime(b.ceremony_start_time) }]
       : []),
-    ...(showCocktail
-      ? [{ k: 'Cocktail hour', v: fmtTime(booking?.cocktail_start_time ?? null) }]
+    ...(isWedding && b.cocktail_start_time
+      ? [{ k: 'Cocktail hour', v: fmtTime(b.cocktail_start_time) }]
       : []),
-    { k: startLabel, v: fmtTime(booking?.start_time ?? null) },
-    { k: endLabel, v: fmtTime(booking?.end_time ?? null) },
-    { k: 'Venue', v: [booking?.venue_name, booking?.venue_address].filter(Boolean).join(' · ') },
-    // The event-type detail from the booking form (surprise party, type of
-    // anniversary/graduation/reunion, birthday age). Carries through as a known
-    // fact — shown, never re-asked. Empty for event types without a sub-field.
-    { k: 'Occasion', v: booking?.event_details || '' },
-    { k: 'Guests', v: booking?.guest_count ? `${booking.guest_count}` : '' },
-    // The person who booked — the host/client on file. Shown here as a known
-    // fact with their number, so the day-of contact lives in the strip instead
-    // of being asked as a question.
-    { k: 'Booked by', v: booking?.requester_name || '' },
-    { k: 'Your number', v: booking?.phone || '' },
+    { k: isWedding ? 'Reception' : 'Time', v: fmtRange(b.start_time, b.end_time) },
+    { k: 'Venue', v: [b.venue_name, b.venue_address].filter(Boolean).join(' · ') },
+    { k: 'Guests', v: b.guest_count ? `${b.guest_count}` : '' },
+    { k: 'Booked by', v: b.requester_name || '' },
+    { k: 'Your number', v: b.phone || '' },
   ].filter((r) => !!r.v);
 
+  // The template being previewed (the DJ's override for this type, else base) —
+  // passed to the test send so the emailed copy matches this preview exactly.
+  const previewPlannerId = override?.id || base.id;
+
   return (
-    <PlannerForm
-      plannerId={planner.id}
-      fields={fields}
-      initialResponses={planner.responses ?? {}}
-      initialStatus={planner.status}
-      djName={djName}
-      hostName={booking?.requester_name || null}
-      eventDateLabel={fmtDate(booking?.event_date ?? null)}
-      venueName={booking?.venue_name || null}
-      logoUrl={djLogo}
-      known={known}
-    />
+    <>
+      <PlannerForm
+        plannerId="preview"
+        fields={fields}
+        initialResponses={responses}
+        initialStatus="sent"
+        djName={djName}
+        hostName={b.requester_name || null}
+        eventDateLabel={fmtDate(b.event_date)}
+        venueName={b.venue_name || null}
+        logoUrl={logoUrl}
+        djAddress={djAddress}
+        known={known}
+        preview
+      />
+      <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />
+    </>
   );
 }
