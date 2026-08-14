@@ -49,6 +49,14 @@ const ADDABLE: { type: PlannerFieldType; label: string }[] = [
 const isPinned = (id: string) =>
   id === HONOREE_FIELD_ID || id === DO_NOT_PLAY_FIELD_ID || id === NOTES_FIELD_ID;
 
+/** Break a one-line address into stacked lines: street on top, "City, ST ZIP"
+ *  under it. "26 Blythe Place, Staten Island, NY 10306" → two lines. */
+function addressLines(a: string): string[] {
+  const parts = a.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length <= 1) return [a.trim()];
+  return [parts[0], parts.slice(1).join(', ')];
+}
+
 /** A sleek line-icon pencil (Feather "edit-3"), inherits currentColor. */
 function PencilIcon() {
   return (
@@ -237,7 +245,23 @@ export default function PlannerBuilder({
   // read-only "Your booking" strip so the DJ sees the whole page.
   const anchored = (f: PlannerField) => !!f.prefill;
   const editable = fields.filter((f) => !anchored(f));
-  const anchoredFields = fields.filter(anchored);
+
+  // The "Your booking" strip — the SAME facts the live planner shows the client,
+  // pulled off the booking. There's no booking behind a template, so these are
+  // placeholders; the point is the DJ sees every detail the client will, in
+  // order. Weddings read as a reception and carry the ceremony + cocktail rows.
+  const isWed = eventType === 'weddings';
+  const bookingDetailRows: string[] = [
+    'Event',
+    'Date',
+    ...(isWed ? ['Ceremony', 'Cocktail hour'] : []),
+    isWed ? 'Reception start' : 'Start time',
+    isWed ? 'Reception end' : 'End time',
+    'Venue',
+    'Guests',
+    'Booked by',
+    'Your number',
+  ];
 
   // Reorder the editable subsequence, leave anchored fields pinned to their
   // absolute slots, hand the whole thing back.
@@ -252,38 +276,86 @@ export default function PlannerBuilder({
 
   return (
     <div className={styles.wrap}>
-      {/* The DJ's logo, at the top — where the client sees it. Click to replace. */}
-      {logoUrl ? (
-        <div className={styles.logoRow}>
-          <button
-            type="button"
-            className={styles.logoBtn}
-            disabled={logoBusy}
-            onClick={() => fileRef.current?.click()}
-            title="Replace your logo"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoUrl} alt="Your logo" className={styles.logo} />
-          </button>
-          <button
-            type="button"
-            className={styles.logoRemove}
-            disabled={logoBusy}
-            onClick={() => setShowRemove((v) => !v)}
-          >
-            Remove
-          </button>
+      {/* Logo on the LEFT, business address stacked on the RIGHT — the top of the
+          planner, exactly as the client sees it. */}
+      <div className={styles.brandTop}>
+        <div className={styles.brandLeft}>
+          {logoUrl ? (
+            <div className={styles.logoRow}>
+              <button
+                type="button"
+                className={styles.logoBtn}
+                disabled={logoBusy}
+                onClick={() => fileRef.current?.click()}
+                title="Replace your logo"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt="Your logo" className={styles.logo} />
+              </button>
+              <button
+                type="button"
+                className={styles.logoRemove}
+                disabled={logoBusy}
+                onClick={() => setShowRemove((v) => !v)}
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.addLogo}
+              disabled={logoBusy}
+              onClick={() => fileRef.current?.click()}
+            >
+              {logoBusy ? 'Uploading…' : '+ Add your logo'}
+            </button>
+          )}
         </div>
-      ) : (
-        <button
-          type="button"
-          className={styles.addLogo}
-          disabled={logoBusy}
-          onClick={() => fileRef.current?.click()}
-        >
-          {logoBusy ? 'Uploading…' : '+ Add your logo'}
-        </button>
-      )}
+
+        <div className={styles.brandRight}>
+          {editingAddr ? (
+            <div className={styles.addrEditRow}>
+              <input
+                className={styles.addrInput}
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                value={addrDraft}
+                disabled={addrBusy}
+                placeholder="123 Main St, City, ST 00000"
+                onChange={(e) => setAddrDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void saveAddress(); if (e.key === 'Escape') setEditingAddr(false); }}
+              />
+              <button type="button" className={styles.addrSave} disabled={addrBusy} onClick={() => void saveAddress()}>
+                {addrBusy ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className={styles.addrCancel} disabled={addrBusy} onClick={() => setEditingAddr(false)} aria-label="Cancel">✕</button>
+            </div>
+          ) : address ? (
+            <button
+              type="button"
+              className={styles.addrShow}
+              title="Edit your business address"
+              onClick={() => { setAddrDraft(address); setEditingAddr(true); }}
+            >
+              <span className={styles.addrText}>
+                {addressLines(address).map((line, i) => (
+                  <span key={i}>{line}</span>
+                ))}
+              </span>
+              <PencilIcon />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.addrAdd}
+              onClick={() => { setAddrDraft(''); setEditingAddr(true); }}
+            >
+              + Add your business address
+            </button>
+          )}
+        </div>
+      </div>
 
       {showRemove && (
         <div className={styles.logoChoice}>
@@ -300,50 +372,8 @@ export default function PlannerBuilder({
         </div>
       )}
       {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
+      {addrMsg && <div className={styles.logoMsg}>{addrMsg}</div>}
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
-
-      {/* Business address — shows at the top of the planner, opposite the logo.
-          Add it here if it was never set, or fix it. Same field as account
-          settings & invoices, so a change here shows up on those too. */}
-      <div className={styles.addrBlock}>
-        {editingAddr ? (
-          <div className={styles.addrEditRow}>
-            <input
-              className={styles.addrInput}
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              value={addrDraft}
-              disabled={addrBusy}
-              placeholder="123 Main St, City, ST 00000"
-              onChange={(e) => setAddrDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void saveAddress(); if (e.key === 'Escape') setEditingAddr(false); }}
-            />
-            <button type="button" className={styles.addrSave} disabled={addrBusy} onClick={() => void saveAddress()}>
-              {addrBusy ? 'Saving…' : 'Save'}
-            </button>
-            <button type="button" className={styles.addrCancel} disabled={addrBusy} onClick={() => setEditingAddr(false)} aria-label="Cancel">✕</button>
-          </div>
-        ) : address ? (
-          <button
-            type="button"
-            className={styles.addrShow}
-            title="Edit your business address"
-            onClick={() => { setAddrDraft(address); setEditingAddr(true); }}
-          >
-            <span className={styles.addrText}>{address}</span>
-            <PencilIcon />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={styles.addrAdd}
-            onClick={() => { setAddrDraft(''); setEditingAddr(true); }}
-          >
-            + Add your business address
-          </button>
-        )}
-        {addrMsg && <div className={styles.logoMsg}>{addrMsg}</div>}
-      </div>
 
       {/* The page's own header, faint — so the DJ is looking at the client's
           actual page, chrome and all, not a bare list floating in a modal. */}
@@ -353,22 +383,23 @@ export default function PlannerBuilder({
         <div className={styles.pageSub}>This is exactly what your client sees. Drag to reorder; tap the pencil (or the question) to rename it.</div>
       </div>
 
-      {/* Your booking — the read-only facts, filled from the booking, so the DJ
-          arranges the whole page and doesn't turn these into questions. */}
-      {anchoredFields.length > 0 && (
-        <div className={styles.known}>
-          <div className={styles.knownHead}>Your booking</div>
-          {anchoredFields.map((f) => (
-            <div key={f.id} className={styles.knownRow}>
-              <span className={styles.knownK}>{f.label}</span>
-              <span className={styles.knownV}>filled in from the booking</span>
-            </div>
-          ))}
-          <div className={styles.knownNote}>
-            These are filled in for your client automatically — they don&rsquo;t appear as questions.
+      {/* Your booking — the SAME read-only facts the client sees on the live
+          planner, filled from the booking. Shown here as labels (there's no
+          booking behind a template), so the DJ sees the whole page and doesn't
+          turn any of these into questions. Weddings carry ceremony + cocktail
+          and read as a reception. */}
+      <div className={styles.known}>
+        <div className={styles.knownHead}>Your booking</div>
+        {bookingDetailRows.map((k) => (
+          <div key={k} className={styles.knownRow}>
+            <span className={styles.knownK}>{k}</span>
+            <span className={styles.knownV}>filled in from the booking</span>
           </div>
+        ))}
+        <div className={styles.knownNote}>
+          These are filled in for your client automatically — they don&rsquo;t appear as questions.
         </div>
-      )}
+      </div>
 
       <div className={styles.list}>
         {editable.map((f, i) => {
