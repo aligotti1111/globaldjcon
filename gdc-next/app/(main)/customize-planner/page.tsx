@@ -64,6 +64,24 @@ export default function CustomizePlannerPage() {
     })();
   }, []);
 
+  // Unsaved-changes guard. While there are edits that haven't been saved, the
+  // browser warns on any attempt to close the tab, refresh, or navigate away —
+  // the DJ's rearranged planner shouldn't vanish because they hit ⌘W. Cleared
+  // the moment a save succeeds (dirty=false), so a saved page leaves silently.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  // The Close button — a confirm when there's unsaved work, straight out when
+  // there isn't. (beforeunload above doesn't fire for a scripted window.close().)
+  function handleClose() {
+    if (dirty && !window.confirm('You have unsaved changes to this planner. Leave without saving?')) return;
+    window.close();
+  }
+
   // Editor callbacks — same as the modal's editFields handlers.
   function patch(id: string, p: Partial<PlannerField>) {
     setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...p } : f)));
@@ -109,7 +127,7 @@ export default function CustomizePlannerPage() {
   return (
     <div className={styles.editor}>
       <div className={styles.editorBar}>
-        <button type="button" className={styles.ghost} onClick={() => window.close()}>
+        <button type="button" className={styles.ghost} onClick={handleClose}>
           {dirty ? 'Close (unsaved)' : 'Close'}
         </button>
         <span className={styles.editorTitle}>Customize {name}</span>
