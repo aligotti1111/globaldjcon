@@ -65,21 +65,20 @@ function fmtDate(d: string | null): string {
 // pencil, then Preview + Customize aligned to the right. nowrap so the buttons
 // never drop to a second line — that wrapping was the "mess".
 const rowStyle: CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: '.5rem',
-  flexWrap: 'nowrap', padding: '.5rem .6rem',
-  borderTop: '1px solid rgba(140,140,170,.14)',
-  borderRadius: 8, transition: 'background .15s, box-shadow .15s',
+  display: 'flex', alignItems: 'center', gap: '.4rem',
+  flexWrap: 'nowrap', padding: '.28rem .5rem',
+  borderTop: '1px solid rgba(140,140,170,.12)',
+  borderRadius: 7, transition: 'background .15s, box-shadow .15s',
 };
 // The selected planner is highlighted so it's obvious which one Send will use.
 const rowSelectedStyle: CSSProperties = {
-  background: 'rgba(0,245,196,.10)',
-  boxShadow: 'inset 0 0 0 1px rgba(0,245,196,.45)',
+  boxShadow: 'inset 0 0 0 1px rgba(0,245,196,.55)',
   borderTopColor: 'transparent',
 };
 const nameStyle: CSSProperties = {
   flex: '1 1 auto', minWidth: 0,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-  fontWeight: 600, fontSize: '.9rem', cursor: 'pointer',
+  fontWeight: 600, fontSize: '.8rem', cursor: 'pointer',
 };
 const iconBtnStyle: CSSProperties = {
   flex: '0 0 auto',
@@ -99,13 +98,6 @@ const inputStyle: CSSProperties = {
   border: '1px solid rgba(140,140,170,.5)',
   background: 'transparent', color: 'inherit',
 };
-const dotStyle = (on: boolean): CSSProperties => ({
-  width: 15, height: 15, borderRadius: '50%', flex: '0 0 auto',
-  border: '2px solid rgba(140,140,170,.6)',
-  boxShadow: on ? 'inset 0 0 0 3px var(--accent, #6a6aff)' : 'none',
-  borderColor: on ? 'var(--accent, #6a6aff)' : 'rgba(140,140,170,.6)',
-  cursor: 'pointer',
-});
 // Date · Event · Venue on ONE row at the top.
 // One line: force row + nowrap (overrides the .summary class's column) so
 // Date · Event · Venue sit on a single condensed strip.
@@ -285,16 +277,16 @@ export default function PlannerSendModal({
                 const selected = rowSelected(t);
                 const isAuto = t.id === data.resolved.id;
                 return (
-                  <div key={t.id} style={selected ? { ...rowStyle, ...rowSelectedStyle } : rowStyle}>
-                    <span
-                      role="radio"
-                      aria-checked={selected}
-                      tabIndex={0}
-                      onClick={() => setForcedId(isAuto ? null : t.id)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setForcedId(isAuto ? null : t.id); }}
-                      style={dotStyle(selected)}
-                      aria-label={`Send ${t.name}`}
-                    />
+                  <div
+                    key={t.id}
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={0}
+                    onClick={() => setForcedId(isAuto ? null : t.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setForcedId(isAuto ? null : t.id); } }}
+                    aria-label={`Send ${t.name}`}
+                    style={{ ...(selected ? { ...rowStyle, ...rowSelectedStyle } : rowStyle), cursor: 'pointer' }}
+                  >
                     {renameId === t.id ? (
                       <>
                         {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
@@ -302,6 +294,7 @@ export default function PlannerSendModal({
                           autoFocus
                           value={renameDraft}
                           disabled={renameBusy}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={(e) => setRenameDraft(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') void saveRename(t);
@@ -311,7 +304,7 @@ export default function PlannerSendModal({
                         />
                         <button
                           type="button"
-                          onClick={() => void saveRename(t)}
+                          onClick={(e) => { e.stopPropagation(); void saveRename(t); }}
                           disabled={renameBusy}
                           style={{ ...miniBtnStyle }}
                         >
@@ -319,7 +312,7 @@ export default function PlannerSendModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setRenameId(null)}
+                          onClick={(e) => { e.stopPropagation(); setRenameId(null); }}
                           disabled={renameBusy}
                           style={iconBtnStyle}
                           aria-label="Cancel rename"
@@ -332,13 +325,12 @@ export default function PlannerSendModal({
                         <span
                           style={nameStyle}
                           title={t.name}
-                          onClick={() => setForcedId(isAuto ? null : t.id)}
                         >
                           {t.name}
                         </span>
                         <button
                           type="button"
-                          onClick={() => startRename(t)}
+                          onClick={(e) => { e.stopPropagation(); startRename(t); }}
                           style={iconBtnStyle}
                           title="Rename"
                           aria-label={`Rename ${t.name}`}
@@ -347,14 +339,14 @@ export default function PlannerSendModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => openPreview(isAuto, isAuto ? data.editEventType : t.eventType)}
+                          onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType); }}
                           style={miniBtnStyle}
                         >
                           Preview
                         </button>
                         <button
                           type="button"
-                          onClick={() => openCustomize(isAuto ? data.editEventType : t.eventType, t.name)}
+                          onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name); }}
                           style={miniBtnStyle}
                         >
                           Edit Template
