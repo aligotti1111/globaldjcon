@@ -30,7 +30,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isSection } from '@/lib/planner';
 import { createClient } from '@/lib/supabase/client';
 import styles from './plannerBuilder.module.css';
 
@@ -285,6 +285,71 @@ export default function PlannerBuilder({
           const pinned = isPinned(f.id);
           const dragging = dragI === i;
           const over = overI === i && dragI !== null && dragI !== i;
+
+          // A SECTION HEADING — not a question. Renders as a divider row: drag
+          // to move it (so the DJ can decide where the break falls), a pencil to
+          // rename it, but no control, no help, no Enable/Disable. It just marks
+          // where one part of the form ends and the next begins (e.g. Reception).
+          if (isSection(f)) {
+            return (
+              <div
+                key={f.id}
+                className={[styles.field, styles.sectionRow, dragging ? styles.dragging : '', over ? styles.over : ''].join(' ')}
+                onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
+                onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
+              >
+                <div className={styles.rail}>
+                  <span
+                    className={styles.grip}
+                    draggable
+                    onDragStart={() => setDragI(i)}
+                    onDragEnd={() => { setDragI(null); setOverI(null); }}
+                    aria-hidden="true"
+                  >⠿</span>
+                  <div className={styles.arrows}>
+                    <button type="button" className={styles.arrow} aria-label="Move up" disabled={i === 0}
+                      onClick={() => reorderEditable(i, i - 1)}>↑</button>
+                    <button type="button" className={styles.arrow} aria-label="Move down" disabled={i === editable.length - 1}
+                      onClick={() => reorderEditable(i, i + 1)}>↓</button>
+                  </div>
+                </div>
+                <div className={styles.body}>
+                  <div className={styles.labelRow}>
+                    {editing === f.id ? (
+                      <input
+                        className={styles.labelEdit}
+                        // eslint-disable-next-line jsx-a11y/no-autofocus
+                        autoFocus
+                        value={f.label}
+                        onChange={(e) => onPatch(f.id, { label: e.target.value })}
+                        onBlur={() => setEditing(null)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.sectionLabel}
+                        style={{ flex: '0 1 auto' }}
+                        onClick={() => setEditing(f.id)}
+                        title="Click to rename this section"
+                      >{f.label || 'Section'}</button>
+                    )}
+                    {editing !== f.id ? (
+                      <button
+                        type="button"
+                        className={styles.editPencil}
+                        title="Rename this section"
+                        aria-label={`Rename the "${f.label || 'section'}" heading`}
+                        onClick={() => setEditing(f.id)}
+                      >✎</button>
+                    ) : null}
+                    <span className={styles.sectionTag} style={{ marginLeft: 'auto' }}>Section</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={f.id}
@@ -344,15 +409,15 @@ export default function PlannerBuilder({
                     </button>
                   )}
 
-                  {/* Pencil — right next to the title. Clicking the title works
-                      too, but the pencil is the affordance a DJ looks for. */}
+                  {/* Pencil — right next to the title, a visible outlined chip so
+                      it plainly reads as "you can rename this". Clicking the
+                      title works too, but the pencil is what a DJ looks for. */}
                   {editing !== f.id ? (
                     <button
                       type="button"
-                      className={styles.act}
-                      style={{ flexShrink: 0 }}
-                      title="Edit this question's title"
-                      aria-label={`Edit the title of "${f.label || 'this question'}"`}
+                      className={styles.editPencil}
+                      title="Rename this question"
+                      aria-label={`Rename "${f.label || 'this question'}"`}
                       onClick={() => setEditing(f.id)}
                     >✎</button>
                   ) : null}

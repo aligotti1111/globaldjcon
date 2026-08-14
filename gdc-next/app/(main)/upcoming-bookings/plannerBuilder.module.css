@@ -281,6 +281,56 @@
 .act:hover { opacity: 1; background: rgba(255, 255, 255, .06); }
 .lock { font-size: .8rem; padding: .1rem .2rem; opacity: .6; }
 
+/* The rename pencil — an outlined chip right beside the title so a DJ can SEE
+   the title is editable, not a bare glyph that reads as decoration. Neon tint
+   on hover to confirm it's a control. */
+.editPencil {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  background: rgba(0, 224, 164, .1);
+  border: 1px solid rgba(0, 224, 164, .45);
+  border-radius: 6px;
+  color: #00e0a4;
+  font-size: .82rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.editPencil:hover { background: rgba(0, 224, 164, .22); border-color: #00e0a4; }
+
+/* A section-heading row in the builder — a divider, not a question. Quieter box,
+   a heavier rule under the title, and a small "Section" tag so the DJ reads it
+   as structure they can move and rename, not a field to fill in. */
+.sectionRow { background: rgba(255, 255, 255, .02); }
+.sectionLabel {
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: #f2f2f7;
+  cursor: pointer;
+}
+.sectionLabel:hover { color: #fff; }
+.sectionTag {
+  flex-shrink: 0;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #75758d;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 5px;
+  padding: .12rem .4rem;
+}
+
 /* The enable/disable toggle — a text button, not an eye. Quiet by default so it
    doesn't shout over the question; the label is the point. */
 .toggle {
