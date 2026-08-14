@@ -371,18 +371,32 @@ export function composeFields(
     (f) => f.id !== HONOREE_FIELD_ID && !pinnedIds.has(f.id),
   );
 
-  // A SECTIONED override (e.g. the wedding-with-ceremony planner) owns its own
-  // running order — ceremony questions, then a "Reception" heading, then the
-  // reception ones. Left in the default order the base questions (setup time,
-  // genres, must-plays) would wedge in BEFORE the ceremony block and break the
-  // grouping. So when the override carries a heading, its fields come first and
-  // the base's generic questions fall in under the last heading (Reception),
-  // where they belong. Non-sectioned templates keep the original order.
+  // A SECTIONED override (the wedding-with-ceremony planner) owns its running
+  // order top to bottom, and it must START WITH THE CEREMONY — so the honoree is
+  // NOT hoisted to the very top here. "Couple's names" is really the reception
+  // grand-entrance announcement ("as you'd like to be announced"), so it belongs
+  // under the RECEPTION heading, not above the ceremony. We drop it in right
+  // after the last section heading (Reception), then the override's own fields
+  // lead the form: [Ceremony] processional, recessional, [Reception] couple's
+  // names, entrance… The base's generic questions (setup, genres, must-plays)
+  // fall in after, still under Reception; pins stay last.
+  //
+  // Non-sectioned templates keep the original order — honoree hoisted first.
   const sectioned = override.some(isSection);
+  if (sectioned) {
+    let lastSectionIdx = -1;
+    overrideRest.forEach((f, idx) => { if (isSection(f)) lastSectionIdx = idx; });
+    const withHonoree = lastSectionIdx >= 0
+      ? [
+          ...overrideRest.slice(0, lastSectionIdx + 1),
+          ...honoree,
+          ...overrideRest.slice(lastSectionIdx + 1),
+        ]
+      : [...honoree, ...overrideRest];
+    return [...withHonoree, ...keptRest, ...pinned];
+  }
 
-  return sectioned
-    ? [...honoree, ...overrideRest, ...keptRest, ...pinned]
-    : [...honoree, ...keptRest, ...overrideRest, ...pinned];
+  return [...honoree, ...keptRest, ...overrideRest, ...pinned];
 }
 
 /** Everything a client actually sees. Hidden fields are not sent. */
