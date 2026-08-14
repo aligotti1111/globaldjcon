@@ -23,6 +23,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   pickTemplate,
+  pickTemplateById,
   composeFields,
   applyPrefill,
   visibleFields,
@@ -72,10 +73,14 @@ function fmtDate(d: string | null): string {
 export default async function PlannerPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bookingId?: string; eventType?: string }>;
+  searchParams: Promise<{ bookingId?: string; eventType?: string; templateId?: string }>;
 }) {
   const sp = await searchParams;
   const bookingId = sp.bookingId || '';
+  // A specific template id — the Preview button knows the exact row clicked, so
+  // it passes this to tell the two wedding templates (with / without ceremony)
+  // apart, which event type alone can't do.
+  const templateId = (sp.templateId || '').trim();
   // Resolve by EVENT TYPE, the same key Customize saves under — NOT a fixed
   // planner id. Saving a customization creates a NEW row with a new id, so a
   // preview pinned to an id would keep showing the old (stock) template. By
@@ -117,9 +122,19 @@ export default async function PlannerPreviewPage({
   // There's no booking to prefill from, so render the RAW fields only: no
   // "Your booking" strip, no answers, no test-send button.
   if (!/^[0-9a-f-]{36}$/i.test(bookingId)) {
-    const wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
-    const { base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB);
-    if (!baseNB) notFound();
+    let baseNB: PlannerTemplate | null;
+    let overNB: PlannerTemplate | null;
+    let wantTypeNB: string | null;
+    if (templateId) {
+      const r = pickTemplateById(templates, user.id, templateId);
+      if (!r) notFound();
+      baseNB = r.base; overNB = r.override;
+      wantTypeNB = (overNB || baseNB)?.event_type ?? null;
+    } else {
+      wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
+      ({ base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB));
+    }
+    if (!baseNB && !overNB) notFound();
     // The QUESTIONS a client actually answers: drop the fields the booking
     // fills in — the ceremony toggle/start & every prefill field (music
     // start/end, day-of contact). Those show in the "Your booking" panel.
@@ -129,7 +144,7 @@ export default async function PlannerPreviewPage({
     // see the ceremony questions the template carries. On a real booking these
     // appear only when that booking actually has a ceremony / cocktail hour.
     const fieldsNB = dropFieldsAnsweredByBooking(
-      visibleFields(composeFields(baseNB.fields || [], overNB?.fields || [])),
+      visibleFields(composeFields(baseNB?.fields || [], overNB?.fields || [])),
       { ceremony_needed: true, cocktail_needed: true },
     ).filter((f) => !f.prefill);
     // The "Your booking" panel at the top, under the logo — the same facts the
