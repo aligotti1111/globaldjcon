@@ -15,6 +15,7 @@ import {
   isNa,
   responseValue,
   hasAnswer,
+  isSection,
   playLink,
   DO_NOT_PLAY_FIELD_ID,
   HONOREE_FIELD_ID,
@@ -143,13 +144,19 @@ export default function PlannerSheetView({
             write on. */}
         <div className={styles.grid}>
           {fields.map((f) => (
-            <section
-              key={f.id}
-              className={f.id === DO_NOT_PLAY_FIELD_ID ? `${styles.block} ${styles.blockNo}` : styles.block}
-            >
-              <div className={styles.label}>{titleCaseLabel(f.label)}</div>
-              <Answer field={f} responses={responses} />
-            </section>
+            isSection(f) ? (
+              // A heading, not a question — spans the grid and starts a new
+              // group (e.g. "Reception" after the ceremony songs).
+              <div key={f.id} className={styles.sectionHead}>{titleCaseLabel(f.label)}</div>
+            ) : (
+              <section
+                key={f.id}
+                className={f.id === DO_NOT_PLAY_FIELD_ID ? `${styles.block} ${styles.blockNo}` : styles.block}
+              >
+                <div className={styles.label}>{titleCaseLabel(f.label)}</div>
+                <Answer field={f} responses={responses} />
+              </section>
+            )
           ))}
         </div>
 

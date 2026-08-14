@@ -185,6 +185,22 @@
   break-inside: avoid;
 }
 
+/* A group heading in the run of questions — e.g. "Reception" after the ceremony
+   block. Bigger than a field label, with room above, so the sheet reads in the
+   same two parts the client filled it in. */
+.sectionHead {
+  break-after: avoid;
+  margin-top: .6rem;
+  padding-bottom: .3rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #fff;
+  border-bottom: 2px solid rgba(255, 255, 255, .22);
+}
+.export .sectionHead { color: #000 !important; border-bottom-color: #000 !important; }
+
 .label {
   font-size: .72rem;
   letter-spacing: .07em;
@@ -419,6 +435,8 @@
   .trackLink { display: none !important; }
   .fillLine { border-bottom-color: #999 !important; }
   .blockNo .label { color: #b00020 !important; border-bottom-color: #b00020 !important; }
+
+  .sectionHead { color: #000 !important; border-bottom-color: #000 !important; }
 
   .grid { gap: 1.15rem; }
 
