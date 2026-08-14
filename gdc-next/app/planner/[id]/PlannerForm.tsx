@@ -81,7 +81,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -93,6 +93,9 @@ export default function PlannerForm({
   venueName: string | null;
   /** The DJ's business logo (users.contract_logo_url), shown at the top. */
   logoUrl: string | null;
+  /** The DJ's business/mailing address (users.address). Shown at the top, to the
+   *  right of the logo. When absent, the logo centres on its own. */
+  djAddress?: string | null;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
   /** DJ preview — the REAL page, read-only. No saving, no submit. */
@@ -277,11 +280,19 @@ export default function PlannerForm({
         )}
 
         <header className={styles.head}>
-          {/* The DJ's own logo, if they've set one — so the client sees THEIR
-              brand at the top, not just ours. */}
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
+          {/* The DJ's own logo and business address at the very top — so the
+              client sees THEIR brand. Logo left, address right; if there's no
+              address the logo centres on its own, and vice-versa. */}
+          {(logoUrl || djAddress) ? (
+            <div className={`${styles.brandRow} ${logoUrl && djAddress ? '' : styles.brandRowSolo}`}>
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
+              ) : null}
+              {djAddress ? (
+                <address className={styles.djAddress}>{djAddress}</address>
+              ) : null}
+            </div>
           ) : null}
           <div className={styles.headBar}>
             <div>
