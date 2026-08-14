@@ -223,6 +223,33 @@ export const titleCaseLabel = (s: string): string =>
 /** Reserved. A custom field must never collide with these in `responses`. */
 export const NOTES_FIELD_ID = 'notes';
 export const DO_NOT_PLAY_FIELD_ID = 'do_not_play';
+
+// ── Fields the BOOKING already answers ─────────────────────────────────────
+// The client told us at booking whether there's a ceremony and a cocktail hour.
+// So the planner must never re-ask "Ceremony music needed?", and the ceremony /
+// cocktail questions should only appear when that part of the day actually
+// exists. This runs at SEND and PREVIEW, so it holds for EVERY template — the
+// stock ones and a DJ's own saved copy alike — without editing any template.
+const CEREMONY_TOGGLE_IDS = new Set(['w_ceremony_needed']);
+const CEREMONY_FIELD_IDS = new Set(['w_ceremony_start', 'w_processional', 'w_recessional']);
+const COCKTAIL_FIELD_IDS = new Set(['w_cocktail_start']);
+
+export function dropFieldsAnsweredByBooking(
+  fields: PlannerField[],
+  booking: { ceremony_needed?: boolean | null; cocktail_needed?: boolean | null },
+): PlannerField[] {
+  const hasCeremony = !!booking.ceremony_needed;
+  const hasCocktail = !!booking.cocktail_needed;
+  return fields.filter((f) => {
+    // "Ceremony music needed?" — always answered at booking. Never ask it.
+    if (CEREMONY_TOGGLE_IDS.has(f.id)) return false;
+    // Ceremony music / time — only when the booking actually has a ceremony.
+    if (!hasCeremony && CEREMONY_FIELD_IDS.has(f.id)) return false;
+    // Cocktail hour — only when the booking actually has one.
+    if (!hasCocktail && COCKTAIL_FIELD_IDS.has(f.id)) return false;
+    return true;
+  });
+}
 /**
  * Who the party is FOR. Pinned FIRST, and only on event types that have one.
  *
