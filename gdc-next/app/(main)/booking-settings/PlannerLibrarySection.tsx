@@ -27,11 +27,33 @@ const rowStyle: CSSProperties = {
   flexWrap: 'nowrap', padding: '.4rem .5rem',
   borderTop: '1px solid rgba(140,140,170,.12)', borderRadius: 7,
 };
-const nameStyle: CSSProperties = {
+// Title + its pencil ride together on the left; this wrapper takes the slack so
+// the count and the buttons stay pinned right.
+const titleWrapStyle: CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: '.4rem',
   flex: '1 1 auto', minWidth: 0,
+};
+const nameStyle: CSSProperties = {
+  flex: '0 1 auto', minWidth: 0,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   fontWeight: 600, fontSize: '.85rem', color: 'var(--white,#fff)',
 };
+// The rename pencil — a clean line icon, muted until hovered.
+const pencilBtnStyle: CSSProperties = {
+  flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: '1.4rem', height: '1.4rem', background: 'transparent', border: 'none',
+  borderRadius: 6, color: '#6f6f88', cursor: 'pointer', padding: 0,
+};
+function PencilIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
 const countStyle: CSSProperties = {
   flex: '0 0 auto', fontSize: '.66rem', color: 'var(--muted,#8a8aa0)',
   fontFamily: "'Space Mono', monospace",
@@ -139,15 +161,17 @@ export default function PlannerLibrarySection() {
                 </>
               ) : (
                 <>
-                  <span style={nameStyle} title={t.name}>{t.name}</span>
+                  <span style={titleWrapStyle}>
+                    <span style={nameStyle} title={t.name}>{t.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
+                      style={pencilBtnStyle}
+                      title="Rename"
+                      aria-label={`Rename ${t.name}`}
+                    ><PencilIcon /></button>
+                  </span>
                   <span style={countStyle}>{t.count} questions</span>
-                  <button
-                    type="button"
-                    onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
-                    style={iconBtnStyle}
-                    title="Rename"
-                    aria-label={`Rename ${t.name}`}
-                  >✎</button>
                   <button type="button" onClick={() => openPreview(t)} style={miniBtnStyle}>Preview</button>
                   <button type="button" onClick={() => openEdit(t)} style={miniBtnStyle}>Edit Template</button>
                 </>
