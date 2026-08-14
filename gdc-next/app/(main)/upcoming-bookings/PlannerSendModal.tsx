@@ -353,7 +353,7 @@ export default function PlannerSendModal({
                           onClick={() => openCustomize(isAuto ? data.editEventType : t.eventType, t.name)}
                           style={miniBtnStyle}
                         >
-                          Customize
+                          Edit Template
                         </button>
                       </>
                     )}
