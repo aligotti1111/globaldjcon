@@ -384,6 +384,17 @@ export function composeFields(
   // Non-sectioned templates keep the original order — honoree hoisted first.
   const sectioned = override.some(isSection);
   if (sectioned) {
+    // Some base questions are LOGISTICS, not part of the ceremony or the
+    // reception — the DJ's setup time is answered before either happens, so it
+    // stays at the very top, outside the section banners. Everything else from
+    // the base (must-plays, genres…) belongs UNDER the reception, where the
+    // party — and most of the music decisions — actually are.
+    const TOP_BASE_IDS = new Set(['setup_time']);
+    const topBase = keptRest.filter((f) => TOP_BASE_IDS.has(f.id));
+    const receptionBase = keptRest.filter((f) => !TOP_BASE_IDS.has(f.id));
+
+    // The honoree ("couple's names" — the grand-entrance announcement) drops in
+    // right after the last section heading (Reception).
     let lastSectionIdx = -1;
     overrideRest.forEach((f, idx) => { if (isSection(f)) lastSectionIdx = idx; });
     const withHonoree = lastSectionIdx >= 0
@@ -393,7 +404,10 @@ export function composeFields(
           ...overrideRest.slice(lastSectionIdx + 1),
         ]
       : [...honoree, ...overrideRest];
-    return [...withHonoree, ...keptRest, ...pinned];
+
+    // Setup (top) → ceremony questions → Reception heading → couple's names,
+    // reception questions, then the base music questions → pins last.
+    return [...topBase, ...withHonoree, ...receptionBase, ...pinned];
   }
 
   return [...honoree, ...keptRest, ...overrideRest, ...pinned];
