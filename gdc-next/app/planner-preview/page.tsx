@@ -96,13 +96,14 @@ export default async function PlannerPreviewPage({
   // up front because BOTH the booking and no-booking previews need it.
   const { data: djData } = await admin
     .from('users')
-    .select('name, contract_logo_url, address')
+    .select('name, contract_logo_url, address, phone')
     .eq('id', user.id)
     .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null } | null;
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
   const djName = dj?.name || 'your DJ';
   const logoUrl = dj?.contract_logo_url || null;
   const djAddress = dj?.address?.trim() || null;
+  const djPhone = dj?.phone?.trim() || null;
 
   // Templates the DJ can use: stock + their own. Resolve EXACTLY as the send
   // does so the preview equals what would be delivered.
@@ -159,6 +160,7 @@ export default async function PlannerPreviewPage({
         venueName={null}
         logoUrl={logoUrl}
         djAddress={djAddress}
+        djPhone={djPhone}
         known={knownNB}
         preview
       />
@@ -257,6 +259,7 @@ export default async function PlannerPreviewPage({
         venueName={b.venue_name || null}
         logoUrl={logoUrl}
         djAddress={djAddress}
+        djPhone={djPhone}
         known={known}
         preview
       />
