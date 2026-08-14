@@ -37,6 +37,7 @@ export default function CustomizePlannerPage() {
     const q = new URLSearchParams(window.location.search);
     const bId = q.get('bookingId') || '';
     const et = q.get('eventType'); // '' or null => the base/default template
+    const tid = (q.get('templateId') || '').trim(); // exact row (weddings: with/without ceremony)
     setBookingId(bId);
     setEventType(et && et.trim() ? et : null);
     if (q.get('name')) setName(q.get('name') as string);
@@ -51,7 +52,11 @@ export default function CustomizePlannerPage() {
         const hasBooking = /^[0-9a-f-]{36}$/i.test(bId);
         const apiUrl = hasBooking
           ? `/api/planners?bookingId=${bId}${et && et.trim() ? `&eventType=${encodeURIComponent(et)}` : ''}`
-          : `/api/planners?eventType=${encodeURIComponent(et && et.trim() ? et.trim() : '')}`;
+          // A specific template id (weddings: with / without ceremony) takes
+          // priority over event type, which can't tell the two apart.
+          : tid
+            ? `/api/planners?templateId=${encodeURIComponent(tid)}`
+            : `/api/planners?eventType=${encodeURIComponent(et && et.trim() ? et.trim() : '')}`;
         const res = await fetch(apiUrl);
         const j = await res.json().catch(() => ({}));
         if (!res.ok) { setErr(j?.error || 'Could not open the planner.'); setLoaded(true); return; }
