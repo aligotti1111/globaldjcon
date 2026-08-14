@@ -26,6 +26,7 @@ import {
   composeFields,
   applyPrefill,
   visibleFields,
+  dropFieldsAnsweredByBooking,
   type PlannerField,
   type PlannerTemplate,
 } from '@/lib/planner';
@@ -122,7 +123,13 @@ export default async function PlannerPreviewPage({
     // booking so they're blank. Group them at the TOP, right under the header,
     // so the DJ sees what the booking fills in as one block, separate from the
     // questions the client actually answers (which follow below).
-    const composedNB = visibleFields(composeFields(baseNB.fields || [], overNB?.fields || []));
+    // No booking here, so treat it as no ceremony / no cocktail: the
+    // "ceremony music needed?" toggle drops (always answered at booking) and the
+    // ceremony / cocktail fields drop too, matching a plain event's questions.
+    const composedNB = dropFieldsAnsweredByBooking(
+      visibleFields(composeFields(baseNB.fields || [], overNB?.fields || [])),
+      { ceremony_needed: false, cocktail_needed: false },
+    );
     const fieldsNB = [
       ...composedNB.filter((f) => f.prefill),
       ...composedNB.filter((f) => !f.prefill),
@@ -179,7 +186,13 @@ export default async function PlannerPreviewPage({
   const { base, override } = pickTemplate(templates, user.id, wantType);
   if (!base) notFound();
 
-  const composed = composeFields(base.fields || [], override?.fields || []);
+  // Strip the questions the booking already answers (ceremony toggle always;
+  // ceremony / cocktail fields when the booking has none) so the preview equals
+  // exactly what the client will be asked.
+  const composed = dropFieldsAnsweredByBooking(
+    composeFields(base.fields || [], override?.fields || []),
+    b,
+  );
 
   // Real prefill, same helper and args as the send — so the preview's "Your
   // booking" answers are the ones the client would actually see filled in.
