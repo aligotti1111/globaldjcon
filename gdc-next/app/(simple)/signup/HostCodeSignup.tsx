@@ -41,6 +41,12 @@ interface Props {
   name: string;
   /** Null — host signup no longer asks. Kept so the column stays writable. */
   country: string | null;
+  /**
+   * Whether the person has accepted the Terms & Privacy Policy. The consent
+   * checkbox lives in the parent (above the identifier field); sending the code
+   * IS the account creation, so it's gated on this being true.
+   */
+  agreed?: boolean;
   /** Prefilled + locked when they arrived from a claim_booking invite. */
   prefillEmail?: string;
   lockedEmail?: boolean;
@@ -76,7 +82,7 @@ interface Props {
 }
 
 export default function HostCodeSignup({
-  method, name, country, prefillEmail, lockedEmail, destination, onNameError,
+  method, name, country, agreed, prefillEmail, lockedEmail, destination, onNameError,
   canSwitchMethod, onSwitchMethod, onDone,
 }: Props) {
   const supabase = createClient();
@@ -139,6 +145,12 @@ export default function HostCodeSignup({
   async function sendCode() {
     setError(null);
     onNameError?.(null);
+    // Consent is required before the account is created (the code IS the
+    // signup). Checked here so a phone or email path can't skip it.
+    if (agreed === false) {
+      setError('Please accept the Terms & Conditions and Privacy Policy to continue.');
+      return;
+    }
     // Checked HERE, before the code goes out, rather than on the screen after
     // it. A host who's already read a text and typed six digits has moved on
     // from the name field; sending them back to it then reads as the form
