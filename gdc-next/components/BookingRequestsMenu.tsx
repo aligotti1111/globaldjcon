@@ -239,7 +239,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                     fontWeight: 700, fontSize: '.76rem', cursor: 'pointer', letterSpacing: '.02em',
                   }}
                 >
-                  {t === 'respond' ? 'Respond' : 'Awaiting'}{n > 0 ? ` (${n})` : ''}
+                  {t === 'respond' ? 'Response Required' : 'Awaiting'}{n > 0 ? ` (${n})` : ''}
                 </button>
               );
             })}
@@ -271,10 +271,12 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                       : 'Pending your response'}
                   </span>
                 </span>
-                <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                   {it.price
                     ? <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.9rem', fontWeight: 700 }}>{it.price}</span>
                     : <span style={{ color: 'rgba(255,255,255,.45)', fontSize: '.7rem', fontStyle: 'italic' }}>Awaiting quote</span>}
+                  {/* Explicit affordance so it reads as clickable. */}
+                  <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.66rem', fontWeight: 700, letterSpacing: '.02em' }}>View &rarr;</span>
                 </span>
               </button>
             ))
