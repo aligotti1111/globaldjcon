@@ -174,28 +174,28 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     return () => setGlobalDirty(false);
   }, [needsLeaveWarn, setGlobalDirty]);
 
-  const tabs: { id: SecTab; label: string }[] = (isMobile
+  // Tab order (both layouts): Contracts rides next to Packages/Rates, and
+  // Discounts is always last. Planner & Playlist is mobile-only (club DJs use
+  // the DJ Rider tab instead); Contracts appears wherever booking access is on.
+  const mobileTabs: { id: SecTab; label: string }[] = (isMobile
     ? [
         { id: 'settings', label: 'Booking Settings' },
         { id: 'packages', label: 'Packages' },
-        { id: 'discounts', label: 'Discounts' },
+        ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
         { id: 'payments', label: 'Payments' },
+        ...(hasBookingAccess ? [{ id: 'planners', label: 'Planner & Playlist' }] : []),
+        { id: 'discounts', label: 'Discounts' },
       ]
     : [
         { id: 'settings', label: 'Settings' },
         { id: 'rates', label: 'Equipment & Rates' },
-        { id: 'discounts', label: 'Discounts' },
+        ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
         { id: 'rider', label: 'DJ Rider' },
         { id: 'guests', label: 'Guest List' },
         { id: 'payments', label: 'Payments' },
+        { id: 'discounts', label: 'Discounts' },
       ]
   ) as { id: SecTab; label: string }[];
-  const extraTabs: { id: SecTab; label: string }[] = [];
-  // Planner & Playlist library — mobile DJs manage the planners clients fill
-  // out. Club DJs use the DJ Rider tab instead, so it's mobile-only.
-  if (isMobile && hasBookingAccess) extraTabs.push({ id: 'planners', label: 'Planner & Playlist' });
-  if (hasBookingAccess) extraTabs.push({ id: 'contracts', label: 'Contracts' });
-  const mobileTabs = [...tabs, ...extraTabs];
 
   return (
     <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
