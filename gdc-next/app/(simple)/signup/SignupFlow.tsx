@@ -500,6 +500,8 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
   const [travel, setTravel] = useState('');
   // Must accept the Terms & Privacy Policy before an account can be created.
   const [agreed, setAgreed] = useState(false);
+  // Consent notice shown UNDER the checkbox at the bottom, not in the top error slot.
+  const [consentError, setConsentError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -553,9 +555,10 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
       return;
     }
     if (!agreed) {
-      setError('Please accept the Terms & Conditions and Privacy Policy to continue.');
+      setConsentError(true);
       return;
     }
+    setConsentError(false);
 
     setSubmitting(true);
     try {
@@ -637,6 +640,17 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
       <TypeBadge current="dj" onSwitch={onSwitchType} />
 
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
+
+      <ConsentCheckbox
+        id="dj-agree"
+        checked={agreed}
+        onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
+      />
+      {consentError && !agreed && (
+        <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '-.5rem' }}>
+          Please accept the Terms &amp; Conditions and Privacy Policy to continue.
+        </div>
+      )}
 
       <div className={styles.formGroup}>
         <label htmlFor="dj-email">Email Address</label>
@@ -759,8 +773,6 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
         </select>
       </div>
 
-      <ConsentCheckbox id="dj-agree" checked={agreed} onChange={setAgreed} />
-
       <button type="submit" className={styles.submitBtn} disabled={submitting}>
         {submitting ? 'Creating Account...' : 'Create DJ Account'}
       </button>
@@ -824,8 +836,10 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
   // would let someone create an account the invitation can't attach to.
   const canChooseMethod = !lockedEmail;
   // Terms/Privacy consent — required before the code (which creates the
-  // account) can be sent.
+  // account) can be sent. Rendered at the top of the form; the error surfaces
+  // there too when HostCodeSignup rejects a send for missing consent.
   const [agreed, setAgreed] = useState(false);
+  const [consentError, setConsentError] = useState(false);
 
   // Both paths finish signed in — there's no "check your inbox" screen in
   // between any more — so the form needs somewhere to send them.
@@ -895,13 +909,23 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
     <div>
       <BackButton onClick={onBack} />
       <TypeBadge current="host" onSwitch={onSwitchType} />
+      <ConsentCheckbox
+        id="host-agree"
+        checked={agreed}
+        onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
+      />
+      {consentError && !agreed && (
+        <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '-.5rem' }}>
+          Please accept the Terms &amp; Conditions and Privacy Policy to continue.
+        </div>
+      )}
       {sharedFields}
       <HostCodeSignup
         method={method}
         name={name}
         country={country}
         agreed={agreed}
-        onAgreedChange={setAgreed}
+        onConsentError={() => setConsentError(true)}
         prefillEmail={prefillEmail}
         lockedEmail={lockedEmail}
         destination={destination}
