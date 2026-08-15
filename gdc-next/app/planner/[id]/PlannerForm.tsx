@@ -26,6 +26,7 @@ import {
   layoutFields,
   infoFields,
   isSection,
+  isDivider,
   titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
@@ -209,8 +210,8 @@ export default function PlannerForm({
     let answered = 0;
     let total = 0;
     for (const f of fields) {
-      // Section headings are structure, not questions — never counted.
-      if (isSection(f)) continue;
+      // Section headings and dividers are structure, not questions — never counted.
+      if (isSection(f) || isDivider(f)) continue;
       total++;
       const r = responses[f.id];
       if (!r) continue;
@@ -383,7 +384,10 @@ export default function PlannerForm({
 
         <div className={styles.fields}>
           {layout.map((f) => (
-            isSection(f) ? (
+            isDivider(f) ? (
+              // A plain rule between questions — purely visual spacing.
+              <hr key={f.id} className={styles.divider} />
+            ) : isSection(f) ? (
               // A break between parts of the form — e.g. "Reception" after the
               // ceremony questions on a wedding. Not a question: a heading with
               // a little gap above it, so the two groups read as two groups.
