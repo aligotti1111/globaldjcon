@@ -78,12 +78,19 @@ export default function MobilePackagesEditor({
     }
     return m;
   }, [mobPackages, specialtyTypes, selectedEventTypes]);
-  const [mob, setMob] = useState<MobPackagesNew>(initial);
+  // Always start with at least one package OPEN — a DJ with none saved should
+  // still land on an expanded, ready-to-fill package rather than a bare "Add a
+  // package" button. The seeded blank is treated as the clean baseline below,
+  // so it doesn't register as an unsaved change and never reaches the database
+  // until the DJ fills it in and saves (save still blocks an empty package).
+  const startMob = initial.general.length === 0 ? addPackageSlot(initial) : initial;
+  const [mob, setMob] = useState<MobPackagesNew>(startMob);
   const [pkgIdx, setPkgIdx] = useState(0);
   const [selType, setSelType] = useState<string>('general');
   // Baseline = the normalized+auto-pulled shape the editor actually starts in,
-  // so a clean load is NOT dirty (specialty types are pulled in by `initial`).
-  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(initial)));
+  // so a clean load is NOT dirty (specialty types are pulled in by `initial`,
+  // and the seeded first package counts as clean, not a pending edit).
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(startMob)));
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [errIdx, setErrIdx] = useState<number | null>(null);
