@@ -106,8 +106,14 @@ export default function CustomizePlannerPage() {
   async function save() {
     if (saving) return;
     setErr(null);
-    const blank = fields.find((f) => !f.label.trim());
+    // Drop half-added questions that were never named — a DJ who clicked "add"
+    // and didn't fill anything in shouldn't be blocked from saving. Dividers
+    // never carry a label, so they're always kept; only the DJ's own labelled
+    // additions (is_custom) are droppable when blank; a stock field never blanks.
+    const cleaned = fields.filter((f) => f.type === 'divider' || f.label.trim() !== '' || !f.is_custom);
+    const blank = cleaned.find((f) => f.type !== 'divider' && !f.label.trim());
     if (blank) { setErr('Every question needs a label.'); return; }
+    if (cleaned.length !== fields.length) setFields(cleaned);
     setSaving(true);
     try {
       const res = await fetch('/api/planners', {
@@ -116,7 +122,7 @@ export default function CustomizePlannerPage() {
         body: JSON.stringify({
           eventType,
           name: eventType ? `My ${eventType} planner` : 'My planner',
-          fields,
+          fields: cleaned,
         }),
       });
       const j = await res.json().catch(() => ({}));
