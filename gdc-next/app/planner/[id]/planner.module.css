@@ -45,15 +45,14 @@
 /* Download PDF on its own line, right-aligned under the header. */
 .downloadRow { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
 
-/* Kept for other callers; the header now uses .topRow above. */
+/* Logo on the left, address on the right — the top row of the header. */
 .brandRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
 }
-.brandRowSolo { justify-content: center; }
 
 /* The DJ's business logo at the very top of the planner. Capped so a big upload
    can't dominate the page. */
@@ -133,7 +132,7 @@
 
 .title {
   font-family: var(--font-bebas), sans-serif;
-  font-size: 2.2rem;
+  font-size: 1.55rem;
   letter-spacing: .04em;
   margin: 0 0 .3rem;
   color: var(--white, #fff);
