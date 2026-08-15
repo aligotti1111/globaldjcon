@@ -29,29 +29,21 @@
   margin-bottom: 2rem;
 }
 
-/* The whole top of the planner on one row: logo + title on the left, address +
-   download on the right. Wraps on a narrow screen. */
+/* Three zones across the top: title LEFT, logo CENTRE, address RIGHT. A grid so
+   the logo stays centred and the address stays right even when a piece is
+   missing (each cell is always rendered). */
 .topRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem 1.25rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-.brandLeft {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1rem;
-  min-width: 0;
+  margin-bottom: .7rem;
 }
-.titleBlock { min-width: 0; }
-.topRight {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: .6rem;
-}
+.topLeft { min-width: 0; justify-self: start; }
+.topMid { justify-self: center; min-width: 0; }
+.topRight { justify-self: end; display: flex; justify-content: flex-end; }
+/* Download PDF on its own line, right-aligned under the header. */
+.downloadRow { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
 
 /* Kept for other callers; the header now uses .topRow above. */
 .brandRow {
@@ -82,27 +74,24 @@
 .djContact {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  max-width: 55%;
+  align-items: flex-end;
 }
-.brandRowSolo .djContact { align-items: center; max-width: 100%; }
 .djAddress {
   font-style: normal;
-  text-align: left;
+  text-align: right;
   font-size: .78rem;
   line-height: 1.45;
   color: var(--muted, #8a8aa0);
 }
-.djAddress span { display: block; }
+.djAddress span { display: block; white-space: nowrap; }
 .djPhone {
   margin-top: .15rem;
-  text-align: left;
+  text-align: right;
+  white-space: nowrap;
   font-size: .78rem;
   line-height: 1.45;
   color: var(--muted, #8a8aa0);
 }
-.brandRowSolo .djAddress,
-.brandRowSolo .djPhone { text-align: center; }
 .brandRowSolo .djAddress { text-align: center; max-width: 100%; }
 
 /* Download PDF — top-right of the header, so client and DJ can grab a copy at
