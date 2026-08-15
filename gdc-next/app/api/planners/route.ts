@@ -60,6 +60,23 @@ async function loadTemplates(db: SupabaseClient, djId: string): Promise<PlannerT
   return (data as unknown as PlannerTemplate[] | null) || [];
 }
 
+// The number a DJ sees next to a template in the list must be the number of
+// questions a CLIENT is actually asked — i.e. the composed set, base + this
+// event type's override — not just the override's own rows. Some stock
+// event-type templates (anniversary, graduation, birthday) store ONLY their
+// extra question, so counting t.fields alone shows "1" for a form the client
+// receives with six questions. composeFields dedupes by id, so full-set
+// templates (weddings, sweet 16) and the DJ's own saved copies count the same
+// either way — only the override-only ones are corrected.
+function composedCount(templates: PlannerTemplate[], djId: string, t: PlannerTemplate): number {
+  if (t.event_type == null) return visibleFields(t.fields || []).length;
+  const base =
+    templates.find((x) => x.dj_id === djId && !x.is_standard && x.event_type == null) ??
+    templates.find((x) => x.is_standard && x.event_type == null) ??
+    null;
+  return visibleFields(composeFields(base?.fields || [], t.fields || [])).length;
+}
+
 async function gate(): Promise<
   { ok: true; userId: string; db: SupabaseClient; admin: ReturnType<typeof createAdminClient> }
   | { ok: false; res: NextResponse }
@@ -114,7 +131,7 @@ export async function GET(req: Request) {
       const mapTemplates = () => templates.map((t) => ({
         id: t.id, name: t.name, eventType: t.event_type,
         isStandard: t.is_standard, isMine: !t.is_standard && t.dj_id === userId,
-        count: visibleFields(t.fields || []).length,
+        count: composedCount(templates, userId, t),
       }));
       // A specific template id disambiguates types with more than one template
       // (weddings: with / without ceremony). When present it wins over eventType.
@@ -258,7 +275,7 @@ export async function GET(req: Request) {
         eventType: t.event_type,
         isStandard: t.is_standard,
         isMine: !t.is_standard && t.dj_id === userId,
-        count: visibleFields(t.fields || []).length,
+        count: composedCount(templates, userId, t),
       })),
     });
   } catch {
