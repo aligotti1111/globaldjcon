@@ -1,6 +1,9 @@
 // Privacy Policy page.
-// Content matches vanilla privacy.html exactly. Static — no data fetching,
-// no client-side JS. Renders as plain HTML on the server.
+// Static — no data fetching, no client-side JS. Renders as plain HTML on the
+// server. Covers event-planning data (planner / rider / guest list), open &
+// page-view tracking, capability-link sharing, and the current subprocessors
+// (Supabase, Resend, Twilio, Netlify, Cloudflare, Stripe, DocuSeal, Deezer,
+// Odesli).
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -20,7 +23,7 @@ export default function PrivacyPage() {
 
       <div className={styles.page}>
         <h1 className={styles.title}>Privacy Policy</h1>
-        <div className={styles.updated}>Last updated: May 17, 2026</div>
+        <div className={styles.updated}>Last updated: August 15, 2026</div>
 
         <div className={styles.section}>
           <p>
@@ -38,10 +41,22 @@ export default function PrivacyPage() {
             <li>Messages sent through our platform</li>
             <li>Mobile phone number, if you choose to opt in to SMS text notifications</li>
             <li>Payment-related information (we do not store full card details)</li>
+            <li>
+              Event planning information provided through a Planner &amp; Playlist, DJ Rider, or Guest List &mdash; for
+              example song requests and &ldquo;do not play&rdquo; lists, first-dance and timeline details, run-of-show
+              notes, equipment and hospitality requirements, and guest names and party sizes for an event
+            </li>
+            <li>
+              Information about other people that you or a DJ choose to add, such as guest names on a guest list. If you
+              add another person&apos;s information, you confirm you are allowed to share it with us for the purpose of
+              planning the event
+            </li>
           </ul>
           <p>
             We also collect certain information automatically, including your IP address, browser type,
-            device information, and pages visited.
+            device information, and pages visited. When we send an email or share a document link (such as an invoice,
+            contract, planner, rider, or guest list), we may record whether and when the email was opened or the linked
+            page was viewed, so the sender can see the status of what they sent.
           </p>
 
           <h2>How We Use Your Information</h2>
@@ -83,15 +98,45 @@ export default function PrivacyPage() {
           <p>We do not sell your personal information. We may share your information with:</p>
           <ul>
             <li>Other users as necessary to facilitate bookings (e.g., your name and contact details shared with a DJ you book)</li>
-            <li>Service providers who help us operate the platform, including Supabase (database and authentication), Resend (email delivery), Twilio (SMS delivery), and Netlify (hosting)</li>
+            <li>Service providers who help us operate the platform, including Supabase (database and authentication), Resend (email delivery), Twilio (SMS delivery), Netlify (hosting), Cloudflare (content delivery and security), Stripe (card payment processing), and DocuSeal (electronic contract signing)</li>
+            <li>Deezer and Odesli (song.link), which we use to power song search and to resolve music links &mdash; the words you type into a song search and the track links you select are sent to these services to return results</li>
             <li>Law enforcement or government agencies if required by law</li>
           </ul>
+          <p>
+            <strong>Payments.</strong> When a Client pays a DJ by card through the Platform, the payment is processed by
+            Stripe directly to the DJ&apos;s own connected Stripe account. Stripe collects and processes the Client&apos;s
+            payment details under <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer">Stripe&apos;s Privacy Policy</a>; we do not receive or store full card
+            numbers. Because the DJ is the merchant of record, the DJ also receives the transaction and payer information
+            needed to fulfill and account for the payment.
+          </p>
+          <p>
+            <strong>Calendar sync.</strong> A DJ may subscribe to a private calendar feed or add bookings to their own
+            calendar. If a DJ does so, booking details (including the Client&apos;s name, event date, venue, and related
+            notes) are sent to the calendar provider the DJ chooses, such as Google Calendar or Apple Calendar. That
+            provider&apos;s own privacy policy governs how it handles the data.
+          </p>
+
+          <h2>Event Planning Tools and Shared Links</h2>
+          <p>
+            To help DJs and Clients plan an event, the Platform lets a DJ send a Client a link to a Planner &amp;
+            Playlist, a DJ Rider, a Guest List, an invoice, or a contract. These links do not require the recipient to
+            create an account. Each link contains a long, unique, unguessable web address that acts as a private key:
+            anyone who has the link can open, and in some cases edit, the information behind it. Please treat these links
+            as private and share them only with people who are helping plan your event.
+          </p>
+          <p>
+            Information entered through these tools is stored on our infrastructure and is visible to the DJ and Client
+            connected to that booking. We use it only to provide the planning features and to operate the booking; we do
+            not use it for advertising and we do not sell it.
+          </p>
 
           <h2>Data Storage</h2>
           <p>
             Your data is stored securely using Supabase infrastructure. We retain your data for as long as
-            your account is active or as needed to provide services. You may request deletion of your account
-            and associated data at any time by contacting us.
+            your account is active or as needed to provide services. Information entered into a planner, rider, guest
+            list, invoice, or contract is retained as part of the associated booking record for as long as needed to
+            provide the service to the DJ and Client, or until the account it belongs to is deleted. You may request
+            deletion of your account and associated data at any time by contacting us.
           </p>
 
           <h2>Cookies</h2>
