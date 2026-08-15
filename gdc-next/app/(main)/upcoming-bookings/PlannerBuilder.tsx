@@ -46,14 +46,6 @@ const ADDABLE: { type: PlannerFieldType; label: string }[] = [
 const isPinned = (id: string) =>
   id === HONOREE_FIELD_ID || id === DO_NOT_PLAY_FIELD_ID || id === NOTES_FIELD_ID;
 
-/** Break a one-line address into stacked lines: street on top, "City, ST ZIP"
- *  under it. "26 Blythe Place, Staten Island, NY 10306" → two lines. */
-function addressLines(a: string): string[] {
-  const parts = a.split(',').map((s) => s.trim()).filter(Boolean);
-  if (parts.length <= 1) return [a.trim()];
-  return [parts[0], parts.slice(1).join(', ')];
-}
-
 /** A sleek line-icon pencil (Feather "edit-3"), inherits currentColor. */
 function PencilIcon() {
   return (
@@ -100,21 +92,6 @@ export default function PlannerBuilder({
   const [showRemove, setShowRemove] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  // The DJ's business address (users.address) — the SAME field the account
-  // settings and invoices use. It shows at the top of the planner, opposite the
-  // logo; here the DJ can add it if they never set one, or fix it.
-  const [address, setAddress] = useState<string | null>(null);
-  const [editingAddr, setEditingAddr] = useState(false);
-  const [addrDraft, setAddrDraft] = useState('');
-  const [addrBusy, setAddrBusy] = useState(false);
-  const [addrMsg, setAddrMsg] = useState<string | null>(null);
-  // The DJ's business phone (users.phone) — display only; set in account
-  // settings, shown stacked under the address, same as the live planner.
-  const [phone, setPhone] = useState<string | null>(null);
-  // The DJ's business name (users.name) — shown above the address, like a
-  // letterhead.
-  const [companyName, setCompanyName] = useState<string | null>(null);
-
   useEffect(() => {
     let active = true;
     (async () => {
@@ -125,44 +102,17 @@ export default function PlannerBuilder({
         setUserId(user.id);
         const { data } = await supabase
           .from('users')
-          .select('name, contract_logo_url, address, phone')
+          .select('contract_logo_url')
           .eq('id', user.id)
           .maybeSingle();
         if (active) {
-          const row = data as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
+          const row = data as { contract_logo_url?: string | null } | null;
           setLogoUrl(row?.contract_logo_url || null);
-          setAddress(row?.address?.trim() || null);
-          setPhone(row?.phone?.trim() || null);
-          setCompanyName(row?.name?.trim() || null);
         }
-      } catch { /* logo + address are optional */ }
+      } catch { /* the logo is optional */ }
     })();
     return () => { active = false; };
   }, []);
-
-  // Save the address to the shared users.address — same write the account
-  // settings page makes, so it updates the planner AND the invoices at once.
-  async function saveAddress() {
-    if (!userId) return;
-    const val = addrDraft.trim();
-    setAddrBusy(true);
-    setAddrMsg(null);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('users')
-        .update({ address: val } as unknown as never)
-        .eq('id', userId);
-      if (error) throw error;
-      setAddress(val || null);
-      setEditingAddr(false);
-      setAddrMsg(val ? '✓ Address saved — shows at the top of your planners.' : '✓ Address cleared.');
-    } catch {
-      setAddrMsg('Could not save the address — try again.');
-    } finally {
-      setAddrBusy(false);
-    }
-  }
 
   async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -309,9 +259,9 @@ export default function PlannerBuilder({
 
   return (
     <div className={styles.wrap}>
-      {/* Logo on the LEFT, business address stacked on the RIGHT — the top of the
-          planner, exactly as the client sees it. */}
-      <div className={styles.brandTop}>
+      {/* Logo CENTERED at the top — exactly as the client sees it. No address:
+          the client's planner shows the logo alone, so the editor must match. */}
+      <div className={styles.brandTop} style={{ justifyContent: 'center' }}>
         <div className={styles.brandLeft}>
           {logoUrl ? (
             <div className={styles.logoRow}>
@@ -345,53 +295,6 @@ export default function PlannerBuilder({
             </button>
           )}
         </div>
-
-        <div className={styles.brandRight}>
-          {companyName ? <div className={styles.brandName}>{companyName}</div> : null}
-          {editingAddr ? (
-            <div className={styles.addrEditRow}>
-              <input
-                className={styles.addrInput}
-                // eslint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
-                value={addrDraft}
-                disabled={addrBusy}
-                placeholder="123 Main St, City, ST 00000"
-                onChange={(e) => setAddrDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void saveAddress(); if (e.key === 'Escape') setEditingAddr(false); }}
-              />
-              <button type="button" className={styles.addrSave} disabled={addrBusy} onClick={() => void saveAddress()}>
-                {addrBusy ? 'Saving…' : 'Save'}
-              </button>
-              <button type="button" className={styles.addrCancel} disabled={addrBusy} onClick={() => setEditingAddr(false)} aria-label="Cancel">✕</button>
-            </div>
-          ) : address ? (
-            <button
-              type="button"
-              className={styles.addrShow}
-              title="Edit your business address"
-              onClick={() => { setAddrDraft(address); setEditingAddr(true); }}
-            >
-              <span className={styles.addrText}>
-                {addressLines(address).map((line, i) => (
-                  <span key={i}>{line}</span>
-                ))}
-              </span>
-              <PencilIcon />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={styles.addrAdd}
-              onClick={() => { setAddrDraft(''); setEditingAddr(true); }}
-            >
-              + Add your business address
-            </button>
-          )}
-          {/* The business phone from account settings, stacked under the address
-              (display only — it's set in account settings, like the invoice). */}
-          {phone && !editingAddr ? <div className={styles.addrPhone}>{phone}</div> : null}
-        </div>
       </div>
 
       {showRemove && (
@@ -409,7 +312,6 @@ export default function PlannerBuilder({
         </div>
       )}
       {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
-      {addrMsg && <div className={styles.logoMsg}>{addrMsg}</div>}
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
 
       {/* The page's own header, faint — so the DJ is looking at the client's
