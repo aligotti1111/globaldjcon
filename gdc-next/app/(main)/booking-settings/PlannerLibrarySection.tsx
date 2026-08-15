@@ -12,6 +12,9 @@
 //   · Rename → PUT /api/planners { renamePlannerId, name }   (their own only)
 
 import { useEffect, useState, type CSSProperties } from 'react';
+import { createClient } from '@/lib/supabase/client';
+
+const LEAD_OPTIONS = [7, 10, 14, 21, 30];
 
 type TemplateLite = {
   id: string;
@@ -93,6 +96,41 @@ export default function PlannerLibrarySection() {
   const [renameDraft, setRenameDraft] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
 
+  // How many days before the event the DJ wants the planner submitted. Saved on
+  // users.planner_lead_days and shown on the client planner. Default 14.
+  const [leadDays, setLeadDays] = useState(14);
+  const [leadSaved, setLeadSaved] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !active) return;
+        const { data } = await supabase.from('users').select('planner_lead_days').eq('id', user.id).maybeSingle();
+        const v = (data as { planner_lead_days?: number | null } | null)?.planner_lead_days;
+        if (active && typeof v === 'number') setLeadDays(v);
+      } catch { /* falls back to 14 */ }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  async function saveLeadDays(days: number) {
+    setLeadDays(days);
+    setLeadSaved(false);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase
+        .from('users')
+        .update({ planner_lead_days: days } as unknown as never)
+        .eq('id', user.id);
+      if (!error) { setLeadSaved(true); setTimeout(() => setLeadSaved(false), 2000); }
+    } catch { /* non-fatal */ }
+  }
+
   async function load() {
     try {
       const res = await fetch('/api/planners');
@@ -151,6 +189,33 @@ export default function PlannerLibrarySection() {
         what a client sees, or open one to customise the questions and make it your own. Your edits are
         used automatically the next time you send that event type&rsquo;s planner.
       </p>
+
+      {/* Submission deadline — how far ahead of the event the client is asked to
+          finish. Shows on the client's planner. Saved to the DJ, default 14 days. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem',
+        maxWidth: 720, padding: '.7rem .8rem', marginBottom: '1.1rem',
+        border: '1px solid rgba(140,140,170,.18)', borderRadius: 9,
+        background: 'rgba(255,255,255,.02)',
+      }}>
+        <label htmlFor="planner-lead" style={{ fontSize: '.85rem', color: 'var(--white,#fff)' }}>
+          Ask clients to submit their Planner &amp; Playlist
+        </label>
+        <select
+          id="planner-lead"
+          value={leadDays}
+          onChange={(e) => void saveLeadDays(Number(e.target.value))}
+          style={{
+            background: 'rgba(255,255,255,.06)', border: '1px solid rgba(140,140,170,.4)',
+            borderRadius: 6, color: '#fff', padding: '.35rem .5rem', fontSize: '.85rem',
+          }}
+        >
+          {LEAD_OPTIONS.map((d) => (
+            <option key={d} value={d}>{d} days before the event</option>
+          ))}
+        </select>
+        {leadSaved && <span style={{ fontSize: '.78rem', color: 'var(--neon,#00e0a4)' }}>✓ Saved</span>}
+      </div>
 
       {err && <div style={{ color: '#ff7676', fontSize: '.82rem', marginBottom: '.7rem' }}>{err}</div>}
       {templates === null && !err && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>Loading…</div>}
