@@ -319,15 +319,21 @@ export default function PlannerForm({
         )}
 
         <header className={styles.head}>
-          {/* The DJ's own logo and business address at the very top — so the
-              client sees THEIR brand. Logo left, address right; if there's no
-              address the logo centres on its own, and vice-versa. */}
-          {(logoUrl || djAddress || djPhone) ? (
-            <div className={`${styles.brandRow} ${logoUrl && (djAddress || djPhone) ? '' : styles.brandRowSolo}`}>
+          {/* One row: the DJ's logo + the "Planner & Playlist" title on the left,
+              their business address and the Download button on the right. Wraps
+              on a narrow screen. */}
+          <div className={styles.topRow}>
+            <div className={styles.brandLeft}>
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
               ) : null}
+              <div className={styles.titleBlock}>
+                <div className={styles.brand}>Global DJ Connect</div>
+                <h1 className={styles.title}>Planner &amp; Playlist</h1>
+              </div>
+            </div>
+            <div className={styles.topRight}>
               {(djAddress || djPhone) ? (
                 <div className={styles.djContact}>
                   {djAddress ? (
@@ -343,27 +349,19 @@ export default function PlannerForm({
                   {djPhone ? <div className={styles.djPhone}>{djPhone}</div> : null}
                 </div>
               ) : null}
+              {/* Download a PDF anytime — opens the print view with ?download=1
+                  so it downloads on open, then that tab closes itself. Hidden in
+                  DJ preview — the template has no real planner id to print. */}
+              {!preview && (
+                <button
+                  type="button"
+                  className={styles.download}
+                  onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
+                >
+                  ↓ Download PDF
+                </button>
+              )}
             </div>
-          ) : null}
-          <div className={styles.headBar}>
-            <div>
-              <div className={styles.brand}>Global DJ Connect</div>
-              <h1 className={styles.title}>Planner &amp; Playlist</h1>
-            </div>
-            {/* Download a PDF anytime — client or DJ. Opens the print view with
-                ?download=1 so it downloads on open, then that tab closes itself.
-                window.open (not a plain link) so the opened tab is allowed to
-                self-close once the file is saved. Hidden in DJ preview — the
-                template has no real planner id to print. */}
-            {!preview && (
-              <button
-                type="button"
-                className={styles.download}
-                onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
-              >
-                ↓ Download PDF
-              </button>
-            )}
           </div>
           <p className={styles.sub}>
             {hostName ? `${hostName} · ` : ''}{eventDateLabel}
