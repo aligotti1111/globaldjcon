@@ -142,13 +142,14 @@ export default async function PlannerPage({
   // and a fallback that reads fine is how it goes unnoticed.
   const { data: djData } = await admin
     .from('users')
-    .select('name, contract_logo_url, address, phone')
+    .select('name, contract_logo_url, address, phone, planner_lead_days')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null; planner_lead_days?: number | null } | null;
   const djName = dj?.name || 'your DJ';
   const djAddress = dj?.address?.trim() || null;
   const djPhone = dj?.phone?.trim() || null;
+  const leadDays = dj?.planner_lead_days ?? 14;
   // The DJ's single business logo (users.contract_logo_url) — shown at the top
   // of the planner so it's clearly THEIR page. Suppressed if the DJ hid the logo
   // on THIS client's planner (logo_hidden).
@@ -228,6 +229,7 @@ export default async function PlannerPage({
       logoUrl={djLogo}
       djAddress={djAddress}
       djPhone={djPhone}
+      leadDays={leadDays}
       known={known}
     />
   );
