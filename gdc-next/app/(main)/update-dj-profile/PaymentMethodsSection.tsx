@@ -809,12 +809,32 @@ export default function PaymentMethodsSection({ userId, currency }: { userId: st
                     : live
                       ? '1.5px solid var(--neon)'
                       : `1px solid ${open ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.28)'}`,
-                  background: blocked ? 'rgba(255,255,255,.01)' : (open ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.03)'),
+                  background: blocked
+                    ? 'rgba(255,255,255,.01)'
+                    : (open ? 'rgba(0,224,164,.12)' : 'rgba(255,255,255,.03)'),
+                  // The OPEN tile gets a neon ring + glow so it's obvious which
+                  // one the panel below is editing — this works even for a live
+                  // tile, whose neon border otherwise looks the same open or not.
+                  boxShadow: open && !blocked ? '0 0 0 2px var(--neon), 0 6px 16px rgba(0,224,164,.28)' : undefined,
                   cursor: blocked ? 'not-allowed' : 'pointer',
                   opacity: blocked ? 0.45 : 1,
                   textAlign: 'center',
+                  zIndex: open ? 1 : undefined,
                 }}
               >
+                {/* Caret pointing down to the editor panel, so the open tile is
+                    visibly tied to the fields below it. */}
+                {open && !blocked && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
+                      width: 0, height: 0,
+                      borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
+                      borderTop: '7px solid var(--neon)',
+                    }}
+                  />
+                )}
                 <span
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
