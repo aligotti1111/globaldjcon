@@ -221,6 +221,14 @@
 
 .field { min-width: 0; }
 
+/* A plain rule between questions — purely visual spacing the DJ dropped in. */
+.divider {
+  border: none;
+  border-top: 1px solid rgba(140, 140, 170, .18);
+  margin: .2rem 0;
+  width: 100%;
+}
+
 /* A break between parts of the form — e.g. "Reception" after the ceremony
    questions on a wedding. A clean heading with a rule under it; the parent
    .fields gap spaces it, so the two groups read as two groups. */
