@@ -154,6 +154,23 @@
 }
 .submitted strong { color: #4ddcb4; }
 
+/* Locked — complete and past the deadline. Amber, distinct from the green
+   "submitted" note; the questions below are shown but frozen. */
+.locked {
+  margin-top: 1.2rem;
+  padding: .8rem 1rem;
+  border: 1px solid rgba(217, 164, 65, .5);
+  background: rgba(217, 164, 65, .08);
+  border-radius: 8px;
+  font-size: .84rem;
+  line-height: 1.55;
+  color: #f0dcb8;
+}
+.locked strong { color: #e8c477; }
+/* The frozen questions: visible so the client can read what they sent, but no
+   interaction — every control is inert. */
+.fieldsLocked { pointer-events: none; opacity: .6; }
+
 /* ── What we already know ─────────────────────────────────────────────── */
 /*
  * Deliberately not a card. A bordered box at the top of a form reads as the
