@@ -26,11 +26,13 @@ export type PlannerFieldType =
   | 'yesno'
   | 'select'
   | 'link'        // a url they paste — e.g. their Spotify playlist
-  | 'section';    // NOT a question — a heading that splits the form into parts.
+  | 'section'     // NOT a question — a heading that splits the form into parts.
                   // Renders as a title with a gap above it; never answered, never
                   // counted, never prefilled. e.g. a "Reception" break on the
                   // wedding-with-ceremony planner between the ceremony questions
                   // and the reception ones. `label` is the heading text.
+  | 'divider';    // NOT a question — a plain horizontal rule between questions.
+                  // No label, no answer, never counted. Purely visual spacing.
 
 /**
  * PrefillKey — something we already know from the booking.
@@ -271,6 +273,10 @@ export function dropFieldsAnsweredByBooking(
 
 /** A structural heading, not a question. */
 export const isSection = (f: PlannerField): boolean => f.type === 'section';
+/** A plain horizontal rule between questions — structural, not a question. */
+export const isDivider = (f: PlannerField): boolean => f.type === 'divider';
+/** Section headings AND dividers: laid out in the form but never questions. */
+export const isStructural = (f: PlannerField): boolean => isSection(f) || isDivider(f);
 
 /**
  * Drop any section heading with no real field beneath it — i.e. a `section`
@@ -513,7 +519,7 @@ export function askedFields(
   fields: PlannerField[],
   responses: PlannerResponses,
 ): PlannerField[] {
-  return visibleFields(fields).filter((f) => !isSection(f) && !isInfoField(f, responses));
+  return visibleFields(fields).filter((f) => !isStructural(f) && !isInfoField(f, responses));
 }
 
 /**
@@ -527,7 +533,7 @@ export function layoutFields(
   fields: PlannerField[],
   responses: PlannerResponses,
 ): PlannerField[] {
-  const rows = visibleFields(fields).filter((f) => isSection(f) || !isInfoField(f, responses));
+  const rows = visibleFields(fields).filter((f) => isStructural(f) || !isInfoField(f, responses));
   return stripEmptySections(rows);
 }
 
