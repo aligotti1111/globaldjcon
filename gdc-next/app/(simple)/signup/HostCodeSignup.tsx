@@ -24,6 +24,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
+import { ConsentCheckbox } from './SignupFlow';
 import styles from './signup.module.css';
 
 /** Same E.164 shape the SMS helper and the lookup route use. */
@@ -42,11 +43,13 @@ interface Props {
   /** Null — host signup no longer asks. Kept so the column stays writable. */
   country: string | null;
   /**
-   * Whether the person has accepted the Terms & Privacy Policy. The consent
-   * checkbox lives in the parent (above the identifier field); sending the code
-   * IS the account creation, so it's gated on this being true.
+   * Whether the person has accepted the Terms & Privacy Policy. Sending the
+   * code IS the account creation, so it's gated on this being true. The consent
+   * checkbox is rendered here, just above the send-code button, so it sits at
+   * the bottom of the form rather than in the middle.
    */
   agreed?: boolean;
+  onAgreedChange?: (v: boolean) => void;
   /** Prefilled + locked when they arrived from a claim_booking invite. */
   prefillEmail?: string;
   lockedEmail?: boolean;
@@ -82,7 +85,7 @@ interface Props {
 }
 
 export default function HostCodeSignup({
-  method, name, country, agreed, prefillEmail, lockedEmail, destination, onNameError,
+  method, name, country, agreed, onAgreedChange, prefillEmail, lockedEmail, destination, onNameError,
   canSwitchMethod, onSwitchMethod, onDone,
 }: Props) {
   const supabase = createClient();
@@ -463,6 +466,10 @@ export default function HostCodeSignup({
           )}
           {switchLink}
         </div>
+      )}
+
+      {onAgreedChange && (
+        <ConsentCheckbox id="host-agree" checked={!!agreed} onChange={onAgreedChange} />
       )}
 
       <button
