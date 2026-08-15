@@ -493,6 +493,24 @@ export default function PaymentMethodsSection({ userId, currency }: { userId: st
 
   const tileLive = (k: TileKey): boolean => (k === 'card' ? !!card?.ready : isLive(k));
 
+  // Which tiles the DJ has ALREADY set up (a connected card, or a saved rail).
+  // Used to pick which one opens by default.
+  const tileConfigured = (k: TileKey): boolean =>
+    k === 'card' ? !!card?.ready : !!savedByType[k];
+
+  // Open one tile by default: the first already-configured option in tile
+  // order (the one "closest to the first"), or the very first tile if the DJ
+  // hasn't added anything yet. Runs once after load, and never fights the DJ
+  // after that — collapsing or opening a tile by hand sticks.
+  const didInitOpen = useRef(false);
+  useEffect(() => {
+    if (didInitOpen.current || !loaded) return;
+    didInitOpen.current = true;
+    const firstConfigured = TILE_ORDER.find(tileConfigured);
+    setOpenTile(firstConfigured ?? TILE_ORDER[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
   function patchType(t: PaymentMethodType, next: Partial<PaymentMethod>) {
     setFeedback(null);
     setMethods((prev) => {
