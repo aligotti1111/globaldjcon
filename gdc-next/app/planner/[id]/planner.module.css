@@ -45,12 +45,10 @@
 /* Download PDF on its own line, right-aligned under the header. */
 .downloadRow { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
 
-/* Logo on the left, address on the right — the top row of the header. */
-.brandRow {
+/* The DJ's logo, centred at the very top. */
+.logoRow {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: center;
   margin-bottom: 1rem;
 }
 
