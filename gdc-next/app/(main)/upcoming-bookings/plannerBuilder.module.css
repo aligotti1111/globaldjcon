@@ -300,6 +300,13 @@
   font-size: .96rem;
   outline: none;
 }
+/* A brand-new question with no title — reads as a to-do: amber dashed border and
+   a clear placeholder, so it's obvious the DJ still has to write the question. */
+.labelEditEmpty {
+  border: 1px dashed #d9a441;
+  background: rgba(217, 164, 65, .06);
+}
+.labelEditEmpty::placeholder { color: #d9a441; opacity: .9; }
 
 .req {
   font-size: .56rem;
