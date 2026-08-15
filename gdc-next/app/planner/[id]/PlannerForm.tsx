@@ -319,22 +319,13 @@ export default function PlannerForm({
         )}
 
         <header className={styles.head}>
-          {/* Three zones: the "Planner & Playlist" title on the LEFT, the DJ's
-              logo CENTRED, their address on the RIGHT. Each cell always renders
-              (empty when a piece is missing) so the logo stays centred and the
-              address stays right whether or not the others are set. */}
-          <div className={styles.topRow}>
-            <div className={styles.topLeft}>
-              <div className={styles.brand}>Global DJ Connect</div>
-              <h1 className={styles.title}>Planner &amp; Playlist</h1>
-            </div>
-            <div className={styles.topMid}>
+          {/* Logo on the left, address on the right — the top row. */}
+          {(logoUrl || djAddress || djPhone) ? (
+            <div className={styles.brandRow}>
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
-              ) : null}
-            </div>
-            <div className={styles.topRight}>
+              ) : <span />}
               {(djAddress || djPhone) ? (
                 <div className={styles.djContact}>
                   {djAddress ? (
@@ -351,11 +342,14 @@ export default function PlannerForm({
                 </div>
               ) : null}
             </div>
-          </div>
-          {/* Download a PDF anytime — its own line under the header so it doesn't
-              fight the three zones. Hidden in DJ preview. */}
-          {!preview && (
-            <div className={styles.downloadRow}>
+          ) : null}
+          {/* Brand + the (smaller) title below the logo/address, with Download. */}
+          <div className={styles.headBar}>
+            <div>
+              <div className={styles.brand}>Global DJ Connect</div>
+              <h1 className={styles.title}>Planner &amp; Playlist</h1>
+            </div>
+            {!preview && (
               <button
                 type="button"
                 className={styles.download}
@@ -363,8 +357,8 @@ export default function PlannerForm({
               >
                 ↓ Download PDF
               </button>
-            </div>
-          )}
+            )}
+          </div>
           <p className={styles.sub}>
             {hostName ? `${hostName} · ` : ''}{eventDateLabel}
             {venueName ? ` · ${venueName}` : ''}
