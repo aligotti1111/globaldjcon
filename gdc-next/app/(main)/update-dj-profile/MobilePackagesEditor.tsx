@@ -123,6 +123,17 @@ export default function MobilePackagesEditor({
   const count = mob.general.length;
   const idx = pkgIdx < 0 ? -1 : Math.min(pkgIdx, Math.max(0, count - 1));
 
+  // The first package is expanded by default. Packages can load in after the
+  // first render (count starts at 0), so open it once they're actually here —
+  // and only once, so a DJ who deliberately collapses it isn't re-opened.
+  const didInitOpen = useRef(false);
+  useEffect(() => {
+    if (!didInitOpen.current && count > 0) {
+      didInitOpen.current = true;
+      setPkgIdx(0);
+    }
+  }, [count]);
+
   // The list of customized event types is SHARED across all packages; each
   // package still holds its own prices for them (override array by index).
   const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
