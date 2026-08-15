@@ -82,7 +82,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, djPhone = null, leadDays = 14, known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, djPhone = null, leadDays = 14, duePassed = false, known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -101,6 +101,9 @@ export default function PlannerForm({
   djPhone?: string | null;
   /** Days before the event the DJ wants everything submitted (users.planner_lead_days). */
   leadDays?: number;
+  /** The submission deadline (event date − leadDays) has arrived/passed. Combined
+   *  with 100% completion, this LOCKS the planner from further edits. */
+  duePassed?: boolean;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
   /** DJ preview — the REAL page, read-only. No saving, no submit. */
@@ -115,6 +118,9 @@ export default function PlannerForm({
   // keystroke and must not re-render the form to do it.
   const pending = useRef<Record<string, unknown>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror of `locked` for the save/edit handlers (which are memoised and must
+  // not depend on progress). Once true, every edit and save is a no-op.
+  const lockedRef = useRef(false);
 
   const flush = useCallback(async () => {
     const batch = pending.current;
@@ -143,8 +149,8 @@ export default function PlannerForm({
   // 800ms after they stop typing. Long enough not to fire per character, short
   // enough that putting the phone down mid-sentence still saves.
   const queue = useCallback((id: string, payload: unknown) => {
-    // Preview is read-only — there's no planner to save to. Never fetch.
-    if (preview) return;
+    // Preview is read-only, and a locked planner accepts no more edits.
+    if (preview || lockedRef.current) return;
     pending.current[id] = payload;
     setSave('saving');
     if (timer.current) clearTimeout(timer.current);
@@ -195,11 +201,13 @@ export default function PlannerForm({
   }, [plannerId, preview]);
 
   const setValue = useCallback((id: string, value: unknown) => {
+    if (lockedRef.current) return;
     setResponses((r) => ({ ...r, [id]: { value } }));
     queue(id, { value });
   }, [queue]);
 
   const setNa = useCallback((id: string, na: boolean) => {
+    if (lockedRef.current) return;
     setResponses((r) => {
       const next = { ...r };
       if (na) next[id] = { na: true }; else delete next[id];
@@ -226,6 +234,32 @@ export default function PlannerForm({
     }
     return { answered, total };
   }, [fields, responses]);
+
+  // LOCK. Once the submission deadline (event − leadDays) has passed AND the
+  // planner was already 100% complete WHEN IT LOADED, it's locked — no more
+  // edits. Deliberately computed from initialResponses (load-time), NOT the live
+  // ones: a client finishing the last answer isn't slammed shut mid-session;
+  // the lock takes hold next time they open it. Under 100% at the deadline stays
+  // open so they can finish.
+  const locked = useMemo(() => {
+    if (preview || !duePassed) return false;
+    let answered = 0;
+    let total = 0;
+    for (const f of fields) {
+      if (isSection(f) || isDivider(f)) continue;
+      total++;
+      const r = initialResponses[f.id];
+      if (!r) continue;
+      if (isNa(r)) { answered++; continue; }
+      const v = responseValue(r);
+      if (v === null || v === undefined) continue;
+      if (typeof v === 'string' && v.trim() === '') continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      answered++;
+    }
+    return total > 0 && answered >= total;
+  }, [preview, duePassed, fields, initialResponses]);
+  useEffect(() => { lockedRef.current = locked; }, [locked]);
 
   async function submit() {
     setSubmitting(true);
@@ -339,11 +373,18 @@ export default function PlannerForm({
             This is what {djName} works from on the night. Nothing is required and
             it saves as you go &mdash; fill in what you know, come back for the rest.
           </p>
-          {status === 'submitted' && (
+          {status === 'submitted' && !locked && (
             <div className={styles.submitted}>
               <strong>Sent to {djName}.</strong> You still have time to update the
               information below &mdash; {djName} will be notified. Please have
               everything completed at least <strong>{leadDays} days before</strong> the event.
+            </div>
+          )}
+          {locked && (
+            <div className={styles.locked}>
+              <strong>This planner is locked.</strong> It&rsquo;s complete and the
+              submission deadline ({leadDays} days before the event) has passed, so it
+              can no longer be edited here. If something needs to change, message {djName} directly.
             </div>
           )}
         </header>
@@ -384,7 +425,7 @@ export default function PlannerForm({
           </div>
         )}
 
-        <div className={styles.fields}>
+        <div className={`${styles.fields} ${locked ? styles.fieldsLocked : ''}`} aria-disabled={locked || undefined}>
           {layout.map((f) => (
             isDivider(f) ? (
               // A plain rule between questions — purely visual spacing.
@@ -408,8 +449,9 @@ export default function PlannerForm({
           ))}
         </div>
 
-        {/* No footer/submit in DJ preview — a preview is a read, not a send. */}
-        {!preview && (
+        {/* No footer/submit in DJ preview — a preview is a read, not a send.
+            No submit once locked either. */}
+        {!preview && !locked && (
           <footer className={styles.foot}>
             <div className={styles.progress}>
               {progress.answered} of {progress.total} answered
