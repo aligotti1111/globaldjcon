@@ -538,9 +538,8 @@ export default function PlannerBuilder({
                     {!div && editing !== f.id && !!f.label.trim() ? (
                       <button type="button" className={styles.editPencil} aria-label="Rename title" onClick={() => setEditing(f.id)}><PencilIcon /></button>
                     ) : null}
-                    <span className={styles.structTag} style={{ marginLeft: 'auto' }}>{div ? 'Divider' : 'Section title'}</span>
                     {f.is_custom ? (
-                      <button type="button" className={styles.act} title="Delete" onClick={() => onRemove(f.id)}>🗑</button>
+                      <button type="button" className={styles.act} style={{ marginLeft: 'auto' }} title="Delete" onClick={() => onRemove(f.id)}>🗑</button>
                     ) : null}
                   </div>
                 </div>
