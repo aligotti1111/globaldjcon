@@ -207,6 +207,7 @@
   border-radius: 10px;
   padding: .6rem .7rem .7rem;
   background: rgba(255, 255, 255, .015);
+  transition: box-shadow .12s ease, border-color .12s ease, transform .12s ease, background .12s ease, opacity .12s ease;
 }
 /* Off, not gone. Greyed, struck, but sitting in place so the DJ can turn it
    back — hiding exists to protect answers keyed to the field id. */
@@ -214,8 +215,21 @@
 .hidden .label { text-decoration: line-through; }
 
 /* The row being dragged, and the gap that opens above the drop target. */
-.dragging { opacity: .4; }
-.over { border-top: 2px solid #00e0a4; }
+/* Picked up: the row lifts off the page — scaled a touch, tilted, with a big
+   soft shadow and a neon rim, so it clearly reads as "in your hand". */
+.dragging {
+  opacity: .95;
+  transform: scale(1.02) rotate(-.5deg);
+  border-color: rgba(0, 224, 164, .55);
+  background: rgba(0, 224, 164, .06);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .5), 0 0 0 1px rgba(0, 224, 164, .45);
+  cursor: grabbing;
+}
+/* Where it'll drop: a glowing neon bar above the target row. */
+.over {
+  border-top: 3px solid #00e0a4;
+  box-shadow: 0 -7px 16px -5px rgba(0, 224, 164, .55);
+}
 
 /* ── Drag rail ────────────────────────────────────────────────────────── */
 
@@ -234,8 +248,10 @@
   cursor: grab;
   line-height: 1;
   user-select: none;
+  transition: color .12s ease, transform .1s ease;
 }
-.grip:active { cursor: grabbing; }
+.grip:hover { color: #00e0a4; }
+.grip:active { cursor: grabbing; color: #00e0a4; transform: scale(1.25); }
 
 /* The touch fallback. Drag fights the page scroll on a phone; arrows never do.
    Hidden on a pointer that hovers (a mouse); shown on touch. */
