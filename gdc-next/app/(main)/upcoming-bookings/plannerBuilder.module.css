@@ -565,9 +565,12 @@
   font-size: .78rem;
   font-weight: 600;
   padding: .5rem;
-  cursor: pointer;
+  cursor: grab;
 }
 .addBtnAlt:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+.addBtnAlt:active { cursor: grabbing; }
+/* While being dragged into the list. */
+.addBtnDragging { opacity: .55; color: #00e0a4; border-color: rgba(0, 224, 164, .5); }
 
 /* The "how to customise" hint above the question list. */
 .editHint { font-size: .78rem; line-height: 1.5; color: #8a8aa0; margin: 0 0 .8rem; }
