@@ -305,6 +305,25 @@ export function stripEmptySections(fields: PlannerField[]): PlannerField[] {
 export const HONOREE_FIELD_ID = 'honoree';
 
 /**
+ * A "custom" planner the DJ built from scratch in Booking Settings.
+ *
+ * Every stock/base template keys on a real event type (weddings, sweet_16, or
+ * null for the base), and event-type templates COMPOSE onto the base — they add
+ * the honoree and their own questions to the shared spine. A custom planner is
+ * different: it's a standalone template the DJ authored, and it must show and
+ * send EXACTLY the questions they added — no base spine folded in underneath.
+ *
+ * We mark it by giving it an event_type of `custom:<uuid>`, unique per planner
+ * (the unique index is on (dj_id, event_type), so each custom planner is its
+ * own row). That marker never equals a booking's real event_type, so a custom
+ * planner never auto-resolves onto a booking — it's only ever chosen by hand,
+ * which is the point. This predicate is how every compose/count/send path knows
+ * to treat it as standalone instead of an override.
+ */
+export const isCustomEventType = (et: string | null | undefined): boolean =>
+  typeof et === 'string' && et.startsWith('custom:');
+
+/**
  * Which template applies to this booking, in order:
  *
  *   1. the DJ's row for this event_type      ← their custom one
