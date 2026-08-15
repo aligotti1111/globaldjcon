@@ -82,7 +82,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, djPhone = null, leadDays = 14, duePassed = false, known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, leadDays = 14, duePassed = false, known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -319,31 +319,14 @@ export default function PlannerForm({
         )}
 
         <header className={styles.head}>
-          {/* Logo on the left, address on the right — the top row. */}
-          {(logoUrl || djAddress || djPhone) ? (
-            <div className={styles.brandRow}>
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
-              ) : <span />}
-              {(djAddress || djPhone) ? (
-                <div className={styles.djContact}>
-                  {djAddress ? (
-                    <address className={styles.djAddress}>
-                      {djAddress.split(',').map((s) => s.trim()).filter(Boolean).reduce<string[]>((lines, part, i, arr) => {
-                        // Street on line one, "City, ST ZIP" under it.
-                        if (i === 0) lines.push(part);
-                        else if (i === 1) lines.push(arr.slice(1).join(', '));
-                        return lines;
-                      }, []).map((line, i) => <span key={i}>{line}</span>)}
-                    </address>
-                  ) : null}
-                  {djPhone ? <div className={styles.djPhone}>{djPhone}</div> : null}
-                </div>
-              ) : null}
+          {/* The DJ's logo, centred at the very top. */}
+          {logoUrl ? (
+            <div className={styles.logoRow}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
             </div>
           ) : null}
-          {/* Brand + the (smaller) title below the logo/address, with Download. */}
+          {/* Brand + the (smaller) title below the logo, with Download. */}
           <div className={styles.headBar}>
             <div>
               <div className={styles.brand}>Global DJ Connect</div>
