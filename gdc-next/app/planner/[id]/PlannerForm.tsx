@@ -319,19 +319,20 @@ export default function PlannerForm({
         )}
 
         <header className={styles.head}>
-          {/* One row: the DJ's logo + the "Planner & Playlist" title on the left,
-              their business address and the Download button on the right. Wraps
-              on a narrow screen. */}
+          {/* Three zones: the "Planner & Playlist" title on the LEFT, the DJ's
+              logo CENTRED, their address on the RIGHT. Each cell always renders
+              (empty when a piece is missing) so the logo stays centred and the
+              address stays right whether or not the others are set. */}
           <div className={styles.topRow}>
-            <div className={styles.brandLeft}>
+            <div className={styles.topLeft}>
+              <div className={styles.brand}>Global DJ Connect</div>
+              <h1 className={styles.title}>Planner &amp; Playlist</h1>
+            </div>
+            <div className={styles.topMid}>
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt={`${djName} logo`} className={styles.djLogo} />
               ) : null}
-              <div className={styles.titleBlock}>
-                <div className={styles.brand}>Global DJ Connect</div>
-                <h1 className={styles.title}>Planner &amp; Playlist</h1>
-              </div>
             </div>
             <div className={styles.topRight}>
               {(djAddress || djPhone) ? (
@@ -349,20 +350,21 @@ export default function PlannerForm({
                   {djPhone ? <div className={styles.djPhone}>{djPhone}</div> : null}
                 </div>
               ) : null}
-              {/* Download a PDF anytime — opens the print view with ?download=1
-                  so it downloads on open, then that tab closes itself. Hidden in
-                  DJ preview — the template has no real planner id to print. */}
-              {!preview && (
-                <button
-                  type="button"
-                  className={styles.download}
-                  onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
-                >
-                  ↓ Download PDF
-                </button>
-              )}
             </div>
           </div>
+          {/* Download a PDF anytime — its own line under the header so it doesn't
+              fight the three zones. Hidden in DJ preview. */}
+          {!preview && (
+            <div className={styles.downloadRow}>
+              <button
+                type="button"
+                className={styles.download}
+                onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
+              >
+                ↓ Download PDF
+              </button>
+            </div>
+          )}
           <p className={styles.sub}>
             {hostName ? `${hostName} · ` : ''}{eventDateLabel}
             {venueName ? ` · ${venueName}` : ''}
