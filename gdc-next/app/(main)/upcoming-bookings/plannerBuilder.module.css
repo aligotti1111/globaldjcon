@@ -549,6 +549,41 @@
 }
 .addBtn:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
 
+/* The add buttons stack: primary question add, then title + divider. */
+.addRow { display: flex; flex-direction: column; gap: .4rem; }
+.addBtnAlt {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, .16);
+  border-radius: 8px;
+  color: #8a8aa0;
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  padding: .55rem;
+  cursor: pointer;
+}
+.addBtnAlt:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+
+/* The "how to customise" hint above the question list. */
+.editHint { font-size: .78rem; line-height: 1.5; color: #8a8aa0; margin: 0 0 .8rem; }
+.editHint span { color: #00e0a4; }
+
+/* Structural rows in the editor (section title / divider) reuse the field-row
+   chrome (rail, drag, delete) with a distinct body. */
+.structField { background: rgba(255, 255, 255, .025); }
+.sectionTitleBtn {
+  flex: 0 1 auto; text-align: left; background: none; border: none; padding: 0;
+  font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
+  font-size: 1.4rem; letter-spacing: .04em; color: #f2f2f7; cursor: pointer;
+}
+.sectionTitleBtn:hover { color: #fff; }
+.dividerLine { flex: 1 1 auto; height: 0; border-top: 1px solid rgba(140, 140, 170, .35); }
+.structTag {
+  flex-shrink: 0; font-size: .6rem; letter-spacing: .08em; text-transform: uppercase;
+  color: #75758d; border: 1px solid rgba(255, 255, 255, .14); border-radius: 5px; padding: .12rem .4rem;
+}
+
 .addMenu {
   display: flex;
   flex-direction: column;
