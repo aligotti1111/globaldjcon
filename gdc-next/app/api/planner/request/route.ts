@@ -30,6 +30,7 @@ import {
   composeFields,
   applyPrefill,
   visibleFields,
+  isCustomEventType,
   dropFieldsAnsweredByBooking,
   type PlannerTemplate,
   type PlannerField,
@@ -272,6 +273,10 @@ export async function POST(req: Request) {
       // override is the event-specific half. "Send the wedding one instead"
       // means swap that half — not throw away the questions every planner has.
       const forcedTpl = forcedId ? templates.find((t) => t.id === forcedId) : undefined;
+      // A custom planner the DJ built from scratch is standalone — it carries
+      // exactly the questions they authored and does NOT fold in the base spine.
+      // Everything else composes onto the base as before.
+      const isCustom = isCustomEventType(forcedTpl?.event_type);
       const overrideFields = forcedTpl
         ? (forcedTpl.id === base.id ? [] : forcedTpl.fields || [])
         : (override?.fields || []);
@@ -279,10 +284,10 @@ export async function POST(req: Request) {
       // strip the questions it answers (the "ceremony music needed?" toggle
       // always; the ceremony / cocktail fields when that part of the day
       // doesn't exist). Works for stock AND the DJ's own template.
-      const fields = dropFieldsAnsweredByBooking(
-        composeFields(base.fields || [], overrideFields),
-        b,
-      );
+      const composed = isCustom
+        ? (forcedTpl?.fields || [])
+        : composeFields(base.fields || [], overrideFields);
+      const fields = dropFieldsAnsweredByBooking(composed, b);
       // Prefill runs ONCE, here, and is stored. Not recomputed per page load:
       // if the DJ edits the booking tomorrow the client's form must not shift
       // under them mid-answer.
