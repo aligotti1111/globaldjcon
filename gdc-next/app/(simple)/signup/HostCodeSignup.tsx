@@ -24,6 +24,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
+import { ConsentCheckbox } from './SignupFlow';
 import styles from './signup.module.css';
 
 /** Same E.164 shape the SMS helper and the lookup route use. */
@@ -48,6 +49,7 @@ interface Props {
    * is missing we call onConsentError so the parent can flag it there.
    */
   agreed?: boolean;
+  onAgreedChange?: (v: boolean) => void;
   onConsentError?: () => void;
   /** Prefilled + locked when they arrived from a claim_booking invite. */
   prefillEmail?: string;
@@ -84,7 +86,7 @@ interface Props {
 }
 
 export default function HostCodeSignup({
-  method, name, country, agreed, onConsentError, prefillEmail, lockedEmail, destination, onNameError,
+  method, name, country, agreed, onAgreedChange, onConsentError, prefillEmail, lockedEmail, destination, onNameError,
   canSwitchMethod, onSwitchMethod, onDone,
 }: Props) {
   const supabase = createClient();
@@ -466,6 +468,10 @@ export default function HostCodeSignup({
           )}
           {switchLink}
         </div>
+      )}
+
+      {onAgreedChange && (
+        <ConsentCheckbox id="host-agree" checked={!!agreed} onChange={onAgreedChange} />
       )}
 
       <button
