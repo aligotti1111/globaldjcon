@@ -815,23 +815,42 @@ export default function PaymentMethodsSection({ userId, currency }: { userId: st
                   // The OPEN tile gets a neon ring + glow so it's obvious which
                   // one the panel below is editing — this works even for a live
                   // tile, whose neon border otherwise looks the same open or not.
-                  boxShadow: open && !blocked ? '0 0 0 2px var(--neon), 0 6px 16px rgba(0,224,164,.28)' : undefined,
+                  boxShadow: open && !blocked ? '0 0 0 2px var(--neon), 0 8px 20px rgba(0,224,164,.35)' : undefined,
                   cursor: blocked ? 'not-allowed' : 'pointer',
                   opacity: blocked ? 0.45 : 1,
                   textAlign: 'center',
-                  zIndex: open ? 1 : undefined,
+                  zIndex: open ? 2 : undefined,
+                  // Lift the open tile so it visibly separates from its neighbours,
+                  // which all share the same neon border when they're live.
+                  transform: open && !blocked ? 'translateY(-4px)' : undefined,
+                  transition: 'transform .12s ease, box-shadow .12s ease',
                 }}
               >
+                {/* Solid "EDITING" badge — the one signal that stands out against
+                    a row where every live tile already has a neon border. */}
+                {open && !blocked && (
+                  <span
+                    style={{
+                      position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
+                      background: 'var(--neon)', color: '#04121a',
+                      fontSize: '.5rem', fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase',
+                      padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 6px rgba(0,0,0,.4)',
+                    }}
+                  >
+                    Editing
+                  </span>
+                )}
                 {/* Caret pointing down to the editor panel, so the open tile is
                     visibly tied to the fields below it. */}
                 {open && !blocked && (
                   <span
                     aria-hidden="true"
                     style={{
-                      position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
+                      position: 'absolute', bottom: -9, left: '50%', transform: 'translateX(-50%)',
                       width: 0, height: 0,
-                      borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
-                      borderTop: '7px solid var(--neon)',
+                      borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
+                      borderTop: '9px solid var(--neon)',
                     }}
                   />
                 )}
