@@ -185,10 +185,10 @@ export async function POST(req: Request) {
     // it just quietly hands you nothing.
     const { data: djData, error: djErr } = await admin
       .from('users')
-      .select('name, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+      .select('name, planner_lead_days, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
       .eq('id', acting.djId)
       .maybeSingle();
-    const djRow = djData as unknown as (AccessFields & { name?: string | null }) | null;
+    const djRow = djData as unknown as (AccessFields & { name?: string | null; planner_lead_days?: number | null }) | null;
     // A failed QUERY and a genuinely un-subscribed DJ are different problems and
     // must not share an answer. That conflation is exactly what hid this bug.
     if (djErr) {
@@ -354,6 +354,25 @@ export async function POST(req: Request) {
       const when = fmtDate(b.event_date);
       const count = visibleFields(planner.fields || []).length;
 
+      // The latest the client can submit: the event date minus how many days
+      // ahead this DJ asks for it (users.planner_lead_days, default 14). Same
+      // rule the planner page enforces — shown here, highlighted, so the client
+      // sees the deadline in the email that first asks them to fill it in.
+      const leadDays = djRow?.planner_lead_days ?? 14;
+      let dueLabel = '';
+      if (b.event_date) {
+        const due = new Date(`${b.event_date}T12:00:00`);
+        due.setDate(due.getDate() - leadDays);
+        dueLabel = due.toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        });
+      }
+      const dueBanner = dueLabel
+        ? `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your planner by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+</div>`
+        : '';
+
       const recap = `<div style="background:#f8f8f8;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
 <p style="margin:0;color:#666;font-size:13px;line-height:1.7;">
 <strong style="color:#111;">${esc(djName)}</strong><br/>${esc(when)}${b.venue_name ? ` · ${esc(b.venue_name)}` : ''}
@@ -370,6 +389,7 @@ ${isResend
   : `${esc(djName)} needs a few details to run your night: the songs that matter, the names to get right, and anything that should never be played.`}
 </p>
 ${recap}
+${dueBanner}
 <p style="margin:0 0 22px;color:#666;font-size:14px;line-height:1.7;">
 There are ${count} questions and <strong style="color:#111;">none of them are required</strong>. It saves as you go, so fill in what you know now and come back for the rest. No account, no password — the link is yours.
 </p>
