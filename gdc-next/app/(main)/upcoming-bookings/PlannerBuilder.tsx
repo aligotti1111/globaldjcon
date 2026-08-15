@@ -484,12 +484,17 @@ export default function PlannerBuilder({
 
               <div className={styles.body}>
                 <div className={styles.labelRow}>
-                  {editing === f.id ? (
+                  {(editing === f.id || !f.label.trim()) ? (
+                    // Editing, OR a brand-new question with no title yet: show an
+                    // input. An untitled one reads as a prompt (accent border +
+                    // "Type your question here…") so it's obviously waiting for the
+                    // DJ to write the question, not a finished field.
                     <input
-                      className={styles.labelEdit}
+                      className={`${styles.labelEdit} ${!f.label.trim() ? styles.labelEditEmpty : ''}`}
                       // eslint-disable-next-line jsx-a11y/no-autofocus
-                      autoFocus
+                      autoFocus={editing === f.id}
                       value={f.label}
+                      placeholder="Type your question here…"
                       onChange={(e) => onPatch(f.id, { label: e.target.value })}
                       onBlur={() => setEditing(null)}
                       onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
@@ -502,16 +507,15 @@ export default function PlannerBuilder({
                       onClick={() => setEditing(f.id)}
                       title="Click to rename"
                     >
-                      {f.label ? titleCaseLabel(f.label) : 'Untitled question'}
+                      {titleCaseLabel(f.label)}
                       {f.required ? <span className={styles.req}>required</span> : null}
-                      {f.is_custom ? <span className={styles.mine}>yours</span> : null}
                     </button>
                   )}
 
                   {/* Pencil — right next to the title, a visible outlined chip so
-                      it plainly reads as "you can rename this". Clicking the
-                      title works too, but the pencil is what a DJ looks for. */}
-                  {editing !== f.id ? (
+                      it plainly reads as "you can rename this". Hidden while the
+                      input is showing (editing, or an untitled question). */}
+                  {(editing !== f.id && !!f.label.trim()) ? (
                     <button
                       type="button"
                       className={styles.editPencil}
