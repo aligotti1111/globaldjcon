@@ -729,7 +729,7 @@ function FieldPreview({ field }: { field: PlannerField }) {
     case 'textlist':
       return (
         <div className={styles.pvStack}>
-          <div className={styles.pv} />
+          <div className={styles.pv}><span className={styles.pvPh}>A song, an artist, a whole genre…</span></div>
           <span className={styles.pvAdd}>+ Add another</span>
         </div>
       );
@@ -754,7 +754,8 @@ function FieldPreview({ field }: { field: PlannerField }) {
       );
     case 'link':
       return <div className={styles.pv}><span className={styles.pvPh}>https://…</span></div>;
+    case 'text':
     default:
-      return <div className={styles.pv} />;
+      return <div className={styles.pv}><span className={styles.pvPh}>Type the answer here…</span></div>;
   }
 }
