@@ -266,19 +266,34 @@ export default function UpcomingBookingsClient({
   // Watches the URL via Next's useSearchParams so it fires on EVERY URL
   // change, including when the user is already on /upcoming-bookings and
   // taps the dropdown again (which doesn't remount the component).
+  //
+  // isPaid loads ASYNCHRONOUSLY (a users row fetch). Navigating here fresh —
+  // e.g. from the burger menu on another page — lands with isPaid still false,
+  // so checking it right here would drop the request and the modal would never
+  // open even for a subscriber. Instead we record the intent, strip the param,
+  // and let the effect below open the modal the moment isPaid resolves true.
+  const [pendingAdd, setPendingAdd] = useState(false);
   const searchParams = useSearchParams();
   useEffect(() => {
     if (searchParams?.get('add') === '1') {
-      // Only open for active subscribers — a lapsed DJ can't create new
-      // bookings, so ?add=1 (deep-link) is a no-op for them.
-      if (isPaid) setShowAddModal(true);
+      setPendingAdd(true);
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('add');
         window.history.replaceState(null, '', url.toString());
       }
     }
-  }, [searchParams, isPaid]);
+  }, [searchParams]);
+
+  // Open the add modal once we KNOW the DJ is a subscriber. Kept subscriber-only
+  // on purpose — a lapsed DJ can't create new bookings, so the request simply
+  // waits (and never fires) rather than opening a form that can't save.
+  useEffect(() => {
+    if (pendingAdd && isPaid) {
+      setShowAddModal(true);
+      setPendingAdd(false);
+    }
+  }, [pendingAdd, isPaid]);
 
   // Group by month (YYYY-MM). Upcoming: soonest month first, ascending dates.
   // Archive (Past): most-recent month first, most-recent date first.
