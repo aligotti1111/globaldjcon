@@ -16,6 +16,7 @@ import {
   responseValue,
   hasAnswer,
   isSection,
+  isDivider,
   playLink,
   DO_NOT_PLAY_FIELD_ID,
   HONOREE_FIELD_ID,
@@ -144,7 +145,9 @@ export default function PlannerSheetView({
             write on. */}
         <div className={styles.grid}>
           {fields.map((f) => (
-            isSection(f) ? (
+            isDivider(f) ? (
+              <hr key={f.id} className={styles.dividerRule} />
+            ) : isSection(f) ? (
               // A heading, not a question — spans the grid and starts a new
               // group (e.g. "Reception" after the ceremony songs).
               <div key={f.id} className={styles.sectionHead}>{titleCaseLabel(f.label)}</div>
