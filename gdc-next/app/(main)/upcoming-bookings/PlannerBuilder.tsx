@@ -30,7 +30,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isSection, titleCaseLabel } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isDivider, isStructural, titleCaseLabel } from '@/lib/planner';
 import { createClient } from '@/lib/supabase/client';
 import styles from './plannerBuilder.module.css';
 
@@ -410,41 +410,74 @@ export default function PlannerBuilder({
         </div>
       </div>
 
+      {/* How to customise — reads right above the question list. */}
+      <div className={styles.editHint}>
+        <span aria-hidden="true">⠿</span> Drag to reorder. Tap a question or its pencil to
+        rename it. Use the buttons at the bottom to add a question, a section title, or a divider.
+      </div>
+
       <div className={styles.list}>
         {editable.map((f, i) => {
           const pinned = isPinned(f.id);
           const dragging = dragI === i;
           const over = overI === i && dragI !== null && dragI !== i;
 
-          // A SECTION HEADING — not a question, and not a row you shuffle. It's a
-          // full-width HERO BANNER that splits the form into parts (e.g. the
-          // ceremony questions above, the reception below). Fixed in place; the
-          // questions reorder around it. Rename via the pencil — nothing else.
-          if (isSection(f)) {
+          // A SECTION TITLE or a DIVIDER — structural, not a question. In the
+          // editor it's a draggable row so the DJ can position and delete it;
+          // on the client page it renders clean (a heading, or a plain rule).
+          if (isStructural(f)) {
+            const div = isDivider(f);
             return (
-              <div key={f.id} className={styles.sectionBanner}>
-                {editing === f.id ? (
-                  <input
-                    className={styles.sectionBannerEdit}
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
-                    autoFocus
-                    value={f.label}
-                    onChange={(e) => onPatch(f.id, { label: e.target.value })}
-                    onBlur={() => setEditing(null)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
-                  />
-                ) : (
-                  <>
-                    <span className={styles.sectionBannerText}>{f.label ? titleCaseLabel(f.label) : 'Section'}</span>
-                    <button
-                      type="button"
-                      className={styles.sectionBannerEditBtn}
-                      title="Rename this section"
-                      aria-label={`Rename the "${f.label || 'section'}" heading`}
-                      onClick={() => setEditing(f.id)}
-                    ><PencilIcon /></button>
-                  </>
-                )}
+              <div
+                key={f.id}
+                className={[styles.field, styles.structField, dragging ? styles.dragging : '', over ? styles.over : ''].join(' ')}
+                onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
+                onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
+              >
+                <div className={styles.rail}>
+                  <span
+                    className={styles.grip}
+                    draggable
+                    onDragStart={() => setDragI(i)}
+                    onDragEnd={() => { setDragI(null); setOverI(null); }}
+                    aria-hidden="true"
+                  >⠿</span>
+                  <div className={styles.arrows}>
+                    <button type="button" className={styles.arrow} aria-label="Move up" disabled={i === 0}
+                      onClick={() => reorderEditable(i, i - 1)}>↑</button>
+                    <button type="button" className={styles.arrow} aria-label="Move down" disabled={i === editable.length - 1}
+                      onClick={() => reorderEditable(i, i + 1)}>↓</button>
+                  </div>
+                </div>
+                <div className={styles.body}>
+                  <div className={styles.labelRow}>
+                    {div ? (
+                      <span className={styles.dividerLine} />
+                    ) : (editing === f.id || !f.label.trim()) ? (
+                      <input
+                        className={styles.sectionBannerEdit}
+                        // eslint-disable-next-line jsx-a11y/no-autofocus
+                        autoFocus={editing === f.id}
+                        placeholder="Section title…"
+                        value={f.label}
+                        onChange={(e) => onPatch(f.id, { label: e.target.value })}
+                        onBlur={() => setEditing(null)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
+                      />
+                    ) : (
+                      <button type="button" className={styles.sectionTitleBtn} onClick={() => setEditing(f.id)} title="Rename this title">
+                        {titleCaseLabel(f.label)}
+                      </button>
+                    )}
+                    {!div && editing !== f.id && !!f.label.trim() ? (
+                      <button type="button" className={styles.editPencil} aria-label="Rename title" onClick={() => setEditing(f.id)}><PencilIcon /></button>
+                    ) : null}
+                    <span className={styles.structTag} style={{ marginLeft: 'auto' }}>{div ? 'Divider' : 'Section title'}</span>
+                    {f.is_custom ? (
+                      <button type="button" className={styles.act} title="Delete" onClick={() => onRemove(f.id)}>🗑</button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             );
           }
@@ -581,9 +614,17 @@ export default function PlannerBuilder({
             <button type="button" className={styles.addCancel} onClick={() => setAddOpen(false)}>Cancel</button>
           </div>
         ) : (
-          <button type="button" className={styles.addBtn} onClick={() => setAddOpen(true)}>
-            + Add a question
-          </button>
+          <div className={styles.addRow}>
+            <button type="button" className={styles.addBtn} onClick={() => setAddOpen(true)}>
+              + Add a question
+            </button>
+            <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('section')}>
+              + Add a section title
+            </button>
+            <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('divider')}>
+              + Add a divider
+            </button>
+          </div>
         )}
       </div>
 
