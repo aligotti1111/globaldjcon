@@ -276,7 +276,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                     ? <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.9rem', fontWeight: 700 }}>{it.price}</span>
                     : <span style={{ color: 'rgba(255,255,255,.45)', fontSize: '.7rem', fontStyle: 'italic' }}>Awaiting quote</span>}
                   {/* Explicit affordance so it reads as clickable. */}
-                  <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.66rem', fontWeight: 700, letterSpacing: '.02em' }}>View &rarr;</span>
+                  <span style={{ color: '#fff', fontSize: '.66rem', fontWeight: 700, letterSpacing: '.02em', textDecoration: 'underline', textUnderlineOffset: 2 }}>View</span>
                 </span>
               </button>
             ))
