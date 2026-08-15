@@ -349,11 +349,11 @@ export default function PlannerForm({
             {venueName ? ` · ${venueName}` : ''}
           </p>
           <p className={styles.intro}>
-            The information you enter will save as you go &mdash; fill in what you know, come back
+            The information you enter will save as you go. Fill in what you know, come back
             {dueDateLabel ? (
               <> and complete the form before <strong>{dueDateLabel}</strong>.</>
             ) : preview ? (
-              // No booking behind a preview, so no real date — show the rule.
+              // No booking behind a preview, so no real date, show the rule.
               <> and complete the form before <strong>{leadDays} days before the event</strong>.</>
             ) : (
               <> and complete the form.</>
