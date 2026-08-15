@@ -86,6 +86,9 @@ export default function PlannerBuilder({
   const [overI, setOverI] = useState<number | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  // A NEW section/divider being dragged in from the top buttons (vs. an existing
+  // row being reordered). Set on the button's dragstart; consumed on drop.
+  const [addDrag, setAddDrag] = useState<'section' | 'divider' | null>(null);
 
   // ── The DJ's business logo ────────────────────────────────────────────────
   // Same shared field (users.contract_logo_url) and same upload path as the
@@ -279,6 +282,31 @@ export default function PlannerBuilder({
     onReorder(fields.map((f) => (anchored(f) ? f : moved[k++])));
   }
 
+  // Drop a NEW section/divider at editable index toE (before that row; the list
+  // end when toE >= length). Splices straight into the full array at the matching
+  // absolute index so anchored (prefilled) fields keep their places.
+  function insertStructuralAt(toE: number, type: 'section' | 'divider') {
+    let count = 0;
+    let absIdx = fields.length;
+    for (let a = 0; a < fields.length; a++) {
+      if (anchored(fields[a])) continue;
+      if (count === toE) { absIdx = a; break; }
+      count++;
+    }
+    const next = [...fields];
+    next.splice(absIdx, 0, { id: crypto.randomUUID(), type, label: '', is_custom: true });
+    onReorder(next);
+  }
+
+  // A drop on editable row i: dropping a NEW item inserts it there; otherwise
+  // reorder the row being dragged.
+  function handleDropAt(i: number) {
+    if (addDrag) { insertStructuralAt(i, addDrag); setAddDrag(null); }
+    else if (dragI !== null && dragI !== i) reorderEditable(dragI, i);
+    setDragI(null);
+    setOverI(null);
+  }
+
   return (
     <div className={styles.wrap}>
       {/* Logo on the LEFT, business address stacked on the RIGHT — the top of the
@@ -416,17 +444,45 @@ export default function PlannerBuilder({
         rename it. Add a section title or divider here, or a question at the bottom.
       </div>
 
-      {/* Section title / divider — added at the top, then dragged into place. */}
+      {/* Section title / divider — DRAG one down onto the exact spot, or click to
+          drop it at the top and drag from there. */}
       <div className={styles.addTop}>
-        <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('section')}>
-          + Section title
+        <button
+          type="button"
+          className={`${styles.addBtnAlt} ${addDrag === 'section' ? styles.addBtnDragging : ''}`}
+          draggable
+          onClick={() => insertStructuralAt(0, 'section')}
+          onDragStart={() => setAddDrag('section')}
+          onDragEnd={() => { setAddDrag(null); setOverI(null); }}
+          title="Drag onto a spot in the list, or click to add at the top"
+        >
+          ⠿ + Section title
         </button>
-        <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('divider')}>
-          + Divider
+        <button
+          type="button"
+          className={`${styles.addBtnAlt} ${addDrag === 'divider' ? styles.addBtnDragging : ''}`}
+          draggable
+          onClick={() => insertStructuralAt(0, 'divider')}
+          onDragStart={() => setAddDrag('divider')}
+          onDragEnd={() => { setAddDrag(null); setOverI(null); }}
+          title="Drag onto a spot in the list, or click to add at the top"
+        >
+          ⠿ + Divider
         </button>
       </div>
 
-      <div className={styles.list}>
+      <div
+        className={styles.list}
+        onDragOver={(e) => { if (addDrag) e.preventDefault(); }}
+        onDrop={(e) => {
+          // Dropped in the empty space below the rows → add at the end.
+          if (addDrag && e.target === e.currentTarget) {
+            e.preventDefault();
+            insertStructuralAt(editable.length, addDrag);
+            setAddDrag(null);
+          }
+        }}
+      >
         {editable.map((f, i) => {
           const pinned = isPinned(f.id);
           const dragging = dragI === i;
@@ -442,7 +498,7 @@ export default function PlannerBuilder({
                 key={f.id}
                 className={[styles.field, styles.structField, dragging ? styles.dragging : '', over ? styles.over : ''].join(' ')}
                 onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
-                onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
+                onDrop={(e) => { e.preventDefault(); handleDropAt(i); }}
               >
                 <div className={styles.rail}>
                   <span
@@ -504,7 +560,7 @@ export default function PlannerBuilder({
               // Whole row is draggable via the handle only (draggable set on the
               // handle would still need the row to carry the events).
               onDragOver={(e) => { e.preventDefault(); setOverI(i); }}
-              onDrop={(e) => { e.preventDefault(); if (dragI !== null && dragI !== i) reorderEditable(dragI, i); setDragI(null); setOverI(null); }}
+              onDrop={(e) => { e.preventDefault(); handleDropAt(i); }}
             >
               <div className={styles.rail}>
                 <span
