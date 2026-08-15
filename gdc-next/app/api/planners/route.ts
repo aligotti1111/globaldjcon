@@ -29,6 +29,7 @@ import {
   composeFields,
   applyPrefill,
   visibleFields,
+  isCustomEventType,
   NOTES_FIELD_ID,
   DO_NOT_PLAY_FIELD_ID,
   HONOREE_FIELD_ID,
@@ -70,6 +71,9 @@ async function loadTemplates(db: SupabaseClient, djId: string): Promise<PlannerT
 // either way — only the override-only ones are corrected.
 function composedCount(templates: PlannerTemplate[], djId: string, t: PlannerTemplate): number {
   if (t.event_type == null) return visibleFields(t.fields || []).length;
+  // A custom planner is standalone — it doesn't fold in the base spine, so its
+  // count is just its own visible questions.
+  if (isCustomEventType(t.event_type)) return visibleFields(t.fields || []).length;
   const base =
     templates.find((x) => x.dj_id === djId && !x.is_standard && x.event_type == null) ??
     templates.find((x) => x.is_standard && x.event_type == null) ??
@@ -166,7 +170,11 @@ export async function GET(req: Request) {
       if (!base && !override) {
         return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
       }
-      const fields = composeFields(base?.fields || [], override?.fields || []);
+      // A custom planner is standalone: show ONLY its own questions, never the
+      // base spine composed underneath.
+      const fields = isCustomEventType(override?.event_type)
+        ? (override?.fields || [])
+        : composeFields(base?.fields || [], override?.fields || []);
       const resolved = override || base!;
       const wantType = resolved.event_type;
       return NextResponse.json({
