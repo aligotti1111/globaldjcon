@@ -82,7 +82,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, leadDays = 14, duePassed = false, known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, leadDays = 14, duePassed = false, dueDateLabel = '', known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -104,6 +104,8 @@ export default function PlannerForm({
   /** The submission deadline (event date − leadDays) has arrived/passed. Combined
    *  with 100% completion, this LOCKS the planner from further edits. */
   duePassed?: boolean;
+  /** The formatted "complete by" date (event date − leadDays). */
+  dueDateLabel?: string;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
   /** DJ preview — the REAL page, read-only. No saving, no submit. */
@@ -347,8 +349,10 @@ export default function PlannerForm({
             {venueName ? ` · ${venueName}` : ''}
           </p>
           <p className={styles.intro}>
-            This is what {djName} works from on the night. Nothing is required and
-            it saves as you go &mdash; fill in what you know, come back for the rest.
+            Saves as you go &mdash; fill in what you know, come back.
+            {dueDateLabel ? (
+              <> Planner &amp; Playlist must be complete by <strong>{dueDateLabel}</strong>.</>
+            ) : null}
           </p>
           {status === 'submitted' && !locked && (
             <div className={styles.submitted}>
