@@ -376,7 +376,7 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
 // The terms/privacy consent, required before any account is created. Same
 // markup on every signup form so the agreement reads identically wherever the
 // account is made. Links open in a new tab so a half-filled form isn't lost.
-function ConsentCheckbox({
+export function ConsentCheckbox({
   id, checked, onChange,
 }: {
   id: string;
@@ -896,12 +896,12 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
       <BackButton onClick={onBack} />
       <TypeBadge current="host" onSwitch={onSwitchType} />
       {sharedFields}
-      <ConsentCheckbox id="host-agree" checked={agreed} onChange={setAgreed} />
       <HostCodeSignup
         method={method}
         name={name}
         country={country}
         agreed={agreed}
+        onAgreedChange={setAgreed}
         prefillEmail={prefillEmail}
         lockedEmail={lockedEmail}
         destination={destination}
