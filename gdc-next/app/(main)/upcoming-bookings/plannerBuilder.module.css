@@ -535,6 +535,13 @@
   border-radius: 8px;
   padding: .6rem;
 }
+.addHead {
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #8a8aa0;
+  margin: 0 0 .2rem;
+}
 .addPick {
   width: 100%;
   text-align: left;
