@@ -29,8 +29,31 @@
   margin-bottom: 2rem;
 }
 
-/* Logo + business address share one row at the very top: logo left, address
-   right. When only one is present, .brandRowSolo centres it. */
+/* The whole top of the planner on one row: logo + title on the left, address +
+   download on the right. Wraps on a narrow screen. */
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.brandLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.titleBlock { min-width: 0; }
+.topRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .6rem;
+}
+
+/* Kept for other callers; the header now uses .topRow above. */
 .brandRow {
   display: flex;
   align-items: center;
