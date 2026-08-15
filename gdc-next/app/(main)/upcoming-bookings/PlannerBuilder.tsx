@@ -389,7 +389,7 @@ export default function PlannerBuilder({
       <div className={styles.pageHead}>
         <div className={styles.brand}>Global DJ Connect</div>
         <div className={styles.pageTitle}>Planner &amp; Playlist</div>
-        <div className={styles.pageSub}>This is exactly what your client sees. Drag to reorder; tap the pencil (or the question) to rename it.</div>
+        <div className={styles.pageSub}>This is exactly what your client sees.</div>
       </div>
 
       {/* Your booking — the SAME read-only facts the client sees on the live
@@ -413,7 +413,17 @@ export default function PlannerBuilder({
       {/* How to customise — reads right above the question list. */}
       <div className={styles.editHint}>
         <span aria-hidden="true">⠿</span> Drag to reorder. Tap a question or its pencil to
-        rename it. Use the buttons at the bottom to add a question, a section title, or a divider.
+        rename it. Add a section title or divider here, or a question at the bottom.
+      </div>
+
+      {/* Section title / divider — added at the top, then dragged into place. */}
+      <div className={styles.addTop}>
+        <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('section')}>
+          + Section title
+        </button>
+        <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('divider')}>
+          + Divider
+        </button>
       </div>
 
       <div className={styles.list}>
@@ -614,19 +624,9 @@ export default function PlannerBuilder({
             <button type="button" className={styles.addCancel} onClick={() => setAddOpen(false)}>Cancel</button>
           </div>
         ) : (
-          <div className={styles.addRow}>
-            <div className={styles.addAltRow}>
-              <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('section')}>
-                + Section title
-              </button>
-              <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('divider')}>
-                + Divider
-              </button>
-            </div>
-            <button type="button" className={styles.addBtn} onClick={() => setAddOpen(true)}>
-              + Add a question
-            </button>
-          </div>
+          <button type="button" className={styles.addBtn} onClick={() => setAddOpen(true)}>
+            + Add a question
+          </button>
         )}
       </div>
 
