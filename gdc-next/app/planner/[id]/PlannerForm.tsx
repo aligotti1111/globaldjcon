@@ -82,7 +82,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, djPhone = null, known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, djAddress = null, djPhone = null, leadDays = 14, known, preview = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -99,6 +99,8 @@ export default function PlannerForm({
   djAddress?: string | null;
   /** The DJ's business phone (users.phone) — shown stacked under the address. */
   djPhone?: string | null;
+  /** Days before the event the DJ wants everything submitted (users.planner_lead_days). */
+  leadDays?: number;
   /** What we already know off the booking. Shown, never asked. */
   known: { k: string; v: string }[];
   /** DJ preview — the REAL page, read-only. No saving, no submit. */
@@ -341,7 +343,7 @@ export default function PlannerForm({
             <div className={styles.submitted}>
               <strong>Sent to {djName}.</strong> You still have time to update the
               information below &mdash; {djName} will be notified. Please have
-              everything completed at least <strong>10 days before</strong> the event.
+              everything completed at least <strong>{leadDays} days before</strong> the event.
             </div>
           )}
         </header>
