@@ -353,8 +353,8 @@ export default function PlannerForm({
             {dueDateLabel ? (
               <> and complete the form before <strong>{dueDateLabel}</strong>.</>
             ) : preview ? (
-              // No booking behind a preview, so no real date, show the rule.
-              <> and complete the form before <strong>{leadDays} days before the event</strong>.</>
+              // No booking behind a preview, so no real date, show a placeholder.
+              <> and complete the form before <strong>(date will be inserted)</strong>.</>
             ) : (
               <> and complete the form.</>
             )}
