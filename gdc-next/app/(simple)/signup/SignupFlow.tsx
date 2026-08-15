@@ -373,6 +373,42 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
   );
 }
 
+// The terms/privacy consent, required before any account is created. Same
+// markup on every signup form so the agreement reads identically wherever the
+// account is made. Links open in a new tab so a half-filled form isn't lost.
+function ConsentCheckbox({
+  id, checked, onChange,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: '.55rem',
+        margin: '0 0 1rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem',
+        lineHeight: 1.5, cursor: 'pointer',
+      }}
+    >
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ marginTop: '.15rem', flex: '0 0 auto', cursor: 'pointer' }}
+      />
+      <span>
+        I agree to the{' '}
+        <Link href="/terms" target="_blank" style={{ color: 'var(--neon,#00e0a4)' }}>Terms &amp; Conditions</Link>
+        {' '}and{' '}
+        <Link href="/privacy" target="_blank" style={{ color: 'var(--neon,#00e0a4)' }}>Privacy Policy</Link>.
+      </span>
+    </label>
+  );
+}
+
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className={styles.formBack} onClick={onClick}>
@@ -462,6 +498,8 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
   const [city, setCity] = useState('');
   const [stateRegion, setStateRegion] = useState('');
   const [travel, setTravel] = useState('');
+  // Must accept the Terms & Privacy Policy before an account can be created.
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -512,6 +550,10 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
     }
     if (slugStatus === 'checking') {
       setError('Still checking URL availability — please wait a moment.');
+      return;
+    }
+    if (!agreed) {
+      setError('Please accept the Terms & Conditions and Privacy Policy to continue.');
       return;
     }
 
@@ -717,6 +759,8 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
         </select>
       </div>
 
+      <ConsentCheckbox id="dj-agree" checked={agreed} onChange={setAgreed} />
+
       <button type="submit" className={styles.submitBtn} disabled={submitting}>
         {submitting ? 'Creating Account...' : 'Create DJ Account'}
       </button>
@@ -779,6 +823,9 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
   // A claim_booking invite is pinned to one address. Offering phone there
   // would let someone create an account the invitation can't attach to.
   const canChooseMethod = !lockedEmail;
+  // Terms/Privacy consent — required before the code (which creates the
+  // account) can be sent.
+  const [agreed, setAgreed] = useState(false);
 
   // Both paths finish signed in — there's no "check your inbox" screen in
   // between any more — so the form needs somewhere to send them.
@@ -849,10 +896,12 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
       <BackButton onClick={onBack} />
       <TypeBadge current="host" onSwitch={onSwitchType} />
       {sharedFields}
+      <ConsentCheckbox id="host-agree" checked={agreed} onChange={setAgreed} />
       <HostCodeSignup
         method={method}
         name={name}
         country={country}
+        agreed={agreed}
         prefillEmail={prefillEmail}
         lockedEmail={lockedEmail}
         destination={destination}
