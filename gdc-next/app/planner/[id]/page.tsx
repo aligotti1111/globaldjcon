@@ -153,10 +153,14 @@ export default async function PlannerPage({
   // Has the submission deadline (event date − leadDays) arrived? Used with 100%
   // completion to lock the planner. Date-only, T12:00:00 so it doesn't slip a day.
   let duePassed = false;
+  let dueDateLabel = '';
   if (booking?.event_date) {
     const due = new Date(`${booking.event_date}T12:00:00`);
     due.setDate(due.getDate() - leadDays);
     duePassed = new Date() >= due;
+    dueDateLabel = due.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    });
   }
   // The DJ's single business logo (users.contract_logo_url) — shown at the top
   // of the planner so it's clearly THEIR page. Suppressed if the DJ hid the logo
@@ -239,6 +243,7 @@ export default async function PlannerPage({
       djPhone={djPhone}
       leadDays={leadDays}
       duePassed={duePassed}
+      dueDateLabel={dueDateLabel}
       known={known}
     />
   );
