@@ -222,12 +222,11 @@ export default function PlannerLibrarySection() {
 
       {templates && templates.length > 0 && (
         <div style={{ maxWidth: 720 }}>
-          {templates.map((t) => (
+          {templates.map((t, i) => (
             <div
               key={t.id}
-              style={t.eventType == null
-                // Set the standard/base planner slightly apart from the event
-                // types below it.
+              style={i === 0
+                // Only the very first (standard) planner is set slightly apart.
                 ? { ...rowStyle, marginBottom: '.7rem', paddingBottom: '.7rem', borderBottom: '1px solid rgba(140,140,170,.28)' }
                 : rowStyle}
             >
