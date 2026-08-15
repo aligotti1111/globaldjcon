@@ -553,6 +553,8 @@
    the primary "add a question" button. */
 .addRow { display: flex; flex-direction: column; gap: .4rem; }
 .addAltRow { display: flex; gap: .4rem; }
+/* Section title / divider add buttons — side by side at the top of the list. */
+.addTop { display: flex; gap: .4rem; margin: 0 0 .9rem; }
 .addBtnAlt {
   flex: 1 1 0;
   background: transparent;
