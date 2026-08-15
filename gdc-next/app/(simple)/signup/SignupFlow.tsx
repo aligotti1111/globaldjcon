@@ -640,14 +640,8 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
       <TypeBadge current="dj" onSwitch={onSwitchType} />
 
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
-
-      <ConsentCheckbox
-        id="dj-agree"
-        checked={agreed}
-        onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
-      />
       {consentError && !agreed && (
-        <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '-.5rem' }}>
+        <div className={`${styles.alert} ${styles.alertError}`}>
           Please accept the Terms &amp; Conditions and Privacy Policy to continue.
         </div>
       )}
@@ -772,6 +766,12 @@ function DjForm({ onBack, onSwitchType, onSuccess }: {
           {TRAVEL_DISTANCES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
+
+      <ConsentCheckbox
+        id="dj-agree"
+        checked={agreed}
+        onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
+      />
 
       <button type="submit" className={styles.submitBtn} disabled={submitting}>
         {submitting ? 'Creating Account...' : 'Create DJ Account'}
@@ -909,13 +909,8 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
     <div>
       <BackButton onClick={onBack} />
       <TypeBadge current="host" onSwitch={onSwitchType} />
-      <ConsentCheckbox
-        id="host-agree"
-        checked={agreed}
-        onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
-      />
       {consentError && !agreed && (
-        <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '-.5rem' }}>
+        <div className={`${styles.alert} ${styles.alertError}`}>
           Please accept the Terms &amp; Conditions and Privacy Policy to continue.
         </div>
       )}
@@ -925,6 +920,7 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
         name={name}
         country={country}
         agreed={agreed}
+        onAgreedChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
         onConsentError={() => setConsentError(true)}
         prefillEmail={prefillEmail}
         lockedEmail={lockedEmail}
