@@ -23,6 +23,10 @@ export default function CustomizePlannerPage() {
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [eventType, setEventType] = useState<string | null>(null);
   const [name, setName] = useState('your planner');
+  // A brand-new custom planner (from Booking Settings' "Create custom"). It's
+  // standalone and starts empty — the DJ builds it from scratch — so there's no
+  // template to fetch and its save carries the real name, not "My … planner".
+  const [isCustom, setIsCustom] = useState(false);
 
   const [fields, setFields] = useState<PlannerField[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -38,9 +42,21 @@ export default function CustomizePlannerPage() {
     const bId = q.get('bookingId') || '';
     const et = q.get('eventType'); // '' or null => the base/default template
     const tid = (q.get('templateId') || '').trim(); // exact row (weddings: with/without ceremony)
+    // A NEW custom planner: ?custom=<key> carries its unique event_type marker.
+    const customKey = (q.get('custom') || '').trim();
     setBookingId(bId);
-    setEventType(et && et.trim() ? et : null);
     if (q.get('name')) setName(q.get('name') as string);
+
+    // Brand-new custom planner — nothing to load, start with a blank sheet.
+    if (customKey) {
+      setIsCustom(true);
+      setEventType(customKey);
+      setFields([]);
+      setLoaded(true);
+      return;
+    }
+
+    setEventType(et && et.trim() ? et : null);
 
     (async () => {
       try {
@@ -121,7 +137,9 @@ export default function CustomizePlannerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventType,
-          name: eventType ? `My ${eventType} planner` : 'My planner',
+          // A custom planner keeps the name the DJ typed; the derived
+          // "My … planner" is only for editing a stock event-type template.
+          name: isCustom ? name : (eventType ? `My ${eventType} planner` : 'My planner'),
           fields: cleaned,
         }),
       });
@@ -142,9 +160,9 @@ export default function CustomizePlannerPage() {
         <button type="button" className={styles.ghost} onClick={handleClose}>
           {dirty ? 'Close (unsaved)' : 'Close'}
         </button>
-        <span className={styles.editorTitle}>Customize {name}</span>
+        <span className={styles.editorTitle}>{isCustom ? `New: ${name}` : `Customize ${name}`}</span>
         <button type="button" className={styles.primary} disabled={saving || !loaded} onClick={save}>
-          {saving ? 'Saving…' : saved && !dirty ? 'Saved ✓' : 'Save'}
+          {saving ? 'Saving…' : saved && !dirty ? 'Saved ✓' : isCustom ? 'Create template' : 'Save'}
         </button>
       </div>
       {err && <div className={styles.editorErr}>{err}</div>}
