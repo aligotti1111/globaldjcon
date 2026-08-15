@@ -615,14 +615,16 @@ export default function PlannerBuilder({
           </div>
         ) : (
           <div className={styles.addRow}>
+            <div className={styles.addAltRow}>
+              <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('section')}>
+                + Section title
+              </button>
+              <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('divider')}>
+                + Divider
+              </button>
+            </div>
             <button type="button" className={styles.addBtn} onClick={() => setAddOpen(true)}>
               + Add a question
-            </button>
-            <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('section')}>
-              + Add a section title
-            </button>
-            <button type="button" className={styles.addBtnAlt} onClick={() => onAdd('divider')}>
-              + Add a divider
             </button>
           </div>
         )}
