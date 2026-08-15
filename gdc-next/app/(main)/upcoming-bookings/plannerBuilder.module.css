@@ -549,18 +549,20 @@
 }
 .addBtn:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
 
-/* The add buttons stack: primary question add, then title + divider. */
+/* Add controls: a small side-by-side "section title / divider" row on top, then
+   the primary "add a question" button. */
 .addRow { display: flex; flex-direction: column; gap: .4rem; }
+.addAltRow { display: flex; gap: .4rem; }
 .addBtnAlt {
-  width: 100%;
+  flex: 1 1 0;
   background: transparent;
   border: 1px dashed rgba(255, 255, 255, .16);
   border-radius: 8px;
   color: #8a8aa0;
   font-family: inherit;
-  font-size: .8rem;
+  font-size: .78rem;
   font-weight: 600;
-  padding: .55rem;
+  padding: .5rem;
   cursor: pointer;
 }
 .addBtnAlt:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
