@@ -349,10 +349,15 @@ export default function PlannerForm({
             {venueName ? ` · ${venueName}` : ''}
           </p>
           <p className={styles.intro}>
-            Saves as you go &mdash; fill in what you know, come back.
+            The information you enter will save as you go &mdash; fill in what you know, come back
             {dueDateLabel ? (
-              <> Planner &amp; Playlist must be complete by <strong>{dueDateLabel}</strong>.</>
-            ) : null}
+              <> and complete the form before <strong>{dueDateLabel}</strong>.</>
+            ) : preview ? (
+              // No booking behind a preview, so no real date — show the rule.
+              <> and complete the form before <strong>{leadDays} days before the event</strong>.</>
+            ) : (
+              <> and complete the form.</>
+            )}
           </p>
           {status === 'submitted' && !locked && (
             <div className={styles.submitted}>
