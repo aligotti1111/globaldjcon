@@ -96,6 +96,12 @@ export default function PlannerLibrarySection() {
   const [renameDraft, setRenameDraft] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
 
+  // "Create custom Planner & Playlist" — reveal a name field, then open a blank
+  // editor keyed to a fresh custom event_type so the DJ builds their own from
+  // scratch (logo + booking details on top, add-question tools below).
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+
   // How many days before the event the DJ wants the planner submitted. Saved on
   // users.planner_lead_days and shown on the client planner. Default 14.
   const [leadDays, setLeadDays] = useState(14);
@@ -157,6 +163,27 @@ export default function PlannerLibrarySection() {
     if (t.eventType) qs.set('eventType', t.eventType);
     window.open(`/customize-planner?${qs}`, '_blank');
   }
+
+  // Open a blank editor for a brand-new custom planner. Its event_type is a
+  // unique `custom:<uuid>` marker so it's its own standalone template (no base
+  // questions folded in); the editor starts empty and the DJ builds it.
+  function createCustom() {
+    const nm = newName.trim();
+    if (!nm) return;
+    const key = `custom:${crypto.randomUUID()}`;
+    const qs = new URLSearchParams({ custom: key, name: nm });
+    window.open(`/customize-planner?${qs}`, '_blank');
+    setCreating(false);
+    setNewName('');
+  }
+
+  // When the DJ finishes building a new planner in the other tab and comes back,
+  // refresh so it shows up in the list without a manual reload.
+  useEffect(() => {
+    const onFocus = () => { void load(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   async function saveRename(t: TemplateLite) {
     const name = renameDraft.trim();
@@ -223,7 +250,14 @@ export default function PlannerLibrarySection() {
       {templates && templates.length > 0 && (
         <div style={{ maxWidth: 720 }}>
           {templates.map((t) => (
-            <div key={t.id} style={rowStyle}>
+            <div
+              key={t.id}
+              style={t.eventType == null
+                // Set the standard/base planner slightly apart from the event
+                // types below it.
+                ? { ...rowStyle, marginBottom: '.7rem', paddingBottom: '.7rem', borderBottom: '1px solid rgba(140,140,170,.28)' }
+                : rowStyle}
+            >
               {renameId === t.id ? (
                 <>
                   {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
@@ -259,6 +293,39 @@ export default function PlannerLibrarySection() {
               )}
             </div>
           ))}
+
+          {/* Divider, then the create-your-own entry point. */}
+          <div style={{ borderTop: '1px solid rgba(140,140,170,.28)', margin: '.9rem 0 .8rem' }} />
+
+          {creating ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', padding: '.1rem .5rem' }}>
+              {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+              <input
+                autoFocus
+                value={newName}
+                placeholder="Name your Planner & Playlist"
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') createCustom(); if (e.key === 'Escape') { setCreating(false); setNewName(''); } }}
+                style={inputStyle}
+              />
+              <button type="button" onClick={createCustom} disabled={!newName.trim()} style={miniBtnStyle}>
+                Create Template
+              </button>
+              <button type="button" onClick={() => { setCreating(false); setNewName(''); }} style={iconBtnStyle} aria-label="Cancel">✕</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              style={{
+                ...miniBtnStyle,
+                display: 'block', width: '100%', textAlign: 'center',
+                padding: '.55rem', borderStyle: 'dashed',
+              }}
+            >
+              + Create custom Planner &amp; Playlist
+            </button>
+          )}
         </div>
       )}
     </div>
