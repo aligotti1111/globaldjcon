@@ -203,10 +203,11 @@
 .field {
   display: flex;
   gap: .5rem;
-  border: 1px solid rgba(255, 255, 255, .08);
+  /* Frameless — no card. The transparent border/radius are only so the "picked
+     up" state (below) can show a rim without shifting the layout. */
+  border: 1px solid transparent;
   border-radius: 10px;
-  padding: .6rem .7rem .7rem;
-  background: rgba(255, 255, 255, .015);
+  padding: .55rem .2rem;
   transition: box-shadow .12s ease, border-color .12s ease, transform .12s ease, background .12s ease, opacity .12s ease;
 }
 /* Off, not gone. Greyed, struck, but sitting in place so the DJ can turn it
@@ -577,8 +578,8 @@
 .editHint span { color: #00e0a4; }
 
 /* Structural rows in the editor (section title / divider) reuse the field-row
-   chrome (rail, drag, delete) with a distinct body. */
-.structField { background: rgba(255, 255, 255, .025); }
+   chrome (rail, drag, delete) with a distinct body. Frameless like the rest. */
+.structField { background: transparent; }
 .sectionTitleBtn {
   flex: 0 1 auto; text-align: left; background: none; border: none; padding: 0;
   font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
