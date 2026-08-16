@@ -526,7 +526,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   const siteUrl = 'https://globaldjconnect.com';
 
   return (
-    <div className={styles.container}>
+    // Match the Booking Settings frame width (maxWidth 1100, centered) so the
+    // two pages line up side to side.
+    <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
       <div className={styles.headerRow}>
         <Link href="/" className={styles.backLink}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
