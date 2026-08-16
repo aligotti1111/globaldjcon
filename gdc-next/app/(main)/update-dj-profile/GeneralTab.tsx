@@ -208,9 +208,17 @@ interface Props {
   // Persist the slug immediately to the DB and clear ONLY its dirty flag, so
   // the unsaved-changes guard doesn't fire for a URL we've already saved.
   onSlugSaved: (slug: string) => void;
+  // Called after a custom event type is deleted + persisted, so the parent can
+  // sync its dirty snapshot and the Save button / leave-warning don't fire for
+  // a change that's already saved.
+  onEventTypesSaved?: (
+    nextCustom: GeneralFormState['customEventTypes'],
+    nextMobile: string[],
+    nextSpecialty: string[],
+  ) => void;
 }
 
-export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved }: Props) {
+export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
 
@@ -276,6 +284,9 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             mob_specialty_types: nextSpecialty,
           } as unknown as never)
           .eq('id', user.id);
+        // Tell the parent it's saved so the dirty snapshot updates and the
+        // bottom "Save Changes" button / leave-warning don't fire for it.
+        onEventTypesSaved?.(nextCustom, nextMobile, nextSpecialty);
       }
     } catch {
       // Non-fatal — the change is in the form, so the Save button still persists it.
