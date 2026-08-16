@@ -599,7 +599,17 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       //     can download a blank to fill by hand or email. ?download=1 makes it
       //     download on open — one click, no dialog.
       actions: archive
-        ? []
+        // Past Bookings: the night has happened, but the Planner & Playlist is a
+        // record the DJ still needs — to open what the client filled in or to
+        // download the run sheet as a PDF. Sending/resending is gone (the event
+        // is over), but Open + Download stay. Download always works: /sheet
+        // renders from the template even when no planner was ever sent.
+        ? [
+            ...(planner
+              ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
+              : []),
+            { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank'); } },
+          ]
         : planner
           ? [
               { label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } },
