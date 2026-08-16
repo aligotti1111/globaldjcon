@@ -194,9 +194,18 @@ function AddressField({
   );
 }
 
+// The account-settings page is laid out like Booking Settings: a top tab bar
+// swaps between sections. GeneralTab renders the first four; Team + Your
+// Timezone are their own tabs owned by the parent (UpdateDjProfileClient).
+export type AccountTab = 'account' | 'eventTypes' | 'location' | 'blocked' | 'team' | 'timezone';
+
 interface Props {
   state: GeneralFormState;
   onChange: <K extends keyof GeneralFormState>(field: K, value: GeneralFormState[K]) => void;
+  // Which tab is active. GeneralTab keeps all four of its sections mounted and
+  // shows only the active one (display toggle), so in-progress edits and the
+  // per-section dirty state survive tab switches.
+  activeTab: AccountTab;
   djType: 'club' | 'mobile' | null;
   email: string;
   slug: string | null;
@@ -229,7 +238,7 @@ interface Props {
   onGenresSaved?: (clubGenres: string[]) => void;
 }
 
-export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved, onBasicsSaved, onGenresSaved }: Props) {
+export default function GeneralTab({ state, onChange, activeTab, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved, onBasicsSaved, onGenresSaved }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
 
@@ -561,6 +570,8 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
   return (
     <div>
       {confirmDialog}
+      {/* ── ACCOUNT tab ── logo, private toggle, email, password, name + URL + QR */}
+      <div style={{ display: activeTab === 'account' ? undefined : 'none' }}>
       {/* Business logo — the shared brand logo (planner, contracts, everywhere). */}
       <BusinessLogoSection />
 
@@ -633,7 +644,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
         </div>
       </div>
+      </div>{/* end ACCOUNT tab */}
 
+      {/* ── EVENT TYPES tab ── mobile party types (mobile) or genres (club) */}
+      <div style={{ display: activeTab === 'eventTypes' ? undefined : 'none' }}>
       {/* Mobile event types — only for mobile DJs */}
       {djType === 'mobile' && (
         <div className={styles.formGroup}>
@@ -765,7 +779,10 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           </div>
         </div>
       )}
+      </div>{/* end EVENT TYPES tab */}
 
+      {/* ── LOCATION & CONTACT tab ── */}
+      <div style={{ display: activeTab === 'location' ? undefined : 'none' }}>
       {/* Location & Contact — its own section with its own Save. Business
           address, contact phone, and travel distance save independently of the
           bottom "Save Changes" button. */}
@@ -843,10 +860,13 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           </div>
         </div>
       </div>
+      </div>{/* end LOCATION & CONTACT tab */}
 
       {/* DJ start year field removed — years-of-experience is no longer
           shown on profiles, so the input is no longer needed. */}
 
+      {/* ── BLOCKED tab ── */}
+      <div style={{ display: activeTab === 'blocked' ? undefined : 'none' }}>
       {/* Blocked Users — its own section. Self-saving (unblock writes straight
           to the DB), so no Save button needed here. */}
       <div className={styles.sectionCard}>
@@ -857,6 +877,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           <BlockedUsersSection hideLabel />
         </div>
       </div>
+      </div>{/* end BLOCKED tab */}
 
     </div>
   );
