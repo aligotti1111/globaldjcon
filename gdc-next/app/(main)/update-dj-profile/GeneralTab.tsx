@@ -1267,28 +1267,35 @@ function SlugChangeGate({
   if (unlocked) {
     return (
       <div>
-        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {renderInput({
-              value: draft,
-              onChange: (v) => { setDraft(v); setSaved(false); },
-              onStatusChange: setStatus,
-            })}
+        {/* Full-width URL box, with the Save button tucked at the bottom-right
+            underneath it (inside the same group) rather than floating beside it. */}
+        {renderInput({
+          value: draft,
+          onChange: (v) => { setDraft(v); setSaved(false); },
+          onStatusChange: setStatus,
+        })}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', marginTop: '.5rem' }}>
+          <span style={{ fontSize: '.7rem', color: err ? '#ff6b6b' : (saved && !changed ? 'var(--success)' : 'var(--muted)') }}>
+            {err
+              ? err
+              : (saved && !changed)
+                ? '✓ URL saved.'
+                : 'Enter a new URL, then click Save to apply it.'}
+          </span>
+          <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => { setUnlocked(false); setDraft(currentSlug || ''); setStatus('idle'); setErr(null); setSaved(false); }}
+              disabled={saving}
+              style={btn('ghost', !saving)}
+            >
+              Cancel
+            </button>
+            <button type="button" disabled={!canSave} onClick={save} style={btn('primary', canSave)}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
           </div>
-          <button type="button" disabled={!canSave} onClick={save} style={btn('primary', canSave)}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
         </div>
-        {err && <p style={{ margin: '.5rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
-        {!err && saved && !changed ? (
-          <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: 'var(--success)' }}>
-            ✓ URL saved.
-          </p>
-        ) : !err ? (
-          <p style={{ margin: '.5rem 0 0', fontSize: '.7rem', color: 'var(--muted)' }}>
-            Enter a new URL, then click Save to apply it.
-          </p>
-        ) : null}
       </div>
     );
   }
