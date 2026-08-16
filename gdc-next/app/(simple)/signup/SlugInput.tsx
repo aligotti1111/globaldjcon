@@ -14,7 +14,7 @@
 //      with their own per-button availability checks
 //   5. Clicking an available alternative selects it as the new slug
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { makeSlug } from './helpers';
 import styles from './signup.module.css';
 
@@ -48,6 +48,9 @@ interface SlugInputProps {
   // treats it as "their existing slug" → status forced to 'available'
   // and no DB query fires.
   originalSlug?: string;
+  // Optional content rendered INSIDE the URL box, below the input row
+  // (e.g. Cancel / Save buttons on the profile editor).
+  footer?: ReactNode;
 }
 
 export function SlugInput({
@@ -58,6 +61,7 @@ export function SlugInput({
   placeholder = 'your-url',
   excludeUserId,
   originalSlug,
+  footer,
 }: SlugInputProps) {
   const [status, setStatus] = useState<SlugStatus>('idle');
   const [alternatives, setAlternatives] = useState<AlternativeState[]>([]);
@@ -214,6 +218,7 @@ export function SlugInput({
           />
           <span className={statusClass}>{statusText}</span>
         </div>
+        {footer}
       </div>
 
       {status === 'taken' && alternatives.length > 0 && (
