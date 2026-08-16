@@ -628,24 +628,27 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                 ? specialtyGroup.map(renderDraggableTile)
                 : <span style={{ color: 'var(--muted)', fontSize: '.72rem', padding: '.4rem .2rem' }}>Drag events here to price them on their own.</span>}
             </div>
-          </div>
-          {/* Its own Save — lights up when you add, move, or toggle a type. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.6rem' }}>
-            <button
-              type="button"
-              disabled={!eventTypesDirty || eventTypesSaving}
-              onClick={() => void saveEventTypes()}
-              style={{
-                fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
-                textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, border: 'none',
-                background: 'var(--neon)', color: 'var(--black)', fontWeight: 700, whiteSpace: 'nowrap',
-                cursor: (!eventTypesDirty || eventTypesSaving) ? 'default' : 'pointer',
-                opacity: (!eventTypesDirty || eventTypesSaving) ? 0.45 : 1,
-              }}
-            >
-              {eventTypesSaving ? 'Saving…' : 'Save Party Types'}
-            </button>
-            {eventTypesMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{eventTypesMsg}</span>}
+            {/* Its own Save, INSIDE the box — lights up when you add, move, or
+                toggle a type. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.75rem' }}>
+              <button
+                type="button"
+                disabled={!eventTypesDirty || eventTypesSaving}
+                onClick={() => void saveEventTypes()}
+                style={{
+                  fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+                  textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
+                  // Grey + not-allowed until a change is made; neon + clickable once dirty.
+                  border: eventTypesDirty && !eventTypesSaving ? 'none' : '1px solid var(--border)',
+                  background: eventTypesDirty && !eventTypesSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
+                  color: eventTypesDirty && !eventTypesSaving ? 'var(--black)' : 'var(--muted)',
+                  cursor: eventTypesDirty && !eventTypesSaving ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {eventTypesSaving ? 'Saving…' : 'Save'}
+              </button>
+              {eventTypesMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{eventTypesMsg}</span>}
+            </div>
           </div>
         </div>
       )}
@@ -760,13 +763,14 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
               onClick={() => void saveContact()}
               style={{
                 fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
-                textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, border: 'none',
-                background: 'var(--neon)', color: 'var(--black)', fontWeight: 700, whiteSpace: 'nowrap',
-                cursor: (!contactDirty || contactSaving) ? 'default' : 'pointer',
-                opacity: (!contactDirty || contactSaving) ? 0.45 : 1,
+                textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
+                border: contactDirty && !contactSaving ? 'none' : '1px solid var(--border)',
+                background: contactDirty && !contactSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
+                color: contactDirty && !contactSaving ? 'var(--black)' : 'var(--muted)',
+                cursor: contactDirty && !contactSaving ? 'pointer' : 'not-allowed',
               }}
             >
-              {contactSaving ? 'Saving…' : 'Save Location & Contact'}
+              {contactSaving ? 'Saving…' : 'Save'}
             </button>
             {contactMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{contactMsg}</span>}
           </div>
