@@ -630,7 +630,8 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             </div>
             {/* Its own Save, INSIDE the box — lights up when you add, move, or
                 toggle a type. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.75rem' }}>
+              {eventTypesMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{eventTypesMsg}</span>}
               <button
                 type="button"
                 disabled={!eventTypesDirty || eventTypesSaving}
@@ -647,7 +648,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
               >
                 {eventTypesSaving ? 'Saving…' : 'Save'}
               </button>
-              {eventTypesMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{eventTypesMsg}</span>}
             </div>
           </div>
         </div>
@@ -756,7 +756,8 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.4rem' }}>
+            {contactMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{contactMsg}</span>}
             <button
               type="button"
               disabled={!contactDirty || contactSaving}
@@ -772,7 +773,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             >
               {contactSaving ? 'Saving…' : 'Save'}
             </button>
-            {contactMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{contactMsg}</span>}
           </div>
         </div>
       </div>
