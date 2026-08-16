@@ -18,6 +18,7 @@ import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/components/ConfirmModal';
 import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
+import { updateMyDjNameAction } from '@/lib/actions/updateMyDjName';
 import {
   MOBILE_EVENT_TYPES,
   MOB_CAT_GENERAL_TYPES,
@@ -423,38 +424,23 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     }
   }
 
-  // ── Profile basics — its own Save covering the upper area (DJ / Company
-  //    Name + the Private Profile toggle). No password involved. ──
-  function basicsSnapshot(): string {
-    return JSON.stringify({ name: state.name, profilePrivate: state.profilePrivate });
-  }
-  const [basicsBaseline, setBasicsBaseline] = useState<string>(() => basicsSnapshot());
-  const [basicsSaving, setBasicsSaving] = useState(false);
-  const [basicsMsg, setBasicsMsg] = useState<string | null>(null);
-  const basicsDirty = basicsSnapshot() !== basicsBaseline;
-
-  async function saveBasics() {
-    if (basicsSaving || !basicsDirty) return;
-    if (!state.name.trim()) { setBasicsMsg('Name can’t be empty.'); return; }
-    setBasicsSaving(true);
-    setBasicsMsg(null);
+  // ── Private Profile toggle — auto-saves the moment it's flipped. ──
+  const [privateSaving, setPrivateSaving] = useState(false);
+  async function setPrivate(next: boolean) {
+    onChange('profilePrivate', next); // reflect immediately in the UI
+    setPrivateSaving(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('not signed in');
-      const { error } = await supabase
-        .from('users')
-        .update({ name: state.name.trim(), profile_private: state.profilePrivate } as unknown as never)
-        .eq('id', user.id);
-      if (error) throw error;
-      setBasicsBaseline(basicsSnapshot());
-      setBasicsMsg('✓ Saved.');
-      setTimeout(() => setBasicsMsg(null), 2500);
-      onBasicsSaved?.(state.name, state.profilePrivate);
+      if (user) {
+        await supabase.from('users').update({ profile_private: next } as unknown as never).eq('id', user.id);
+        // Keep both upper-area fields' dirty snapshot in sync on the parent.
+        onBasicsSaved?.(state.name, next);
+      }
     } catch {
-      setBasicsMsg('Could not save — try again.');
+      /* non-fatal — the toggle still reflects locally */
     } finally {
-      setBasicsSaving(false);
+      setPrivateSaving(false);
     }
   }
 
@@ -584,7 +570,8 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           type="checkbox"
           id="profile-private"
           checked={state.profilePrivate}
-          onChange={(e) => onChange('profilePrivate', e.target.checked)}
+          disabled={privateSaving}
+          onChange={(e) => void setPrivate(e.target.checked)}
         />
         <div>
           <label htmlFor="profile-private" className={styles.privateLabel}>
@@ -608,24 +595,17 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       <PasswordChangeBlock />
 
       {/* Name + Custom URL — grouped together since the URL derives from
-          and lives under the name on signup. Label adapts to dj_type:
-          mobile DJs are typically a company brand ("DJ Nova Productions")
-          while club DJs go by a single stage name ("DJ Nova"). */}
+          and lives under the name on signup. The NAME is password-gated (it's
+          a public identity that flows onto contracts and every booking), so it
+          changes through NameChangeBlock and saves itself. No separate Save. */}
       <div className={styles.formGroup}>
-        <label htmlFor="ud-name">
-          {djType === 'club' ? 'DJ Name' : 'DJ / Company Name'}
-        </label>
-        <input
-          type="text"
-          id="ud-name"
-          placeholder={djType === 'club' ? 'e.g. DJ Nova' : 'e.g. DJ Nova Productions'}
-          value={state.name}
-          onChange={(e) => onChange('name', e.target.value)}
-          className={styles.input}
+        <NameChangeBlock
+          djType={djType}
+          currentName={state.name}
+          onSaved={(n) => { onChange('name', n); onBasicsSaved?.(n, state.profilePrivate); }}
         />
         {/* Nested URL field — keeps the slug input visually grouped under
-            the name field. Border-left/indent removed so the input box
-            aligns flush with the other fields above and below. */}
+            the name field. */}
         <div style={{ marginTop: '.85rem' }}>
           <SlugChangeGate
             email={email}
@@ -650,27 +630,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
               right under the URL it points at. Encodes the permanent profile
               ID (never breaks on a slug change); shows the live slug as caption. */}
           <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
-        </div>
-
-        {/* Save for the upper area (name + Private Profile) — placed UNDER the
-            URL field so it sits at the bottom of this group. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.85rem' }}>
-          {basicsMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{basicsMsg}</span>}
-          <button
-            type="button"
-            disabled={!basicsDirty || basicsSaving}
-            onClick={() => void saveBasics()}
-            style={{
-              fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
-              textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
-              border: basicsDirty && !basicsSaving ? 'none' : '1px solid var(--border)',
-              background: basicsDirty && !basicsSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
-              color: basicsDirty && !basicsSaving ? 'var(--black)' : 'var(--muted)',
-              cursor: basicsDirty && !basicsSaving ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {basicsSaving ? 'Saving…' : 'Save'}
-          </button>
         </div>
       </div>
 
@@ -898,6 +857,121 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </div>
       </div>
 
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// NameChangeBlock — the DJ / Company Name is a public identity (it's on the
+// profile, contracts, and every booking), so it stays READ-ONLY until the DJ
+// re-confirms their current password. Click "Change" → type the new name +
+// current password → the server action verifies and writes it. Saves itself;
+// no separate Save button. Mirrors EmailChangeBlock exactly.
+// ─────────────────────────────────────────────────────────────────────────
+function NameChangeBlock({
+  djType, currentName, onSaved,
+}: {
+  djType: 'mobile' | 'club' | string | null;
+  currentName: string;
+  onSaved: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [shownName, setShownName] = useState(currentName);
+  const label = djType === 'club' ? 'DJ Name' : 'DJ / Company Name';
+
+  async function save(e?: React.MouseEvent) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    setFeedback(null);
+    if (!newName.trim() || !pw) {
+      setFeedback({ msg: 'Please fill in both fields.', ok: false });
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await updateMyDjNameAction({ newName: newName.trim(), currentPassword: pw });
+      if (!result.success) {
+        setFeedback({ msg: result.error || 'Failed', ok: false });
+      } else {
+        const saved = result.newName || newName.trim();
+        setFeedback({ msg: '✓ Name changed.', ok: true });
+        setShownName(saved);
+        onSaved(saved);
+        setNewName('');
+        setPw('');
+        setTimeout(() => { setOpen(false); setFeedback(null); }, 1500);
+      }
+    } catch (err) {
+      setFeedback({ msg: err instanceof Error ? err.message : 'Failed', ok: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const btnBase: React.CSSProperties = {
+    fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+    textTransform: 'uppercase', padding: '.6rem 1rem', borderRadius: 6, whiteSpace: 'nowrap',
+  };
+
+  return (
+    <div className={styles.formGroup}>
+      <label>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <input type="text" value={shownName} readOnly className={styles.input} style={{ flex: 1, opacity: 0.7 }} />
+        {!open && (
+          <button
+            type="button"
+            onClick={() => { setOpen(true); setFeedback(null); }}
+            style={{ ...btnBase, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)' }}
+          >
+            Change
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div style={{ marginTop: '.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
+          <input
+            type="text"
+            placeholder={djType === 'club' ? 'New DJ name' : 'New DJ / Company name'}
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); void save(); } }}
+            className={styles.input}
+          />
+          <input
+            type="password"
+            placeholder="Current password (to confirm)"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); void save(); } }}
+            className={styles.input}
+            autoComplete="current-password"
+          />
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button" onClick={(e) => void save(e)} disabled={busy}
+              style={{ ...btnBase, padding: '.55rem 1rem', border: '1px solid var(--neon)', background: 'var(--neon-dim)', color: 'var(--neon)', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.5 : 1 }}
+            >
+              {busy ? 'Saving…' : 'Update Name'}
+            </button>
+            <button
+              type="button" onClick={() => { setOpen(false); setNewName(''); setPw(''); setFeedback(null); }}
+              style={{ ...btnBase, padding: '.55rem 1rem', border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            {feedback && (
+              <span style={{ fontSize: '.78rem', color: feedback.ok ? 'var(--success)' : 'var(--error)' }}>
+                {feedback.msg}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
