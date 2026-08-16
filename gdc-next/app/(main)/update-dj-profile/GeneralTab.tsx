@@ -239,7 +239,17 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     }
     setNewTypeLabel('');
   }
-  function removeCustomType(key: string) {
+  async function removeCustomType(key: string) {
+    // A custom event type is one the DJ typed in themselves — deleting it drops
+    // it (and any pricing tied to it) for good, so confirm first.
+    const label = state.customEventTypes.find((c) => c.key === key)?.label || 'this event type';
+    const ok = await confirm({
+      title: `Delete ${label}?`,
+      message: `${label} will be removed from your event types, along with any pricing you set for it. This can't be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     onChange('customEventTypes', state.customEventTypes.filter((c) => c.key !== key));
     onChange('mobileEvents', state.mobileEvents.filter((v) => v !== key));
     onChange('specialtyTypes', state.specialtyTypes.filter((k) => k !== key));
@@ -285,7 +295,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           role="button"
           aria-label={`Remove ${o.label}`}
           title="Remove"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeCustomType(o.val); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void removeCustomType(o.val); }}
           style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 .2rem' }}
         >&times;</span>
       )}
