@@ -59,16 +59,55 @@ const metaLabel: React.CSSProperties = {
   color: 'var(--muted, #8a8aa0)',
   marginRight: '.35rem',
 };
-// Highlighted sub-section header — makes "Run a sale" and "Promo codes" read as
-// distinct blocks (neon left bar + tinted band) instead of plain small labels.
-const subHeader: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: '.5rem',
-  fontSize: '.82rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em',
-  color: 'var(--neon, #00e0a4)',
-  background: 'rgba(0,224,164,.08)',
-  borderLeft: '3px solid var(--neon, #00e0a4)',
-  borderRadius: 6, padding: '.5rem .8rem', marginBottom: '.4rem',
+// Brand gradient used across this section (badge headers, status pill, CTA).
+const GRAD = 'linear-gradient(100deg,#22e3ad,#31d0ff 45%,#8b6bff)';
+
+// A section block: pure-black card with a bright hairline border. The two
+// blocks (Run a sale / Promo codes) sit inside the panel and read as distinct.
+const blockStyle: React.CSSProperties = {
+  background: '#000',
+  border: '1px solid rgba(255,255,255,.16)',
+  borderRadius: 16,
+  padding: '1.35rem 1.35rem 1.2rem',
+  marginBottom: '1.15rem',
 };
+// Highlighted, gradient-badge header. Renders an icon chip + bold title inside
+// a tinted gradient pill so each section clearly stands out from the black card.
+function SecHeader({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 12,
+        padding: '10px 18px 10px 12px', borderRadius: 14,
+        background: 'linear-gradient(100deg,rgba(34,227,173,.18),rgba(49,208,255,.12) 45%,rgba(139,107,255,.16))',
+        border: '1px solid rgba(255,255,255,.26)', marginBottom: 16,
+      }}
+    >
+      <span
+        style={{
+          width: 30, height: 30, borderRadius: 9, background: GRAD,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          boxShadow: '0 6px 18px -6px rgba(34,227,173,.7)',
+        }}
+      >
+        {icon}
+      </span>
+      <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '.01em', color: '#fff' }}>{label}</span>
+    </div>
+  );
+}
+const iconSale = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+const iconPromo = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 12V7H4v5a2 2 0 0 1 0 4v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1a2 2 0 0 1 0-4z" />
+    <line x1="12" y1="7" x2="12" y2="19" />
+  </svg>
+);
 const usedCellValue: React.CSSProperties = {
   height: 44, display: 'inline-flex', alignItems: 'center', gap: 4,
   color: 'var(--white,#fff)', fontSize: '.9rem', fontWeight: 700,
@@ -271,21 +310,37 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           .gdcDateWhite { color: #fff; }
         `}</style>
 
-        <div style={subHeader}>Run a sale</div>
-        <div className={styles.settingHint} style={{ marginBottom: '.6rem' }}>
-          A site-wide % off applied automatically to every quote while active. Shows a
-          &ldquo;% OFF&rdquo; badge to clients. A sale and a promo code don&apos;t stack — the
-          bigger discount wins.
+        <div style={blockStyle}>
+        <SecHeader label="Run a sale" icon={iconSale} />
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
+          A site-wide % off applied automatically to every quote. Set a window and it switches
+          itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
         </div>
 
-        {/* One row: percent · start date · end date · used · status + Activate.
-            Wraps on narrow screens; each cell keeps a 44px control so the labels
-            and the status button line up along the bottom. */}
+        {/* One row: percent · start date · end date · used · status. The sale's
+            on/off state is decided by the dates, so Status is a read-out
+            (Scheduled → Active → Ended), not a button. */}
         {(() => {
           const pct = sale.percent ?? 0;
-          const saleOn = !!sale.active && pct > 0;
+          let statLabel = 'Inactive';
+          let tone: 'on' | 'sched' | 'off' = 'off';
+          if (pct > 0) {
+            const now = new Date();
+            const startFuture = !!sale.starts && new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime();
+            const ended = !!sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime();
+            if (startFuture) { statLabel = 'Scheduled'; tone = 'sched'; }
+            else if (ended) { statLabel = 'Ended'; tone = 'off'; }
+            else { statLabel = 'Active'; tone = 'on'; }
+          }
+          const pillStyle: React.CSSProperties =
+            tone === 'on'
+              ? { color: '#04241b', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', boxShadow: '0 6px 20px -6px rgba(34,227,173,.7)' }
+              : tone === 'sched'
+                ? { color: '#3a2a00', background: '#ffcf6b' }
+                : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
+          const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', padding: '.25rem 0 1rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
               <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
                 <label style={labelStyle}>Percent off</label>
                 <select
@@ -294,7 +349,9 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                   value={sale.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
-                    updateSale(v > 0 ? { percent: v } : { percent: 0, active: false });
+                    updateSale(v > 0
+                      ? { percent: v, active: true, started_at: sale.started_at || new Date().toISOString() }
+                      : { percent: 0, active: false });
                   }}
                 >
                   <option value="">%</option>
@@ -334,34 +391,18 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                   <span style={usedCellValue}>0</span>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', height: 44, marginLeft: 'auto' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto' }}>
+                <label style={labelStyle}>Status</label>
                 <span
                   style={{
-                    fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                    padding: '2px 8px', borderRadius: 999,
-                    color: saleOn ? '#06231b' : 'var(--muted,#8a8aa0)',
-                    background: saleOn ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.08)',
+                    height: 34, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 15px',
+                    borderRadius: 999, fontSize: '.72rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
+                    ...pillStyle,
                   }}
                 >
-                  {saleOn ? 'Active' : 'Inactive'}
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />
+                  {statLabel}
                 </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateSale(
-                      saleOn
-                        ? { active: false }
-                        : { active: true, started_at: new Date().toISOString() }
-                    )
-                  }
-                  disabled={!saleOn && !(pct > 0)}
-                  style={{
-                    ...(saleOn ? btnOutline : btnPrimary),
-                    ...(!saleOn && !(pct > 0) ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
-                  }}
-                >
-                  {saleOn ? 'Deactivate' : 'Activate'}
-                </button>
               </div>
             </div>
           );
@@ -404,14 +445,14 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             )}
           </div>
         )}
+        </div>{/* end Run a sale block */}
 
         {/* ── Promo codes ────────────────────────────────────────── */}
-        <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '1rem', marginTop: '.25rem' }}>
-          <div style={subHeader}>Promo codes</div>
-          <div className={styles.settingHint} style={{ marginBottom: '.8rem' }}>
-            Private codes you hand out (referrals, socials, repeat clients). Build a code, hit
-            Activate, and it moves into your list below. Your public price stays the same.
-          </div>
+        <div style={blockStyle}>
+        <SecHeader label="Promo codes" icon={iconPromo} />
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
+          Private codes you hand out — referrals, socials, repeat clients. Build one, switch it on,
+          and it drops into your list. Your public price stays the same.
         </div>
 
         {error && <div style={{ color: '#ff6b6b', fontSize: '.8rem', marginBottom: '.6rem' }}>{error}</div>}
@@ -430,17 +471,20 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
         )}
 
         {!draft && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
           <button
             type="button"
             onClick={() => { setDraft(emptyDraft()); setError(''); }}
             style={{
-              background: 'transparent', border: '1px dashed var(--border, rgba(255,255,255,.25))',
-              color: 'var(--white, #fff)', borderRadius: 8, padding: '.6rem 1rem', fontSize: '.85rem',
-              cursor: 'pointer', marginBottom: '1rem',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: GRAD, color: '#04241b', border: 'none',
+              borderRadius: 11, padding: '.7rem 1.1rem', fontSize: '.85rem', fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 8px 22px -8px rgba(34,227,173,.7)',
             }}
           >
-            + Add promo code
+            <span style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1 }}>+</span> Add promo code
           </button>
+          </div>
         )}
 
         {/* Codes list (active + deactivated = history) */}
@@ -556,6 +600,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
             </div>
           );
         })}
+        </div>{/* end Promo codes block */}
       </div>
     </div>
   );
