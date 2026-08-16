@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirm } from '@/components/ConfirmModal';
 import styles from './updateDjProfile.module.css';
 
 // Small round icon button that sits directly on top of the logo image.
@@ -25,6 +26,7 @@ export default function BusinessLogoSection() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const { confirm, confirmDialog } = useConfirm();
 
   useEffect(() => {
     let active = true;
@@ -80,6 +82,12 @@ export default function BusinessLogoSection() {
 
   async function onRemove() {
     if (!userId) return;
+    const ok = await confirm({
+      title: 'Remove your logo?',
+      message: 'This removes it everywhere it shows — your Planner & Playlist, contracts, and more. You can upload a new one any time.',
+      confirmLabel: 'Remove logo',
+    });
+    if (!ok) return;
     setBusy(true);
     setMsg(null);
     try {
@@ -159,6 +167,7 @@ export default function BusinessLogoSection() {
         </div>
       </div>
       {msg && <div style={{ marginTop: '.5rem', fontSize: '.8rem', color: '#8a8aa0' }}>{msg}</div>}
+      {confirmDialog}
     </div>
   );
 }
