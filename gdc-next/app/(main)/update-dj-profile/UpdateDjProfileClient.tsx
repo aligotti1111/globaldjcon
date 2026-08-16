@@ -308,6 +308,25 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     setSavedVersion(v => v + 1);
   }
 
+  // Called by GeneralTab's "Location & Contact" section AFTER it saves those
+  // fields to the DB itself. Same pattern as the two above — sync the snapshot
+  // so the bottom Save button / leave-warning don't fire for saved fields.
+  function handleContactSaved(
+    address: string, city: string, stateRegion: string, zip: string,
+    country: string, phone: string, travelDistance: string,
+  ) {
+    setGeneral(prev => ({ ...prev, address, city, state: stateRegion, zip, country, phone, travelDistance }));
+    try {
+      const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+      base.address = address; base.city = city; base.state = stateRegion; base.zip = zip;
+      base.country = country; base.phone = phone; base.travelDistance = travelDistance;
+      initialGeneralRef.current = JSON.stringify(base);
+    } catch {
+      /* snapshot stays as-is; worst case a harmless dirty flag */
+    }
+    setSavedVersion(v => v + 1);
+  }
+
   // ── Manual save ─────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -504,6 +523,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             userId={initialProfile.id}
             onSlugSaved={handleSlugSaved}
             onEventTypesSaved={handleEventTypesSaved}
+            onContactSaved={handleContactSaved}
           />
 
           {/* Save — persists the General/profile fields. Booking config has
