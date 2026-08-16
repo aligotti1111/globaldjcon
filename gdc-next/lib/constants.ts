@@ -121,7 +121,15 @@ export function parseCustomEventTypes(raw: unknown): CustomEventType[] {
 export function mobEventLabel(key: string, custom?: CustomEventType[] | null): string {
   if (MOB_EVENT_LABELS[key]) return MOB_EVENT_LABELS[key];
   const hit = (custom || []).find((t) => t.key === key);
-  return hit ? hit.label : key;
+  if (hit) return hit.label;
+  // The definition is gone (e.g. the DJ deleted this custom type) but a past
+  // booking still carries its key. Prettify the key so those bookings keep a
+  // readable label — "cust_foam_party" → "Foam Party" — instead of the raw key.
+  if (key.startsWith('cust_')) {
+    const pretty = key.slice(5).replace(/_/g, ' ').trim();
+    if (pretty) return pretty.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return key;
 }
 
 /** Turn a free-text label into a stable, collision-proof custom key. */
