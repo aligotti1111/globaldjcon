@@ -222,9 +222,13 @@ interface Props {
     address: string, city: string, stateRegion: string, zip: string,
     country: string, phone: string, travelDistance: string,
   ) => void;
+  // Called after the upper-area basics (name + private) save themselves, and
+  // after club genres save, so the parent clears the dirty flag for them.
+  onBasicsSaved?: (name: string, profilePrivate: boolean) => void;
+  onGenresSaved?: (clubGenres: string[]) => void;
 }
 
-export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved }: Props) {
+export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved, onBasicsSaved, onGenresSaved }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
 
@@ -419,6 +423,71 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     }
   }
 
+  // ── Profile basics — its own Save covering the upper area (DJ / Company
+  //    Name + the Private Profile toggle). No password involved. ──
+  function basicsSnapshot(): string {
+    return JSON.stringify({ name: state.name, profilePrivate: state.profilePrivate });
+  }
+  const [basicsBaseline, setBasicsBaseline] = useState<string>(() => basicsSnapshot());
+  const [basicsSaving, setBasicsSaving] = useState(false);
+  const [basicsMsg, setBasicsMsg] = useState<string | null>(null);
+  const basicsDirty = basicsSnapshot() !== basicsBaseline;
+
+  async function saveBasics() {
+    if (basicsSaving || !basicsDirty) return;
+    if (!state.name.trim()) { setBasicsMsg('Name can’t be empty.'); return; }
+    setBasicsSaving(true);
+    setBasicsMsg(null);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not signed in');
+      const { error } = await supabase
+        .from('users')
+        .update({ name: state.name.trim(), profile_private: state.profilePrivate } as unknown as never)
+        .eq('id', user.id);
+      if (error) throw error;
+      setBasicsBaseline(basicsSnapshot());
+      setBasicsMsg('✓ Saved.');
+      setTimeout(() => setBasicsMsg(null), 2500);
+      onBasicsSaved?.(state.name, state.profilePrivate);
+    } catch {
+      setBasicsMsg('Could not save — try again.');
+    } finally {
+      setBasicsSaving(false);
+    }
+  }
+
+  // ── Club Music Genres — its own Save (club DJs only). ──
+  const [genresBaseline, setGenresBaseline] = useState<string>(() => JSON.stringify(state.clubGenres));
+  const [genresSaving, setGenresSaving] = useState(false);
+  const [genresMsg, setGenresMsg] = useState<string | null>(null);
+  const genresDirty = JSON.stringify(state.clubGenres) !== genresBaseline;
+
+  async function saveGenres() {
+    if (genresSaving || !genresDirty) return;
+    setGenresSaving(true);
+    setGenresMsg(null);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not signed in');
+      const { error } = await supabase
+        .from('users')
+        .update({ club_genres: state.clubGenres.length > 0 ? state.clubGenres : null } as unknown as never)
+        .eq('id', user.id);
+      if (error) throw error;
+      setGenresBaseline(JSON.stringify(state.clubGenres));
+      setGenresMsg('✓ Saved.');
+      setTimeout(() => setGenresMsg(null), 2500);
+      onGenresSaved?.(state.clubGenres);
+    } catch {
+      setGenresMsg('Could not save — try again.');
+    } finally {
+      setGenresSaving(false);
+    }
+  }
+
   // ── Drag-to-group (General <-> Specialty) ────────────────────────
   const isCustomKey = (k: string) => state.customEventTypes.some((c) => c.key === k);
   const allEventOptions: { val: string; label: string }[] = [
@@ -554,6 +623,24 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           onChange={(e) => onChange('name', e.target.value)}
           className={styles.input}
         />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.5rem' }}>
+          {basicsMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{basicsMsg}</span>}
+          <button
+            type="button"
+            disabled={!basicsDirty || basicsSaving}
+            onClick={() => void saveBasics()}
+            style={{
+              fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+              textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
+              border: basicsDirty && !basicsSaving ? 'none' : '1px solid var(--border)',
+              background: basicsDirty && !basicsSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
+              color: basicsDirty && !basicsSaving ? 'var(--black)' : 'var(--muted)',
+              cursor: basicsDirty && !basicsSaving ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {basicsSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
 
         {/* Nested URL field — keeps the slug input visually grouped under
             the name field. Border-left/indent removed so the input box
@@ -694,6 +781,24 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                   {g.label}
                 </label>
               ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.75rem' }}>
+              {genresMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{genresMsg}</span>}
+              <button
+                type="button"
+                disabled={!genresDirty || genresSaving}
+                onClick={() => void saveGenres()}
+                style={{
+                  fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+                  textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
+                  border: genresDirty && !genresSaving ? 'none' : '1px solid var(--border)',
+                  background: genresDirty && !genresSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
+                  color: genresDirty && !genresSaving ? 'var(--black)' : 'var(--muted)',
+                  cursor: genresDirty && !genresSaving ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {genresSaving ? 'Saving…' : 'Save'}
+              </button>
             </div>
           </div>
         </div>
