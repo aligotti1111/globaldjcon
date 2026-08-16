@@ -245,14 +245,41 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
     const label = state.customEventTypes.find((c) => c.key === key)?.label || 'this event type';
     const ok = await confirm({
       title: `Delete ${label}?`,
-      message: `${label} will be removed from your event types, along with any pricing you set for it. This can't be undone.`,
+      message: `${label} will be removed from the event types you offer, along with any pricing you set for it. Any bookings already made for ${label} are not affected — they keep their event type, price, and details exactly as booked. This can't be undone.`,
       confirmLabel: 'Delete',
       variant: 'danger',
     });
     if (!ok) return;
-    onChange('customEventTypes', state.customEventTypes.filter((c) => c.key !== key));
-    onChange('mobileEvents', state.mobileEvents.filter((v) => v !== key));
-    onChange('specialtyTypes', state.specialtyTypes.filter((k) => k !== key));
+
+    // Compute the new lists once so we can update the UI AND persist the same
+    // values immediately.
+    const nextCustom = state.customEventTypes.filter((c) => c.key !== key);
+    const nextMobile = state.mobileEvents.filter((v) => v !== key);
+    const nextSpecialty = state.specialtyTypes.filter((k) => k !== key);
+    onChange('customEventTypes', nextCustom);
+    onChange('mobileEvents', nextMobile);
+    onChange('specialtyTypes', nextSpecialty);
+
+    // Persist RIGHT NOW — no separate "Save changes" needed for a delete. Only
+    // the three event-type columns are written, so it doesn't disturb any other
+    // unsaved edits on the profile. Existing bookings store their own event_type
+    // string, so none of this touches them.
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('users')
+          .update({
+            mob_custom_event_types: nextCustom.length > 0 ? nextCustom : null,
+            event_types: nextMobile.length > 0 ? nextMobile.join(',') : null,
+            mob_specialty_types: nextSpecialty,
+          } as unknown as never)
+          .eq('id', user.id);
+      }
+    } catch {
+      // Non-fatal — the change is in the form, so the Save button still persists it.
+    }
   }
 
   // ── Drag-to-group (General <-> Specialty) ────────────────────────
