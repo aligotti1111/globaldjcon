@@ -59,6 +59,20 @@ const metaLabel: React.CSSProperties = {
   color: 'var(--muted, #8a8aa0)',
   marginRight: '.35rem',
 };
+// Highlighted sub-section header — makes "Run a sale" and "Promo codes" read as
+// distinct blocks (neon left bar + tinted band) instead of plain small labels.
+const subHeader: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: '.5rem',
+  fontSize: '.82rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em',
+  color: 'var(--neon, #00e0a4)',
+  background: 'rgba(0,224,164,.08)',
+  borderLeft: '3px solid var(--neon, #00e0a4)',
+  borderRadius: 6, padding: '.5rem .8rem', marginBottom: '.4rem',
+};
+const usedCellValue: React.CSSProperties = {
+  height: 44, display: 'inline-flex', alignItems: 'center', gap: 4,
+  color: 'var(--white,#fff)', fontSize: '.9rem', fontWeight: 700,
+};
 
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
@@ -257,62 +271,70 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           .gdcDateWhite { color: #fff; }
         `}</style>
 
-        <div className={styles.settingRow}>
-          <div className={styles.settingLabelWrap}>
-            <div className={styles.settingLabel}>Run a sale</div>
-            <div className={styles.settingHint}>
-              A site-wide % off applied automatically to every quote while active. Shows a
-              &ldquo;% OFF&rdquo; badge to clients. A sale and a promo code don&apos;t stack — the
-              bigger discount wins.
-            </div>
-          </div>
+        <div style={subHeader}>Run a sale</div>
+        <div className={styles.settingHint} style={{ marginBottom: '.6rem' }}>
+          A site-wide % off applied automatically to every quote while active. Shows a
+          &ldquo;% OFF&rdquo; badge to clients. A sale and a promo code don&apos;t stack — the
+          bigger discount wins.
         </div>
 
-        {/* Percent + end date — matched two-column grid so both are identical
-            width and aligned. Inputs share the same box-sizing + height. */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: '1rem',
-            maxWidth: 440,
-            padding: '.25rem 0 .75rem',
-          }}
-        >
-          <div style={fieldWrap}>
-            <label style={labelStyle}>Percent off</label>
-            <select
-              className={styles.settingSelect}
-              style={{ width: '100%', boxSizing: 'border-box', height: 44, color: 'var(--white,#fff)' }}
-              value={sale.percent || ''}
-              onChange={(e) => {
-                const v = e.target.value === '' ? 0 : Number(e.target.value);
-                updateSale(v > 0 ? { percent: v } : { percent: 0, active: false });
-              }}
-            >
-              <option value="">%</option>
-              {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>{n}%</option>
-              ))}
-            </select>
-          </div>
-          <div style={fieldWrap}>
-            <label style={labelStyle}>Ends on (optional)</label>
-            <input
-              type="date" className={`${styles.settingNumber} gdcDateWhite`}
-              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 44 }} onClick={openPicker}
-              value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
-            />
-          </div>
-        </div>
-
-        {/* Status pill + Activate/Deactivate — bottom of the sale box, right side. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.7rem', padding: '0 0 1rem' }}>
-          {(() => {
-            const pct = sale.percent ?? 0;
-            const saleOn = !!sale.active && pct > 0;
-            return (
-              <>
+        {/* One row: percent · start date · end date · used · status + Activate.
+            Wraps on narrow screens; each cell keeps a 44px control so the labels
+            and the status button line up along the bottom. */}
+        {(() => {
+          const pct = sale.percent ?? 0;
+          const saleOn = !!sale.active && pct > 0;
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', padding: '.25rem 0 1rem' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
+                <label style={labelStyle}>Percent off</label>
+                <select
+                  className={styles.settingSelect}
+                  style={{ width: '100%', boxSizing: 'border-box', height: 44, color: 'var(--white,#fff)' }}
+                  value={sale.percent || ''}
+                  onChange={(e) => {
+                    const v = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateSale(v > 0 ? { percent: v } : { percent: 0, active: false });
+                  }}
+                >
+                  <option value="">%</option>
+                  {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{n}%</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
+                <label style={labelStyle}>Start date</label>
+                <input
+                  type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 44 }} onClick={openPicker}
+                  value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
+                />
+              </div>
+              <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
+                <label style={labelStyle}>End date (optional)</label>
+                <input
+                  type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 44 }} onClick={openPicker}
+                  value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
+                />
+              </div>
+              <div style={{ ...fieldWrap, flex: '0 0 auto' }}>
+                <label style={labelStyle}>Used</label>
+                {saleUsage.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSaleOpen((o) => !o)}
+                    style={{ ...usedCellValue, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)' }}
+                  >
+                    {saleUsage.length}
+                    <span style={{ fontSize: '.7rem' }}>{saleOpen ? '▲' : '▼'}</span>
+                  </button>
+                ) : (
+                  <span style={usedCellValue}>0</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', height: 44, marginLeft: 'auto' }}>
                 <span
                   style={{
                     fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
@@ -340,35 +362,26 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 >
                   {saleOn ? 'Deactivate' : 'Activate'}
                 </button>
-              </>
-            );
-          })()}
-        </div>
+              </div>
+            </div>
+          );
+        })()}
 
-        {/* Sale usage — the sale's run window + who booked during it. */}
-        {saleUsage.length > 0 && (
+        {/* Sale usage detail — who booked during the sale window. The count that
+            toggles this lives in the "Used" cell of the row above. */}
+        {saleUsage.length > 0 && saleOpen && (
           <div style={{ padding: '0 0 1rem' }}>
-            <button
-              type="button"
-              onClick={() => setSaleOpen((o) => !o)}
-              style={{
-                background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
-                color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex',
-                alignItems: 'center', gap: 6, flexWrap: 'wrap',
-              }}
-            >
-              <span style={metaLabel}>Sale</span>
+            <div style={{ marginBottom: '.4rem', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={metaLabel}>Sale window</span>
               <span style={{ color: 'var(--white,#fff)' }}>
-                {sale.started_at ? fmtDate(sale.started_at) : '—'}
+                {sale.starts ? fmtDate(sale.starts) : (sale.started_at ? fmtDate(sale.started_at) : '—')}
                 {' – '}
                 {sale.active
                   ? (sale.ends ? fmtDate(sale.ends) : 'ongoing')
                   : (sale.ends ? fmtDate(sale.ends) : 'ended')}
               </span>
-              <span>· {saleUsage.length} used</span>
-              <span style={{ fontSize: '.7rem' }}>{saleOpen ? '▲' : '▼'}</span>
-            </button>
-            {saleOpen && (
+            </div>
+            {(
               <div style={{ marginTop: '.6rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.6rem' }}>
                 {saleUsage.map((r, ri) => (
                   <div
@@ -393,13 +406,11 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
         )}
 
         {/* ── Promo codes ────────────────────────────────────────── */}
-        <div className={styles.settingRow} style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '1rem' }}>
-          <div className={styles.settingLabelWrap}>
-            <div className={styles.settingLabel}>Promo codes</div>
-            <div className={styles.settingHint}>
-              Private codes you hand out (referrals, socials, repeat clients). Build a code, hit
-              Activate, and it moves into your list below. Your public price stays the same.
-            </div>
+        <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '1rem', marginTop: '.25rem' }}>
+          <div style={subHeader}>Promo codes</div>
+          <div className={styles.settingHint} style={{ marginBottom: '.8rem' }}>
+            Private codes you hand out (referrals, socials, repeat clients). Build a code, hit
+            Activate, and it moves into your list below. Your public price stays the same.
           </div>
         </div>
 
