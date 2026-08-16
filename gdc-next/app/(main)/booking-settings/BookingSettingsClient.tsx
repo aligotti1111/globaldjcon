@@ -227,7 +227,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
       <div className={styles.header}>
         <h1>Booking Settings</h1>
-        <p>Manage Your Bookings</p>
+        <p>Manage how clients book you — packages, contracts, payments and more.</p>
       </div>
 
       {!hasBookingAccess && (
