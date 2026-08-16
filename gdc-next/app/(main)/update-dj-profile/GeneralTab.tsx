@@ -613,7 +613,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
             currentUrl={`${siteUrl}/${state.slug || 'your-url'}`}
             currentSlug={state.slug}
             onSaved={onSlugSaved}
-            renderInput={({ value, onChange: setDraft, onStatusChange }) => (
+            renderInput={({ value, onChange: setDraft, onStatusChange, footer }) => (
               <SlugInput
                 value={value}
                 onChange={setDraft}
@@ -622,6 +622,7 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                 placeholder="e.g. dj-nova"
                 excludeUserId={userId}
                 originalSlug={slug || ''}
+                footer={footer}
               />
             )}
           />
@@ -1190,6 +1191,7 @@ function SlugChangeGate({
     value: string;
     onChange: (v: string) => void;
     onStatusChange: (s: GateStatus) => void;
+    footer?: React.ReactNode;
   }) => React.ReactNode;
 }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -1265,37 +1267,39 @@ function SlugChangeGate({
 
   // ── Unlocked: edit a draft + Save (writes straight to the DB) ──
   if (unlocked) {
+    // Status line + Cancel/Save, rendered INSIDE the URL box (via footer).
+    const footer = (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', marginTop: '.75rem' }}>
+        <span style={{ fontSize: '.7rem', color: err ? '#ff6b6b' : (saved && !changed ? 'var(--success)' : 'var(--muted)') }}>
+          {err
+            ? err
+            : (saved && !changed)
+              ? '✓ URL saved.'
+              : 'Enter a new URL, then click Save to apply it.'}
+        </span>
+        <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => { setUnlocked(false); setDraft(currentSlug || ''); setStatus('idle'); setErr(null); setSaved(false); }}
+            disabled={saving}
+            style={btn('ghost', !saving)}
+          >
+            Cancel
+          </button>
+          <button type="button" disabled={!canSave} onClick={save} style={btn('primary', canSave)}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    );
     return (
       <div>
-        {/* Full-width URL box, with the Save button tucked at the bottom-right
-            underneath it (inside the same group) rather than floating beside it. */}
         {renderInput({
           value: draft,
           onChange: (v) => { setDraft(v); setSaved(false); },
           onStatusChange: setStatus,
+          footer,
         })}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', marginTop: '.5rem' }}>
-          <span style={{ fontSize: '.7rem', color: err ? '#ff6b6b' : (saved && !changed ? 'var(--success)' : 'var(--muted)') }}>
-            {err
-              ? err
-              : (saved && !changed)
-                ? '✓ URL saved.'
-                : 'Enter a new URL, then click Save to apply it.'}
-          </span>
-          <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => { setUnlocked(false); setDraft(currentSlug || ''); setStatus('idle'); setErr(null); setSaved(false); }}
-              disabled={saving}
-              style={btn('ghost', !saving)}
-            >
-              Cancel
-            </button>
-            <button type="button" disabled={!canSave} onClick={save} style={btn('primary', canSave)}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </div>
       </div>
     );
   }
