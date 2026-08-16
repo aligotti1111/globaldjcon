@@ -216,9 +216,15 @@ interface Props {
     nextMobile: string[],
     nextSpecialty: string[],
   ) => void;
+  // Called after the Location & Contact section saves itself, so the parent
+  // clears the dirty flag for those fields.
+  onContactSaved?: (
+    address: string, city: string, stateRegion: string, zip: string,
+    country: string, phone: string, travelDistance: string,
+  ) => void;
 }
 
-export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved }: Props) {
+export default function GeneralTab({ state, onChange, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
 
@@ -290,6 +296,77 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       }
     } catch {
       // Non-fatal — the change is in the form, so the Save button still persists it.
+    }
+  }
+
+  // ── Location & Contact — its own Save, independent of the bottom one ──
+  // Business address (+ city/state/zip/country), contact phone, and travel
+  // distance live in their own section that saves on its own. Snapshot the
+  // fields at mount; the Save button lights up only while they differ.
+  function contactSnapshot(): string {
+    return JSON.stringify({
+      address: state.address, city: state.city, stateRegion: state.state,
+      zip: state.zip, country: state.country, phone: state.phone,
+      travelDistance: state.travelDistance,
+    });
+  }
+  const [contactBaseline, setContactBaseline] = useState<string>(() => contactSnapshot());
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactMsg, setContactMsg] = useState<string | null>(null);
+  const contactDirty = contactSnapshot() !== contactBaseline;
+
+  async function saveContact() {
+    if (contactSaving || !contactDirty) return;
+    setContactSaving(true);
+    setContactMsg(null);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not signed in');
+      const update: Record<string, unknown> = {
+        address: state.address.trim() || null,
+        city: state.city.trim() || null,
+        state: state.state.trim() || null,
+        zip: state.zip.trim() || null,
+        country: state.country || null,
+        phone: state.phone.trim() || null,
+        travel_distance: state.travelDistance || null,
+      };
+      // Re-geocode home_lat/home_lon only when the zip changed since last save —
+      // the homepage's "DJs near me" sort reads those. Mirrors the bottom Save.
+      let baseZip = '';
+      try { baseZip = (JSON.parse(contactBaseline) as { zip?: string }).zip || ''; } catch { /* ignore */ }
+      if (state.zip.trim() !== baseZip) {
+        update.home_lat = null;
+        update.home_lon = null;
+        if (state.zip.trim()) {
+          const COUNTRY_CC: Record<string, string> = {
+            'United States': 'us', 'United Kingdom': 'gb', 'Canada': 'ca', 'Australia': 'au',
+            'Germany': 'de', 'France': 'fr', 'Netherlands': 'nl', 'Spain': 'es', 'Italy': 'it',
+            'Brazil': 'br', 'Mexico': 'mx', 'Japan': 'jp', 'South Africa': 'za', 'New Zealand': 'nz',
+            'Ireland': 'ie', 'Sweden': 'se', 'Norway': 'no', 'Denmark': 'dk', 'Belgium': 'be',
+            'Switzerland': 'ch', 'Portugal': 'pt',
+          };
+          const cc = COUNTRY_CC[state.country || ''] || '';
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(state.zip.trim())}${cc ? '&countrycodes=' + cc : ''}&format=json&limit=1`);
+            const data = await res.json();
+            if (data && data[0]) { update.home_lat = parseFloat(data[0].lat); update.home_lon = parseFloat(data[0].lon); }
+          } catch { /* non-fatal — leave coords null */ }
+        }
+      }
+      const { error } = await supabase.from('users').update(update as unknown as never).eq('id', user.id);
+      if (error) throw error;
+      setContactBaseline(contactSnapshot());
+      setContactMsg('✓ Saved.');
+      setTimeout(() => setContactMsg(null), 2500);
+      // Clear these fields' dirty flag on the parent so the bottom Save button
+      // and the leave-warning don't fire for something already saved.
+      onContactSaved?.(state.address, state.city, state.state, state.zip, state.country, state.phone, state.travelDistance);
+    } catch {
+      setContactMsg('Could not save — try again.');
+    } finally {
+      setContactSaving(false);
     }
   }
 
@@ -552,62 +629,96 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
         </div>
       )}
 
-      {/* Business Address — one-line autocomplete with the country chip to its
-          right. Picking a suggestion fills city/state/zip. Public: goes on the
-          standard contract and the planner header, and pre-fills a mailing
-          address for check payments. */}
-      <AddressField
-        address={state.address}
-        country={state.country}
-        onChange={(patch) => {
-          if (patch.address !== undefined) onChange('address', patch.address);
-          if (patch.city !== undefined) onChange('city', patch.city);
-          if (patch.state !== undefined) onChange('state', patch.state);
-          if (patch.zip !== undefined) onChange('zip', patch.zip);
-          if (patch.country !== undefined) onChange('country', patch.country);
-        }}
-      />
+      {/* Location & Contact — its own section with its own Save. Business
+          address, contact phone, and travel distance save independently of the
+          bottom "Save Changes" button. */}
+      <div className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitle}>Location &amp; Contact</div>
+        </div>
+        <div className={styles.sectionBody}>
+          {/* Business Address — one-line autocomplete with the country chip to
+              its right. Picking a suggestion fills city/state/zip. Public: goes
+              on the standard contract and the planner header, and pre-fills a
+              mailing address for check payments. */}
+          <AddressField
+            address={state.address}
+            country={state.country}
+            onChange={(patch) => {
+              if (patch.address !== undefined) onChange('address', patch.address);
+              if (patch.city !== undefined) onChange('city', patch.city);
+              if (patch.state !== undefined) onChange('state', patch.state);
+              if (patch.zip !== undefined) onChange('zip', patch.zip);
+              if (patch.country !== undefined) onChange('country', patch.country);
+            }}
+          />
 
-      {/* Contact Phone — ABOVE Distance, per request. Public/business number,
-          kept distinct from the sign-in number and the text-notification
-          number, which live elsewhere. */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-phone">Contact Phone</label>
-        <input
-          type="text"
-          id="ud-phone"
-          placeholder="e.g. +1 917-555-1234"
-          value={state.phone}
-          onChange={(e) => onChange('phone', e.target.value)}
-          className={styles.input}
-        />
-        <p className={styles.fieldHint}>
-          Shown to clients on your profile and contracts. Separate from your
-          login number and your text-notification number.
-        </p>
-      </div>
+          {/* Contact Phone — public/business number, kept distinct from the
+              sign-in number and the text-notification number. */}
+          <div className={styles.formGroup}>
+            <label htmlFor="ud-phone">Contact Phone</label>
+            <input
+              type="text"
+              id="ud-phone"
+              placeholder="e.g. +1 917-555-1234"
+              value={state.phone}
+              onChange={(e) => onChange('phone', e.target.value)}
+              className={styles.input}
+            />
+            <p className={styles.fieldHint}>
+              Shown to clients on your profile and contracts. Separate from your
+              login number and your text-notification number.
+            </p>
+          </div>
 
-      {/* Travel distance */}
-      <div className={styles.formGroup}>
-        <label htmlFor="ud-travel">Distance Willing to Travel</label>
-        <select
-          id="ud-travel"
-          value={state.travelDistance}
-          onChange={(e) => onChange('travelDistance', e.target.value)}
-          className={styles.select}
-        >
-          {TRAVEL_DISTANCES.map((d) => (
-            <option key={d.val || 'empty'} value={d.val}>{d.label}</option>
-          ))}
-        </select>
+          {/* Travel distance */}
+          <div className={styles.formGroup}>
+            <label htmlFor="ud-travel">Distance Willing to Travel</label>
+            <select
+              id="ud-travel"
+              value={state.travelDistance}
+              onChange={(e) => onChange('travelDistance', e.target.value)}
+              className={styles.select}
+            >
+              {TRAVEL_DISTANCES.map((d) => (
+                <option key={d.val || 'empty'} value={d.val}>{d.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.4rem' }}>
+            <button
+              type="button"
+              disabled={!contactDirty || contactSaving}
+              onClick={() => void saveContact()}
+              style={{
+                fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+                textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, border: 'none',
+                background: 'var(--neon)', color: 'var(--black)', fontWeight: 700, whiteSpace: 'nowrap',
+                cursor: (!contactDirty || contactSaving) ? 'default' : 'pointer',
+                opacity: (!contactDirty || contactSaving) ? 0.45 : 1,
+              }}
+            >
+              {contactSaving ? 'Saving…' : 'Save Location & Contact'}
+            </button>
+            {contactMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{contactMsg}</span>}
+          </div>
+        </div>
       </div>
 
       {/* DJ start year field removed — years-of-experience is no longer
           shown on profiles, so the input is no longer needed. */}
 
-      {/* Blocked Users — at the bottom of the tab. Moved here from the old
-          account-settings page, which DJs no longer see. */}
-      <BlockedUsersSection />
+      {/* Blocked Users — its own section. Self-saving (unblock writes straight
+          to the DB), so no Save button needed here. */}
+      <div className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitle}>Blocked Users</div>
+        </div>
+        <div className={styles.sectionBody}>
+          <BlockedUsersSection hideLabel />
+        </div>
+      </div>
 
     </div>
   );
