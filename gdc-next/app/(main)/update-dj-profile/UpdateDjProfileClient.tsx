@@ -218,8 +218,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     };
   });
 
-  // Save state — alert at top, button disabled while saving
-  const [saving, setSaving] = useState(false);
+  // Alert at top — used by the Enter-to-save fallback (handleSubmit).
   const [alertMsg, setAlertMsg] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
   // Supabase client for the manual General save below. (Booking settings and
@@ -327,10 +326,35 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     setSavedVersion(v => v + 1);
   }
 
+  // Called after GeneralTab saves the upper-area basics (name + private) and
+  // club genres itself — sync the snapshot so the leave-warning doesn't fire.
+  function handleBasicsSaved(name: string, profilePrivate: boolean) {
+    setGeneral(prev => ({ ...prev, name, profilePrivate }));
+    try {
+      const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+      base.name = name;
+      base.profilePrivate = profilePrivate;
+      initialGeneralRef.current = JSON.stringify(base);
+    } catch {
+      /* snapshot stays as-is; worst case a harmless dirty flag */
+    }
+    setSavedVersion(v => v + 1);
+  }
+  function handleGenresSaved(clubGenres: string[]) {
+    setGeneral(prev => ({ ...prev, clubGenres }));
+    try {
+      const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+      base.clubGenres = clubGenres;
+      initialGeneralRef.current = JSON.stringify(base);
+    } catch {
+      /* snapshot stays as-is; worst case a harmless dirty flag */
+    }
+    setSavedVersion(v => v + 1);
+  }
+
   // ── Manual save ─────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setAlertMsg(null);
     try {
       const supabase = supabaseRef.current;
@@ -479,7 +503,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       }
       setAlertMsg({ kind: 'error', text: msg });
     }
-    setSaving(false);
   }
 
   // ── Site URL for the slug preview ───────────────────────────────
@@ -524,25 +547,14 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             onSlugSaved={handleSlugSaved}
             onEventTypesSaved={handleEventTypesSaved}
             onContactSaved={handleContactSaved}
+            onBasicsSaved={handleBasicsSaved}
+            onGenresSaved={handleGenresSaved}
           />
 
-          {/* Save — persists the General/profile fields. Booking config has
-              moved to its own page (/booking-settings) and saves there. */}
-          <button
-            type="submit"
-            disabled={saving || !isPageDirty}
-            className={styles.submitBtn}
-            style={{
-              opacity: (saving || !isPageDirty) ? 0.55 : 1,
-              cursor: (saving || !isPageDirty) ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {saving
-              ? 'Saving…'
-              : isPageDirty
-              ? 'Save Changes'
-              : '✓ All Changes Saved'}
-          </button>
+          {/* The single bottom "Save Changes" button is gone: every section on
+              this page now saves itself (name + private, URL, party types,
+              genres, location & contact, logo, email, password, blocked users).
+              The form + handleSubmit stay as a harmless Enter-to-save fallback. */}
         </form>
       </div>
 
