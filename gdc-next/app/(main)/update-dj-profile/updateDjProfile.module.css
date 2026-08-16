@@ -31,7 +31,7 @@
 }
 .header h1 {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 3rem;
+  font-size: 2.1rem;
   letter-spacing: .04em;
   color: var(--white);
   margin: 0;
@@ -2688,6 +2688,7 @@
   overflow-x: auto;
 }
 .secTabBtn {
+  position: relative;
   font-family: 'Space Mono', monospace;
   font-size: .72rem;
   letter-spacing: .08em;
@@ -2695,15 +2696,25 @@
   color: var(--muted);
   background: none;
   border: none;
-  padding: 0 0 12px;
-  margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
+  padding: 0 .2rem 13px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color .15s, border-color .15s;
+  transition: color .15s;
 }
 .secTabBtn:hover { color: var(--white); }
-.secTabBtnActive { color: var(--neon); border-bottom-color: var(--neon); }
+/* Active tab: white text + a teal→cyan gradient underline with a soft glow. */
+.secTabBtnActive { color: var(--white); }
+.secTabBtnActive::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(100deg, #22e3ad, #31d0ff);
+  box-shadow: 0 4px 14px -2px rgba(34, 227, 173, .6);
+}
 .secTabSelect {
   display: none;
   width: 100%;
