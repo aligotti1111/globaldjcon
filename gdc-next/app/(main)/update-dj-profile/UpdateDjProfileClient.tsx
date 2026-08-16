@@ -231,8 +231,8 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     { id: 'account', label: 'Account' },
     { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
     { id: 'location', label: 'Location & Contact' },
-    { id: 'blocked', label: 'Blocked' },
     { id: 'team', label: 'Team' },
+    { id: 'blocked', label: 'Blocked' },
     { id: 'timezone', label: 'Your Timezone' },
   ];
 
