@@ -13,7 +13,7 @@ interface Blocked {
   name: string;
 }
 
-export default function BlockedUsersSection() {
+export default function BlockedUsersSection({ hideLabel = false }: { hideLabel?: boolean }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<Blocked[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -71,7 +71,7 @@ export default function BlockedUsersSection() {
 
   return (
     <div className={styles.formGroup}>
-      <label>Blocked Users</label>
+      {!hideLabel && <label>Blocked Users</label>}
       {!loaded ? (
         <div style={{ color: '#8a8aa0', fontSize: '.85rem' }}>Loading…</div>
       ) : blocked.length === 0 ? (
