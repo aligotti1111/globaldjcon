@@ -1340,12 +1340,12 @@ function SlugChangeGate({
             autoComplete="current-password"
           />
           {err && <div style={{ color: '#ff6b6b', fontSize: '.75rem' }}>{err}</div>}
-          <div style={{ display: 'flex', gap: '.5rem' }}>
-            <button type="button" onClick={verify} disabled={busy} style={btn('primary', !busy)}>
-              {busy ? 'Verifying…' : 'Unlock'}
-            </button>
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => { setOpen(false); setPw(''); setErr(null); }} style={btn('ghost')}>
               Cancel
+            </button>
+            <button type="button" onClick={verify} disabled={busy} style={btn('primary', !busy)}>
+              {busy ? 'Verifying…' : 'Unlock'}
             </button>
           </div>
         </div>
