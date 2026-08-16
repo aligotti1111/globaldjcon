@@ -60,7 +60,7 @@ const metaLabel: React.CSSProperties = {
   marginRight: '.35rem',
 };
 // Brand gradient used across this section (badge headers, status pill, CTA).
-const GRAD = 'linear-gradient(100deg,#22e3ad,#31d0ff 45%,#8b6bff)';
+const GRAD = 'linear-gradient(100deg,#22e3ad,#31d0ff)';
 
 // A section block: pure-black card with a bright hairline border. The two
 // blocks (Run a sale / Promo codes) sit inside the panel and read as distinct.
@@ -79,7 +79,7 @@ function SecHeader({ label, icon }: { label: string; icon: React.ReactNode }) {
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 12,
         padding: '10px 18px 10px 12px', borderRadius: 14,
-        background: 'linear-gradient(100deg,rgba(34,227,173,.18),rgba(49,208,255,.12) 45%,rgba(139,107,255,.16))',
+        background: 'linear-gradient(100deg,rgba(34,227,173,.18),rgba(49,208,255,.14))',
         border: '1px solid rgba(255,255,255,.26)', marginBottom: 16,
       }}
     >
