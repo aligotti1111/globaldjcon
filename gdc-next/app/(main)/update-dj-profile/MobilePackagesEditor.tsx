@@ -351,7 +351,17 @@ export default function MobilePackagesEditor({
     setEtErr(null);
     if (toSpecialty) setEtNewSpec(''); else setEtNewGen('');
   }
-  function etRemoveCustom(key: string) {
+  async function etRemoveCustom(key: string) {
+    // A custom event type is one the DJ typed in themselves — deleting it drops
+    // it (and any pricing tied to it) for good, so confirm first.
+    const label = etCustom.find((c) => c.key === key)?.label || 'this event type';
+    const ok = await confirm({
+      title: `Delete ${label}?`,
+      message: `${label} will be removed from your event types, along with any pricing you set for it. This can't be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setEtCustom((prev) => prev.filter((c) => c.key !== key));
     setEtSel((prev) => prev.filter((k) => k !== key));
     setEtSpec((prev) => prev.filter((k) => k !== key));
@@ -569,7 +579,7 @@ export default function MobilePackagesEditor({
             <input type="checkbox" checked={etSel.includes(o.key)} onChange={(e) => etToggle(o.key, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }} />
             <span style={{ flex: 1 }}>{o.label}</span>
             {isCustom(o.key) && (
-              <span role="button" aria-label={`Remove ${o.label}`} title="Remove" onClick={(e) => { e.preventDefault(); etRemoveCustom(o.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>
+              <span role="button" aria-label={`Remove ${o.label}`} title="Remove" onClick={(e) => { e.preventDefault(); void etRemoveCustom(o.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>
             )}
           </label>
         );
