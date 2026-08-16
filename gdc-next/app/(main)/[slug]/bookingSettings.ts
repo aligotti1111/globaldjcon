@@ -141,6 +141,7 @@ export interface PromoCode {
 export interface Sale {
   active?: boolean;
   percent?: number;             // % off (1–100)
+  starts?: string | null;       // ISO date the DJ chooses; null = starts immediately
   ends?: string | null;         // ISO date; null = no end date
   started_at?: string | null;   // ISO timestamp set when the sale is activated
 }
@@ -167,6 +168,11 @@ export function isPromoUsable(p: PromoCode, now: Date = new Date()): boolean {
 export function isSaleActive(s: Sale | null | undefined, now: Date = new Date()): boolean {
   if (!s || !s.active) return false;
   if (!s.percent || s.percent <= 0) return false;
+  // Start date (optional): the sale hasn't begun until it arrives.
+  if (s.starts) {
+    const start = new Date(`${s.starts}T00:00:00`);
+    if (!isNaN(start.getTime()) && start.getTime() > now.getTime()) return false;
+  }
   if (s.ends) {
     const end = new Date(`${s.ends}T23:59:59`);
     if (!isNaN(end.getTime()) && end.getTime() < now.getTime()) return false;
