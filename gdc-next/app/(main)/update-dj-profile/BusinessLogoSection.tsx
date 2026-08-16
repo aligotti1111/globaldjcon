@@ -8,9 +8,16 @@
 // Self-contained: reads the current DJ's logo, uploads to the same `avatars`
 // bucket the contract logo uses, saves the column, and can remove it.
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
+
+// Small round icon button that sits directly on top of the logo image.
+const iconBtnStyle: CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: 24, height: 24, borderRadius: 6, cursor: 'pointer', padding: 0,
+  background: 'rgba(0,0,0,.6)', border: '1px solid rgba(255,255,255,.25)', color: '#fff',
+};
 
 export default function BusinessLogoSection() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -99,41 +106,57 @@ export default function BusinessLogoSection() {
         Shows on your Planner &amp; Playlist, your contracts, and more. Update it any time and every place updates with it.
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPick} />
         <div
           style={{
+            position: 'relative',
             width: 132, height: 68, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
             border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.04)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          {logoUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-            : <span style={{ color: '#6c6c86', fontSize: '.72rem' }}>No logo yet</span>}
+          {logoUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              {/* Replace + Remove live ON the logo as icons, not as separate buttons. */}
+              <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
+                <button
+                  type="button" disabled={busy} onClick={() => fileRef.current?.click()}
+                  title="Replace logo" aria-label="Replace logo" style={iconBtnStyle}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </button>
+                <button
+                  type="button" disabled={busy} onClick={onRemove}
+                  title="Remove logo" aria-label="Remove logo" style={iconBtnStyle}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          ) : (
+            // No logo yet — the whole tile is the uploader.
+            <button
+              type="button" disabled={busy} onClick={() => fileRef.current?.click()}
+              title="Upload logo" aria-label="Upload logo"
+              style={{
+                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 3,
+                background: 'transparent', border: 'none', color: '#8a8aa0', cursor: 'pointer', fontSize: '.68rem',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              {busy ? 'Saving…' : 'Upload logo'}
+            </button>
+          )}
         </div>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPick} />
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-          style={{
-            background: 'rgba(0,224,164,.08)', border: '1px solid rgba(0,224,164,.4)',
-            color: '#00e0a4', borderRadius: 8, padding: '.5rem .9rem',
-            fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          {busy ? 'Saving…' : logoUrl ? 'Replace logo' : 'Upload logo'}
-        </button>
-        {logoUrl && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onRemove}
-            style={{ background: 'transparent', border: 'none', color: '#8a8aa0', textDecoration: 'underline', cursor: 'pointer', fontSize: '.82rem' }}
-          >
-            Remove
-          </button>
-        )}
       </div>
       {msg && <div style={{ marginTop: '.5rem', fontSize: '.8rem', color: '#8a8aa0' }}>{msg}</div>}
     </div>
