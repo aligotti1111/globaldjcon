@@ -286,6 +286,28 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     patchUser({ slug: newSlug });
   }
 
+  // Called by GeneralTab AFTER it has written an event-type deletion straight
+  // to the DB (same pattern as handleSlugSaved). Deleting a custom event type
+  // persists on its own — no bottom Save needed — so we sync the three affected
+  // fields into the dirty snapshot too, or the leave-warning would fire and the
+  // Save button would light up for a change that's already saved.
+  function handleEventTypesSaved(
+    nextCustom: GeneralFormState['customEventTypes'],
+    nextMobile: string[],
+    nextSpecialty: string[],
+  ) {
+    try {
+      const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+      base.customEventTypes = nextCustom;
+      base.mobileEvents = nextMobile;
+      base.specialtyTypes = nextSpecialty;
+      initialGeneralRef.current = JSON.stringify(base);
+    } catch {
+      /* snapshot stays as-is; worst case a harmless dirty flag */
+    }
+    setSavedVersion(v => v + 1);
+  }
+
   // ── Manual save ─────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -481,6 +503,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
             siteUrl={siteUrl}
             userId={initialProfile.id}
             onSlugSaved={handleSlugSaved}
+            onEventTypesSaved={handleEventTypesSaved}
           />
 
           {/* Save — persists the General/profile fields. Booking config has
