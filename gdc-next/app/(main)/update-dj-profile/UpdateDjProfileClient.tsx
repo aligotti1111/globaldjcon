@@ -19,7 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { useAuth } from '@/components/AuthProvider';
 import styles from './updateDjProfile.module.css';
-import GeneralTab from './GeneralTab';
+import GeneralTab, { type AccountTab } from './GeneralTab';
 import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
 import TimezoneSection from '../account-settings/TimezoneSection';
@@ -220,6 +220,21 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
 
   // Alert at top — used by the Enter-to-save fallback (handleSubmit).
   const [alertMsg, setAlertMsg] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+
+  // ── Section tabs ────────────────────────────────────────────────
+  // This page is laid out like Booking Settings: a top tab bar swaps between
+  // sections instead of one long scroll. GeneralTab renders the first four
+  // (kept mounted, shown via display toggle); Team + Your Timezone are their
+  // own tabs rendered below.
+  const [tab, setTab] = useState<AccountTab>('account');
+  const tabs: { id: AccountTab; label: string }[] = [
+    { id: 'account', label: 'Account' },
+    { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
+    { id: 'location', label: 'Location & Contact' },
+    { id: 'blocked', label: 'Blocked' },
+    { id: 'team', label: 'Team' },
+    { id: 'timezone', label: 'Your Timezone' },
+  ];
 
   // Supabase client for the manual General save below. (Booking settings and
   // their autosave moved to /booking-settings.)
@@ -526,7 +541,40 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         <p>Manage Your Profile</p>
       </div>
 
-      <div className={styles.card}>
+      {/* Section tab bar — same pattern as Booking Settings: a horizontal nav
+          on desktop, a <select> on mobile. */}
+      <nav className={styles.secTabNav} role="tablist">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`${styles.secTabBtn} ${tab === t.id ? styles.secTabBtnActive : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <select
+        className={styles.secTabSelect}
+        value={tab}
+        onChange={(e) => setTab(e.target.value as AccountTab)}
+        aria-label="Account settings section"
+      >
+        {tabs.map((t) => (
+          <option key={t.id} value={t.id}>{t.label}</option>
+        ))}
+      </select>
+
+      {/* GeneralTab card — holds the Account / Event Types / Location / Blocked
+          panes. Stays mounted (so per-section edit + dirty state survive tab
+          switches) but is hidden when a non-GeneralTab tab is active. */}
+      <div
+        className={styles.card}
+        style={{ display: tab === 'team' || tab === 'timezone' ? 'none' : undefined }}
+      >
         {alertMsg && (
           <div className={`${styles.alert} ${
             alertMsg.kind === 'success' ? styles.alertSuccess : styles.alertError
@@ -539,6 +587,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           <GeneralTab
             state={general}
             onChange={updateGeneral}
+            activeTab={tab}
             djType={initialProfile.dj_type}
             email={authEmail}
             slug={initialProfile.slug}
@@ -558,13 +607,13 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
         </form>
       </div>
 
-      {/* Team seats — DJs render THIS component (not AccountSettingsClient), so
-          the Team card lives here. Self-contained + Pro-gated. */}
-      <TeamSection djType={initialProfile.dj_type} />
+      {/* Team seats — its own tab. DJs render THIS component (not
+          AccountSettingsClient). Self-contained + Pro-gated. */}
+      {tab === 'team' && <TeamSection djType={initialProfile.dj_type} />}
 
-      {/* Timezone — the clock the booking-request auto-decline deadline and the
-          "Expires in N days" countdown are measured in. Defaults to Eastern. */}
-      <TimezoneSection />
+      {/* Your Timezone — its own tab. The clock the booking-request auto-decline
+          deadline and the "Expires in N days" countdown are measured in. */}
+      {tab === 'timezone' && <TimezoneSection />}
     </div>
   );
 }
