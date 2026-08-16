@@ -291,8 +291,12 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           } as unknown as never)
           .eq('id', user.id);
         // Tell the parent it's saved so the dirty snapshot updates and the
-        // bottom "Save Changes" button / leave-warning don't fire for it.
+        // bottom "Save Changes" button / leave-warning don't fire for it. Also
+        // reset this section's own baseline so its Save button doesn't light up.
         onEventTypesSaved?.(nextCustom, nextMobile, nextSpecialty);
+        setEventTypesBaseline(JSON.stringify({
+          mobileEvents: nextMobile, customEventTypes: nextCustom, specialtyTypes: nextSpecialty,
+        }));
       }
     } catch {
       // Non-fatal — the change is in the form, so the Save button still persists it.
@@ -367,6 +371,51 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
       setContactMsg('Could not save — try again.');
     } finally {
       setContactSaving(false);
+    }
+  }
+
+  // ── Mobile Party Types — its own Save (add / move / toggle) ──────────
+  // Selecting types, adding a custom one, or dragging between General and
+  // Specialty edits event_types / mob_custom_event_types / mob_specialty_types.
+  // This section saves those three columns on its own; the button lights up as
+  // soon as any of them differs from what's saved.
+  function eventTypesSnapshot(): string {
+    return JSON.stringify({
+      mobileEvents: state.mobileEvents,
+      customEventTypes: state.customEventTypes,
+      specialtyTypes: state.specialtyTypes,
+    });
+  }
+  const [eventTypesBaseline, setEventTypesBaseline] = useState<string>(() => eventTypesSnapshot());
+  const [eventTypesSaving, setEventTypesSaving] = useState(false);
+  const [eventTypesMsg, setEventTypesMsg] = useState<string | null>(null);
+  const eventTypesDirty = eventTypesSnapshot() !== eventTypesBaseline;
+
+  async function saveEventTypes() {
+    if (eventTypesSaving || !eventTypesDirty) return;
+    setEventTypesSaving(true);
+    setEventTypesMsg(null);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not signed in');
+      const { error } = await supabase
+        .from('users')
+        .update({
+          event_types: state.mobileEvents.length > 0 ? state.mobileEvents.join(',') : null,
+          mob_custom_event_types: state.customEventTypes.length > 0 ? state.customEventTypes : null,
+          mob_specialty_types: state.specialtyTypes,
+        } as unknown as never)
+        .eq('id', user.id);
+      if (error) throw error;
+      setEventTypesBaseline(eventTypesSnapshot());
+      setEventTypesMsg('✓ Saved.');
+      setTimeout(() => setEventTypesMsg(null), 2500);
+      onEventTypesSaved?.(state.customEventTypes, state.mobileEvents, state.specialtyTypes);
+    } catch {
+      setEventTypesMsg('Could not save — try again.');
+    } finally {
+      setEventTypesSaving(false);
     }
   }
 
@@ -579,6 +628,24 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
                 ? specialtyGroup.map(renderDraggableTile)
                 : <span style={{ color: 'var(--muted)', fontSize: '.72rem', padding: '.4rem .2rem' }}>Drag events here to price them on their own.</span>}
             </div>
+          </div>
+          {/* Its own Save — lights up when you add, move, or toggle a type. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.6rem' }}>
+            <button
+              type="button"
+              disabled={!eventTypesDirty || eventTypesSaving}
+              onClick={() => void saveEventTypes()}
+              style={{
+                fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+                textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, border: 'none',
+                background: 'var(--neon)', color: 'var(--black)', fontWeight: 700, whiteSpace: 'nowrap',
+                cursor: (!eventTypesDirty || eventTypesSaving) ? 'default' : 'pointer',
+                opacity: (!eventTypesDirty || eventTypesSaving) ? 0.45 : 1,
+              }}
+            >
+              {eventTypesSaving ? 'Saving…' : 'Save Party Types'}
+            </button>
+            {eventTypesMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{eventTypesMsg}</span>}
           </div>
         </div>
       )}
