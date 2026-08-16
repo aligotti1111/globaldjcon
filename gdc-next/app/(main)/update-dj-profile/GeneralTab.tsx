@@ -623,25 +623,6 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
           onChange={(e) => onChange('name', e.target.value)}
           className={styles.input}
         />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.5rem' }}>
-          {basicsMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{basicsMsg}</span>}
-          <button
-            type="button"
-            disabled={!basicsDirty || basicsSaving}
-            onClick={() => void saveBasics()}
-            style={{
-              fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
-              textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
-              border: basicsDirty && !basicsSaving ? 'none' : '1px solid var(--border)',
-              background: basicsDirty && !basicsSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
-              color: basicsDirty && !basicsSaving ? 'var(--black)' : 'var(--muted)',
-              cursor: basicsDirty && !basicsSaving ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {basicsSaving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-
         {/* Nested URL field — keeps the slug input visually grouped under
             the name field. Border-left/indent removed so the input box
             aligns flush with the other fields above and below. */}
@@ -669,6 +650,27 @@ export default function GeneralTab({ state, onChange, djType, email, slug, siteU
               right under the URL it points at. Encodes the permanent profile
               ID (never breaks on a slug change); shows the live slug as caption. */}
           <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
+        </div>
+
+        {/* Save for the upper area (name + Private Profile) — placed UNDER the
+            URL field so it sits at the bottom of this group. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.8rem', marginTop: '.85rem' }}>
+          {basicsMsg && <span style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{basicsMsg}</span>}
+          <button
+            type="button"
+            disabled={!basicsDirty || basicsSaving}
+            onClick={() => void saveBasics()}
+            style={{
+              fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.07em',
+              textTransform: 'uppercase', padding: '.6rem 1.2rem', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap',
+              border: basicsDirty && !basicsSaving ? 'none' : '1px solid var(--border)',
+              background: basicsDirty && !basicsSaving ? 'var(--neon)' : 'rgba(255,255,255,.06)',
+              color: basicsDirty && !basicsSaving ? 'var(--black)' : 'var(--muted)',
+              cursor: basicsDirty && !basicsSaving ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {basicsSaving ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </div>
 
