@@ -421,6 +421,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
           .gdcDateWhite::-webkit-datetime-edit-day-field,
           .gdcDateWhite::-webkit-datetime-edit-year-field { color: #fff; }
           .gdcDateWhite { color: #fff; }
+          @keyframes gdcLiveDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .25; transform: scale(.55); }
+          }
+          .gdcLiveDot { animation: gdcLiveDot 1.1s ease-in-out infinite; }
         `}</style>
 
         <div style={blockStyle}>
@@ -504,7 +509,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                   <span style={usedCellValue}>0</span>
                 )}
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto', alignItems: 'center', textAlign: 'center' }}>
                 <label style={labelStyle}>Status</label>
                 <span
                   style={{
@@ -513,7 +518,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                     ...pillStyle,
                   }}
                 >
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />
+                  <span
+                    className={tone === 'on' ? 'gdcLiveDot' : undefined}
+                    style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
+                  />
                   {statLabel}
                 </span>
               </div>
