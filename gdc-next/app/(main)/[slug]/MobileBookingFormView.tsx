@@ -380,6 +380,15 @@ export default function MobileBookingForm({
   const dateExcl = (bookingSettings.exclusions || []).find((e) => e.date === dateKey);
   const saleExcludedToday = !!dateExcl?.sale;
   const codesExcludedToday = !!dateExcl?.codes;
+  // A single message reflecting what the DJ has blocked on this date (only when a
+  // sale/code would otherwise apply, so we don't warn about nothing).
+  const saleBlocked = saleOn && saleExcludedToday;
+  const codesBlocked = hasActiveCode && codesExcludedToday;
+  const exclusionMsg = saleBlocked && codesBlocked
+    ? 'Promo codes and sales are excluded from bookings for this date.'
+    : saleBlocked ? 'Sales are excluded from bookings for this date.'
+    : codesBlocked ? 'Promo codes are excluded from bookings for this date.'
+    : '';
   const basePrice = priceResult?.price ?? null;
   const discount: DiscountResult = useMemo(() => {
     if (basePrice == null) return { amount: 0, kind: null, label: '' };
@@ -417,7 +426,7 @@ export default function MobileBookingForm({
     if (match && codesExcludedToday) {
       // Real code, but the DJ blocked codes on this date.
       setAppliedCode('');
-      setPromoError(`Promo codes can’t be used on ${dateLabel}.`);
+      setPromoError('Promo codes are excluded from bookings for this date.');
     } else if (match) {
       setAppliedCode(code);
       setPromoError('');
@@ -1542,10 +1551,10 @@ export default function MobileBookingForm({
               </div>
             )}
 
-            {/* The DJ has an active sale, but it's blocked on this date. */}
-            {saleOn && saleExcludedToday && (
+            {/* Discounts the DJ has blocked on this date. */}
+            {exclusionMsg && (
               <div className={styles.depositText} style={{ color: 'var(--muted,#8a8aa0)', marginBottom: 4 }}>
-                The current sale doesn&apos;t apply on {dateLabel}.
+                {exclusionMsg}
               </div>
             )}
 
@@ -1617,11 +1626,6 @@ export default function MobileBookingForm({
               </div>
             )}
 
-            {!priceResult.isQuote && priceResult.price != null && hasActiveCode && codesExcludedToday && (
-              <div style={{ marginTop: 10, color: 'var(--muted,#8a8aa0)', fontSize: '.8rem' }}>
-                Promo codes aren&apos;t accepted on {dateLabel}.
-              </div>
-            )}
             {!priceResult.isQuote && priceResult.price != null && hasActiveCode && !codesExcludedToday && (
               <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <input
