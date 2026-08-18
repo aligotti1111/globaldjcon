@@ -184,12 +184,6 @@ export default function BookingCardShell({
 
   return (
     <div ref={cardRef} className={`${styles.card} ${styles[`card_${status}`]}`}>
-      {/* Expiry countdown pill (pending requests) — inside the card so it
-          reads as part of the request, not floating above it. */}
-      {expirySlot && (
-        <div style={{ padding: '4px 4px 0' }}>{expirySlot}</div>
-      )}
-
       {/* The colored status accent strip used to render here at the top
           of the card. Removed — status is now communicated by the badge
           inside the Package & Price section, so the strip became
@@ -497,6 +491,9 @@ export default function BookingCardShell({
               Block
             </button>
           )}
+          {/* Expiry countdown pill (pending requests) — bottom-right, next to
+              the Block control so it reads as part of this request's chrome. */}
+          {expirySlot}
         </div>
       </div>
     </div>
