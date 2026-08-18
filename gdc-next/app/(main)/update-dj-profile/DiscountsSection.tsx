@@ -227,6 +227,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
   // Bookings that used the automatic sale (a discount was applied but no code).
   const [saleUsage, setSaleUsage] = useState<Redemption[]>([]);
   const [saleOpen, setSaleOpen] = useState(false);
+  // Which past-sale row is expanded to show who used it.
+  const [expandedPast, setExpandedPast] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -316,6 +318,23 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
   function valueLabel(c: PromoCode): string {
     return c.type === 'percent' ? `${c.value}% off` : `${currencySymbol}${c.value} off`;
   }
+
+  // Bookings that used the CURRENT sale — i.e. sale-discounted bookings that
+  // landed inside this sale's window. An empty/new sale (no percent) has none,
+  // so the "Used" cell reads 0 instead of the all-time total.
+  const currentSaleUsage = (() => {
+    if ((sale.percent ?? 0) <= 0) return [];
+    const startMs = sale.starts ? new Date(`${sale.starts}T00:00:00`).getTime()
+      : (sale.started_at ? new Date(sale.started_at).getTime() : null);
+    const endMs = sale.ends ? new Date(`${sale.ends}T23:59:59`).getTime() : null;
+    return saleUsage.filter((r) => {
+      if (!r.created_at) return false;
+      const t = new Date(r.created_at).getTime();
+      if (startMs != null && t < startMs) return false;
+      if (endMs != null && t > endMs) return false;
+      return true;
+    });
+  })();
 
   // Is a sale actually running right now (percent set + inside its window)? Drives
   // the "Sale live" badge in the banner.
@@ -452,13 +471,13 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 auto' }}>
                 <label style={labelStyle}>Used</label>
-                {saleUsage.length > 0 ? (
+                {currentSaleUsage.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => setSaleOpen((o) => !o)}
                     style={{ ...usedCellValue, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)' }}
                   >
-                    {saleUsage.length}
+                    {currentSaleUsage.length}
                     <span style={{ fontSize: '.7rem' }}>{saleOpen ? '▲' : '▼'}</span>
                   </button>
                 ) : (
@@ -484,7 +503,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
 
         {/* Sale usage detail — who booked during the sale window. The count that
             toggles this lives in the "Used" cell of the row above. */}
-        {saleUsage.length > 0 && saleOpen && (
+        {currentSaleUsage.length > 0 && saleOpen && (
           <div style={{ padding: '0 0 1rem' }}>
             <div style={{ marginBottom: '.4rem', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={metaLabel}>Sale window</span>
@@ -498,7 +517,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
             </div>
             {(
               <div style={{ marginTop: '.6rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.6rem' }}>
-                {saleUsage.map((r, ri) => (
+                {currentSaleUsage.map((r, ri) => (
                   <div
                     key={ri}
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem' }}
@@ -529,41 +548,83 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
             {saleHistory.map((h, hi) => {
               const startMs = h.starts ? new Date(`${h.starts}T00:00:00`).getTime() : (h.started_at ? new Date(h.started_at).getTime() : null);
               const endMs = h.ends ? new Date(`${h.ends}T23:59:59`).getTime() : null;
-              const uses = saleUsage.filter((r) => {
+              const people = saleUsage.filter((r) => {
                 if (!r.created_at) return false;
                 const t = new Date(r.created_at).getTime();
                 if (startMs != null && t < startMs) return false;
                 if (endMs != null && t > endMs) return false;
                 return true;
-              }).length;
+              });
+              const open = expandedPast === hi;
+              const clickable = people.length > 0;
               return (
                 <div
                   key={hi}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
-                    padding: '.7rem .9rem', marginBottom: '.5rem', borderRadius: 10,
-                    border: '1px solid var(--border, rgba(255,255,255,.12))', background: 'rgba(255,255,255,.02)',
+                    marginBottom: '.5rem', borderRadius: 10,
+                    border: `1px solid ${open ? 'var(--neon, #00e0a4)' : 'var(--border, rgba(255,255,255,.12))'}`,
+                    background: 'rgba(255,255,255,.02)', overflow: 'hidden',
                   }}
                 >
-                  <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '1rem', color: 'var(--white,#fff)' }}>
-                    {h.percent ?? 0}% off
-                  </span>
-                  <span
+                  {/* Header row — click to open the panel of people who used it. */}
+                  <div
+                    role={clickable ? 'button' : undefined}
+                    onClick={clickable ? () => setExpandedPast(open ? null : hi) : undefined}
                     style={{
-                      fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                      padding: '2px 9px', borderRadius: 999, color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)',
+                      display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+                      padding: '.7rem .9rem', cursor: clickable ? 'pointer' : 'default',
                     }}
                   >
-                    Ended
-                  </span>
-                  <span style={{ fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
-                    {startMs != null ? fmtDate(h.starts || h.started_at || null) : '—'}
-                    {' – '}
-                    {h.ends ? fmtDate(h.ends) : '—'}
-                  </span>
-                  <span style={{ marginLeft: 'auto', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
-                    <span style={metaLabel}>Used</span>{uses}
-                  </span>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '1rem', color: 'var(--white,#fff)' }}>
+                      {h.percent ?? 0}% off
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                        padding: '2px 9px', borderRadius: 999, color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)',
+                      }}
+                    >
+                      Ended
+                    </span>
+                    <span style={{ fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
+                      {startMs != null ? fmtDate(h.starts || h.started_at || null) : '—'}
+                      {' – '}
+                      {h.ends ? fmtDate(h.ends) : '—'}
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: 'auto', fontSize: '.82rem',
+                        color: clickable ? 'var(--neon,#00e0a4)' : 'var(--white,#fff)',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}
+                    >
+                      <span style={metaLabel}>Used</span>{people.length}
+                      {clickable && <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>}
+                    </span>
+                  </div>
+
+                  {/* Expanded panel — the people who booked during this sale. */}
+                  {open && people.length > 0 && (
+                    <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.12))', padding: '.6rem .9rem .8rem' }}>
+                      {people.map((r, ri) => (
+                        <div
+                          key={ri}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem' }}
+                        >
+                          <span style={{ color: 'var(--white,#fff)' }}>
+                            {r.requester_name || 'Someone'}
+                            <span style={{ color: 'var(--muted,#8a8aa0)' }}>
+                              {' '}· booked {fmtDate(r.created_at)}
+                              {r.discount_label ? ` · ${r.discount_label}` : ''}
+                            </span>
+                          </span>
+                          <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                            saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
