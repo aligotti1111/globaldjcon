@@ -207,12 +207,12 @@ function CodeFields({
           />
         )}
       </div>
-      <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
         <label style={labelStyle}>Expires (optional)</label>
         <input
           type="date"
           className={`${styles.settingNumber} gdcDateWhite`}
-          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box' }}
+          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }}
           onClick={openPicker}
           value={value.expires || ''}
           onChange={(e) => onField({ expires: e.target.value || null })}
