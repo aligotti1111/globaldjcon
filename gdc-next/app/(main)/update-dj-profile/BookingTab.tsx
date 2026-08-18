@@ -742,6 +742,7 @@ export default function BookingTab({
           <DiscountsSection
             promoCodes={bookingSettings.promo_codes || []}
             sale={bookingSettings.sale || {}}
+            saleHistory={bookingSettings.sale_history || []}
             onChange={(p) => patch(p)}
           />
           )}
