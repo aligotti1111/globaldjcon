@@ -1551,13 +1551,6 @@ export default function MobileBookingForm({
               </div>
             )}
 
-            {/* Discounts the DJ has blocked on this date. */}
-            {exclusionMsg && (
-              <div className={styles.depositText} style={{ color: 'var(--muted,#8a8aa0)', marginBottom: 4 }}>
-                {exclusionMsg}
-              </div>
-            )}
-
             {/* Package price — big on its own when there's no breakdown;
                 demoted to a supporting size when a Total sits below. */}
             <div
@@ -1623,6 +1616,13 @@ export default function MobileBookingForm({
             {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
                 Overtime rate: {cur}{Number(selectedPkg?.overtime).toLocaleString()}/hr
+              </div>
+            )}
+
+            {/* Discounts the DJ has blocked on this date — sits under overtime. */}
+            {exclusionMsg && (
+              <div className={styles.overtimeNote} style={{ color: 'var(--muted,#8a8aa0)' }}>
+                {exclusionMsg}
               </div>
             )}
 
