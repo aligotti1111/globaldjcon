@@ -20,8 +20,11 @@ import type { PromoCode, Sale } from '@/app/(main)/[slug]/bookingSettings';
 interface Props {
   promoCodes: PromoCode[];
   sale: Sale;
+  // Past (ended) sales, most recent first. Shown as a read-only history below
+  // the Run-a-sale controls.
+  saleHistory?: Sale[];
   currencySymbol?: string;
-  onChange: (patch: { promo_codes?: PromoCode[]; sale?: Sale }) => void;
+  onChange: (patch: { promo_codes?: PromoCode[]; sale?: Sale; sale_history?: Sale[] }) => void;
 }
 
 interface Redemption {
@@ -212,7 +215,7 @@ const btnDanger: React.CSSProperties = {
   color: '#ff6b6b', borderRadius: 6, padding: '.45rem .8rem', fontSize: '.78rem', cursor: 'pointer',
 };
 
-export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$', onChange }: Props) {
+export default function DiscountsSection({ promoCodes, sale, saleHistory = [], currencySymbol = '$', onChange }: Props) {
   const [draft, setDraft] = useState<PromoCode | null>(null);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editBuf, setEditBuf] = useState<PromoCode | null>(null);
@@ -257,6 +260,27 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
   function updateSale(p: Partial<Sale>) {
     onChange({ sale: { ...sale, ...p } });
   }
+
+  // Today as an ISO date (YYYY-MM-DD) — used as the min for a new sale's start
+  // date so it can't begin in the past.
+  const todayStr = (() => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  })();
+
+  // Auto-archive: once a sale's end date has passed, move it into sale_history
+  // and clear the live sale so the DJ can set up a fresh one. Runs whenever the
+  // sale changes; after archiving the live sale is empty so it won't loop.
+  useEffect(() => {
+    const pct = sale.percent ?? 0;
+    if (pct <= 0 || !sale.ends) return;
+    const ended = new Date(`${sale.ends}T23:59:59`).getTime() < Date.now();
+    if (!ended) return;
+    onChange({ sale: {}, sale_history: [{ ...sale }, ...saleHistory] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sale.percent, sale.ends, sale.starts]);
 
   function activateDraft() {
     if (!draft) return;
@@ -413,7 +437,7 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
               <div style={{ ...fieldWrap, flex: '0 1 150px' }}>
                 <label style={labelStyle}>Start date</label>
                 <input
-                  type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                  type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
                   style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem' }} onClick={openPicker}
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
@@ -493,6 +517,56 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Past sales — ended sales archived automatically. Read-only history so
+            the DJ can see what they ran; the "Used" count is the bookings that
+            landed inside each sale's window. */}
+        {saleHistory.length > 0 && (
+          <div style={{ marginTop: '1.1rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.9rem' }}>
+            <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Past sales</div>
+            {saleHistory.map((h, hi) => {
+              const startMs = h.starts ? new Date(`${h.starts}T00:00:00`).getTime() : (h.started_at ? new Date(h.started_at).getTime() : null);
+              const endMs = h.ends ? new Date(`${h.ends}T23:59:59`).getTime() : null;
+              const uses = saleUsage.filter((r) => {
+                if (!r.created_at) return false;
+                const t = new Date(r.created_at).getTime();
+                if (startMs != null && t < startMs) return false;
+                if (endMs != null && t > endMs) return false;
+                return true;
+              }).length;
+              return (
+                <div
+                  key={hi}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+                    padding: '.7rem .9rem', marginBottom: '.5rem', borderRadius: 10,
+                    border: '1px solid var(--border, rgba(255,255,255,.12))', background: 'rgba(255,255,255,.02)',
+                  }}
+                >
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '1rem', color: 'var(--white,#fff)' }}>
+                    {h.percent ?? 0}% off
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                      padding: '2px 9px', borderRadius: 999, color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)',
+                    }}
+                  >
+                    Ended
+                  </span>
+                  <span style={{ fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
+                    {startMs != null ? fmtDate(h.starts || h.started_at || null) : '—'}
+                    {' – '}
+                    {h.ends ? fmtDate(h.ends) : '—'}
+                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+                    <span style={metaLabel}>Used</span>{uses}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
         </div>{/* end Run a sale block */}
