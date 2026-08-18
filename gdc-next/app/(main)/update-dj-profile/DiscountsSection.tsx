@@ -692,12 +692,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     <span
                       style={{
                         fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                        padding: '2px 9px', borderRadius: 999, color: 'var(--white,#fff)', background: 'rgba(255,255,255,.12)',
+                        padding: '2px 9px', borderRadius: 999, color: '#fff', background: '#d64545',
                       }}
                     >
                       Ended
                     </span>
-                    <span style={{ fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
+                    <span style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.6)' }}>
                       {startMs != null ? fmtDate(h.starts || h.started_at || null) : '—'}
                       {' – '}
                       {h.ends ? fmtDate(h.ends) : '—'}
