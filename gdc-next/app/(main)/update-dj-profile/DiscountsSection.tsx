@@ -491,20 +491,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           input.gdcNoSpin::-webkit-outer-spin-button,
           input.gdcNoSpin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
           input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
-          .gdcTip { position: relative; display: inline-flex; }
-          .gdcTipBox {
-            display: none; position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%);
-            width: 210px; background: #14141f; color: #fff; border: 1px solid rgba(255,255,255,.2);
-            border-radius: 8px; padding: 8px 10px; font-size: 11px; line-height: 1.45; z-index: 60;
-            box-shadow: 0 10px 28px rgba(0,0,0,.6); text-transform: none; letter-spacing: normal;
-            font-weight: 400; white-space: normal; pointer-events: none;
-          }
-          .gdcTip:hover .gdcTipBox { display: block; }
         `}</style>
 
         <div style={blockStyle}>
         <SecHeader label="Run a Sale" icon={iconSale} />
-        <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           A site-wide % off applied automatically to every quote. Set a window and it switches
           itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
         </div>
@@ -562,23 +553,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
-                <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  End date (optional)
-                  <span className="gdcTip">
-                    <span
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--neon,#00e0a4)',
-                        color: 'var(--neon,#00e0a4)', fontSize: 10, fontWeight: 700, cursor: 'help', fontFamily: 'sans-serif',
-                      }}
-                    >
-                      i
-                    </span>
-                    <span className="gdcTipBox">
-                      Leave blank to run the sale with no end date. You can stop it any time with &ldquo;End sale now&rdquo; below.
-                    </span>
-                  </span>
-                </label>
+                <label style={labelStyle}>End date (optional)</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
                   style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
@@ -620,7 +595,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             {/* End-now escape hatch — a sale with no end date (or a future one)
                 has no other way to stop, so let the DJ end it on the spot. */}
             {pct > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.7rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
+                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>
+                  No end date? The sale runs until you end it here.
+                </span>
                 <button
                   type="button"
                   onClick={endSaleNow}
@@ -774,7 +752,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {/* ── Promo codes ────────────────────────────────────────── */}
         <div style={blockStyle}>
         <SecHeader label="Promo Codes" icon={iconPromo} />
-        <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           Private codes you hand out — referrals, socials, repeat clients. Build one, switch it on,
           and it drops into your list. Your public price stays the same.
         </div>
@@ -944,7 +922,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {/* ── Exclusions ─────────────────────────────────────────── */}
         <div style={blockStyle}>
         <SecHeader label="Exclusions" icon={iconExcl} />
-        <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           Block discounts on specific dates. Pick a date, then choose whether to turn off the
           site sale, promo codes, or both for that day — bookings on excluded dates pay full price.
         </div>
