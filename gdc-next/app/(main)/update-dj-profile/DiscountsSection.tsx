@@ -454,11 +454,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
             <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }}>
-              <div style={{ ...fieldWrap, flex: '0 0 74px' }}>
-                <label style={labelStyle}>Percent</label>
+              <div style={{ ...fieldWrap, flex: '0 0 96px' }}>
+                <label style={labelStyle}>Percent off</label>
                 <select
                   className={styles.settingSelect}
-                  style={{ width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px', color: 'var(--white,#fff)' }}
+                  style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px', color: 'var(--white,#fff)' }}
                   value={sale.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
