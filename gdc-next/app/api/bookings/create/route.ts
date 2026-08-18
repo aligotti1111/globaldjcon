@@ -360,7 +360,7 @@ export async function POST(req: Request) {
 
     const finalDiscount: DiscountResult =
       finalPrice.price != null
-        ? computeDiscount(finalPrice.price, settings, promoCode)
+        ? computeDiscount(finalPrice.price, settings, promoCode, dateKey)
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
       finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
@@ -614,7 +614,7 @@ export async function POST(req: Request) {
   // Apply discount to the computed total (sale/promo). quoted_rate stores
   // the discounted price; original_rate keeps the pre-discount total.
   const clubFinalDiscount: DiscountResult = computedTotal != null
-    ? computeDiscount(Number(computedTotal), settings, promoCode)
+    ? computeDiscount(Number(computedTotal), settings, promoCode, dateKey)
     : { amount: 0, kind: null, label: '' };
   const computedTotalDiscounted = computedTotal != null
     ? Math.max(0, Number(computedTotal) - clubFinalDiscount.amount)
