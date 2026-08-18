@@ -364,6 +364,13 @@ export default function ClubBookingForm({
   const dateExcl = (bookingSettings.exclusions || []).find((e) => e.date === dateKey);
   const saleExcludedToday = !!dateExcl?.sale;
   const codesExcludedToday = !!dateExcl?.codes;
+  const saleBlocked = saleOn && saleExcludedToday;
+  const codesBlocked = hasActiveCode && codesExcludedToday;
+  const exclusionMsg = saleBlocked && codesBlocked
+    ? 'Promo codes and sales are excluded from bookings for this date.'
+    : saleBlocked ? 'Sales are excluded from bookings for this date.'
+    : codesBlocked ? 'Promo codes are excluded from bookings for this date.'
+    : '';
   const clubDiscount: DiscountResult = useMemo(() => {
     if (displayTotal == null) return { amount: 0, kind: null, label: '' };
     return computeDiscount(displayTotal, bookingSettings, appliedCode, dateKey);
@@ -400,7 +407,7 @@ export default function ClubBookingForm({
     const match = (bookingSettings.promo_codes || []).find(
       (p) => (p.code || '').trim().toUpperCase() === code && isPromoUsable(p)
     );
-    if (match && codesExcludedToday) { setAppliedCode(''); setPromoError(`Promo codes can’t be used on ${formatLongDate(dateKey)}.`); }
+    if (match && codesExcludedToday) { setAppliedCode(''); setPromoError('Promo codes are excluded from bookings for this date.'); }
     else if (match) { setAppliedCode(code); setPromoError(''); }
     else { setAppliedCode(''); setPromoError('Invalid or expired code'); }
   }
@@ -1180,14 +1187,9 @@ export default function ClubBookingForm({
                         </span>
                       </div>
                     )}
-                    {saleOn && saleExcludedToday && (
+                    {exclusionMsg && (
                       <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', marginBottom: 6 }}>
-                        The current sale doesn&apos;t apply on {formatLongDate(dateKey)}.
-                      </div>
-                    )}
-                    {hasActiveCode && codesExcludedToday && (
-                      <div style={{ marginTop: 8, color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
-                        Promo codes aren&apos;t accepted on {formatLongDate(dateKey)}.
+                        {exclusionMsg}
                       </div>
                     )}
                     {hasActiveCode && !codesExcludedToday && (
