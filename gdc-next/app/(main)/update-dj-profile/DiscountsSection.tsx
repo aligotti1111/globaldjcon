@@ -491,6 +491,15 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           input.gdcNoSpin::-webkit-outer-spin-button,
           input.gdcNoSpin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
           input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
+          .gdcTip { position: relative; display: inline-flex; }
+          .gdcTipBox {
+            display: none; position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%);
+            width: 210px; background: #14141f; color: #fff; border: 1px solid rgba(255,255,255,.2);
+            border-radius: 8px; padding: 8px 10px; font-size: 11px; line-height: 1.45; z-index: 60;
+            box-shadow: 0 10px 28px rgba(0,0,0,.6); text-transform: none; letter-spacing: normal;
+            font-weight: 400; white-space: normal; pointer-events: none;
+          }
+          .gdcTip:hover .gdcTipBox { display: block; }
         `}</style>
 
         <div style={blockStyle}>
@@ -555,15 +564,19 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
                 <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   End date (optional)
-                  <span
-                    title="Leave blank to run the sale with no end date. You can stop it any time with “End sale now” below."
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 14, height: 14, borderRadius: '50%', border: '1px solid var(--muted,#8a8aa0)',
-                      color: 'var(--muted,#8a8aa0)', fontSize: 9, fontWeight: 700, cursor: 'help', fontFamily: 'sans-serif',
-                    }}
-                  >
-                    i
+                  <span className="gdcTip">
+                    <span
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--neon,#00e0a4)',
+                        color: 'var(--neon,#00e0a4)', fontSize: 10, fontWeight: 700, cursor: 'help', fontFamily: 'sans-serif',
+                      }}
+                    >
+                      i
+                    </span>
+                    <span className="gdcTipBox">
+                      Leave blank to run the sale with no end date. You can stop it any time with &ldquo;End sale now&rdquo; below.
+                    </span>
                   </span>
                 </label>
                 <input
