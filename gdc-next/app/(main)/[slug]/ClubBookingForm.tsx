@@ -359,6 +359,11 @@ export default function ClubBookingForm({
     : null;
   const saleOn = isSaleActive(bookingSettings.sale);
   const hasActiveCode = (bookingSettings.promo_codes || []).some((p) => isPromoUsable(p));
+  // Discounts the DJ blocked on this specific date (Booking Settings → Discounts
+  // → Exclusions) — used to explain why a sale/code isn't applying.
+  const dateExcl = (bookingSettings.exclusions || []).find((e) => e.date === dateKey);
+  const saleExcludedToday = !!dateExcl?.sale;
+  const codesExcludedToday = !!dateExcl?.codes;
   const clubDiscount: DiscountResult = useMemo(() => {
     if (displayTotal == null) return { amount: 0, kind: null, label: '' };
     return computeDiscount(displayTotal, bookingSettings, appliedCode, dateKey);
@@ -395,7 +400,8 @@ export default function ClubBookingForm({
     const match = (bookingSettings.promo_codes || []).find(
       (p) => (p.code || '').trim().toUpperCase() === code && isPromoUsable(p)
     );
-    if (match) { setAppliedCode(code); setPromoError(''); }
+    if (match && codesExcludedToday) { setAppliedCode(''); setPromoError(`Promo codes can’t be used on ${formatLongDate(dateKey)}.`); }
+    else if (match) { setAppliedCode(code); setPromoError(''); }
     else { setAppliedCode(''); setPromoError('Invalid or expired code'); }
   }
 
@@ -1174,7 +1180,17 @@ export default function ClubBookingForm({
                         </span>
                       </div>
                     )}
-                    {hasActiveCode && (
+                    {saleOn && saleExcludedToday && (
+                      <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', marginBottom: 6 }}>
+                        The current sale doesn&apos;t apply on {formatLongDate(dateKey)}.
+                      </div>
+                    )}
+                    {hasActiveCode && codesExcludedToday && (
+                      <div style={{ marginTop: 8, color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
+                        Promo codes aren&apos;t accepted on {formatLongDate(dateKey)}.
+                      </div>
+                    )}
+                    {hasActiveCode && !codesExcludedToday && (
                       <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <input
                           type="text"
