@@ -15,7 +15,7 @@
 import { useEffect, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
-import type { PromoCode, Sale } from '@/app/(main)/[slug]/bookingSettings';
+import type { PromoCode, Sale, DiscountExclusion } from '@/app/(main)/[slug]/bookingSettings';
 
 interface Props {
   promoCodes: PromoCode[];
@@ -23,8 +23,10 @@ interface Props {
   // Past (ended) sales, most recent first. Shown as a read-only history below
   // the Run-a-sale controls.
   saleHistory?: Sale[];
+  // Dates where the sale and/or promo codes are blocked.
+  exclusions?: DiscountExclusion[];
   currencySymbol?: string;
-  onChange: (patch: { promo_codes?: PromoCode[]; sale?: Sale; sale_history?: Sale[] }) => void;
+  onChange: (patch: { promo_codes?: PromoCode[]; sale?: Sale; sale_history?: Sale[]; exclusions?: DiscountExclusion[] }) => void;
 }
 
 interface Redemption {
@@ -110,6 +112,13 @@ const iconPromo = (
   <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 12V7H4v5a2 2 0 0 1 0 4v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1a2 2 0 0 1 0-4z" />
     <line x1="12" y1="7" x2="12" y2="19" />
+  </svg>
+);
+const iconExcl = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+    <line x1="9" y1="16" x2="15" y2="16" />
   </svg>
 );
 const usedCellValue: React.CSSProperties = {
@@ -240,7 +249,7 @@ const btnDanger: React.CSSProperties = {
   color: '#ff6b6b', borderRadius: 6, padding: '.45rem .8rem', fontSize: '.78rem', cursor: 'pointer',
 };
 
-export default function DiscountsSection({ promoCodes, sale, saleHistory = [], currencySymbol = '$', onChange }: Props) {
+export default function DiscountsSection({ promoCodes, sale, saleHistory = [], exclusions = [], currencySymbol = '$', onChange }: Props) {
   const [draft, setDraft] = useState<PromoCode | null>(null);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editBuf, setEditBuf] = useState<PromoCode | null>(null);
@@ -256,6 +265,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
   const [expandedPast, setExpandedPast] = useState<number | null>(null);
   // Which promo code is pending a delete confirmation.
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
+  // The date currently entered in the "add exclusion" picker.
+  const [newExclDate, setNewExclDate] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -348,6 +359,22 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
     setEditIndex(null);
     setEditBuf(null);
     setError('');
+  }
+
+  // ── Date exclusions ─────────────────────────────────────────────
+  function addExclusion() {
+    if (!newExclDate) return;
+    if (exclusions.some((e) => e.date === newExclDate)) { setNewExclDate(''); return; }
+    const next = [...exclusions, { date: newExclDate, sale: true, codes: true }]
+      .sort((a, b) => a.date.localeCompare(b.date));
+    onChange({ exclusions: next });
+    setNewExclDate('');
+  }
+  function updateExclusion(i: number, patch: Partial<DiscountExclusion>) {
+    onChange({ exclusions: exclusions.map((e, idx) => (idx === i ? { ...e, ...patch } : e)) });
+  }
+  function removeExclusion(i: number) {
+    onChange({ exclusions: exclusions.filter((_, idx) => idx !== i) });
   }
 
   function setActive(i: number, active: boolean) {
@@ -876,6 +903,77 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
           );
         })}
         </div>{/* end Promo codes block */}
+
+        {/* ── Exclusions ─────────────────────────────────────────── */}
+        <div style={blockStyle}>
+        <SecHeader label="Exclusions" icon={iconExcl} />
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
+          Block discounts on specific dates. Pick a date, then choose whether to turn off the
+          site sale, promo codes, or both for that day — bookings on excluded dates pay full price.
+        </div>
+
+        <div style={{ display: 'flex', gap: '.8rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
+            <label style={labelStyle}>Add a date</label>
+            <input
+              type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
+              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
+              value={newExclDate} onChange={(e) => setNewExclDate(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={addExclusion}
+            disabled={!newExclDate}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, height: 38,
+              background: newExclDate ? GRAD : 'rgba(255,255,255,.06)', color: newExclDate ? '#04241b' : 'var(--muted,#8a8aa0)',
+              border: 'none', borderRadius: 10, padding: '0 16px', fontSize: '.82rem', fontWeight: 700,
+              cursor: newExclDate ? 'pointer' : 'not-allowed',
+              boxShadow: newExclDate ? '0 8px 22px -8px rgba(34,227,173,.7)' : 'none',
+            }}
+          >
+            <span style={{ fontSize: '1rem', lineHeight: 1 }}>+</span> Add date
+          </button>
+        </div>
+
+        {exclusions.length === 0 ? (
+          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
+        ) : (
+          exclusions.map((ex, i) => (
+            <div
+              key={ex.date}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap',
+                padding: '.7rem .9rem', marginBottom: '.5rem', borderRadius: 10,
+                border: '1px solid var(--border, rgba(255,255,255,.12))', background: 'rgba(255,255,255,.02)',
+              }}
+            >
+              <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '.9rem', color: 'var(--white,#fff)', minWidth: 96 }}>
+                {new Date(`${ex.date}T00:00:00`).toLocaleDateString()}
+              </span>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer' }}>
+                <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                  checked={!!ex.sale} onChange={(e) => updateExclusion(i, { sale: e.target.checked })} />
+                Block site sale
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer' }}>
+                <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                  checked={!!ex.codes} onChange={(e) => updateExclusion(i, { codes: e.target.checked })} />
+                Block promo codes
+              </label>
+              <button
+                type="button"
+                onClick={() => removeExclusion(i)}
+                aria-label="Remove excluded date"
+                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#ff8f8f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .2rem' }}
+              >
+                &times;
+              </button>
+            </div>
+          ))
+        )}
+        </div>{/* end Exclusions block */}
       </div>
     </div>
   );
