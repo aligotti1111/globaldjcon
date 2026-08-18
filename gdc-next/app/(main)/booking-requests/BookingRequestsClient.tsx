@@ -9,7 +9,7 @@
 //
 // Faithful port of vanilla br-load-render.js renderList + br-shared-actions.js.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
@@ -146,6 +146,16 @@ export default function BookingRequestsClient({
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   // Deep-link target from ?open=<id> (e.g. the header booking-requests dropdown).
   const [focusId, setFocusId] = useState<string | null>(null);
+
+  // Transient confirmation toast — shown after approve / decline / counter and
+  // cleared automatically after a few seconds.
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function flash(msg: string) {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3200);
+  }
 
   // Modal state — only one is ever open at a time.
   // counterModal: which booking we're countering, and from which side
@@ -372,6 +382,7 @@ export default function BookingRequestsClient({
 
       const b = incoming.find((x) => x.id === bookingId);
       updateIncomingStatus(bookingId, status);
+      flash(isApprove ? 'Booking approved.' : 'Booking declined.');
 
       // Email side — branches on approved vs denied.
       // - APPROVED: fire booking_approved to BOTH booker and DJ. Both
@@ -1237,12 +1248,29 @@ export default function BookingRequestsClient({
       )}
 
       {/* Modals — only one open at a time */}
+      {toast && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed', left: '50%', bottom: 26, transform: 'translateX(-50%)',
+            zIndex: 12000, background: 'var(--bg-card,#14141f)', color: 'var(--white,#fff)',
+            border: '1px solid var(--neon,#00e0a4)', borderRadius: 10, padding: '.7rem 1.1rem',
+            fontSize: '.9rem', fontWeight: 600, boxShadow: '0 12px 40px rgba(0,0,0,.55)',
+            display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '90vw',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--neon,#00e0a4)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {toast}
+        </div>
+      )}
       {counterModal && (
         <CounterModal
           booking={counterModal.booking}
           group={counterModal.group}
           onClose={() => setCounterModal(null)}
-          onSaved={(updated) => applyBookingUpdate(updated)}
+          onSaved={(updated) => { applyBookingUpdate(updated); flash('Counter sent.'); }}
         />
       )}
       {quoteModal && (
