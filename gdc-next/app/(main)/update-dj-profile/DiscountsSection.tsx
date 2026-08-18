@@ -28,6 +28,7 @@ interface Props {
 }
 
 interface Redemption {
+  id: string | null;
   requester_name: string | null;
   event_date: string | null;
   created_at: string | null;
@@ -115,6 +116,22 @@ const usedCellValue: React.CSSProperties = {
   height: 38, display: 'inline-flex', alignItems: 'center', gap: 4,
   color: 'var(--white,#fff)', fontSize: '.88rem', fontWeight: 700,
 };
+
+// A small link that jumps to a booking's card in Upcoming Bookings (the
+// ?open=<id> deep link expands and scrolls to it). Rendered on every redemption
+// row so the DJ can open the booking a code or sale was used on.
+function ViewBookingLink({ id }: { id: string | null }) {
+  if (!id) return null;
+  return (
+    <a
+      href={`/upcoming-bookings?open=${id}`}
+      onClick={(e) => e.stopPropagation()}
+      style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+    >
+      View booking
+    </a>
+  );
+}
 
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
@@ -238,7 +255,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
       if (!user) return;
       const { data } = await supabase
         .from('bookings')
-        .select('requester_name, event_date, created_at, discount_code, discount_label, discount_amount, original_rate, currency')
+        .select('id, requester_name, event_date, created_at, discount_code, discount_label, discount_amount, original_rate, currency')
         .eq('dj_id', user.id)
         .not('discount_amount', 'is', null)
         .order('created_at', { ascending: false });
@@ -529,8 +546,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                         {r.discount_label ? ` · ${r.discount_label}` : ''}
                       </span>
                     </span>
-                    <span style={{ color: 'var(--neon,#00e0a4)' }}>
-                      saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                        saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                      </span>
+                      <ViewBookingLink id={r.id} />
                     </span>
                   </div>
                 ))}
@@ -618,8 +638,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                               {r.discount_label ? ` · ${r.discount_label}` : ''}
                             </span>
                           </span>
-                          <span style={{ color: 'var(--neon,#00e0a4)' }}>
-                            saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                              saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                            </span>
+                            <ViewBookingLink id={r.id} />
                           </span>
                         </div>
                       ))}
@@ -775,8 +798,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                         {r.requester_name || 'Someone'}
                         <span style={{ color: 'var(--muted,#8a8aa0)' }}> · booked {fmtDate(r.created_at)}</span>
                       </span>
-                      <span style={{ color: 'var(--neon,#00e0a4)' }}>
-                        saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                          saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                        </span>
+                        <ViewBookingLink id={r.id} />
                       </span>
                     </div>
                   ))}
