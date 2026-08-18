@@ -124,6 +124,9 @@ export interface BookingSettings {
   // (see computeDiscount). Both live here in booking_settings.
   promo_codes?: PromoCode[];
   sale?: Sale;
+  // Past sales that have ended — archived automatically so the DJ can review
+  // what they ran and start a fresh sale. Most recent first.
+  sale_history?: Sale[];
 }
 
 // A DJ-created promo code. Codes are matched case-insensitively.
