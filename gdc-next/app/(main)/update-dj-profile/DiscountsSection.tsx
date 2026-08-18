@@ -271,6 +271,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const [newExclCodes, setNewExclCodes] = useState(true);
   // Which excluded date is pending a remove confirmation.
   const [confirmExclDel, setConfirmExclDel] = useState<number | null>(null);
+  // Inline message for the add-exclusion row (e.g. duplicate date).
+  const [exclErr, setExclErr] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -368,12 +370,17 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   // ── Date exclusions ─────────────────────────────────────────────
   function addExclusion() {
     if (!newExclDate) return;
-    if (exclusions.some((e) => e.date === newExclDate)) { setNewExclDate(''); return; }
+    if (exclusions.some((e) => e.date === newExclDate)) {
+      // Already on the list — tell the DJ instead of silently doing nothing.
+      setExclErr(`${new Date(`${newExclDate}T00:00:00`).toLocaleDateString()} is already excluded — edit it below.`);
+      return;
+    }
     const next = [...exclusions, { date: newExclDate, sale: newExclSale, codes: newExclCodes }]
       .sort((a, b) => a.date.localeCompare(b.date));
     onChange({ exclusions: next });
     // Clear the date so the picker is ready for the next one; keep the toggles.
     setNewExclDate('');
+    setExclErr('');
   }
   function updateExclusion(i: number, patch: Partial<DiscountExclusion>) {
     onChange({ exclusions: exclusions.map((e, idx) => (idx === i ? { ...e, ...patch } : e)) });
@@ -487,7 +494,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         `}</style>
 
         <div style={blockStyle}>
-        <SecHeader label="Run a sale" icon={iconSale} />
+        <SecHeader label="Run a Sale" icon={iconSale} />
         <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
           A site-wide % off applied automatically to every quote. Set a window and it switches
           itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
@@ -741,7 +748,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
 
         {/* ── Promo codes ────────────────────────────────────────── */}
         <div style={blockStyle}>
-        <SecHeader label="Promo codes" icon={iconPromo} />
+        <SecHeader label="Promo Codes" icon={iconPromo} />
         <div className={styles.settingHint} style={{ marginBottom: '.9rem' }}>
           Private codes you hand out — referrals, socials, repeat clients. Build one, switch it on,
           and it drops into your list. Your public price stays the same.
@@ -774,7 +781,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               cursor: 'pointer', boxShadow: '0 8px 22px -8px rgba(34,227,173,.7)',
             }}
           >
-            <span style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1 }}>+</span> Add promo code
+            <span style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1 }}>+</span> Add Promo Code
           </button>
           </div>
         )}
@@ -926,7 +933,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
               style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
               value={newExclDate}
-              onChange={(e) => setNewExclDate(e.target.value)}
+              onChange={(e) => { setNewExclDate(e.target.value); setExclErr(''); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
             />
           </div>
@@ -956,6 +963,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             Confirm
           </button>
         </div>
+
+        {exclErr && <div style={{ color: '#ffb020', fontSize: '.8rem', marginTop: '-.5rem', marginBottom: '.8rem' }}>{exclErr}</div>}
 
         {exclusions.length === 0 ? (
           <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
