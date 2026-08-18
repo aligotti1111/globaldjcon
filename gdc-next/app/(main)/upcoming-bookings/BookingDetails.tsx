@@ -633,12 +633,8 @@ export default function BookingDetails({
           )}
         </div>
       )}
-      {booking.created_at && (
-        <div className={styles.bookedOnFooter}>
-          <span className={styles.bookedOnLabel}>Booked On</span>{' '}
-          <span className={styles.bookedOnValue}>{formatLongDate(booking.created_at)}</span>
-        </div>
-      )}
+      {/* "Booked On <date>" footer removed — the booking log already records
+          when the request came in, so it was redundant here. */}
       {hasNotes && (
         <div className={styles.detailLongBlock}>
           <div className={styles.detailLabel}>Notes</div>
