@@ -378,8 +378,8 @@ export default function MobileBookingForm({
   const basePrice = priceResult?.price ?? null;
   const discount: DiscountResult = useMemo(() => {
     if (basePrice == null) return { amount: 0, kind: null, label: '' };
-    return computeDiscount(basePrice, bookingSettings, appliedCode);
-  }, [basePrice, bookingSettings, appliedCode]);
+    return computeDiscount(basePrice, bookingSettings, appliedCode, dateKey);
+  }, [basePrice, bookingSettings, appliedCode, dateKey]);
   const discountedTotal = basePrice != null ? Math.max(0, basePrice - discount.amount) : null;
   // Sales tax first (post-discount price), then the tax-inclusive total.
   // The DJ's chosen currency symbol — shown on every price the booker sees,
@@ -565,7 +565,7 @@ export default function MobileBookingForm({
     // usage history can show who booked with it.
     const finalDiscount: DiscountResult =
       finalPrice.price != null
-        ? computeDiscount(finalPrice.price, bookingSettings, appliedCode)
+        ? computeDiscount(finalPrice.price, bookingSettings, appliedCode, dateKey)
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
       finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
