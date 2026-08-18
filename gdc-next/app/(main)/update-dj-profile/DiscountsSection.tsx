@@ -117,14 +117,17 @@ const usedCellValue: React.CSSProperties = {
   color: 'var(--white,#fff)', fontSize: '.88rem', fontWeight: 700,
 };
 
-// A small link that jumps to a booking's card in Upcoming Bookings (the
-// ?open=<id> deep link expands and scrolls to it). Rendered on every redemption
-// row so the DJ can open the booking a code or sale was used on.
-function ViewBookingLink({ id }: { id: string | null }) {
+// A small link that jumps to a booking's card via the ?open=<id> deep link
+// (expands and scrolls to it). A booking whose event date has passed lives on
+// the Past Bookings page, so route there; otherwise Upcoming Bookings. Both
+// pages read ?open.
+function ViewBookingLink({ id, eventDate }: { id: string | null; eventDate?: string | null }) {
   if (!id) return null;
+  const isPast = !!eventDate && new Date(`${eventDate}T23:59:59`).getTime() < Date.now();
+  const base = isPast ? '/past-bookings' : '/upcoming-bookings';
   return (
     <a
-      href={`/upcoming-bookings?open=${id}`}
+      href={`${base}?open=${id}`}
       onClick={(e) => e.stopPropagation()}
       style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}
     >
@@ -550,7 +553,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                       <span style={{ color: 'var(--neon,#00e0a4)' }}>
                         saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
                       </span>
-                      <ViewBookingLink id={r.id} />
+                      <ViewBookingLink id={r.id} eventDate={r.event_date} />
                     </span>
                   </div>
                 ))}
@@ -642,7 +645,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                             <span style={{ color: 'var(--neon,#00e0a4)' }}>
                               saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
                             </span>
-                            <ViewBookingLink id={r.id} />
+                            <ViewBookingLink id={r.id} eventDate={r.event_date} />
                           </span>
                         </div>
                       ))}
@@ -802,7 +805,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                         <span style={{ color: 'var(--neon,#00e0a4)' }}>
                           saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
                         </span>
-                        <ViewBookingLink id={r.id} />
+                        <ViewBookingLink id={r.id} eventDate={r.event_date} />
                       </span>
                     </div>
                   ))}
