@@ -933,12 +933,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer' }}>
             <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
               checked={newExclSale} onChange={(e) => setNewExclSale(e.target.checked)} />
-            Block site sale
+            Block Site Sale
           </label>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer' }}>
             <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
               checked={newExclCodes} onChange={(e) => setNewExclCodes(e.target.checked)} />
-            Block promo codes
+            Block Promo Codes
           </label>
           <button
             type="button"
