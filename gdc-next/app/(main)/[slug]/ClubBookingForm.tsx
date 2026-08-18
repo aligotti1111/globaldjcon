@@ -361,8 +361,8 @@ export default function ClubBookingForm({
   const hasActiveCode = (bookingSettings.promo_codes || []).some((p) => isPromoUsable(p));
   const clubDiscount: DiscountResult = useMemo(() => {
     if (displayTotal == null) return { amount: 0, kind: null, label: '' };
-    return computeDiscount(displayTotal, bookingSettings, appliedCode);
-  }, [displayTotal, bookingSettings, appliedCode]);
+    return computeDiscount(displayTotal, bookingSettings, appliedCode, dateKey);
+  }, [displayTotal, bookingSettings, appliedCode, dateKey]);
   const discountedTotal = displayTotal != null ? Math.max(0, displayTotal - clubDiscount.amount) : null;
 
   // Deposit — the DJ's standing club deposit % (set in Booking Settings).
@@ -514,7 +514,7 @@ export default function ClubBookingForm({
             : rateInfo.rate)
         : null;
       const clubFinalDiscount: DiscountResult = computedTotal != null
-        ? computeDiscount(Number(computedTotal), bookingSettings, appliedCode)
+        ? computeDiscount(Number(computedTotal), bookingSettings, appliedCode, dateKey)
         : { amount: 0, kind: null, label: '' };
       const computedTotalDiscounted = computedTotal != null
         ? Math.max(0, Number(computedTotal) - clubFinalDiscount.amount)
