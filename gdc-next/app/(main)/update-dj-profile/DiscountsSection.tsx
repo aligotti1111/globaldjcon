@@ -553,7 +553,19 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
-                <label style={labelStyle}>End date</label>
+                <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  End date (optional)
+                  <span
+                    title="Leave blank to run the sale with no end date. You can stop it any time with “End sale now” below."
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 14, height: 14, borderRadius: '50%', border: '1px solid var(--muted,#8a8aa0)',
+                      color: 'var(--muted,#8a8aa0)', fontSize: 9, fontWeight: 700, cursor: 'help', fontFamily: 'sans-serif',
+                    }}
+                  >
+                    i
+                  </span>
+                </label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
                   style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
