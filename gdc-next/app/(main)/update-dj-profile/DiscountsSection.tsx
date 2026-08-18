@@ -776,7 +776,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', minWidth: 0, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, letterSpacing: '.04em', fontSize: '1rem', color: 'var(--white,#fff)' }}>
                     {(c.code || '').toUpperCase()}
                   </span>
@@ -789,6 +789,29 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                     }}
                   >
                     {expired ? 'Expired' : off ? 'Inactive' : 'Active'}
+                  </span>
+                  {/* Meta inline with the code: discount · expires · used. */}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', marginLeft: '.4rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+                    <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
+                    <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
+                    {(() => {
+                      const key = (c.code || '').trim().toUpperCase();
+                      const uses = usageByCode[key] || [];
+                      const open = expandedCode === key;
+                      if (uses.length === 0) {
+                        return <span><span style={metaLabel}>Used</span> 0</span>;
+                      }
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCode(open ? null : key)}
+                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <span style={metaLabel}>Used</span> {uses.length}
+                          <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
+                        </button>
+                      );
+                    })()}
                   </span>
                 </div>
                 {confirmDel === i ? (
@@ -813,33 +836,6 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                   <button type="button" onClick={() => setConfirmDel(i)} style={btnDanger}>Delete</button>
                 </div>
                 )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '.6rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
-                <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
-                <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
-                {(() => {
-                  const key = (c.code || '').trim().toUpperCase();
-                  const uses = usageByCode[key] || [];
-                  const open = expandedCode === key;
-                  if (uses.length === 0) {
-                    return <span><span style={metaLabel}>Used</span> 0</span>;
-                  }
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedCode(open ? null : key)}
-                      style={{
-                        background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
-                        color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex',
-                        alignItems: 'center', gap: 4,
-                      }}
-                    >
-                      <span style={metaLabel}>Used</span> {uses.length}
-                      <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
-                    </button>
-                  );
-                })()}
               </div>
 
               {/* Unfolded usage — who booked with this code and when. */}
