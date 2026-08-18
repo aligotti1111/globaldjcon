@@ -692,7 +692,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     <span
                       style={{
                         fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                        padding: '2px 9px', borderRadius: 999, color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)',
+                        padding: '2px 9px', borderRadius: 999, color: 'var(--white,#fff)', background: 'rgba(255,255,255,.12)',
                       }}
                     >
                       Ended
