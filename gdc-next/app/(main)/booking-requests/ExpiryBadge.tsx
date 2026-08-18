@@ -36,10 +36,10 @@ export default function ExpiryBadge({
     <div
       title="If you don't respond by then, the request is automatically declined."
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+        display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end',
         background: bg, color: fg, border: `1px solid ${bd}`,
         borderRadius: 20, padding: '3px 11px', fontSize: '.72rem', fontWeight: 700,
-        letterSpacing: '.02em', margin: '0 0 10px',
+        letterSpacing: '.02em', margin: '8px 0 0',
       }}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
