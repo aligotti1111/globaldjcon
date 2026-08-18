@@ -453,8 +453,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-              <div style={{ ...fieldWrap, flex: '0 0 88px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '1rem', columnGap: '1.75rem', alignItems: 'flex-end' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 92px' }}>
                 <label style={labelStyle}>Percent</label>
                 <select
                   className={styles.settingSelect}
@@ -473,7 +473,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                   ))}
                 </select>
               </div>
-              <div style={{ ...fieldWrap, flex: '0 1 150px' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
                 <label style={labelStyle}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
@@ -481,7 +481,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 1 150px' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
                 <label style={labelStyle}>End date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
