@@ -168,11 +168,11 @@ function CodeFields({
           style={{ textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 95px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 104px' }}>
         <label style={labelStyle}>Type</label>
         <select
           className={styles.settingSelect}
-          style={{ color: 'var(--white,#fff)' }}
+          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', color: 'var(--white,#fff)' }}
           value={value.type}
           onChange={(e) => onField({ type: e.target.value as 'percent' | 'flat' })}
         >
@@ -180,12 +180,12 @@ function CodeFields({
           <option value="flat">{currencySymbol} off</option>
         </select>
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 90px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 92px' }}>
         <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
         {value.type === 'percent' ? (
           <select
             className={styles.settingSelect}
-            style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+            style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', color: 'var(--white,#fff)' }}
             value={value.value || ''}
             onChange={(e) => onField({ value: Number(e.target.value) })}
           >
