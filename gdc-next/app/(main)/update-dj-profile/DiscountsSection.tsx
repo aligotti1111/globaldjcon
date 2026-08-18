@@ -249,6 +249,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
   const [saleOpen, setSaleOpen] = useState(false);
   // Which past-sale row is expanded to show who used it.
   const [expandedPast, setExpandedPast] = useState<number | null>(null);
+  // Which promo code is pending a delete confirmation.
+  const [confirmDel, setConfirmDel] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -745,15 +747,18 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
         {promoCodes.map((c, i) => {
           const isEditing = editIndex === i;
           const off = c.active === false;
+          // Past its expiry date? An expired code can't apply to a booking even
+          // if it's "active", so we surface it distinctly and offer Renew.
+          const expired = !!c.expires && new Date(`${c.expires}T23:59:59`).getTime() < Date.now();
           if (isEditing && editBuf) {
             return (
               <div key={i} style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.75rem' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
                   <CodeFields value={editBuf} onField={(p) => setEditBuf({ ...editBuf, ...p })} currencySymbol={currencySymbol} />
                 </div>
-                <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem' }}>
-                  <button type="button" onClick={saveEdit} style={btnPrimary}>Save</button>
+                <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => { setEditIndex(null); setEditBuf(null); setError(''); }} style={btnOutline}>Cancel</button>
+                  <button type="button" onClick={saveEdit} style={btnPrimary}>Save</button>
                 </div>
               </div>
             );
@@ -767,7 +772,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                 border: '1px solid var(--border, rgba(255,255,255,.14))',
                 borderRadius: 10,
                 background: 'rgba(255,255,255,.02)',
-                opacity: off ? 0.55 : 1,
+                opacity: (off || expired) ? 0.6 : 1,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -779,27 +784,40 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                     style={{
                       fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
                       padding: '2px 8px', borderRadius: 999,
-                      color: off ? 'var(--muted,#8a8aa0)' : '#06231b',
-                      background: off ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)',
+                      color: expired ? '#3a2a00' : off ? 'var(--muted,#8a8aa0)' : '#06231b',
+                      background: expired ? '#ffcf6b' : off ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)',
                     }}
                   >
-                    {off ? 'Inactive' : 'Active'}
+                    {expired ? 'Expired' : off ? 'Inactive' : 'Active'}
                   </span>
                 </div>
+                {confirmDel === i ? (
+                  <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '.8rem', color: 'var(--white,#fff)' }}>Delete this code?</span>
+                    <button type="button" onClick={() => { removeCode(i); setConfirmDel(null); }} style={btnDanger}>Delete</button>
+                    <button type="button" onClick={() => setConfirmDel(null)} style={btnOutline}>Cancel</button>
+                  </div>
+                ) : (
                 <div style={{ display: 'flex', gap: '.5rem' }}>
                   <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
-                  {off ? (
+                  {expired ? (
+                    // Renew: reopen the editor with the stale expiry cleared and the
+                    // code re-enabled, so the DJ picks a fresh date (or leaves it
+                    // "Never") instead of ending up "active but expired".
+                    <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c, active: true, expires: null }); setError(''); }} style={btnOutline}>Renew</button>
+                  ) : off ? (
                     <button type="button" onClick={() => setActive(i, true)} style={btnOutline}>Reactivate</button>
                   ) : (
                     <button type="button" onClick={() => setActive(i, false)} style={btnOutline}>Deactivate</button>
                   )}
-                  <button type="button" onClick={() => removeCode(i)} style={btnDanger}>Delete</button>
+                  <button type="button" onClick={() => setConfirmDel(i)} style={btnDanger}>Delete</button>
                 </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '.6rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
                 <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
-                <span><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}</span>
+                <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
                 {(() => {
                   const key = (c.code || '').trim().toUpperCase();
                   const uses = usageByCode[key] || [];
