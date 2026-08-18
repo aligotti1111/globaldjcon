@@ -109,8 +109,8 @@ const iconPromo = (
   </svg>
 );
 const usedCellValue: React.CSSProperties = {
-  height: 44, display: 'inline-flex', alignItems: 'center', gap: 4,
-  color: 'var(--white,#fff)', fontSize: '.9rem', fontWeight: 700,
+  height: 38, display: 'inline-flex', alignItems: 'center', gap: 4,
+  color: 'var(--white,#fff)', fontSize: '.88rem', fontWeight: 700,
 };
 
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
@@ -293,10 +293,60 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
     return c.type === 'percent' ? `${c.value}% off` : `${currencySymbol}${c.value} off`;
   }
 
+  // Is a sale actually running right now (percent set + inside its window)? Drives
+  // the "Sale live" badge in the banner.
+  const saleLiveNow = (() => {
+    const pct = sale.percent ?? 0;
+    if (pct <= 0) return false;
+    const now = new Date();
+    if (sale.starts && new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime()) return false;
+    if (sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime()) return false;
+    return true;
+  })();
+
   return (
     <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>Discounts &amp; Promo Codes</div>
+      {/* Banner — gradient top accent, icon chip, title + subtitle, and a live
+          badge that only appears while a sale is actually running. */}
+      <div
+        style={{
+          position: 'relative', display: 'flex', alignItems: 'center', gap: 16,
+          padding: '20px 26px', borderBottom: '1px solid rgba(255,255,255,.14)',
+          background: 'linear-gradient(180deg,rgba(34,227,173,.10),rgba(34,227,173,.02))',
+        }}
+      >
+        <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: GRAD }} />
+        <span
+          style={{
+            width: 44, height: 44, borderRadius: 12, background: GRAD, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 22px -8px rgba(34,227,173,.7)',
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+        </span>
+        <div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.55rem', letterSpacing: '.04em', lineHeight: 1, color: '#fff' }}>
+            Discounts &amp; Promo Codes
+          </div>
+          <div style={{ marginTop: 4, fontSize: '.78rem', color: 'var(--muted,#8b8da3)' }}>
+            Run sales and hand out private codes to win more bookings.
+          </div>
+        </div>
+        {saleLiveNow && (
+          <span
+            style={{
+              marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 7,
+              fontSize: '.72rem', fontWeight: 700, color: '#04241b', background: GRAD,
+              padding: '7px 14px', borderRadius: 999,
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#04241b' }} /> Sale live
+          </span>
+        )}
       </div>
       <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
 
@@ -341,11 +391,11 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-              <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
-                <label style={labelStyle}>Percent off</label>
+              <div style={{ ...fieldWrap, flex: '0 0 88px' }}>
+                <label style={labelStyle}>Percent</label>
                 <select
                   className={styles.settingSelect}
-                  style={{ width: '100%', boxSizing: 'border-box', height: 44, color: 'var(--white,#fff)' }}
+                  style={{ width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem', color: 'var(--white,#fff)' }}
                   value={sale.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
@@ -360,19 +410,19 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                   ))}
                 </select>
               </div>
-              <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
+              <div style={{ ...fieldWrap, flex: '0 1 150px' }}>
                 <label style={labelStyle}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
-                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 44 }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem' }} onClick={openPicker}
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '1 1 150px' }}>
-                <label style={labelStyle}>End date (optional)</label>
+              <div style={{ ...fieldWrap, flex: '0 1 150px' }}>
+                <label style={labelStyle}>End date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
-                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 44 }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem' }} onClick={openPicker}
                   value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
                 />
               </div>
@@ -395,8 +445,8 @@ export default function DiscountsSection({ promoCodes, sale, currencySymbol = '$
                 <label style={labelStyle}>Status</label>
                 <span
                   style={{
-                    height: 34, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 15px',
-                    borderRadius: 999, fontSize: '.72rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
+                    height: 30, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px',
+                    borderRadius: 999, fontSize: '.68rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
                     ...pillStyle,
                   }}
                 >
