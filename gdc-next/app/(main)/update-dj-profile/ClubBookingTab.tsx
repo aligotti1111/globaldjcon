@@ -857,6 +857,7 @@ export default function ClubBookingTab({
         promoCodes={bookingSettings.promo_codes || []}
         sale={bookingSettings.sale || {}}
         saleHistory={bookingSettings.sale_history || []}
+        exclusions={bookingSettings.exclusions || []}
         onChange={(p) => patch(p)}
       />
       )}
