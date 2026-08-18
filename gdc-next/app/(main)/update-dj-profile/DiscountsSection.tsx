@@ -265,8 +265,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const [expandedPast, setExpandedPast] = useState<number | null>(null);
   // Which promo code is pending a delete confirmation.
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
-  // The date currently entered in the "add exclusion" picker.
+  // The date + which discounts to block, for the "add exclusion" row.
   const [newExclDate, setNewExclDate] = useState('');
+  const [newExclSale, setNewExclSale] = useState(true);
+  const [newExclCodes, setNewExclCodes] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -365,9 +367,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   function addExclusion() {
     if (!newExclDate) return;
     if (exclusions.some((e) => e.date === newExclDate)) { setNewExclDate(''); return; }
-    const next = [...exclusions, { date: newExclDate, sale: true, codes: true }]
+    const next = [...exclusions, { date: newExclDate, sale: newExclSale, codes: newExclCodes }]
       .sort((a, b) => a.date.localeCompare(b.date));
     onChange({ exclusions: next });
+    // Clear the date so the picker is ready for the next one; keep the toggles.
     setNewExclDate('');
   }
   function updateExclusion(i: number, patch: Partial<DiscountExclusion>) {
@@ -912,28 +915,43 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           site sale, promo codes, or both for that day — bookings on excluded dates pay full price.
         </div>
 
-        <div style={{ display: 'flex', gap: '.8rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        {/* Add row: pick a date, choose what to block, hit Confirm. The date box
+            clears on confirm so it's ready for the next date. */}
+        <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
           <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
             <label style={labelStyle}>Add a date</label>
             <input
               type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
               style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
-              value={newExclDate} onChange={(e) => setNewExclDate(e.target.value)}
+              value={newExclDate}
+              onChange={(e) => setNewExclDate(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
             />
           </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer' }}>
+            <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+              checked={newExclSale} onChange={(e) => setNewExclSale(e.target.checked)} />
+            Block site sale
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer' }}>
+            <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+              checked={newExclCodes} onChange={(e) => setNewExclCodes(e.target.checked)} />
+            Block promo codes
+          </label>
           <button
             type="button"
             onClick={addExclusion}
-            disabled={!newExclDate}
+            disabled={!newExclDate || (!newExclSale && !newExclCodes)}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7, height: 38,
-              background: newExclDate ? GRAD : 'rgba(255,255,255,.06)', color: newExclDate ? '#04241b' : 'var(--muted,#8a8aa0)',
-              border: 'none', borderRadius: 10, padding: '0 16px', fontSize: '.82rem', fontWeight: 700,
-              cursor: newExclDate ? 'pointer' : 'not-allowed',
-              boxShadow: newExclDate ? '0 8px 22px -8px rgba(34,227,173,.7)' : 'none',
+              display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, marginLeft: 'auto',
+              background: (newExclDate && (newExclSale || newExclCodes)) ? GRAD : 'rgba(255,255,255,.06)',
+              color: (newExclDate && (newExclSale || newExclCodes)) ? '#04241b' : 'var(--muted,#8a8aa0)',
+              border: 'none', borderRadius: 10, padding: '0 18px', fontSize: '.82rem', fontWeight: 700,
+              cursor: (newExclDate && (newExclSale || newExclCodes)) ? 'pointer' : 'not-allowed',
+              boxShadow: (newExclDate && (newExclSale || newExclCodes)) ? '0 8px 22px -8px rgba(34,227,173,.7)' : 'none',
             }}
           >
-            <span style={{ fontSize: '1rem', lineHeight: 1 }}>+</span> Add date
+            Confirm
           </button>
         </div>
 
