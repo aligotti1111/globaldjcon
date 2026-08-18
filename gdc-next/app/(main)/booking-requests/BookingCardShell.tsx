@@ -472,28 +472,29 @@ export default function BookingCardShell({
           <div className={styles.requestedDate}>
             Requested {new Date(b.created_at).toLocaleDateString()}
           </div>
-          {/* Block / Unblock — only meaningful for incoming side, but we show
-              for outgoing too (a booker can block a DJ to avoid future contact). */}
-          {isBlocked ? (
-            <button
-              type="button"
-              onClick={() => onUnblock(targetId)}
-              className={styles.unblockBtn}
-            >
-              Unblock
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onBlock(targetId, targetName)}
-              className={styles.blockBtn}
-            >
-              Block
-            </button>
-          )}
-          {/* Expiry countdown pill (pending requests) — bottom-right, next to
-              the Block control so it reads as part of this request's chrome. */}
-          {expirySlot}
+          {/* Expiry countdown pill + Block on ONE line to save vertical space. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {expirySlot}
+            {/* Block / Unblock — only meaningful for incoming side, but we show
+                for outgoing too (a booker can block a DJ to avoid future contact). */}
+            {isBlocked ? (
+              <button
+                type="button"
+                onClick={() => onUnblock(targetId)}
+                className={styles.unblockBtn}
+              >
+                Unblock
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onBlock(targetId, targetName)}
+                className={styles.blockBtn}
+              >
+                Block user
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
