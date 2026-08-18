@@ -283,6 +283,22 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
     onChange({ sale: { ...sale, ...p } });
   }
 
+  // End the running sale right now. If it had already started, archive it with
+  // today as the end date; if it was only scheduled (start still in the future),
+  // just clear it — there's nothing to record. Either way the form empties for
+  // a fresh sale.
+  function endSaleNow() {
+    const now = Date.now();
+    const started = !sale.starts || new Date(`${sale.starts}T00:00:00`).getTime() <= now;
+    if (started) {
+      const ended: Sale = { ...sale, ends: todayStr, active: false };
+      onChange({ sale: {}, sale_history: [ended, ...saleHistory] });
+    } else {
+      onChange({ sale: {} });
+    }
+    setSaleOpen(false);
+  }
+
   // Today as an ISO date (YYYY-MM-DD) — used as the min for a new sale's start
   // date so it can't begin in the past.
   const todayStr = (() => {
@@ -458,6 +474,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
+            <>
             <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }}>
               <div style={{ ...fieldWrap, flex: '0 0 96px' }}>
                 <label style={labelStyle}>Percent off</label>
@@ -526,6 +543,20 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                 </span>
               </div>
             </div>
+            {/* End-now escape hatch — a sale with no end date (or a future one)
+                has no other way to stop, so let the DJ end it on the spot. */}
+            {pct > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.7rem' }}>
+                <button
+                  type="button"
+                  onClick={endSaleNow}
+                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#ff8f8f', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  {tone === 'sched' ? 'Cancel scheduled sale' : 'End sale now'}
+                </button>
+              </div>
+            )}
+            </>
           );
         })()}
 
