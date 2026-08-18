@@ -195,16 +195,21 @@ function CodeFields({
             ))}
           </select>
         ) : (
-          <input
-            type="number"
-            onWheel={(e) => e.currentTarget.blur()}
-            min={1}
-            className={styles.settingNumber}
-            style={{ width: '100%', boxSizing: 'border-box', color: 'var(--white,#fff)' }}
-            value={value.value ? value.value : ''}
-            placeholder="0"
-            onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
-          />
+          <div style={{ position: 'relative', width: '100%' }}>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', pointerEvents: 'none' }}>
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              onWheel={(e) => e.currentTarget.blur()}
+              min={1}
+              className={`${styles.settingNumber} gdcNoSpin`}
+              style={{ width: '100%', boxSizing: 'border-box', textAlign: 'left', paddingLeft: 22, color: 'var(--white,#fff)' }}
+              value={value.value ? value.value : ''}
+              placeholder="0"
+              onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
+            />
+          </div>
         )}
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
@@ -444,6 +449,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
             50% { opacity: .25; transform: scale(.55); }
           }
           .gdcLiveDot { animation: gdcLiveDot 1.1s ease-in-out infinite; }
+          input.gdcNoSpin::-webkit-outer-spin-button,
+          input.gdcNoSpin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+          input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
         `}</style>
 
         <div style={blockStyle}>
