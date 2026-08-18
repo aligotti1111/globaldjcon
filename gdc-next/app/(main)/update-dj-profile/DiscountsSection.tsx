@@ -453,12 +453,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '1rem', columnGap: '1.75rem', alignItems: 'flex-end' }}>
-              <div style={{ ...fieldWrap, flex: '0 0 92px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 74px' }}>
                 <label style={labelStyle}>Percent</label>
                 <select
                   className={styles.settingSelect}
-                  style={{ width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem', color: 'var(--white,#fff)' }}
+                  style={{ width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px', color: 'var(--white,#fff)' }}
                   value={sale.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
@@ -473,19 +473,19 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], c
                   ))}
                 </select>
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
                 <label style={labelStyle}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
                 <label style={labelStyle}>End date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
-                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.82rem' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
                   value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
                 />
               </div>
