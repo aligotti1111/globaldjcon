@@ -1,3 +1,6 @@
+/* No connecting lines between the pipeline nodes. */
+.rowWrap .stCell::after { display: none !important; }
+
 /* Pipeline cell: stage name on top, node in the middle, status caption below.
    Higher-specificity + !important so it beats the earlier card rules. */
 @media (min-width: 601px) {
