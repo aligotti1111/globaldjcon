@@ -584,6 +584,27 @@ export default function BookingDetails({
       ? 'This is a Mobile / Private booking. Your profile is registered as a Club / Bar DJ — the booking will still appear here in your upcoming bookings, but it won\u2019t be displayed publicly on your profile event list.'
       : null;
 
+  // Group the flat label/value rows into labelled cards — Event / Venue / Host /
+  // Pricing — each with a gradient chip header (Pricing tinted). Same rows, same
+  // values; purely how they're visually grouped. A row is placed by its labels.
+  type SectionKey = 'EVENT' | 'VENUE' | 'HOST' | 'PRICING';
+  const sectionForRow = (row: DetailRow): SectionKey => {
+    const s = row.map((c) => c.label).join('|');
+    if (/Venue|Guest Count|Room|Equipment|Set Type/.test(s)) return 'VENUE';
+    if (/Booked By|Contact Phone/.test(s)) return 'HOST';
+    if (/Agreed Rate|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
+    return 'EVENT';
+  };
+  const sectionOrder: Array<{ key: SectionKey; title: string }> = [
+    { key: 'EVENT', title: 'Event' },
+    { key: 'VENUE', title: 'Venue' },
+    { key: 'HOST', title: 'Host' },
+    { key: 'PRICING', title: 'Pricing' },
+  ];
+  const groupedSections = sectionOrder
+    .map((sec) => ({ ...sec, rows: visibleRows.filter((r) => sectionForRow(r) === sec.key) }))
+    .filter((g) => g.rows.length > 0);
+
   return (
     <div className={styles.detailsPanel}>
       {typeMismatchNote && (
@@ -591,13 +612,21 @@ export default function BookingDetails({
           <strong>Note:</strong> {typeMismatchNote}
         </div>
       )}
-      <div className={styles.detailsStack}>
-        {visibleRows.map((row, i) => (
-          <div key={i} className={styles.detailPairRow}>
-            {row.map((cell) => (
-              <div key={cell.label} className={styles.detailRow}>
-                <div className={styles.detailLabel}>{cell.label}</div>
-                <div className={styles.detailValue}>{cell.value}</div>
+      <div className={styles.detailsSections}>
+        {groupedSections.map((g) => (
+          <div
+            key={g.key}
+            className={`${styles.detailSection}${g.key === 'PRICING' ? ' ' + styles.detailSectionPricing : ''}`}
+          >
+            <div className={styles.detailChip}><span>{g.title}</span></div>
+            {g.rows.map((row, i) => (
+              <div key={i} className={styles.detailPairRow}>
+                {row.map((cell) => (
+                  <div key={cell.label} className={styles.detailRow}>
+                    <div className={styles.detailLabel}>{cell.label}</div>
+                    <div className={styles.detailValue}>{cell.value}</div>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
