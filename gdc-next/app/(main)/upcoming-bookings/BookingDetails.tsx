@@ -605,6 +605,37 @@ export default function BookingDetails({
     .map((sec) => ({ ...sec, rows: visibleRows.filter((r) => sectionForRow(r) === sec.key) }))
     .filter((g) => g.rows.length > 0);
 
+  // Pricing renders as a receipt: label left, amount right, the total emphasised,
+  // and the deposit/balance pulled into a separated "Payment schedule" band.
+  const renderPricing = (prows: DetailRow[]) => {
+    const cells = prows.flatMap((r) => r);
+    const isSchedule = (l: string) => /Deposit|Balance due|Balance/i.test(l);
+    const isTotal = (l: string) => /^Total/i.test(l);
+    const main = cells.filter((c) => !isSchedule(c.label));
+    const sched = cells.filter((c) => isSchedule(c.label));
+    return (
+      <>
+        {main.map((c) => (
+          <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
+            <span className={styles.priceKey}>{c.label}</span>
+            <span className={styles.priceVal}>{c.value}</span>
+          </div>
+        ))}
+        {sched.length > 0 && (
+          <div className={styles.paySched}>
+            <div className={styles.schedLbl}>Payment schedule</div>
+            {sched.map((c) => (
+              <div key={c.label} className={styles.priceRow}>
+                <span className={styles.priceKey}>{c.label}</span>
+                <span className={styles.priceVal}>{c.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className={styles.detailsPanel}>
       {typeMismatchNote && (
@@ -619,7 +650,7 @@ export default function BookingDetails({
             className={`${styles.detailSection}${g.key === 'PRICING' ? ' ' + styles.detailSectionPricing : ''}`}
           >
             <div className={styles.detailChip}><span>{g.title}</span></div>
-            {g.rows.map((row, i) => (
+            {g.key === 'PRICING' ? renderPricing(g.rows) : g.rows.map((row, i) => (
               <div key={i} className={styles.detailPairRow}>
                 {row.map((cell) => (
                   <div key={cell.label} className={styles.detailRow}>
