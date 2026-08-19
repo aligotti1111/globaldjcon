@@ -97,19 +97,22 @@ export default function PipelineStrip({
               : '#c08a3e';
         // INVARIANT: a done step can never say it's waiting.
         const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
-        // Circular-node ring, per state. Purely visual — mirrors the caption's
-        // meaning: teal = done, amber = your move (in flight), dim grey = later.
+        // Circular-node ring, per state. Purely visual. DONE is the only state
+        // the ring itself colours — teal + a check. Everything still to do reads
+        // as a calm neutral-grey ring; which one is "your move" is carried by the
+        // caption underneath (amber), not by lighting up every node. A page where
+        // every incomplete step glowed amber made nothing stand out.
         const ringStyle: CSSProperties = positiveDone
           ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
           : (!st.done && waiting)
-            ? { borderColor: 'var(--amber,#eaa94a)', boxShadow: '0 0 0 4px rgba(234,169,74,.13)' }
+            ? { borderColor: 'rgba(255,255,255,.16)' }
             : skipped
               ? { borderColor: 'rgba(255,255,255,.28)' }
               : { borderColor: '#3a3a4c' };
         const iconColor = positiveDone
           ? 'var(--neon,#00e0a4)'
           : (!st.done && waiting)
-            ? 'var(--amber,#eaa94a)'
+            ? '#b9b9c6'
             : skipped ? '#f2f2f7' : '#c2c2ce';
         const inner = (
           <>
