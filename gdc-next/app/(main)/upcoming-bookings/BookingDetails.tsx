@@ -445,34 +445,50 @@ export default function BookingDetails({
       { label: timeLabelPrefix + ' Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
       { label: timeLabelPrefix + ' End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
     ],
-    // Row 3: Venue Type + Venue Address (linkified to Google Maps)
-    [
-      djType === 'club'
-        ? { label: 'Venue Type', value: booking.venue_type ? (
-            booking.venue_type_desc ? (
-              <span>{capitalize(booking.venue_type)}<span style={{ display: 'block', fontSize: '.85em', color: 'var(--muted,#8a8aa0)', marginTop: 2, fontWeight: 400 }}>{booking.venue_type_desc}</span></span>
-            ) : capitalize(booking.venue_type)
-          ) : null }
-        : { label: 'Venue Name', value: booking.venue_name },
-      {
-        label: 'Venue Address',
-        value: addressUrl ? (
-          <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>
-            {booking.venue_address}
-          </a>
-        ) : booking.venue_address,
-      },
-    ],
-    // Row 4: DJ-type-specific extra info
-    djType === 'club'
+    // Venue block. Club: Type + Address, then Set Type + Equipment. Mobile: Venue
+    // Name + Room on one line, Address on its own line. (Guest Count is pulled up
+    // into the Event card — see below.)
+    ...(djType === 'club'
       ? [
-          { label: 'Set Type', value: setTypeLabel },
-          { label: 'Equipment', value: booking.equipment ? capitalize(booking.equipment.replace(/_/g, ' ')) : null },
+          [
+            { label: 'Venue Type', value: booking.venue_type ? (
+                booking.venue_type_desc ? (
+                  <span>{capitalize(booking.venue_type)}<span style={{ display: 'block', fontSize: '.85em', color: 'var(--muted,#8a8aa0)', marginTop: 2, fontWeight: 400 }}>{booking.venue_type_desc}</span></span>
+                ) : capitalize(booking.venue_type)
+              ) : null },
+            {
+              label: 'Venue Address',
+              value: addressUrl ? (
+                <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>
+                  {booking.venue_address}
+                </a>
+              ) : booking.venue_address,
+            },
+          ],
+          [
+            { label: 'Set Type', value: setTypeLabel },
+            { label: 'Equipment', value: booking.equipment ? capitalize(booking.equipment.replace(/_/g, ' ')) : null },
+          ],
         ]
       : [
-          { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
-          { label: 'Room Details', value: booking.room_details },
-        ],
+          [
+            { label: 'Venue Name', value: booking.venue_name },
+            { label: 'Room Details', value: booking.room_details },
+          ],
+          [
+            {
+              label: 'Venue Address',
+              value: addressUrl ? (
+                <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>
+                  {booking.venue_address}
+                </a>
+              ) : booking.venue_address,
+            },
+          ],
+          [
+            { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
+          ],
+        ]),
     djType === 'club'
       ? []
       : [
@@ -579,7 +595,7 @@ export default function BookingDetails({
   type SectionKey = 'EVENT' | 'VENUE' | 'HOST' | 'PRICING';
   const sectionForRow = (row: DetailRow): SectionKey => {
     const s = row.map((c) => c.label).join('|');
-    if (/Venue|Guest Count|Room|Equipment|Set Type/.test(s)) return 'VENUE';
+    if (/Venue|Room|Equipment|Set Type/.test(s)) return 'VENUE';
     if (/Booked By|Contact Phone/.test(s)) return 'HOST';
     if (/Agreed Rate|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
     return 'EVENT';
@@ -678,6 +694,17 @@ export default function BookingDetails({
             {g.key === 'EVENT' && overtimeControl && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
                 {overtimeControl}
+              </div>
+            )}
+            {g.key === 'HOST' && booking.phone && (
+              <div style={{ marginTop: 12 }}>
+                <a
+                  href={`sms:${booking.phone}`}
+                  className={styles.detailValue}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '7px 14px', fontWeight: 600 }}
+                >
+                  ✉ Message host
+                </a>
               </div>
             )}
           </div>
