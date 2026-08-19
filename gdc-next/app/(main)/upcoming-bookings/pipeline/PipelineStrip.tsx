@@ -18,8 +18,8 @@ import { stageLabel, type PipelineStep } from './types';
 // anything else (contract) → a document.
 function stageIcon(icon: string) {
   const p = {
-    width: 21, height: 21, viewBox: '0 0 24 24', fill: 'none',
-    stroke: 'currentColor', strokeWidth: 1.7,
+    width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none',
+    stroke: 'currentColor', strokeWidth: 1.9,
     strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
   };
   if (icon === 'money') {
