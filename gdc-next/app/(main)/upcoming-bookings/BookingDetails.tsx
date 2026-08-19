@@ -351,6 +351,24 @@ export default function BookingDetails({
   const cardTotal = snapshotFresh
     ? snapTotal
     : (agreedTotal != null ? round2(Number(agreedTotal) + cardTax) : null);
+
+  // Numeric deposit + remaining balance. Mirrors the Deposit row's logic so the
+  // receipt can always show what's still owed after the deposit is paid.
+  const depositAmountNum: number | null = (() => {
+    if (snapshotFresh && booking.deposit_amount != null) return Number(booking.deposit_amount);
+    if (booking.deposit_pct != null && cardTotal != null) {
+      return snapTaxPct != null
+        ? round2((cardTotal * booking.deposit_pct) / 100)
+        : Math.round((cardTotal * booking.deposit_pct) / 100);
+    }
+    if (djType === 'club' && clubDepositPct > 0 && cardTotal != null && cardTotal > 0) {
+      return Math.round((cardTotal * clubDepositPct) / 100);
+    }
+    if (booking.deposit_amount != null) return Number(booking.deposit_amount);
+    return null;
+  })();
+  const balanceDueNum: number | null =
+    (cardTotal != null && depositAmountNum != null) ? round2(cardTotal - depositAmountNum) : null;
   const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
   const ceremonyCharge = booking.ceremony_price != null ? Number(booking.ceremony_price) : 0;
   const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
@@ -470,44 +488,10 @@ export default function BookingDetails({
       { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
       { label: 'Contact Phone', value: booking.phone },
     ],
-    // Row 6: Agreed Rate + Overtime Rate. (Package name moved to the package
-    // details area below.) Mobile always shows an overtime cell with a
-    // placeholder when the DJ set none; club hides it when unset.
+    // Row 6: Agreed Rate. (Overtime moved out of the receipt to the Event card's
+    // bottom-right — see overtimeControl below.)
     [
       { label: 'Agreed Rate', value: agreedRateWithDiscount },
-      {
-        label: 'Overtime Rate',
-        // Club: just the per-hour rate (or nothing). Mobile: the overtime
-        // control IS the value here — the "Send invoice / receipt" link or the
-        // "Manage" dropdown once sent. The per-hour rate isn't repeated (it's
-        // shown in the entry popup); the control is the centerpiece.
-        value: djType === 'club'
-          ? (booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : null)
-          : (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-              <OvertimeSection
-                bookingId={booking.id}
-                currency={booking.currency || 'USD'}
-                // Overtime tax stays TRUE to the rate the booking was made with —
-                // its own frozen tax snapshot. Only legacy rows that never
-                // snapshotted a rate (tax_pct null) fall back to the DJ's live
-                // rate as a best guess.
-                taxPct={booking.tax_pct != null ? Number(booking.tax_pct) : taxPct}
-                defaultRate={booking.overtime_rate != null ? Number(booking.overtime_rate) : null}
-                initial={{
-                  hours: booking.overtime_hours ?? null,
-                  rate: booking.overtime_charge_rate ?? null,
-                  tax: booking.overtime_tax ?? null,
-                  amount: booking.overtime_amount ?? null,
-                  invoicedAt: booking.overtime_invoiced_at ?? null,
-                  paidAt: booking.overtime_paid_at ?? null,
-                }}
-                canManage={canManageMoney}
-                rateLabel={booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : 'Not listed'}
-              />
-            </span>
-          ),
-      },
     ],
     // Row 7: Deposit
     [
@@ -547,6 +531,11 @@ export default function BookingDetails({
           return null;
         })(),
       },
+    ],
+    // Row 7b: Balance due on the day of the event (tax-inclusive total minus the
+    // deposit). Always shown alongside the deposit so the receipt is complete.
+    [
+      { label: 'Balance due day of event', value: balanceDueNum != null ? money(balanceDueNum) : null },
     ],
     // Row 8: Tax + Total. Uses the booking's FROZEN tax % (effTaxPct falls
     // back to the DJ's live setting only for legacy rows with no snapshot).
@@ -636,6 +625,32 @@ export default function BookingDetails({
     );
   };
 
+  // Overtime control — moved out of the pricing receipt to the Event card's
+  // bottom-right. Mobile shows the OvertimeSection (rate + Send invoice / receipt,
+  // or Manage once sent). Club shows the flat per-hour rate when one is set.
+  const overtimeControl = djType === 'club'
+    ? (booking.overtime_rate != null
+        ? <span className={styles.detailValue}>Overtime {money(booking.overtime_rate)}/hr</span>
+        : null)
+    : (
+      <OvertimeSection
+        bookingId={booking.id}
+        currency={booking.currency || 'USD'}
+        taxPct={booking.tax_pct != null ? Number(booking.tax_pct) : taxPct}
+        defaultRate={booking.overtime_rate != null ? Number(booking.overtime_rate) : null}
+        initial={{
+          hours: booking.overtime_hours ?? null,
+          rate: booking.overtime_charge_rate ?? null,
+          tax: booking.overtime_tax ?? null,
+          amount: booking.overtime_amount ?? null,
+          invoicedAt: booking.overtime_invoiced_at ?? null,
+          paidAt: booking.overtime_paid_at ?? null,
+        }}
+        canManage={canManageMoney}
+        rateLabel={booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : 'Not listed'}
+      />
+    );
+
   return (
     <div className={styles.detailsPanel}>
       {typeMismatchNote && (
@@ -660,6 +675,11 @@ export default function BookingDetails({
                 ))}
               </div>
             ))}
+            {g.key === 'EVENT' && overtimeControl && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                {overtimeControl}
+              </div>
+            )}
           </div>
         ))}
       </div>
