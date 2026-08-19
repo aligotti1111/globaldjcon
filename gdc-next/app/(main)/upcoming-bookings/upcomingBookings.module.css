@@ -1,3 +1,54 @@
+/* Booking list rows as cards with a connected, labelled mini-pipeline (desktop
+   only; the mobile card layout below is untouched). !important so it overrides
+   the flush-table rules further down regardless of cascade order. */
+@media (min-width: 601px) {
+  .colHeads { display: none !important; }
+  .rowWrap {
+    border: 1px solid rgba(255, 255, 255, .12) !important;
+    border-radius: 14px !important;
+    margin-bottom: 10px !important;
+    background: #0b0b12 !important;
+  }
+  .rowWrap:hover { border-color: rgba(34, 227, 173, .4) !important; }
+  .row {
+    border-top: none !important;
+    height: auto !important;
+    padding: 16px !important;
+  }
+  .stCell {
+    position: relative !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+  .stCap { display: none !important; }
+  .stLabel {
+    order: 1 !important;
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    color: #8b8da3 !important;
+    letter-spacing: .02em !important;
+    text-transform: none !important;
+    margin-top: 6px !important;
+    text-align: center !important;
+  }
+  .stCell::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 15px !important;
+    left: calc(50% + 16px) !important;
+    right: -13px !important;
+    height: 2px !important;
+    background: rgba(255, 255, 255, .14) !important;
+    z-index: 0 !important;
+  }
+  .stCell:last-child::after { display: none !important; }
+  .stIcon { position: relative !important; z-index: 1 !important; }
+}
+
 /* Booking progress hero — the connected-node pipeline bar at the top of the
    expanded card. detailsPanelTop is its wrapper; hero* style the bar itself. */
 .detailsPanelTop {
