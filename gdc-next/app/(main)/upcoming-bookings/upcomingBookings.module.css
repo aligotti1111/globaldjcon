@@ -1181,6 +1181,45 @@ select.input {
 }
 /* First data row sits right under the chip — no divider above it. */
 .detailChip + .detailPairRow { border-top: none; }
+
+/* Pricing receipt: label left, amount right; total emphasised. */
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 4px 0;
+}
+.priceKey { color: var(--muted); font-size: .88rem; }
+.priceVal {
+  color: var(--white);
+  font-size: .9rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.priceRowTotal {
+  border-top: 1px solid rgba(255, 255, 255, .16);
+  margin-top: 5px;
+  padding-top: 9px;
+}
+.priceRowTotal .priceKey { color: var(--white); font-weight: 700; }
+.priceRowTotal .priceVal { font-size: 1rem; font-weight: 700; }
+/* Deposit + balance, set apart in their own shaded band. */
+.paySched {
+  margin-top: 9px;
+  padding: 10px 12px 5px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid rgba(255, 255, 255, .07);
+}
+.schedLbl {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #7d7d92;
+  margin-bottom: 4px;
+}
 /* Each label/value pair-row sits on its own line separated by a hairline, so
    the panel reads like a tidy spec sheet instead of one cramped block. */
 .detailPairRow {
