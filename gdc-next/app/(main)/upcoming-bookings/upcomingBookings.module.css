@@ -1,7 +1,7 @@
-/* When a booking card is expanded, hide the small header pipeline so only the
-   big Booking-progress hero shows (desktop). */
+/* Big Booking-progress hero removed — the small pipeline in each row header
+   is the only pipeline, shown whether the card is open or closed. */
 @media (min-width: 601px) {
-  .rowWrapExpanded .statusStrip { display: none !important; }
+  .detailsPanelTop { display: none !important; }
 }
 
 /* Booking list rows as cards with a connected, labelled mini-pipeline (desktop
