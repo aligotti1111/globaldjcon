@@ -1,3 +1,49 @@
+/* Booking progress hero — the connected-node pipeline bar at the top of the
+   expanded card. detailsPanelTop is its wrapper; hero* style the bar itself. */
+.detailsPanelTop {
+  background: #0d0d14;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  padding: 1.2rem 1.25rem 0 1.5rem;
+}
+.heroWrap {
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(34, 227, 173, .05), transparent);
+  margin-bottom: 14px;
+}
+.heroHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 16px; border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.heroTitle {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-weight: 800; font-size: 12.5px; letter-spacing: .04em;
+  text-transform: uppercase; color: #f1f2f6;
+}
+.heroBar { width: 4px; height: 14px; border-radius: 2px; background: linear-gradient(100deg, #22e3ad, #31d0ff); }
+.heroStep { font-size: 11px; font-weight: 700; color: var(--neon, #22e3ad); }
+.heroPipe { display: flex; padding: 16px 16px 14px; }
+.heroStepCell { flex: 1 1 0; min-width: 0; position: relative; padding-right: 8px; }
+.heroConn { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.heroNode {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid #3a3a4c; background: #0b0b12;
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+}
+.heroNode svg { width: 10px; height: 10px; }
+.heroNodeDone { border-color: var(--neon, #22e3ad); background: var(--neon, #22e3ad); }
+.heroNodeNow { border-color: var(--amber, #eaa94a); box-shadow: 0 0 0 4px rgba(234, 169, 74, .14); }
+.heroNodeNow::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--amber, #eaa94a); }
+.heroLine { flex: 1; height: 2px; background: rgba(255, 255, 255, .12); border-radius: 2px; }
+.heroLineDone { background: var(--neon, #22e3ad); }
+.heroName {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: none; padding: 0; font-family: inherit;
+  font-size: 12.5px; font-weight: 600; color: #f1f2f6; cursor: pointer;
+}
+.heroCaret { color: #7d7d92; }
+.heroCap { display: block; font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* Upcoming Bookings page — DJ schedule view */
 
 .page {
