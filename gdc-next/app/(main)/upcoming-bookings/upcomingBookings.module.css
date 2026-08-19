@@ -1,3 +1,6 @@
+/* Hide the big Booking-progress hero on ALL screen sizes (mobile included). */
+.detailsPanelTop { display: none !important; }
+
 /* Expanded booking body: Event full-width, Venue + Host side by side, Pricing
    full-width (desktop) — matches the booking-card layout. */
 @media (min-width: 601px) {
