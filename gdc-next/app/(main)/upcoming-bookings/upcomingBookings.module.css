@@ -1002,6 +1002,13 @@ select.input {
   height: 36px;
   font-size: 21px;
   line-height: 1;
+  /* The stage icon now sits inside a circular node. The ring colour is set
+     per-state inline by PipelineStrip (teal = done, amber = your move, grey =
+     later); border-box keeps the outer size at 36px so columns stay aligned. */
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  transition: border-color .15s, background .15s, box-shadow .15s;
 }
 /* .stIconOff (grayscale + 28% opacity for any not-done step) is GONE.
    It made a contract that had been sent and was sitting with the client look
@@ -1034,8 +1041,11 @@ select.input {
 .stBadge svg { width: 9px; height: 9px; }
 .rowWrapExpanded .stBadge { border-color: #16161f; }
 
-/* In flight — out there, waiting on someone. */
+/* In flight — out there, waiting on someone. The amber node RING now carries
+   this signal (set inline by PipelineStrip), so the old corner dot is hidden to
+   avoid doubling up. Kept in the DOM/markup untouched; only not shown. */
 .stDot {
+  display: none;
   position: absolute;
   right: -1px;
   bottom: 0;
