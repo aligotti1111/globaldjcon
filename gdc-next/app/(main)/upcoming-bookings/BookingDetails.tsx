@@ -701,7 +701,7 @@ export default function BookingDetails({
     );
   })();
   const eventHeaderBlock = djType === 'mobile' ? (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
       <div>
         <div className={styles.detailLabel}>Event Type</div>
         <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
@@ -745,8 +745,8 @@ export default function BookingDetails({
       time: formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : ''),
     });
   const scheduleBlock = scheduleItems.length > 0 ? (
-    <div style={{ marginTop: 18 }}>
-      <div className={styles.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>Schedule</div>
+    <div style={{ marginTop: 30 }}>
+      <div className={styles.detailLabel} style={{ marginBottom: 10, fontSize: 12 }}>Schedule</div>
       {scheduleItems.map((it, i) => (
         <div
           key={i}
