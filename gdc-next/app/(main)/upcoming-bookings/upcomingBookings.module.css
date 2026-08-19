@@ -998,13 +998,13 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  font-size: 21px;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
   line-height: 1;
-  /* The stage icon now sits inside a circular node. The ring colour is set
+  /* The stage icon now sits inside a tidy circular node. The ring colour is set
      per-state inline by PipelineStrip (teal = done, amber = your move, grey =
-     later); border-box keeps the outer size at 36px so columns stay aligned. */
+     later); border-box keeps the outer size fixed so columns stay aligned. */
   border-radius: 50%;
   border: 2px solid transparent;
   box-sizing: border-box;
@@ -1027,10 +1027,10 @@ select.input {
    reads as a dark outline either way. */
 .stBadge {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 16px;
-  height: 16px;
+  right: -3px;
+  bottom: -3px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--neon, #00e0a4);
   border: 2px solid #000;
@@ -1038,7 +1038,7 @@ select.input {
   align-items: center;
   justify-content: center;
 }
-.stBadge svg { width: 9px; height: 9px; }
+.stBadge svg { width: 8px; height: 8px; }
 .rowWrapExpanded .stBadge { border-color: #16161f; }
 
 /* In flight — out there, waiting on someone. The amber node RING now carries
