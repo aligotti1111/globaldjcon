@@ -6,7 +6,7 @@
 // steps array and the menu open/position state, and passes them in; this draws
 // the cells and mounts StageMenu for the open one.
 
-import type { MutableRefObject } from 'react';
+import type { CSSProperties, MutableRefObject } from 'react';
 import styles from '../upcomingBookings.module.css';
 import { MUTED } from '../shared';
 import StageMenu from './StageMenu';
@@ -97,9 +97,23 @@ export default function PipelineStrip({
               : '#c08a3e';
         // INVARIANT: a done step can never say it's waiting.
         const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
+        // Circular-node ring, per state. Purely visual — mirrors the caption's
+        // meaning: teal = done, amber = your move (in flight), dim grey = later.
+        const ringStyle: CSSProperties = positiveDone
+          ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
+          : (!st.done && waiting)
+            ? { borderColor: 'var(--amber,#eaa94a)', boxShadow: '0 0 0 4px rgba(234,169,74,.13)' }
+            : skipped
+              ? { borderColor: 'rgba(255,255,255,.28)' }
+              : { borderColor: '#3a3a4c' };
+        const iconColor = positiveDone
+          ? 'var(--neon,#00e0a4)'
+          : (!st.done && waiting)
+            ? 'var(--amber,#eaa94a)'
+            : skipped ? '#f2f2f7' : '#c2c2ce';
         const inner = (
           <>
-            <span className={styles.stIcon} style={{ color: positiveDone ? 'var(--neon,#00e0a4)' : skipped ? '#f2f2f7' : '#c2c2ce' }}>
+            <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle }}>
               {stageIcon(st.icon)}
               {positiveDone && (
                 <span className={styles.stBadge}>
