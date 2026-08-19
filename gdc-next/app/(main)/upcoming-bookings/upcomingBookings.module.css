@@ -1,3 +1,8 @@
+/* Pipeline stage labels (Contract / Deposit / Planner & Playlist / Balance) in white. */
+@media (min-width: 601px) {
+  .rowWrap .stLabel { color: #ffffff !important; }
+}
+
 /* Big Booking-progress hero removed — the small pipeline in each row header
    is the only pipeline, shown whether the card is open or closed. */
 @media (min-width: 601px) {
