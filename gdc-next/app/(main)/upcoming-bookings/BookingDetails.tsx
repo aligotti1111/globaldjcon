@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment } from './page';
@@ -33,7 +34,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, canManageMoney = true, canManageContract = true, hasHostContact, onEdit, contractAction, onContractActionHandled, isOwner = false,
+  payments, canManageMoney = true, canManageContract = true, onEdit, contractAction, onContractActionHandled, isOwner = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -75,7 +76,10 @@ export default function BookingDetails({
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [riderChooserOpen, setRiderChooserOpen] = useState(false);
-  // Message host — compose a note the site emails to the host (reply-to = the DJ).
+  // Message host — starts a new thread in the DJ↔host inbox, mirroring the
+  // inbox's own sendReply: a client-side insert into `messages` (RLS-guarded),
+  // then a best-effort /api/send-email nudge so the host knows to check it.
+  const hostUserId = (booking as { requester_id?: string | null }).requester_id || null;
   const [msgOpen, setMsgOpen] = useState(false);
   const [msgText, setMsgText] = useState('');
   const [msgBusy, setMsgBusy] = useState(false);
@@ -84,17 +88,44 @@ export default function BookingDetails({
   async function sendHostMessage() {
     const t = msgText.trim();
     if (!t) { setMsgErr('Type a message first.'); return; }
+    if (!hostUserId) { setMsgErr('This host booked without an account, so they have no inbox.'); return; }
     setMsgBusy(true); setMsgErr(null);
     try {
-      const r = await fetch('/api/dj/message-host', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, message: t }),
-      });
-      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!r.ok || !d.ok) { setMsgErr(d.error || 'Could not send.'); setMsgBusy(false); return; }
+      const supabase = createClient();
+      // Sender's display name — the same field the inbox shows on a thread.
+      const { data: me } = await supabase.from('users').select('name').eq('id', userId).maybeSingle();
+      const fromName = (me as { name?: string | null } | null)?.name || 'Your DJ';
+      const subject = 'Message about your event'
+        + (booking.event_date ? ' — ' + formatLongDate(booking.event_date) : '');
+      // New top-level thread (parent_id left null).
+      const { error } = await supabase.from('messages').insert([{
+        to_user_id: hostUserId,
+        from_user_id: userId,
+        from_name: fromName,
+        subject,
+        message: t,
+        read: false,
+      }] as unknown as never);
+      if (error) throw error;
+      // Best-effort email nudge — identical shape to the inbox reply flow.
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'inbox_notification',
+            recipientUserId: hostUserId,
+            recipientName: booking.requester_name || '',
+            senderName: fromName,
+            subject,
+            message: t,
+          }),
+        });
+      } catch { /* the inbox message already landed; the email is only a nudge */ }
       setMsgDone(true); setMsgBusy(false);
       setTimeout(() => { setMsgOpen(false); setMsgText(''); setMsgDone(false); }, 1200);
-    } catch { setMsgErr('Could not send. Try again.'); setMsgBusy(false); }
+    } catch (e) {
+      setMsgErr(e instanceof Error ? e.message : 'Could not send.'); setMsgBusy(false);
+    }
   }
   // The DJ's saved NAMED riders → one quick-send button each for this booking.
   const [savedRiders, setSavedRiders] = useState<NamedRider[]>([]);
@@ -702,7 +733,7 @@ export default function BookingDetails({
       {scheduleItems.map((it, i) => (
         <div
           key={i}
-          style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '6px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,.07)' }}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '6px 0', borderTop: '1px solid rgba(255,255,255,.07)' }}
         >
           <span style={{ fontSize: 13, fontWeight: 600, minWidth: 96 }}>{it.name}</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: NEON }}>{it.time}</span>
@@ -743,7 +774,7 @@ export default function BookingDetails({
                 {overtimeControl}
               </div>
             )}
-            {g.key === 'HOST' && hasHostContact && (
+            {g.key === 'HOST' && hostUserId && (
               <div style={{ marginTop: 12 }}>
                 <button
                   type="button"
@@ -769,7 +800,7 @@ export default function BookingDetails({
           >
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Message host</div>
             <div style={{ fontSize: 12.5, color: 'var(--muted,#8a8aa0)', marginBottom: 10 }}>
-              Emailed to {booking.requester_name?.trim() || 'the host'} from the site — their reply comes straight to you.
+              Goes to {booking.requester_name?.trim() || 'the host'}'s inbox on the site — they also get an email nudge, and their reply lands back here.
             </div>
             <textarea
               value={msgText}
