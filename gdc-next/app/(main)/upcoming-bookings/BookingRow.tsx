@@ -32,6 +32,7 @@ import {
   type ContractAction,
 } from './shared';
 import PipelineStrip from './pipeline/PipelineStrip';
+import PipelineHero from './pipeline/PipelineHero';
 import { buildBookingSteps } from './pipeline/buildSteps';
 
 // Capitalize the first letter of each word for menu labels, WITHOUT lowercasing
@@ -1006,6 +1007,19 @@ export default function BookingRow({
         <PaymentMethodsModal userId={userId} onClose={() => setMethodsOpen(false)} />
       )}
 
+      {expanded && (
+        <div className={styles.detailsPanelTop}>
+          <PipelineHero
+            steps={steps}
+            slots={pipeSlotsFor(djType)}
+            djType={djType}
+            openedLabel={openedLabel}
+            actionLocked={actionLocked}
+            overrideLockedFor={overrideLockedFor}
+            onToggleOverride={confirmAndToggleStep}
+          />
+        </div>
+      )}
       {expanded && (
         <BookingDetails
           booking={booking}
