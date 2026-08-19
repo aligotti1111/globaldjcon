@@ -1,3 +1,16 @@
+/* Expanded booking body: Event full-width, Venue + Host side by side, Pricing
+   full-width (desktop) — matches the booking-card layout. */
+@media (min-width: 601px) {
+  .detailsSections {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+  .detailSection:nth-child(1) { grid-column: 1 / -1 !important; }
+  .detailSectionPricing { grid-column: 1 / -1 !important; }
+}
+
 /* Pipeline stage labels (Contract / Deposit / Planner & Playlist / Balance) in white. */
 @media (min-width: 601px) {
   .rowWrap .stLabel { color: #ffffff !important; }
