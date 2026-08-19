@@ -619,8 +619,8 @@ export default function BookingDetails({
         </div>
       )}
       {(hasPackageDetails || booking.package_title) && (
-        <div className={styles.detailLongBlock}>
-          <div className={styles.detailLabel}>Package Details</div>
+        <div className={styles.packageBlock}>
+          <div className={`${styles.detailLabel} ${styles.packageBlockLabel}`}>Package booked</div>
           {booking.package_title && (
             <div className={styles.packageName}>{booking.package_title}</div>
           )}
