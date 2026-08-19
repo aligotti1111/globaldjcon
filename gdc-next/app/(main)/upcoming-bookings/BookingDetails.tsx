@@ -453,22 +453,8 @@ export default function BookingDetails({
     // Row 1: Club → Event Date + Venue Name. Mobile → Event Type + Event Date +
     // Guest Count render together as a 3-up header grid (see eventHeaderBlock),
     // so nothing goes into the generic rows here.
-    ...(djType === 'club'
-      ? [
-          [
-            { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
-            { label: 'Venue Name', value: booking.venue_name },
-          ],
-          [
-            {
-              label: 'Set Time',
-              value: booking.start_time
-                ? formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : '')
-                : null,
-            },
-          ],
-        ]
-      : []),
+    // (Club → Event Date + Set Time + Venue Name render together as a 3-up header
+    // grid at the top of the Details card; see venueHeaderBlock.)
     // (Ceremony / Cocktail / Reception times are no longer plain rows — they're
     // rendered together as the "Schedule" timeline inside the Event card. See
     // scheduleBlock below.)
@@ -731,6 +717,34 @@ export default function BookingDetails({
     </div>
   ) : null;
 
+  // Details header (club/bar) — Event Date / Set Time / Venue Name on one line as
+  // a 3-up grid that wraps on narrow widths.
+  const setTimeStr = booking.start_time
+    ? formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : '')
+    : null;
+  const venueHeaderBlock = djType === 'club' ? (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
+      {booking.event_date && (
+        <div>
+          <div className={styles.detailLabel}>Event Date</div>
+          <div className={styles.detailValue}>{formatLongDate(booking.event_date)}</div>
+        </div>
+      )}
+      {setTimeStr && (
+        <div>
+          <div className={styles.detailLabel}>Set Time</div>
+          <div className={styles.detailValue}>{setTimeStr}</div>
+        </div>
+      )}
+      {booking.venue_name && (
+        <div>
+          <div className={styles.detailLabel}>Venue Name</div>
+          <div className={styles.detailValue}>{booking.venue_name}</div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   // Schedule timeline for the Event card — Ceremony / Cocktail hour / Reception,
   // each with a teal time and an optional room note. Non-wedding bookings collapse
   // to a single line (the event's start–end).
@@ -802,6 +816,7 @@ export default function BookingDetails({
           >
             <div className={styles.detailChip}><span>{g.title}</span></div>
             {g.key === 'EVENT' && eventHeaderBlock}
+            {g.key === 'VENUE' && venueHeaderBlock}
             {g.key === 'PRICING' ? renderPricing(g.rows) : g.rows.map((row, i) => (
               <div key={i} className={styles.detailPairRow}>
                 {row.map((cell) => (
