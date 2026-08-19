@@ -419,27 +419,38 @@ export default function BookingDetails({
 
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
-    // Row 1: Event Date + Venue Name (Event Type for mobile)
-    [
-      { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
-      djType === 'club'
-        ? { label: 'Venue Name', value: booking.venue_name }
-        : {
-            label: 'Event Type',
-            value: (() => {
-              const ed = ((booking as { event_details?: string | null }).event_details || '').trim();
-              if (!ed) return eventTypeLabel;
-              return (
-                <span>
-                  {eventTypeLabel}
-                  {ed.split(' · ').map((line, i) => (
-                    <span key={i} style={{ display: 'block', opacity: 0.7, fontSize: '.85em' }}>{line}</span>
-                  ))}
-                </span>
-              );
-            })(),
-          },
-    ],
+    // Row 1: Club → Event Date + Venue Name. Mobile → Event Type + Guest Count on
+    // one line (Event Type first), with Event Date on the line below.
+    ...(djType === 'club'
+      ? [
+          [
+            { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
+            { label: 'Venue Name', value: booking.venue_name },
+          ],
+        ]
+      : [
+          [
+            {
+              label: 'Event Type',
+              value: (() => {
+                const ed = ((booking as { event_details?: string | null }).event_details || '').trim();
+                if (!ed) return eventTypeLabel;
+                return (
+                  <span>
+                    {eventTypeLabel}
+                    {ed.split(' · ').map((line, i) => (
+                      <span key={i} style={{ display: 'block', opacity: 0.7, fontSize: '.85em' }}>{line}</span>
+                    ))}
+                  </span>
+                );
+              })(),
+            },
+            { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
+          ],
+          [
+            { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
+          ],
+        ]),
     // (Ceremony / Cocktail / Reception times are no longer plain rows — they're
     // rendered together as the "Schedule" timeline inside the Event card. See
     // scheduleBlock below.)
@@ -482,9 +493,6 @@ export default function BookingDetails({
                 </a>
               ) : booking.venue_address,
             },
-          ],
-          [
-            { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
           ],
         ]),
     djType === 'club'
