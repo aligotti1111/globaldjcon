@@ -137,7 +137,7 @@ export default function PipelineStrip({
             {/* Label sits on the cell's top edge (mobile) — a direct child of
                 the cell so it can be absolutely positioned on the border line,
                 not tucked inside the icon button. Hidden on desktop. */}
-            <span className={styles.stLabel}>{shortLabel(st.key)}</span>
+            <span className={styles.stLabel} style={{ color: '#f2f2f7' }}>{shortLabel(st.key)}</span>
             <div className={isNew ? styles.stIconBox : undefined} style={{ position: 'relative', flexShrink: 0 }}>
               {isNew && <span className={styles.stNewTag} aria-hidden="true">NEW</span>}
               {hasMenu ? (
