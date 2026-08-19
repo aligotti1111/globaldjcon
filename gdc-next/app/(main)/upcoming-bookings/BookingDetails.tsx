@@ -813,8 +813,8 @@ export default function BookingDetails({
               </div>
             ))}
             {g.key === 'EVENT' && scheduleBlock}
-            {g.key === 'PRICING' && overtimeControl && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+            {g.key === 'EVENT' && overtimeControl && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
                 <span className={styles.detailLabel}>Overtime</span>
                 {overtimeControl}
               </div>
