@@ -17,7 +17,6 @@ import RiderSendModal from './RiderSendModal';
 import type { NamedRider } from '@/lib/rider';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
-import PaymentsBlock from './PaymentsBlock';
 import OvertimeSection from './OvertimeSection';
 import BookingLog from './BookingLog';
 import {
@@ -34,7 +33,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onPaymentsChange, canRequestDeposit, canManageMoney = true, canManageContract = true, hasHostContact, onEdit, contractAction, onContractActionHandled, isOwner = false,
+  payments, canManageMoney = true, canManageContract = true, hasHostContact, onEdit, contractAction, onContractActionHandled, isOwner = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -644,97 +643,9 @@ export default function BookingDetails({
       {/* Shared notes feed — both DJ and host can read + post. Shown for
           club/bar AND mobile (private) bookings — any real two-party
           booking. Manual events with no counterparty are excluded. */}
-      {(bt === 'club' || bt === 'mobile') && canManageContract && (
-        <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
-          <div className={styles.detailLabel}>Contract</div>
-          {!contractCancelled && (contractSent || booking.contract_status === 'awaiting_client') && booking.contract_status !== 'signed' && !locallySigned ? (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ color: '#f0b23e', fontWeight: 600 }}>Sent — awaiting client signature</div>
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginTop: 4 }}>You&rsquo;ve signed. The client has been emailed to sign.</div>
-              {!archive && (
-                <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={resendContract} disabled={resendBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: resendBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{resendBusy ? 'Resending…' : resendDone ? 'Resent ✓' : 'Resend to client'}</button>
-                  <button type="button" onClick={copyClientLink} disabled={copyBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: copyBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{copyBusy ? 'Getting link…' : copyDone ? 'Link copied ✓' : '🔗 Copy client link'}</button>
-                  <button type="button" onClick={cancelContract} disabled={cancelBusy} style={{ background: 'transparent', border: '1px solid #ff7676', color: '#ff7676', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: cancelBusy ? 'wait' : 'pointer', fontSize: '.8rem' }}>{cancelBusy ? 'Cancelling…' : 'Cancel contract'}</button>
-                </div>
-              )}
-              {signedDocs ? (
-                <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
-                  {signedDocs.contract && <a href={signedDocs.contract} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Signed contract</a>}
-                  {signedDocs.audit && <a href={signedDocs.audit} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Audit log</a>}
-                </div>
-              ) : (
-                <button type="button" onClick={downloadSigned} disabled={signedBusy} style={{ background: 'transparent', border: 'none', color: 'var(--muted,#8a8aa0)', fontWeight: 600, cursor: signedBusy ? 'wait' : 'pointer', fontSize: '.76rem', marginTop: 8, textDecoration: 'underline', padding: 0 }}>{signedBusy ? 'Checking…' : 'Download signed copy (once both have signed)'}</button>
-              )}
-            </div>
-          ) : (booking.contract_status === 'signed' || locallySigned) ? (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ color: '#00e0a4', fontWeight: 700 }}>✓ Contract signed</div>
-              {signedDocs ? (
-                <div style={{ display: 'flex', gap: '.5rem', marginTop: 8, flexWrap: 'wrap' }}>
-                  {signedDocs.contract && <a href={signedDocs.contract} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Signed contract</a>}
-                  {signedDocs.audit && <a href={signedDocs.audit} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', fontSize: '.8rem', textDecoration: 'none' }}>⬇ Audit log</a>}
-                </div>
-              ) : (
-                <button type="button" onClick={downloadSigned} disabled={signedBusy} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem 1rem', cursor: signedBusy ? 'wait' : 'pointer', fontSize: '.8rem', marginTop: 8 }}>{signedBusy ? 'Loading…' : '⬇ Download signed contract'}</button>
-              )}
-            </div>
-          ) : archive ? (
-            <div style={{ marginTop: 8, color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
-              {contractCancelled ? 'Contract was cancelled.' : 'No contract on file for this booking.'}
-            </div>
-          ) : (booking.is_manual && !hasHostContact) ? (
-            /*
-              A manual booking with nobody to send to.
-              This button was live regardless — the section is gated on
-              booking_type, which for a manual booking is the DJ's OWN type, so
-              it's always true. Clicking it opened the contract portal, made the
-              DJ pick a template and sign it, and only then hit NO_CLIENT_EMAIL.
-              All that work before finding out there's no recipient.
-              Same rule as the deposit, same door out: the modal the row's pencil
-              opens, which already has Host Name, Host Email and the "Send
-              booking details to host" checkbox.
-            */
-            <div style={{ marginTop: 8 }}>
-              <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5, marginBottom: 10 }}>
-                Add the host&rsquo;s full name and email to this booking before sending a contract &mdash; there&rsquo;s nobody to send it to yet.
-              </div>
-              {onEdit && (
-                <button type="button" onClick={onEdit} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Add host details&hellip;</button>
-              )}
-            </div>
-          ) : (
-            <div style={{ marginTop: 8 }}>
-              {contractCancelled && <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', marginBottom: 6 }}>Contract cancelled. Review and send a new one below.</div>}
-              <button type="button" onClick={() => setContractOpen(true)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer', fontSize: '.82rem' }}>Review &amp; Send Contract</button>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Payments — the manual-payment ledger for this booking. Rendered for
-          the same set as the Contract section (real two-party bookings), plus
-          any booking that already has payment rows. Purely informational —
-          nothing here ever blocks another step. Archive mode still shows
-          existing rows (read-only) but skips the section entirely when there
-          is nothing to show. */}
-      {(bt === 'club' || bt === 'mobile' || payments.length > 0) && (!archive || payments.length > 0) && (
-        <div className={styles.notesFeedWrap} style={{ marginTop: '1rem' }}>
-          <div className={styles.detailLabel}>Payments</div>
-          <PaymentsBlock
-            bookingId={booking.id}
-            currency={booking.currency || 'USD'}
-            payments={payments}
-            canManageMoney={canManageMoney}
-            onChange={(rows) => onPaymentsChange(booking.id, rows)}
-            archive={archive}
-            canRequestDeposit={canRequestDeposit}
-            suggestedDeposit={booking.deposit_amount != null ? Number(booking.deposit_amount) : null}
-            agreedTotal={
-              booking.total_with_tax ?? booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null
-            }
-          />
-        </div>
-      )}
+      {/* Contract + Payments sections removed from the expanded details — every
+          action (Review & Send, Request Deposit, download, status) lives in the
+          pipeline/status strip at the top of the card, so these were redundant. */}
 
       {/* Planner & Playlist panel intentionally NOT shown on the booking card.
           The planner status + % lives in the status strip up top, and the full
