@@ -1,3 +1,14 @@
+/* Pipeline cell: stage name on top, node in the middle, status caption below.
+   Higher-specificity + !important so it beats the earlier card rules. */
+@media (min-width: 601px) {
+  .rowWrap .stCell { flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; }
+  .rowWrap .stLabel { order: 0 !important; margin: 0 0 6px 0 !important; }
+  .rowWrap .stCell > div { order: 1 !important; }
+  .rowWrap .stBtn { flex-direction: column !important; align-items: center !important; }
+  .rowWrap .stCap { display: block !important; order: 2 !important; margin-top: 5px !important; text-align: center !important; }
+  .rowWrap .stCell::after { top: 35px !important; }
+}
+
 /* Hide the big Booking-progress hero on ALL screen sizes (mobile included). */
 .detailsPanelTop { display: none !important; }
 
