@@ -450,8 +450,9 @@ export default function BookingDetails({
 
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
-    // Row 1: Club → Event Date + Venue Name. Mobile → Event Type + Guest Count on
-    // one line (Event Type first), with Event Date on the line below.
+    // Row 1: Club → Event Date + Venue Name. Mobile → Event Type + Event Date +
+    // Guest Count render together as a 3-up header grid (see eventHeaderBlock),
+    // so nothing goes into the generic rows here.
     ...(djType === 'club'
       ? [
           [
@@ -459,29 +460,7 @@ export default function BookingDetails({
             { label: 'Venue Name', value: booking.venue_name },
           ],
         ]
-      : [
-          [
-            {
-              label: 'Event Type',
-              value: (() => {
-                const ed = ((booking as { event_details?: string | null }).event_details || '').trim();
-                if (!ed) return eventTypeLabel;
-                return (
-                  <span>
-                    {eventTypeLabel}
-                    {ed.split(' · ').map((line, i) => (
-                      <span key={i} style={{ display: 'block', opacity: 0.7, fontSize: '.85em' }}>{line}</span>
-                    ))}
-                  </span>
-                );
-              })(),
-            },
-            { label: 'Guest Count', value: booking.guest_count != null ? String(booking.guest_count) : null },
-          ],
-          [
-            { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
-          ],
-        ]),
+      : []),
     // (Ceremony / Cocktail / Reception times are no longer plain rows — they're
     // rendered together as the "Schedule" timeline inside the Event card. See
     // scheduleBlock below.)
@@ -645,7 +624,9 @@ export default function BookingDetails({
   ];
   const groupedSections = sectionOrder
     .map((sec) => ({ ...sec, rows: visibleRows.filter((r) => sectionForRow(r) === sec.key) }))
-    .filter((g) => g.rows.length > 0);
+    // Keep the Event card for mobile even if it has no generic rows — its header
+    // (Type / Date / Guest) renders separately as eventHeaderBlock.
+    .filter((g) => g.rows.length > 0 || (g.key === 'EVENT' && djType === 'mobile'));
 
   // Pricing renders as a receipt: label left, amount right, the total emphasised,
   // and the deposit/balance pulled into a separated "Payment schedule" band.
@@ -704,6 +685,42 @@ export default function BookingDetails({
       />
     );
 
+  // Event header (mobile) — Type / Date / Guest count on one line as a 3-up grid
+  // that wraps on narrow widths (matches the design mockup). Club uses the plain
+  // rows above instead.
+  const eventTypeHeaderValue = (() => {
+    const ed = ((booking as { event_details?: string | null }).event_details || '').trim();
+    if (!ed) return eventTypeLabel;
+    return (
+      <span>
+        {eventTypeLabel}
+        {ed.split(' · ').map((line, i) => (
+          <span key={i} style={{ display: 'block', opacity: 0.7, fontSize: '.85em' }}>{line}</span>
+        ))}
+      </span>
+    );
+  })();
+  const eventHeaderBlock = djType === 'mobile' ? (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginBottom: 4 }}>
+      <div>
+        <div className={styles.detailLabel}>Event Type</div>
+        <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
+      </div>
+      {booking.event_date && (
+        <div>
+          <div className={styles.detailLabel}>Event Date</div>
+          <div className={styles.detailValue}>{formatLongDate(booking.event_date)}</div>
+        </div>
+      )}
+      {booking.guest_count != null && (
+        <div>
+          <div className={styles.detailLabel}>Guest Count</div>
+          <div className={styles.detailValue}>{String(booking.guest_count)}</div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   // Schedule timeline for the Event card — Ceremony / Cocktail hour / Reception,
   // each with a teal time and an optional room note. Non-wedding bookings collapse
   // to a single line (the event's start–end).
@@ -757,6 +774,7 @@ export default function BookingDetails({
             className={`${styles.detailSection}${g.key === 'PRICING' ? ' ' + styles.detailSectionPricing : ''}`}
           >
             <div className={styles.detailChip}><span>{g.title}</span></div>
+            {g.key === 'EVENT' && eventHeaderBlock}
             {g.key === 'PRICING' ? renderPricing(g.rows) : g.rows.map((row, i) => (
               <div key={i} className={styles.detailPairRow}>
                 {row.map((cell) => (
@@ -768,7 +786,7 @@ export default function BookingDetails({
               </div>
             ))}
             {g.key === 'EVENT' && scheduleBlock}
-            {g.key === 'EVENT' && overtimeControl && (
+            {g.key === 'PRICING' && overtimeControl && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
                 <span className={styles.detailLabel}>Overtime</span>
                 {overtimeControl}
