@@ -1203,6 +1203,18 @@ select.input {
   text-transform: uppercase;
   color: var(--muted);
 }
+/* Package block — the booked package pulled out as a highlighted teal-tinted
+   panel so it reads as a distinct thing, not just another notes paragraph. */
+.packageBlock {
+  margin-top: 1rem;
+  padding: .8rem .95rem .9rem;
+  border-radius: 12px;
+  background: rgba(34, 227, 173, .07);
+  border: 1px solid rgba(34, 227, 173, .22);
+}
+.packageBlockLabel {
+  color: var(--neon, #22e3ad);
+}
 .packageName {
   margin-top: .35rem;
   font-family: 'Bebas Neue', sans-serif;
