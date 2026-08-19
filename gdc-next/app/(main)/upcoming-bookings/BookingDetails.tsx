@@ -75,6 +75,27 @@ export default function BookingDetails({
 }) {
   const [contractOpen, setContractOpen] = useState(false);
   const [riderChooserOpen, setRiderChooserOpen] = useState(false);
+  // Message host — compose a note the site emails to the host (reply-to = the DJ).
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [msgText, setMsgText] = useState('');
+  const [msgBusy, setMsgBusy] = useState(false);
+  const [msgDone, setMsgDone] = useState(false);
+  const [msgErr, setMsgErr] = useState<string | null>(null);
+  async function sendHostMessage() {
+    const t = msgText.trim();
+    if (!t) { setMsgErr('Type a message first.'); return; }
+    setMsgBusy(true); setMsgErr(null);
+    try {
+      const r = await fetch('/api/dj/message-host', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, message: t }),
+      });
+      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!r.ok || !d.ok) { setMsgErr(d.error || 'Could not send.'); setMsgBusy(false); return; }
+      setMsgDone(true); setMsgBusy(false);
+      setTimeout(() => { setMsgOpen(false); setMsgText(''); setMsgDone(false); }, 1200);
+    } catch { setMsgErr('Could not send. Try again.'); setMsgBusy(false); }
+  }
   // The DJ's saved NAMED riders → one quick-send button each for this booking.
   const [savedRiders, setSavedRiders] = useState<NamedRider[]>([]);
   useEffect(() => {
@@ -419,32 +440,9 @@ export default function BookingDetails({
             })(),
           },
     ],
-    // Row 2a: Cocktail Hour time (wedding bookings where the booker opted in),
-    // shown above the reception start/end times.
-    [
-      {
-        label: 'Cocktail Hour Time',
-        value: booking.cocktail_needed && booking.cocktail_start_time
-          ? formatTime12(booking.cocktail_start_time)
-          : null,
-      },
-    ],
-    // Row 2b: Ceremony Music time (wedding bookings where the booker opted in),
-    // shown above the reception start/end times.
-    [
-      {
-        label: 'Ceremony Music Time',
-        value: booking.ceremony_needed && booking.ceremony_start_time
-          ? formatTime12(booking.ceremony_start_time)
-          : null,
-      },
-    ],
-    // Row 2: Time labels — clubs use "Set", mobile uses "Event", except
-    // weddings which use "Reception" (matches the booking form + emails).
-    [
-      { label: timeLabelPrefix + ' Start Time', value: booking.start_time ? formatTime12(booking.start_time) : null },
-      { label: timeLabelPrefix + ' End Time', value: booking.end_time ? formatTime12(booking.end_time) : null },
-    ],
+    // (Ceremony / Cocktail / Reception times are no longer plain rows — they're
+    // rendered together as the "Schedule" timeline inside the Event card. See
+    // scheduleBlock below.)
     // Venue block. Club: Type + Address, then Set Type + Equipment. Mobile: Venue
     // Name + Room on one line, Address on its own line. (Guest Count is pulled up
     // into the Event card — see below.)
@@ -667,6 +665,45 @@ export default function BookingDetails({
       />
     );
 
+  // Schedule timeline for the Event card — Ceremony / Cocktail hour / Reception,
+  // each with a teal time and an optional room note. Non-wedding bookings collapse
+  // to a single line (the event's start–end).
+  const cSameRoom = (booking as { ceremony_same_room?: boolean | null }).ceremony_same_room;
+  const kSameRoom = (booking as { cocktail_same_room?: boolean | null }).cocktail_same_room;
+  const scheduleItems: { name: string; time: string; where?: string }[] = [];
+  if (booking.ceremony_needed && booking.ceremony_start_time)
+    scheduleItems.push({
+      name: 'Ceremony',
+      time: formatTime12(booking.ceremony_start_time),
+      where: cSameRoom == null ? undefined : (cSameRoom ? '· same room as reception' : '· separate room'),
+    });
+  if (booking.cocktail_needed && booking.cocktail_start_time)
+    scheduleItems.push({
+      name: 'Cocktail hour',
+      time: formatTime12(booking.cocktail_start_time),
+      where: kSameRoom == null ? undefined : (kSameRoom ? '· same room as reception' : '· separate room'),
+    });
+  if (booking.start_time)
+    scheduleItems.push({
+      name: timeLabelPrefix,
+      time: formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : ''),
+    });
+  const scheduleBlock = scheduleItems.length > 0 ? (
+    <div style={{ marginTop: 6 }}>
+      <div className={styles.detailLabel} style={{ marginBottom: 4 }}>Schedule</div>
+      {scheduleItems.map((it, i) => (
+        <div
+          key={i}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '6px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,.07)' }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600, minWidth: 96 }}>{it.name}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: NEON }}>{it.time}</span>
+          {it.where && <span style={{ fontSize: 12, color: 'var(--muted,#8a8aa0)' }}>{it.where}</span>}
+        </div>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <div className={styles.detailsPanel}>
       {typeMismatchNote && (
@@ -691,25 +728,71 @@ export default function BookingDetails({
                 ))}
               </div>
             ))}
+            {g.key === 'EVENT' && scheduleBlock}
             {g.key === 'EVENT' && overtimeControl && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                <span className={styles.detailLabel}>Overtime</span>
                 {overtimeControl}
               </div>
             )}
-            {g.key === 'HOST' && booking.phone && (
+            {g.key === 'HOST' && hasHostContact && (
               <div style={{ marginTop: 12 }}>
-                <a
-                  href={`sms:${booking.phone}`}
+                <button
+                  type="button"
+                  onClick={() => { setMsgErr(null); setMsgDone(false); setMsgOpen(true); }}
                   className={styles.detailValue}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '7px 14px', fontWeight: 600 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '7px 14px', fontWeight: 600 }}
                 >
                   ✉ Message host
-                </a>
+                </button>
               </div>
             )}
           </div>
         ))}
       </div>
+      {msgOpen && (
+        <div
+          onClick={() => { if (!msgBusy) setMsgOpen(false); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 440, background: '#0e0e14', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: 18, boxShadow: '0 20px 60px rgba(0,0,0,.5)' }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Message host</div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted,#8a8aa0)', marginBottom: 10 }}>
+              Emailed to {booking.requester_name?.trim() || 'the host'} from the site — their reply comes straight to you.
+            </div>
+            <textarea
+              value={msgText}
+              onChange={(e) => setMsgText(e.target.value)}
+              rows={5}
+              placeholder="Hi — just following up about your event…"
+              autoFocus
+              style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', background: '#07070b', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, padding: '10px 12px', fontSize: 14, lineHeight: 1.5 }}
+            />
+            {msgErr && <div style={{ color: '#ff6b6b', fontSize: 12.5, marginTop: 8 }}>{msgErr}</div>}
+            {msgDone && <div style={{ color: NEON, fontSize: 12.5, marginTop: 8 }}>Sent ✓</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+              <button
+                type="button"
+                onClick={() => { if (!msgBusy) setMsgOpen(false); }}
+                style={{ cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,.16)', color: '#fff', borderRadius: 9, padding: '8px 14px', fontSize: 13, fontWeight: 600 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={msgBusy || msgDone}
+                onClick={sendHostMessage}
+                style={{ cursor: msgBusy ? 'default' : 'pointer', background: NEON, border: 'none', color: '#04150f', borderRadius: 9, padding: '8px 16px', fontSize: 13, fontWeight: 700, opacity: (msgBusy || msgDone) ? 0.7 : 1 }}
+              >
+                {msgBusy ? 'Sending…' : 'Send message'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Event flyer inside the card — small thumbnail with download icon,
           plus replace/remove overlay controls. Club/bar bookings only. */}
       {djType === 'club' && (!archive || flyerUrl) && (
