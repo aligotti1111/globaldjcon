@@ -354,9 +354,7 @@ export default function BookingDetails({
   // If we have lat/lon we use those for a more precise pin; otherwise fall
   // back to URL-encoded address text.
   const addressUrl = booking.venue_address
-    ? (booking.venue_lat != null && booking.venue_lon != null
-        ? `https://www.google.com/maps/search/?api=1&query=${booking.venue_lat},${booking.venue_lon}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.venue_address)}`)
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.venue_address)}`
     : null;
 
   // Each row in `rows` is one or two label/value pairs. A pair appears
@@ -825,7 +823,11 @@ export default function BookingDetails({
             {g.key === 'EVENT' && eventHeaderBlock}
             {g.key === 'VENUE' && venueHeaderBlock}
             {g.key === 'PRICING' ? renderPricing(g.rows) : g.rows.map((row, i) => (
-              <div key={i} className={styles.detailPairRow}>
+              <div
+                key={i}
+                className={styles.detailPairRow}
+                style={row.length === 1 ? { gridTemplateColumns: '1fr' } : undefined}
+              >
                 {row.map((cell) => (
                   <div key={cell.label} className={styles.detailRow}>
                     <div className={styles.detailLabel}>{cell.label}</div>
