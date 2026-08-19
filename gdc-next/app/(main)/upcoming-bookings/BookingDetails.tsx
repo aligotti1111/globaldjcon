@@ -701,7 +701,7 @@ export default function BookingDetails({
     );
   })();
   const eventHeaderBlock = djType === 'mobile' ? (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginBottom: 4 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
       <div>
         <div className={styles.detailLabel}>Event Type</div>
         <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
@@ -745,16 +745,16 @@ export default function BookingDetails({
       time: formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : ''),
     });
   const scheduleBlock = scheduleItems.length > 0 ? (
-    <div style={{ marginTop: 6 }}>
-      <div className={styles.detailLabel} style={{ marginBottom: 4 }}>Schedule</div>
+    <div style={{ marginTop: 18 }}>
+      <div className={styles.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>Schedule</div>
       {scheduleItems.map((it, i) => (
         <div
           key={i}
-          style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '6px 0', borderTop: '1px solid rgba(255,255,255,.07)' }}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: '1px solid rgba(255,255,255,.07)' }}
         >
-          <span style={{ fontSize: 13, fontWeight: 600, minWidth: 96 }}>{it.name}</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: NEON }}>{it.time}</span>
-          {it.where && <span style={{ fontSize: 12, color: 'var(--muted,#8a8aa0)' }}>{it.where}</span>}
+          <span style={{ fontSize: 15, fontWeight: 600, minWidth: 110 }}>{it.name}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: NEON }}>{it.time}</span>
+          {it.where && <span style={{ fontSize: 13, color: 'var(--muted,#8a8aa0)' }}>{it.where}</span>}
         </div>
       ))}
     </div>
