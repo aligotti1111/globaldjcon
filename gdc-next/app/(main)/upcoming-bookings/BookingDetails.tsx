@@ -459,6 +459,14 @@ export default function BookingDetails({
             { label: 'Event Date', value: booking.event_date ? formatLongDate(booking.event_date) : null },
             { label: 'Venue Name', value: booking.venue_name },
           ],
+          [
+            {
+              label: 'Set Time',
+              value: booking.start_time
+                ? formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : '')
+                : null,
+            },
+          ],
         ]
       : []),
     // (Ceremony / Cocktail / Reception times are no longer plain rows — they're
@@ -611,14 +619,16 @@ export default function BookingDetails({
   type SectionKey = 'EVENT' | 'VENUE' | 'HOST' | 'PRICING';
   const sectionForRow = (row: DetailRow): SectionKey => {
     const s = row.map((c) => c.label).join('|');
-    if (/Venue|Room|Equipment|Set Type/.test(s)) return 'VENUE';
+    if (/Venue|Room|Equipment|Set Type|Set Time/.test(s)) return 'VENUE';
     if (/Booked By|Contact Phone/.test(s)) return 'HOST';
     if (/Agreed Rate|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
     return 'EVENT';
   };
   const sectionOrder: Array<{ key: SectionKey; title: string }> = [
     { key: 'EVENT', title: 'Event' },
-    { key: 'VENUE', title: 'Venue' },
+    // Club/bar bookings have no separate Event card, so this card carries the
+    // date + set time as well — label it "Details" there instead of "Venue".
+    { key: 'VENUE', title: djType === 'club' ? 'Details' : 'Venue' },
     { key: 'HOST', title: 'Host' },
     { key: 'PRICING', title: 'Pricing' },
   ];
