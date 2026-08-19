@@ -786,7 +786,7 @@ export default function BookingDetails({
 
   // Package card — rendered just above the Pricing card (see the section map).
   const packageBlock = (hasPackageDetails || booking.package_title) ? (
-    <div className={styles.packageBlock}>
+    <div className={styles.packageBlock} style={{ gridColumn: '1 / -1' }}>
       <div className={`${styles.detailLabel} ${styles.packageBlockLabel}`}>Package booked</div>
       {booking.package_title && (
         <div className={styles.packageName}>{booking.package_title}</div>
