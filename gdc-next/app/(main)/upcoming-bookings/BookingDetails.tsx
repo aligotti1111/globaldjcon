@@ -768,7 +768,9 @@ export default function BookingDetails({
       name: timeLabelPrefix,
       time: formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : ''),
     });
-  const scheduleBlock = scheduleItems.length > 0 ? (
+  // One time (every event except weddings with ceremony/cocktail) → a single
+  // "Event Time" line, no "Schedule" heading. Multiple times → the full timeline.
+  const scheduleBlock = scheduleItems.length > 1 ? (
     <div style={{ marginTop: 30 }}>
       <div className={styles.detailLabel} style={{ marginBottom: 10, fontSize: 12 }}>Schedule</div>
       {scheduleItems.map((it, i) => (
@@ -781,6 +783,11 @@ export default function BookingDetails({
           {it.where && <span style={{ fontSize: 13, color: 'var(--muted,#8a8aa0)' }}>{it.where}</span>}
         </div>
       ))}
+    </div>
+  ) : scheduleItems.length === 1 ? (
+    <div style={{ marginTop: 30 }}>
+      <div className={styles.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>Event Time</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: NEON }}>{scheduleItems[0].time}</div>
     </div>
   ) : null;
 
