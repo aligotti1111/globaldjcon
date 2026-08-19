@@ -6,7 +6,7 @@
 // actions (send / resend / cancel / download / portal), the notes feed, the
 // in-card flyer, and the payments ledger.
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
@@ -760,6 +760,22 @@ export default function BookingDetails({
     </div>
   ) : null;
 
+  // Package card — rendered just above the Pricing card (see the section map).
+  const packageBlock = (hasPackageDetails || booking.package_title) ? (
+    <div className={styles.packageBlock}>
+      <div className={`${styles.detailLabel} ${styles.packageBlockLabel}`}>Package booked</div>
+      {booking.package_title && (
+        <div className={styles.packageName}>{booking.package_title}</div>
+      )}
+      {hasPackageDetails && (
+        <div
+          className={styles.detailLongValue}
+          dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
+        />
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className={styles.detailsPanel}>
       {typeMismatchNote && (
@@ -769,8 +785,9 @@ export default function BookingDetails({
       )}
       <div className={styles.detailsSections}>
         {groupedSections.map((g) => (
+          <Fragment key={g.key}>
+          {g.key === 'PRICING' && packageBlock}
           <div
-            key={g.key}
             className={`${styles.detailSection}${g.key === 'PRICING' ? ' ' + styles.detailSectionPricing : ''}`}
           >
             <div className={styles.detailChip}><span>{g.title}</span></div>
@@ -805,6 +822,7 @@ export default function BookingDetails({
               </div>
             )}
           </div>
+          </Fragment>
         ))}
       </div>
       {msgOpen && (
@@ -865,20 +883,7 @@ export default function BookingDetails({
           />
         </div>
       )}
-      {(hasPackageDetails || booking.package_title) && (
-        <div className={styles.packageBlock}>
-          <div className={`${styles.detailLabel} ${styles.packageBlockLabel}`}>Package booked</div>
-          {booking.package_title && (
-            <div className={styles.packageName}>{booking.package_title}</div>
-          )}
-          {hasPackageDetails && (
-            <div
-              className={styles.detailLongValue}
-              dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
-            />
-          )}
-        </div>
-      )}
+      {/* Package card now renders above the Pricing card — see the section map. */}
       {/* "Booked On <date>" footer removed — the booking log already records
           when the request came in, so it was redundant here. */}
       {hasNotes && (
