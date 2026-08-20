@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
+import SectionBanner from './SectionBanner';
 import { createClient } from '@/lib/supabase/client';
 import { guessStateTaxRate } from '@/lib/salesTax';
 import { CURRENCY_SYMBOLS } from '@/lib/constants';
@@ -104,9 +105,9 @@ function validatePkg(p: MobilePackage | undefined): PkgValidationResult {
 
 interface Props {
   djType: 'club' | 'mobile' | null;
-  selectedEventTypes: string[];   // from General tab — which event types are checked
+  selectedEventTypes: string[]; // from General tab — which event types are checked
   customEventTypes?: CustomEventType[]; // DJ-defined event types
-  specialtyTypes?: string[];      // event types placed in the Specialty group
+  specialtyTypes?: string[]; // event types placed in the Specialty group
   onEventTypesSave?: (selected: string[], custom: CustomEventType[], specialty: string[]) => void | Promise<void>;
   bookingSettings: BookingSettings;
   onChange: (next: BookingSettings) => void;
@@ -454,298 +455,302 @@ export default function BookingTab({
         <>
           {/* ── Booking Settings ────────────────────────────────── */}
           {(!activeSection || activeSection === 'settings') && (
-          <div className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Booking Settings</div>
-            </div>
-            <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
-              {/* Window */}
-              <div className={styles.settingRow}>
-                <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>How far in advance can someone book?</div>
-                </div>
-                <select
-                  value={window}
-                  onChange={(e) => setWindow(parseInt(e.target.value, 10))}
-                  className={styles.settingSelect}
-                >
-                  <option value={3}>3 Months</option>
-                  <option value={6}>6 Months</option>
-                  <option value={12}>1 Year</option>
-                  <option value={24}>2 Years</option>
-                  <option value={36}>3 Years</option>
-                  <option value={48}>4 Years</option>
-                  <option value={60}>5 Years</option>
-                </select>
-              </div>
-
-              {/* Per day */}
-              <div className={styles.settingRow}>
-                <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>
-                    Max number of bookings your company can accept per day
-                  </div>
-                  <div className={styles.settingHint}>
-                    Once the number is reached, the day will be marked as booked.
-                  </div>
-                </div>
-                <input
-                  type="number"
-                  onWheel={(e) => e.currentTarget.blur()}
-                  min={1}
-                  max={99}
-                  value={perDay}
-                  onChange={(e) => setPerDay(parseInt(e.target.value, 10) || 1)}
-                  className={styles.settingNumber}
-                />
-              </div>
-
-              {/* Currency — applies to every price you set (packages, deposit,
-                  tax). Shown wherever money appears for your bookings. */}
-              <div className={styles.settingRow}>
-                <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>Currency</div>
-                  <div className={styles.settingHint}>
-                    The currency all your prices are shown in. Frozen onto each booking, so changing it won&apos;t re-price existing ones.
-                  </div>
-                </div>
-                <select
-                  value={rateCurrency}
-                  onChange={(e) => setRateCurrency(e.target.value)}
-                  className={styles.settingSelect}
-                >
-                  {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
-                    <option key={code} value={code}>{code} ({sym})</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Deposit */}
-              <div className={styles.settingRow}>
-                <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>Require deposit?</div>
-                  <div className={styles.settingHint}>Percentage of total booking price.</div>
-                </div>
-                <select
-                  value={deposit}
-                  onChange={(e) => setDeposit(parseInt(e.target.value, 10) || 0)}
-                  className={styles.settingSelect}
-                >
-                  <option value={0}>No Deposit</option>
-                  {[5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95].map((p) => (
-                    <option key={p} value={p}>{p}%</option>
-                  ))}
-                </select>
-              </div>
-              {/* Sales tax (optional, off by default) */}
-              <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
-                <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>Charge sales tax?</div>
-                  <div className={styles.settingHint}>
-                    Off by default. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={taxEnabled}
-                  aria-label="Charge sales tax"
-                  onClick={() => setTaxEnabled(!taxEnabled)}
-                  style={{
-                    position: 'relative', width: 46, height: 26, borderRadius: 999,
-                    border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
-                    background: taxEnabled ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
-                    transition: 'background .15s ease',
-                  }}
-                >
-                  <span style={{
-                    position: 'absolute', top: 3, left: taxEnabled ? 23 : 3,
-                    width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                    transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
-                  }} />
-                </button>
-              </div>
-              {taxEnabled && (
-                <>
+            <div className={styles.sectionCard}>
+              <SectionBanner
+                icon="settings"
+                title="Booking Settings"
+                subtitle="Booking window, daily limits, deposit and tax."
+              />
+              <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
+                {/* Window */}
                 <div className={styles.settingRow}>
                   <div className={styles.settingLabelWrap}>
-                    <div className={styles.settingLabel}>Tax rate (%)</div>
+                    <div className={styles.settingLabel}>How far in advance can someone book?</div>
+                  </div>
+                  <select
+                    value={window}
+                    onChange={(e) => setWindow(parseInt(e.target.value, 10))}
+                    className={styles.settingSelect}
+                  >
+                    <option value={3}>3 Months</option>
+                    <option value={6}>6 Months</option>
+                    <option value={12}>1 Year</option>
+                    <option value={24}>2 Years</option>
+                    <option value={36}>3 Years</option>
+                    <option value={48}>4 Years</option>
+                    <option value={60}>5 Years</option>
+                  </select>
+                </div>
+
+                {/* Per day */}
+                <div className={styles.settingRow}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>
+                      Max number of bookings your company can accept per day
+                    </div>
                     <div className={styles.settingHint}>
-                      {suggestedTax != null
-                        ? `Suggested from your state (${djState}): ${suggestedTax}% base rate — adjust for your local rate.`
-                        : 'Enter your local rate.'}
+                      Once the number is reached, the day will be marked as booked.
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="number"
-                      onWheel={(e) => e.currentTarget.blur()}
-                      min={0}
-                      max={100}
-                      step="0.001"
-                      value={taxPct || ''}
-                      onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                      className={`${styles.settingNumber} ${styles.noSpin}`}
-                      placeholder="0"
-                    />
-                    <span style={{ color: 'var(--muted, #8a8aa0)', fontWeight: 700, fontSize: '.95rem' }}>%</span>
-                  </div>
+                  <input
+                    type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
+                    min={1}
+                    max={99}
+                    value={perDay}
+                    onChange={(e) => setPerDay(parseInt(e.target.value, 10) || 1)}
+                    className={styles.settingNumber}
+                  />
                 </div>
-                {/* Toggle on, rate at 0 — this charges nobody anything, and the input
-                    renders 0 as a blank box, so on screen it is indistinguishable from a
-                    rate that simply hasn't loaded yet. Settings autosave, so there is no
-                    Save button to block; saying it plainly is the whole intervention. */}
-                {!(taxPct > 0) && (
-                  <p style={{ margin: '.4rem 0 0', color: '#f5a623', fontSize: '.72rem', lineHeight: 1.5 }}>
-                    Sales tax is on but set to 0% — no tax will be added to your bookings. Enter a rate, or switch this off.
-                  </p>
-                )}
-                </>
-              )}
-              <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
-                <div className={styles.settingLabelWrap}>
-                  <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
-                  <div className={styles.settingHint}>
-                    Off by default. When on, you plan to send a contract for every booking before the event.
+
+                {/* Currency — applies to every price you set (packages, deposit,
+                    tax). Shown wherever money appears for your bookings. */}
+                <div className={styles.settingRow}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Currency</div>
+                    <div className={styles.settingHint}>
+                      The currency all your prices are shown in. Frozen onto each booking, so changing it won&apos;t re-price existing ones.
+                    </div>
                   </div>
+                  <select
+                    value={rateCurrency}
+                    onChange={(e) => setRateCurrency(e.target.value)}
+                    className={styles.settingSelect}
+                  >
+                    {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
+                      <option key={code} value={code}>{code} ({sym})</option>
+                    ))}
+                  </select>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={requireContract}
-                  aria-label="Require a signed contract for each booking"
-                  onClick={() => setRequireContract(!requireContract)}
-                  style={{
-                    position: 'relative', width: 46, height: 26, borderRadius: 999,
-                    border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
-                    background: requireContract ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
-                    transition: 'background .15s ease',
-                  }}
-                >
-                  <span style={{
-                    position: 'absolute', top: 3, left: requireContract ? 23 : 3,
-                    width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                    transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
-                  }} />
-                </button>
-              </div>
-              {/* Save status hint at the bottom of the section box.
-                  Reserves a small fixed height so the layout doesn't
-                  jump when the hint appears/disappears. */}
-              <div
-                style={{
-                  minHeight: 18,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  paddingTop: '.6rem',
-                  marginTop: '.4rem',
-                  borderTop: '1px solid var(--border)',
-                }}
-              >
-                {onSaveSettings ? (
+
+                {/* Deposit */}
+                <div className={styles.settingRow}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Require deposit?</div>
+                    <div className={styles.settingHint}>Percentage of total booking price.</div>
+                  </div>
+                  <select
+                    value={deposit}
+                    onChange={(e) => setDeposit(parseInt(e.target.value, 10) || 0)}
+                    className={styles.settingSelect}
+                  >
+                    <option value={0}>No Deposit</option>
+                    {[5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95].map((p) => (
+                      <option key={p} value={p}>{p}%</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Sales tax (optional, off by default) */}
+                <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Charge sales tax?</div>
+                    <div className={styles.settingHint}>
+                      Off by default. You&rsquo;re responsible for charging and remitting it where it applies; Global DJ Connect doesn&rsquo;t collect or remit tax.
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    disabled={!settingsDirty}
-                    onClick={onSaveSettings}
+                    role="switch"
+                    aria-checked={taxEnabled}
+                    aria-label="Charge sales tax"
+                    onClick={() => setTaxEnabled(!taxEnabled)}
                     style={{
-                      background: settingsDirty ? 'var(--neon)' : 'transparent',
-                      color: settingsDirty ? '#04121a' : 'var(--muted)',
-                      border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
-                      borderRadius: 7,
-                      padding: '.55rem 1.2rem',
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: '.62rem',
-                      fontWeight: 700,
-                      letterSpacing: '.06em',
-                      textTransform: 'uppercase',
-                      cursor: settingsDirty ? 'pointer' : 'not-allowed',
+                      position: 'relative', width: 46, height: 26, borderRadius: 999,
+                      border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                      background: taxEnabled ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                      transition: 'background .15s ease',
                     }}
                   >
-                    {settingsDirty ? 'Save' : '\u2713 Saved'}
+                    <span style={{
+                      position: 'absolute', top: 3, left: taxEnabled ? 23 : 3,
+                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                      transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                    }} />
                   </button>
-                ) : (
-                  <SavedHint
-                    fieldKey="settings"
-                    lastChangedField={lastChangedField}
-                    autosaveStatus={autosaveStatus}
-                  />
+                </div>
+                {taxEnabled && (
+                  <>
+                    <div className={styles.settingRow}>
+                      <div className={styles.settingLabelWrap}>
+                        <div className={styles.settingLabel}>Tax rate (%)</div>
+                        <div className={styles.settingHint}>
+                          {suggestedTax != null
+                            ? `Suggested from your state (${djState}): ${suggestedTax}% base rate — adjust for your local rate.`
+                            : 'Enter your local rate.'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
+                          min={0}
+                          max={100}
+                          step="0.001"
+                          value={taxPct || ''}
+                          onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
+                          className={`${styles.settingNumber} ${styles.noSpin}`}
+                          placeholder="0"
+                        />
+                        <span style={{ color: 'var(--muted, #8a8aa0)', fontWeight: 700, fontSize: '.95rem' }}>%</span>
+                      </div>
+                    </div>
+                    {/* Toggle on, rate at 0 — this charges nobody anything, and the input
+                        renders 0 as a blank box, so on screen it is indistinguishable from a
+                        rate that simply hasn't loaded yet. Settings autosave, so there is no
+                        Save button to block; saying it plainly is the whole intervention. */}
+                    {!(taxPct > 0) && (
+                      <p style={{ margin: '.4rem 0 0', color: '#f5a623', fontSize: '.72rem', lineHeight: 1.5 }}>
+                        Sales tax is on but set to 0% — no tax will be added to your bookings. Enter a rate, or switch this off.
+                      </p>
+                    )}
+                  </>
                 )}
+                <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
+                    <div className={styles.settingHint}>
+                      Off by default. When on, you plan to send a contract for every booking before the event.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={requireContract}
+                    aria-label="Require a signed contract for each booking"
+                    onClick={() => setRequireContract(!requireContract)}
+                    style={{
+                      position: 'relative', width: 46, height: 26, borderRadius: 999,
+                      border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                      background: requireContract ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                      transition: 'background .15s ease',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 3, left: requireContract ? 23 : 3,
+                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                      transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                    }} />
+                  </button>
+                </div>
+                {/* Save status hint at the bottom of the section box.
+                    Reserves a small fixed height so the layout doesn't
+                    jump when the hint appears/disappears. */}
+                <div
+                  style={{
+                    minHeight: 18,
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    paddingTop: '.6rem',
+                    marginTop: '.4rem',
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
+                  {onSaveSettings ? (
+                    <button
+                      type="button"
+                      disabled={!settingsDirty}
+                      onClick={onSaveSettings}
+                      style={{
+                        background: settingsDirty ? 'var(--neon)' : 'transparent',
+                        color: settingsDirty ? '#04121a' : 'var(--muted)',
+                        border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
+                        borderRadius: 7,
+                        padding: '.55rem 1.2rem',
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.62rem',
+                        fontWeight: 700,
+                        letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        cursor: settingsDirty ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {settingsDirty ? 'Save' : '✓ Saved'}
+                    </button>
+                  ) : (
+                    <SavedHint
+                      fieldKey="settings"
+                      lastChangedField={lastChangedField}
+                      autosaveStatus={autosaveStatus}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
           )}
 
           {/* ── Packages ──────────────────────────────────────── */}
           {(!activeSection || activeSection === 'packages') && (
-          <div className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Add Packages</div>
-            </div>
-            <div className={styles.sectionBody}>
-              {activeCats.length > 0 && selectedEventTypes.length <= 1 && (
-                <p className={styles.packageIntro}>
-                  Add each package&rsquo;s title, description, pricing, and photos below. A host booking your
-                  event sees the package exactly as you set it up here. Leave a price blank to have the host
-                  request a quote instead.
-                </p>
-              )}
+            <div className={styles.sectionCard}>
+              <SectionBanner
+                icon="packages"
+                title="Add Packages"
+                subtitle="Build the packages clients pick from when they book you."
+              />
+              <div className={styles.sectionBody}>
+                {activeCats.length > 0 && selectedEventTypes.length <= 1 && (
+                  <p className={styles.packageIntro}>
+                    Add each package&rsquo;s title, description, pricing, and photos below. A host booking your
+                    event sees the package exactly as you set it up here. Leave a price blank to have the host
+                    request a quote instead.
+                  </p>
+                )}
 
-              {activeCats.length > 0 && selectedEventTypes.length > 1 && (
-                <p className={styles.packageIntro}>
-                  Start building each package by adding the package title and description under{' '}
-                  <span className={styles.packageIntroHi}>General events</span> first. The text you add will
-                  carry over to all the other event types listed under Customize pricing and details — it&rsquo;s
-                  copied over to speed up the process. Each event within a package can still be completely
-                  customized: package name, details, pricing, and photos.
-                </p>
-              )}
+                {activeCats.length > 0 && selectedEventTypes.length > 1 && (
+                  <p className={styles.packageIntro}>
+                    Start building each package by adding the package title and description under{' '}
+                    <span className={styles.packageIntroHi}>General events</span> first. The text you add will
+                    carry over to all the other event types listed under Customize pricing and details — it&rsquo;s
+                    copied over to speed up the process. Each event within a package can still be completely
+                    customized: package name, details, pricing, and photos.
+                  </p>
+                )}
 
-              {activeCats.length === 0 && (
-                <div className={styles.noTypesNotice}>
-                  <div className={styles.noTypesNoticeText}>
-                    You haven&apos;t selected any Mobile Party Types yet.
+                {activeCats.length === 0 && (
+                  <div className={styles.noTypesNotice}>
+                    <div className={styles.noTypesNoticeText}>
+                      You haven&apos;t selected any Mobile Party Types yet.
+                    </div>
+                    <button type="button" onClick={onGoToGeneral} className={styles.noTypesGoBtn}>
+                      Go Select Party Types
+                    </button>
                   </div>
-                  <button type="button" onClick={onGoToGeneral} className={styles.noTypesGoBtn}>
-                    Go Select Party Types
-                  </button>
-                </div>
-              )}
+                )}
 
-              {activeCats.length > 0 && (
-                <MobilePackagesEditor
-                  mobPackages={packages}
-                  selectedEventTypes={selectedEventTypes}
-                  customEventTypes={customEventTypes}
-                  specialtyTypes={specialtyTypes}
-                  userId={userId}
-                  currency={rateCurrency}
-                  onSave={(next) => setPackagesAll(next as unknown as Record<string, MobilePackage[]>)}
-                  onDirtyChange={onDirtyChange}
-                  masterSaveTrigger={masterSaveTrigger}
-                  onEventTypesSave={onEventTypesSave}
-                  depositPct={deposit}
-                  taxEnabled={taxEnabled}
-                  taxPct={taxPct}
-                />
-              )}
-              {/* The internal "Save All Packages" button was removed —
-                  individual package cards each have their own Save button,
-                  and the top-level page Save still triggers the master
-                  save via externalMasterSaveTrigger. */}
+                {activeCats.length > 0 && (
+                  <MobilePackagesEditor
+                    mobPackages={packages}
+                    selectedEventTypes={selectedEventTypes}
+                    customEventTypes={customEventTypes}
+                    specialtyTypes={specialtyTypes}
+                    userId={userId}
+                    currency={rateCurrency}
+                    onSave={(next) => setPackagesAll(next as unknown as Record<string, MobilePackage[]>)}
+                    onDirtyChange={onDirtyChange}
+                    masterSaveTrigger={masterSaveTrigger}
+                    onEventTypesSave={onEventTypesSave}
+                    depositPct={deposit}
+                    taxEnabled={taxEnabled}
+                    taxPct={taxPct}
+                  />
+                )}
+                {/* The internal "Save All Packages" button was removed —
+                    individual package cards each have their own Save button,
+                    and the top-level page Save still triggers the master
+                    save via externalMasterSaveTrigger. */}
+              </div>
             </div>
-          </div>
           )}
 
           {/* ── Discounts & Promo Codes ─────────────────────────── */}
           {(!activeSection || activeSection === 'discounts') && (
-          <DiscountsSection
-            promoCodes={bookingSettings.promo_codes || []}
-            sale={bookingSettings.sale || {}}
-            saleHistory={bookingSettings.sale_history || []}
-            exclusions={bookingSettings.exclusions || []}
-            onChange={(p) => patch(p)}
-          />
+            <DiscountsSection
+              promoCodes={bookingSettings.promo_codes || []}
+              sale={bookingSettings.sale || {}}
+              saleHistory={bookingSettings.sale_history || []}
+              exclusions={bookingSettings.exclusions || []}
+              onChange={(p) => patch(p)}
+            />
           )}
 
           {/* Manual payment rails — deposits + invoices. Self-contained;
@@ -827,10 +832,10 @@ function PackageList({
 // edit the same package index for each category.
 //
 // MANUAL SAVE MODEL:
-// This card holds local draft state for all active categories at this
-// idx. Editing fields ONLY updates the local draft — nothing writes
-// back to bookingSettings until the user clicks Save here, OR the
-// master Save All trigger fires (via masterSaveTrigger prop bump).
+//   This card holds local draft state for all active categories at this
+//   idx. Editing fields ONLY updates the local draft — nothing writes
+//   back to bookingSettings until the user clicks Save here, OR the
+//   master Save All trigger fires (via masterSaveTrigger prop bump).
 //
 // Validation: each non-empty category must have title + details +
 // pricing fully filled (or be entirely cleared). If any cat is in a
@@ -917,8 +922,8 @@ function PackageCardWithCatTabs({
       const out: Record<string, unknown> = {};
       Object.keys(o).sort().forEach((k) => {
         const v = o[k];
-        if (v === undefined || v === null || v === '') return;          // drop empty
-        if (Array.isArray(v) && v.length === 0) return;                  // drop []
+        if (v === undefined || v === null || v === '') return; // drop empty
+        if (Array.isArray(v) && v.length === 0) return; // drop []
         if (Array.isArray(v)) { out[k] = v.filter((x) => x !== '' && x != null); return; }
         out[k] = v;
       });
@@ -1393,4 +1398,3 @@ function SavedHint({
     </span>
   );
 }
-
