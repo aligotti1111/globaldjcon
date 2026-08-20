@@ -72,11 +72,15 @@ interface Props {
   // tab). When provided, the Settings box shows its own Save button.
   onSaveSettings?: () => void;
   settingsDirty?: boolean;
+  // Reports whether the Payments section has unsaved rail changes, so the parent
+  // can light the "unsaved" dot on the Payments tab.
+  onPaymentsDirtyChange?: (dirty: boolean) => void;
 }
 
 export default function ClubBookingTab({
   bookingSettings, onChange, autosaveStatus, userId, onDirtyChange, masterSaveTrigger,
   onActivationIncompleteChange, activeSection, onSaveSettings, settingsDirty,
+  onPaymentsDirtyChange,
 }: Props) {
   // Patch helper — preserves other fields in booking_settings
   function patch(p: Partial<BookingSettings>) {
@@ -1029,7 +1033,7 @@ export default function ClubBookingTab({
           )}
 
           {(!activeSection || activeSection === 'payments') && (
-            <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} />
+            <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} onDirtyChange={onPaymentsDirtyChange} />
           )}
 
         </>
