@@ -213,7 +213,7 @@ const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
 };
 const DEFAULT_MARK_SIZE = 24;
 
-export default function PaymentMethodsSection({ userId, currency }: { userId: string; currency?: string }) {
+export default function PaymentMethodsSection({ userId, currency, onDirtyChange }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
   // edits). The two are equal right after a load or a save; the moment the DJ
@@ -480,6 +480,17 @@ export default function PaymentMethodsSection({ userId, currency }: { userId: st
     ].join('\u0000');
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
+
+  // Aggregate "has any unsaved rail change" — reported up so the Payments tab
+  // in Booking Settings can show the unsaved dot.
+  const anyPaymentsDirty = useMemo(
+    () => (TYPE_ORDER as PaymentMethodType[]).some((t) => isDirty(t)),
+    [isDirty],
+  );
+  const onDirtyRef = useRef(onDirtyChange);
+  onDirtyRef.current = onDirtyChange;
+  useEffect(() => { onDirtyRef.current?.(anyPaymentsDirty); }, [anyPaymentsDirty]);
+  useEffect(() => () => { onDirtyRef.current?.(false); }, []);
 
   /** Live = filled in and valid. This is exactly what the client will see. */
   const isLive = useCallback((t: PaymentMethodType): boolean => {
