@@ -226,7 +226,53 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   ) as { id: SecTab; label: string }[];
 
   return (
-    <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+    <div className={`${styles.container} gdcNiceSettings`} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+      {/* Shared look for every Booking Settings tab (mobile + club): sentence-case
+          light labels instead of teal all-caps, calmer hints, and rounded input /
+          select fields with a teal focus. Attribute selectors reach the hashed
+          CSS-module classes; scoped to .gdcNiceSettings so nothing else is touched. */}
+      <style>{`
+        .gdcNiceSettings [class*="settingLabel"]:not([class*="Wrap"]) {
+          text-transform: none;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          letter-spacing: .005em;
+          color: #ececf3;
+          font-weight: 600;
+          font-size: .95rem;
+        }
+        .gdcNiceSettings [class*="settingHint"],
+        .gdcNiceSettings [class*="bodyHint"] {
+          color: rgba(235,235,245,.55);
+          font-size: .82rem;
+          letter-spacing: normal;
+          line-height: 1.5;
+        }
+        .gdcNiceSettings [class*="settingSelect"],
+        .gdcNiceSettings [class*="settingNumber"] {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: .9rem;
+          font-weight: 500;
+          color: #fff;
+          background: rgba(255,255,255,.04);
+          border: 1px solid rgba(255,255,255,.14);
+          border-radius: 10px;
+          padding: .62rem .8rem;
+          min-width: 158px;
+          text-align: left;
+          transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+        }
+        .gdcNiceSettings [class*="settingSelect"]:hover,
+        .gdcNiceSettings [class*="settingNumber"]:hover {
+          border-color: rgba(255,255,255,.3);
+        }
+        .gdcNiceSettings [class*="settingSelect"]:focus,
+        .gdcNiceSettings [class*="settingNumber"]:focus {
+          outline: none;
+          border-color: var(--neon,#00e0a4);
+          background: rgba(34,227,173,.06);
+          box-shadow: 0 0 0 3px rgba(34,227,173,.14);
+        }
+      `}</style>
       <div className={styles.headerRow}>
         <Link href="/" className={styles.backLink}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
