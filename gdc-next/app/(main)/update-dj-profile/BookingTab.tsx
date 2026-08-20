@@ -461,7 +461,28 @@ export default function BookingTab({
                 title="Booking Settings"
                 subtitle="Booking window, daily limits, deposit and tax."
               />
-              <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
+              <div className={`${styles.sectionBody} ${styles.settingsBody} gdcNiceSettings`}>
+                {/* Soften the settings labels: drop the teal all-caps monospace for
+                    clean sentence-case light text, and calm the hints. Scoped to
+                    this body via .gdcNiceSettings; attribute selectors reach the
+                    hashed CSS-module classes without editing every row. */}
+                <style>{`
+                  .gdcNiceSettings [class*="settingLabel"]:not([class*="Wrap"]) {
+                    text-transform: none;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    letter-spacing: .005em;
+                    color: #ececf3;
+                    font-weight: 600;
+                    font-size: .95rem;
+                  }
+                  .gdcNiceSettings [class*="settingHint"] {
+                    color: rgba(235,235,245,.55);
+                    font-size: .82rem;
+                    letter-spacing: normal;
+                    line-height: 1.5;
+                    margin-top: .2rem;
+                  }
+                `}</style>
                 {/* Window */}
                 <div className={styles.settingRow}>
                   <div className={styles.settingLabelWrap}>
