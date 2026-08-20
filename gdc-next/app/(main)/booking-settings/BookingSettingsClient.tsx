@@ -22,6 +22,7 @@ import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import PlannerLibrarySection from './PlannerLibrarySection';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
+import SectionBanner from '../update-dj-profile/SectionBanner';
 
 interface InitialProfile {
   id: string;
@@ -297,41 +298,41 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       )}
 
       {secTab !== 'contracts' && secTab !== 'planners' && (
-      <div className={styles.card}>
-        {djType === 'club' ? (
-          <ClubBookingTab
-            bookingSettings={bookingSettings}
-            onChange={setBookingSettings}
-            autosaveStatus={autosaveStatus}
-            userId={initialProfile.id}
-            onDirtyChange={setHasDirtyClubRates}
-            masterSaveTrigger={masterSaveTrigger}
-            onActivationIncompleteChange={setClubBookingActivationIncomplete}
-            activeSection={secTab as ('rates' | 'settings' | 'discounts' | 'rider' | 'guests' | 'payments')}
-            onSaveSettings={saveBookingSettingsNow}
-            settingsDirty={settingsDirty}
-          />
-        ) : (
-          <BookingTab
-            djType={djType}
-            selectedEventTypes={selectedEventTypes}
-            customEventTypes={customEventTypes}
-            specialtyTypes={specialtyTypes}
-            onEventTypesSave={saveEventTypes}
-            bookingSettings={bookingSettings}
-            onChange={setBookingSettings}
-            userId={initialProfile.id}
-            onGoToGeneral={() => router.push('/update-dj-profile')}
-            autosaveStatus={autosaveStatus}
-            onDirtyChange={setHasDirtyPackages}
-            externalMasterSaveTrigger={masterSaveTrigger}
-            activeSection={isMobile ? secTab as ('settings' | 'packages' | 'discounts' | 'payments') : undefined}
-            onSaveSettings={saveBookingSettingsNow}
-            settingsDirty={settingsDirty}
-          />
-        )}
+        <div className={styles.card}>
+          {djType === 'club' ? (
+            <ClubBookingTab
+              bookingSettings={bookingSettings}
+              onChange={setBookingSettings}
+              autosaveStatus={autosaveStatus}
+              userId={initialProfile.id}
+              onDirtyChange={setHasDirtyClubRates}
+              masterSaveTrigger={masterSaveTrigger}
+              onActivationIncompleteChange={setClubBookingActivationIncomplete}
+              activeSection={secTab as ('rates' | 'settings' | 'discounts' | 'rider' | 'guests' | 'payments')}
+              onSaveSettings={saveBookingSettingsNow}
+              settingsDirty={settingsDirty}
+            />
+          ) : (
+            <BookingTab
+              djType={djType}
+              selectedEventTypes={selectedEventTypes}
+              customEventTypes={customEventTypes}
+              specialtyTypes={specialtyTypes}
+              onEventTypesSave={saveEventTypes}
+              bookingSettings={bookingSettings}
+              onChange={setBookingSettings}
+              userId={initialProfile.id}
+              onGoToGeneral={() => router.push('/update-dj-profile')}
+              autosaveStatus={autosaveStatus}
+              onDirtyChange={setHasDirtyPackages}
+              externalMasterSaveTrigger={masterSaveTrigger}
+              activeSection={isMobile ? secTab as ('settings' | 'packages' | 'discounts' | 'payments') : undefined}
+              onSaveSettings={saveBookingSettingsNow}
+              settingsDirty={settingsDirty}
+            />
+          )}
 
-      </div>
+        </div>
       )}
 
       {isMobile && hasBookingAccess && secTab === 'planners' && (
@@ -342,10 +343,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
       {hasBookingAccess && secTab === 'contracts' && (
         <div className={styles.card}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionTitle}>Your Contracts</div>
-          </div>
-          <div className={styles.settingHint} style={{ margin: '0 0 1rem' }}>
+          <SectionBanner
+            icon="contracts"
+            title="Your Contracts"
+            subtitle="Build and name the contracts clients sign when they book you."
+          />
+          <div className={styles.settingHint} style={{ margin: '1rem 0 1rem' }}>
             Build and name the contracts clients sign when they book you — a standard
             agreement or your own. When a booking is approved, the details fill in for
             you to review and send.
