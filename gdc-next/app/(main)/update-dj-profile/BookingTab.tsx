@@ -726,8 +726,13 @@ export default function BookingTab({
           )}
 
           {/* ── Packages ──────────────────────────────────────── */}
-          {(!activeSection || activeSection === 'packages') && (
-            <div className={styles.sectionCard}>
+          {/* Always mounted, hidden when inactive — package cards hold their
+              edits in local draft state, so unmounting on tab switch would throw
+              away in-progress changes. display:none keeps the drafts alive. */}
+          <div
+            className={styles.sectionCard}
+            style={{ display: (!activeSection || activeSection === 'packages') ? undefined : 'none' }}
+          >
               <SectionBanner
                 icon="packages"
                 title="Add Pricing / Packages"
@@ -786,7 +791,6 @@ export default function BookingTab({
                     save via externalMasterSaveTrigger. */}
               </div>
             </div>
-          )}
 
           {/* ── Discounts & Promo Codes ─────────────────────────── */}
           {(!activeSection || activeSection === 'discounts') && (
