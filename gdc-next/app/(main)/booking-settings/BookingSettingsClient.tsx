@@ -386,8 +386,13 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         </>
       )}
 
-      {secTab !== 'contracts' && secTab !== 'planners' && (
-        <div className={styles.card}>
+      {/* Main booking card stays mounted (hidden on Contracts / Planner) so the
+          package drafts + club-rate drafts held inside BookingTab / ClubBookingTab
+          survive tab switches instead of being discarded on unmount. */}
+      <div
+        className={styles.card}
+        style={{ display: (secTab !== 'contracts' && secTab !== 'planners') ? undefined : 'none' }}
+      >
           {djType === 'club' ? (
             <ClubBookingTab
               bookingSettings={bookingSettings}
@@ -422,7 +427,6 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           )}
 
         </div>
-      )}
 
       {isMobile && hasBookingAccess && secTab === 'planners' && (
         <div className={styles.card}>
