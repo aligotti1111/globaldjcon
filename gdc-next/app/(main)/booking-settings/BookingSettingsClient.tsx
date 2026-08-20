@@ -105,6 +105,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // Settings tab's manual Save button (dirty = current !== snapshot).
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(bookingSettings));
 
+  // Read the active tab through a ref so the autosave effect fires ONLY when
+  // booking_settings actually changes — never on a bare tab switch. Without this
+  // (secTab in the deps), leaving the Settings/Rider/Guest tab re-ran the effect
+  // with the new tab and flushed the pending manual-save edits automatically.
+  const secTabRef = useRef(secTab);
+  secTabRef.current = secTab;
   useEffect(() => {
     // Only act when there are genuinely unsaved changes vs the last write.
     // (Comparing to a fixed initial ref re-fired a save on every tab switch
@@ -112,7 +118,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (JSON.stringify(bookingSettings) === savedSnapshot) return;
     // Settings / DJ Rider / Guest List save manually via their own buttons —
     // don't autosave those. Every other tab keeps auto-saving.
-    if (secTab === 'settings' || secTab === 'rider' || secTab === 'guests') return;
+    if (secTabRef.current === 'settings' || secTabRef.current === 'rider' || secTabRef.current === 'guests') return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(async () => {
       setAutosaveStatus('saving');
@@ -132,7 +138,9 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [bookingSettings, savedSnapshot, initialProfile.id, secTab]);
+    // secTab intentionally omitted — read via secTabRef so tab switches don't flush.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingSettings, savedSnapshot, initialProfile.id]);
 
   // ── Dirty tracking + master save (drives the Save All button) ────────
   // Mobile: packages save manually. Club: rates save manually. Both report
