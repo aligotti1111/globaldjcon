@@ -538,15 +538,15 @@ export default function BookingTab({
                       Once the number is reached, the day will be marked as booked.
                     </div>
                   </div>
-                  <input
-                    type="number"
-                    onWheel={(e) => e.currentTarget.blur()}
-                    min={1}
-                    max={99}
+                  <select
                     value={perDay}
                     onChange={(e) => setPerDay(parseInt(e.target.value, 10) || 1)}
-                    className={styles.settingNumber}
-                  />
+                    className={styles.settingSelect}
+                  >
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Currency — applies to every price you set (packages, deposit,
