@@ -167,6 +167,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // autosave on their own.
   const [hasDirtyPackages, setHasDirtyPackages] = useState(false);
   const [hasDirtyClubRates, setHasDirtyClubRates] = useState(false);
+  const [hasDirtyPayments, setHasDirtyPayments] = useState(false);
   const [clubBookingActivationIncomplete, setClubBookingActivationIncomplete] = useState(false);
   const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
   function triggerMasterSave() {
@@ -231,6 +232,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (id === 'settings' || id === 'rider' || id === 'guests') return manualDirtyTab === id;
     if (id === 'packages') return hasDirtyPackages;
     if (id === 'rates') return hasDirtyClubRates;
+    if (id === 'payments') return hasDirtyPayments;
     return false;
   }
 
@@ -405,6 +407,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
               activeSection={secTab as ('rates' | 'settings' | 'discounts' | 'rider' | 'guests' | 'payments')}
               onSaveSettings={saveBookingSettingsNow}
               settingsDirty={settingsDirty}
+              onPaymentsDirtyChange={setHasDirtyPayments}
             />
           ) : (
             <BookingTab
@@ -423,6 +426,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
               activeSection={isMobile ? secTab as ('settings' | 'packages' | 'discounts' | 'payments') : undefined}
               onSaveSettings={saveBookingSettingsNow}
               settingsDirty={settingsDirty}
+              onPaymentsDirtyChange={setHasDirtyPayments}
             />
           )}
 
