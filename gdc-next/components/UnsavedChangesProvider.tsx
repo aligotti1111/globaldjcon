@@ -12,6 +12,9 @@
 //   useEffect(() => { setDirty(isPageDirty); }, [isPageDirty, setDirty]);
 //   // also call setDirty(false) right after a successful save
 //
+// Pages that can name WHAT is unsaved may pass a second argument — a list of
+// labels — and the leave prompt lists them, each with a small amber dot.
+//
 // The provider is mounted once near the root of the app (in (main)/layout
 // where the header/burger live). The (simple) routes (login, signup,
 // claim, contact, privacy, terms, set-password, reset-password,
@@ -30,9 +33,10 @@ import { useConfirm } from './ConfirmModal';
 
 interface Ctx {
   /** Register or clear the current page's dirty state. Pass `true` to
-   *  arm the guard, `false` to disarm. Safe to call from a useEffect
-   *  whenever your dirty flag changes. */
-  setDirty: (dirty: boolean) => void;
+   *  arm the guard, `false` to disarm. Optionally pass a list of labels
+   *  naming what's unsaved — the leave prompt lists them with amber dots.
+   *  Safe to call from a useEffect whenever your dirty flag changes. */
+  setDirty: (dirty: boolean, items?: string[]) => void;
 }
 
 const UnsavedChangesContext = createContext<Ctx | null>(null);
@@ -57,14 +61,17 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
   // without needing to be re-attached on every change).
   const [dirty, setDirtyState] = useState(false);
   const dirtyRef = useRef(false);
+  // The labels of what's currently unsaved (optional) — read at prompt time.
+  const dirtyItemsRef = useRef<string[]>([]);
   const pathRef = useRef(pathname);
 
   useEffect(() => {
     pathRef.current = pathname;
   }, [pathname]);
 
-  const setDirty = useCallback((d: boolean) => {
+  const setDirty = useCallback((d: boolean, items?: string[]) => {
     dirtyRef.current = d;
+    dirtyItemsRef.current = Array.isArray(items) ? items : [];
     setDirtyState(d);
   }, []);
 
@@ -121,9 +128,25 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
       e.preventDefault();
       e.stopPropagation();
       void (async () => {
+        const items = dirtyItemsRef.current;
+        const message = items.length > 0 ? (
+          <div>
+            <div style={{ marginBottom: 10 }}>
+              You have unsaved changes. If you leave now, these will be lost:
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {items.map((label) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5c451', flexShrink: 0 }} />
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : 'You have unsaved changes on your profile. If you leave now, those changes will be lost.';
         const ok = await confirm({
           title: 'Leave without saving?',
-          message: 'You have unsaved changes on your profile. If you leave now, those changes will be lost.',
+          message,
           confirmLabel: 'Leave',
           cancelLabel: 'Stay',
           variant: 'danger',
