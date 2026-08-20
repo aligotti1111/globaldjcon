@@ -135,6 +135,9 @@ interface Props {
   // that tab). When provided, the settings box shows its own Save button.
   onSaveSettings?: () => void;
   settingsDirty?: boolean;
+  // Reports whether the Payments section has unsaved rail changes, so the parent
+  // can light the "unsaved" dot on the Payments tab.
+  onPaymentsDirtyChange?: (dirty: boolean) => void;
 }
 
 export default function BookingTab({
@@ -153,6 +156,7 @@ export default function BookingTab({
   activeSection,
   onSaveSettings,
   settingsDirty,
+  onPaymentsDirtyChange,
 }: Props) {
   // Booking availability is subscription-gated (no manual toggle). The config
   // always renders so the DJ can set it up; whether it goes LIVE publicly is
@@ -806,7 +810,7 @@ export default function BookingTab({
           {/* Manual payment rails — deposits + invoices. Self-contained;
               saves users.payment_methods directly, not via the master save. */}
           {(!activeSection || activeSection === 'payments') && (
-            <PaymentMethodsSection userId={userId} currency={rateCurrency} />
+            <PaymentMethodsSection userId={userId} currency={rateCurrency} onDirtyChange={onPaymentsDirtyChange} />
           )}
 
         </>
