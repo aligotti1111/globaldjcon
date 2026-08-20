@@ -43,6 +43,13 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const router = useRouter();
   const djType = initialProfile.dj_type;
   const isMobile = djType === 'mobile';
+  // Fields owned by the MANUAL-save tabs (Settings — and for club, DJ Rider /
+  // Guest List too). These are EXCLUDED from the auto-save writes and persisted
+  // only by their own Save button, so saving Packages / Discounts / Rates never
+  // silently commits an in-progress Settings edit. Each tab saves independently.
+  const SETTINGS_KEYS: string[] = djType === 'club'
+    ? ['booking_window_months', 'club_bookings_per_day', 'club_deposit_pct', 'tax_enabled', 'tax_pct', 'require_contract', 'rider_enabled', 'rider_default', 'rider_mode', 'rider_pdf_url', 'guestlist_enabled']
+    : ['mob_booking_window', 'mob_bookings_per_day', 'mob_deposit_pct', 'rate_currency', 'tax_enabled', 'tax_pct', 'require_contract'];
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
   // Which manual-save tab (Settings / DJ Rider / Guest List) currently holds
@@ -124,10 +131,14 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     const tab = secTabRef.current;
     if (tab === 'settings' || tab === 'rider' || tab === 'guests') setManualDirtyTab(tab);
   }
-  // Clear the dot the moment the settings are back in sync with what's saved
-  // (manual Save, or an autosave from another tab that flushed the whole blob).
+  // Clear the manual-tab dot the moment the manual-save fields are back in sync
+  // with what's saved — independent of package / discount edits.
   useEffect(() => {
-    if (JSON.stringify(bookingSettings) === savedSnapshot) setManualDirtyTab(null);
+    const savedParsed = (() => { try { return JSON.parse(savedSnapshot) as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })();
+    const cur = bookingSettings as unknown as Record<string, unknown>;
+    const anySettingDirty = SETTINGS_KEYS.some((k) => JSON.stringify(cur[k]) !== JSON.stringify(savedParsed[k]));
+    if (!anySettingDirty) setManualDirtyTab(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingSettings, savedSnapshot]);
 
   useEffect(() => {
@@ -138,16 +149,26 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     // Settings / DJ Rider / Guest List save manually via their own buttons —
     // don't autosave those. Every other tab keeps auto-saving.
     if (secTabRef.current === 'settings' || secTabRef.current === 'rider' || secTabRef.current === 'guests') return;
+    // Auto-save everything EXCEPT the manual-save fields: hold those at their
+    // last-saved values so an unsaved Settings edit never rides along on a
+    // Packages / Discounts / Rates save.
+    const savedParsed = (() => { try { return JSON.parse(savedSnapshot) as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })();
+    const payloadObj: Record<string, unknown> = { ...(bookingSettings as unknown as Record<string, unknown>) };
+    for (const k of SETTINGS_KEYS) { if (k in savedParsed) payloadObj[k] = savedParsed[k]; else delete payloadObj[k]; }
+    const payload = JSON.stringify(payloadObj);
+    // If only manual-save fields changed, there's nothing to auto-save — leave
+    // it for that tab's own Save button.
+    if (payload === savedSnapshot) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(async () => {
       setAutosaveStatus('saving');
       try {
         const { error } = await supabaseRef.current
           .from('users')
-          .update({ booking_settings: JSON.stringify(bookingSettings) } as unknown as never)
+          .update({ booking_settings: payload } as unknown as never)
           .eq('id', initialProfile.id);
         if (error) throw error;
-        setSavedSnapshot(JSON.stringify(bookingSettings));
+        setSavedSnapshot(payload);
         setAutosaveStatus('saved');
         setTimeout(() => setAutosaveStatus('idle'), 5000);
       } catch {
@@ -174,11 +195,24 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     setMasterSaveTrigger((n) => n + 1);
   }
 
-  const settingsDirty = JSON.stringify(bookingSettings) !== savedSnapshot;
+  // Dirty only if a MANUAL-save field changed — so the Settings Save button and
+  // its dot track just the settings, independent of package / discount edits.
+  const settingsDirty = (() => {
+    const savedParsed = (() => { try { return JSON.parse(savedSnapshot) as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })();
+    const cur = bookingSettings as unknown as Record<string, unknown>;
+    return SETTINGS_KEYS.some((k) => JSON.stringify(cur[k]) !== JSON.stringify(savedParsed[k]));
+  })();
   async function saveBookingSettingsNow() {
     setAutosaveStatus('saving');
     try {
-      const snap = JSON.stringify(bookingSettings);
+      // Persist ONLY the manual-save fields onto the last-saved snapshot, so
+      // clicking Save here commits the Settings / Rider / Guest edits without
+      // touching any other tab's unsaved (or already auto-saved) state.
+      const savedParsed = (() => { try { return JSON.parse(savedSnapshot) as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })();
+      const cur = bookingSettings as unknown as Record<string, unknown>;
+      const mergedObj: Record<string, unknown> = { ...savedParsed };
+      for (const k of SETTINGS_KEYS) { if (k in cur) mergedObj[k] = cur[k]; else delete mergedObj[k]; }
+      const snap = JSON.stringify(mergedObj);
       const { error } = await supabaseRef.current
         .from('users')
         .update({ booking_settings: snap } as unknown as never)
@@ -195,13 +229,9 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const isPageDirty = hasDirtyPackages || hasDirtyClubRates;
   // Warn on leave when there are draft edits OR when club booking is on but
   // no equipment is picked (booking won't be publicly live in that state).
-  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete || settingsDirty;
+  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete || settingsDirty || hasDirtyPayments;
 
   const { setDirty: setGlobalDirty } = useUnsavedChanges();
-  useEffect(() => {
-    setGlobalDirty(needsLeaveWarn);
-    return () => setGlobalDirty(false);
-  }, [needsLeaveWarn, setGlobalDirty]);
 
   // Tab order (both layouts): Contracts rides next to Packages/Rates, and
   // Discounts is always last. Planner & Playlist is mobile-only (club DJs use
@@ -235,6 +265,16 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (id === 'payments') return hasDirtyPayments;
     return false;
   }
+
+  // Names of the tabs that currently hold unsaved edits — passed to the leave
+  // guard so its prompt can list each one with an amber dot.
+  const dirtyTabLabels = mobileTabs.filter((t) => tabHasUnsaved(t.id)).map((t) => t.label);
+  const dirtyTabKey = dirtyTabLabels.join('|');
+  useEffect(() => {
+    setGlobalDirty(needsLeaveWarn, needsLeaveWarn ? dirtyTabLabels : []);
+    return () => setGlobalDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsLeaveWarn, dirtyTabKey, setGlobalDirty]);
 
   return (
     <div className={`${styles.container} gdcNiceSettings`} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
