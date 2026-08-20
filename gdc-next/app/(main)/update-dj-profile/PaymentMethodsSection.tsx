@@ -60,6 +60,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
+import SectionBanner from './SectionBanner';
 import {
   CardNetworksMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark,
 } from './BrandMarks';
@@ -739,9 +740,11 @@ export default function PaymentMethodsSection({ userId, currency }: { userId: st
 
   return (
     <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>Payment Methods</div>
-      </div>
+      <SectionBanner
+        icon="payments"
+        title="Payment Methods"
+        subtitle="Pick how you want to collect deposits and balances — money goes straight to you."
+      />
       <div className={styles.sectionBody}>
         <p className={styles.bodyHint}>
           Pick the ways you want to get paid. Clients choose whichever suits
