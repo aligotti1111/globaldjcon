@@ -225,6 +225,15 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       ]
   ) as { id: SecTab; label: string }[];
 
+  // Does a tab currently hold unsaved changes? Manual-settings tabs use the
+  // remembered manualDirtyTab; Packages and Rates have their own dirty flags.
+  function tabHasUnsaved(id: SecTab): boolean {
+    if (id === 'settings' || id === 'rider' || id === 'guests') return manualDirtyTab === id;
+    if (id === 'packages') return hasDirtyPackages;
+    if (id === 'rates') return hasDirtyClubRates;
+    return false;
+  }
+
   return (
     <div className={`${styles.container} gdcNiceSettings`} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
       {/* Shared look for every Booking Settings tab (mobile + club): sentence-case
@@ -354,7 +363,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
                 onClick={() => setSecTab(t.id)}
               >
                 {t.label}
-                {manualDirtyTab === t.id && (
+                {tabHasUnsaved(t.id) && (
                   <span
                     aria-label="Unsaved changes"
                     title="Unsaved changes — click Save on this tab"
@@ -371,7 +380,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             aria-label="Booking settings section"
           >
             {mobileTabs.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}{manualDirtyTab === t.id ? ' •' : ''}</option>
+              <option key={t.id} value={t.id}>{t.label}{tabHasUnsaved(t.id) ? ' •' : ''}</option>
             ))}
           </select>
         </>
