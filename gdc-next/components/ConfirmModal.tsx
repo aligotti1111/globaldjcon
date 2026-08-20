@@ -12,7 +12,7 @@
 // The hook returns the confirm() function + a <ConfirmModal/> JSX element
 // to render once at the top level of the component.
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import styles from './confirmModal.module.css';
 
 // Optional free-text field rendered inside the confirm box (e.g. a decline
@@ -24,7 +24,9 @@ interface ReasonInput {
 
 interface ConfirmOptions {
   title: string;
-  message?: string;
+  // Body copy. Accepts rich content (e.g. a bulleted list of unsaved items),
+  // not just a plain string.
+  message?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   // 'danger' variant uses red Confirm button (Deny / Cancel / Block).
@@ -81,7 +83,7 @@ export function useConfirm() {
 // ── The modal itself ───────────────────────────────────────────────────
 interface Props {
   title: string;
-  message?: string;
+  message?: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
   variant: 'primary' | 'danger';
