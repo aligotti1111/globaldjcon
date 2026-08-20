@@ -6,13 +6,14 @@
 // OUT of the booking context: the DJ can preview each planner, open the editor
 // to customise it (or make it their own), and rename their own — all BEFORE any
 // booking exists. Reuses /api/planners in its no-booking mode (no bookingId):
-//   · GET  /api/planners                 → the template list
-//   · Preview → /planner-preview?eventType=…   (fields only, no booking data)
-//   · Edit   → /customize-planner?eventType=…  (the real editor / PlannerBuilder)
-//   · Rename → PUT /api/planners { renamePlannerId, name }   (their own only)
+//   · GET /api/planners → the template list
+//   · Preview → /planner-preview?eventType=… (fields only, no booking data)
+//   · Edit → /customize-planner?eventType=… (the real editor / PlannerBuilder)
+//   · Rename → PUT /api/planners { renamePlannerId, name } (their own only)
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import SectionBanner from '../update-dj-profile/SectionBanner';
 
 const LEAD_OPTIONS = [7, 10, 14, 21, 30];
 
@@ -77,7 +78,7 @@ const inputStyle: CSSProperties = {
 };
 
 /** Cluster templates by event type so all rows of a type sit together (the two
- *  wedding planners land next to each other), keeping first-seen order otherwise. */
+ * wedding planners land next to each other), keeping first-seen order otherwise. */
 function groupByEventType(list: TemplateLite[]): TemplateLite[] {
   const order: string[] = [];
   const groups = new Map<string, TemplateLite[]>();
@@ -181,10 +182,12 @@ export default function PlannerLibrarySection() {
 
   return (
     <div>
-      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', margin: '0 0 .3rem' }}>
-        Planner &amp; Playlist
-      </h2>
-      <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem', lineHeight: 1.5, margin: '0 0 1rem', maxWidth: 620 }}>
+      <SectionBanner
+        icon="planner"
+        title="Planner & Playlist"
+        subtitle="Preview and customise the planners your clients fill out."
+      />
+      <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem', lineHeight: 1.5, margin: '1rem 0 1rem', maxWidth: 620 }}>
         These are the planners your clients fill out — first dances, song requests, run of show. Preview
         what a client sees, or open one to customise the questions and make it your own. Your edits are
         used automatically the next time you send that event type&rsquo;s planner.
