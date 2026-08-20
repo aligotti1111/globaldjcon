@@ -808,7 +808,7 @@ export default function BookingDetails({
   ) : null;
 
   return (
-    <div className={styles.detailsPanel}>
+    <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
       {typeMismatchNote && (
         <div className={styles.typeMismatchNote}>
           <strong>Note:</strong> {typeMismatchNote}
