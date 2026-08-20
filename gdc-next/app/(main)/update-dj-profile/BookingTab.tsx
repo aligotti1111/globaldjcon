@@ -684,7 +684,7 @@ export default function BookingTab({
             <div className={styles.sectionCard}>
               <SectionBanner
                 icon="packages"
-                title="Add Packages"
+                title="Add Pricing / Packages"
                 subtitle="Build the packages clients pick from when they book you."
               />
               <div className={styles.sectionBody}>
