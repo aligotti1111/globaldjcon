@@ -45,6 +45,10 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const isMobile = djType === 'mobile';
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
+  // Which manual-save tab (Settings / DJ Rider / Guest List) currently holds
+  // unsaved edits. Drives the little "unsaved" dot on the tab bar so the user
+  // knows a tab needs saving even after they've navigated away from it.
+  const [manualDirtyTab, setManualDirtyTab] = useState<SecTab | null>(null);
 
   // Mobile event types feed BookingTab's selectedEventTypes prop. Same default
   // as the profile editor: a brand-new mobile DJ with nothing saved gets all
@@ -111,6 +115,21 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // with the new tab and flushed the pending manual-save edits automatically.
   const secTabRef = useRef(secTab);
   secTabRef.current = secTab;
+
+  // Wrap the child onChange: whenever a change lands while a manual-save tab is
+  // active, remember that tab so its "unsaved" dot lights up (and stays lit
+  // after the user switches away). Cleared once everything is saved.
+  function applyBookingSettings(next: BookingSettings) {
+    setBookingSettings(next);
+    const tab = secTabRef.current;
+    if (tab === 'settings' || tab === 'rider' || tab === 'guests') setManualDirtyTab(tab);
+  }
+  // Clear the dot the moment the settings are back in sync with what's saved
+  // (manual Save, or an autosave from another tab that flushed the whole blob).
+  useEffect(() => {
+    if (JSON.stringify(bookingSettings) === savedSnapshot) setManualDirtyTab(null);
+  }, [bookingSettings, savedSnapshot]);
+
   useEffect(() => {
     // Only act when there are genuinely unsaved changes vs the last write.
     // (Comparing to a fixed initial ref re-fired a save on every tab switch
@@ -289,6 +308,13 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
                 onClick={() => setSecTab(t.id)}
               >
                 {t.label}
+                {manualDirtyTab === t.id && (
+                  <span
+                    aria-label="Unsaved changes"
+                    title="Unsaved changes — click Save on this tab"
+                    style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--amber,#f5a623)', marginLeft: 6, verticalAlign: 'middle' }}
+                  />
+                )}
               </button>
             ))}
           </nav>
@@ -299,7 +325,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             aria-label="Booking settings section"
           >
             {mobileTabs.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
+              <option key={t.id} value={t.id}>{t.label}{manualDirtyTab === t.id ? ' •' : ''}</option>
             ))}
           </select>
         </>
@@ -310,7 +336,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           {djType === 'club' ? (
             <ClubBookingTab
               bookingSettings={bookingSettings}
-              onChange={setBookingSettings}
+              onChange={applyBookingSettings}
               autosaveStatus={autosaveStatus}
               userId={initialProfile.id}
               onDirtyChange={setHasDirtyClubRates}
@@ -328,7 +354,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
               specialtyTypes={specialtyTypes}
               onEventTypesSave={saveEventTypes}
               bookingSettings={bookingSettings}
-              onChange={setBookingSettings}
+              onChange={applyBookingSettings}
               userId={initialProfile.id}
               onGoToGeneral={() => router.push('/update-dj-profile')}
               autosaveStatus={autosaveStatus}
