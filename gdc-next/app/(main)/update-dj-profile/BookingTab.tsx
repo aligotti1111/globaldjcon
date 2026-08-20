@@ -482,6 +482,31 @@ export default function BookingTab({
                     line-height: 1.5;
                     margin-top: .2rem;
                   }
+                  .gdcNiceSettings [class*="settingSelect"],
+                  .gdcNiceSettings [class*="settingNumber"] {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    font-size: .9rem;
+                    font-weight: 500;
+                    color: #fff;
+                    background: rgba(255,255,255,.04);
+                    border: 1px solid rgba(255,255,255,.14);
+                    border-radius: 10px;
+                    padding: .62rem .8rem;
+                    min-width: 158px;
+                    text-align: left;
+                    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+                  }
+                  .gdcNiceSettings [class*="settingSelect"]:hover,
+                  .gdcNiceSettings [class*="settingNumber"]:hover {
+                    border-color: rgba(255,255,255,.3);
+                  }
+                  .gdcNiceSettings [class*="settingSelect"]:focus,
+                  .gdcNiceSettings [class*="settingNumber"]:focus {
+                    outline: none;
+                    border-color: var(--neon,#00e0a4);
+                    background: rgba(34,227,173,.06);
+                    box-shadow: 0 0 0 3px rgba(34,227,173,.14);
+                  }
                 `}</style>
                 {/* Window */}
                 <div className={styles.settingRow}>
