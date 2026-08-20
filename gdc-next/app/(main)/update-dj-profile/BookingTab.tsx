@@ -483,7 +483,7 @@ export default function BookingTab({
                 </div>
 
                 {/* Per day */}
-                <div className={styles.settingRow}>
+                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>
                       Max number of bookings your company can accept per day
@@ -505,7 +505,7 @@ export default function BookingTab({
 
                 {/* Currency — applies to every price you set (packages, deposit,
                     tax). Shown wherever money appears for your bookings. */}
-                <div className={styles.settingRow}>
+                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Currency</div>
                     <div className={styles.settingHint}>
@@ -524,7 +524,7 @@ export default function BookingTab({
                 </div>
 
                 {/* Deposit */}
-                <div className={styles.settingRow}>
+                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Require deposit?</div>
                     <div className={styles.settingHint}>Percentage of total booking price.</div>
@@ -541,7 +541,7 @@ export default function BookingTab({
                   </select>
                 </div>
                 {/* Sales tax (optional, off by default) */}
-                <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
+                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)', marginTop: '1.1rem' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Charge sales tax?</div>
                     <div className={styles.settingHint}>
@@ -605,7 +605,7 @@ export default function BookingTab({
                     )}
                   </>
                 )}
-                <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
+                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)', marginTop: '1.1rem' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
                     <div className={styles.settingHint}>
