@@ -180,7 +180,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // the DJ Rider tab instead); Contracts appears wherever booking access is on.
   const mobileTabs: { id: SecTab; label: string }[] = (isMobile
     ? [
-        { id: 'settings', label: 'Booking Settings' },
+        { id: 'settings', label: 'Settings' },
         { id: 'packages', label: 'Packages' },
         ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
         { id: 'payments', label: 'Payments' },
