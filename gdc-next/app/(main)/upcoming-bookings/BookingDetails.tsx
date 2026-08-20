@@ -792,13 +792,15 @@ export default function BookingDetails({
   // Package card — rendered just above the Pricing card (see the section map).
   const packageBlock = (hasPackageDetails || booking.package_title) ? (
     <div className={styles.packageBlock} style={{ gridColumn: '1 / -1' }}>
-      <div className={`${styles.detailLabel} ${styles.packageBlockLabel}`}>Package booked</div>
+      <div className={styles.detailChip}><span>Package</span></div>
       {booking.package_title && (
-        <div className={styles.packageName}>{booking.package_title}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--white,#fff)', marginTop: 12 }}>
+          {booking.package_title}
+        </div>
       )}
       {hasPackageDetails && (
         <div
-          className={styles.detailLongValue}
+          style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--muted,#8a8aa0)', marginTop: booking.package_title ? 6 : 12 }}
           dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
         />
       )}
