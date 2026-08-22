@@ -462,7 +462,7 @@ export default function BookingTab({
             <div className={styles.sectionCard}>
               <SectionBanner
                 icon="settings"
-                title="Booking Settings"
+                title="Settings"
                 subtitle="Booking window, daily limits, deposit and tax."
               />
               <div className={`${styles.sectionBody} ${styles.settingsBody} gdcNiceSettings`}>
