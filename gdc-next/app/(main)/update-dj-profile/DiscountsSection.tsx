@@ -544,7 +544,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <div
               style={
                 isNarrow
-                  ? { display: 'grid', gridTemplateColumns: '44px 102px 102px 1fr', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
+                  ? { display: 'grid', gridTemplateColumns: '62px 100px 100px 1fr', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
                   : { display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }
               }
             >
@@ -622,8 +622,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               </div>
             </div>
             {/* End-now escape hatch — a sale with no end date (or a future one)
-                has no other way to stop, so let the DJ end it on the spot. */}
-            {pct > 0 && (
+                has no other way to stop, so let the DJ end it on the spot. Only
+                shown once the sale is actually running or scheduled; a percent
+                with no start date is just a draft, so there's nothing to end. */}
+            {(tone === 'on' || tone === 'sched') && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
                 <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>
                   No end date? The sale runs until you end it here.
