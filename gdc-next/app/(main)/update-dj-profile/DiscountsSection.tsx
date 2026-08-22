@@ -314,8 +314,41 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
     return () => { mounted = false; };
   }, []);
 
+  // A sale is only worth saving once it has BOTH a percent and a start date.
+  // Until then it's a draft: shown in the form for the session, but never
+  // written to booking_settings — so leaving and coming back doesn't resurrect
+  // a half-set "3%" that was never actually turned into a sale.
+  const [saleDraft, setSaleDraft] = useState<Sale | null>(null);
+  const saleView: Sale = saleDraft ?? sale;
+
+  // On mount, migrate any previously-persisted incomplete sale (percent but no
+  // start date, from before this rule) into a local draft and clear it from
+  // saved settings, so it stops persisting.
+  useEffect(() => {
+    if ((sale.percent ?? 0) > 0 && !sale.starts) {
+      setSaleDraft({ ...sale });
+      onChange({ sale: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function updateSale(p: Partial<Sale>) {
-    onChange({ sale: { ...sale, ...p } });
+    const next: Sale = { ...saleView, ...p };
+    const pct = next.percent ?? 0;
+    if (pct > 0 && next.starts) {
+      // Complete sale — persist it (and clear any local draft).
+      setSaleDraft(null);
+      onChange({ sale: { ...next, active: true, started_at: next.started_at || new Date().toISOString() } });
+    } else if (pct > 0) {
+      // Draft: percent chosen but no start date yet. Hold locally, and make
+      // sure nothing incomplete lingers in saved settings.
+      setSaleDraft(next);
+      if ((sale.percent ?? 0) > 0 || sale.starts) onChange({ sale: {} });
+    } else {
+      // Percent cleared — drop everything.
+      setSaleDraft(null);
+      onChange({ sale: {} });
+    }
   }
 
   // End the running sale right now. If it had already started, archive it with
@@ -331,6 +364,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
     } else {
       onChange({ sale: {} });
     }
+    setSaleDraft(null);
     setSaleOpen(false);
   }
 
@@ -518,16 +552,16 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             on/off state is decided by the dates, so Status is a read-out
             (Scheduled → Active → Ended), not a button. */}
         {(() => {
-          const pct = sale.percent ?? 0;
+          const pct = saleView.percent ?? 0;
           let statLabel = 'Inactive';
           let tone: 'on' | 'sched' | 'off' = 'off';
           // A percent alone isn't a sale — it needs a start date. Until one is
           // set the sale stays Inactive (a draft), so it never reads "Active"
           // just because a percentage was picked.
-          if (pct > 0 && sale.starts) {
+          if (pct > 0 && saleView.starts) {
             const now = new Date();
-            const startFuture = new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime();
-            const ended = !!sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime();
+            const startFuture = new Date(`${saleView.starts}T00:00:00`).getTime() > now.getTime();
+            const ended = !!saleView.ends && new Date(`${saleView.ends}T23:59:59`).getTime() < now.getTime();
             if (startFuture) { statLabel = 'Scheduled'; tone = 'sched'; }
             else if (ended) { statLabel = 'Ended'; tone = 'off'; }
             else { statLabel = 'Active'; tone = 'on'; }
@@ -553,12 +587,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <select
                   className={styles.settingSelect}
                   style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.7rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px', color: 'var(--white,#fff)' }}
-                  value={sale.percent || ''}
+                  value={saleView.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
-                    updateSale(v > 0
-                      ? { percent: v, active: true, started_at: sale.started_at || new Date().toISOString() }
-                      : { percent: 0, active: false });
+                    // updateSale decides whether this becomes a saved sale (has
+                    // a start date) or stays a local-only draft.
+                    updateSale({ percent: v });
                   }}
                 >
                   <option value="">%</option>
@@ -572,7 +606,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
                   style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
-                  value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
+                  value={saleView.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
@@ -580,7 +614,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
                   style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
-                  value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
+                  value={saleView.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
