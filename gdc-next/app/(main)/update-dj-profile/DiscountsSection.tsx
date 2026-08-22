@@ -605,7 +605,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
                   value={saleView.starts || ''}
                   onChange={(e) => {
                     const v = e.target.value || null;
@@ -623,7 +623,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   // Can't end before it starts — the picker is capped at the
                   // start date, and a manually-typed earlier date is ignored.
                   min={saleView.starts || todayStr}
-                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
                   value={saleView.ends || ''}
                   onChange={(e) => {
                     const v = e.target.value || null;
