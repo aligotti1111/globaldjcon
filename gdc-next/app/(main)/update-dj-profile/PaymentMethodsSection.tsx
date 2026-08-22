@@ -1350,19 +1350,40 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                     "✓ Saved" — so the DJ walked away believing Zelle was on
                     when their clients would never see it. A button that lies
                     about succeeding is worse than one that won't press. */}
-                <button
-                  type="button"
-                  onClick={() => void save()}
-                  disabled={saving || !complete || nothingToSave}
-                  title={
-                    nothingToSave ? 'Already saved — nothing to update.'
-                      : complete ? undefined
-                      : 'Fill in the fields above first'
-                  }
-                  style={{ ...btn(!isLive(t), !saving && complete && !nothingToSave), marginLeft: 'auto' }}
-                >
-                  {saving ? 'Saving…' : !isLive(t) ? 'Activate' : nothingToSave ? 'Saved' : 'Save'}
-                </button>
+                {(() => {
+                  // Match the Settings tab's Save button exactly: neon fill +
+                  // dark text when there's something to commit, transparent +
+                  // muted "✓ Saved" when clean.
+                  const actionable = !saving && complete && !nothingToSave;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => void save()}
+                      disabled={saving || !complete || nothingToSave}
+                      title={
+                        nothingToSave ? 'Already saved — nothing to update.'
+                          : complete ? undefined
+                          : 'Fill in the fields above first'
+                      }
+                      style={{
+                        marginLeft: 'auto',
+                        background: actionable ? 'var(--neon)' : 'transparent',
+                        color: actionable ? '#04121a' : 'var(--muted)',
+                        border: `1px solid ${actionable ? 'var(--neon)' : 'var(--border)'}`,
+                        borderRadius: 7,
+                        padding: '.55rem 1.2rem',
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.62rem',
+                        fontWeight: 700,
+                        letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        cursor: actionable ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {saving ? 'Saving…' : !isLive(t) ? 'Activate' : nothingToSave ? '✓ Saved' : 'Save'}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           );
