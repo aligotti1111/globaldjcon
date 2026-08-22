@@ -606,15 +606,30 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
                   style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
-                  value={saleView.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
+                  value={saleView.starts || ''}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    // If the new start is after the current end, that end is no
+                    // longer valid — clear it so we never keep end < start.
+                    const clearEnd = v && saleView.ends && saleView.ends < v;
+                    updateSale(clearEnd ? { starts: v, ends: null } : { starts: v });
+                  }}
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                  // Can't end before it starts — the picker is capped at the
+                  // start date, and a manually-typed earlier date is ignored.
+                  min={saleView.starts || todayStr}
                   style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
-                  value={saleView.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
+                  value={saleView.ends || ''}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    if (v && saleView.starts && v < saleView.starts) return; // before start — reject
+                    updateSale({ ends: v });
+                  }}
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
