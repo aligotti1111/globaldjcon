@@ -434,8 +434,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const saleLiveNow = (() => {
     const pct = sale.percent ?? 0;
     if (pct <= 0) return false;
+    // A start date is required — a percent with no start date is a draft, not
+    // a running sale.
+    if (!sale.starts) return false;
     const now = new Date();
-    if (sale.starts && new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime()) return false;
+    if (new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime()) return false;
     if (sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime()) return false;
     return true;
   })();
@@ -518,9 +521,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           const pct = sale.percent ?? 0;
           let statLabel = 'Inactive';
           let tone: 'on' | 'sched' | 'off' = 'off';
-          if (pct > 0) {
+          // A percent alone isn't a sale — it needs a start date. Until one is
+          // set the sale stays Inactive (a draft), so it never reads "Active"
+          // just because a percentage was picked.
+          if (pct > 0 && sale.starts) {
             const now = new Date();
-            const startFuture = !!sale.starts && new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime();
+            const startFuture = new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime();
             const ended = !!sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime();
             if (startFuture) { statLabel = 'Scheduled'; tone = 'sched'; }
             else if (ended) { statLabel = 'Ended'; tone = 'off'; }
