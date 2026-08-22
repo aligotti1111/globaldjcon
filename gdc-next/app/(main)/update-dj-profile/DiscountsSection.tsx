@@ -635,7 +635,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               <div
                 style={
                   isNarrow
-                    ? { ...fieldWrap, order: 1, gridColumn: '1 / -1', alignItems: 'flex-end', textAlign: 'right' }
+                    ? { ...fieldWrap, order: 1, gridColumn: '1 / -1', justifySelf: 'end', width: 'fit-content', alignItems: 'center', textAlign: 'center' }
                     : { ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto', alignItems: 'center', textAlign: 'center' }
                 }
               >
