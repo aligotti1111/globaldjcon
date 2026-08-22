@@ -544,16 +544,16 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   ))}
                 </select>
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
-                <label style={labelStyle}>Start date</label>
+              <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+                <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
                   style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 138px' }}>
-                <label style={labelStyle}>End date (optional)</label>
+              <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+                <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>End date (optional)</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
                   style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
