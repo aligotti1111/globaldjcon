@@ -808,10 +808,12 @@ export default function BookingTab({
           )}
 
           {/* Manual payment rails — deposits + invoices. Self-contained;
-              saves users.payment_methods directly, not via the master save. */}
-          {(!activeSection || activeSection === 'payments') && (
+              saves users.payment_methods directly, not via the master save.
+              Kept mounted (display:none when inactive) so in-progress edits
+              survive a tab switch instead of being unmounted and lost. */}
+          <div style={{ display: (!activeSection || activeSection === 'payments') ? undefined : 'none' }}>
             <PaymentMethodsSection userId={userId} currency={rateCurrency} onDirtyChange={onPaymentsDirtyChange} />
-          )}
+          </div>
 
         </>
       )}
