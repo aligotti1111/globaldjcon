@@ -827,7 +827,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {/* Draft form */}
         {draft && (
           <div style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.9rem' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
+            <div style={isNarrow
+              ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', alignItems: 'flex-end' }
+              : { display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
               <CodeFields value={draft} onField={(p) => setDraft({ ...draft, ...p })} currencySymbol={currencySymbol} />
             </div>
             <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
@@ -868,7 +870,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           if (isEditing && editBuf) {
             return (
               <div key={i} style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.75rem' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
+                <div style={isNarrow
+                  ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', alignItems: 'flex-end' }
+                  : { display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
                   <CodeFields value={editBuf} onField={(p) => setEditBuf({ ...editBuf, ...p })} currencySymbol={currencySymbol} />
                 </div>
                 <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
