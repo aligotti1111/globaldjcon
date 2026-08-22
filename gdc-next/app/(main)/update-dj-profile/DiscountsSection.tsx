@@ -199,7 +199,7 @@ function CodeFields({
             onChange={(e) => onField({ value: Number(e.target.value) })}
           >
             <option value="">%</option>
-            {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
+            {Array.from({ length: 99 }, (_, i) => i + 1).map((n) => (
               <option key={n} value={n}>{n}%</option>
             ))}
           </select>
@@ -539,7 +539,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   }}
                 >
                   <option value="">%</option>
-                  {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => (
+                  {Array.from({ length: 99 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>{n}%</option>
                   ))}
                 </select>
