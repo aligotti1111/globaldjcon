@@ -75,6 +75,31 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
     setDirtyState(d);
   }, []);
 
+  // Builds the confirm-modal body from whatever's currently unsaved. Shared by
+  // the in-app link interceptor and the browser back-button interceptor so both
+  // show the same styled list (amber dot to the left of each item).
+  const buildLeaveMessage = useCallback((): React.ReactNode => {
+    const items = dirtyItemsRef.current;
+    if (items.length === 0) {
+      return 'You have unsaved changes on your profile. If you leave now, those changes will be lost.';
+    }
+    return (
+      <div>
+        <div style={{ marginBottom: 10 }}>
+          You have unsaved changes. If you leave now, these will be lost:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {items.map((label) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5c451', flexShrink: 0 }} />
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }, []);
+
   // Native browser warning on tab close / refresh / external nav. Modern
   // browsers ignore custom messages and show their generic prompt — but
   // setting returnValue is required for the prompt to fire at all.
@@ -128,25 +153,9 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
       e.preventDefault();
       e.stopPropagation();
       void (async () => {
-        const items = dirtyItemsRef.current;
-        const message = items.length > 0 ? (
-          <div>
-            <div style={{ marginBottom: 10 }}>
-              You have unsaved changes. If you leave now, these will be lost:
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {items.map((label) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5c451', flexShrink: 0 }} />
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : 'You have unsaved changes on your profile. If you leave now, those changes will be lost.';
         const ok = await confirm({
           title: 'Leave without saving?',
-          message,
+          message: buildLeaveMessage(),
           confirmLabel: 'Leave',
           cancelLabel: 'Stay',
           variant: 'danger',
@@ -161,15 +170,63 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
     }
     document.addEventListener('click', onClickCapture, true);
     return () => document.removeEventListener('click', onClickCapture, true);
-  }, [confirm, router]);
+  }, [confirm, router, buildLeaveMessage]);
 
-  // Note on browser back button: we intentionally don't try to intercept
-  // popstate. The "push a sentinel + absorb the pop" pattern can corrupt
-  // the browser history stack and break back navigation site-wide. The
-  // click interceptor above catches in-app link nav (burger menu, header
-  // logo, back link) and beforeunload catches tab close / refresh /
-  // external nav. Browser hardware back from inside this page is the one
-  // gap — acceptable given the alternative's risk.
+  // Browser back / forward button interception. Native beforeunload only
+  // fires for tab-close / refresh / external nav, not for in-app history
+  // pops — so a hardware Back press would silently discard edits. We arm a
+  // history "sentinel" while dirty: an extra entry that the first Back press
+  // pops instead of leaving the page. On that pop we re-push the sentinel to
+  // hold position and show the same styled confirm modal. Only when the user
+  // confirms do we actually navigate back past both the sentinel and the
+  // real page. This is scoped to the dirty window and torn down on save, so
+  // it doesn't affect back navigation once there's nothing to lose.
+  useEffect(() => {
+    if (!dirty) return;
+    // Push one sentinel entry to absorb the first Back press.
+    window.history.pushState({ __unsavedGuard: true }, '');
+    let handling = false;
+
+    function onPopState() {
+      if (!dirtyRef.current) return; // nothing to protect — allow the pop
+      if (handling) return;
+      handling = true;
+      // The pop landed us back on the real page entry; re-push the sentinel
+      // so the user visually stays put while the modal is open.
+      window.history.pushState({ __unsavedGuard: true }, '');
+      void (async () => {
+        const ok = await confirm({
+          title: 'Leave without saving?',
+          message: buildLeaveMessage(),
+          confirmLabel: 'Leave',
+          cancelLabel: 'Stay',
+          variant: 'danger',
+        });
+        handling = false;
+        if (ok) {
+          dirtyRef.current = false;
+          window.removeEventListener('popstate', onPopState);
+          // Go back past the sentinel we just re-pushed AND the real page
+          // entry, landing on wherever the user actually wanted to go.
+          window.history.go(-2);
+        }
+        // On cancel we leave the sentinel in place — still armed for the
+        // next Back press.
+      })();
+    }
+
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      // Best-effort cleanup: if we're still sitting on our sentinel entry
+      // when the guard disarms (e.g. after a successful save), step back off
+      // it so we don't leave a dead history entry that needs an extra Back
+      // press. Guarded by the state flag so we don't navigate mid-prompt.
+      if (!handling && window.history.state && window.history.state.__unsavedGuard) {
+        window.history.back();
+      }
+    };
+  }, [dirty, confirm, buildLeaveMessage]);
 
   return (
     <UnsavedChangesContext.Provider value={{ setDirty }}>
