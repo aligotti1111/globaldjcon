@@ -46,11 +46,6 @@ export interface MobileDayData {
   endTime?: string;
   location?: string;        // 'Private' hides eventName publicly
   bookings_available?: number; // remaining capacity for this date
-  // Signed percentage the DJ nudges THIS date's booking price by (e.g. +20 or
-  // -10). Folded silently into the quoted price for bookings on this date — it
-  // is deliberately NOT a discount/sale (no code, label, or strike-through), so
-  // the client just sees the adjusted number as the price.
-  price_adjust_pct?: number;
 }
 
 export type MobileBookingDays = Record<string, MobileDayData>;
@@ -124,21 +119,6 @@ export interface BookingSettings {
   // (see computeDiscount). Both live here in booking_settings.
   promo_codes?: PromoCode[];
   sale?: Sale;
-  // Past sales that have ended — archived automatically so the DJ can review
-  // what they ran and start a fresh sale. Most recent first.
-  sale_history?: Sale[];
-  // Dates where discounts are blocked. Per date the DJ can turn off the
-  // automatic sale and/or promo codes independently (e.g. peak dates that
-  // shouldn't be discounted). Checked against the booking's EVENT date.
-  exclusions?: DiscountExclusion[];
-}
-
-// A date on which discounts are blocked. `sale`/`codes` are independent so the
-// DJ can, say, still honor codes on a date but suppress the site-wide sale.
-export interface DiscountExclusion {
-  date: string;    // ISO date (YYYY-MM-DD)
-  sale?: boolean;  // block the automatic sale on this date
-  codes?: boolean; // block promo codes on this date
 }
 
 // A DJ-created promo code. Codes are matched case-insensitively.
@@ -156,7 +136,6 @@ export interface PromoCode {
 export interface Sale {
   active?: boolean;
   percent?: number;             // % off (1–100)
-  starts?: string | null;       // ISO date the DJ chooses; null = starts immediately
   ends?: string | null;         // ISO date; null = no end date
   started_at?: string | null;   // ISO timestamp set when the sale is activated
 }
@@ -183,11 +162,12 @@ export function isPromoUsable(p: PromoCode, now: Date = new Date()): boolean {
 export function isSaleActive(s: Sale | null | undefined, now: Date = new Date()): boolean {
   if (!s || !s.active) return false;
   if (!s.percent || s.percent <= 0) return false;
-  // Start date (optional): the sale hasn't begun until it arrives.
-  if (s.starts) {
-    const start = new Date(`${s.starts}T00:00:00`);
-    if (!isNaN(start.getTime()) && start.getTime() > now.getTime()) return false;
-  }
+  // A start date is required: a percent with no start date is a draft, and a
+  // start date in the future means the sale is only scheduled — neither is
+  // active yet. This mirrors the DJ-facing status readout.
+  if (!s.starts) return false;
+  const start = new Date(`${s.starts}T00:00:00`);
+  if (!isNaN(start.getTime()) && start.getTime() > now.getTime()) return false;
   if (s.ends) {
     const end = new Date(`${s.ends}T23:59:59`);
     if (!isNaN(end.getTime()) && end.getTime() < now.getTime()) return false;
@@ -201,26 +181,17 @@ export function isSaleActive(s: Sale | null | undefined, now: Date = new Date())
 // typed (may be empty). Discount never exceeds the subtotal.
 export function computeDiscount(
   subtotal: number,
-  settings: Pick<BookingSettings, 'promo_codes' | 'sale' | 'exclusions'> | null | undefined,
+  settings: Pick<BookingSettings, 'promo_codes' | 'sale'> | null | undefined,
   enteredCode?: string | null,
-  eventDate?: string | null,
   now: Date = new Date()
 ): DiscountResult {
   const none: DiscountResult = { amount: 0, kind: null, label: '' };
   if (!settings || !Number.isFinite(subtotal) || subtotal <= 0) return none;
 
-  // Date exclusions — if the booking's event date is flagged, block the sale
-  // and/or codes independently on that day.
-  const excl = eventDate
-    ? (settings.exclusions || []).find((e) => e.date === eventDate)
-    : undefined;
-  const saleExcluded = !!excl?.sale;
-  const codesExcluded = !!excl?.codes;
-
   const candidates: DiscountResult[] = [];
 
   // Sale
-  if (!saleExcluded && isSaleActive(settings.sale, now)) {
+  if (isSaleActive(settings.sale, now)) {
     const pct = Math.min(100, Math.max(0, settings.sale!.percent || 0));
     candidates.push({
       amount: (subtotal * pct) / 100,
@@ -231,7 +202,7 @@ export function computeDiscount(
 
   // Promo code (only if the client entered one that matches + is usable)
   const typed = (enteredCode || '').trim().toUpperCase();
-  if (!codesExcluded && typed && Array.isArray(settings.promo_codes)) {
+  if (typed && Array.isArray(settings.promo_codes)) {
     const match = settings.promo_codes.find(
       (p) => (p.code || '').trim().toUpperCase() === typed && isPromoUsable(p, now)
     );
