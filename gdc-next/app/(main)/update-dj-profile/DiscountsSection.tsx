@@ -274,6 +274,17 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   // Inline message for the add-exclusion row (e.g. duplicate date).
   const [exclErr, setExclErr] = useState('');
 
+  // On narrow screens the sale row's flex-wrap fields land in a cramped,
+  // uneven arrangement; below this breakpoint we lay them out as a clean grid.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChangeMq = () => setIsNarrow(mq.matches);
+    onChangeMq();
+    mq.addEventListener('change', onChangeMq);
+    return () => mq.removeEventListener('change', onChangeMq);
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -524,12 +535,18 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           return (
             <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }}>
-              <div style={{ ...fieldWrap, flex: '0 0 96px' }}>
-                <label style={labelStyle}>Percent off</label>
+            <div
+              style={
+                isNarrow
+                  ? { display: 'grid', gridTemplateColumns: '54px minmax(0,1fr) minmax(0,1fr)', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
+                  : { display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }
+              }
+            >
+              <div style={{ ...fieldWrap, flex: '0 0 96px', order: isNarrow ? 2 : undefined }}>
+                <label style={{ ...labelStyle, ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Percent off</label>
                 <select
                   className={styles.settingSelect}
-                  style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px', color: 'var(--white,#fff)' }}
+                  style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.7rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px', color: 'var(--white,#fff)' }}
                   value={sale.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
@@ -544,23 +561,23 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   ))}
                 </select>
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
-                <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Start date</label>
+              <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 3 : undefined }}>
+                <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.68rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px' }} onClick={openPicker}
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
-                <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>End date (optional)</label>
+              <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
+                <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
-                  style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 34, fontSize: '.78rem', padding: '0 8px' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.68rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px' }} onClick={openPicker}
                   value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 auto' }}>
+              <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined }}>
                 <label style={labelStyle}>Used</label>
                 {currentSaleUsage.length > 0 ? (
                   <button
@@ -575,7 +592,13 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   <span style={usedCellValue}>0</span>
                 )}
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto', alignItems: 'center', textAlign: 'center' }}>
+              <div
+                style={
+                  isNarrow
+                    ? { ...fieldWrap, order: 1, gridColumn: '1 / -1', alignItems: 'flex-end', textAlign: 'right' }
+                    : { ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto', alignItems: 'center', textAlign: 'center' }
+                }
+              >
                 <label style={labelStyle}>Status</label>
                 <span
                   style={{
