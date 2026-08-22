@@ -505,7 +505,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         `}</style>
 
         <div style={blockStyle}>
-        <SecHeader label="Run a Sale" icon={iconSale} />
+        <SecHeader label="Sale" icon={iconSale} />
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           A site-wide % off applied automatically to every quote. Set a window and it switches
           itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
@@ -538,7 +538,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <div
               style={
                 isNarrow
-                  ? { display: 'grid', gridTemplateColumns: '54px minmax(0,1fr) minmax(0,1fr)', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
+                  ? { display: 'grid', gridTemplateColumns: '46px minmax(0,1fr) minmax(0,1fr) auto', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
                   : { display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }
               }
             >
