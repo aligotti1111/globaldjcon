@@ -538,7 +538,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <div
               style={
                 isNarrow
-                  ? { display: 'grid', gridTemplateColumns: '46px minmax(0,1fr) minmax(0,1fr) auto', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
+                  ? { display: 'grid', gridTemplateColumns: '44px 102px 102px 1fr', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
                   : { display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }
               }
             >
@@ -565,7 +565,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.68rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
                   value={sale.starts || ''} onChange={(e) => updateSale({ starts: e.target.value || null })}
                 />
               </div>
@@ -573,11 +573,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
                 <input
                   type="date" className={`${styles.settingNumber} gdcDateWhite`}
-                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.68rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px' }} onClick={openPicker}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }} onClick={openPicker}
                   value={sale.ends || ''} onChange={(e) => updateSale({ ends: e.target.value || null })}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined }}>
+              <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
                 <label style={labelStyle}>Used</label>
                 {currentSaleUsage.length > 0 ? (
                   <button
