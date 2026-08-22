@@ -161,16 +161,18 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
           variant: 'danger',
         });
         if (ok) {
-          // Clear dirty so the next nav passes through cleanly, then
-          // do the navigation the user originally requested.
-          dirtyRef.current = false;
+          // Fully disarm — clear the ref AND the state so the beforeunload +
+          // back-button guards both tear down. Clearing only the ref left the
+          // native "Leave site?" prompt armed, which then fired on the next
+          // navigation attempt. Then do the navigation the user requested.
+          setDirty(false);
           router.push(nextPath);
         }
       })();
     }
     document.addEventListener('click', onClickCapture, true);
     return () => document.removeEventListener('click', onClickCapture, true);
-  }, [confirm, router, buildLeaveMessage]);
+  }, [confirm, router, buildLeaveMessage, setDirty]);
 
   // Browser back / forward button interception. Native beforeunload only
   // fires for tab-close / refresh / external nav, not for in-app history
@@ -204,7 +206,8 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
         });
         handling = false;
         if (ok) {
-          dirtyRef.current = false;
+          // Fully disarm both guards before navigating.
+          setDirty(false);
           window.removeEventListener('popstate', onPopState);
           // Go back past the sentinel we just re-pushed AND the real page
           // entry, landing on wherever the user actually wanted to go.
@@ -218,15 +221,12 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
     window.addEventListener('popstate', onPopState);
     return () => {
       window.removeEventListener('popstate', onPopState);
-      // Best-effort cleanup: if we're still sitting on our sentinel entry
-      // when the guard disarms (e.g. after a successful save), step back off
-      // it so we don't leave a dead history entry that needs an extra Back
-      // press. Guarded by the state flag so we don't navigate mid-prompt.
-      if (!handling && window.history.state && window.history.state.__unsavedGuard) {
-        window.history.back();
-      }
+      // NOTE: we intentionally do NOT auto-`history.back()` off the sentinel on
+      // teardown. Doing so raced with router.push during a confirmed "Leave"
+      // and could trigger the native prompt / a stray navigation. Leaving the
+      // sentinel in place is harmless — at worst one extra, no-op Back press.
     };
-  }, [dirty, confirm, buildLeaveMessage]);
+  }, [dirty, confirm, buildLeaveMessage, setDirty]);
 
   return (
     <UnsavedChangesContext.Provider value={{ setDirty }}>
