@@ -85,11 +85,10 @@ export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' |
       : 'Automatic — from your ZIP (US Eastern)';
 
   return (
-    <div className={styles.card}>
-      {/* Hero header inside the box — same gradient strip Booking Settings uses. */}
-      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
-        <SectionBanner icon="clock" title="Your Timezone" subtitle="The clock your booking deadlines are measured in." />
-      </div>
+    <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Hero header — flush to the card edges, same as Booking Settings. */}
+      <SectionBanner icon="clock" title="Your Timezone" subtitle="The clock your booking deadlines are measured in." />
+      <div style={{ padding: '1.5rem' }}>
       <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
         {audience === 'host' ? (
           <>Sets the timezone your booking times and deadlines show in — like the
@@ -124,6 +123,7 @@ export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' |
         {saving && <span style={{ color: MUTED, fontSize: '.8rem' }}>Saving…</span>}
         {saved && <span style={{ color: NEON, fontSize: '.8rem', fontWeight: 700 }}>Saved ✓</span>}
       </div>
+      </div>{/* end inner padding wrapper */}
     </div>
   );
 }
