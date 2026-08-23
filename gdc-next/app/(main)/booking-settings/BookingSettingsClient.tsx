@@ -399,7 +399,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           <nav
             className={styles.secTabNav}
             role="tablist"
-            style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1rem' }}
+            style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: 0 }}
           >
             {mobileTabs.map((t) => {
               const active = secTab === t.id;
