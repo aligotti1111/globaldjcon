@@ -153,7 +153,9 @@ export interface NotifyInit {
 interface Props {
   initialProfile: InitialProfile;
   authEmail: string;
-  notifyInit: NotifyInit;
+  // Optional so the page can be deployed/updated independently — when it's
+  // absent the Notifications tab simply doesn't render (no build break).
+  notifyInit?: NotifyInit;
 }
 
 // The section tab bar now includes a Notifications tab. AccountTab (from
@@ -252,7 +254,8 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
     { id: 'account', label: 'Account' },
     { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
     { id: 'location', label: 'Location & Contact' },
-    { id: 'notifications', label: 'Notifications' },
+    // Only surface the Notifications tab when its prefs were loaded.
+    ...(notifyInit ? [{ id: 'notifications' as SecTab, label: 'Notifications' }] : []),
     { id: 'team', label: 'Team' },
     { id: 'blocked', label: 'Blocked' },
     { id: 'timezone', label: 'Your Timezone' },
@@ -634,7 +637,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       {/* Notifications — its own tab. The email + text preference matrix that
           used to live at the standalone /notifications page. Self-contained;
           saves the sms_* / email_notify_* columns directly. */}
-      {tab === 'notifications' && <NotificationsClient userId={initialProfile.id} init={notifyInit} />}
+      {tab === 'notifications' && notifyInit && <NotificationsClient userId={initialProfile.id} init={notifyInit} />}
 
       {/* Team seats — its own tab. DJs render THIS component (not
           AccountSettingsClient). Self-contained + Pro-gated. */}
