@@ -640,13 +640,8 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
         <p>Manage Your Profile</p>
       </div>
 
-      {/* Section tab bar — same pattern as Booking Settings: a horizontal nav
-          on desktop, a <select> on mobile. */}
-      {/* Segmented-pill tab bar — the CSS class keeps the desktop/mobile
-          show-hide behavior; inline styles turn it into a rounded track with a
-          teal→cyan gradient pill on the active tab (matches the header menus). */}
-      {/* Keep the CSS tab-bar frame line; the active tab is a pill resting on
-          it (this is the version signed off as "this is right"). */}
+      {/* Section tab bar — keeps the CSS frame line; active tab is a teal→cyan
+          pill resting on it (the approved version). */}
       <nav
         className={styles.secTabNav}
         role="tablist"
