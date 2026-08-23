@@ -221,11 +221,8 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
 
   return (
     <div className={styles.pageWrap}>
-      <div className={styles.pageHeader}>
-        <h1>Notifications</h1>
-        <p>Choose how you hear about activity on your account.</p>
-      </div>
-
+      {/* Header lives in the account-settings SectionBanner now — no duplicate
+          page title here. */}
       {/* One card: Text Setup (gate for the Text column) + the notify matrix,
           with a single Save at the bottom. */}
       <div className={styles.card}>
