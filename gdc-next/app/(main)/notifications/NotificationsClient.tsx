@@ -343,8 +343,16 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
           </div>
         )}
 
-        <button type="button" className={styles.saveBtn} disabled={saving} onClick={save}>
-          {saving ? 'Saving…' : 'Save Preferences'}
+        {/* Only illuminated when there's something to save — dim + disabled
+            otherwise, matching the per-tab Save buttons elsewhere. */}
+        <button
+          type="button"
+          className={styles.saveBtn}
+          disabled={saving || !dirty}
+          onClick={save}
+          style={!dirty ? { background: 'transparent', color: 'var(--muted,#8a8aa0)', border: '1px solid var(--border,rgba(255,255,255,.18))', boxShadow: 'none', cursor: 'default' } : undefined}
+        >
+          {saving ? 'Saving…' : dirty ? 'Save Preferences' : '✓ Saved'}
         </button>
       </div>
     </div>
