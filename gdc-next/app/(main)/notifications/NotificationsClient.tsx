@@ -221,16 +221,14 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
   }
 
   return (
-    <div className={styles.pageWrap}>
-      {/* Header lives in the account-settings SectionBanner now — no duplicate
-          page title here. */}
-      {/* One card: Text Setup (gate for the Text column) + the notify matrix,
-          with a single Save at the bottom. */}
-      <div className={styles.card}>
-        {/* Hero header inside the box — same gradient strip Booking Settings uses. */}
-        <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
-          <SectionBanner icon="bell" title="Notifications" subtitle="Choose how you hear about activity on your account." />
-        </div>
+    // Full-width so this tab's box matches the other account-settings boxes,
+    // and padding:0 so the hero banner sits flush to the card's top edge.
+    <div className={styles.pageWrap} style={{ maxWidth: 'none', width: '100%', margin: 0, padding: 0 }}>
+      <div className={styles.card} style={{ width: '100%', boxSizing: 'border-box', padding: 0, overflow: 'hidden' }}>
+        {/* Hero header — flush to the card edges, same as Booking Settings. */}
+        <SectionBanner icon="bell" title="Notifications" subtitle="Choose how you hear about activity on your account." />
+        {/* Inner padding wrapper for the actual settings content. */}
+        <div style={{ padding: '1.5rem' }}>
         {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
         {!isTeammate && (
           <>
@@ -356,6 +354,7 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
         >
           {saving ? 'Saving…' : dirty ? 'Save Preferences' : '✓ Saved'}
         </button>
+        </div>{/* end inner padding wrapper */}
       </div>
     </div>
   );
