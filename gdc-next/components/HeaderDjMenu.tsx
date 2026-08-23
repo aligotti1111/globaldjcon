@@ -7,10 +7,13 @@
 // one menu.
 //
 // Grouped into sections for scannability:
-//   —          View My Profile
-//   Bookings:  Upcoming · Past · Add Manually · Booking Settings
-//   Account:   Notifications · Account Settings · Manage Subscription
-//   —          Sign Out
+//   — View My Profile
+//   Bookings: Upcoming · Past · Add Manually · Booking Settings
+//   Account: Account Settings · Manage Subscription
+//   — Sign Out
+//
+// Notification preferences now live as a tab inside Account Settings, so
+// there's no longer a standalone "Notifications" item here.
 //
 // No avatar uploaded? Shows initials from the DJ's name.
 
@@ -217,9 +220,6 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           {/* ── Account ── */}
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Account</div>
-          <Link href="/notifications" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Notifications
-          </Link>
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Account Settings
           </Link>
