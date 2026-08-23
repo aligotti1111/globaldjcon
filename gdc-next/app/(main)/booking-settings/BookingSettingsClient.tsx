@@ -399,7 +399,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           <nav
             className={styles.secTabNav}
             role="tablist"
-            style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1rem' }}
+            style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}
           >
             {mobileTabs.map((t) => {
               const active = secTab === t.id;
@@ -413,7 +413,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
                   title={tabHasUnsaved(t.id) ? 'Unsaved changes — click Save on this tab' : undefined}
                   style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                    padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', marginBottom: -1,
                     background: active ? 'linear-gradient(100deg,#22e3ad,#31d0ff)' : 'transparent',
                     color: active ? '#04241b' : 'rgba(255,255,255,.62)',
                     fontWeight: 700, fontSize: '.7rem', letterSpacing: '.04em', textTransform: 'uppercase',
