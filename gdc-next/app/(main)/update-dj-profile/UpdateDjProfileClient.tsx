@@ -255,7 +255,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
   // Notifications are their own tabs rendered below.
   const [tab, setTab] = useState<SecTab>('account');
   const tabs: { id: SecTab; label: string }[] = [
-    { id: 'account', label: 'Account' },
+    { id: 'account', label: 'Profile Settings' },
     { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
     { id: 'location', label: 'Location & Contact' },
     { id: 'team', label: 'Team' },
@@ -343,7 +343,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
   // Labels for the leave-without-saving list (each rendered with an amber dot
   // by UnsavedChangesProvider). Account is included so profile edits still warn.
   const dirtyLabels: string[] = [];
-  if (accountDirty) dirtyLabels.push('Account');
+  if (accountDirty) dirtyLabels.push('Profile Settings');
   if (eventTypesDirty) dirtyLabels.push(eventTypesLabel);
   if (locationDirty) dirtyLabels.push('Location & Contact');
   if (notifDirty) dirtyLabels.push('Notifications');
