@@ -163,6 +163,7 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
     }
   }
 
+  // One save for the whole page — phone + consent AND the per-type matrix.
   async function save() {
     setAlert(null);
     setBrNote(null);
@@ -225,54 +226,56 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
         <p>Choose how you hear about activity on your account.</p>
       </div>
 
-      {/* ── Text setup (master gate for the Text column) ─────────────── */}
-      {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
-      {!isTeammate && (
-        <div className={styles.card}>
-          <h2>Text Setup</h2>
-          <p className={styles.cardHint}>
-            By entering your mobile number, checking &ldquo;Send me text
-            notifications,&rdquo; and clicking Save, you consent to receive
-            recurring SMS booking and account notifications from Global DJ
-            Connect. Message frequency varies. Msg &amp; data rates may apply.
-            Reply STOP to opt out, HELP for help. This number stays private and is
-            separate from your public profile phone.
-          </p>
-
-          <div className={styles.masterRow}>
-            <label className={styles.masterLabel}>
-              <input
-                type="checkbox"
-                checked={smsEnabled}
-                onChange={(e) => onMasterToggle(e.target.checked)}
-                className={styles.masterCheckbox}
-              />
-              <span>Send me text notifications</span>
-            </label>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="sms-phone">Mobile Number (for texts)</label>
-            <input
-              id="sms-phone"
-              type="tel"
-              inputMode="tel"
-              placeholder="(555) 555-5555"
-              value={smsPhone}
-              onChange={(e) => setSmsPhone(e.target.value)}
-              autoComplete="tel"
-            />
-          </div>
-
-          <p className={styles.finePrint}>
-            Reply <strong>STOP</strong> to any text to unsubscribe. Reply{' '}
-            <strong>HELP</strong> for help.
-          </p>
-        </div>
-      )}
-
-      {/* ── The matrix: Email / Text per notification type ───────────── */}
+      {/* One card: Text Setup (gate for the Text column) + the notify matrix,
+          with a single Save at the bottom. */}
       <div className={styles.card}>
+        {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
+        {!isTeammate && (
+          <>
+            <h2>Text Setup</h2>
+            <p className={styles.cardHint}>
+              By entering your mobile number, checking &ldquo;Send me text
+              notifications,&rdquo; and clicking Save, you consent to receive
+              recurring SMS booking and account notifications from Global DJ
+              Connect. Message frequency varies. Msg &amp; data rates may apply.
+              Reply STOP to opt out, HELP for help. This number stays private and is
+              separate from your public profile phone.
+            </p>
+
+            <div className={styles.masterRow}>
+              <label className={styles.masterLabel}>
+                <input
+                  type="checkbox"
+                  checked={smsEnabled}
+                  onChange={(e) => onMasterToggle(e.target.checked)}
+                  className={styles.masterCheckbox}
+                />
+                <span>Send me text notifications</span>
+              </label>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="sms-phone">Mobile Number (for texts)</label>
+              <input
+                id="sms-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(555) 555-5555"
+                value={smsPhone}
+                onChange={(e) => setSmsPhone(e.target.value)}
+                autoComplete="tel"
+              />
+            </div>
+
+            <p className={styles.finePrint}>
+              Reply <strong>STOP</strong> to any text to unsubscribe. Reply{' '}
+              <strong>HELP</strong> for help.
+            </p>
+
+            <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.12))', margin: '1.4rem 0' }} />
+          </>
+        )}
+
         <h2>What to notify me about</h2>
 
         <div className={styles.matrix} style={isTeammate ? { gridTemplateColumns: '1fr 62px' } : undefined}>
