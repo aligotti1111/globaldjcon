@@ -65,7 +65,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
 
   return (
     <div className={styles.card}>
-      <h2>Team</h2>
+      {/* Title is provided by the account-settings SectionBanner. */}
       {seatLimit <= 0 ? (
         <p style={{ color: muted, fontSize: '.85rem', lineHeight: 1.6 }}>
           Team seats let you give staff their own restricted logins.{' '}
