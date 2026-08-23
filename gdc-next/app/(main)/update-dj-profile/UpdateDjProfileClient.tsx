@@ -675,7 +675,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
           edges) so it reads as the box's header, same as Booking Settings. */}
       <div
         className={styles.card}
-        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' ? 'none' : undefined, overflow: 'hidden' }}
+        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' ? 'none' : undefined, overflow: 'hidden', padding: 0 }}
       >
         {(() => {
           const b = initialProfile.dj_type === 'club'
@@ -688,14 +688,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
             blocked: { icon: 'blocked', title: 'Blocked', subtitle: 'People you’ve blocked from booking or messaging you.' },
           };
           const banner = map[tab] || map.account;
-          // Header block sitting inside the box (rounded so it reads as the
-          // section's header, same gradient/icon strip Booking Settings uses).
-          return (
-            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
-              <SectionBanner icon={banner.icon} title={banner.title} subtitle={banner.subtitle} />
-            </div>
-          );
+          // Flush to the card edges (card padding is 0), same as Booking Settings.
+          return <SectionBanner icon={banner.icon} title={banner.title} subtitle={banner.subtitle} />;
         })()}
+        {/* Inner padding wrapper for the section content below the banner. */}
+        <div style={{ padding: '1.5rem' }}>
         {alertMsg && (
           <div className={`${styles.alert} ${
             alertMsg.kind === 'success' ? styles.alertSuccess : styles.alertError
@@ -726,6 +723,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
               genres, location & contact, logo, email, password, blocked users).
               The form + handleSubmit stay as a harmless Enter-to-save fallback. */}
         </form>
+        </div>{/* end inner padding wrapper */}
       </div>
 
       {/* Notifications — its own tab. The email + text preference matrix that
