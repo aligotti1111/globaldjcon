@@ -8,10 +8,10 @@
 // touches booking_settings at all.
 //
 // State strategy:
-//   - General fields are kept in a single `general` object (one update per
-//     change). On submit, the whole thing is written to the users row.
-//   - Manual "Save Changes" button at the bottom saves those fields and shows
-//     a success/error alert at the top of the card.
+// - General fields are kept in a single `general` object (one update per
+//   change). On submit, the whole thing is written to the users row.
+// - Manual "Save Changes" button at the bottom saves those fields and shows
+//   a success/error alert at the top of the card.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ import GeneralTab, { type AccountTab } from './GeneralTab';
 import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
 import TimezoneSection from '../account-settings/TimezoneSection';
+import NotificationsClient from '../notifications/NotificationsClient';
 // Booking configuration moved to its own page (/booking-settings); the
 // BookingTab / ClubBookingTab components live in this folder still but are
 // mounted there now. Socials/Mixes/Photos/Video/Testimonials are managed
@@ -51,10 +52,10 @@ export interface GeneralFormState {
   country: string;
   travelDistance: string;
   djStartYear: string;
-  mobileEvents: string[];   // for mobile DJs
+  mobileEvents: string[]; // for mobile DJs
   customEventTypes: CustomEventType[]; // DJ-defined event types
   specialtyTypes: string[]; // event-type keys placed in the Specialty group
-  clubGenres: string[];     // for club DJs
+  clubGenres: string[]; // for club DJs
   profilePrivate: boolean;
   avatarUrl: string;
   // Socials tab
@@ -135,12 +136,32 @@ interface InitialProfile {
   testimonials?: string | null;
 }
 
+// Init for the Notifications tab (email + text preference toggles). Mirrors the
+// shape NotificationsClient expects; loaded server-side off the users row.
+export interface NotifyInit {
+  role: string;
+  sms_phone: string;
+  sms_enabled: boolean;
+  sms_notify_booking_request: boolean;
+  sms_notify_booking_status: boolean;
+  sms_notify_inbox_message: boolean;
+  email_notify_booking_request: boolean;
+  email_notify_booking_status: boolean;
+  email_notify_inbox_message: boolean;
+}
+
 interface Props {
   initialProfile: InitialProfile;
   authEmail: string;
+  notifyInit: NotifyInit;
 }
 
-export default function UpdateDjProfileClient({ initialProfile, authEmail }: Props) {
+// The section tab bar now includes a Notifications tab. AccountTab (from
+// GeneralTab) covers the panes GeneralTab owns; 'notifications' is rendered
+// separately below (like Team / Timezone), so we widen the local tab type.
+type SecTab = AccountTab | 'notifications';
+
+export default function UpdateDjProfileClient({ initialProfile, authEmail, notifyInit }: Props) {
 
   const [general, setGeneral] = useState<GeneralFormState>(() => {
     // Vanilla default: a Mobile DJ with no event_types saved yet (new account)
@@ -151,8 +172,8 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
     const defaultMobileEvents = savedEventTypes.length > 0
       ? savedEventTypes
       : (initialProfile.dj_type === 'mobile'
-          ? ['weddings','corporate','birthday','anniversary','graduation','sweet16','quinceanera','mitzvah','reunion','holiday','school','community','other']
-          : []);
+        ? ['weddings','corporate','birthday','anniversary','graduation','sweet16','quinceanera','mitzvah','reunion','holiday','school','community','other']
+        : []);
 
     // Parse testimonials JSON (stored as a stringified array on users.testimonials).
     // Bad JSON or missing field → empty array.
@@ -224,13 +245,14 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
   // ── Section tabs ────────────────────────────────────────────────
   // This page is laid out like Booking Settings: a top tab bar swaps between
   // sections instead of one long scroll. GeneralTab renders the first four
-  // (kept mounted, shown via display toggle); Team + Your Timezone are their
-  // own tabs rendered below.
-  const [tab, setTab] = useState<AccountTab>('account');
-  const tabs: { id: AccountTab; label: string }[] = [
+  // (kept mounted, shown via display toggle); Team + Your Timezone +
+  // Notifications are their own tabs rendered below.
+  const [tab, setTab] = useState<SecTab>('account');
+  const tabs: { id: SecTab; label: string }[] = [
     { id: 'account', label: 'Account' },
     { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
     { id: 'location', label: 'Location & Contact' },
+    { id: 'notifications', label: 'Notifications' },
     { id: 'team', label: 'Team' },
     { id: 'blocked', label: 'Blocked' },
     { id: 'timezone', label: 'Your Timezone' },
@@ -264,9 +286,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
 
   // Register this page's dirty state with the global UnsavedChangesProvider.
   // The provider handles:
-  //   - beforeunload (tab close / refresh / external nav)
-  //   - intercepting in-app <a> clicks (burger menu, header logo, back link)
-  //   - browser back button via popstate
+  // - beforeunload (tab close / refresh / external nav)
+  // - intercepting in-app <a> clicks (burger menu, header logo, back link)
+  // - browser back button via popstate
   // …and prompts the user via ConfirmModal before letting them leave.
   const { setDirty: setGlobalDirty } = useUnsavedChanges();
   const { patchUser } = useAuth();
@@ -562,7 +584,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
       <select
         className={styles.secTabSelect}
         value={tab}
-        onChange={(e) => setTab(e.target.value as AccountTab)}
+        onChange={(e) => setTab(e.target.value as SecTab)}
         aria-label="Account settings section"
       >
         {tabs.map((t) => (
@@ -575,7 +597,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           switches) but is hidden when a non-GeneralTab tab is active. */}
       <div
         className={styles.card}
-        style={{ display: tab === 'team' || tab === 'timezone' ? 'none' : undefined }}
+        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' ? 'none' : undefined }}
       >
         {alertMsg && (
           <div className={`${styles.alert} ${
@@ -589,7 +611,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
           <GeneralTab
             state={general}
             onChange={updateGeneral}
-            activeTab={tab}
+            activeTab={tab as AccountTab}
             djType={initialProfile.dj_type}
             email={authEmail}
             slug={initialProfile.slug}
@@ -608,6 +630,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail }: Pro
               The form + handleSubmit stay as a harmless Enter-to-save fallback. */}
         </form>
       </div>
+
+      {/* Notifications — its own tab. The email + text preference matrix that
+          used to live at the standalone /notifications page. Self-contained;
+          saves the sms_* / email_notify_* columns directly. */}
+      {tab === 'notifications' && <NotificationsClient userId={initialProfile.id} init={notifyInit} />}
 
       {/* Team seats — its own tab. DJs render THIS component (not
           AccountSettingsClient). Self-contained + Pro-gated. */}
