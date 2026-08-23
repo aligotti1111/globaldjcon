@@ -11,18 +11,18 @@
 // the universal account stuff (email/password/blocked users).
 //
 // DEFERRED:
-//   - Slug live-check + alternative suggestions (will be a shared helper
-//     once we also build the slug check on /signup; until then the
-//     uniqueness check happens at save time, with an inline error)
+// - Slug live-check + alternative suggestions (will be a shared helper
+//   once we also build the slug check on /signup; until then the
+//   uniqueness check happens at save time, with an inline error)
 //
 // SCOPE NOTES:
-//   - Email change uses Supabase Auth's updateUser — sends a confirmation
-//     link to the new address, doesn't change the email until clicked.
-//   - Password change uses Supabase Auth's updateUser — requires current
-//     password verified via signInWithPassword first.
-//   - EXCEPT for hosts, who have neither. They sign in with a 6-digit code,
-//     so their "email" here is the delivery address on users.contact_email
-//     and it saves like any other profile field. See AccountSettingsClient.
+// - Email change uses Supabase Auth's updateUser — sends a confirmation
+//   link to the new address, doesn't change the email until clicked.
+// - Password change uses Supabase Auth's updateUser — requires current
+//   password verified via signInWithPassword first.
+// - EXCEPT for hosts, who have neither. They sign in with a 6-digit code,
+//   so their "email" here is the delivery address on users.contact_email
+//   and it saves like any other profile field. See AccountSettingsClient.
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -53,6 +53,37 @@ interface ProfileRow {
   sms_phone: string | null;
 }
 
+// Shape the Notifications tab needs. Read off the DJ's users row (select('*')
+// already returns these columns), defaulted the same way /notifications does.
+interface NotifyInit {
+  role: string;
+  sms_phone: string;
+  sms_enabled: boolean;
+  sms_notify_booking_request: boolean;
+  sms_notify_booking_status: boolean;
+  sms_notify_inbox_message: boolean;
+  email_notify_booking_request: boolean;
+  email_notify_booking_status: boolean;
+  email_notify_inbox_message: boolean;
+}
+
+// Build the notification-prefs init from a users row, defaulting every toggle
+// ON unless explicitly stored false (matches /notifications/page.tsx).
+function buildNotifyInit(row: Record<string, unknown>): NotifyInit {
+  const b = (v: unknown) => v !== false; // default ON
+  return {
+    role: String(row.role || ''),
+    sms_phone: (row.sms_phone as string) || '',
+    sms_enabled: !!row.sms_enabled,
+    sms_notify_booking_request: b(row.sms_notify_booking_request),
+    sms_notify_booking_status: b(row.sms_notify_booking_status),
+    sms_notify_inbox_message: b(row.sms_notify_inbox_message),
+    email_notify_booking_request: b(row.email_notify_booking_request),
+    email_notify_booking_status: b(row.email_notify_booking_status),
+    email_notify_inbox_message: b(row.email_notify_inbox_message),
+  };
+}
+
 export default async function AccountSettingsPage() {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -79,6 +110,9 @@ export default async function AccountSettingsPage() {
       .single();
     const djProfile = djData as UserProfile | null;
     if (!djProfile) redirect('/login?error=profile_not_found');
+    // The Notifications tab reads the same sms_* / email_notify_* columns the
+    // standalone /notifications page did — they're already on this row.
+    const notifyInit = buildNotifyInit(djData as Record<string, unknown>);
     return (
       <UpdateDjProfileClient
         initialProfile={djProfile as UserProfile & {
@@ -109,6 +143,7 @@ export default async function AccountSettingsPage() {
           testimonials?: string | null;
         }}
         authEmail={authUser.email || ''}
+        notifyInit={notifyInit}
       />
     );
   }
