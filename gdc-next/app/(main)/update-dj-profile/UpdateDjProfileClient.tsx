@@ -645,12 +645,12 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       {/* Segmented-pill tab bar — the CSS class keeps the desktop/mobile
           show-hide behavior; inline styles turn it into a rounded track with a
           teal→cyan gradient pill on the active tab (matches the header menus). */}
-      {/* Segmented-pill tab bar — rounded track with a teal→cyan gradient pill
-          on the active tab, sitting above the card with a gap. */}
+      {/* Keep the CSS tab-bar frame line; the active tab is a pill resting on
+          it (this is the version signed off as "this is right"). */}
       <nav
         className={styles.secTabNav}
         role="tablist"
-        style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1rem' }}
+        style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}
       >
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -664,7 +664,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
               title={tabHasUnsaved(t.id) ? 'Unsaved changes — save on this tab' : undefined}
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', marginBottom: -1,
                 background: active ? 'linear-gradient(100deg,#22e3ad,#31d0ff)' : 'transparent',
                 color: active ? '#04241b' : 'rgba(255,255,255,.62)',
                 fontWeight: 700, fontSize: '.7rem', letterSpacing: '.04em', textTransform: 'uppercase',
