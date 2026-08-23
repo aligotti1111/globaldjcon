@@ -19,8 +19,12 @@
 // (unchecking the last active channel is blocked with an inline note) and
 // again as a hard guard at save. Turning the master text toggle off while
 // email was the only-off channel re-asserts email so the rule always holds.
+//
+// Dirty reporting: when mounted inside a tab (Account Settings → Notifications)
+// the parent wants to show an "unsaved" dot, so we report whether the current
+// toggles differ from the last-saved snapshot via onDirtyChange.
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './notifications.module.css';
 
@@ -41,6 +45,8 @@ interface PrefsInit {
 interface Props {
   userId: string;
   init: PrefsInit;
+  // Reports whether there are unsaved edits — drives the parent tab's dot.
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type Alert = { type: 'success' | 'error'; msg: string } | null;
@@ -57,7 +63,7 @@ function digitsOf(s: string): number {
   return s.replace(/\D/g, '').length;
 }
 
-export default function NotificationsClient({ userId, init }: Props) {
+export default function NotificationsClient({ userId, init, onDirtyChange }: Props) {
   const isDj = init.role === 'dj';
   const isTeammate = init.role === 'teammate';
 
@@ -80,6 +86,41 @@ export default function NotificationsClient({ userId, init }: Props) {
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState<Alert>(null);
   const [brNote, setBrNote] = useState<string | null>(null);
+
+  // Last-saved snapshot — starts at the loaded prefs and advances on each
+  // successful save. "Dirty" is measured against this, so the unsaved dot
+  // clears the moment a save lands.
+  const [savedSnap, setSavedSnap] = useState({
+    smsPhone: init.sms_phone,
+    smsEnabled: init.sms_enabled,
+    email: {
+      booking_request: init.email_notify_booking_request,
+      booking_status: init.email_notify_booking_status,
+      inbox_message: init.email_notify_inbox_message,
+    } as Record<RowKey, boolean>,
+    text: {
+      booking_request: init.sms_notify_booking_request,
+      booking_status: init.sms_notify_booking_status,
+      inbox_message: init.sms_notify_inbox_message,
+    } as Record<RowKey, boolean>,
+  });
+
+  const dirty =
+    smsPhone !== savedSnap.smsPhone ||
+    smsEnabled !== savedSnap.smsEnabled ||
+    email.booking_request !== savedSnap.email.booking_request ||
+    email.booking_status !== savedSnap.email.booking_status ||
+    email.inbox_message !== savedSnap.email.inbox_message ||
+    text.booking_request !== savedSnap.text.booking_request ||
+    text.booking_status !== savedSnap.text.booking_status ||
+    text.inbox_message !== savedSnap.text.inbox_message;
+
+  // Report dirty upward without making onDirtyChange a hard dependency.
+  const onDirtyRef = useRef(onDirtyChange);
+  useEffect(() => { onDirtyRef.current = onDirtyChange; });
+  useEffect(() => { onDirtyRef.current?.(dirty); }, [dirty]);
+  // Clear the parent's dot on unmount so a hidden tab never keeps it lit.
+  useEffect(() => () => onDirtyRef.current?.(false), []);
 
   // Text column is only usable when there's a valid phone AND consent is on.
   const smsReady = smsEnabled && digitsOf(smsPhone) >= 10;
@@ -162,6 +203,13 @@ export default function NotificationsClient({ userId, init }: Props) {
         .eq('id', userId);
       if (error) throw error;
       setAlert({ type: 'success', msg: 'Notification preferences saved.' });
+      // Advance the saved snapshot so the unsaved dot clears.
+      setSavedSnap({
+        smsPhone: trimmedPhone,
+        smsEnabled,
+        email: { ...email },
+        text: { ...text },
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setAlert({ type: 'error', msg });
@@ -180,47 +228,47 @@ export default function NotificationsClient({ userId, init }: Props) {
       {/* ── Text setup (master gate for the Text column) ─────────────── */}
       {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
       {!isTeammate && (
-      <div className={styles.card}>
-        <h2>Text Setup</h2>
-        <p className={styles.cardHint}>
-          By entering your mobile number, checking &ldquo;Send me text
-          notifications,&rdquo; and clicking Save, you consent to receive
-          recurring SMS booking and account notifications from Global DJ
-          Connect. Message frequency varies. Msg &amp; data rates may apply.
-          Reply STOP to opt out, HELP for help. This number stays private and is
-          separate from your public profile phone.
-        </p>
+        <div className={styles.card}>
+          <h2>Text Setup</h2>
+          <p className={styles.cardHint}>
+            By entering your mobile number, checking &ldquo;Send me text
+            notifications,&rdquo; and clicking Save, you consent to receive
+            recurring SMS booking and account notifications from Global DJ
+            Connect. Message frequency varies. Msg &amp; data rates may apply.
+            Reply STOP to opt out, HELP for help. This number stays private and is
+            separate from your public profile phone.
+          </p>
 
-        <div className={styles.masterRow}>
-          <label className={styles.masterLabel}>
+          <div className={styles.masterRow}>
+            <label className={styles.masterLabel}>
+              <input
+                type="checkbox"
+                checked={smsEnabled}
+                onChange={(e) => onMasterToggle(e.target.checked)}
+                className={styles.masterCheckbox}
+              />
+              <span>Send me text notifications</span>
+            </label>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="sms-phone">Mobile Number (for texts)</label>
             <input
-              type="checkbox"
-              checked={smsEnabled}
-              onChange={(e) => onMasterToggle(e.target.checked)}
-              className={styles.masterCheckbox}
+              id="sms-phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(555) 555-5555"
+              value={smsPhone}
+              onChange={(e) => setSmsPhone(e.target.value)}
+              autoComplete="tel"
             />
-            <span>Send me text notifications</span>
-          </label>
-        </div>
+          </div>
 
-        <div className={styles.formGroup}>
-          <label htmlFor="sms-phone">Mobile Number (for texts)</label>
-          <input
-            id="sms-phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="(555) 555-5555"
-            value={smsPhone}
-            onChange={(e) => setSmsPhone(e.target.value)}
-            autoComplete="tel"
-          />
+          <p className={styles.finePrint}>
+            Reply <strong>STOP</strong> to any text to unsubscribe. Reply{' '}
+            <strong>HELP</strong> for help.
+          </p>
         </div>
-
-        <p className={styles.finePrint}>
-          Reply <strong>STOP</strong> to any text to unsubscribe. Reply{' '}
-          <strong>HELP</strong> for help.
-        </p>
-      </div>
       )}
 
       {/* ── The matrix: Email / Text per notification type ───────────── */}
