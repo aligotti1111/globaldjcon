@@ -619,7 +619,13 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
   return (
     // Match the Booking Settings frame width (maxWidth 1100, centered) so the
     // two pages line up side to side.
-    <div className={styles.container} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+    <div className={`${styles.container} gdcAcctSettings`} style={{ maxWidth: 1100, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+      {/* The Location & Contact and Blocked panes render their own inner section
+          header ("LOCATION & CONTACT" / "BLOCKED USERS"). With the gradient
+          SectionBanner now serving as each box's header, that inner bar is a
+          duplicate — hide it (scoped to this page so Booking Settings, which
+          shares the CSS module, is untouched). */}
+      <style>{`.gdcAcctSettings [class*="sectionHeader"]{display:none;}`}</style>
       <div className={styles.headerRow}>
         <Link href="/" className={styles.backLink}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
