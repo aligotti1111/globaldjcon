@@ -2,10 +2,10 @@
 
 // BookingRequestsMenu — the header's Booking Requests icon with a
 // notification-style dropdown (mirrors NotificationBell). Two tabs:
-//   • Respond  — requests that need YOUR response: an incoming 'pending'
-//                request, or one you made that was 'counter'ed back to you.
+//   • Respond — requests that need YOUR response: an incoming 'pending'
+//     request, or one you made that was 'counter'ed back to you.
 //   • Awaiting — requests you're waiting on the OTHER side for: a request you
-//                made that's still 'pending', or one you 'counter'ed.
+//     made that's still 'pending', or one you 'counter'ed.
 // Opens on Respond when something needs you; otherwise defaults to Awaiting so
 // the panel isn't empty when you're only waiting on replies (the common case
 // for a host who's requested DJs and is waiting to hear back).
@@ -116,8 +116,8 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
           .order('created_at', { ascending: false }).limit(10);
       // Respond: things that owe YOUR reply. Awaiting: things you're waiting on.
       const [djPend, reqCtr, reqPend, djCtr] = await Promise.all([
-        q('dj_id', 'pending'),        // respond  — incoming request to you
-        q('requester_id', 'counter'), // respond  — a request you made, countered back
+        q('dj_id', 'pending'),        // respond — incoming request to you
+        q('requester_id', 'counter'), // respond — a request you made, countered back
         q('requester_id', 'pending'), // awaiting — your request, still with the DJ
         q('dj_id', 'counter'),        // awaiting — you countered, waiting on them
       ]);
@@ -222,27 +222,33 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
             Booking requests
           </div>
 
-          {/* Respond / Awaiting tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-            {(['respond', 'awaiting'] as const).map((t) => {
-              const activeTab = tab === t;
-              const n = t === 'respond' ? respondItems.length : awaitingItems.length;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  style={{
-                    flex: 1, padding: '9px 8px', background: 'transparent', border: 'none',
-                    borderBottom: activeTab ? '2px solid var(--neon,#00e0a4)' : '2px solid transparent',
-                    color: activeTab ? '#fff' : 'rgba(255,255,255,.55)',
-                    fontWeight: 700, fontSize: '.76rem', cursor: 'pointer', letterSpacing: '.02em',
-                  }}
-                >
-                  {t === 'respond' ? 'Response Required' : 'Awaiting'}{n > 0 ? ` (${n})` : ''}
-                </button>
-              );
-            })}
+          {/* Respond / Awaiting — segmented pill: both tabs sit in a rounded
+              track, the active one gets a teal→cyan gradient fill. */}
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.06)', borderRadius: 10, padding: 4 }}>
+              {(['respond', 'awaiting'] as const).map((t) => {
+                const activeTab = tab === t;
+                const n = t === 'respond' ? respondItems.length : awaitingItems.length;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTab(t)}
+                    aria-pressed={activeTab}
+                    style={{
+                      flex: 1, padding: '8px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                      background: activeTab ? 'linear-gradient(100deg,#22e3ad,#31d0ff)' : 'transparent',
+                      color: activeTab ? '#04241b' : 'rgba(255,255,255,.6)',
+                      fontWeight: 700, fontSize: '.74rem', letterSpacing: '.02em',
+                      boxShadow: activeTab ? '0 6px 16px -8px rgba(34,227,173,.8)' : 'none',
+                      transition: 'background .15s, color .15s',
+                    }}
+                  >
+                    {t === 'respond' ? 'Response Required' : 'Awaiting'}{n > 0 ? ` (${n})` : ''}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {shown.length === 0 ? (
