@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from './accountSettings.module.css';
+import SectionBanner from '../update-dj-profile/SectionBanner';
 import { TIMEZONE_OPTIONS } from '@/lib/bookingExpiry';
 
 const NEON = 'var(--neon,#00e0a4)';
@@ -23,7 +24,7 @@ function labelFor(tz: string | null): string {
 }
 
 export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' | 'host' } = {}) {
-  const [sel, setSel] = useState<string>(AUTO);   // 'auto' or an IANA zone
+  const [sel, setSel] = useState<string>(AUTO); // 'auto' or an IANA zone
   const [fromZip, setFromZip] = useState<string | null>(null);
   // Hosts don't enter a ZIP, so "automatic" for them means the timezone their
   // device reports (the same clock their countdown will display in).
@@ -85,7 +86,10 @@ export default function TimezoneSection({ audience = 'dj' }: { audience?: 'dj' |
 
   return (
     <div className={styles.card}>
-      <h2>Your timezone</h2>
+      {/* Hero header inside the box — same gradient strip Booking Settings uses. */}
+      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
+        <SectionBanner icon="clock" title="Your Timezone" subtitle="The clock your booking deadlines are measured in." />
+      </div>
       <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
         {audience === 'host' ? (
           <>Sets the timezone your booking times and deadlines show in — like the
