@@ -244,6 +244,10 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
   // Alert at top — used by the Enter-to-save fallback (handleSubmit).
   const [alertMsg, setAlertMsg] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
+  // Whether the Notifications tab has unsaved edits — reported up from
+  // NotificationsClient so we can show the amber "unsaved" dot on that tab.
+  const [notifDirty, setNotifDirty] = useState(false);
+
   // ── Section tabs ────────────────────────────────────────────────
   // This page is laid out like Booking Settings: a top tab bar swaps between
   // sections instead of one long scroll. GeneralTab renders the first four
@@ -545,6 +549,37 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
     }
   }
 
+  // ── Per-tab unsaved dots ────────────────────────────────────────
+  // Each section saves itself and syncs the snapshot (initialGeneralRef) on
+  // save, so a tab is "unsaved" when its fields differ from that snapshot.
+  // Booking Settings shows the same amber dot on tabs with pending edits.
+  let locationDirty = false;
+  let eventTypesDirty = false;
+  try {
+    const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+    locationDirty =
+      base.address !== general.address ||
+      base.city !== general.city ||
+      base.state !== general.state ||
+      base.zip !== general.zip ||
+      base.country !== general.country ||
+      base.phone !== general.phone ||
+      base.travelDistance !== general.travelDistance;
+    eventTypesDirty =
+      JSON.stringify(base.mobileEvents) !== JSON.stringify(general.mobileEvents) ||
+      JSON.stringify(base.customEventTypes) !== JSON.stringify(general.customEventTypes) ||
+      JSON.stringify(base.specialtyTypes) !== JSON.stringify(general.specialtyTypes) ||
+      JSON.stringify(base.clubGenres) !== JSON.stringify(general.clubGenres);
+  } catch {
+    /* snapshot unpar...: treat as clean */
+  }
+  function tabHasUnsaved(id: SecTab): boolean {
+    if (id === 'location') return locationDirty;
+    if (id === 'eventTypes') return eventTypesDirty;
+    if (id === 'notifications') return notifDirty;
+    return false;
+  }
+
   // ── Site URL for the slug preview ───────────────────────────────
   // ALWAYS production — even on staging the share link should point at
   // globaldjconnect.com, never a Netlify preview URL.
@@ -579,8 +614,15 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
             aria-selected={tab === t.id}
             className={`${styles.secTabBtn} ${tab === t.id ? styles.secTabBtnActive : ''}`}
             onClick={() => setTab(t.id)}
+            title={tabHasUnsaved(t.id) ? 'Unsaved changes — save on this tab' : undefined}
           >
             {t.label}
+            {tabHasUnsaved(t.id) && (
+              <span
+                aria-label="Unsaved changes"
+                style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--amber,#f5a623)', marginLeft: 6, verticalAlign: 'middle' }}
+              />
+            )}
           </button>
         ))}
       </nav>
@@ -591,7 +633,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
         aria-label="Account settings section"
       >
         {tabs.map((t) => (
-          <option key={t.id} value={t.id}>{t.label}</option>
+          <option key={t.id} value={t.id}>{t.label}{tabHasUnsaved(t.id) ? ' •' : ''}</option>
         ))}
       </select>
 
@@ -637,7 +679,11 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       {/* Notifications — its own tab. The email + text preference matrix that
           used to live at the standalone /notifications page. Self-contained;
           saves the sms_* / email_notify_* columns directly. */}
-      {tab === 'notifications' && notifyInit && <NotificationsClient userId={initialProfile.id} init={notifyInit} />}
+      {notifyInit && (
+        <div style={{ display: tab === 'notifications' ? undefined : 'none' }}>
+          <NotificationsClient userId={initialProfile.id} init={notifyInit} onDirtyChange={setNotifDirty} />
+        </div>
+      )}
 
       {/* Team seats — its own tab. DJs render THIS component (not
           AccountSettingsClient). Self-contained + Pro-gated. */}
