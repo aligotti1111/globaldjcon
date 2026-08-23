@@ -254,9 +254,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
     { id: 'account', label: 'Account' },
     { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
     { id: 'location', label: 'Location & Contact' },
+    { id: 'team', label: 'Team' },
     // Only surface the Notifications tab when its prefs were loaded.
     ...(notifyInit ? [{ id: 'notifications' as SecTab, label: 'Notifications' }] : []),
-    { id: 'team', label: 'Team' },
     { id: 'blocked', label: 'Blocked' },
     { id: 'timezone', label: 'Your Timezone' },
   ];
