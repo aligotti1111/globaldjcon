@@ -642,26 +642,44 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
 
       {/* Section tab bar — same pattern as Booking Settings: a horizontal nav
           on desktop, a <select> on mobile. */}
-      <nav className={styles.secTabNav} role="tablist">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`${styles.secTabBtn} ${tab === t.id ? styles.secTabBtnActive : ''}`}
-            onClick={() => setTab(t.id)}
-            title={tabHasUnsaved(t.id) ? 'Unsaved changes — save on this tab' : undefined}
-          >
-            {t.label}
-            {tabHasUnsaved(t.id) && (
-              <span
-                aria-label="Unsaved changes"
-                style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--amber,#f5a623)', marginLeft: 6, verticalAlign: 'middle' }}
-              />
-            )}
-          </button>
-        ))}
+      {/* Segmented-pill tab bar — the CSS class keeps the desktop/mobile
+          show-hide behavior; inline styles turn it into a rounded track with a
+          teal→cyan gradient pill on the active tab (matches the header menus). */}
+      <nav
+        className={styles.secTabNav}
+        role="tablist"
+        style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1rem' }}
+      >
+        {tabs.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.id)}
+              title={tabHasUnsaved(t.id) ? 'Unsaved changes — save on this tab' : undefined}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                background: active ? 'linear-gradient(100deg,#22e3ad,#31d0ff)' : 'transparent',
+                color: active ? '#04241b' : 'rgba(255,255,255,.62)',
+                fontWeight: 700, fontSize: '.7rem', letterSpacing: '.04em', textTransform: 'uppercase',
+                boxShadow: active ? '0 6px 16px -8px rgba(34,227,173,.8)' : 'none',
+                transition: 'background .15s, color .15s',
+              }}
+            >
+              {t.label}
+              {tabHasUnsaved(t.id) && (
+                <span
+                  aria-label="Unsaved changes"
+                  style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: active ? '#8a5a00' : 'var(--amber,#f5a623)', flexShrink: 0 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </nav>
       <select
         className={styles.secTabSelect}
