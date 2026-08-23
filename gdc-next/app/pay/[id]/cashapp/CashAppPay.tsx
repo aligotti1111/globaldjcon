@@ -2,21 +2,13 @@
 
 // CashAppPay — the client half of /pay/[id]/cashapp.
 //
-// One job: get the person into Cash App with the right amount, from whatever
-// device they opened the email on — and make sure the amount is NEVER
-// invisible, because that's the failure this page exists to fix.
+// Cash App DEPRECATED amount-prefill links: cash.app/$cashtag/400 no longer
+// fills in the amount, it just opens the profile. So there is no way to make
+// the amount land in the app automatically anymore.
 //
-//   phone  → the link opens the app with the amount filled in. Go, immediately.
-//            But Cash App sometimes drops the prefilled amount on the hand-off,
-//            so the amount and $cashtag are shown right here too — if the app
-//            opens blank, the client can see exactly what to send.
-//   laptop → the link is awkward on a computer, so render it as a QR instead.
-//            Same URL, same preloaded amount — the phone that scans it lands
-//            exactly where the phone that tapped the email would have.
-//
-// The redirect is deliberately automatic on mobile and deliberately NOT on
-// desktop. On a phone, an extra tap is friction for no reason. On a laptop,
-// redirecting would take them to a page they'd struggle to pay from.
+// This page does the next best thing: shows the amount BIG with a one-tap copy
+// icon right beside it, spells out the steps, and opens Cash App on a
+// deliberate tap. Copy the amount, open the app, paste. No false promises.
 
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
@@ -44,28 +36,15 @@ export default function CashAppPay({
   venueName: string | null;
   eventDate: string | null;
 }) {
-  // null = undecided. Rendering either branch before we know would flash the
-  // wrong one — and on mobile that flash is a QR nobody can scan with the
-  // phone that's displaying it.
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [qr, setQr] = useState<string | null>(null);
-  const [copied, setCopied] = useState<'handle' | 'amount' | null>(null);
+  const [copied, setCopied] = useState<'amount' | 'handle' | null>(null);
 
   useEffect(() => {
-    // Coarse pointer = touch device. More honest than sniffing user agents,
-    // which lie, and it's the actual question: can this thing run the app?
     const touch = typeof window !== 'undefined'
       && (window.matchMedia('(pointer: coarse)').matches || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
     setIsMobile(touch);
   }, []);
-
-  useEffect(() => {
-    if (isMobile !== true || settled) return;
-    // Straight through. A phone that tapped "Pay with Cash App" in an email
-    // should land in Cash App, not on a page about Cash App.
-    const t = setTimeout(() => { window.location.href = link; }, 700);
-    return () => clearTimeout(t);
-  }, [isMobile, link, settled]);
 
   useEffect(() => {
     if (isMobile !== false || settled) return;
@@ -75,6 +54,14 @@ export default function CashAppPay({
   }, [isMobile, link, settled]);
 
   const amountStr = money(amount, currency);
+  // Plain number for copying — what gets typed into Cash App. "600" or "41.60".
+  const amountPlain = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+
+  function copy(which: 'amount' | 'handle', value: string) {
+    void navigator.clipboard.writeText(value);
+    setCopied(which);
+    setTimeout(() => setCopied(null), 1800);
+  }
 
   const wrap: React.CSSProperties = {
     minHeight: '100vh',
@@ -93,6 +80,25 @@ export default function CashAppPay({
     width: '100%',
     textAlign: 'center',
   };
+  const iconBtn = (active: boolean): React.CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 34, height: 34, borderRadius: 8, cursor: 'pointer',
+    background: active ? 'rgba(0,224,164,.15)' : 'transparent',
+    border: `1px solid ${active ? 'var(--neon,#00e0a4)' : 'var(--border,rgba(255,255,255,.18))'}`,
+    color: active ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)',
+    flexShrink: 0, padding: 0,
+  });
+
+  // A plain clipboard glyph, swapped for a check once copied.
+  const CopyIcon = ({ done }: { done: boolean }) => (
+    done
+      ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+      )
+      : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+      )
+  );
 
   if (settled) {
     return (
@@ -118,10 +124,22 @@ export default function CashAppPay({
           Global DJ Connect
         </div>
 
-        <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--white,#fff)', lineHeight: 1.1 }}>
-          {amountStr}
+        {/* Amount, with the copy icon right beside it. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.6rem' }}>
+          <span style={{ fontSize: '1.9rem', fontWeight: 800, color: 'var(--white,#fff)', lineHeight: 1.1 }}>
+            {amountStr}
+          </span>
+          <button
+            type="button"
+            aria-label="Copy amount"
+            title="Copy amount"
+            onClick={() => copy('amount', amountPlain)}
+            style={iconBtn(copied === 'amount')}
+          >
+            <CopyIcon done={copied === 'amount'} />
+          </button>
         </div>
-        <p style={{ margin: '.3rem 0 1.2rem', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5 }}>
+        <p style={{ margin: '.35rem 0 1.2rem', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5 }}>
           to {djName}
           {venueName ? ` · ${venueName}` : ''}
           {eventDate ? ` · ${new Date(eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
@@ -131,75 +149,43 @@ export default function CashAppPay({
           <p style={{ margin: 0, color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>Loading…</p>
         )}
 
-        {isMobile === true && (
+        {isMobile !== null && (
           <>
-            <p style={{ margin: '0 0 1rem', color: 'var(--white,#fff)', fontSize: '.9rem', lineHeight: 1.6 }}>
-              Opening Cash App…
+            <p style={{ margin: '0 0 .7rem', color: 'var(--white,#fff)', fontSize: '.84rem', fontWeight: 600 }}>
+              Cash App won&apos;t fill in the amount — here&apos;s how to pay:
             </p>
-            {/* The auto-redirect can be blocked, and some in-app email browsers
-                swallow it silently. Never leave them staring at "Opening…". */}
-            <a
-              href={link}
-              style={{
-                display: 'block', background: '#00D632', color: '#04241b', textDecoration: 'none',
-                fontWeight: 800, padding: '.9rem 1rem', borderRadius: 8, fontSize: '.95rem',
-              }}
-            >
-              Open Cash App →
-            </a>
-            {/* The whole reason this page exists: if Cash App opens without the
-                amount filled in, the client can still see exactly what to send
-                and to whom. */}
-            <p style={{ margin: '1.1rem 0 .4rem', color: 'var(--muted,#8a8aa0)', fontSize: '.75rem', lineHeight: 1.6 }}>
-              If Cash App opens without the amount, send <strong style={{ color: 'var(--white,#fff)' }}>{amountStr}</strong> to:
-            </p>
-            <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', justifyContent: 'center' }}>
-              <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '.9rem', color: 'var(--white,#fff)', background: 'var(--deep,#0b0b12)', padding: '.45rem .7rem', borderRadius: 6 }}>
-                {handle}
-              </code>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(handle);
-                  setCopied('handle');
-                  setTimeout(() => setCopied(null), 1800);
-                }}
-                style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.14))', borderRadius: 6, color: copied === 'handle' ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontSize: '.7rem', padding: '.45rem .6rem', cursor: 'pointer', fontFamily: "'Space Mono', monospace" }}
-              >
-                {copied === 'handle' ? '✓' : 'Copy'}
-              </button>
-            </div>
-          </>
-        )}
+            <ol style={{ margin: '0 0 1.1rem', paddingLeft: '1.2rem', textAlign: 'left', color: 'var(--muted,#b9b9cc)', fontSize: '.85rem', lineHeight: 1.75 }}>
+              <li>Tap <strong style={{ color: 'var(--white,#fff)' }}>{isMobile ? 'Open Cash App' : 'scan the code'}</strong> below (opens {handle}).</li>
+              <li>Enter <strong style={{ color: 'var(--white,#fff)' }}>{amountStr}</strong> — tap the copy icon above to grab it.</li>
+              <li>Put <strong style={{ color: 'var(--white,#fff)' }}>{reference}</strong> in the note.</li>
+              <li>Send.</li>
+            </ol>
 
-        {isMobile === false && (
-          <>
-            <p style={{ margin: '0 0 1rem', color: 'var(--white,#fff)', fontSize: '.88rem', lineHeight: 1.6 }}>
-              Cash App pays from your phone. <strong>Scan this with your phone</strong> and
-              Cash App opens with the amount filled in.
-            </p>
-            <div style={{ background: '#fff', borderRadius: 10, padding: 12, display: 'inline-block' }}>
-              {qr
-                ? <img src={qr} alt="Scan to pay with Cash App" width={220} height={220} style={{ display: 'block' }} />
-                : <div style={{ width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '.8rem' }}>Loading…</div>}
-            </div>
-            <p style={{ margin: '1rem 0 .3rem', color: 'var(--muted,#8a8aa0)', fontSize: '.75rem' }}>
-              Or open Cash App and send {amountStr} by hand to:
-            </p>
-            <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', justifyContent: 'center' }}>
+            {isMobile === true ? (
+              <a
+                href={link}
+                style={{
+                  display: 'block', background: '#00D632', color: '#04241b', textDecoration: 'none',
+                  fontWeight: 800, padding: '.95rem 1rem', borderRadius: 9, fontSize: '.95rem',
+                }}
+              >
+                Open Cash App →
+              </a>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: 10, padding: 12, display: 'inline-block' }}>
+                {qr
+                  ? <img src={qr} alt={`Scan to open ${handle} in Cash App`} width={200} height={200} style={{ display: 'block' }} />
+                  : <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '.8rem' }}>Loading…</div>}
+              </div>
+            )}
+
+            {/* Cashtag with its own copy, in case they'd rather search it by hand. */}
+            <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', justifyContent: 'center', marginTop: '1rem' }}>
               <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem', color: 'var(--white,#fff)', background: 'var(--deep,#0b0b12)', padding: '.4rem .6rem', borderRadius: 6 }}>
                 {handle}
               </code>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(handle);
-                  setCopied('handle');
-                  setTimeout(() => setCopied(null), 1800);
-                }}
-                style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.14))', borderRadius: 6, color: copied === 'handle' ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontSize: '.7rem', padding: '.4rem .6rem', cursor: 'pointer', fontFamily: "'Space Mono', monospace" }}
-              >
-                {copied === 'handle' ? '✓' : 'Copy'}
+              <button type="button" aria-label="Copy cashtag" title="Copy cashtag" onClick={() => copy('handle', handle)} style={iconBtn(copied === 'handle')}>
+                <CopyIcon done={copied === 'handle'} />
               </button>
             </div>
           </>
