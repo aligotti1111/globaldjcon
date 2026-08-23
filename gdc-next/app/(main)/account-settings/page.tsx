@@ -112,7 +112,7 @@ export default async function AccountSettingsPage() {
     if (!djProfile) redirect('/login?error=profile_not_found');
     // The Notifications tab reads the same sms_* / email_notify_* columns the
     // standalone /notifications page did — they're already on this row.
-    const notifyInit = buildNotifyInit(djData as Record<string, unknown>);
+    const notifyInit = buildNotifyInit(djProfile as unknown as Record<string, unknown>);
     return (
       <UpdateDjProfileClient
         initialProfile={djProfile as UserProfile & {
