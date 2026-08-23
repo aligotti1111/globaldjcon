@@ -629,7 +629,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       </div>
 
       <div className={styles.header}>
-        <h1>Settings</h1>
+        <h1>Account Settings</h1>
         <p>Manage Your Profile</p>
       </div>
 
