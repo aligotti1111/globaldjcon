@@ -668,34 +668,34 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
         ))}
       </select>
 
-      {/* Per-tab hero banner — same gradient/icon strip Booking Settings uses. */}
-      {(() => {
-        const banners: Record<SecTab, { icon: BannerIcon; title: string; subtitle: string }> = {
-          account: { icon: 'user', title: 'Profile Settings', subtitle: 'Your public profile — name, bio, photos, socials and more.' },
-          eventTypes: initialProfile.dj_type === 'club'
-            ? { icon: 'events', title: 'Music Genres', subtitle: 'The genres you play, shown on your profile.' }
-            : { icon: 'events', title: 'Event Types', subtitle: 'The kinds of events clients can book you for.' },
-          location: { icon: 'location', title: 'Location & Contact', subtitle: 'Where you’re based and how clients reach you.' },
-          notifications: { icon: 'bell', title: 'Notifications', subtitle: 'Choose how you hear about activity on your account.' },
-          team: { icon: 'guests', title: 'Team', subtitle: 'Give staff their own restricted logins.' },
-          blocked: { icon: 'blocked', title: 'Blocked', subtitle: 'People you’ve blocked from booking or messaging you.' },
-          timezone: { icon: 'clock', title: 'Your Timezone', subtitle: 'The clock your booking deadlines are measured in.' },
-        };
-        const b = banners[tab] || banners.account;
-        return (
-          <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1rem' }}>
-            <SectionBanner icon={b.icon} title={b.title} subtitle={b.subtitle} />
-          </div>
-        );
-      })()}
-
       {/* GeneralTab card — holds the Account / Event Types / Location / Blocked
           panes. Stays mounted (so per-section edit + dirty state survive tab
-          switches) but is hidden when a non-GeneralTab tab is active. */}
+          switches) but is hidden when a non-GeneralTab tab is active. The hero
+          banner is the FIRST child inside the box (full-bleed to the card
+          edges) so it reads as the box's header, same as Booking Settings. */}
       <div
         className={styles.card}
-        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' ? 'none' : undefined }}
+        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' ? 'none' : undefined, overflow: 'hidden' }}
       >
+        {(() => {
+          const b = initialProfile.dj_type === 'club'
+            ? { icon: 'events' as BannerIcon, title: 'Music Genres', subtitle: 'The genres you play, shown on your profile.' }
+            : { icon: 'events' as BannerIcon, title: 'Event Types', subtitle: 'The kinds of events clients can book you for.' };
+          const map: Record<string, { icon: BannerIcon; title: string; subtitle: string }> = {
+            account: { icon: 'user', title: 'Profile Settings', subtitle: 'Your public profile — name, bio, photos, socials and more.' },
+            eventTypes: b,
+            location: { icon: 'location', title: 'Location & Contact', subtitle: 'Where you’re based and how clients reach you.' },
+            blocked: { icon: 'blocked', title: 'Blocked', subtitle: 'People you’ve blocked from booking or messaging you.' },
+          };
+          const banner = map[tab] || map.account;
+          // Header block sitting inside the box (rounded so it reads as the
+          // section's header, same gradient/icon strip Booking Settings uses).
+          return (
+            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
+              <SectionBanner icon={banner.icon} title={banner.title} subtitle={banner.subtitle} />
+            </div>
+          );
+        })()}
         {alertMsg && (
           <div className={`${styles.alert} ${
             alertMsg.kind === 'success' ? styles.alertSuccess : styles.alertError
