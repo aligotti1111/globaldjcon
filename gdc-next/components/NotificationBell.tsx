@@ -14,11 +14,11 @@ type Item = { bookingId: string; slot: string; at: string; eventDate: string | n
 // The stage icon that represents each kind of update — same vocabulary as the
 // booking pipeline (contract / deposit / balance / planner-or-rider / guests).
 const EMOJI: Record<string, string> = {
-  contract: '\u{1F4DD}',   // 📝
-  deposit: '\u{1F4B5}',    // 💵
-  invoice: '\u{1F9FE}',    // 🧾
-  song_list: '\u{1F3B5}',  // 🎵
-  guestlist: '\u{1F465}',  // 👥
+  contract: '\u{1F4DD}',  // 📝
+  deposit: '\u{1F4B5}',   // 💵
+  invoice: '\u{1F9FE}',   // 🧾
+  song_list: '\u{1F3B5}', // 🎵
+  guestlist: '\u{1F465}', // 👥
 };
 const WHAT: Record<string, string> = {
   contract: 'Contract signed',
@@ -35,6 +35,27 @@ function fmtDate(d: string | null): string {
   } catch { return ''; }
 }
 
+// "just now" / "25 min ago" / "3 hours ago" / "1 day ago" … from the ISO
+// timestamp of when the host action happened.
+function timeAgo(iso: string): string {
+  const t = Date.parse(iso);
+  if (isNaN(t)) return '';
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 45) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min${m === 1 ? '' : 's'} ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} day${d === 1 ? '' : 's'} ago`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w} week${w === 1 ? '' : 's'} ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo} month${mo === 1 ? '' : 's'} ago`;
+  const y = Math.floor(d / 365);
+  return `${y} year${y === 1 ? '' : 's'} ago`;
+}
+
 const MORE_HREF = '/upcoming-bookings?filter=activity';
 
 export default function NotificationBell() {
@@ -48,6 +69,8 @@ export default function NotificationBell() {
   // The moment the DJ last opened (reviewed) the bell. Persisted, so the badge
   // stays cleared across reloads and only comes back when NEWER activity lands.
   const [lastSeen, setLastSeen] = useState<string | null>(null);
+  // Re-render every minute so the "x min ago" labels stay fresh while open.
+  const [, setTick] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
@@ -85,6 +108,13 @@ export default function NotificationBell() {
     const t = setInterval(load, 60000);
     return () => clearInterval(t);
   }, []);
+
+  // Tick every minute so relative timestamps update live while the panel is open.
+  useEffect(() => {
+    if (!open) return;
+    const t = setInterval(() => setTick((n) => n + 1), 60000);
+    return () => clearInterval(t);
+  }, [open]);
 
   // Close on outside click.
   useEffect(() => {
@@ -160,6 +190,11 @@ export default function NotificationBell() {
                   <span style={{ display: 'block', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
                     {WHAT[it.slot] || 'Update'}
                   </span>
+                  {timeAgo(it.at) && (
+                    <span style={{ display: 'block', color: 'rgba(255,255,255,.45)', fontSize: '.68rem', marginTop: 2 }}>
+                      {timeAgo(it.at)}
+                    </span>
+                  )}
                 </span>
                 <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0, marginLeft: 10 }}>{EMOJI[it.slot] || '\u{1F514}'}</span>
               </button>
