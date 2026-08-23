@@ -288,22 +288,83 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
     [general, savedVersion]
   );
 
-  const isPageDirty = isGeneralDirty;
-  const needsLeaveWarn = isPageDirty;
+  // ── Per-section dirty tracking ──────────────────────────────────
+  // Each section saves itself and syncs the snapshot (initialGeneralRef) on
+  // save, so a section is "unsaved" when its fields differ from that snapshot.
+  // These drive BOTH the amber tab dots and the leave-without-saving list.
+  let accountDirty = false;
+  let locationDirty = false;
+  let eventTypesDirty = false;
+  try {
+    const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
+    locationDirty =
+      base.address !== general.address ||
+      base.city !== general.city ||
+      base.state !== general.state ||
+      base.zip !== general.zip ||
+      base.country !== general.country ||
+      base.phone !== general.phone ||
+      base.travelDistance !== general.travelDistance;
+    // Compare selections as SETS — deselecting then reselecting reorders the
+    // array but doesn't change what's chosen, so it shouldn't read as unsaved.
+    const eqStrSet = (a?: string[], b?: string[]) =>
+      JSON.stringify([...(a || [])].sort()) === JSON.stringify([...(b || [])].sort());
+    const eqObjSet = (a?: unknown[], b?: unknown[]) =>
+      JSON.stringify([...(a || [])].map((x) => JSON.stringify(x)).sort()) ===
+      JSON.stringify([...(b || [])].map((x) => JSON.stringify(x)).sort());
+    eventTypesDirty =
+      !eqStrSet(base.mobileEvents, general.mobileEvents) ||
+      !eqObjSet(base.customEventTypes, general.customEventTypes) ||
+      !eqStrSet(base.specialtyTypes, general.specialtyTypes) ||
+      !eqStrSet(base.clubGenres, general.clubGenres);
+    // Everything else the page owns belongs to the Account pane.
+    const accountFields: (keyof GeneralFormState)[] = [
+      'name', 'slug', 'bio', 'djStartYear', 'profilePrivate', 'avatarUrl',
+      'website', 'soundcloud', 'instagram', 'tiktok', 'facebook', 'twitch',
+      'mixUrl1', 'mixUrl2', 'mixUrl3',
+      'galleryImg1', 'galleryImg2', 'galleryImg3', 'galleryImg4',
+      'videoUrl1', 'videoUrl2', 'videoUrl3',
+    ];
+    accountDirty =
+      accountFields.some((f) => JSON.stringify(base[f]) !== JSON.stringify(general[f])) ||
+      JSON.stringify(base.testimonials) !== JSON.stringify(general.testimonials);
+  } catch {
+    /* snapshot unparseable — treat as clean */
+  }
+
+  const eventTypesLabel = initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types';
+  function tabHasUnsaved(id: SecTab): boolean {
+    if (id === 'location') return locationDirty;
+    if (id === 'eventTypes') return eventTypesDirty;
+    if (id === 'notifications') return notifDirty;
+    return false;
+  }
+
+  // Labels for the leave-without-saving list (each rendered with an amber dot
+  // by UnsavedChangesProvider). Account is included so profile edits still warn.
+  const dirtyLabels: string[] = [];
+  if (accountDirty) dirtyLabels.push('Account');
+  if (eventTypesDirty) dirtyLabels.push(eventTypesLabel);
+  if (locationDirty) dirtyLabels.push('Location & Contact');
+  if (notifDirty) dirtyLabels.push('Notifications');
+  const needsLeaveWarn = dirtyLabels.length > 0;
 
   // Register this page's dirty state with the global UnsavedChangesProvider.
   // The provider handles:
   // - beforeunload (tab close / refresh / external nav)
   // - intercepting in-app <a> clicks (burger menu, header logo, back link)
   // - browser back button via popstate
-  // …and prompts the user via ConfirmModal before letting them leave.
+  // …and prompts the user via ConfirmModal (with the labelled list) before
+  // letting them leave.
   const { setDirty: setGlobalDirty } = useUnsavedChanges();
   const { patchUser } = useAuth();
+  const dirtyKey = dirtyLabels.join('|');
   useEffect(() => {
-    setGlobalDirty(needsLeaveWarn);
+    setGlobalDirty(needsLeaveWarn, needsLeaveWarn ? dirtyLabels : []);
     // Clear on unmount so we don't leave the guard armed after navigation.
     return () => setGlobalDirty(false);
-  }, [needsLeaveWarn, setGlobalDirty]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsLeaveWarn, dirtyKey, setGlobalDirty]);
 
   // ── Generic helpers ─────────────────────────────────────────────
   function updateGeneral<K extends keyof GeneralFormState>(field: K, val: GeneralFormState[K]) {
@@ -547,37 +608,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       }
       setAlertMsg({ kind: 'error', text: msg });
     }
-  }
-
-  // ── Per-tab unsaved dots ────────────────────────────────────────
-  // Each section saves itself and syncs the snapshot (initialGeneralRef) on
-  // save, so a tab is "unsaved" when its fields differ from that snapshot.
-  // Booking Settings shows the same amber dot on tabs with pending edits.
-  let locationDirty = false;
-  let eventTypesDirty = false;
-  try {
-    const base = JSON.parse(initialGeneralRef.current) as GeneralFormState;
-    locationDirty =
-      base.address !== general.address ||
-      base.city !== general.city ||
-      base.state !== general.state ||
-      base.zip !== general.zip ||
-      base.country !== general.country ||
-      base.phone !== general.phone ||
-      base.travelDistance !== general.travelDistance;
-    eventTypesDirty =
-      JSON.stringify(base.mobileEvents) !== JSON.stringify(general.mobileEvents) ||
-      JSON.stringify(base.customEventTypes) !== JSON.stringify(general.customEventTypes) ||
-      JSON.stringify(base.specialtyTypes) !== JSON.stringify(general.specialtyTypes) ||
-      JSON.stringify(base.clubGenres) !== JSON.stringify(general.clubGenres);
-  } catch {
-    /* snapshot unpar...: treat as clean */
-  }
-  function tabHasUnsaved(id: SecTab): boolean {
-    if (id === 'location') return locationDirty;
-    if (id === 'eventTypes') return eventTypesDirty;
-    if (id === 'notifications') return notifDirty;
-    return false;
   }
 
   // ── Site URL for the slug preview ───────────────────────────────
