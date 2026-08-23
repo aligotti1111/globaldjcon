@@ -65,11 +65,10 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
   const muted = 'var(--muted,#8a8aa0)';
 
   return (
-    <div className={styles.card}>
-      {/* Hero header inside the box — same gradient strip Booking Settings uses. */}
-      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
-        <SectionBanner icon="guests" title="Team" subtitle="Give staff their own restricted logins." />
-      </div>
+    <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Hero header — flush to the card edges, same as Booking Settings. */}
+      <SectionBanner icon="guests" title="Team" subtitle="Give staff their own restricted logins." />
+      <div style={{ padding: '1.5rem' }}>
       {seatLimit <= 0 ? (
         <p style={{ color: muted, fontSize: '.85rem', lineHeight: 1.6 }}>
           Team seats let you give staff their own restricted logins.{' '}
@@ -235,6 +234,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
           </div>
         );
       })()}
+      </div>{/* end inner padding wrapper */}
     </div>
   );
 }
