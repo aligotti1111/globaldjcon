@@ -191,7 +191,7 @@ ${body}${showAmount ? amountTag : ''}
     if (isLinkable(m) && link) {
       // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
       // link straight to the rail with amount + note preloaded.
-      const href = m.type === 'venmo' ? (hasId ? `${SITE_URL}/pay/${paymentId}/venmo` : link) : link;
+      const href = (m.type === 'venmo' || m.type === 'cashapp') ? (hasId ? `${SITE_URL}/pay/${paymentId}/${m.type}` : link) : link;
       const body = `<a href="${href}" style="display:block;margin:12px 0 0;background:${tint};border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} &rarr;</a>`;
       return card(m.type, body, false);
     }
