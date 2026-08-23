@@ -136,23 +136,23 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             const saving = savingRole === 'ALL';
             return (
               <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 0 1rem' }}>
-              <button
-                type="button"
-                disabled={!dirty || saving}
-                title={dirty ? undefined : 'No role changes to save'}
-                onClick={async () => {
-                  setSavingRole('ALL');
-                  for (const id of dirtyIds) {
-                    await fetch('/api/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role: pendingRoles[id] }) });
-                  }
-                  setPendingRoles({});
-                  setSavingRole(null);
-                  load();
-                }}
-                style={{ background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.4rem 1.1rem', fontWeight: 700, fontSize: '.8rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
-              >
-                {saving ? 'Saving\u2026' : dirty ? `Save role change${dirtyIds.length > 1 ? 's' : ''}` : 'Save role changes'}
-              </button>
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  title={dirty ? undefined : 'No role changes to save'}
+                  onClick={async () => {
+                    setSavingRole('ALL');
+                    for (const id of dirtyIds) {
+                      await fetch('/api/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role: pendingRoles[id] }) });
+                    }
+                    setPendingRoles({});
+                    setSavingRole(null);
+                    load();
+                  }}
+                  style={{ background: dirty ? 'var(--neon,#00e0a4)' : 'transparent', border: `1px solid ${dirty ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`, borderRadius: 6, color: dirty ? '#06231b' : muted, padding: '.4rem 1.1rem', fontWeight: 700, fontSize: '.8rem', cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.55 }}
+                >
+                  {saving ? 'Saving…' : dirty ? `Save role change${dirtyIds.length > 1 ? 's' : ''}` : 'Save role changes'}
+                </button>
               </div>
             );
           })()}
@@ -167,7 +167,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'assistant' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'assistant' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Assistant</div>
               {roleMatrix(djType).map((cap) => {
                 const cell = (ok: boolean, role: TeamRole) => (
-                  <div style={{ textAlign: 'center', color: ok ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700, borderRadius: 4, background: highlightRole === role ? 'rgba(0,224,164,.10)' : undefined }}>{ok ? '\u2713' : '\u2717'}</div>
+                  <div style={{ textAlign: 'center', color: ok ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700, borderRadius: 4, background: highlightRole === role ? 'rgba(0,224,164,.10)' : undefined }}>{ok ? '✓' : '✗'}</div>
                 );
                 return (
                   <Fragment key={cap.label}>
@@ -191,7 +191,8 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               <select value={role} onChange={(e) => setRole(e.target.value as TeamRole)} style={{ background: 'var(--panel-2,rgba(255,255,255,.04))', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, padding: '.5rem .4rem', fontSize: '.85rem' }}>
                 {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
               </select>
-              <button type="button" onClick={invite} disabled={busy || !email} style={{ background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, color: '#06231b', padding: '.5rem 1rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}>{busy ? 'Sending…' : 'Invite'}</button>
+              {/* Invite sits on the right — pushed to the far edge of the row. */}
+              <button type="button" onClick={invite} disabled={busy || !email} style={{ marginLeft: 'auto', background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, color: '#06231b', padding: '.5rem 1rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}>{busy ? 'Sending…' : 'Invite'}</button>
             </div>
           ) : (
             <p style={{ color: muted, fontSize: '.8rem' }}>All seats used. Remove a member, or upgrade for more.</p>
