@@ -24,6 +24,7 @@ import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
 import TimezoneSection from '../account-settings/TimezoneSection';
 import NotificationsClient from '../notifications/NotificationsClient';
+import SectionBanner, { type BannerIcon } from './SectionBanner';
 // Booking configuration moved to its own page (/booking-settings); the
 // BookingTab / ClubBookingTab components live in this folder still but are
 // mounted there now. Socials/Mixes/Photos/Video/Testimonials are managed
@@ -666,6 +667,27 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
           <option key={t.id} value={t.id}>{t.label}{tabHasUnsaved(t.id) ? ' •' : ''}</option>
         ))}
       </select>
+
+      {/* Per-tab hero banner — same gradient/icon strip Booking Settings uses. */}
+      {(() => {
+        const banners: Record<SecTab, { icon: BannerIcon; title: string; subtitle: string }> = {
+          account: { icon: 'user', title: 'Profile Settings', subtitle: 'Your public profile — name, bio, photos, socials and more.' },
+          eventTypes: initialProfile.dj_type === 'club'
+            ? { icon: 'events', title: 'Music Genres', subtitle: 'The genres you play, shown on your profile.' }
+            : { icon: 'events', title: 'Event Types', subtitle: 'The kinds of events clients can book you for.' },
+          location: { icon: 'location', title: 'Location & Contact', subtitle: 'Where you’re based and how clients reach you.' },
+          notifications: { icon: 'bell', title: 'Notifications', subtitle: 'Choose how you hear about activity on your account.' },
+          team: { icon: 'guests', title: 'Team', subtitle: 'Give staff their own restricted logins.' },
+          blocked: { icon: 'blocked', title: 'Blocked', subtitle: 'People you’ve blocked from booking or messaging you.' },
+          timezone: { icon: 'clock', title: 'Your Timezone', subtitle: 'The clock your booking deadlines are measured in.' },
+        };
+        const b = banners[tab] || banners.account;
+        return (
+          <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1rem' }}>
+            <SectionBanner icon={b.icon} title={b.title} subtitle={b.subtitle} />
+          </div>
+        );
+      })()}
 
       {/* GeneralTab card — holds the Account / Event Types / Location / Blocked
           panes. Stays mounted (so per-section edit + dirty state survive tab
