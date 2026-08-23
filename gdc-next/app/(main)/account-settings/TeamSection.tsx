@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import styles from './accountSettings.module.css';
+import SectionBanner from '../update-dj-profile/SectionBanner';
 import { TEAM_ROLES, roleMatrix, type TeamRole } from '@/lib/team';
 
 interface Member { id: string; invited_email: string; name: string | null; role: string; status: string; member_id: string | null; can_addons: boolean; }
@@ -65,7 +66,10 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
 
   return (
     <div className={styles.card}>
-      {/* Title is provided by the account-settings SectionBanner. */}
+      {/* Hero header inside the box — same gradient strip Booking Settings uses. */}
+      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
+        <SectionBanner icon="guests" title="Team" subtitle="Give staff their own restricted logins." />
+      </div>
       {seatLimit <= 0 ? (
         <p style={{ color: muted, fontSize: '.85rem', lineHeight: 1.6 }}>
           Team seats let you give staff their own restricted logins.{' '}
