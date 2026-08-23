@@ -450,7 +450,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           survive tab switches instead of being discarded on unmount. */}
       <div
         className={styles.card}
-        style={{ display: (secTab !== 'contracts' && secTab !== 'planners') ? undefined : 'none' }}
+        style={{
+          display: (secTab !== 'contracts' && secTab !== 'planners') ? undefined : 'none',
+          // No outer frame — the inner section card (with its banner) is the only
+          // frame, so the tabs sit on top of the real card, not a wrapper.
+          background: 'transparent', border: 'none', borderRadius: 0, padding: 0, boxShadow: 'none',
+        }}
       >
           {djType === 'club' ? (
             <ClubBookingTab
