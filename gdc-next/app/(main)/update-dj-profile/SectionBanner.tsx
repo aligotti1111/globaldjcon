@@ -7,10 +7,10 @@
 // the right (e.g. a "live" badge or a Save button).
 //
 // Usage — drop it in as the first child of a `sectionCard`, replacing the old
-//   <div className={styles.sectionTitle}>Title</div>:
+// <div className={styles.sectionTitle}>Title</div>:
 //
 //   <SectionBanner icon="payments" title="Payment Methods"
-//                  subtitle="How you collect deposits and balances." />
+//     subtitle="How you collect deposits and balances." />
 //
 // Deploy to: gdc-next/app/(main)/update-dj-profile/SectionBanner.tsx
 
@@ -20,7 +20,9 @@ const GRAD = 'linear-gradient(100deg,#22e3ad,#31d0ff)';
 
 export type BannerIcon =
   | 'settings' | 'packages' | 'contracts' | 'payments' | 'planner'
-  | 'discounts' | 'rider' | 'guests' | 'rates';
+  | 'discounts' | 'rider' | 'guests' | 'rates'
+  // Account-settings icons.
+  | 'user' | 'events' | 'location' | 'bell' | 'blocked' | 'clock';
 
 function Icon({ name }: { name: BannerIcon }) {
   const common = {
@@ -44,6 +46,18 @@ function Icon({ name }: { name: BannerIcon }) {
       return (<svg {...common}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>);
     case 'rates':
       return (<svg {...common}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>);
+    case 'user':
+      return (<svg {...common}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>);
+    case 'events':
+      return (<svg {...common}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>);
+    case 'location':
+      return (<svg {...common}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>);
+    case 'bell':
+      return (<svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>);
+    case 'blocked':
+      return (<svg {...common}><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>);
+    case 'clock':
+      return (<svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>);
     case 'discounts':
     default:
       return (<svg {...common}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>);
