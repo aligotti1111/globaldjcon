@@ -26,6 +26,7 @@
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import SectionBanner from '../update-dj-profile/SectionBanner';
 import styles from './notifications.module.css';
 
 type RowKey = 'booking_request' | 'booking_status' | 'inbox_message';
@@ -226,6 +227,10 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
       {/* One card: Text Setup (gate for the Text column) + the notify matrix,
           with a single Save at the bottom. */}
       <div className={styles.card}>
+        {/* Hero header inside the box — same gradient strip Booking Settings uses. */}
+        <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)', marginBottom: '1.25rem' }}>
+          <SectionBanner icon="bell" title="Notifications" subtitle="Choose how you hear about activity on your account." />
+        </div>
         {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
         {!isTeammate && (
           <>
