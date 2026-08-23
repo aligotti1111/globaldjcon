@@ -640,12 +640,12 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
         <p>Manage Your Profile</p>
       </div>
 
-      {/* Section tab bar — keeps the CSS frame line; active tab is a teal→cyan
-          pill resting on it (the approved version). */}
+      {/* Section tab bar — a full-width rounded bar (subtle fill + border) with
+          the tabs inside; the active tab is a teal→cyan pill. */}
       <nav
         className={styles.secTabNav}
         role="tablist"
-        style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}
+        style={{ gap: 4, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1.25rem' }}
       >
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -659,7 +659,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
               title={tabHasUnsaved(t.id) ? 'Unsaved changes — save on this tab' : undefined}
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', marginBottom: -1,
+                padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
                 background: active ? 'linear-gradient(100deg,#22e3ad,#31d0ff)' : 'transparent',
                 color: active ? '#04241b' : 'rgba(255,255,255,.62)',
                 fontWeight: 700, fontSize: '.7rem', letterSpacing: '.04em', textTransform: 'uppercase',
