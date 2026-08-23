@@ -645,10 +645,12 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       {/* Segmented-pill tab bar — the CSS class keeps the desktop/mobile
           show-hide behavior; inline styles turn it into a rounded track with a
           teal→cyan gradient pill on the active tab (matches the header menus). */}
+      {/* Segmented-pill tab bar — rounded track with a teal→cyan gradient pill
+          on the active tab, sitting above the card with a gap. */}
       <nav
         className={styles.secTabNav}
         role="tablist"
-        style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: 0 }}
+        style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1rem' }}
       >
         {tabs.map((t) => {
           const active = tab === t.id;
