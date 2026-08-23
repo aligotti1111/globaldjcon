@@ -648,7 +648,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       <nav
         className={styles.secTabNav}
         role="tablist"
-        style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: '1rem' }}
+        style={{ gap: 4, background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 12, padding: 5, flexWrap: 'wrap', marginBottom: 0 }}
       >
         {tabs.map((t) => {
           const active = tab === t.id;
