@@ -954,7 +954,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
 
             <ul className={styles.bodyHint} style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
               <li>Clients pay by debit or credit card, straight into your own Stripe account.</li>
-              <li>You will be charged 2.9% + 30¢ per transaction.</li>
+              <li>You will be charged 2.9% + 30¢ per transaction. Amount is deducted from payment received.</li>
             </ul>
 
 
