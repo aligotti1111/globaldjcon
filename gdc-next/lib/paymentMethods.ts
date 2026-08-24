@@ -240,7 +240,10 @@ export function buildPayLink(m: PaymentMethod, amount: number, reference: string
       // note= carries the reference so the DJ can match the payment.
       return `https://venmo.com/${encodeURIComponent(h)}?txn=pay&amount=${amt}&note=${encodeURIComponent(reference)}`;
     case 'cashapp':
-      return `https://cash.app/$${encodeURIComponent(h)}/${amt}`;
+      // Cash App deprecated amount-prefill; the /amount segment is ignored and
+      // can stop the link resolving the profile at all. Clean canonical profile
+      // URL (with the $) so the recipient loads.
+      return `https://cash.app/$${h}`;
     case 'paypal': {
       const mm = h.match(/paypal\.me\/([A-Za-z0-9._-]+)/i);
       // An email has no link form — deliberately null.
