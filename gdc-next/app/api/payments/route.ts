@@ -230,10 +230,10 @@ ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your
     // a bare email can't carry an amount, so give step-by-step directions like
     // Cash App instead of a lone address).
     if (m.type === 'paypal') {
-      const steps = `<div style="margin:12px 0 0;padding:12px 14px;background:#ffffff;border:1px solid #C5CFE6;border-radius:8px;"><p style="margin:0 0 6px;color:#111;font-size:12px;font-weight:700;">How to pay with PayPal:</p><ol style="margin:0;padding-left:18px;color:#444;font-size:12px;line-height:1.7;"><li>Open PayPal and tap <strong>Send</strong>.</li><li>Send to <strong>${displayHandle(m)}</strong>.</li><li>Enter <strong>${money(amount, currency)}</strong>.</li><li>Add <strong>${reference}</strong> in the note.</li><li>Send.</li></ol></div>`;
-      const body = `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
-<p style="margin:2px 0 0;font-family:monospace;font-size:15px;color:#111;word-break:break-all;">${displayHandle(m)}</p>${steps}`;
-      return card('paypal', body);
+      const btn = `<a href="https://www.paypal.com/myaccount/transfer/homepage/pay" style="display:block;margin:12px 0 0;background:${tint};border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Open PayPal &rarr;</a>`;
+      const steps = `<div style="margin:12px 0 0;padding:12px 14px;background:#ffffff;border:1px solid #C5CFE6;border-radius:8px;"><p style="margin:0 0 6px;color:#111;font-size:12px;font-weight:700;">How to pay with PayPal:</p><ol style="margin:0;padding-left:18px;color:#444;font-size:12px;line-height:1.7;"><li>Tap <strong>Open PayPal</strong> above.</li><li>Send to <strong>${displayHandle(m)}</strong>.</li><li>Enter <strong>${money(amount, currency)}</strong>.</li><li>Add <strong>${reference}</strong> in the note.</li><li>Send.</li></ol></div>`;
+      const body = `${btn}${steps}`;
+      return card('paypal', body, false);
     }
 
     const body = `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
