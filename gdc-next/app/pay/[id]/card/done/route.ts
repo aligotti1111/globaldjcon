@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { Resend } from 'resend';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,8 +62,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (err) return page('Something went wrong', 'We couldn’t start the checkout. Please reopen the invoice email and try again.');
   if (!sessionId.startsWith('cs_')) return page('Missing details', 'This link is incomplete. Please reopen the invoice email.');
 
-  const admin = createAdminClient();
-  const { data: pData } = await admin
+  // Generated Supabase types omit booking_payments, so use a generically-typed
+  // client — same pattern as the payments route. Service-role; no RLS.
+  const db = createAdminClient() as unknown as SupabaseClient;
+  const { data: pData } = await db
     .from('booking_payments')
     .select('id, booking_id, kind, amount, amount_paid, currency, status, stripe_session_id')
     .eq('id', paymentId)
@@ -73,7 +76,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (p.stripe_session_id === sessionId) return page('Payment received', 'Thanks! Your card payment is confirmed.');
   if (p.stripe_session_id) return page('Already recorded', 'A card payment was already recorded for this request.');
 
-  const { data: bData } = await admin
+  const { data: bData } = await db
     .from('bookings')
     .select('id, dj_id, requester_name, event_date, venue_name')
     .eq('id', p.booking_id)
@@ -81,7 +84,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const b = bData as BookingRow | null;
 
   const { data: djData } = b?.dj_id
-    ? await admin.from('users').select('stripe_connect_id, name').eq('id', b.dj_id).maybeSingle()
+    ? await db.from('users').select('stripe_connect_id, name').eq('id', b.dj_id).maybeSingle()
     : { data: null };
   const dj = djData as unknown as DjRow | null;
   if (!dj?.stripe_connect_id) return page('Payment received', 'Thanks! Your payment is being processed.');
@@ -101,7 +104,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const nextPaid = round2(Number(p.amount_paid || 0) + received);
   const status = nextPaid >= Number(p.amount) ? 'paid' : 'partial';
 
-  const { data: updRows } = await admin
+  const { data: updRows } = await db
     .from('booking_payments')
     .update({
       amount_paid: nextPaid,
@@ -116,9 +119,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     .select('id');
 
   // Tell the DJ (best-effort; a failure here never blocks the confirmation).
-  if ((updRows as unknown[] | null)?.length && b?.dj_id && process.env.RESEND_API_KEY) {
+  const djId = b?.dj_id;
+  if ((updRows as unknown[] | null)?.length && b && djId && process.env.RESEND_API_KEY) {
     try {
-      const djEmail = await resolveUserEmail(b.dj_id);
+      const djEmail = await resolveUserEmail(djId);
       if (djEmail) {
         const cur = p.currency || 'USD';
         const who = b.requester_name || 'Your client';
