@@ -31,8 +31,36 @@ interface BookingRow {
   dj_id: string | null;
   host_email: string | null;
   event_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   venue_name: string | null;
+  venue_address: string | null;
+  event_type: string | null;
+  venue_type: string | null;
+  venue_type_desc: string | null;
+  booking_type: string | null;
   currency: string | null;
+}
+
+// Turn a stored code ("weddings", "corporate_event") into a readable label.
+function prettyType(s: string | null): string {
+  if (!s) return '';
+  return s
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+// "18:00" / "18:00:00" → "6:00 PM". Passes through anything already formatted.
+function fmtTime(t: string | null): string {
+  if (!t) return '';
+  if (/[ap]m/i.test(t)) return t.trim();
+  const m = t.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return t;
+  let hr = parseInt(m[1], 10);
+  const ap = hr >= 12 ? 'PM' : 'AM';
+  hr = hr % 12 || 12;
+  return `${hr}:${m[2]} ${ap}`;
 }
 interface DjRow {
   stripe_connect_id: string | null;
@@ -62,7 +90,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { data: bData } = await db
     .from('bookings')
-    .select('id, dj_id, host_email, event_date, venue_name, currency')
+    .select('id, dj_id, host_email, event_date, start_time, end_time, venue_name, venue_address, event_type, venue_type, venue_type_desc, booking_type, currency')
     .eq('id', p.booking_id)
     .maybeSingle();
   const b = bData as BookingRow | null;
@@ -82,6 +110,22 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const djName = dj.name || 'the DJ';
   const cur = (p.currency || 'USD').toLowerCase();
 
+  // Line-item detail shown on the Stripe checkout page. Name = what's owed +
+  // the DJ; description packs the event facts (type · date · time · venue ·
+  // address) plus the reference. Stripe wraps the description over a few lines.
+  const eventTypeLabel = prettyType(b.event_type || b.venue_type_desc || b.venue_type);
+  const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
+  const productName = `${noun} — ${djName}`;
+  const detailBits = [
+    eventTypeLabel,
+    b.event_date,
+    timeRange,
+    b.venue_name,
+    b.venue_address,
+    `Ref ${reference}`,
+  ].filter(Boolean);
+  const productDesc = detailBits.join(' · ');
+
   try {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create(
@@ -94,8 +138,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
               currency: cur,
               unit_amount: Math.round(outstanding * 100),
               product_data: {
-                name: `${noun} — ${djName}${b.event_date ? ` · ${b.event_date}` : ''}`,
-                description: `Ref ${reference}${b.venue_name ? ` · ${b.venue_name}` : ''}`,
+                name: productName,
+                description: productDesc,
               },
             },
           },
