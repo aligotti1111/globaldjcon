@@ -97,6 +97,8 @@ export default function PipelineStrip({
               : '#c08a3e';
         // INVARIANT: a done step can never say it's waiting.
         const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
+        // "Not sent" reads red so it stands apart from an amber "Pending".
+        const capColorFinal = /^not sent$/i.test(cap || '') ? '#ff6b6b' : capColor;
         // Circular-node ring, per state. Purely visual. DONE is the only state
         // the ring itself colours — teal + a check. Everything still to do reads
         // as a calm neutral-grey ring; which one is "your move" is carried by the
@@ -161,12 +163,12 @@ export default function PipelineStrip({
                   }}
                 >
                   <span className={styles.stTop}>{inner}</span>
-                  <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
+                  <span className={styles.stCap} style={{ color: capColorFinal }}>{cap || ''}</span>
                 </button>
               ) : (
                 <div className={styles.stBtn} style={{ cursor: 'default' }} title={stageLabel(st.key, djType)}>
                   <span className={styles.stTop}>{inner}</span>
-                  <span className={styles.stCap} style={{ color: capColor }}>{cap || ''}</span>
+                  <span className={styles.stCap} style={{ color: capColorFinal }}>{cap || ''}</span>
                 </div>
               )}
               {open && hasMenu && menuPos && (
