@@ -191,8 +191,10 @@ ${body}${showAmount ? amountTag : ''}
     if (isLinkable(m) && link) {
       // Venmo goes through our /pay page (phone → app, laptop → QR); the rest
       // link straight to the rail with amount + note preloaded.
-      const href = (m.type === 'venmo' || m.type === 'cashapp') ? (hasId ? `${SITE_URL}/pay/${paymentId}/${m.type}` : link) : link;
-      const body = `<a href="${href}" style="display:block;margin:12px 0 0;background:${tint};border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} &rarr;</a>`;
+      const href = m.type === 'venmo' ? (hasId ? `${SITE_URL}/pay/${paymentId}/venmo` : link) : link;
+      const btn = `<a href="${href}" style="display:block;margin:12px 0 0;background:${tint};border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">${m.type === 'cashapp' ? 'Open Cash App' : `Pay ${money(amount, currency)}`} &rarr;</a>`;
+      const steps = m.type === 'cashapp' ? `<div style="margin:12px 0 0;padding:12px 14px;background:#ffffff;border:1px solid #BDEFCC;border-radius:8px;"><p style="margin:0 0 6px;color:#111;font-size:12px;font-weight:700;">Cash App won't fill in the amount — enter it yourself:</p><ol style="margin:0;padding-left:18px;color:#444;font-size:12px;line-height:1.7;"><li>Tap <strong>Open Cash App</strong> above (opens ${displayHandle(m)}).</li><li>Enter <strong>${money(amount, currency)}</strong>.</li><li>Put <strong>${reference}</strong> in the note.</li><li>Send.</li></ol></div>` : '';
+      const body = `${btn}${steps}`;
       return card(m.type, body, false);
     }
 
