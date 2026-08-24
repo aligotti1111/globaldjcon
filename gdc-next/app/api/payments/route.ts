@@ -43,7 +43,6 @@ import {
 // or a flaky fetch returns null, so the email that carries the live pay buttons
 // always goes out regardless.
 import { buildBookingDocAttachment } from '@/lib/receiptDocs';
-import { CARD_LOGOS } from '@/lib/cardLogos';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -448,7 +447,7 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 <td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#635BFF;font-size:15px;">Card</td>
 </tr></table>
 <div style="margin:10px 0 0;text-align:center;font-size:0;line-height:0;">
-<img src="cid:card-visa" width="40" height="25" alt="Visa" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="cid:card-mastercard" width="40" height="25" alt="Mastercard" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="cid:card-amex" width="40" height="25" alt="Amex" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="cid:card-discover" width="40" height="25" alt="Discover" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;">
+<img src="${SITE_URL}/card-logos/visa.png" width="40" height="25" alt="Visa" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="${SITE_URL}/card-logos/mastercard.png" width="40" height="25" alt="Mastercard" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="${SITE_URL}/card-logos/amex.png" width="40" height="25" alt="Amex" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="${SITE_URL}/card-logos/discover.png" width="40" height="25" alt="Discover" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;">
 <a href="${SITE_URL}/booking-requests?open=${bookingId}" style="display:block;margin:11px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
 <p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens your booking — sign in to pay securely by debit or credit card.</p>
 </td></tr></table>`
@@ -488,18 +487,10 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
         clientEmail: to,
       });
 
-      // Inline card-brand logos (CID) — only when the card block is shown, so
-      // we don't bloat emails that don't offer card. Referenced as cid:card-*
-      // in cardBlock above.
-      const logoAtts = dj.stripe_connect_ready
-        ? [
-            { content: CARD_LOGOS.visa, filename: 'card-visa.png', contentId: 'card-visa' },
-            { content: CARD_LOGOS.mastercard, filename: 'card-mastercard.png', contentId: 'card-mastercard' },
-            { content: CARD_LOGOS.amex, filename: 'card-amex.png', contentId: 'card-amex' },
-            { content: CARD_LOGOS.discover, filename: 'card-discover.png', contentId: 'card-discover' },
-          ]
-        : [];
-      const allAtts = [...(invoiceAtt ? [invoiceAtt] : []), ...logoAtts];
+      // Card-brand logos ride as remote images (served by /card-logos/[brand],
+      // which streams them from lib/cardLogos). Gmail and other webmail render
+      // remote images by default; inline CID attachments do not render reliably
+      // there (they land as file attachments), so we link them instead.
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
@@ -507,7 +498,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
           to,
           subject: subjectLine,
           html: shell(content),
-          attachments: allAtts.length ? allAtts : undefined,
+          attachments: invoiceAtt ? [invoiceAtt] : undefined,
         });
       } catch {
         // The row exists and the card shows the options — an email failure
