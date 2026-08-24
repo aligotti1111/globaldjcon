@@ -115,7 +115,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Venmo',
     handleLabel: 'Username',
     placeholder: 'djnova',
-    hint: 'One tap on a phone with the Venmo app — amount filled in for them. Venmo blocks payments from their website, so on a laptop the client copies your handle instead. Unverified accounts also cap around $300/week received.',
+    hint: 'One tap on a phone with the Venmo app — amount filled in for them.',
     validate: (v) => {
       const t = v.trim().replace(/^@/, '');
       if (!t) return 'Enter your Venmo username.';
@@ -127,7 +127,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Cash App',
     handleLabel: 'Cashtag',
     placeholder: 'djnova',
-    hint: 'One tap, amount filled in for them. Works best on a phone with the Cash App installed.',
+    hint: '',
     validate: (v) => {
       const t = v.trim().replace(/^\$/, '');
       if (!t) return 'Enter your $cashtag.';
