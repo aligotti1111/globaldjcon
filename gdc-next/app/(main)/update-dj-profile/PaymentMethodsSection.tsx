@@ -961,7 +961,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
             {card !== null && !card.connected && (
               <>
                 <p className={styles.bodyHint} style={{ margin: '0 0 .5rem' }}>
-                  <strong style={{ color: 'var(--white)', fontWeight: 600 }}>No Stripe account?</strong> You&apos;ll create one during setup — the button below works whether you already have Stripe or not.
+                  <strong style={{ color: 'var(--white)', fontWeight: 600 }}>No Stripe account?</strong> You&apos;ll create one during setup.
                 </p>
                 <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
