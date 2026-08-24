@@ -461,7 +461,7 @@ ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
 Please choose a payment option below to complete the ${noun} required to reserve your date.
 </p>
-${optionsHtml(methods, amount, cur, reference, djName, payment.id, b.event_date, b.venue_name, noun === 'balance')}
+${cardBlock}${optionsHtml(methods, amount, cur, reference, djName, payment.id, b.event_date, b.venue_name, noun === 'balance')}
 <div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
 <p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p>
 <p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
