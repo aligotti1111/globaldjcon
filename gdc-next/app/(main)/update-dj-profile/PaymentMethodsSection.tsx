@@ -978,17 +978,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                 {showHelp && (
                   <div style={{ marginTop: '.6rem', padding: '.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)' }}>
                     <div style={{ ...label, marginBottom: '.4rem' }}>Stripe details</div>
+                    <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>Stripe is the card processor that handles the charge and pays out to your bank.</p>
                     <ul style={{ margin: '0 0 .7rem', paddingLeft: '1.1rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
                       <li>Stripe verifies you — SSN and bank details — during setup (the law requires it for card payments). It goes to Stripe, not us.</li>
                       <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong>, then about 2 days after that.</li>
-                      <li>Works the same on desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.</li>
                     </ul>
                     <div style={{ height: 1, background: 'var(--border)', margin: '0 0 .7rem' }} />
                     <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                      Stripe asks for your SSN and bank details because anyone taking
-                      card payments has to be identity-checked by law — PayPal and
-                      Venmo do the same. It goes to Stripe, not to us. The questions
-                      that catch people out:
+                      The questions that catch people out:
                     </p>
                     <div style={{ marginBottom: '.6rem' }}>
                       <div style={{ ...label, marginBottom: '.25rem' }}>Business website</div>
