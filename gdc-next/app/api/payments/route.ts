@@ -226,6 +226,16 @@ ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your
       return card('check', body);
     }
 
+    // PayPal via EMAIL (a PayPal.me link is linkable above and renders a button;
+    // a bare email can't carry an amount, so give step-by-step directions like
+    // Cash App instead of a lone address).
+    if (m.type === 'paypal') {
+      const steps = `<div style="margin:12px 0 0;padding:12px 14px;background:#ffffff;border:1px solid #C5CFE6;border-radius:8px;"><p style="margin:0 0 6px;color:#111;font-size:12px;font-weight:700;">How to pay with PayPal:</p><ol style="margin:0;padding-left:18px;color:#444;font-size:12px;line-height:1.7;"><li>Open PayPal and tap <strong>Send</strong>.</li><li>Send to <strong>${displayHandle(m)}</strong>.</li><li>Enter <strong>${money(amount, currency)}</strong>.</li><li>Add <strong>${reference}</strong> in the note.</li><li>Send.</li></ol></div>`;
+      const body = `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
+<p style="margin:2px 0 0;font-family:monospace;font-size:15px;color:#111;word-break:break-all;">${displayHandle(m)}</p>${steps}`;
+      return card('paypal', body);
+    }
+
     const body = `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">${copyInstruction(m)}</p>
 <p style="margin:2px 0 0;font-family:monospace;font-size:15px;color:#111;word-break:break-all;">${displayHandle(m)}</p>
 ${m.type === 'zelle' ? `<p style="margin:7px 0 0;color:#9a9a9a;font-size:11px;">Double-check before sending — Zelle payments can't be reversed.</p>` : ''}`;
