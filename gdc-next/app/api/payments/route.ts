@@ -297,16 +297,21 @@ export async function POST(req: Request) {
     // Current standing is the only honest signal available today.
     const { data: djData } = await admin
       .from('users')
-      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_methods')
+      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_methods, stripe_connect_ready')
       .eq('id', acting.djId)
       .maybeSingle();
-    const dj = djData as (AccessFields & { name?: string | null; payment_methods?: unknown }) | null;
+    const dj = djData as (AccessFields & { name?: string | null; payment_methods?: unknown; stripe_connect_ready?: boolean | null }) | null;
     if (!dj || !canUsePro(dj)) {
       return NextResponse.json({ error: 'Payments are a Pro feature.' }, { status: 403 });
     }
 
+    // A DJ is "set up to get paid" if they have any usable manual rail OR a
+    // ready Stripe card connection. Card is never a manual row (it's filtered
+    // out of usableMethods), so it must be checked separately or a card-only
+    // DJ is wrongly told to add a payment method.
     const methods = usableMethods((Array.isArray(dj.payment_methods) ? dj.payment_methods : []) as PaymentMethod[]);
-    if (methods.length === 0) {
+    const cardReady = !!dj.stripe_connect_ready;
+    if (methods.length === 0 && !cardReady) {
       return NextResponse.json({ error: 'Add a payment method in Booking Settings first.' }, { status: 400 });
     }
 
