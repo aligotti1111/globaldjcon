@@ -935,7 +935,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
         {openTile === 'card' && (
           <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
-              <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments</span>
+              <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments via Stripe</span>
               {(() => {
                 const st = card === null
                   ? { text: 'Checking…', c: 'var(--muted)', bg: 'rgba(255,255,255,.05)', b: 'var(--border)' }
