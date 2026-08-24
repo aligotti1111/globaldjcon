@@ -976,71 +976,63 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   </button>
                 </div>
                 {showHelp && (
-                  <div style={{ marginTop: '.6rem', padding: '.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)' }}>
-                    <div style={{ ...label, marginBottom: '.4rem' }}>Stripe details</div>
-                    <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>Stripe is the card processor that handles the charge and pays out to your bank.</p>
-                    <ul style={{ margin: '0 0 .7rem', paddingLeft: '1.1rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
+                  <div style={{ marginTop: '.7rem', padding: '.9rem', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)' }}>
+                    <div style={{ ...label, color: 'var(--neon)', marginBottom: '.4rem' }}>Stripe details</div>
+                    <p style={{ margin: '0 0 .55rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.55 }}>Stripe is the card processor that handles the charge and pays out to your bank.</p>
+                    <ul style={{ margin: '0 0 .9rem', paddingLeft: '1.1rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
                       <li>Stripe verifies you — SSN and bank details — during setup (the law requires it for card payments). It goes to Stripe, not us.</li>
                       <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong> (a one-time hold). After that, each payment reaches your bank in about 2 business days.</li>
                     </ul>
-                    <div style={{ height: 1, background: 'var(--border)', margin: '0 0 .7rem' }} />
-                    <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                      The questions that catch people out:
-                    </p>
-                    <div style={{ marginBottom: '.6rem' }}>
-                      <div style={{ ...label, marginBottom: '.25rem' }}>Business website</div>
-                      {slug ? (
-                        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', color: 'var(--white)', background: 'var(--deep)', padding: '.3rem .5rem', borderRadius: 4, wordBreak: 'break-all' }}>
-                            {`https://globaldjconnect.com/${slug}`}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void navigator.clipboard.writeText(`https://globaldjconnect.com/${slug}`);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 1800);
-                            }}
-                            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, color: copied ? 'var(--success)' : 'var(--muted)', fontSize: '.65rem', padding: '.3rem .55rem', cursor: 'pointer', fontFamily: "'Space Mono', monospace" }}
-                          >
-                            {copied ? '✓ Copied' : 'Copy'}
-                          </button>
-                        </div>
-                      ) : (
-                        <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)' }}>Your Global DJ Connect profile URL.</p>
-                      )}
-                      <p style={{ margin: '.25rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                        No website? Use this. It&apos;s a real public page showing your
-                        services and prices — exactly what Stripe wants to see.
-                      </p>
-                    </div>
-                    <div style={{ marginBottom: '.6rem' }}>
-                      <div style={{ ...label, marginBottom: '.25rem' }}>Type of business</div>
-                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                        Individual — unless you actually have an LLC, in which case use
-                        it and have the EIN handy.
-                      </p>
-                    </div>
-                    <div style={{ marginBottom: '.6rem' }}>
-                      <div style={{ ...label, marginBottom: '.25rem' }}>Industry</div>
-                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                        Search &quot;DJ&quot; or &quot;band&quot; — the entertainment category for
-                        musicians and entertainers is the one you want.
-                      </p>
-                    </div>
-                    <div style={{ marginBottom: '.6rem' }}>
-                      <div style={{ ...label, marginBottom: '.25rem' }}>What you sell</div>
-                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                        &quot;DJ services for weddings, parties and private events.&quot;
-                      </p>
-                    </div>
-                    <div>
-                      <div style={{ ...label, marginBottom: '.25rem' }}>Statement descriptor</div>
-                      <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>
-                        Your DJ name. This is what shows on your client&apos;s card statement
-                        — make it something they&apos;ll recognise, or you&apos;ll get
-                        &quot;what&apos;s this charge?&quot; calls and chargebacks.
-                      </p>
+
+                    <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .5rem' }}>The questions that catch people out</div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                      <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
+                        <div style={{ ...label, marginBottom: '.35rem' }}>Business website</div>
+                        {slug ? (
+                          <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', color: 'var(--white)', background: 'var(--deep)', padding: '.3rem .5rem', borderRadius: 4, wordBreak: 'break-all' }}>
+                              {`https://globaldjconnect.com/${slug}`}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(`https://globaldjconnect.com/${slug}`);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1800);
+                              }}
+                              style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, color: copied ? 'var(--success)' : 'var(--muted)', fontSize: '.65rem', padding: '.3rem .55rem', cursor: 'pointer', fontFamily: "'Space Mono', monospace" }}
+                            >
+                              {copied ? '✓ Copied' : 'Copy'}
+                            </button>
+                          </div>
+                        ) : (
+                          <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)' }}>Your Global DJ Connect profile URL.</p>
+                        )}
+                        <p style={{ margin: '.4rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                          No website? Use this — it&apos;s a real public page showing your services and prices, exactly what Stripe wants to see.
+                        </p>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
+                        <div style={{ ...label, marginBottom: '.35rem' }}>Type of business</div>
+                        <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>Individual — unless you actually have an LLC, in which case use it and have the EIN handy.</p>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
+                        <div style={{ ...label, marginBottom: '.35rem' }}>Industry</div>
+                        <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>Search &quot;DJ&quot; or &quot;band&quot; — the entertainment category for musicians and entertainers is the one you want.</p>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
+                        <div style={{ ...label, marginBottom: '.35rem' }}>What you sell</div>
+                        <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>&quot;DJ services for weddings, parties and private events.&quot;</p>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
+                        <div style={{ ...label, marginBottom: '.35rem' }}>Statement descriptor</div>
+                        <p style={{ margin: 0, fontSize: '.72rem', color: 'var(--white)', lineHeight: 1.5 }}>Your DJ name — this is what shows on your client&apos;s card statement. Make it something they&apos;ll recognise, or you&apos;ll get &quot;what&apos;s this charge?&quot; calls and chargebacks.</p>
+                      </div>
                     </div>
                   </div>
                 )}
