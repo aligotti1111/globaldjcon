@@ -446,7 +446,10 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 <td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:#635BFF;border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">&#128179;</td></tr></table></td>
 <td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#635BFF;font-size:15px;">Card</td>
 </tr></table>
-<a href="${SITE_URL}/booking-requests?open=${bookingId}" style="display:block;margin:12px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
+<div style="margin:12px 0 0;text-align:center;font-size:0;line-height:0;">
+<span style="display:inline-block;background:#1434CB;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.6px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">VISA</span><span style="display:inline-block;background:#EB001B;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.4px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">MC</span><span style="display:inline-block;background:#1F72CD;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.4px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">AMEX</span><span style="display:inline-block;background:#F26E21;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.4px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">DISCOVER</span>
+</div>
+<a href="${SITE_URL}/booking-requests?open=${bookingId}" style="display:block;margin:11px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
 <p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens your booking — sign in to pay securely by debit or credit card.</p>
 </td></tr></table>`
         : '';
