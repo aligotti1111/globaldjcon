@@ -957,20 +957,24 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
               <li>The fee is yours: 2.9% + 30¢ per charge.</li>
             </ul>
 
-            {card !== null && !card.ready && (
-              <div style={{ marginBottom: '.7rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowHelp((v) => !v)}
-                  style={{
-                    background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
-                    color: 'var(--neon)', fontSize: '.72rem', fontFamily: "'Space Mono', monospace",
-                    letterSpacing: '.04em', textDecoration: 'underline',
-                  }}
-                >
-                  {showHelp ? 'Hide the answers' : 'What will Stripe ask me?'}
-                </button>
 
+            {card !== null && !card.connected && (
+              <>
+                <p className={styles.bodyHint} style={{ margin: '0 0 .5rem' }}>
+                  <strong style={{ color: 'var(--white)', fontWeight: 600 }}>No Stripe account?</strong> You&apos;ll create one during setup — the button below works whether you already have Stripe or not.
+                </p>
+                <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                    {cardBusy ? 'Opening Stripe…' : 'Connect or sign up for Stripe'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowHelp((v) => !v)}
+                    style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon)', fontSize: '.72rem', fontFamily: "'Space Mono', monospace", letterSpacing: '.04em', textDecoration: 'underline' }}
+                  >
+                    {showHelp ? 'Hide the answers' : 'What will Stripe ask me when signing up?'}
+                  </button>
+                </div>
                 {showHelp && (
                   <div style={{ marginTop: '.6rem', padding: '.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)' }}>
                     <div style={{ ...label, marginBottom: '.4rem' }}>Stripe details</div>
@@ -1043,17 +1047,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {card !== null && !card.connected && (
-              <>
-                <p className={styles.bodyHint} style={{ margin: '0 0 .5rem' }}>
-                  <strong style={{ color: 'var(--white)', fontWeight: 600 }}>No Stripe account?</strong> You&apos;ll create one during setup — the button below works whether you already have Stripe or not.
-                </p>
-                <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
-                  {cardBusy ? 'Opening Stripe…' : 'Connect or sign up for Stripe'}
-                </button>
               </>
             )}
 
