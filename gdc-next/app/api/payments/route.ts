@@ -448,8 +448,8 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 </tr></table>
 <div style="margin:10px 0 0;text-align:center;font-size:0;line-height:0;">
 <img src="${SITE_URL}/card-logos/visa.png" width="40" height="25" alt="Visa" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="${SITE_URL}/card-logos/mastercard.png" width="40" height="25" alt="Mastercard" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="${SITE_URL}/card-logos/amex.png" width="40" height="25" alt="Amex" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="${SITE_URL}/card-logos/discover.png" width="40" height="25" alt="Discover" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;">
-<a href="${SITE_URL}/booking-requests?open=${bookingId}" style="display:block;margin:11px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
-<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens your booking — sign in to pay securely by debit or credit card.</p>
+<a href="${SITE_URL}/pay/${payment.id}/card" style="display:block;margin:11px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
+<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Secure checkout by Stripe — no account or sign-in needed.</p>
 </td></tr></table>`
         : '';
       const content = `
