@@ -955,10 +955,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
             <ul className={styles.bodyHint} style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
               <li>Clients pay by debit or credit card, straight into your own Stripe account.</li>
               <li>The fee is yours: 2.9% + 30¢ per charge.</li>
-              <li>Stripe verifies you — SSN and bank details — during setup (the law requires it for card payments). It goes to Stripe, not us.</li>
-              <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong>, then about 2 days after that.</li>
-              <li>Works the same on desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.</li>
-              <li><strong style={{ color: 'var(--white)', fontWeight: 600 }}>No Stripe account?</strong> You&apos;ll create one during setup — the button below works whether you already have Stripe or not.</li>
             </ul>
 
             {card !== null && !card.ready && (
@@ -977,6 +973,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
 
                 {showHelp && (
                   <div style={{ marginTop: '.6rem', padding: '.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'rgba(0,0,0,.25)' }}>
+                    <div style={{ ...label, marginBottom: '.4rem' }}>Stripe details</div>
+                    <ul style={{ margin: '0 0 .7rem', paddingLeft: '1.1rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
+                      <li>Stripe verifies you — SSN and bank details — during setup (the law requires it for card payments). It goes to Stripe, not us.</li>
+                      <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong>, then about 2 days after that.</li>
+                      <li>Works the same on desktop and mobile, and it confirms itself — no &quot;did it land?&quot; step.</li>
+                    </ul>
+                    <div style={{ height: 1, background: 'var(--border)', margin: '0 0 .7rem' }} />
                     <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
                       Stripe asks for your SSN and bank details because anyone taking
                       card payments has to be identity-checked by law — PayPal and
@@ -1044,9 +1047,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
             )}
 
             {card !== null && !card.connected && (
-              <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
-                {cardBusy ? 'Opening Stripe…' : 'Connect or sign up for Stripe'}
-              </button>
+              <>
+                <p className={styles.bodyHint} style={{ margin: '0 0 .5rem' }}>
+                  <strong style={{ color: 'var(--white)', fontWeight: 600 }}>No Stripe account?</strong> You&apos;ll create one during setup — the button below works whether you already have Stripe or not.
+                </p>
+                <button type="button" onClick={() => void connectStripe()} disabled={cardBusy} style={btn(true, !cardBusy)}>
+                  {cardBusy ? 'Opening Stripe…' : 'Connect or sign up for Stripe'}
+                </button>
+              </>
             )}
 
             {card !== null && card.connected && !card.ready && (
