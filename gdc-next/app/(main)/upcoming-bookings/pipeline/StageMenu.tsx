@@ -53,6 +53,10 @@ export default function StageMenu({
   st, pos, djType, openedLabelText, actionLocked, overrideLocked,
   onClose, onRunAction, onToggleOverride,
 }: Props) {
+  // Deposit/balance are confirmed by hand for every rail except card (Stripe
+  // self-confirms), so "handled outside the app" reads wrong there — it's the
+  // normal way you mark a Venmo/Cash App/Zelle/cash payment received.
+  const payStage = st.key === 'deposit' || st.key === 'balance';
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); onClose(); }} />
@@ -113,7 +117,7 @@ export default function StageMenu({
             >
               {st.done ? '✕ Mark Not Complete' : '✓ Mark Complete'}{overrideLocked ? '  \u{1F512}' : ''}
             </button>
-            <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px' }}>For steps handled outside the app.</div>
+            <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>{payStage ? 'Marks it paid — use once you’ve been paid by Venmo, Cash App, Zelle, cash or check. (Card confirms itself.)' : 'For steps handled outside the app.'}</div>
           </>
         )}
       </div>
