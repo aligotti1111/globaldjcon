@@ -43,6 +43,7 @@ import {
 // or a flaky fetch returns null, so the email that carries the live pay buttons
 // always goes out regardless.
 import { buildBookingDocAttachment } from '@/lib/receiptDocs';
+import { CARD_LOGOS } from '@/lib/cardLogos';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -446,9 +447,8 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 <td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:#635BFF;border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">&#128179;</td></tr></table></td>
 <td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#635BFF;font-size:15px;">Card</td>
 </tr></table>
-<div style="margin:12px 0 0;text-align:center;font-size:0;line-height:0;">
-<span style="display:inline-block;background:#1434CB;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.6px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">VISA</span><span style="display:inline-block;background:#EB001B;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.4px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">MC</span><span style="display:inline-block;background:#1F72CD;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.4px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">AMEX</span><span style="display:inline-block;background:#F26E21;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.4px;padding:4px 6px;border-radius:3px;margin:0 3px;font-family:Arial,Helvetica,sans-serif;">DISCOVER</span>
-</div>
+<div style="margin:10px 0 0;text-align:center;font-size:0;line-height:0;">
+<img src="cid:card-visa" width="40" height="25" alt="Visa" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="cid:card-mastercard" width="40" height="25" alt="Mastercard" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="cid:card-amex" width="40" height="25" alt="Amex" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;"><img src="cid:card-discover" width="40" height="25" alt="Discover" style="display:inline-block;margin:0 4px;vertical-align:middle;border:0;outline:none;text-decoration:none;">
 <a href="${SITE_URL}/booking-requests?open=${bookingId}" style="display:block;margin:11px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
 <p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens your booking — sign in to pay securely by debit or credit card.</p>
 </td></tr></table>`
@@ -488,6 +488,18 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
         clientEmail: to,
       });
 
+      // Inline card-brand logos (CID) — only when the card block is shown, so
+      // we don't bloat emails that don't offer card. Referenced as cid:card-*
+      // in cardBlock above.
+      const logoAtts = dj.stripe_connect_ready
+        ? [
+            { content: CARD_LOGOS.visa, filename: 'card-visa.png', contentId: 'card-visa' },
+            { content: CARD_LOGOS.mastercard, filename: 'card-mastercard.png', contentId: 'card-mastercard' },
+            { content: CARD_LOGOS.amex, filename: 'card-amex.png', contentId: 'card-amex' },
+            { content: CARD_LOGOS.discover, filename: 'card-discover.png', contentId: 'card-discover' },
+          ]
+        : [];
+      const allAtts = [...(invoiceAtt ? [invoiceAtt] : []), ...logoAtts];
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
@@ -495,7 +507,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
           to,
           subject: subjectLine,
           html: shell(content),
-          attachments: invoiceAtt ? [invoiceAtt] : undefined,
+          attachments: allAtts.length ? allAtts : undefined,
         });
       } catch {
         // The row exists and the card shows the options — an email failure
