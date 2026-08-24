@@ -432,6 +432,24 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 </table>
 </td></tr></table>`;
 
+      // "Pay with Card" — first option when the DJ's Stripe is connected. Unlike
+      // the manual rails (static links), a card charge needs a live Stripe
+      // Checkout session created server-side, and that endpoint is host-auth
+      // only. So the button lands the host on their booking page, where the
+      // authenticated in-app card flow runs — it can't start checkout from a
+      // cold email link.
+      const cardBlock = dj.stripe_connect_ready
+        ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;min-width:100%;border:1px solid #D3CFFF;border-radius:12px;margin:0 0 12px;background:#F2F1FF;overflow:hidden;">
+<tr><td style="height:4px;background:#635BFF;font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td style="padding:14px 16px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr>
+<td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:#635BFF;border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">&#128179;</td></tr></table></td>
+<td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#635BFF;font-size:15px;">Card</td>
+</tr></table>
+<a href="${SITE_URL}/booking-requests?open=${bookingId}" style="display:block;margin:12px 0 0;background:#635BFF;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with card &rarr;</a>
+<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens your booking — sign in to pay securely by debit or credit card.</p>
+</td></tr></table>`
+        : '';
       const content = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="min-width:100%;margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
 <tr><td style="padding:22px 24px;" align="center">
