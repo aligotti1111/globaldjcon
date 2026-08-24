@@ -984,7 +984,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                       <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong> (a one-time hold). After that, each payment reaches your bank in about 2 business days.</li>
                     </ul>
 
-                    <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .5rem' }}>The questions that catch people out</div>
+                    <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .5rem' }}>The questions that trip people up</div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                       <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
