@@ -936,20 +936,23 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
           <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
               <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments</span>
-              <span
-                style={{
-                  ...label, marginBottom: 0,
-                  color: card === null ? 'var(--muted)' : card.ready ? 'var(--success)' : card.connected ? '#f5a623' : 'var(--muted)',
-                }}
-              >
-                {card === null
-                  ? 'Checking…'
+              {(() => {
+                const st = card === null
+                  ? { text: 'Checking…', c: 'var(--muted)', bg: 'rgba(255,255,255,.05)', b: 'var(--border)' }
                   : card.ready
-                    ? '● Accepting cards'
+                    ? { text: 'Accepting cards', c: 'var(--success)', bg: 'rgba(34,227,173,.12)', b: 'rgba(34,227,173,.35)' }
                     : card.connected
-                      ? (card.actionNeeded ? '● Setup incomplete' : '● Verifying')
-                      : '○ Not connected'}
-              </span>
+                      ? (card.actionNeeded
+                          ? { text: 'Setup incomplete', c: '#f5a623', bg: 'rgba(245,166,35,.12)', b: 'rgba(245,166,35,.35)' }
+                          : { text: 'Verifying', c: '#f5a623', bg: 'rgba(245,166,35,.12)', b: 'rgba(245,166,35,.35)' })
+                      : { text: 'Not connected', c: 'var(--muted)', bg: 'rgba(255,255,255,.05)', b: 'var(--border)' };
+                return (
+                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '.22rem .55rem', borderRadius: 999, fontSize: '.6rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace", color: st.c, background: st.bg, border: `1px solid ${st.b}` }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: st.c, display: 'inline-block', flexShrink: 0 }} />
+                    {st.text}
+                  </span>
+                );
+              })()}
             </div>
 
             <ul className={styles.bodyHint} style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
