@@ -954,7 +954,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
 
             <ul className={styles.bodyHint} style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
               <li>Clients pay by debit or credit card, straight into your own Stripe account.</li>
-              <li>The fee is yours: 2.9% + 30¢ per charge.</li>
+              <li>You will be charged 2.9% + 30¢ per transaction.</li>
             </ul>
 
 
@@ -981,7 +981,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                     <p style={{ margin: '0 0 .5rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>Stripe is the card processor that handles the charge and pays out to your bank.</p>
                     <ul style={{ margin: '0 0 .7rem', paddingLeft: '1.1rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
                       <li>Stripe verifies you — SSN and bank details — during setup (the law requires it for card payments). It goes to Stripe, not us.</li>
-                      <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong>, then about 2 days after that.</li>
+                      <li>Your <strong style={{ color: 'var(--white)', fontWeight: 600 }}>first payout takes 7–14 days</strong> (a one-time hold). After that, each payment reaches your bank in about 2 business days.</li>
                     </ul>
                     <div style={{ height: 1, background: 'var(--border)', margin: '0 0 .7rem' }} />
                     <p style={{ margin: '0 0 .6rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.5 }}>
