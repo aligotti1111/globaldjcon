@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { referenceCode } from '@/lib/paymentMethods';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,9 +46,12 @@ function done(paymentId: string, qs: string) {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: paymentId } = await params;
-  const admin = createAdminClient();
+  // Generated Supabase types omit booking_payments (and others), so we talk to
+  // the DB through a generically-typed client — same pattern as the payments
+  // route. Service-role key; RLS does not apply here.
+  const db = createAdminClient() as unknown as SupabaseClient;
 
-  const { data: pData } = await admin
+  const { data: pData } = await db
     .from('booking_payments')
     .select('id, booking_id, kind, amount, amount_paid, currency, status, stripe_session_id')
     .eq('id', paymentId)
@@ -56,7 +60,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!p) return done(paymentId, 'e=notfound');
   if (p.status === 'paid' || p.status === 'waived' || p.stripe_session_id) return done(paymentId, 'state=settled');
 
-  const { data: bData } = await admin
+  const { data: bData } = await db
     .from('bookings')
     .select('id, dj_id, host_email, event_date, venue_name, currency')
     .eq('id', p.booking_id)
@@ -65,7 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!b) return done(paymentId, 'e=notfound');
 
   const { data: djData } = b.dj_id
-    ? await admin.from('users').select('stripe_connect_id, stripe_connect_ready, name').eq('id', b.dj_id).maybeSingle()
+    ? await db.from('users').select('stripe_connect_id, stripe_connect_ready, name').eq('id', b.dj_id).maybeSingle()
     : { data: null };
   const dj = djData as unknown as DjRow | null;
   if (!dj?.stripe_connect_id || !dj.stripe_connect_ready) return done(paymentId, 'e=notready');
