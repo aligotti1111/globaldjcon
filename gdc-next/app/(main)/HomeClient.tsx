@@ -194,6 +194,14 @@ export default function HomeClient({ initialDjs }: Props) {
   // since we mutate djsRef.current in place during async geocoding).
   const [distanceVersion, setDistanceVersion] = useState(0);
 
+  // Prefill the search box from a ?q= param (e.g. arriving from the
+  // landing-page search box) so the term is applied immediately on load.
+  // Runs once on mount; the search-debounce effect below handles the rest.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) setSearchTerm(q);
+  }, []);
+
   // ─── Search debounce — geocode if it looks like a zip ────────────
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
