@@ -693,7 +693,7 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
       {location && (
         <div className="dj-city">
           📍 {location}
-          {dj._distance && dj._distance < 9999 && (
+          {dj._distance != null && dj._distance < 9999 && (
             <span style={{ color: 'var(--neon)', fontWeight: 500 }}>
               {' '}({Math.round(dj._distance)} mi away)
             </span>
@@ -754,7 +754,7 @@ function DjListRow({ dj }: { dj: HomeDj }) {
         <div className="dll-name">{dj.name || 'Unknown DJ'}</div>
         <div className="dll-location">
           📍 {location}
-          {dj._distance && dj._distance < 9999 && (
+          {dj._distance != null && dj._distance < 9999 && (
             <span style={{ color: 'var(--neon)' }}> ({Math.round(dj._distance)}mi)</span>
           )}
         </div>
