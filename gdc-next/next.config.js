@@ -12,7 +12,7 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      { source: '/', destination: '/landing.html' },
+      { source: '/', destination: '/site/landing.html' },
     ];
   },
 };
