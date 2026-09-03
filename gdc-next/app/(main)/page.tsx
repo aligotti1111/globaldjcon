@@ -1,17 +1,11 @@
 'use client';
 
 // Marketing homepage (globaldjconnect.com/).
-//
 // Renders INSIDE the (main) layout, so it inherits the real site chrome —
-// <Header/> (logo + burger that opens the real <MobileMenu/> + Sign In /
-// Create Account auth modals) and <Footer/>. This page only supplies the
-// marketing BODY (hero, the two booking flows, feature list, pricing, and
-// the interactive sample modals).
-//
-// The body markup, styles, and the small vanilla interactivity script come
-// from the approved design. All CSS is scoped under `.gdc-landing` so it
-// cannot collide with the global index.css that styles the header/footer.
-// The DJ directory (search + cards) now lives at /djs.
+// Header (logo + burger -> real MobileMenu + Sign In / Create Account modals)
+// and Footer. This page supplies only the marketing BODY. All CSS is scoped
+// under .gdc-landing so it can't collide with the global index.css. The DJ
+// directory (search + cards) lives at /djs.
 
 import { useEffect } from 'react';
 
@@ -353,8 +347,8 @@ const LANDING_CSS = String.raw`@import url('https://fonts.googleapis.com/css2?fa
 .gdc-landing .flist .paylist .pm-sub{color:var(--ink)}
 .gdc-landing .flist .samplelink{color:var(--neon);font-family:var(--mono);font-weight:700;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
 .gdc-landing .flist .samplelink.club{color:var(--amber)}
-.gdc-landing .flist .r.framed{border:1.5px solid var(--neon);border-radius:14px;padding:20px 20px;margin:10px 0;box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 30px rgba(0,245,196,.12);background:linear-gradient(180deg,rgba(0,245,196,.05),transparent)}
-.gdc-landing .flist .r.framed-amber{border:1.5px solid var(--amber);border-radius:14px;padding:20px 20px;margin:10px 0;box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 30px rgba(245,230,66,.12);background:linear-gradient(180deg,rgba(245,230,66,.05),transparent)}
+.gdc-landing .flist .r.framed{border:1.5px solid var(--neon);border-radius:14px;padding:18px 6px;margin:6px 0;box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 30px rgba(0,245,196,.12);background:linear-gradient(180deg,rgba(0,245,196,.05),transparent)}
+.gdc-landing .flist .r.framed-amber{border:1.5px solid var(--amber);border-radius:14px;padding:18px 6px;margin:6px 0;box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 30px rgba(245,230,66,.12);background:linear-gradient(180deg,rgba(245,230,66,.05),transparent)}
 .gdc-landing .roletbl.club th{color:var(--amber)}
 .gdc-landing .roletbl.club .yes{color:var(--amber)}
 .gdc-landing /* roles permission sample */
@@ -1035,16 +1029,12 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
 `;
 
 export default function HomePage() {
-  // Run the design's vanilla script once after the markup mounts. It defines
-  // the modal/quote globals (openLB, calc, calcClub, selEq, selPill, ...) that
-  // the inline handlers in LANDING_BODY call, and sets up reveal-on-scroll.
   useEffect(() => {
     const s = document.createElement('script');
     s.textContent = LANDING_SCRIPT;
     document.body.appendChild(s);
     return () => { s.remove(); };
   }, []);
-
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
