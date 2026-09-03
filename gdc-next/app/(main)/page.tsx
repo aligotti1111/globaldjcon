@@ -1,11 +1,8 @@
 'use client';
 
-// Marketing homepage (globaldjconnect.com/).
-// Renders INSIDE the (main) layout, so it inherits the real site chrome —
-// Header (logo + burger -> real MobileMenu + Sign In / Create Account modals)
-// and Footer. This page supplies only the marketing BODY. All CSS is scoped
-// under .gdc-landing so it can't collide with the global index.css. The DJ
-// directory (search + cards) lives at /djs.
+// Marketing homepage (globaldjconnect.com/). Renders inside the (main)
+// layout so it inherits the real Header/MobileMenu/Footer. CSS scoped under
+// .gdc-landing. DJ directory is at /djs.
 
 import { useEffect } from 'react';
 
@@ -473,19 +470,16 @@ const LANDING_CSS = String.raw`@import url('https://fonts.googleapis.com/css2?fa
 .gdc-landing .reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.2,.8,.2,1)}
 .gdc-landing .reveal.in{opacity:1;transform:none}
 .gdc-landing .searchbar{border-bottom:1px solid var(--line);background:#000}
-.gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:10px;padding-top:16px;padding-bottom:16px}
-@media(min-width:641px){
-.gdc-landing .searchbar .wrap{padding-left:0}
-}
-@media(min-width:1240px){
-.gdc-landing .siterow>div:first-child{margin-left:-8px}
-.gdc-landing .searchbar .searchfield{margin-left:-8px}
+.gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:10px;padding-top:16px;padding-bottom:16px;max-width:none;margin:0;padding-left:4rem;padding-right:4rem}
+@media(max-width:900px){
+.gdc-landing .searchbar .wrap{padding-left:1.2rem;padding-right:1.2rem}
 }
 .gdc-landing .searchfield{width:340px;max-width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:#0c0c11;border:1px solid rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s}
 .gdc-landing .searchfield:focus-within{border-color:var(--neon);box-shadow:0 0 0 4px rgba(0,245,196,.1)}
 .gdc-landing .searchfield svg{width:18px;height:18px;stroke:var(--faint);fill:none;flex-shrink:0}
 .gdc-landing .searchfield input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-family:var(--body);font-size:.95rem;min-width:0}
 .gdc-landing .searchfield input::placeholder{color:var(--faint)}
+.gdc-landing .searchfield input:-webkit-autofill, .gdc-landing .searchfield input:-webkit-autofill:hover, .gdc-landing .searchfield input:-webkit-autofill:focus, .gdc-landing .searchfield input:-webkit-autofill:active{-webkit-text-fill-color:var(--ink);-webkit-box-shadow:0 0 0 1000px #0c0c11 inset;caret-color:var(--ink);transition:background-color 9999s ease-in-out 0s}
 .gdc-landing .searchfield .flagpick{flex-shrink:0;display:inline-flex;align-items:center;gap:3px;cursor:pointer;position:relative}
 .gdc-landing .searchfield .flagcur{font-size:1.05rem;line-height:1}
 .gdc-landing .searchfield .flagcaret{width:10px;height:7px;color:var(--faint);flex-shrink:0}
