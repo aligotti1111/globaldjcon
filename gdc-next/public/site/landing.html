@@ -38,6 +38,11 @@
   .siteright a.link:hover{color:var(--ink)}
   .burger{display:none;flex-shrink:0;width:36px;height:32px;border:1px solid #1e1e30;border-radius:6px;background:transparent;cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
   .burger span{display:block;width:15px;height:2px;background:var(--ink);border-radius:2px}
+  .burgermenu{display:none;flex-direction:column;margin:0 16px 12px;background:#0c0c0f;border:1px solid var(--line-2);border-radius:10px;overflow:hidden}
+  .burgermenu.open{display:flex}
+  .burgermenu a{padding:.9rem 1rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border-bottom:1px solid var(--line)}
+  .burgermenu a:last-child{border-bottom:0}
+  .burgermenu a:hover{background:rgba(255,255,255,.04);color:var(--neon)}
   @media(max-width:760px){.wordmark{font-size:1.9rem}.siteright .link{display:none}}
   @media(max-width:640px){
     .siterow{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:0;padding:14px 0}
@@ -461,7 +466,7 @@
 
 <header class="site">
   <div class="wrap siterow">
-    <button class="burger" type="button" aria-label="Menu"><span></span><span></span><span></span></button>
+    <button class="burger" type="button" aria-label="Menu" aria-expanded="false" onclick="var m=document.getElementById('bmenu');var o=m.classList.toggle('open');this.setAttribute('aria-expanded',o);"><span></span><span></span><span></span></button>
     <div>
       <div class="logo-eye"><span class="d"></span> Connecting party hosts &amp; venues to premium DJs</div>
       <div class="wordmark">GLOBAL DJ <span class="g">CONNECT</span></div>
@@ -471,17 +476,22 @@
       <a class="btn btn-neon" href="/login"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-1.5a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4V21"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>Create an account</a>
     </div>
   </div>
+  <nav class="burgermenu" id="bmenu">
+    <a href="/djs">Browse DJs</a>
+    <a href="/login">Sign in</a>
+    <a href="/login">Create an account</a>
+  </nav>
 </header>
 
 <div class="searchbar">
   <div class="wrap">
-    <form class="searchfield" role="search" onsubmit="return false;">
+    <form class="searchfield" role="search" onsubmit="var q=this.q.value.trim();location.href='/djs'+(q?('?q='+encodeURIComponent(q)):'');return false;">
       <svg viewBox="0 0 24 24" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" placeholder="Search by zip or DJ name…" aria-label="Search by zip or DJ name">
+      <input type="text" name="q" placeholder="Search by zip or DJ name…" aria-label="Search by zip or DJ name">
       <label class="flagpick" aria-label="Country">
         <span class="flagcur">🇺🇸</span>
         <svg class="flagcaret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-        <select class="flagsel" onchange="this.closest('.flagpick').querySelector('.flagcur').textContent=this.selectedOptions[0].text.trim().split(' ')[0]">
+        <select class="flagsel" name="cc" onchange="this.closest('.flagpick').querySelector('.flagcur').textContent=this.selectedOptions[0].text.trim().split(' ')[0]">
           <option value="us">🇺🇸 United States</option>
           <option value="gb">🇬🇧 United Kingdom</option>
           <option value="ca">🇨🇦 Canada</option>
@@ -506,7 +516,7 @@
         </select>
       </label>
     </form>
-    <button class="searchbtn" type="button" aria-label="Use my location">
+    <button class="searchbtn" type="button" aria-label="Use my location" onclick="location.href='/djs'">
       <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
     </button>
   </div>
@@ -521,7 +531,7 @@
       <h1>THE <span class="a">ENTIRE BOOKING PROCESS</span> IN ONE PLATFORM</h1>
       <p class="lede">Global DJ Connect turns the booking process into one link or QR code you share with clients — instant quotes, contracts and deposits handled, money straight to your account. <b class="hl">0% platform cut.</b></p>
       <div class="hero-cta">
-        <a class="btn btn-neon" href="/login">Create your DJ page →</a>
+        <a class="btn btn-neon" href="#">Create your DJ page →</a>
         <a class="btn btn-ghost" href="#how">See how it works</a>
       </div>
     </div>
@@ -674,7 +684,7 @@
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 30 / mo</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 25 photos · 6 videos · 6 mixes</li>
         </ul>
-        <a class="btn btn-neon" href="/login">Choose Pro</a>
+        <a class="btn btn-neon" href="#">Choose Pro</a>
       </div>
       <div class="plan reveal">
         <div class="pn">Premium Pro</div><div class="amt">$49.99<span> / mo</span></div>
