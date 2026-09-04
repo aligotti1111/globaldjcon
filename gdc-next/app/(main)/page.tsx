@@ -275,11 +275,11 @@ const LANDING_CSS = String.raw`@import url('https://fonts.googleapis.com/css2?fa
   .flowcards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(9,auto);gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
 .gdc-landing .flowcards .flane{position:relative;padding:0 30px 26px;counter-reset:step;display:grid;grid-template-rows:subgrid;grid-row:1 / -1;align-content:start}
 .gdc-landing .flowcards .flane.mobile{border-right:1px solid var(--line-2)}
-.gdc-landing .flowcards .fh{font-family:var(--disp);font-size:1.9rem;letter-spacing:.02em;display:flex;flex-direction:column;gap:.12rem;padding:15px 22px;margin:0 -30px 0;border-bottom:2px solid}
+.gdc-landing .flowcards .fh{position:relative;font-family:var(--disp);font-size:1.9rem;letter-spacing:.02em;display:flex;flex-direction:column;gap:.12rem;padding:15px 22px;margin:0 -30px 0;border-bottom:2px solid}
 .gdc-landing .flowcards .fh small{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .gdc-landing .flowcards .flane.mobile .fh{background:linear-gradient(180deg,rgba(0,245,196,.12),transparent);color:var(--neon);border-bottom-color:rgba(0,245,196,.35)}
 .gdc-landing .flowcards .flane.club .fh{background:linear-gradient(180deg,rgba(245,230,66,.12),transparent);color:var(--amber);border-bottom-color:rgba(245,230,66,.35)}
-.gdc-landing .flowcards .fhbtn{align-self:flex-start;margin-top:11px;display:inline-flex;align-items:center;font-family:var(--mono);font-weight:700;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:.62rem 1rem;border-radius:100px;border:1px solid;cursor:pointer;text-decoration:none;transition:background .15s,color .15s}
+.gdc-landing .flowcards .fhbtn{position:absolute;top:12px;right:14px;display:inline-flex;align-items:center;font-family:var(--mono);font-weight:700;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;padding:.4rem .7rem;border-radius:100px;border:1px solid;cursor:pointer;text-decoration:none;transition:background .15s,color .15s}
 .gdc-landing .flowcards .flane.mobile .fhbtn{border-color:var(--neon);color:var(--neon)}
 .gdc-landing .flowcards .flane.mobile .fhbtn:hover{background:var(--neon);color:#04120d}
 .gdc-landing .flowcards .flane.club .fhbtn{border-color:var(--amber);color:var(--amber)}
