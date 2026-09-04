@@ -84,11 +84,31 @@ function markAllComplete(m){ m.slots.forEach(k=>{ const st=m.stages[k]; st.state
 function buildModels(){
   const list=[
     mkBooking('mobile','Mobile DJs',{n:'29',d:'WED',m:'JUL'},'1:00 PM – 7:00 PM','Wedding','$544.38'),
-    mkBooking('mobile','Mobile DJs',{n:'28',d:'MON',m:'SEP'},'5:00 PM – 11:00 PM','Anniversary','$400.00'),
+    mkBooking('mobile','Mobile DJs',{n:'28',d:'MON',m:'SEP'},'5:00 PM – 11:00 PM','Anniversary','$435.50'),
     mkBooking('club','Club / Bar DJs',{n:'21',d:'FRI',m:'JUN'},'11:00 PM – 3:00 AM','Pulse Nightclub','$900.00'),
     mkBooking('club','Club / Bar DJs',{n:'05',d:'SAT',m:'JUL'},'10:00 PM – 2:00 AM','The Vault','$1,100.00'),
   ];
   list[2].flyer=FLYER_IMG;  // top club booking shows a real flyer
+  list[2].det={eventType:'Club Night',dateLong:'Friday, June 21, 2026',guests:'450',
+    venue:'Pulse Nightclub',room:'Main Room',addr:'88 Ardsley St, Brooklyn, NY 11203',
+    bookedBy:'Marcus Reed',phone:'(718) 555-0133',
+    pricing:{rate:'$900.00',total:'$900.00',schedule:[{label:'Deposit',val:'$135.00 (15%)'},{label:'Balance due day of event',val:'$765.00'}]},
+    log:[
+      {who:'HOST',cls:'host',text:'Booking requested',when:'May 30, 2026, 6:02 PM'},
+      {who:'YOU',cls:'you',text:'Contract sent to host',when:'May 30, 2026, 8:15 PM'},
+      {who:'YOU',cls:'you',text:'Rider sent to host',when:'Jun 1, 2026, 10:40 AM'},
+      {who:'YOU',cls:'you',text:'Guest list sent',when:'Jun 18, 2026, 3:22 PM'}
+    ]};
+  list[3].det={eventType:'Guest DJ Set',dateLong:'Saturday, July 5, 2026',guests:'300',
+    venue:'The Vault',room:'Basement Floor',addr:'22 Wither Ln, Jersey City, NJ 07302',
+    bookedBy:'Alicia Gomez',phone:'(201) 555-0176',
+    pricing:{rate:'$1,100.00',total:'$1,100.00',schedule:[{label:'Deposit',val:'$165.00 (15%)'},{label:'Balance due day of event',val:'$935.00'}]},
+    log:[
+      {who:'HOST',cls:'host',text:'Booking requested',when:'Jun 10, 2026, 1:18 PM'},
+      {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jun 10, 2026, 5:47 PM'},
+      {who:'HOST',cls:'host',text:'Contract signed',when:'Jun 11, 2026, 9:03 AM'},
+      {who:'YOU',cls:'you',text:'Rider sent to host',when:'Jun 12, 2026, 11:30 AM'}
+    ]};
   list[0].det={
     badges:['Includes cocktail hour','Includes ceremony music'],
     dateLong:'Wednesday, July 29, 2026',guests:'200',overtime:'$200.00/hr',
@@ -110,7 +130,8 @@ function buildModels(){
   list[1].det={evSub:'25',dateLong:'Monday, September 28, 2026',guests:'299',overtime:'$100.00/hr',
     venue:'richmond county country club',room:'3',addr:'26 Blythe Place',
     bookedBy:'hhhhhh',phone:'(917) 816-1409',pkg:'first',pkgDesc:'sfs',
-    pricing:{rate:'$400.00',total:'$400.00'},
+    pricing:{rate:'$400.00',discount:'20% OFF — saved $100.00 (was $500.00)',tax:'$35.50 (8.875%)',total:'$435.50',
+      schedule:[{label:'Deposit',val:'$65.33 (15%)'},{label:'Balance due day of event',val:'$370.17'}]},
     log:[
       {who:'HOST',cls:'host',text:'Booking requested',when:'May 18, 2026, 2:49 AM'},
       {who:'YOU',cls:'you',text:'Deposit auto-skipped — balance requested',when:'May 18, 2026, 2:50 AM'},
@@ -156,7 +177,7 @@ function groupHTML(g){
 }
 function drowHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
-  const canOpen=m.type==='mobile';
+  const canOpen=true;
   const open=!!(m.open&&canOpen);
   const d=m.det||{};
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
@@ -166,7 +187,7 @@ function drowHTML(m,mi){
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
-  const canOpen=m.type==='mobile';
+  const canOpen=true;
   const open=!!(m.open&&canOpen);
   const d=m.det||{};
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
@@ -182,7 +203,7 @@ function mobDetailHTML(m){
   const sched=(d.schedule||[]).map(s=>`<div class="schrow"><span class="schl">${s.label}</span><span class="scht">${s.time||''}</span>${s.note?`<span class="schn">· ${s.note}</span>`:''}</div>`).join('');
   const pr=d.pricing;
   const pricing = pr
-    ? `<div class="dpricerow"><span class="dk2">Agreed Rate</span><span class="dv">${pr.rate}</span></div>
+    ? `<div class="dpricerow"><span class="dk2">Agreed Rate</span><span class="dv rt">${pr.rate}${pr.discount?`<span class="disc">${pr.discount}</span>`:''}</span></div>
        ${pr.tax?`<div class="dpricerow"><span class="dk2">Tax</span><span class="dv">${pr.tax}</span></div>`:''}
        <div class="dpricerow total"><span class="ptot">Total (with tax)</span><span class="dv price">${pr.total}</span></div>
        ${(pr.schedule&&pr.schedule.length)?`<div class="paysched"><div class="pshead">Payment schedule</div>${pr.schedule.map(x=>`<div class="dpricerow"><span class="dk2">${x.label}</span><span class="dv">${x.val}</span></div>`).join('')}</div>`:''}`
@@ -192,7 +213,7 @@ function mobDetailHTML(m){
     <div class="dsec">
       <span class="dpill">EVENT</span>
       <div class="dgrid3">
-        <div class="df"><span class="dk">Event type</span><span class="dv">${m.event}${d.evSub?`<span class="dsub">${d.evSub}</span>`:''}</span></div>
+        <div class="df"><span class="dk">Event type</span><span class="dv">${d.eventType||m.event}${d.evSub?`<span class="dsub">${d.evSub}</span>`:''}</span></div>
         <div class="df"><span class="dk">Event date</span><span class="dv">${d.dateLong||''}</span></div>
         <div class="df"><span class="dk">Guest count</span><span class="dv">${d.guests||''}</span></div>
       </div>
@@ -226,7 +247,7 @@ function mobDetailHTML(m){
     ${log?`<div class="dsec"><div class="loghead"><span class="dk">Booking log</span><span class="loglegend"><span class="logdot you"></span>You<span class="logdot host"></span>Host</span></div><div class="loglist">${log}</div></div>`:''}
   </div>`;
 }
-function toggleCard(mi,e){ if(e)e.stopPropagation(); const m=MODELS[mi]; if(m.type!=='mobile')return; m.open=!m.open; OPEN=null; render(); }
+function toggleCard(mi,e){ if(e)e.stopPropagation(); const m=MODELS[mi]; m.open=!m.open; OPEN=null; render(); }
 function cellHTML(m,mi,key){
   const stg=m.stages[key], s=stg.S[stg.state];
   const locked=stg.state==='locked', cls=s.cls||'';
