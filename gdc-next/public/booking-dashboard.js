@@ -86,13 +86,13 @@ function buildModels(){
     mkBooking('club','Club / Bar DJs',{n:'21',d:'FRI',m:'JUN'},'11:00 PM – 3:00 AM','Pulse Nightclub','$900.00'),
     mkBooking('club','Club / Bar DJs',{n:'05',d:'SAT',m:'JUL'},'10:00 PM – 2:00 AM','The Vault','$1,100.00'),
   ];
-  markAllComplete(list[1]); markAllComplete(list[3]);  // the two we added: fully done
   return list;
 }
 let MODELS=buildModels(), OPEN=null;
 // Initial load only: Mobile DJ deposit shows Skipped. Reset returns it to Not sent.
 MODELS[0].stages.deposit.state='skipped';
 MODELS[0].stages.contract.state='pending';
+markAllComplete(MODELS[1]); markAllComplete(MODELS[3]);  // Anniversary + The Vault start fully done (load only; Reset clears all to Not sent)
 
 function gateInvoice(m){
   const dep=m.stages.deposit, inv=m.stages.invoice;
