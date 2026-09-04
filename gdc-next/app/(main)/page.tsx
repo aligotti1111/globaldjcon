@@ -594,6 +594,7 @@ const LANDING_BODY = String.raw`
   <div class="wrap">
     <p class="eyebrow">Your booking dashboard</p>
     <h1>See how the pipeline works</h1>
+    <p class="sub">Below is a sample of how two bookings look in your booking dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
     <div id="gdc-dash-mount"></div>
     <div class="resetbar"><button class="reset" onclick="resetAll()">↻ Reset sample</button></div>
   </div>
