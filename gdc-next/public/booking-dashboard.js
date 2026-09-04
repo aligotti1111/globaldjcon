@@ -105,11 +105,7 @@ function buildModels(){
       {who:'HOST',cls:'host',text:'Booking requested',when:'Jul 19, 2026, 5:34 PM'},
       {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Jul 22, 2026, 3:16 AM'},
       {who:'YOU',cls:'you',text:'Deposit auto-skipped — balance requested',when:'Jul 22, 2026, 3:16 AM'},
-      {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jul 29, 2026, 3:31 AM'},
-      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 4, 2026, 11:36 PM'},
-      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 4, 2026, 11:53 PM'},
-      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 5, 2026, 12:00 AM'},
-      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 5, 2026, 12:11 AM'}
+      {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jul 29, 2026, 3:31 AM'}
     ]};
   list[1].det={evSub:'25',dateLong:'Monday, September 28, 2026',guests:'299',overtime:'$100.00/hr',
     venue:'richmond county country club',room:'3',addr:'26 Blythe Place',
