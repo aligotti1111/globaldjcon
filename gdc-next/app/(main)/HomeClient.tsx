@@ -198,8 +198,13 @@ export default function HomeClient({ initialDjs }: Props) {
   // landing-page search box) so the term is applied immediately on load.
   // Runs once on mount; the search-debounce effect below handles the rest.
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('q');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
     if (q) setSearchTerm(q);
+    // Arriving from the landing-page "Use my location" button
+    // (/djs?near=1) — kick off geolocation + nearest-sort right away.
+    if (params.get('near') === '1') findNearMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Search debounce — geocode if it looks like a zip ────────────
