@@ -178,7 +178,7 @@ function mobCardHTML(m,mi){
   return `<div class="card${open?' open':''}">
     ${top}
     <div class="strip">${cells}</div>
-    ${open?mobDetailHTML(m):`<div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>`}
+    ${open?mobDetailHTML(m):''}
   </div>`;
 }
 function mobDetailHTML(m){
@@ -200,7 +200,7 @@ function mobDetailHTML(m){
         <div class="df"><span class="dk">Event date</span><span class="dv">${d.dateLong||''}</span></div>
         <div class="df"><span class="dk">Guest count</span><span class="dv">${d.guests||''}</span></div>
       </div>
-      ${sched?`<div class="schwrap"><div class="schhead">Schedule</div>${sched}</div>`:''}
+      ${sched?`<div class="schwrap"><div class="schhead">Schedule</div>${sched}</div>`:`<div class="df evtime"><span class="dk">Event time</span><span class="dv time">${m.time}</span></div>`}
       ${d.overtime?`<div class="dovertime"><span class="dk">Overtime</span><b>${d.overtime}</b><a class="dlink">Send invoice / receipt</a></div>`:''}
     </div>
     <div class="drow2">

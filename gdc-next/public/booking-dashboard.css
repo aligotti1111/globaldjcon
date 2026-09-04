@@ -101,13 +101,14 @@
 .gdc-dash .df{display:flex;flex-direction:column;gap:3px;margin-top:10px}
 .gdc-dash .dgrid3 .df,.gdc-dash .dgrid2 .df{margin-top:0}
 .gdc-dash .dk{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
-.gdc-dash .dv{font-size:.86rem;color:var(--ink)}
-.gdc-dash .dv.time{color:var(--neon)}
-.gdc-dash .dsub{display:block;font-size:.72rem;color:var(--muted);margin-top:2px}
-.gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--neon)}
+.gdc-dash .dv{font-size:.94rem;color:var(--ink)}
+.gdc-dash .dv.time{color:var(--neon);font-weight:600}
+.gdc-dash .df.evtime{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.gdc-dash .dsub{display:block;font-size:.74rem;color:var(--muted);margin-top:2px}
+.gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--ink)}
 .gdc-dash .dlink{color:var(--neon);text-decoration:none;cursor:pointer}
-.gdc-dash .dovertime{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted);flex-wrap:wrap}
-.gdc-dash .dovertime b{color:var(--ink)}
+.gdc-dash .dovertime{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+.gdc-dash .dovertime b{color:var(--ink);font-family:var(--mono)}
 .gdc-dash .dmsg{margin-top:12px;background:#14141f;border:1px solid rgba(255,255,255,.14);color:var(--ink);font-weight:700;font-size:.8rem;padding:.55rem .9rem;border-radius:9px;cursor:pointer}
 .gdc-dash .pkgname{font-weight:700;font-size:.95rem;margin-top:2px}
 .gdc-dash .dpricerow{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
@@ -121,7 +122,7 @@
 /* schedule */
 .gdc-dash .schwrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .gdc-dash .schhead,.gdc-dash .pshead{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-.gdc-dash .schrow{display:flex;align-items:baseline;gap:10px;padding:5px 0}
+.gdc-dash .schrow{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .gdc-dash .schl{font-weight:700;font-size:.86rem;color:var(--ink);min-width:110px}
 .gdc-dash .scht{font-size:.86rem;color:var(--neon);font-weight:600}
 .gdc-dash .schn{font-size:.78rem;color:var(--muted)}
