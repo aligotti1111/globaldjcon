@@ -83,26 +83,56 @@ function mkBooking(type,label,date,time,event,val){
 function markAllComplete(m){ m.slots.forEach(k=>{ const st=m.stages[k]; st.state = st.S.done ? 'done' : (st.S.sent ? 'sent' : st.state); }); }
 function buildModels(){
   const list=[
-    mkBooking('mobile','Mobile DJs',{n:'14',d:'SAT',m:'JUN'},'6:00 PM – 11:00 PM','Wedding','$2,400.00'),
-    mkBooking('mobile','Mobile DJs',{n:'28',d:'FRI',m:'JUN'},'5:00 PM – 10:00 PM','Anniversary','$1,800.00'),
+    mkBooking('mobile','Mobile DJs',{n:'29',d:'WED',m:'JUL'},'1:00 PM – 7:00 PM','Wedding','$544.38'),
+    mkBooking('mobile','Mobile DJs',{n:'28',d:'MON',m:'SEP'},'5:00 PM – 11:00 PM','Anniversary','$400.00'),
     mkBooking('club','Club / Bar DJs',{n:'21',d:'FRI',m:'JUN'},'11:00 PM – 3:00 AM','Pulse Nightclub','$900.00'),
     mkBooking('club','Club / Bar DJs',{n:'05',d:'SAT',m:'JUL'},'10:00 PM – 2:00 AM','The Vault','$1,100.00'),
   ];
   list[2].flyer=FLYER_IMG;  // top club booking shows a real flyer
-  list[0].det={evNo:'Reception',dateLong:'Saturday, June 14, 2026',guests:'180',overtime:'$150.00/hr',
-    venue:'The Grand Ballroom',room:'Main Hall',addr:'12 Rosewood Ave, Charlotte, NC 28202',
-    bookedBy:'Sarah Miller',phone:'(704) 555-0192',pkg:'Premium Wedding',pkgDesc:'6 hours · lighting · dance floor',rate:'$2,400.00'};
-  list[1].det={evNo:'25th Anniversary',dateLong:'Friday, June 28, 2026',guests:'90',overtime:'$100.00/hr',
-    venue:'Lakeside Pavilion',room:'Terrace Room',addr:'480 Harbor Dr, Raleigh, NC 27601',
-    bookedBy:'James Carter',phone:'(919) 555-0148',pkg:'Standard Party',pkgDesc:'5 hours · sound + MC',rate:'$1,800.00'};
+  list[0].det={
+    badges:['Includes cocktail hour','Includes ceremony music'],
+    dateLong:'Wednesday, July 29, 2026',guests:'200',overtime:'$200.00/hr',
+    schedule:[
+      {label:'Ceremony',time:'1:00 PM',note:'separate room'},
+      {label:'Cocktail hour',time:'2:00 PM',note:'same room as reception'},
+      {label:'Reception',time:'3:00 PM – 7:00 PM'}
+    ],
+    venue:'ligotti',room:'br',addr:'8 Jayne Lane, Staten Island, NY 10307',
+    bookedBy:'Anthony l',phone:'(917) 815-8980',
+    pricing:{rate:'$500.00',tax:'$44.38 (8.875%)',total:'$544.38',
+      schedule:[{label:'Deposit',val:'$81.66 (15%)'},{label:'Balance due day of event',val:'$462.72'}]},
+    log:[
+      {who:'HOST',cls:'host',text:'Booking requested',when:'Jul 19, 2026, 5:34 PM'},
+      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Jul 22, 2026, 3:16 AM'},
+      {who:'YOU',cls:'you',text:'Deposit auto-skipped — balance requested',when:'Jul 22, 2026, 3:16 AM'},
+      {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jul 29, 2026, 3:31 AM'},
+      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 4, 2026, 11:36 PM'},
+      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 4, 2026, 11:53 PM'},
+      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 5, 2026, 12:00 AM'},
+      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'Aug 5, 2026, 12:11 AM'}
+    ]};
+  list[1].det={evSub:'25',dateLong:'Monday, September 28, 2026',guests:'299',overtime:'$100.00/hr',
+    venue:'richmond county country club',room:'3',addr:'26 Blythe Place',
+    bookedBy:'hhhhhh',phone:'(917) 816-1409',pkg:'first',pkgDesc:'sfs',
+    pricing:{rate:'$400.00',total:'$400.00'},
+    log:[
+      {who:'HOST',cls:'host',text:'Booking requested',when:'May 18, 2026, 2:49 AM'},
+      {who:'YOU',cls:'you',text:'Deposit auto-skipped — balance requested',when:'May 18, 2026, 2:50 AM'},
+      {who:'YOU',cls:'you',text:'Balance invoice sent',when:'May 18, 2026, 2:50 AM'}
+    ]};
   return list;
 }
 let MODELS=buildModels(), OPEN=null;
 // Initial load only: Mobile DJ deposit shows Skipped. Reset returns it to Not sent.
+// Wedding: Contract Complete · Deposit Skipped · Playlist Not sent · Balance Pending
+MODELS[0].stages.contract.state='done';
 MODELS[0].stages.deposit.state='skipped';
-MODELS[0].stages.contract.state='pending';
-markAllComplete(MODELS[1]); markAllComplete(MODELS[3]);  // Anniversary + The Vault start fully done (load only; Reset clears all to Not sent)
+MODELS[0].stages.invoice.state='requested';
 MODELS[0].open=true;  // first Mobile DJ card starts expanded to show the detail panel
+// Anniversary (card 2): Deposit Skipped · Balance Pending
+MODELS[1].stages.deposit.state='skipped';
+MODELS[1].stages.invoice.state='requested';
+markAllComplete(MODELS[3]);  // The Vault starts fully done (load only; Reset clears all to Not sent)
 
 function gateInvoice(m){
   const dep=m.stages.deposit, inv=m.stages.invoice;
@@ -137,26 +167,36 @@ function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
   const canOpen=m.type==='mobile';
   const open=!!(m.open&&canOpen);
-  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<span class="trtime">${m.time}</span><span class="trevent">${m.event}</span>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  const d=m.det||{};
+  const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
+  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<div class="trmid">${badges}<div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trval">${m.val}</span><span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
   return `<div class="card${open?' open':''}">
     ${top}
     <div class="strip">${cells}</div>
-    ${open?mobDetailHTML(m):''}
-    <div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>
+    ${open?mobDetailHTML(m):`<div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>`}
   </div>`;
 }
 function mobDetailHTML(m){
   const d=m.det||{};
+  const sched=(d.schedule||[]).map(s=>`<div class="schrow"><span class="schl">${s.label}</span><span class="scht">${s.time||''}</span>${s.note?`<span class="schn">· ${s.note}</span>`:''}</div>`).join('');
+  const pr=d.pricing;
+  const pricing = pr
+    ? `<div class="dpricerow"><span class="dk2">Agreed Rate</span><span class="dv">${pr.rate}</span></div>
+       ${pr.tax?`<div class="dpricerow"><span class="dk2">Tax</span><span class="dv">${pr.tax}</span></div>`:''}
+       <div class="dpricerow total"><span class="ptot">Total (with tax)</span><span class="dv price">${pr.total}</span></div>
+       ${(pr.schedule&&pr.schedule.length)?`<div class="paysched"><div class="pshead">Payment schedule</div>${pr.schedule.map(x=>`<div class="dpricerow"><span class="dk2">${x.label}</span><span class="dv">${x.val}</span></div>`).join('')}</div>`:''}`
+    : `<div class="dpricerow"><span class="dk2">Agreed Rate</span><span class="dv price">${d.rate||m.val}</span></div>`;
+  const log=(d.log||[]).map(e=>`<div class="logrow"><span class="logdot ${e.cls}"></span><div class="logbody"><div class="logtop"><span class="logwho ${e.cls}">${e.who}</span><span class="logtext">${e.text}</span></div><div class="logwhen">${e.when}</div></div></div>`).join('');
   return `<div class="mobdetail">
     <div class="dsec">
       <span class="dpill">EVENT</span>
       <div class="dgrid3">
-        <div class="df"><span class="dk">Event type</span><span class="dv">${m.event}${d.evNo?`<span class="dsub">${d.evNo}</span>`:''}</span></div>
+        <div class="df"><span class="dk">Event type</span><span class="dv">${m.event}${d.evSub?`<span class="dsub">${d.evSub}</span>`:''}</span></div>
         <div class="df"><span class="dk">Event date</span><span class="dv">${d.dateLong||''}</span></div>
         <div class="df"><span class="dk">Guest count</span><span class="dv">${d.guests||''}</span></div>
       </div>
-      <div class="df"><span class="dk">Event time</span><span class="dv time">${m.time}</span></div>
-      <div class="dovertime"><span class="dk">Overtime</span><b>${d.overtime||''}</b><a class="dlink">Send invoice / receipt</a></div>
+      ${sched?`<div class="schwrap"><div class="schhead">Schedule</div>${sched}</div>`:''}
+      ${d.overtime?`<div class="dovertime"><span class="dk">Overtime</span><b>${d.overtime}</b><a class="dlink">Send invoice / receipt</a></div>`:''}
     </div>
     <div class="drow2">
       <div class="dsec">
@@ -176,15 +216,13 @@ function mobDetailHTML(m){
         <button class="dmsg">✉ Message host</button>
       </div>
     </div>
+    ${d.pkg?`<div class="dsec"><span class="dpill">PACKAGE</span><div class="dv pkgname">${d.pkg}</div><div class="dsub">${d.pkgDesc||''}</div></div>`:''}
+    <div class="dsec"><span class="dpill">PRICING</span>${pricing}</div>
     <div class="dsec">
-      <span class="dpill">PACKAGE</span>
-      <div class="dv pkgname">${d.pkg||''}</div>
-      <div class="dsub">${d.pkgDesc||''}</div>
+      <div class="dk">Notes about event</div>
+      <div class="noterow"><span class="noteph">Add note about event…</span><span class="notepost">POST</span></div>
     </div>
-    <div class="dsec">
-      <span class="dpill">PRICING</span>
-      <div class="dpricerow"><span class="dk2">Agreed Rate</span><span class="dv price">${d.rate||m.val}</span></div>
-    </div>
+    ${log?`<div class="dsec"><div class="loghead"><span class="dk">Booking log</span><span class="loglegend"><span class="logdot you"></span>You<span class="logdot host"></span>Host</span></div><div class="loglist">${log}</div></div>`:''}
   </div>`;
 }
 function toggleCard(mi,e){ if(e)e.stopPropagation(); const m=MODELS[mi]; if(m.type!=='mobile')return; m.open=!m.open; OPEN=null; render(); }
