@@ -201,9 +201,20 @@ export default function HomeClient({ initialDjs }: Props) {
     const params = new URLSearchParams(window.location.search);
     const q = params.get('q');
     if (q) setSearchTerm(q);
-    // Arriving from the landing-page "Use my location" button
-    // (/djs?near=1) — kick off geolocation + nearest-sort right away.
-    if (params.get('near') === '1') findNearMe();
+    // Arriving from the landing-page "Use my location" button, which asks the
+    // browser for coordinates DURING the click (a user gesture — required for
+    // the permission prompt to appear) and forwards them as ?lat=&lng=. We
+    // just apply them: set the location, sort nearest, no second prompt here.
+    const lat = parseFloat(params.get('lat') || '');
+    const lng = parseFloat(params.get('lng') || '');
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      setUserLocation({ lat, lng });
+      setLocationSource('near-me');
+      setSortMode('nearest');
+    } else if (params.get('near') === '1') {
+      // Fallback: no coords passed (e.g. older link) — ask here.
+      findNearMe();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

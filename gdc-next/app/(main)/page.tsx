@@ -527,7 +527,7 @@ const LANDING_BODY = String.raw`
         </select>
       </label>
     </form>
-    <button class="searchbtn" type="button" aria-label="Use my location" onclick="location.href='/djs?near=1'">
+    <button class="searchbtn" type="button" aria-label="Use my location" onclick="if(navigator.geolocation){this.style.opacity='.5';navigator.geolocation.getCurrentPosition(function(p){location.href='/djs?lat='+p.coords.latitude+'&lng='+p.coords.longitude;},function(){location.href='/djs?near=1';});}else{location.href='/djs?near=1';}">
       <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
     </button>
   </div>
