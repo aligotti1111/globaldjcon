@@ -564,7 +564,7 @@ const LANDING_BODY = String.raw`
     </div>
     <div class="flowcards reveal">
       <div class="flane mobile">
-        <div class="fh">Mobile DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign up as a Mobile DJ →</a></div>
+        <div class="fh">Mobile DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign Up →</a></div>
         <div class="fli"><span class="smk">Step</span><div>Host selects date, time &amp; venue. The packages display and rates calculate. The host selects a package. The booking request is sent to you for a decision. <a class="viewsample" onclick="openLB('lbMobile')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve or deny the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
@@ -574,7 +574,7 @@ const LANDING_BODY = String.raw`
         <div class="fli topalign"><span class="smk">Step</span>Receipt auto‑sent once invoice is marked paid</div>
       </div>
       <div class="flane club">
-        <div class="fh">Club / Bar DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign up as a Club / Bar DJ →</a></div>
+        <div class="fh">Club / Bar DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign Up →</a></div>
         <div class="fli"><span class="smk">Step</span><div>Host / promoter selects a date and equipment option. The rate is calculated and the booking request is sent to you for decision <a class="viewsample" onclick="openLB('lbClub')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve, deny, or counter‑offer the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
