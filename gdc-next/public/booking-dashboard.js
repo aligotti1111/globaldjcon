@@ -128,7 +128,6 @@ let MODELS=buildModels(), OPEN=null;
 MODELS[0].stages.contract.state='done';
 MODELS[0].stages.deposit.state='skipped';
 MODELS[0].stages.invoice.state='requested';
-MODELS[0].open=true;  // first Mobile DJ card starts expanded to show the detail panel
 // Anniversary (card 2): Deposit Skipped · Balance Pending
 MODELS[1].stages.deposit.state='skipped';
 MODELS[1].stages.invoice.state='requested';
