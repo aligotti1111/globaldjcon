@@ -15,7 +15,7 @@ const DEP='$600';
 function capColor(cls,cap){ if(cls==='done')return 'var(--neon)'; if(cls==='skipped')return '#f2f2f7'; if(/^not sent$/i.test(cap||''))return '#ff6b6b'; return 'var(--gold)'; }
 
 function stContract(){return{icon:'doc',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[{label:'Review & send contract',to:'pending'}]},
+  notsent:{cap:'Not sent',cls:'waiting',actions:[{label:'Review & send contract',to:'notsent'}]},
   pending:{cap:'Pending',cls:'waiting',info:'Sent — waiting on the client to sign.',actions:[
     {label:'Resend contract',to:'pending'},{label:'🔗 Copy link to contract',to:'pending'},
     {label:'Cancel contract',to:'notsent',cls:'danger'},{label:'✓ Mark Complete',to:'done'}]},
@@ -81,10 +81,10 @@ function mkBooking(type,label,date,time,event,val){
 function markAllComplete(m){ m.slots.forEach(k=>{ const st=m.stages[k]; st.state = st.S.done ? 'done' : (st.S.sent ? 'sent' : st.state); }); }
 function buildModels(){
   const list=[
-    mkBooking('mobile','Mobile DJs Booking Dashboard Sample',{n:'14',d:'SAT',m:'JUN'},'6:00 PM – 11:00 PM','Wedding','$2,400.00'),
-    mkBooking('mobile','Mobile DJs Booking Dashboard Sample',{n:'28',d:'FRI',m:'JUN'},'5:00 PM – 10:00 PM','Anniversary','$1,800.00'),
-    mkBooking('club','Club / Bar DJs Booking Dashboard Sample',{n:'21',d:'FRI',m:'JUN'},'11:00 PM – 3:00 AM','Pulse Nightclub','$900.00'),
-    mkBooking('club','Club / Bar DJs Booking Dashboard Sample',{n:'05',d:'SAT',m:'JUL'},'10:00 PM – 2:00 AM','The Vault','$1,100.00'),
+    mkBooking('mobile','Mobile DJs',{n:'14',d:'SAT',m:'JUN'},'6:00 PM – 11:00 PM','Wedding','$2,400.00'),
+    mkBooking('mobile','Mobile DJs',{n:'28',d:'FRI',m:'JUN'},'5:00 PM – 10:00 PM','Anniversary','$1,800.00'),
+    mkBooking('club','Club / Bar DJs',{n:'21',d:'FRI',m:'JUN'},'11:00 PM – 3:00 AM','Pulse Nightclub','$900.00'),
+    mkBooking('club','Club / Bar DJs',{n:'05',d:'SAT',m:'JUL'},'10:00 PM – 2:00 AM','The Vault','$1,100.00'),
   ];
   markAllComplete(list[1]); markAllComplete(list[3]);  // the two we added: fully done
   return list;
