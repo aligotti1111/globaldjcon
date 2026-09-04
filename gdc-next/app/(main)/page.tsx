@@ -279,7 +279,7 @@ const LANDING_CSS = String.raw`@import url('https://fonts.googleapis.com/css2?fa
 .gdc-landing .flowcards .fh small{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .gdc-landing .flowcards .flane.mobile .fh{background:linear-gradient(180deg,rgba(0,245,196,.12),transparent);color:var(--neon);border-bottom-color:rgba(0,245,196,.35)}
 .gdc-landing .flowcards .flane.club .fh{background:linear-gradient(180deg,rgba(245,230,66,.12),transparent);color:var(--amber);border-bottom-color:rgba(245,230,66,.35)}
-.gdc-landing .flowcards .fhbtn{position:absolute;top:12px;right:14px;display:inline-flex;align-items:center;font-family:var(--mono);font-weight:700;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;padding:.4rem .7rem;border-radius:100px;border:1px solid;cursor:pointer;text-decoration:none;transition:background .15s,color .15s}
+.gdc-landing .flowcards .fhbtn{display:inline-flex;align-items:center;margin:14px 0 2px;font-family:var(--mono);font-weight:700;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;padding:.75rem 1.2rem;border-radius:100px;border:1px solid;cursor:pointer;text-decoration:none;transition:background .15s,color .15s}
 .gdc-landing .flowcards .flane.mobile .fhbtn{border-color:var(--neon);color:var(--neon)}
 .gdc-landing .flowcards .flane.mobile .fhbtn:hover{background:var(--neon);color:#04120d}
 .gdc-landing .flowcards .flane.club .fhbtn{border-color:var(--amber);color:var(--amber)}
@@ -564,7 +564,8 @@ const LANDING_BODY = String.raw`
     </div>
     <div class="flowcards reveal">
       <div class="flane mobile">
-        <div class="fh">Mobile DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign Up →</a></div>
+        <div class="fh">Mobile DJs<small>Booking Process</small></div>
+        <a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign Up →</a>
         <div class="fli"><span class="smk">Step</span><div>Host selects date, time &amp; venue. The packages display and rates calculate. The host selects a package. The booking request is sent to you for a decision. <a class="viewsample" onclick="openLB('lbMobile')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve or deny the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
@@ -574,7 +575,8 @@ const LANDING_BODY = String.raw`
         <div class="fli topalign"><span class="smk">Step</span>Receipt auto‑sent once invoice is marked paid</div>
       </div>
       <div class="flane club">
-        <div class="fh">Club / Bar DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign Up →</a></div>
+        <div class="fh">Club / Bar DJs<small>Booking Process</small></div>
+        <a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign Up →</a>
         <div class="fli"><span class="smk">Step</span><div>Host / promoter selects a date and equipment option. The rate is calculated and the booking request is sent to you for decision <a class="viewsample" onclick="openLB('lbClub')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve, deny, or counter‑offer the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
