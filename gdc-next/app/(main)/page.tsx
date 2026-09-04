@@ -587,6 +587,21 @@ const LANDING_BODY = String.raw`
   </div>
 </section>
 
+<!-- BOOKING DASHBOARD SAMPLE (interactive) -->
+<section id="dashsample" style="padding:56px 0 24px">
+  <link rel="stylesheet" href="/booking-dashboard.css">
+  <div class="gdc-dash">
+  <div class="wrap">
+    <p class="eyebrow">Your booking dashboard</p>
+    <h1>See how the pipeline works</h1>
+    <p class="sub">Every booking runs a pipeline. Tap any icon to see what you can do at that stage. <b class="n">Mobile DJs</b> get Planner &amp; Playlist; <b class="a">Club/Bar DJs</b> get a Rider &amp; Guest List.</p>
+    <p class="hintline">Tap the Contract · Deposit · Balance icons — the menus are live.</p>
+    <div id="gdc-dash-mount"></div>
+    <div class="resetbar"><button class="reset" onclick="resetAll()">↻ Reset sample</button></div>
+  </div>
+  </div>
+</section>
+
 <!-- FEATURES -->
 <section id="features">
   <div class="wrap">
@@ -1031,7 +1046,11 @@ export default function HomePage() {
     const s = document.createElement('script');
     s.textContent = LANDING_SCRIPT;
     document.body.appendChild(s);
-    return () => { s.remove(); };
+    // Interactive booking-dashboard sample (its CSS + JS are static files in /public).
+    const d = document.createElement('script');
+    d.src = '/booking-dashboard.js';
+    document.body.appendChild(d);
+    return () => { s.remove(); d.remove(); };
   }, []);
   return (
     <>
