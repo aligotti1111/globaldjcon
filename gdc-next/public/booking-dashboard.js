@@ -92,6 +92,7 @@ function buildModels(){
 let MODELS=buildModels(), OPEN=null;
 // Initial load only: Mobile DJ deposit shows Skipped. Reset returns it to Not sent.
 MODELS[0].stages.deposit.state='skipped';
+MODELS[0].stages.contract.state='pending';
 
 function gateInvoice(m){
   const dep=m.stages.deposit, inv=m.stages.invoice;
