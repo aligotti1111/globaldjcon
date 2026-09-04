@@ -279,11 +279,10 @@ const LANDING_CSS = String.raw`@import url('https://fonts.googleapis.com/css2?fa
 .gdc-landing .flowcards .fh small{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .gdc-landing .flowcards .flane.mobile .fh{background:linear-gradient(180deg,rgba(0,245,196,.12),transparent);color:var(--neon);border-bottom-color:rgba(0,245,196,.35)}
 .gdc-landing .flowcards .flane.club .fh{background:linear-gradient(180deg,rgba(245,230,66,.12),transparent);color:var(--amber);border-bottom-color:rgba(245,230,66,.35)}
-.gdc-landing .flowcards .fhbtn{display:inline-flex;align-items:center;margin:14px 0 2px;font-family:var(--mono);font-weight:700;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;padding:.75rem 1.2rem;border-radius:100px;border:1px solid;cursor:pointer;text-decoration:none;transition:background .15s,color .15s}
-.gdc-landing .flowcards .flane.mobile .fhbtn{border-color:var(--neon);color:var(--neon)}
-.gdc-landing .flowcards .flane.mobile .fhbtn:hover{background:var(--neon);color:#04120d}
-.gdc-landing .flowcards .flane.club .fhbtn{border-color:var(--amber);color:var(--amber)}
-.gdc-landing .flowcards .flane.club .fhbtn:hover{background:var(--amber);color:#0a0a05}
+.gdc-landing .flowcards .fhbtn{position:absolute;top:16px;right:20px;display:inline-flex;align-items:center;font-family:var(--mono);font-weight:700;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;background:none;border:none;padding:0;cursor:pointer;text-decoration:none;transition:opacity .15s}
+.gdc-landing .flowcards .flane.mobile .fhbtn{color:var(--neon)}
+.gdc-landing .flowcards .flane.club .fhbtn{color:var(--amber)}
+.gdc-landing .flowcards .fhbtn:hover{opacity:.7}
 .gdc-landing .flowcards .fli{counter-increment:step;padding:16px 0;border-top:1px solid var(--line);font-size:.86rem;font-weight:500;line-height:1.5;color:#c9c9d3;letter-spacing:.005em;display:grid;grid-template-columns:auto 1fr;column-gap:18px;align-items:center}
 .gdc-landing .flowcards .fli:first-of-type{border-top:0}
 .gdc-landing .flowcards .fli .smk{display:block;text-align:center;min-width:56px;padding-right:16px;line-height:1;font-family:var(--mono);font-weight:700;font-size:.46rem;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
@@ -564,8 +563,7 @@ const LANDING_BODY = String.raw`
     </div>
     <div class="flowcards reveal">
       <div class="flane mobile">
-        <div class="fh">Mobile DJs<small>Booking Process</small></div>
-        <a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign Up →</a>
+        <div class="fh">Mobile DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign Up →</a></div>
         <div class="fli"><span class="smk">Step</span><div>Host selects date, time &amp; venue. The packages display and rates calculate. The host selects a package. The booking request is sent to you for a decision. <a class="viewsample" onclick="openLB('lbMobile')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve or deny the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
@@ -575,8 +573,7 @@ const LANDING_BODY = String.raw`
         <div class="fli topalign"><span class="smk">Step</span>Receipt auto‑sent once invoice is marked paid</div>
       </div>
       <div class="flane club">
-        <div class="fh">Club / Bar DJs<small>Booking Process</small></div>
-        <a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign Up →</a>
+        <div class="fh">Club / Bar DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign Up →</a></div>
         <div class="fli"><span class="smk">Step</span><div>Host / promoter selects a date and equipment option. The rate is calculated and the booking request is sent to you for decision <a class="viewsample" onclick="openLB('lbClub')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve, deny, or counter‑offer the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
