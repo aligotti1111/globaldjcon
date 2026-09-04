@@ -161,7 +161,13 @@ function groupHTML(g){
 }
 function drowHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
-  return `<div class="drow">${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}<span class="dvtime">${m.time}</span><span class="dvevent">${m.event}</span><span class="dval">${m.val}</span>${cells}<span class="rowchev">${DOWNCHEV}</span></div>`;
+  const canOpen=m.type==='mobile';
+  const open=!!(m.open&&canOpen);
+  const d=m.det||{};
+  const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
+  const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
+  const row=`<div class="drow${open?' open':''}"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}</span><span class="dval">${m.val}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  return row+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'');
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');

@@ -58,6 +58,13 @@
 .gdc-dash .dvtime{justify-self:start;font-size:.9rem;color:var(--ink);white-space:nowrap}
 .gdc-dash .dvevent{justify-self:start;font-size:.9rem;color:var(--ink);white-space:nowrap}
 .gdc-dash .dval{justify-self:center;font-family:var(--mono);font-weight:700;font-size:.9rem;color:var(--neon)}
+.gdc-dash .drow[onclick]{cursor:pointer}
+.gdc-dash .drow.open{border-radius:14px 14px 0 0;margin-bottom:0}
+.gdc-dash .rowchev{transition:transform .2s}
+.gdc-dash .rowchev.up{transform:rotate(180deg)}
+.gdc-dash .dvtime.stacked{display:flex;flex-direction:column;gap:5px;align-items:flex-start;white-space:normal}
+.gdc-dash .deskdetail{border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;background:var(--card);padding:16px 18px 18px;margin-bottom:10px}
+.gdc-dash .deskdetail .mobdetail{padding:0;border-top:none}
 .gdc-dash .drow .st{justify-self:center}
 .gdc-dash .drow .st .lab{display:none}
 .gdc-dash .drow .rowchev{justify-self:end}
