@@ -175,6 +175,8 @@ export function SignupFlow({
   // URL-param state (read once on mount; SSR-safe because we're in 'use client').
   const [prefillEmail, setPrefillEmail] = useState<string>('');
   const [lockedEmail, setLockedEmail] = useState<boolean>(false);
+  // DJ type preselected from a landing deep link (?type=dj&dj=mobile|club).
+  const [initialDjType, setInitialDjType] = useState<DjType | null>(null);
 
   // Mirror the screen up so the page can hide/show its chrome.
   useEffect(() => { onScreenChange?.(screen); }, [screen, onScreenChange]);
@@ -184,6 +186,9 @@ export function SignupFlow({
     const params = new URLSearchParams(window.location.search);
     const email = params.get('email') || '';
     const claimBookingId = params.get('claim_booking') || '';
+    // Landing "Sign up as a Mobile/Club DJ" deep links.
+    const acctType = params.get('type') || '';
+    const djPre = params.get('dj') || '';
     if (email) setPrefillEmail(email);
     // If we have a claim_booking, this is the host-invite flow:
     //   - Auto-route to the host form (skip the type chooser).
@@ -199,6 +204,11 @@ export function SignupFlow({
         // localStorage unavailable (private mode etc.) — fall back to losing
         // the claim. The DJ can resend the email if needed.
       }
+    } else if (acctType === 'dj') {
+      // Deep link from the marketing homepage's flow cards: skip the type
+      // chooser, land on the DJ form, and preselect the DJ type when given.
+      if (djPre === 'mobile' || djPre === 'club') setInitialDjType(djPre);
+      setScreen('dj');
     } else {
       // Booking-flow signup: when the user arrived from BookingLoginGate
       // (?redirect=/<slug>?date=YYYY-MM-DD&book=1), the intent is obvious —
@@ -219,6 +229,7 @@ export function SignupFlow({
           onBack={() => setScreen('type-select')}
           onSwitchType={(t) => setScreen(t)}
           onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
+          initialDjType={initialDjType}
         />
       )}
       {/* Host signup ends signed in. On the page it navigates; in the modal
@@ -477,15 +488,17 @@ async function triggerSignupVerification(
 // DJ FORM
 // ──────────────────────────────────────────────────────────────────────────
 
-function DjForm({ onBack, onSwitchType, onSuccess }: {
+function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
   onBack: () => void;
   onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
   onSuccess: (info: SuccessInfo) => void;
+  // Preselected DJ type from a landing deep link; null when arriving normally.
+  initialDjType?: DjType | null;
 }) {
   const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [djType, setDjType] = useState<DjType | null>(null);
+  const [djType, setDjType] = useState<DjType | null>(initialDjType ?? null);
   const [name, setName] = useState('');
   // The slug shown in the URL input. Auto-derived from `name` until the user
   // either edits it directly or picks an alternative.
