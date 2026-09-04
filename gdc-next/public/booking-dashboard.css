@@ -106,7 +106,8 @@
 .gdc-dash .df.evtime{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .gdc-dash .dsub{display:block;font-size:.74rem;color:var(--muted);margin-top:2px}
 .gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--ink)}
-.gdc-dash .dlink{color:var(--neon);text-decoration:none;cursor:pointer}
+.gdc-dash .dlink{color:var(--neon);text-decoration:underline;cursor:pointer}
+.gdc-dash .dovertime .dlink{color:#4ade80}
 .gdc-dash .dovertime{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted);flex-wrap:wrap}
 .gdc-dash .dovertime b{color:var(--ink);font-family:var(--mono)}
 .gdc-dash .dmsg{margin-top:12px;background:#14141f;border:1px solid rgba(255,255,255,.14);color:var(--ink);font-weight:700;font-size:.8rem;padding:.55rem .9rem;border-radius:9px;cursor:pointer}
@@ -117,14 +118,14 @@
 .gdc-dash .trmid{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
 .gdc-dash .trline{display:flex;align-items:center;gap:10px;min-width:0}
 .gdc-dash .evtags{display:flex;flex-wrap:wrap;gap:5px}
-.gdc-dash .evtag{font-family:var(--mono);font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:.14rem .4rem}
+.gdc-dash .evtag{font-family:var(--mono);font-size:.55rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4ade80}
 .gdc-dash .trval{font-family:var(--mono);font-weight:700;font-size:.86rem;color:var(--neon);flex-shrink:0}
 /* schedule */
 .gdc-dash .schwrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .gdc-dash .schhead,.gdc-dash .pshead{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
 .gdc-dash .schrow{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .gdc-dash .schl{font-weight:700;font-size:.86rem;color:var(--ink);min-width:110px}
-.gdc-dash .scht{font-size:.86rem;color:var(--neon);font-weight:600}
+.gdc-dash .scht{font-size:.9rem;color:#4ade80;font-weight:600}
 .gdc-dash .schn{font-size:.78rem;color:var(--muted)}
 /* pricing */
 .gdc-dash .dpricerow.total{margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
