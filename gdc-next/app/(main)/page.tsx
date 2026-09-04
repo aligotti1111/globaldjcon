@@ -269,7 +269,7 @@ const LANDING_CSS = String.raw`@import url('https://fonts.googleapis.com/css2?fa
 .gdc-landing .pnode:not(:last-child)::after{content:"";position:absolute;top:23px;left:50%;width:100%;height:2px;z-index:0}
 .gdc-landing .type.mobile .pnode:not(:last-child)::after{background:linear-gradient(90deg,rgba(0,245,196,.7),rgba(0,245,196,.15))}
 .gdc-landing .type.club .pnode:not(:last-child)::after{background:linear-gradient(90deg,rgba(245,230,66,.7),rgba(245,230,66,.15))}
-.gdc-landing .types-note{text-align:center;color:var(--muted);font-size:.95rem;margin-top:34px}
+.gdc-landing .types-note{text-align:center;color:var(--muted);font-size:.95rem;margin-top:12px}
 .gdc-landing .types-note b{color:var(--ink)}
 .gdc-landing /* two-flow glow cards — colored header, .gdc-landing no box */
   .flowcards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(9,auto);gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
