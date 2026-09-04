@@ -83,6 +83,29 @@
 .gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 .gdc-dash .valuebar .amt{font-family:var(--mono);font-weight:700;font-size:1rem;color:var(--neon)}
 
+.gdc-dash .trchev{transition:transform .2s}
+.gdc-dash .trchev.up{transform:rotate(180deg)}
+.gdc-dash .toprow[onclick]{cursor:pointer}
+.gdc-dash .mobdetail{display:flex;flex-direction:column;gap:12px;padding:14px 12px 4px;border-top:1px solid var(--line)}
+.gdc-dash .drow2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.gdc-dash .dsec{border:1px solid var(--line);border-radius:12px;padding:14px;background:rgba(255,255,255,.015)}
+.gdc-dash .dpill{display:inline-block;background:var(--neon);color:#04120d;font-family:var(--mono);font-weight:700;font-size:.56rem;letter-spacing:.12em;padding:.32rem .7rem;border-radius:100px;margin-bottom:6px}
+.gdc-dash .dgrid3,.gdc-dash .dgrid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.gdc-dash .df{display:flex;flex-direction:column;gap:3px;margin-top:10px}
+.gdc-dash .dgrid3 .df,.gdc-dash .dgrid2 .df{margin-top:0}
+.gdc-dash .dk{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.gdc-dash .dv{font-size:.86rem;color:var(--ink)}
+.gdc-dash .dv.time{color:var(--neon)}
+.gdc-dash .dsub{display:block;font-size:.72rem;color:var(--muted);margin-top:2px}
+.gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--neon)}
+.gdc-dash .dlink{color:var(--neon);text-decoration:none;cursor:pointer}
+.gdc-dash .dovertime{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.gdc-dash .dovertime b{color:var(--ink)}
+.gdc-dash .dmsg{margin-top:12px;background:#14141f;border:1px solid rgba(255,255,255,.14);color:var(--ink);font-weight:700;font-size:.8rem;padding:.55rem .9rem;border-radius:9px;cursor:pointer}
+.gdc-dash .pkgname{font-weight:700;font-size:.95rem;margin-top:2px}
+.gdc-dash .dpricerow{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+.gdc-dash .dk2{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+
 @media(max-width:680px){
   .gdc-dash .deskwrap{display:none}
   .gdc-dash .mobwrap{display:block}

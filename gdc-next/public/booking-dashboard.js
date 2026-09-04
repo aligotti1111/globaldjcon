@@ -59,7 +59,7 @@ function stInvoice(){return{icon:'receipt',state:'locked',S:{
     {label:'✓ Mark Complete',to:'done'}]},
   requested:{cap:'Pending',cls:'waiting',info:'Balance sent — waiting on payment.',actions:[
     {label:'Cancel request',to:'notsent',cls:'danger'},{label:'✓ Mark Complete',to:'done'}]},
-  done:{cap:'',cls:'done',actions:[
+  done:{cap:'Complete',cls:'done',actions:[
     {label:'Resend Receipt',to:'done'},{label:'Download Receipt',to:'done'}]},
 }};}
 function stGuest(){return{icon:'doc',state:'notsent',S:{
@@ -89,6 +89,12 @@ function buildModels(){
     mkBooking('club','Club / Bar DJs',{n:'05',d:'SAT',m:'JUL'},'10:00 PM – 2:00 AM','The Vault','$1,100.00'),
   ];
   list[2].flyer=FLYER_IMG;  // top club booking shows a real flyer
+  list[0].det={evNo:'Reception',dateLong:'Saturday, June 14, 2026',guests:'180',overtime:'$150.00/hr',
+    venue:'The Grand Ballroom',room:'Main Hall',addr:'12 Rosewood Ave, Charlotte, NC 28202',
+    bookedBy:'Sarah Miller',phone:'(704) 555-0192',pkg:'Premium Wedding',pkgDesc:'6 hours · lighting · dance floor',rate:'$2,400.00'};
+  list[1].det={evNo:'25th Anniversary',dateLong:'Friday, June 28, 2026',guests:'90',overtime:'$100.00/hr',
+    venue:'Lakeside Pavilion',room:'Terrace Room',addr:'480 Harbor Dr, Raleigh, NC 27601',
+    bookedBy:'James Carter',phone:'(919) 555-0148',pkg:'Standard Party',pkgDesc:'5 hours · sound + MC',rate:'$1,800.00'};
   return list;
 }
 let MODELS=buildModels(), OPEN=null;
@@ -96,6 +102,7 @@ let MODELS=buildModels(), OPEN=null;
 MODELS[0].stages.deposit.state='skipped';
 MODELS[0].stages.contract.state='pending';
 markAllComplete(MODELS[1]); markAllComplete(MODELS[3]);  // Anniversary + The Vault start fully done (load only; Reset clears all to Not sent)
+MODELS[0].open=true;  // first Mobile DJ card starts expanded to show the detail panel
 
 function gateInvoice(m){
   const dep=m.stages.deposit, inv=m.stages.invoice;
@@ -128,12 +135,59 @@ function drowHTML(m,mi){
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
-  return `<div class="card">
-    <div class="toprow">${dateHTML(m)}<span class="trtime">${m.time}</span><span class="trevent">${m.event}</span>${m.type==='club'?flyerHTML(m):''}<span class="trchev">${DOWNCHEV}</span></div>
+  const canOpen=m.type==='mobile';
+  const open=!!(m.open&&canOpen);
+  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<span class="trtime">${m.time}</span><span class="trevent">${m.event}</span>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  return `<div class="card${open?' open':''}">
+    ${top}
     <div class="strip">${cells}</div>
+    ${open?mobDetailHTML(m):''}
     <div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>
   </div>`;
 }
+function mobDetailHTML(m){
+  const d=m.det||{};
+  return `<div class="mobdetail">
+    <div class="dsec">
+      <span class="dpill">EVENT</span>
+      <div class="dgrid3">
+        <div class="df"><span class="dk">Event type</span><span class="dv">${m.event}${d.evNo?`<span class="dsub">${d.evNo}</span>`:''}</span></div>
+        <div class="df"><span class="dk">Event date</span><span class="dv">${d.dateLong||''}</span></div>
+        <div class="df"><span class="dk">Guest count</span><span class="dv">${d.guests||''}</span></div>
+      </div>
+      <div class="df"><span class="dk">Event time</span><span class="dv time">${m.time}</span></div>
+      <div class="dovertime"><span class="dk">Overtime</span><b>${d.overtime||''}</b><a class="dlink">Send invoice / receipt</a></div>
+    </div>
+    <div class="drow2">
+      <div class="dsec">
+        <span class="dpill">VENUE</span>
+        <div class="dgrid2">
+          <div class="df"><span class="dk">Venue name</span><span class="dv">${d.venue||''}</span></div>
+          <div class="df"><span class="dk">Room details</span><span class="dv">${d.room||''}</span></div>
+        </div>
+        <div class="df"><span class="dk">Venue address</span><span class="dv"><a class="dlink">${d.addr||''}</a></span></div>
+      </div>
+      <div class="dsec">
+        <span class="dpill">HOST</span>
+        <div class="dgrid2">
+          <div class="df"><span class="dk">Booked by</span><span class="dv">${d.bookedBy||''}</span></div>
+          <div class="df"><span class="dk">Contact phone</span><span class="dv">${d.phone||''}</span></div>
+        </div>
+        <button class="dmsg">✉ Message host</button>
+      </div>
+    </div>
+    <div class="dsec">
+      <span class="dpill">PACKAGE</span>
+      <div class="dv pkgname">${d.pkg||''}</div>
+      <div class="dsub">${d.pkgDesc||''}</div>
+    </div>
+    <div class="dsec">
+      <span class="dpill">PRICING</span>
+      <div class="dpricerow"><span class="dk2">Agreed Rate</span><span class="dv price">${d.rate||m.val}</span></div>
+    </div>
+  </div>`;
+}
+function toggleCard(mi,e){ if(e)e.stopPropagation(); const m=MODELS[mi]; if(m.type!=='mobile')return; m.open=!m.open; OPEN=null; render(); }
 function cellHTML(m,mi,key){
   const stg=m.stages[key], s=stg.S[stg.state];
   const locked=stg.state==='locked', cls=s.cls||'';
