@@ -38,9 +38,7 @@ function stDeposit(){return{icon:'money',state:'notsent',S:{
 }};}
 function stPlanner(){return{icon:'music',state:'notsent',S:{
   notsent:{cap:'Not sent',cls:'waiting',actions:[
-    {label:'Select – Send Planner/Playlist',to:'prompted',keep:true},{label:'✓ Mark Complete',to:'done'}]},
-  prompted:{cap:'Not sent',cls:'waiting',info:'When clicked on your dashboard, the planners & playlists stored in your account will show for you to select one to send.',actions:[
-    {label:'Select – Send Planner/Playlist',to:'prompted',keep:true},{label:'✓ Mark Complete',to:'done'}]},
+    {label:'Select – Send Planner/Playlist',to:'notsent',note:'When clicked on your dashboard, the planners & playlists stored in your account will show for you to select one to send.'},{label:'✓ Mark Complete',to:'done'}]},
   sent:{cap:'60%',cls:'waiting',info:'60% complete',actions:[
     {label:'Open Planner & Playlist',to:'sent'},{label:'Download Planner & Playlist',to:'sent'},
     {label:'Copy link',to:'sent'},{label:'Send reminder email',to:'sent'},{label:'✓ Mark Complete',to:'done'}]},
@@ -187,7 +185,7 @@ function drowHTML(m,mi){
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
   const row=`<div class="drow${open?' open':''}"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}</span><span class="dval">${m.val}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
-  return row+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'');
+  return row+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'')+(m.note?`<div class="cardnote">${m.note}</div>`:'');
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
@@ -201,7 +199,7 @@ function mobCardHTML(m,mi){
     <div class="strip">${cells}</div>
     ${open?mobDetailHTML(m):''}
     <div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>
-  </div>`;
+  </div>${m.note?`<div class="cardnote">${m.note}</div>`:''}`;
 }
 function mobDetailHTML(m){
   const d=m.det||{};
@@ -276,7 +274,7 @@ function menuHTML(m,mi,key){
   return h+`</div>`;
 }
 function toggleMenu(mi,key,e){e.stopPropagation();OPEN=(OPEN&&OPEN.mi===mi&&OPEN.key===key)?null:{mi,key};render();}
-function doAction(mi,key,i,e){e.stopPropagation();const stg=MODELS[mi].stages[key];const a=stg.S[stg.state].actions[i];if(a.to)stg.state=a.to;OPEN=a.keep?{mi,key}:null;render();}
+function doAction(mi,key,i,e){e.stopPropagation();const stg=MODELS[mi].stages[key];const a=stg.S[stg.state].actions[i];if(a.note)MODELS[mi].note=a.note;if(a.to)stg.state=a.to;OPEN=null;render();}
 function resetAll(){MODELS=buildModels();OPEN=null;render();}
 document.addEventListener('click',()=>{if(OPEN){OPEN=null;render();}});
 render();
