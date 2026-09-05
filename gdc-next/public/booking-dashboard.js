@@ -117,8 +117,8 @@ function buildModels(){
       {label:'Cocktail hour',time:'2:00 PM',note:'same room as reception'},
       {label:'Reception',time:'3:00 PM – 7:00 PM'}
     ],
-    venue:'ligotti',room:'br',addr:'8 Jayne Lane, Staten Island, NY 10307',
-    bookedBy:'Anthony l',phone:'(917) 815-8980',pkg:'Premium Wedding',
+    venue:'The Grand Ballroom',room:'Main Hall',addr:'120 Rosewood Ave, Charlotte, NC 28202',
+    bookedBy:'Sarah Miller',phone:'(704) 555-0192',pkg:'Premium Wedding',
     pkgItems:['State-of-the-art Sound System','4 Moving Heads','8 LED Decor Lights','Multi-Color Dance Floor Lights','Ceremony Sound System'],
     pricing:{rate:'$500.00',tax:'$44.38 (8.875%)',total:'$544.38',
       schedule:[{label:'Deposit',val:'$81.66 (15%)'},{label:'Balance due day of event',val:'$462.72'}]},
