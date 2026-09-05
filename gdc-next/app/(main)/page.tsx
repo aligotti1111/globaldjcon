@@ -447,6 +447,20 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan.pro .pn{color:var(--neon)}
 .gdc-landing .plan .amt{font-family:var(--disp);font-size:2.2rem;letter-spacing:.01em;margin:.35rem 0 .1rem}
 .gdc-landing .plan .amt span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
+/* Monthly / Annual billing toggle. The plan cards carry BOTH prices as .p-mo /
+   .p-yr spans; a class on .price (bill-mo | bill-yr) swaps which shows, so the
+   flip is pure CSS and every card updates at once. .amt wrappers must be re-sized
+   to the big price font because the generic ".amt span" rule above would shrink
+   them. */
+.gdc-landing .plan .amt .p-mo,.gdc-landing .plan .amt .p-yr{font-family:var(--disp);font-size:2.2rem;letter-spacing:.01em;color:var(--ink)}
+.gdc-landing .price .p-yr{display:none}
+.gdc-landing .price.bill-yr .p-mo{display:none}
+.gdc-landing .price.bill-yr .p-yr{display:inline}
+.gdc-landing .billtoggle{display:inline-flex;gap:0;margin-top:1.1rem;border:1px solid var(--line-2);border-radius:100px;padding:4px;background:rgba(255,255,255,.03)}
+.gdc-landing .billopt{font-family:var(--mono);font-weight:700;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;padding:.6rem 1.1rem;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;transition:.15s}
+.gdc-landing .billopt.on{background:var(--neon);color:#000}
+.gdc-landing .billopt .save{font-size:.6rem;color:var(--neon)}
+.gdc-landing .billopt.on .save{color:#000}
 .gdc-landing .plan .yr{font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
 .gdc-landing .plan ul{list-style:none;margin:14px 0 18px;flex:1}
 .gdc-landing .plan li{padding:.4rem 0;color:var(--muted);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start}
@@ -686,8 +700,12 @@ const LANDING_BODY = String.raw`
       <div class="label">Pricing</div>
       <h2>CREATE A FREE DJ PROFILE</h2>
       <p>You only pay your card processor's normal fee — we never take a percentage of what you earn. Yearly billing = 2 months free.</p>
+      <div class="billtoggle">
+        <button type="button" class="billopt on" onclick="gdcBill('mo',this)">Monthly</button>
+        <button type="button" class="billopt" onclick="gdcBill('yr',this)">Annual <span class="save">2 months free</span></button>
+      </div>
     </div>
-    <div class="price">
+    <div class="price bill-mo">
       <div class="plan reveal">
         <div class="pn">Free</div><div class="amt">$0<span> / mo</span></div>
         <div class="yr">&nbsp;</div>
@@ -700,8 +718,8 @@ const LANDING_BODY = String.raw`
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Get started</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Starter</div><div class="amt">$14.99<span> / mo</span></div>
-        <div class="yr">or $149.90 / yr</div>
+        <div class="pn">Starter</div><div class="amt"><span class="p-mo">$14.99<span> / mo</span></span><span class="p-yr">$12.49<span> / mo</span></span></div>
+        <div class="yr"><span class="p-mo">or $149.90 / yr</span><span class="p-yr">billed annually · $149.90/yr</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Free, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine &amp; instant quotes</li>
@@ -718,8 +736,8 @@ const LANDING_BODY = String.raw`
       </div>
       <div class="plan pro reveal">
         <span class="best">Most popular</span>
-        <div class="pn">Pro</div><div class="amt">$29.99<span> / mo</span></div>
-        <div class="yr">or $299.90 / yr</div>
+        <div class="pn">Pro</div><div class="amt"><span class="p-mo">$29.99<span> / mo</span></span><span class="p-yr">$24.99<span> / mo</span></span></div>
+        <div class="yr"><span class="p-mo">or $299.90 / yr</span><span class="p-yr">billed annually · $299.90/yr</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Starter, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embed calendar (live availability)</li>
@@ -730,8 +748,8 @@ const LANDING_BODY = String.raw`
         <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Premium Pro</div><div class="amt">$49.99<span> / mo</span></div>
-        <div class="yr">or $499.90 / yr</div>
+        <div class="pn">Premium Pro</div><div class="amt"><span class="p-mo">$49.99<span> / mo</span></span><span class="p-yr">$41.66<span> / mo</span></span></div>
+        <div class="yr"><span class="p-mo">or $499.90 / yr</span><span class="p-yr">billed annually · $499.90/yr</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Pro, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 100 / mo</li>
@@ -741,8 +759,8 @@ const LANDING_BODY = String.raw`
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Enterprise</div><div class="amt">$99.99<span> / mo</span></div>
-        <div class="yr">or $999.90 / yr</div>
+        <div class="pn">Enterprise</div><div class="amt"><span class="p-mo">$99.99<span> / mo</span></span><span class="p-yr">$83.33<span> / mo</span></span></div>
+        <div class="yr"><span class="p-mo">or $999.90 / yr</span><span class="p-yr">billed annually · $999.90/yr</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Premium Pro, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 250 / mo</li>
@@ -966,6 +984,13 @@ const LANDING_BODY = String.raw`
 `;
 
 const LANDING_SCRIPT = String.raw`
+// Monthly / Annual pricing toggle: flip a class on .price and light up the
+// chosen tab. All cards swap prices together via CSS (.bill-mo | .bill-yr).
+window.gdcBill=function(mode,el){
+  var p=document.querySelector('#pricing .price'); if(!p) return;
+  p.classList.remove('bill-mo','bill-yr'); p.classList.add(mode==='yr'?'bill-yr':'bill-mo');
+  if(el&&el.parentNode){el.parentNode.querySelectorAll('.billopt').forEach(function(b){b.classList.remove('on');}); el.classList.add('on');}
+};
 function openLB(id){var e=document.getElementById(id);if(e){e.classList.add('open');document.body.style.overflow='hidden';}}
 function closeLB(id){var e=document.getElementById(id);if(e){e.classList.remove('open');document.body.style.overflow='';}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.lb.open').forEach(function(l){l.classList.remove('open');});document.body.style.overflow='';}});
