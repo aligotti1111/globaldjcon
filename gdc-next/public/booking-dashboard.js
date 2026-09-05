@@ -37,8 +37,8 @@ function stDeposit(){return{icon:'money',state:'notsent',S:{
     {label:'Undo skip',to:'notsent',cls:'muted'}]},
 }};}
 function stPlanner(){return{icon:'music',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[
-    {label:'Select – Send Planner/Playlist',to:'sent'},{label:'✓ Mark Complete',to:'done'}]},
+  notsent:{cap:'Not sent',cls:'waiting',info:'When clicked on your dashboard, the planners & playlists stored in your account will show for you to select one to send.',actions:[
+    {label:'Select – Send Planner/Playlist',to:'notsent'},{label:'✓ Mark Complete',to:'done'}]},
   sent:{cap:'60%',cls:'waiting',info:'60% complete',actions:[
     {label:'Open Planner & Playlist',to:'sent'},{label:'Download Planner & Playlist',to:'sent'},
     {label:'Copy link',to:'sent'},{label:'Send reminder email',to:'sent'},{label:'✓ Mark Complete',to:'done'}]},
