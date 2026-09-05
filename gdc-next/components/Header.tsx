@@ -8,7 +8,7 @@
 //   Others:  Bookings + Inbox + Settings (gear) + Log Out
 //   Admin:   Admin button (in addition to above based on role)
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
@@ -38,6 +38,19 @@ export default function Header() {
   // buttons, and it renders once per page under (main)/layout, so one instance
   // covers every page.
   const [authModal, setAuthModal] = useState<null | 'login' | 'signup'>(null);
+
+  // The marketing homepage is a static HTML string (dangerouslySetInnerHTML), so
+  // its "Get started"/"Choose <plan>" buttons can't call setAuthModal directly.
+  // They dispatch a `gdc:open-auth` event instead; we open the modal here. Same
+  // decoupling pattern as gdc:open-mobile-menu above.
+  useEffect(() => {
+    const onOpenAuth = (e: Event) => {
+      const mode = (e as CustomEvent).detail?.mode;
+      setAuthModal(mode === 'login' ? 'login' : 'signup');
+    };
+    window.addEventListener('gdc:open-auth', onOpenAuth as EventListener);
+    return () => window.removeEventListener('gdc:open-auth', onOpenAuth as EventListener);
+  }, []);
 
   const openMenu = () => {
     // Dispatch a custom event the MobileMenu component listens for.
