@@ -29,7 +29,7 @@ function stDeposit(){return{icon:'money',state:'notsent',S:{
   notsent:{cap:'Not sent',cls:'waiting',actions:[
     {label:'Request deposit',to:'requested'},{label:'Skip deposit',to:'skipped',cls:'muted'},
     {label:'Payment options',to:'notsent',cls:'muted'},{label:'✓ Mark Complete',to:'done'}]},
-  requested:{cap:'$0/'+DEP,cls:'waiting',info:'$0 of '+DEP+' received',actions:[
+  requested:{cap:'Pending',cls:'waiting',info:'$0 of '+DEP+' received',actions:[
     {label:'Cancel request',to:'notsent',cls:'danger'},{label:'✓ Mark Complete',to:'done'}]},
   done:{cap:'Complete',cls:'done',info:'Deposit Received.',actions:[
     {label:'✕ Mark Not Complete',to:'notsent',cls:'danger'}]},
