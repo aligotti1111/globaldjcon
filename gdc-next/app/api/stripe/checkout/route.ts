@@ -137,6 +137,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: session.url });
   } catch (e) {
     console.error('[stripe/checkout] error', e);
-    return NextResponse.json({ error: 'Checkout failed' }, { status: 500 });
+    // Surface the real Stripe error so failures are diagnosable from the client
+    // instead of a blanket "Checkout failed". Stripe error messages ("No such
+    // price…", "Invalid API Key…", "…similar object exists in live mode, but a
+    // test mode key was used…") name the actual cause and aren't sensitive.
+    const err = e as { message?: string; code?: string; type?: string };
+    return NextResponse.json(
+      { error: err?.message || 'Checkout failed', code: err?.code, type: err?.type },
+      { status: 500 },
+    );
   }
 }
