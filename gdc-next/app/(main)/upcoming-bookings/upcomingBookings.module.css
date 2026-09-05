@@ -90,14 +90,6 @@
   .stIcon { position: relative !important; z-index: 1 !important; }
 }
 
-/* Desktop: club/bar venue moves under the time, and the venue that would
-   otherwise sit in the event column is suppressed so it isn't shown twice. The
-   overlap / overpaid pills stay in .rowContext. */
-@media (min-width: 601px) {
-  .monthListClub .rowVenueUnder { display: block !important; }
-  .monthListClub .rowEventType { display: none !important; }
-}
-
 /* Booking progress hero — the connected-node pipeline bar at the top of the
    expanded card. detailsPanelTop is its wrapper; hero* style the bar itself. */
 .detailsPanelTop {
@@ -341,20 +333,53 @@
    10px to pay for it. */
 .monthListClub {
   /* Club/bar has TWO more tracks than a mobile DJ (a 56px flyer AND a 5th
-     status column — Guests). At the page's 1100px cap that is ~1020px of row
-     content, and the mobile-DJ track list plus those two extra tracks overran
-     it by ~65px, shoving the 84px actions cell (MANUAL pill / edit-delete) and
-     the chevron off the right edge of the card. Every fixed track is trimmed a
-     little and the gap tightened to 9px (club only) so the whole row — actions
-     and chevron included — fits inside the card, with ~90px still left for the
-     flexible event column. The flyer stays at 56px: it's a real 56px thumbnail
-     and a narrower track would let it overhang the time column, not shrink it. */
-  --row-cols: 80px 56px 132px minmax(0, 1fr) 72px 80px 80px 80px 80px 80px 70px 22px;
+     status column — Guests), which at the page's 1100px cap (~1020px of row
+     content) overran the row and pushed the actions cell and chevron off the
+     card. The fix: the price does NOT get a column here. Instead it drops to a
+     full-width band on a SECOND row (see .monthListClub .rowValue below), the
+     same treatment it gets on mobile. That frees the whole value track, so the
+     top line — date, flyer, time, venue, five status columns, actions, chevron
+     (11 tracks, no value) — fits comfortably with ~95px left for the venue.
+     The flyer stays 56px: it's a real 56px thumbnail and a narrower track would
+     let it overhang the time column rather than shrink it. */
+  --row-cols: 80px 56px 132px minmax(0, 1fr) 92px 92px 92px 92px 92px 84px 22px;
 }
-/* Club rows are the widest layout; the tighter gap is what buys the last few
-   pixels. Desktop table only — the mobile card lays .row out with named areas,
-   so --row-cols and this gap have no effect there. */
-.monthListClub .row { column-gap: 9px; }
+/* Club rows are the widest layout; the tighter gap buys a few more pixels.
+   Desktop table only — the mobile card lays .row out with named areas, so
+   --row-cols and this gap have no effect there. */
+.monthListClub .row { column-gap: 9px; row-gap: 0; }
+
+/* Desktop: the club price rides a full-width band on a second grid row, pinned
+   flush to the card's side and bottom edges (the .row has 16px padding, so the
+   negative margins reach the borders; .rowWrap's overflow:hidden clips it to
+   the rounded corners). Everything else auto-places into row 1; .rowValue is
+   the only item explicitly on row 2. A booking with no agreed price renders an
+   empty .rowValue, which :empty hides — so those rows stay a single line. */
+@media (min-width: 601px) {
+  .monthListClub .rowValue {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 12px -16px -16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2b2b2b;
+    padding: 9px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--neon, #00e0a4);
+  }
+  .monthListClub .rowValue::before {
+    content: "Total Value";
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #c9c9d3;
+  }
+  .monthListClub .rowValue:empty { display: none; }
+}
 .month { }
 .monthLabel {
   font-family: 'Bebas Neue', sans-serif;
@@ -451,25 +476,6 @@
   font-size: 13px;
   color: #9d9db5;
   white-space: nowrap;
-}
-/* Club/bar only: the venue name sits UNDER the time (in the time cell) rather
-   than in its own event column. The club row already carries a flyer AND a 5th
-   status column, so an event track wide enough for a venue name would push the
-   actions cell off the card. Stacking it under the time keeps the venue legible
-   without spending a horizontal track on it. Desktop only — on mobile the venue
-   rides beside the time (see .rowContext), which the narrow card has room for.
-   Hidden by default; shown in the desktop media block below. */
-.rowVenueUnder {
-  display: none;
-  font-family: var(--font-inter);
-  font-size: 11px;
-  font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  line-height: 1.2;
 }
 /* .rowTimeWrap is gone — it wrapped the cocktail note above the time inside
    the old nested toggle grid. .rowToggle IS that column now, so the wrapper

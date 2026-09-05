@@ -810,12 +810,6 @@ export default function BookingRow({
             <div className={styles.rowCocktailNote}>Includes ceremony music</div>
           )}
           <div className={styles.rowTime}>{timeRange}</div>
-          {/* Club/bar: venue name under the time (desktop only — .rowVenueUnder
-              is display:none until the desktop breakpoint). On mobile the venue
-              rides beside the time via .rowContext instead. */}
-          {djType === 'club' && context && (
-            <div className={styles.rowVenueUnder}>{context}</div>
-          )}
         </button>
         {/* 4 — Event. minmax(0,1fr): takes what's left and ellipsizes, so a
             long name can never push the status columns out of alignment.
