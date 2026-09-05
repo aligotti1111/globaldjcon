@@ -1683,37 +1683,29 @@ select.input {
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
     margin-top: .5rem;
-    /* Span the full width of the framed card: pull out past the row's .7rem
-       side padding so the band meets the card border on both sides (rowWrap's
-       overflow:hidden + radius round the corners). No longer a viewport-wide
-       full-bleed — the card has a frame now. */
-    margin-left: -.7rem;
-    margin-right: -.7rem;
-    padding: .7rem 1rem;
-    /* NO column gap: each cell's top line must butt against its neighbour's so
-       the ledge reads as ONE continuous line across the band, broken only where
-       a label knocks it out — not a row of separate dashes. */
-    gap: 0;
-    /* SOLID, not rgba white. A translucent overlay composites against whatever
-       is behind it — pure black on a collapsed row, but the lighter #16161f
-       card surface on an EXPANDED row — so the same band read as two different
-       greys depending on whether the card was open. A solid value renders
-       identically in both states. #191919 ≈ the old .085 white over black. */
-    background: #191919;
+    /* Clean mockup layout: the strip sits INSIDE the card padding (no full-bleed
+       band, no lighter grey surface), separated from the date line by one thin
+       hairline. Each stage is label → icon → caption in normal flow, with a
+       small gap between columns. */
+    margin-left: 0;
+    margin-right: 0;
+    padding: 12px 6px 14px;
+    gap: 4px;
+    background: transparent;
+    border-top: 1px solid rgba(255, 255, 255, .1);
     border-radius: 0;
   }
-  /* No box — each stage just gets a top line (a ledge) with its label sitting
-     on it, then the icon + status below. position:relative anchors the label;
-     the label's knockout background cuts the line behind the text. */
+  /* Each stage: label on top, icon in the middle, caption below — no ledge,
+     no knockout. */
   .stCell {
-    justify-content: center;
+    justify-content: flex-start;
+    align-items: center;
     flex-direction: column;
-    position: relative;
+    gap: 5px;
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, .16);
     border-radius: 0;
     background: transparent;
-    padding: 12px 3px 0;
+    padding: 0;
   }
   .stBtn { align-items: center; width: 100%; }
   .stCap { width: 100%; text-align: center; }
@@ -1743,17 +1735,15 @@ select.input {
   }
   .stLabel {
     display: block;
-    position: absolute;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    /* Knockout matching the band so the label appears to sit ON the line. */
-    background: #191919;
-    padding: 0 6px;
-    font-size: 8.5px;
+    position: static;
+    transform: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font-size: 9px;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: #8a8a9a;
+    color: #f0f0f8;
     white-space: nowrap;
     line-height: 1;
   }
