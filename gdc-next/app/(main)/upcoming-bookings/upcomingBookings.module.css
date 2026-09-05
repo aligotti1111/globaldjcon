@@ -1687,12 +1687,13 @@ select.input {
        band, no lighter grey surface), separated from the date line by one thin
        hairline. Each stage is label → icon → caption in normal flow, with a
        small gap between columns. */
-    margin-left: 0;
-    margin-right: 0;
-    padding: 12px 6px 14px;
+    /* Full-width gray band behind the icons, matching the mockup shade, edge to
+       edge of the framed card. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
+    padding: 12px 1rem 14px;
     gap: 4px;
-    background: transparent;
-    border-top: 1px solid rgba(255, 255, 255, .1);
+    background: #16161c;
     border-radius: 0;
   }
   /* Each stage: label on top, icon in the middle, caption below — no ledge,
