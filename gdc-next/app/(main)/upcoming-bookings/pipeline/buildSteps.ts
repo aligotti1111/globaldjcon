@@ -721,6 +721,86 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     }
   }
 
+  /*
+   * "NOT REQUIRED" PLACEHOLDERS.
+   *
+   * A stage the DJ turned OFF in their pipeline settings — no contract required,
+   * no deposit, rider or guest list not enabled — used to leave a bare dash. A
+   * dash reads as "doesn't apply / nothing here", but the DJ may still decide to
+   * deploy that stage on a one-off booking. So instead of a dash the cell shows
+   * the greyed stage icon with a "Not Required" caption and a dropdown whose
+   * action opens that stage's normal setup/send flow. If they never touch it,
+   * it just sits there quietly saying the stage isn't part of this pipeline.
+   *
+   * Live bookings only. On Past Bookings (archive) or a cancelled night there's
+   * nothing to deploy, so those keep the plain dash.
+   */
+  if (!archive && !isCancelled) {
+    const has = (k: string) => steps.some((s) => s.key === k);
+    const isClub = booking.booking_type === 'club';
+    const addHost = onAddHost || onEdit;
+
+    // Contract — off when the DJ doesn't require one for this booking.
+    if (!has('contract')) {
+      steps.push({
+        key: 'contract', label: 'Contract — not required for this booking',
+        state: 'todo', icon: 'doc', overridable: false, done: false,
+        color: MUTED, caption: 'Not Required',
+        actions: !canPro
+          ? [{ label: 'Renew to send contracts', run: () => { window.location.href = '/subscribe'; } }]
+          : blockedNoHost
+            ? (addHost ? [{ label: 'Add host details…', run: addHost as () => void }] : [])
+            : [{ label: 'Review & send contract', run: () => runContract('open') }],
+        hint: blockedNoHost ? 'Add host email and name to send a contract.' : undefined,
+      });
+    }
+
+    // Deposit — off when the DJ takes no deposit on this booking.
+    if (!has('deposit')) {
+      steps.push({
+        key: 'deposit', label: 'Deposit — not required for this booking',
+        state: 'todo', icon: 'money', overridable: false, done: false,
+        color: MUTED, caption: 'Not Required',
+        actions: blockedNoHost
+          ? (addHost ? [{ label: 'Add host details…', run: addHost as () => void }] : [])
+          : canRequestDeposit
+            ? [
+                { label: 'Request deposit', run: () => openRequest('deposit') },
+                { label: 'Payment options', run: () => setMethodsOpen(true) },
+              ]
+            : [],
+        hint: blockedNoHost
+          ? 'Add host email and name to request a deposit.'
+          : !canRequestDeposit
+            ? 'Contract must be signed to request a deposit.'
+            : undefined,
+      });
+    }
+
+    // DJ Rider (club/bar) — off when the DJ hasn't enabled the rider.
+    if (isClub && !has('song_list')) {
+      steps.push({
+        key: 'song_list', label: 'DJ Rider — not enabled',
+        state: 'todo', icon: 'music', overridable: false, done: false,
+        color: MUTED, caption: 'Not Required',
+        actions: [
+          ...savedRiders.map((r) => ({ label: `Send "${r.name}"`, run: () => sendNamedRider(r) })),
+          { label: 'Rider portal', run: () => setRiderChooserOpen(true) },
+        ],
+      });
+    }
+
+    // Guest list (club/bar) — off when the DJ hasn't enabled the guest list.
+    if (isClub && !has('guestlist')) {
+      steps.push({
+        key: 'guestlist', label: 'Guest List — not enabled',
+        state: 'todo', icon: 'doc', overridable: false, done: false,
+        color: MUTED, caption: 'Not Required',
+        actions: [{ label: 'Open guest list', run: () => { window.location.href = `/guestlist-edit/${booking.id}`; } }],
+      });
+    }
+  }
+
   /**
    * Cancelled: strip every way to act on the row, in one place.
    *

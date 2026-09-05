@@ -99,19 +99,28 @@ export default function PipelineStrip({
         const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
         // "Not sent" reads red so it stands apart from an amber "Pending".
         const capColorFinal = /^not sent$/i.test(cap || '') ? '#ff6b6b' : capColor;
+        // A stage the DJ turned OFF in their pipeline settings: it shows the
+        // greyed icon + "Not Required" so it can still be deployed on a one-off,
+        // but it must read as muted — NOT as an amber "your move" step. No dot,
+        // dim ring, grey icon.
+        const notRequired = !st.done && /^not required$/i.test(st.caption || '');
         // Circular-node ring, per state. Purely visual. DONE is the only state
         // the ring itself colours — teal + a check. Everything still to do reads
         // as a calm neutral-grey ring; which one is "your move" is carried by the
         // caption underneath (amber), not by lighting up every node. A page where
         // every incomplete step glowed amber made nothing stand out.
-        const ringStyle: CSSProperties = positiveDone
+        const ringStyle: CSSProperties = notRequired
+          ? { borderColor: '#2f2f3d' }
+          : positiveDone
           ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
           : (!st.done && waiting)
             ? { borderColor: 'rgba(255,255,255,.16)' }
             : skipped
               ? { borderColor: 'rgba(255,255,255,.28)' }
               : { borderColor: '#3a3a4c' };
-        const iconColor = positiveDone
+        const iconColor = notRequired
+          ? '#5a5a72'
+          : positiveDone
           ? 'var(--neon,#00e0a4)'
           : (!st.done && waiting)
             ? '#b9b9c6'
@@ -125,7 +134,7 @@ export default function PipelineStrip({
                   <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 </span>
               )}
-              {!st.done && waiting && <span className={styles.stDot} />}
+              {!st.done && waiting && !notRequired && <span className={styles.stDot} />}
             </span>
             {hasMenu && (
               <span className={styles.stChev} aria-hidden="true">
