@@ -4,7 +4,7 @@
 // layout so it inherits the real Header/MobileMenu/Footer. CSS scoped under
 // .gdc-landing. DJ directory is at /djs.
 
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 import { Bebas_Neue, DM_Sans, Space_Mono } from 'next/font/google';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -1002,14 +1002,31 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 // anything still hidden whose top has reached the viewport, so no section can
 // ever be stranded invisible even if the observer misses it.
 (function(){
-  var reveals=document.querySelectorAll('.reveal');
-  if(!('IntersectionObserver' in window)){reveals.forEach(function(el){el.classList.add('in');});return;}
-  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{rootMargin:'0px 0px -8% 0px',threshold:0});
-  reveals.forEach(function(el){io.observe(el);});
-  var sweep=function(){document.querySelectorAll('.reveal:not(.in)').forEach(function(el){if(el.getBoundingClientRect().top < window.innerHeight*0.9){el.classList.add('in');}});};
+  var io=null;
+  function sweep(){document.querySelectorAll('.reveal:not(.in)').forEach(function(el){if(el.getBoundingClientRect().top < window.innerHeight*0.9){el.classList.add('in');}});}
+  function initReveal(){
+    if(!('IntersectionObserver' in window)){document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');});return;}
+    if(io){io.disconnect();}
+    io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{rootMargin:'0px 0px -8% 0px',threshold:0});
+    document.querySelectorAll('.reveal:not(.in)').forEach(function(el){io.observe(el);});
+    sweep();
+  }
+  initReveal();
   window.addEventListener('scroll',sweep,{passive:true});
   window.addEventListener('resize',sweep,{passive:true});
-  sweep();
+  // RECOVERY: React re-applies the landing markup on some re-renders (auth
+  // refresh when you return to the tab, opening the sign-up modal, choosing a
+  // plan). That wipes the runtime .in classes AND detaches the old observed
+  // nodes, so the page goes black and never comes back. A MutationObserver
+  // catches the re-applied DOM and re-runs the reveal on the fresh nodes.
+  // childList only (not attributes), so our own .in class additions don't
+  // retrigger it — no loop.
+  if('MutationObserver' in window){
+    var mo=new MutationObserver(function(){ if(document.querySelector('.reveal:not(.in)')){ initReveal(); } });
+    mo.observe(document.body,{childList:true,subtree:true});
+  }
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden){ initReveal(); } });
+  window.addEventListener('pageshow',initReveal);
 })();
 
 // HOW IT WORKS — text toggle (Mobile default)
@@ -1098,18 +1115,36 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 
 `;
 
+// The landing markup is a huge dangerouslySetInnerHTML string whose live state
+// (scroll-reveal .in classes, the interactive sample's DOM) lives OUTSIDE React.
+// If this re-renders, React re-applies the innerHTML and wipes all of that — the
+// page goes black (reported on tab-return, opening sign-up, choosing a plan,
+// each of which churns the auth context). memo() on a single boolean means it
+// only ever re-renders when the signed-in state actually flips (once), not on
+// every auth-object change or sibling modal toggle. The reveal script also
+// self-heals via a MutationObserver as a second line of defence.
+const LandingMarkup = memo(function LandingMarkup({ signedIn }: { signedIn: boolean }) {
+  return (
+    <div
+      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
+      dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
+    />
+  );
+});
+
 export default function HomePage() {
   // Signed-in users already have an account, so the Free plan card is noise to
   // them — hide it (the .gdc-signedin CSS above drops .price .plan:first-child).
   // The paid plans stay so they can still upgrade.
   const { user } = useAuth();
+  const signedIn = !!user;
   // The plan CTAs live in the static LANDING_BODY string, so they can't read
   // React state. Mirror the auth flag onto window: signed-in clicks go to
   // /subscribe (the manage-subscription page — it shows the plan you're on and
   // lets you upgrade/switch), logged-out clicks open the sign-up modal.
   useEffect(() => {
-    (window as unknown as { __gdcAuthed?: boolean }).__gdcAuthed = !!user;
-  }, [user]);
+    (window as unknown as { __gdcAuthed?: boolean }).__gdcAuthed = signedIn;
+  }, [signedIn]);
   useEffect(() => {
     const s = document.createElement('script');
     s.textContent = LANDING_SCRIPT;
@@ -1134,10 +1169,7 @@ export default function HomePage() {
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <div
-        className={`gdc-landing ${user ? 'gdc-signedin' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
-        dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
-      />
+      <LandingMarkup signedIn={signedIn} />
     </>
   );
 }
