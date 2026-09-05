@@ -90,7 +90,7 @@ function buildModels(){
   ];
   list[2].flyer=FLYER_IMG;  // top club booking shows a real flyer
   list[2].det={eventType:'Club Night',dateLong:'Friday, June 21, 2026',guests:'450',
-    venue:'Pulse Nightclub',room:'Main Room',addr:'88 Ardsley St, Brooklyn, NY 11203',
+    venue:'Pulse Nightclub',room:'Nightclub',addr:'88 Ardsley St, Brooklyn, NY 11203',
     bookedBy:'Marcus Reed',phone:'(718) 555-0133',
     pricing:{rate:'$900.00',total:'$900.00',schedule:[{label:'Balance due day of event',val:'$900.00'}]},
     log:[
@@ -100,7 +100,7 @@ function buildModels(){
       {who:'YOU',cls:'you',text:'Guest list sent',when:'Jun 18, 2026, 3:22 PM'}
     ]};
   list[3].det={eventType:'Guest DJ Set',dateLong:'Saturday, July 5, 2026',guests:'300',
-    venue:'The Vault',room:'Basement Floor',addr:'22 Wither Ln, Jersey City, NJ 07302',
+    venue:'The Vault',room:'Lounge',addr:'22 Wither Ln, Jersey City, NJ 07302',
     bookedBy:'Alicia Gomez',phone:'(201) 555-0176',
     pricing:{rate:'$1,100.00',total:'$1,100.00',schedule:[{label:'Balance due day of event',val:'$1,100.00'}]},
     log:[
@@ -216,11 +216,11 @@ function mobDetailHTML(m){
     <div class="dsec">
       <span class="dpill">EVENT</span>
       <div class="dgrid3">
-        <div class="df"><span class="dk">Event type</span><span class="dv">${d.eventType||m.event}${d.evSub?`<span class="dsub">${d.evSub}</span>`:''}</span></div>
+        ${m.type==='club'?'':`<div class="df"><span class="dk">Event type</span><span class="dv">${d.eventType||m.event}${d.evSub?`<span class="dsub">${d.evSub}</span>`:''}</span></div>`}
         <div class="df"><span class="dk">Event date</span><span class="dv">${d.dateLong||''}</span></div>
-        <div class="df"><span class="dk">Guest count</span><span class="dv">${d.guests||''}</span></div>
+        ${m.type==='club'?'':`<div class="df"><span class="dk">Guest count</span><span class="dv">${d.guests||''}</span></div>`}
       </div>
-      ${sched?`<div class="schwrap"><div class="schhead">Schedule</div>${sched}</div>`:`<div class="df evtime"><span class="dk">Event time</span><span class="dv time">${m.time}</span></div>`}
+      ${sched?`<div class="schwrap"><div class="schhead">Schedule</div>${sched}</div>`:`<div class="df evtime"><span class="dk">${m.type==='club'?'Set time':'Event time'}</span><span class="dv time">${m.time}</span></div>`}
       ${d.overtime?`<div class="dovertime"><span class="dk">Overtime</span><b>${d.overtime}</b><a class="dlink">Send invoice / receipt</a></div>`:''}
     </div>
     <div class="drow2">
@@ -228,7 +228,7 @@ function mobDetailHTML(m){
         <span class="dpill">VENUE</span>
         <div class="dgrid2">
           <div class="df"><span class="dk">Venue name</span><span class="dv">${d.venue||''}</span></div>
-          <div class="df"><span class="dk">Room details</span><span class="dv">${d.room||''}</span></div>
+          <div class="df"><span class="dk">${m.type==='club'?'Venue type':'Room details'}</span><span class="dv">${d.room||''}</span></div>
         </div>
         <div class="df"><span class="dk">Venue address</span><span class="dv"><a class="dlink">${d.addr||''}</a></span></div>
       </div>
