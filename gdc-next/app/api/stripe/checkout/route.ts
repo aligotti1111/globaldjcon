@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     if (embedded) {
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
-        ui_mode: 'embedded_page',
+        ui_mode: 'embedded',
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
         return_url: `${origin}/subscribe/complete?session_id={CHECKOUT_SESSION_ID}`,
