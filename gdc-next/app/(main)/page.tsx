@@ -554,7 +554,7 @@ const LANDING_BODY = String.raw`
       <h1>THE <span class="a">ENTIRE BOOKING PROCESS</span> IN ONE PLATFORM</h1>
       <p class="lede">Global DJ Connect turns the booking process into one link or QR code you share with clients — instant quotes, contracts and deposits handled, money straight to your account. <b class="hl">0% platform cut.</b></p>
       <div class="hero-cta">
-        <a class="btn btn-neon" href="#">Create your DJ page →</a>
+        <a class="btn btn-neon" href="#" onclick="window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));return false;">Create your DJ page →</a>
         <a class="btn btn-ghost" href="#how">See how it works</a>
       </div>
     </div>
@@ -695,7 +695,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 4 photos · 1 video · 1 mix</li>
           <li class="no">No bookings, quotes or contracts</li>
         </ul>
-        <a class="btn btn-ghost" href="#">Get started</a>
+        <a class="btn btn-ghost" href="#" onclick="window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));return false;">Get started</a>
       </div>
       <div class="plan reveal">
         <div class="pn">Starter</div><div class="amt">$14.99<span> / mo</span></div>
@@ -712,7 +712,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 10 photos · 3 videos · 3 mixes</li>
           <li class="no">No embed calendar or team seats</li>
         </ul>
-        <a class="btn btn-ghost" href="#">Choose Starter</a>
+        <a class="btn btn-ghost" href="#" onclick="window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));return false;">Choose Starter</a>
       </div>
       <div class="plan pro reveal">
         <span class="best">Most popular</span>
@@ -725,7 +725,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 30 / mo</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 25 photos · 6 videos · 6 mixes</li>
         </ul>
-        <a class="btn btn-neon" href="#">Choose Pro</a>
+        <a class="btn btn-neon" href="#" onclick="window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));return false;">Choose Pro</a>
       </div>
       <div class="plan reveal">
         <div class="pn">Premium Pro</div><div class="amt">$49.99<span> / mo</span></div>
@@ -736,7 +736,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Team — 5 seats</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 50 photos · 10 videos · 10 mixes</li>
         </ul>
-        <a class="btn btn-ghost" href="#">Choose Premium Pro</a>
+        <a class="btn btn-ghost" href="#" onclick="window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));return false;">Choose Premium Pro</a>
       </div>
       <div class="plan reveal">
         <div class="pn">Enterprise</div><div class="amt">$99.99<span> / mo</span></div>
@@ -747,7 +747,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Team — 15 seats</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100 photos · 20 videos · 20 mixes</li>
         </ul>
-        <a class="btn btn-ghost" href="#">Choose Enterprise</a>
+        <a class="btn btn-ghost" href="#" onclick="window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));return false;">Choose Enterprise</a>
       </div>
     </div>
   </div>
