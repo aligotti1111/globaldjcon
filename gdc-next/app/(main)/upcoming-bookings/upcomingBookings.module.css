@@ -1819,7 +1819,7 @@ select.input {
     font-weight: 500;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: #8a8a9a;
+    color: #c9c9d3;
   }
   /* No agreed value on this booking → no strip at all, rather than a bare
      "Total Value" label with nothing beside it. */
