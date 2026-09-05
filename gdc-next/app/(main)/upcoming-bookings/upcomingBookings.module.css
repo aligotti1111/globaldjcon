@@ -90,6 +90,14 @@
   .stIcon { position: relative !important; z-index: 1 !important; }
 }
 
+/* Desktop: club/bar venue moves under the time, and the venue that would
+   otherwise sit in the event column is suppressed so it isn't shown twice. The
+   overlap / overpaid pills stay in .rowContext. */
+@media (min-width: 601px) {
+  .monthListClub .rowVenueUnder { display: block !important; }
+  .monthListClub .rowEventType { display: none !important; }
+}
+
 /* Booking progress hero — the connected-node pipeline bar at the top of the
    expanded card. detailsPanelTop is its wrapper; hero* style the bar itself. */
 .detailsPanelTop {
@@ -341,7 +349,7 @@
      and chevron included — fits inside the card, with ~90px still left for the
      flexible event column. The flyer stays at 56px: it's a real 56px thumbnail
      and a narrower track would let it overhang the time column, not shrink it. */
-  --row-cols: 82px 56px 104px minmax(0, 1fr) 74px 84px 84px 84px 84px 84px 72px 22px;
+  --row-cols: 80px 56px 132px minmax(0, 1fr) 72px 80px 80px 80px 80px 80px 70px 22px;
 }
 /* Club rows are the widest layout; the tighter gap is what buys the last few
    pixels. Desktop table only — the mobile card lays .row out with named areas,
@@ -443,6 +451,24 @@
   font-size: 13px;
   color: #9d9db5;
   white-space: nowrap;
+}
+/* Club/bar only: the venue name sits UNDER the time (in the time cell) rather
+   than in its own event column. The club row already carries a flyer AND a 5th
+   status column, so an event track wide enough for a venue name would push the
+   actions cell off the card. Stacking it under the time keeps the venue legible
+   without spending a horizontal track on it. Desktop only — on mobile the venue
+   rides beside the time (see .rowContext), which the narrow card has room for.
+   Hidden by default; shown in the desktop media block below. */
+.rowVenueUnder {
+  display: none;
+  font-family: var(--font-inter);
+  font-size: 11px;
+  color: #8a8a9a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.2;
 }
 /* .rowTimeWrap is gone — it wrapped the cocktail note above the time inside
    the old nested toggle grid. .rowToggle IS that column now, so the wrapper
