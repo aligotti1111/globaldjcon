@@ -784,16 +784,25 @@ export default function BookingRow({
             still eat a gap. display:contents on the wrapper so FlyerSlot itself
             is the grid item. */}
         {djType === 'club' && (
-          <span style={{ display: 'contents' }} onClick={(e) => e.stopPropagation()}>
-            <FlyerSlot
-              bookingId={booking.id}
-              userId={userId}
-              flyerUrl={flyerUrl}
-              onChange={setFlyerUrl}
-              size="row"
-              readOnly={archive}
-            />
-          </span>
+          archive && !flyerUrl ? (
+            /* Archive with no flyer: FlyerSlot renders null. Without a stand-in,
+               the flyer grid item disappears and every column shifts one track
+               left — the venue slides under the time and the status headers stop
+               sitting over their icons. An empty cell keeps the flyer track
+               reserved so the row stays aligned. */
+            <span className={styles.flyerInline} aria-hidden="true" />
+          ) : (
+            <span style={{ display: 'contents' }} onClick={(e) => e.stopPropagation()}>
+              <FlyerSlot
+                bookingId={booking.id}
+                userId={userId}
+                flyerUrl={flyerUrl}
+                onChange={setFlyerUrl}
+                size="row"
+                readOnly={archive}
+              />
+            </span>
+          )
         )}
         {/* 3 — Time. Its own track now; it used to be half of a nested grid
             that ate the whole row's spare width. */}
