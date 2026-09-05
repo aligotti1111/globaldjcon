@@ -185,7 +185,7 @@ function drowHTML(m,mi){
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
   const row=`<div class="drow${open?' open':''}"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}</span><span class="dval">${m.val}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
-  return row+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'')+(m.note?`<div class="cardnote">${m.note}</div>`:'');
+  return row+(m.note?`<div class="cardnote">${m.note}</div>`:'')+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'');
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
@@ -197,9 +197,10 @@ function mobCardHTML(m,mi){
   return `<div class="card${open?' open':''}">
     ${top}
     <div class="strip">${cells}</div>
+    ${m.note?`<div class="cardnote">${m.note}</div>`:''}
     ${open?mobDetailHTML(m):''}
     <div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>
-  </div>${m.note?`<div class="cardnote">${m.note}</div>`:''}`;
+  </div>`;
 }
 function mobDetailHTML(m){
   const d=m.det||{};
