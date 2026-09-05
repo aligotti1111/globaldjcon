@@ -90,7 +90,7 @@ function buildModels(){
   ];
   list[2].flyer=FLYER_IMG;  // top club booking shows a real flyer
   list[2].det={eventType:'Club Night',dateLong:'Friday, June 21, 2026',guests:'450',
-    venue:'Pulse Nightclub',room:'Nightclub',addr:'88 Ardsley St, Brooklyn, NY 11203',
+    venue:'Pulse Nightclub',room:'Club',addr:'88 Ardsley St, Brooklyn, NY 11203',
     bookedBy:'Marcus Reed',phone:'(718) 555-0133',
     pricing:{rate:'$900.00',total:'$900.00',schedule:[{label:'Balance due day of event',val:'$900.00'}]},
     log:[
