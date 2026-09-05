@@ -578,6 +578,29 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
       const emailLower = email.toLowerCase().trim();
       const travelVal = travel === 'worldwide' ? 'worldwide' : (parseInt(travel, 10) || null);
 
+      // Cross-account guard. A host who signed up by PHONE has no email identity
+      // in Supabase auth, so auth.signUp below won't see a conflict — but their
+      // email lives on their profile (contact_email). Without this check they'd
+      // get a SECOND account on an email that already belongs to someone. The
+      // lookup-identifier route checks auth AND the profile email, so it catches
+      // exactly that case. Network/route failure falls through to signUp, which
+      // still runs Supabase's own duplicate check.
+      try {
+        const chk = await fetch('/api/auth/lookup-identifier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: emailLower }),
+        });
+        if (chk.ok) {
+          const info = (await chk.json().catch(() => ({}))) as { found?: boolean };
+          if (info?.found) {
+            throw new Error('An account with this email already exists. Please log in instead.');
+          }
+        }
+      } catch (dupe) {
+        if (dupe instanceof Error && /already exists/i.test(dupe.message)) throw dupe;
+      }
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: emailLower,
         password,
@@ -1012,6 +1035,25 @@ function VenueForm({ onBack, onSwitchType, onSuccess }: {
     setSubmitting(true);
     try {
       const emailLower = email.toLowerCase().trim();
+      // Same cross-account guard as the DJ path: block a second account on an
+      // email that already belongs to someone (e.g. a phone-signup host whose
+      // email is on their profile but not in Supabase auth).
+      try {
+        const chk = await fetch('/api/auth/lookup-identifier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: emailLower }),
+        });
+        if (chk.ok) {
+          const info = (await chk.json().catch(() => ({}))) as { found?: boolean };
+          if (info?.found) {
+            throw new Error('An account with this email already exists. Please log in instead.');
+          }
+        }
+      } catch (dupe) {
+        if (dupe instanceof Error && /already exists/i.test(dupe.message)) throw dupe;
+      }
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: emailLower,
         password,
