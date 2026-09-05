@@ -96,6 +96,7 @@
 .gdc-dash .mobdetail{display:flex;flex-direction:column;gap:12px;padding:14px 12px 4px;border-top:1px solid var(--line)}
 .gdc-dash .drow2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .gdc-dash .dsec{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px 8px;background:#0a0a0f}
+.gdc-dash .dsec.pricing{background-image:linear-gradient(rgba(34,227,173,.06),rgba(0,0,0,0));border-color:rgba(255,255,255,.16)}
 .gdc-dash .dpill{display:inline-flex;background-image:linear-gradient(100deg,#22e3ad,#31d0ff);color:#04241b;font-family:var(--sans);font-weight:600;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;padding:6px 13px;border-radius:8px;margin-bottom:6px}
 .gdc-dash .dgrid3,.gdc-dash .dgrid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
 .gdc-dash .df{display:flex;flex-direction:column;gap:3px;margin-top:10px}
