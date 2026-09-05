@@ -718,8 +718,8 @@ const LANDING_BODY = String.raw`
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Get started</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Starter</div><div class="amt"><span class="p-mo">$14.99<span> / mo</span></span><span class="p-yr">$12.49<span> / mo</span></span></div>
-        <div class="yr"><span class="p-mo">or $149.90 / yr</span><span class="p-yr">billed annually · $149.90/yr</span></div>
+        <div class="pn">Starter</div><div class="amt"><span class="p-mo">$14.99<span> / mo</span></span><span class="p-yr">$149.90<span> / yr</span></span></div>
+        <div class="yr"><span class="p-mo">or $149.90 / yr</span><span class="p-yr">$12.49 / mo · billed annually</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Free, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine &amp; instant quotes</li>
@@ -736,8 +736,8 @@ const LANDING_BODY = String.raw`
       </div>
       <div class="plan pro reveal">
         <span class="best">Most popular</span>
-        <div class="pn">Pro</div><div class="amt"><span class="p-mo">$29.99<span> / mo</span></span><span class="p-yr">$24.99<span> / mo</span></span></div>
-        <div class="yr"><span class="p-mo">or $299.90 / yr</span><span class="p-yr">billed annually · $299.90/yr</span></div>
+        <div class="pn">Pro</div><div class="amt"><span class="p-mo">$29.99<span> / mo</span></span><span class="p-yr">$299.90<span> / yr</span></span></div>
+        <div class="yr"><span class="p-mo">or $299.90 / yr</span><span class="p-yr">$24.99 / mo · billed annually</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Starter, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embed calendar (live availability)</li>
@@ -748,8 +748,8 @@ const LANDING_BODY = String.raw`
         <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Premium Pro</div><div class="amt"><span class="p-mo">$49.99<span> / mo</span></span><span class="p-yr">$41.66<span> / mo</span></span></div>
-        <div class="yr"><span class="p-mo">or $499.90 / yr</span><span class="p-yr">billed annually · $499.90/yr</span></div>
+        <div class="pn">Premium Pro</div><div class="amt"><span class="p-mo">$49.99<span> / mo</span></span><span class="p-yr">$499.90<span> / yr</span></span></div>
+        <div class="yr"><span class="p-mo">or $499.90 / yr</span><span class="p-yr">$41.66 / mo · billed annually</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Pro, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 100 / mo</li>
@@ -759,8 +759,8 @@ const LANDING_BODY = String.raw`
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Enterprise</div><div class="amt"><span class="p-mo">$99.99<span> / mo</span></span><span class="p-yr">$83.33<span> / mo</span></span></div>
-        <div class="yr"><span class="p-mo">or $999.90 / yr</span><span class="p-yr">billed annually · $999.90/yr</span></div>
+        <div class="pn">Enterprise</div><div class="amt"><span class="p-mo">$99.99<span> / mo</span></span><span class="p-yr">$999.90<span> / yr</span></span></div>
+        <div class="yr"><span class="p-mo">or $999.90 / yr</span><span class="p-yr">$83.33 / mo · billed annually</span></div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Premium Pro, plus:</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 250 / mo</li>
