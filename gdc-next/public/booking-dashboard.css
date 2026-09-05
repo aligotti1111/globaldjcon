@@ -113,6 +113,9 @@
 .gdc-dash .dovertime b{color:var(--ink);font-family:var(--mono)}
 .gdc-dash .dmsg{margin-top:12px;background:#14141f;border:1px solid rgba(255,255,255,.14);color:var(--ink);font-weight:700;font-size:.8rem;padding:.55rem .9rem;border-radius:9px;cursor:pointer}
 .gdc-dash .pkgname{font-weight:700;font-size:.95rem;margin-top:2px}
+.gdc-dash .pkglist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gdc-dash .pkglist li{position:relative;padding-left:16px;font-size:.86rem;color:var(--ink);line-height:1.4}
+.gdc-dash .pkglist li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:#4ddcb4}
 .gdc-dash .dpricerow{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
 .gdc-dash .dk2{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 /* toprow middle: badges + value */
@@ -131,7 +134,7 @@
 /* pricing */
 .gdc-dash .dpricerow.total{margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
 .gdc-dash .dpricerow.total .ptot{font-weight:700;color:var(--ink);font-size:.9rem}
-.gdc-dash .dpricerow.total .price{font-size:1rem}
+.gdc-dash .dpricerow.total .price{font-size:1rem;margin-left:auto;text-align:right}
 .gdc-dash .dv.rt{text-align:right}
 .gdc-dash .disc{display:block;color:#4ddcb4;font-size:.8rem;font-weight:400;margin-top:2px}
 .gdc-dash .paysched{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.02)}

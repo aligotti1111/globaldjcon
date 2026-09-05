@@ -118,7 +118,8 @@ function buildModels(){
       {label:'Reception',time:'3:00 PM – 7:00 PM'}
     ],
     venue:'ligotti',room:'br',addr:'8 Jayne Lane, Staten Island, NY 10307',
-    bookedBy:'Anthony l',phone:'(917) 815-8980',pkg:'Premium Wedding',pkgDesc:'6 hrs · lighting · dance floor',
+    bookedBy:'Anthony l',phone:'(917) 815-8980',pkg:'Premium Wedding',
+    pkgItems:['State-of-the-art Sound System','4 Moving Heads','8 LED Decor Lights','Multi-Color Dance Floor Lights','Ceremony Sound System'],
     pricing:{rate:'$500.00',tax:'$44.38 (8.875%)',total:'$544.38',
       schedule:[{label:'Deposit',val:'$81.66 (15%)'},{label:'Balance due day of event',val:'$462.72'}]},
     log:[
@@ -239,7 +240,7 @@ function mobDetailHTML(m){
         <button class="dmsg">✉ Message host</button>
       </div>
     </div>
-    ${d.pkg?`<div class="dsec"><span class="dpill">PACKAGE</span><div class="dv pkgname">${d.pkg}</div><div class="dsub">${d.pkgDesc||''}</div></div>`:''}
+    ${d.pkg?`<div class="dsec"><span class="dpill">PACKAGE</span><div class="dv pkgname">${d.pkg}</div>${d.pkgItems?`<ul class="pkglist">${d.pkgItems.map(i=>`<li>${i}</li>`).join('')}</ul>`:(d.pkgDesc?`<div class="dsub">${d.pkgDesc}</div>`:'')}</div>`:''}
     <div class="dsec pricing"><span class="dpill">PRICING</span>${pricing}</div>
     <div class="dsec">
       <div class="dk">Notes about event</div>
