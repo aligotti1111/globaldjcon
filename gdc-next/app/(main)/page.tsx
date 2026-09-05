@@ -590,14 +590,16 @@ const LANDING_BODY = String.raw`
 <!-- BOOKING DASHBOARD SAMPLE (interactive) -->
 <section id="dashsample" style="padding:56px 0 24px">
   <link rel="stylesheet" href="/booking-dashboard.css">
-  <div class="gdc-dash">
   <div class="wrap">
-    <p class="eyebrow">Your booking dashboard</p>
-    <h1>See how the pipeline works</h1>
-    <p class="sub">Below is a sample of how two bookings look in your booking dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
-    <div id="gdc-dash-mount"></div>
-    <div class="resetbar"><button class="reset" onclick="resetAll()">↻ Reset sample</button></div>
-  </div>
+    <div class="shead reveal">
+      <div class="label">Your booking dashboard</div>
+      <h2>SEE HOW THE PIPELINE WORKS</h2>
+      <p>Below is a sample of how two bookings look in your booking dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
+    </div>
+    <div class="gdc-dash">
+      <div id="gdc-dash-mount"></div>
+      <div class="resetbar"><button class="reset" onclick="resetAll()">↻ Reset sample</button></div>
+    </div>
   </div>
 </section>
 
