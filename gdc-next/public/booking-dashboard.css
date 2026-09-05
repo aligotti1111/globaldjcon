@@ -45,7 +45,7 @@
 .gdc-dash .rowchev svg{width:18px;height:18px}
 
 
-.gdc-dash .deskwrap{--dcols:74px 52px 150px minmax(80px,1fr) 116px 58px 58px 58px 58px 20px}
+.gdc-dash .deskwrap{--dcols:74px 52px 120px 150px 92px 1fr 1fr 1fr 1fr 24px}
 .gdc-dash .drow .flyer{margin-left:0;justify-self:center;width:46px;height:46px}
 .gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
 .gdc-dash .colheads span{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;white-space:nowrap}
