@@ -592,8 +592,8 @@ const LANDING_BODY = String.raw`
   <link rel="stylesheet" href="/booking-dashboard.css">
   <div class="wrap">
     <div class="shead reveal">
-      <div class="label">Your booking dashboard</div>
-      <h2>SEE HOW THE PIPELINE WORKS</h2>
+      <div class="label">See how the pipeline works</div>
+      <h2>YOUR BOOKING DASHBOARD</h2>
       <p>Below is a sample of how two bookings look in your booking dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
     </div>
     <div class="gdc-dash">
