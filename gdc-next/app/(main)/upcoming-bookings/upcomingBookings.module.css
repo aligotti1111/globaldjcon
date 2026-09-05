@@ -1755,7 +1755,26 @@ select.input {
     justify-content: flex-start;
     min-width: 0;
   }
+  /* Flyer: hidden by default on mobile. Only club/bar rows render a FlyerSlot,
+     so it's re-enabled below as a small thumb on the RIGHT of the top line,
+     next to the venue name. The extra grid column is added on .monthListClub
+     ONLY, so mobile-DJ rows keep their 4-area grid with no empty gap. */
   .flyerInline { display: none; }
+  .monthListClub .row {
+    grid-template-columns: 64px auto minmax(0, 1fr) 44px 22px;
+    grid-template-areas:
+      "date  toggle  event  flyer  chev"
+      "stat  stat    stat   stat   stat"
+      "val   val     val    val    val"
+      "acts  acts    acts   acts   acts";
+  }
+  .monthListClub .flyerInline {
+    display: block;
+    grid-area: flyer;
+    align-self: center;
+    justify-self: end;
+  }
+  .monthListClub .flyerBoxRow { width: 44px; height: 44px; }
   .rowToggle {
     grid-area: toggle;
     min-width: 0;
