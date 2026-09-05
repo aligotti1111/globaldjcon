@@ -1676,7 +1676,12 @@ select.input {
   .statusStrip {
     grid-area: stat;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* One clean row of EQUAL columns that adapts to how many stages this
+       account has: 4 for a mobile DJ (contract·deposit·playlist·balance),
+       5 for a club/bar DJ (contract·rider·deposit·balance·guests). auto-flow
+       column keeps them all on a single line instead of wrapping the 5th. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     margin-top: .5rem;
     /* Span the full width of the framed card: pull out past the row's .7rem
        side padding so the band meets the card border on both sides (rowWrap's
@@ -1772,7 +1777,9 @@ select.input {
     grid-area: event;
     justify-self: start;
     /* Sit between the time and price, spaced off the time but still leaning
-       toward it (left-aligned with a gap) rather than glued to it. */
+       toward it (left-aligned with a gap) rather than glued to it. A thin
+       vertical divider separates the time from the event/venue name. */
+    border-left: 1px solid rgba(255, 255, 255, .18);
     padding-left: .7rem;
     white-space: nowrap;
     overflow: hidden;
@@ -1784,6 +1791,8 @@ select.input {
     text-align: left;
     gap: .4rem;
   }
+  /* No event/venue name → no lone divider line. */
+  .rowContext:empty { border-left: none; padding-left: 0; }
   /* Bottom band: value on the left, actions on the right. Value is the least
      urgent thing on a phone — you're looking for what's next, not what it pays
      — so it goes last and stays quiet. */
