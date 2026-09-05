@@ -463,7 +463,8 @@
   display: none;
   font-family: var(--font-inter);
   font-size: 11px;
-  color: #8a8a9a;
+  font-weight: 700;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
