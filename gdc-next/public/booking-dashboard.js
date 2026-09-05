@@ -92,7 +92,7 @@ function buildModels(){
   list[2].det={eventType:'Club Night',dateLong:'Friday, June 21, 2026',guests:'450',
     venue:'Pulse Nightclub',room:'Main Room',addr:'88 Ardsley St, Brooklyn, NY 11203',
     bookedBy:'Marcus Reed',phone:'(718) 555-0133',
-    pricing:{rate:'$900.00',total:'$900.00',schedule:[{label:'Deposit',val:'$135.00 (15%)'},{label:'Balance due day of event',val:'$765.00'}]},
+    pricing:{rate:'$900.00',total:'$900.00',schedule:[{label:'Balance due day of event',val:'$900.00'}]},
     log:[
       {who:'HOST',cls:'host',text:'Booking requested',when:'May 30, 2026, 6:02 PM'},
       {who:'YOU',cls:'you',text:'Contract sent to host',when:'May 30, 2026, 8:15 PM'},
@@ -102,7 +102,7 @@ function buildModels(){
   list[3].det={eventType:'Guest DJ Set',dateLong:'Saturday, July 5, 2026',guests:'300',
     venue:'The Vault',room:'Basement Floor',addr:'22 Wither Ln, Jersey City, NJ 07302',
     bookedBy:'Alicia Gomez',phone:'(201) 555-0176',
-    pricing:{rate:'$1,100.00',total:'$1,100.00',schedule:[{label:'Deposit',val:'$165.00 (15%)'},{label:'Balance due day of event',val:'$935.00'}]},
+    pricing:{rate:'$1,100.00',total:'$1,100.00',schedule:[{label:'Balance due day of event',val:'$1,100.00'}]},
     log:[
       {who:'HOST',cls:'host',text:'Booking requested',when:'Jun 10, 2026, 1:18 PM'},
       {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jun 10, 2026, 5:47 PM'},
