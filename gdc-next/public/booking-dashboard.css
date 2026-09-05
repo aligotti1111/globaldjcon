@@ -18,6 +18,7 @@
 .gdc-dash .section{margin:0 0 26px}
 .gdc-dash .slabel{font-family:var(--sans);font-weight:700;font-size:.95rem;letter-spacing:.01em;margin:0 0 10px;padding-left:2px}
 .gdc-dash .section.mobile .slabel{color:var(--neon)} .gdc-dash .section.club .slabel{color:var(--amber)}
+.gdc-dash .monthhead{font-family:var(--disp);font-weight:400;font-size:1.5rem;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);margin:0 0 12px;padding-left:2px}
 
 
 .gdc-dash .st{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px}

@@ -173,6 +173,7 @@ function groupHTML(g){
   const mobs=g.items.map(({m,i})=>mobCardHTML(m,i)).join('');
   const note=g.type==='club'?`<p class="cnote">All club / bar bookings display on your public profile — with the option to add a URL for more info.</p>`:'';
   return `<div class="section ${g.type}"><div class="slabel">${g.label}</div>
+    <div class="monthhead">June 2027</div>
     <div class="deskwrap"><div class="colheads">${heads}</div>${drows}</div>
     <div class="mobwrap">${mobs}</div>${note}</div>`;
 }
