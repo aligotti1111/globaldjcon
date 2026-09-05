@@ -106,7 +106,7 @@
 .gdc-dash .dv.time{color:var(--neon);font-weight:600}
 .gdc-dash .df.evtime{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .gdc-dash .dsub{display:block;font-size:.74rem;color:var(--muted);margin-top:2px}
-.gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--ink);display:block!important;max-width:none!important;margin:0!important;grid-template-columns:none!important}
 .gdc-dash .dlink{color:var(--neon);text-decoration:underline;cursor:pointer}
 .gdc-dash .dovertime .dlink{color:#00e0a4}
 .gdc-dash .dovertime{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted);flex-wrap:wrap}
@@ -134,7 +134,7 @@
 /* pricing */
 .gdc-dash .dpricerow.total{margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
 .gdc-dash .dpricerow.total .ptot{font-weight:700;color:var(--ink);font-size:.9rem}
-.gdc-dash .dpricerow.total .price{font-size:1rem;margin-left:auto;text-align:right}
+.gdc-dash .dpricerow.total .price{font-size:1rem;margin-left:auto!important;text-align:right!important}
 .gdc-dash .dv.rt{text-align:right}
 .gdc-dash .disc{display:block;color:#4ddcb4;font-size:.8rem;font-weight:400;margin-top:2px}
 .gdc-dash .paysched{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.02)}
