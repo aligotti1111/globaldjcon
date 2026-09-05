@@ -21,7 +21,7 @@
 
 
 .gdc-dash .st{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px}
-.gdc-dash .st .lab{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.gdc-dash .st .lab{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:#f0f0f8;white-space:nowrap}
 .gdc-dash .stbtn{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:4px 6px;font:inherit;color:inherit}
 .gdc-dash .stbtn:hover{background:rgba(255,255,255,.06)}
 .gdc-dash .stbtn.open{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)}
@@ -87,7 +87,7 @@
 .gdc-dash .cnote{margin:12px 2px 0;font-size:.8rem;line-height:1.5;color:var(--muted)}
 .gdc-dash .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:14px 4px 16px;border-top:1px solid var(--line)}
 .gdc-dash .valuebar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.03);border-top:1px solid var(--line);border-radius:0 0 16px 16px}
-.gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#c9c9d3}
 .gdc-dash .valuebar .amt{font-family:var(--mono);font-weight:700;font-size:1rem;color:var(--neon)}
 
 .gdc-dash .trchev{transition:transform .2s}
