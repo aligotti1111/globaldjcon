@@ -191,11 +191,12 @@ function mobCardHTML(m,mi){
   const open=!!(m.open&&canOpen);
   const d=m.det||{};
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
-  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<div class="trmid">${badges}<div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trval">${m.val}</span><span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<div class="trmid">${badges}<div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
   return `<div class="card${open?' open':''}">
     ${top}
     <div class="strip">${cells}</div>
     ${open?mobDetailHTML(m):''}
+    <div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>
   </div>`;
 }
 function mobDetailHTML(m){
