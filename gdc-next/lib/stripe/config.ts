@@ -1,10 +1,11 @@
 // Stripe configuration — price IDs, publishable key, and the mapping between
 // Stripe prices and our tier ladder.
 //
-// ⚠️ TEST-MODE VALUES. Everything below is from the Stripe SANDBOX. When we
-// go live, these price IDs AND the publishable key all change (live mode has
-// its own IDs). Swapping this one file is the whole "go live" step for the
-// price wiring — no other code references these values directly.
+// ✅ LIVE-MODE VALUES. The publishable key and price IDs below are from the
+// Stripe LIVE account (products recreated in live mode on 2026-09-05; test mode
+// has its own separate catalog). Swapping this one file is the whole price-wiring
+// side of "go live"; the matching sk_live_ secret + live webhook signing secret
+// live in env vars (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET), not here.
 //
 // The publishable key is safe to ship to the browser (that's its purpose).
 // The SECRET key never appears here — it lives only in the STRIPE_SECRET_KEY
@@ -13,7 +14,7 @@
 import { TIER, type Tier } from '@/lib/access';
 
 export const STRIPE_PUBLISHABLE_KEY =
-  'pk_test_51TWriFPHp43e0bAtOnxaetLGktSlvE5gdCJ7xst1C4eBiFpgRfQYXMsFBVOmQUWTDTLTbzG0t5y1k9h6eTIPtzJp001xSrbfPe';
+  'pk_live_51TWriFPHp43e0bAtsBbReygC4QTaoumxnDgA03C9fLjDZNmJndvAsVPrMPE63MbdlvmfX31ZC3G7FQJtFSdD3HOc009O1jOUYc';
 
 export type BillingInterval = 'monthly' | 'yearly';
 
@@ -24,20 +25,20 @@ export type PaidTier = 1 | 2 | 3 | 4;
 // does this plan choice map to."
 export const STRIPE_PRICES: Record<PaidTier, Record<BillingInterval, string>> = {
   1: {
-    monthly: 'price_1TwYTsPHp43e0bAtTWF7E3hi', // Starter – $14.99/mo
-    yearly: 'price_1TwYVSPHp43e0bAtHLmOBMmF',  // Starter – $149.90/yr
+    monthly: 'price_1UCEMRPHp43e0bAtd8YAnjxf', // Starter – $14.99/mo
+    yearly: 'price_1UCEMRPHp43e0bAtIQxv98Z5',  // Starter – $149.90/yr
   },
   2: {
-    monthly: 'price_1TphOTPHp43e0bAtTD8IsDxh', // Pro – $29.99/mo
-    yearly: 'price_1TphO0PHp43e0bAtUfdZR11m',  // Pro – $299.90/yr
+    monthly: 'price_1UCENxPHp43e0bAtzRFprfTb', // Pro – $29.99/mo
+    yearly: 'price_1UCENxPHp43e0bAtgcC57s4J',  // Pro – $299.90/yr
   },
   3: {
-    monthly: 'price_1TwYWfPHp43e0bAtjgZY0F2n', // Premium Pro – $49.99/mo
-    yearly: 'price_1TwYXNPHp43e0bAtbfUalRv5',  // Premium Pro – $499.90/yr
+    monthly: 'price_1UCEOyPHp43e0bAtIN3RqUuk', // Premium Pro – $49.99/mo
+    yearly: 'price_1UCEOyPHp43e0bAt8dAbGwwp',  // Premium Pro – $499.90/yr
   },
   4: {
-    monthly: 'price_1TwYYjPHp43e0bAtwiskylP4', // Enterprise – $99.99/mo
-    yearly: 'price_1TwYZcPHp43e0bAtIOQASRDk',  // Enterprise – $999.90/yr
+    monthly: 'price_1UCEPyPHp43e0bAtoqwwqEUW', // Enterprise – $99.99/mo
+    yearly: 'price_1UCEPyPHp43e0bAth6kQU1ez',  // Enterprise – $999.90/yr
   },
 };
 
