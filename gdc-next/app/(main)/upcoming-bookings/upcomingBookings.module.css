@@ -71,8 +71,8 @@
     font-size: 10px !important;
     font-weight: 600 !important;
     color: #8b8da3 !important;
-    letter-spacing: .02em !important;
-    text-transform: none !important;
+    letter-spacing: .04em !important;
+    text-transform: uppercase !important;
     margin-top: 6px !important;
     text-align: center !important;
   }
@@ -332,11 +332,21 @@
    the thumbnail would simply overhang into the time column. Time gives up the
    10px to pay for it. */
 .monthListClub {
-  /* Value is 88 here too — .rowValue's padding-right applies to club rows just
-     the same, and leaving this at 74 would have silently eaten 14px off the
-     number for club DJs only. Two track lists is two places to forget. */
-  --row-cols: 86px 56px 122px minmax(0, 1fr) 88px 96px 96px 96px 96px 96px 84px 26px;
+  /* Club/bar has TWO more tracks than a mobile DJ (a 56px flyer AND a 5th
+     status column — Guests). At the page's 1100px cap that is ~1020px of row
+     content, and the mobile-DJ track list plus those two extra tracks overran
+     it by ~65px, shoving the 84px actions cell (MANUAL pill / edit-delete) and
+     the chevron off the right edge of the card. Every fixed track is trimmed a
+     little and the gap tightened to 9px (club only) so the whole row — actions
+     and chevron included — fits inside the card, with ~90px still left for the
+     flexible event column. The flyer stays at 56px: it's a real 56px thumbnail
+     and a narrower track would let it overhang the time column, not shrink it. */
+  --row-cols: 82px 56px 104px minmax(0, 1fr) 74px 84px 84px 84px 84px 84px 72px 22px;
 }
+/* Club rows are the widest layout; the tighter gap is what buys the last few
+   pixels. Desktop table only — the mobile card lays .row out with named areas,
+   so --row-cols and this gap have no effect there. */
+.monthListClub .row { column-gap: 9px; }
 .month { }
 .monthLabel {
   font-family: 'Bebas Neue', sans-serif;
