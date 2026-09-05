@@ -994,8 +994,23 @@ window.gdcBill=function(mode,el){
 function openLB(id){var e=document.getElementById(id);if(e){e.classList.add('open');document.body.style.overflow='hidden';}}
 function closeLB(id){var e=document.getElementById(id);if(e){e.classList.remove('open');document.body.style.overflow='';}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.lb.open').forEach(function(l){l.classList.remove('open');});document.body.style.overflow='';}});
-var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.12});
-document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+// Scroll-reveal. THRESHOLD MUST BE 0, not .12: a section taller than the
+// viewport (the booking-dashboard sample is) can never show 12% of itself at
+// once, so at threshold .12 the observer never fires and the whole section
+// stays at opacity:0 — a black hole you scroll into. threshold 0 fires the
+// moment any pixel enters. A scroll "sweep" is the safety net: it force-reveals
+// anything still hidden whose top has reached the viewport, so no section can
+// ever be stranded invisible even if the observer misses it.
+(function(){
+  var reveals=document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window)){reveals.forEach(function(el){el.classList.add('in');});return;}
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{rootMargin:'0px 0px -8% 0px',threshold:0});
+  reveals.forEach(function(el){io.observe(el);});
+  var sweep=function(){document.querySelectorAll('.reveal:not(.in)').forEach(function(el){if(el.getBoundingClientRect().top < window.innerHeight*0.9){el.classList.add('in');}});};
+  window.addEventListener('scroll',sweep,{passive:true});
+  window.addEventListener('resize',sweep,{passive:true});
+  sweep();
+})();
 
 // HOW IT WORKS — text toggle (Mobile default)
 (function(){
