@@ -127,7 +127,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // Contract shows the word "Complete" under the icon once it's done (the
       // other columns let the green check speak for itself, but the DJ asked for
       // the contract to say it outright).
-      caption: isDone ? 'Complete' : awaiting ? 'Pending' : 'Not sent',
+      caption: isDone ? 'Complete' : awaiting ? 'Pending' : 'Not Sent',
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
@@ -405,7 +405,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
           ? (askedFor > 0
               ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
               : 'Pending')
-          : 'Not sent',
+          : 'Not Sent',
       // Shown at the top of the dropdown, above the actions. When the deposit
       // was auto-skipped because the balance was requested for the whole amount,
       // the menu is otherwise empty (no actions) — so this note is the only thing
@@ -548,7 +548,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       overridden ? '100%'
       : pct !== null ? `${pct}%`
       : pstatus === 'sent' ? 'Pending'
-      : 'Not sent';
+      : 'Not Sent';
 
     const plannerUrl = planner ? `/planner/${planner.id}` : null;
 
@@ -691,7 +691,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         // always full colour, a receipt with no check and no word looks
         // identical whether it's gone out or not, and invoice becomes the one
         // column you can't read.)
-        caption: done ? undefined : balanceRow ? 'Pending' : 'Not sent',
+        caption: done ? undefined : balanceRow ? 'Pending' : 'Not Sent',
         info: balanceRow
           ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
           : depositSettled
