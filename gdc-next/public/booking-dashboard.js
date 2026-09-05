@@ -185,7 +185,7 @@ function drowHTML(m,mi){
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
   const row=`<div class="drow${open?' open':''}"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}</span><span class="dval">${m.val}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
-  return row+(m.note?`<div class="cardnote">${m.note}</div>`:'')+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'');
+  return row+(m.note?noteHTML(mi,m.note):'')+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'');
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
@@ -197,7 +197,7 @@ function mobCardHTML(m,mi){
   return `<div class="card${open?' open':''}">
     ${top}
     <div class="strip">${cells}</div>
-    ${m.note?`<div class="cardnote">${m.note}</div>`:''}
+    ${m.note?noteHTML(mi,m.note):''}
     ${open?mobDetailHTML(m):''}
     <div class="valuebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>
   </div>`;
@@ -252,6 +252,8 @@ function mobDetailHTML(m){
   </div>`;
 }
 function toggleCard(mi,e){ if(e)e.stopPropagation(); const m=MODELS[mi]; m.open=!m.open; OPEN=null; render(); }
+function noteHTML(mi,text){ return `<div class="cardnote"><button class="cnx" onclick="closeNote(${mi},event)" aria-label="Close">✕</button><b>Planner &amp; Playlist:</b> ${text}</div>`; }
+function closeNote(mi,e){ if(e)e.stopPropagation(); MODELS[mi].note=''; render(); }
 function cellHTML(m,mi,key){
   const stg=m.stages[key], s=stg.S[stg.state];
   const locked=stg.state==='locked', cls=s.cls||'';

@@ -86,7 +86,10 @@
 .gdc-dash .flyer-img{border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .gdc-dash .flyer-img img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
 .gdc-dash .cnote{margin:12px 2px 0;font-size:.8rem;line-height:1.5;color:var(--muted)}
-.gdc-dash .cardnote{margin:4px 12px 14px;padding:10px 13px;border:1px solid rgba(0,224,164,.35);background:rgba(34,227,173,.06);border-radius:9px;color:var(--ink);font-size:.82rem;line-height:1.5}
+.gdc-dash .cardnote{position:relative;margin:4px 12px 14px;padding:10px 34px 10px 13px;border:1px solid rgba(0,224,164,.35);background:rgba(34,227,173,.06);border-radius:9px;color:var(--ink);font-size:.82rem;line-height:1.5}
+.gdc-dash .cardnote b{color:#4ddcb4}
+.gdc-dash .cnx{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--muted);font-size:.9rem;line-height:1;cursor:pointer;padding:2px 4px}
+.gdc-dash .cnx:hover{color:var(--ink)}
 .gdc-dash .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:14px 4px 16px;border-top:1px solid var(--line)}
 .gdc-dash .valuebar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.03);border-top:1px solid var(--line);border-radius:0 0 16px 16px}
 .gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#c9c9d3}
