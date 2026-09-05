@@ -128,9 +128,9 @@ function buildModels(){
       {who:'YOU',cls:'you',text:'Deposit auto-skipped — balance requested',when:'Jul 22, 2026, 3:16 AM'},
       {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jul 29, 2026, 3:31 AM'}
     ]};
-  list[1].det={evSub:'25',dateLong:'Monday, September 28, 2026',guests:'299',overtime:'$100.00/hr',
-    venue:'richmond county country club',room:'3',addr:'26 Blythe Place',
-    bookedBy:'hhhhhh',phone:'(917) 816-1409',pkg:'first',pkgDesc:'sfs',
+  list[1].det={evSub:'25th',dateLong:'Monday, September 28, 2026',guests:'120',overtime:'$100.00/hr',
+    venue:'Lakeside Pavilion',room:'Terrace Room',addr:'480 Harbor Dr, Raleigh, NC 27601',
+    bookedBy:'James Carter',phone:'(919) 555-0148',pkg:'Standard Party',pkgDesc:'5 hrs · sound + MC',
     pricing:{rate:'$400.00',discount:'20% OFF — saved $100.00 (was $500.00)',tax:'$35.50 (8.875%)',total:'$435.50',
       schedule:[{label:'Deposit',val:'$65.33 (15%)'},{label:'Balance due day of event',val:'$370.17'}]},
     log:[
