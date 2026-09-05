@@ -634,9 +634,9 @@ export default function BookingRow({
 
   let context = '';
   if (djType === 'club') {
-    // Club DJ rows: venue is shown only in the expanded details panel
-    // — the row header stays minimal (date + time). No context line.
-    context = '';
+    // Club DJ rows: show the venue name next to the time (falls back to the
+    // custom venue-type description, then blank).
+    context = booking.venue_name || booking.venue_type_desc || '';
   } else {
     // Mobile DJ rows: show the event type only (e.g. "Wedding"). Venue
     // is shown in the expanded details panel.
