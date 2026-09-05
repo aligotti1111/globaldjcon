@@ -1249,6 +1249,11 @@ select.input {
   color: #3a3a4c;
   font-size: 15px;
   padding-left: 12px;
+  /* Match the icon ring's box so the dash sits on the same line as the
+     neighboring stage icons instead of floating above them. */
+  height: 32px;
+  line-height: 32px;
+  margin-bottom: 12px;
 }
 
 /* Down chevron at the end of the row; rotates 180° when expanded. */
@@ -1726,6 +1731,10 @@ select.input {
     padding-left: 0;
     width: 100%;
     text-align: center;
+    /* desktop icon-line alignment doesn't apply to the framed mobile cards */
+    height: auto;
+    line-height: normal;
+    margin-bottom: 0;
   }
   .stLabel {
     display: block;
