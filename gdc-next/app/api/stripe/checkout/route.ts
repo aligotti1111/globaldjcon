@@ -97,44 +97,73 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_SITE_URL ||
       'https://globaldjconnect.com';
 
-    // Embedded mode — Stripe renders the payment form inside our own page.
-    // Returns a client_secret the front-end mounts; on completion Stripe
-    // redirects to return_url (our on-site completion page).
-    if (embedded) {
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        ui_mode: 'embedded',
-        customer: customerId,
-        line_items: [{ price: priceId, quantity: 1 }],
-        return_url: `${origin}/subscribe/complete?session_id={CHECKOUT_SESSION_ID}`,
-        client_reference_id: user.id,
-        subscription_data: {
-          metadata: { user_id: user.id, tier: String(tier) },
-          ...(trialEnd ? { trial_end: trialEnd } : {}),
-        },
-        ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
-        allow_promotion_codes: true,
+    // Build the session params for whichever mode the client asked for. Embedded
+    // renders Stripe's form inside our own page (returns a client_secret the
+    // front-end mounts); hosted redirects the browser to Stripe's page.
+    const paramsFor = (custId: string): Parameters<typeof stripe.checkout.sessions.create>[0] => embedded
+      ? {
+          mode: 'subscription' as const,
+          // This account's pinned Stripe API version uses 'embedded_page' for
+          // embedded checkout (NOT 'embedded', which it rejects as "no longer
+          // supported"). Keep this value unless the account's API version changes.
+          ui_mode: 'embedded_page' as const,
+          customer: custId,
+          line_items: [{ price: priceId, quantity: 1 }],
+          return_url: `${origin}/subscribe/complete?session_id={CHECKOUT_SESSION_ID}`,
+          client_reference_id: user.id,
+          subscription_data: {
+            metadata: { user_id: user.id, tier: String(tier) },
+            ...(trialEnd ? { trial_end: trialEnd } : {}),
+          },
+          ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
+          allow_promotion_codes: true,
+        }
+      : {
+          mode: 'subscription' as const,
+          customer: custId,
+          line_items: [{ price: priceId, quantity: 1 }],
+          success_url: `${origin}/subscribe?sub=success`,
+          cancel_url: `${origin}/subscribe?sub=cancelled`,
+          client_reference_id: user.id,
+          subscription_data: {
+            metadata: { user_id: user.id, tier: String(tier) },
+            ...(trialEnd ? { trial_end: trialEnd } : {}),
+          },
+          ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
+          allow_promotion_codes: true,
+        };
+
+    // Create the session. If the stored customer id doesn't exist in the current
+    // Stripe mode (e.g. it was created in test mode and we've since switched keys,
+    // or it was deleted), Stripe throws resource_missing on `customer`. Recover
+    // by minting a fresh customer, persisting it, and retrying once — otherwise
+    // the DJ is permanently stuck on a dead customer id.
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(paramsFor(customerId));
+    } catch (err) {
+      const se = err as { code?: string; param?: string; message?: string };
+      const missingCustomer =
+        se?.param === 'customer' ||
+        (se?.code === 'resource_missing' && /customer/i.test(se?.message || '')) ||
+        /No such customer/i.test(se?.message || '');
+      if (!missingCustomer) throw err;
+      const fresh = await stripe.customers.create({
+        email: user.email || undefined,
+        name: row?.name || undefined,
+        metadata: { user_id: user.id },
       });
-      return NextResponse.json({ clientSecret: session.client_secret });
+      customerId = fresh.id;
+      await admin
+        .from('users')
+        .update({ stripe_customer_id: customerId } as unknown as never)
+        .eq('id', user.id);
+      session = await stripe.checkout.sessions.create(paramsFor(customerId));
     }
 
-    // Hosted mode (fallback) — redirect the browser to Stripe's page.
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/subscribe?sub=success`,
-      cancel_url: `${origin}/subscribe?sub=cancelled`,
-      client_reference_id: user.id,
-      subscription_data: {
-        metadata: { user_id: user.id, tier: String(tier) },
-        ...(trialEnd ? { trial_end: trialEnd } : {}),
-      },
-      ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
-      allow_promotion_codes: true,
-    });
-
-    return NextResponse.json({ url: session.url });
+    return embedded
+      ? NextResponse.json({ clientSecret: session.client_secret })
+      : NextResponse.json({ url: session.url });
   } catch (e) {
     console.error('[stripe/checkout] error', e);
     // Surface the real Stripe error so failures are diagnosable from the client
