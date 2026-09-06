@@ -1650,6 +1650,15 @@
   .heroInfo .heroBadges {
     display: none;
   }
+  /* Location moves under the name on mobile — it's rendered inside
+     heroNameCol there, so hide the desktop copy that lives in heroInfo. */
+  .heroInfo .heroLocation {
+    display: none;
+  }
+  /* Tighten the location pill under the name in the mobile name column. */
+  .heroNameCol .heroLocation {
+    margin-top: .5rem;
+  }
   .heroInfo {
     width: 100%;
   }
@@ -1971,6 +1980,25 @@
 .underBannerSocialTiktok { color: #fff; }
 .underBannerSocialTwitch { color: #9146ff; }
 .underBannerSocialWebsite { color: var(--neon); }
+/* Contact cluster (phone + message) — sits between the socials and Share,
+   set apart by its own left divider (same treatment as the Share button). */
+.underBannerContact {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  margin-left: .65rem;
+  padding-left: .85rem;
+  border-left: 1px solid rgba(255, 255, 255, .14);
+}
+.underBannerPhone { color: #3ddc84; }
+.underBannerMail { color: var(--neon); }
+.underBannerContact button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+@media (max-width: 700px) {
+  .underBannerContact { gap: .35rem; margin-left: .5rem; padding-left: .6rem; }
+}
 /* Share / Copy-Link button at the end of the row. Set apart from the
    social icon cluster by a margin-left + a thin divider line, and styled
    as a labelled pill (not a bare icon square) so it reads as the primary
