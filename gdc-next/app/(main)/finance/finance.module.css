@@ -146,7 +146,12 @@
 /* Stacked column: received (solid) at the bottom, expected (translucent) on top.
    Radius + clip live on the stack so the top segment gets the rounded cap. */
 .barStack { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; border-radius: 5px 5px 0 0; overflow: hidden; }
-.barExp { width: 100%; background: rgba(0, 245, 196, .30); }
+.barExp { width: 100%; background: #8AA0FF; }
+/* Grouped columns: received and expected sit side by side, each its own bar. */
+.barGroup { width: 100%; flex: 1; display: flex; align-items: stretch; justify-content: center; gap: 3px; }
+.barItem { flex: 1; max-width: 30px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.barRec { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent, #00f5c4), #0aa88a); }
+.barExp2 { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: #8AA0FF; }
 .chartLegend { display: flex; gap: 18px; align-items: center; margin-top: 14px; }
 
 /* Donut + legend */
