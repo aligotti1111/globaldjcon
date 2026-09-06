@@ -27,28 +27,37 @@
   align-items: center;
   margin: 20px 0 22px;
 }
+/* Matches the profile page's tab bar: dark rounded track, uppercase Space Mono
+   labels, active = bright teal→cyan gradient pill. */
 .seg {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
-  background: var(--card2, #1b1b26);
-  border: 1px solid var(--line, #2a2a38);
-  border-radius: 10px;
+  gap: .4rem;
+  background: var(--deep, #0f0f17);
+  border: 1px solid var(--border, #262633);
+  border-radius: 8px;
   padding: 4px;
 }
 .segBtn {
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--muted, #9a9ab0);
-  font: inherit;
-  font-size: .82rem;
-  padding: 7px 12px;
-  border-radius: 7px;
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .6rem .8rem;
+  border-radius: 6px;
   cursor: pointer;
   white-space: nowrap;
+  transition: all .2s;
 }
 .segBtn:hover { color: var(--text, #fff); }
-.segBtnActive { background: var(--accent, #00f5c4); color: #06120f; font-weight: 700; }
+.segBtnActive {
+  background: linear-gradient(135deg, #00F5C4, #22D3EE);
+  color: #06120f;
+}
 
 .spacer { flex: 1 1 auto; }
 
