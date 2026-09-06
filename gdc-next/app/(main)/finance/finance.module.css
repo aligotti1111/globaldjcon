@@ -1,0 +1,177 @@
+/* Finance report — self-contained dark theme with CSS-var fallbacks so it sits
+   on the app's palette without depending on globals being present. */
+
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 18px 80px;
+  color: var(--text, #e8e8f0);
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.head { margin: 0 0 6px; }
+.title {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: .04em;
+  margin: 0;
+  color: var(--text, #fff);
+}
+.subtitle { margin: 2px 0 0; color: var(--muted, #8a8aa0); font-size: .9rem; }
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  margin: 20px 0 22px;
+}
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--card2, #1b1b26);
+  border: 1px solid var(--line, #2a2a38);
+  border-radius: 10px;
+  padding: 4px;
+}
+.segBtn {
+  border: 0;
+  background: transparent;
+  color: var(--muted, #9a9ab0);
+  font: inherit;
+  font-size: .82rem;
+  padding: 7px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.segBtn:hover { color: var(--text, #fff); }
+.segBtnActive { background: var(--accent, #00f5c4); color: #06120f; font-weight: 700; }
+
+.spacer { flex: 1 1 auto; }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .82rem;
+  color: var(--muted, #9a9ab0);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input { accent-color: var(--accent, #00f5c4); width: 15px; height: 15px; }
+
+/* ── KPI strip ── */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.kpi {
+  background: var(--card, #14141c);
+  border: 1px solid var(--line, #262633);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.kpiHero { border-color: var(--accent, #00f5c4); box-shadow: 0 0 0 1px var(--accent, #00f5c4) inset; }
+.kpiLabel {
+  font-size: .68rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted, #8a8aa0);
+  font-weight: 700;
+}
+.kpiValue { font-size: 1.7rem; font-weight: 800; margin-top: 6px; letter-spacing: -.01em; }
+.kpiSub { font-size: .78rem; color: var(--muted, #8a8aa0); margin-top: 3px; }
+.kpiValue.pos { color: var(--accent, #00f5c4); }
+.kpiValue.warn { color: #e6b455; }
+.kpiValue.info { color: #8aa0ff; }
+
+/* ── Chart cards ── */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.pieRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.card {
+  background: var(--card, #14141c);
+  border: 1px solid var(--line, #262633);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+.cardTitle {
+  font-size: .72rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted, #8a8aa0);
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
+/* Bar chart */
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 200px; }
+.barCol { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.barTrack { width: 100%; flex: 1; display: flex; align-items: flex-end; }
+.bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--accent, #00f5c4), #0aa88a);
+  border-radius: 5px 5px 0 0;
+  min-height: 2px;
+  transition: height .2s;
+}
+.barLabel { font-size: .62rem; color: var(--muted, #8a8aa0); white-space: nowrap; }
+
+/* Donut + legend */
+.pieWrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.legend { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 130px; }
+.legendRow { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
+.swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.legendLabel { flex: 1; color: var(--text, #d8d8e6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legendVal { color: var(--muted, #9a9ab0); font-variant-numeric: tabular-nums; }
+
+/* Table */
+.tableCard { background: var(--card, #14141c); border: 1px solid var(--line, #262633); border-radius: 16px; padding: 6px 4px 8px; }
+.tableHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 8px;
+}
+.exportBtn {
+  border: 1px solid var(--line, #2a2a38);
+  background: var(--card2, #1b1b26);
+  color: var(--text, #e8e8f0);
+  font: inherit; font-size: .8rem; font-weight: 600;
+  padding: 7px 13px; border-radius: 8px; cursor: pointer;
+}
+.exportBtn:hover { border-color: var(--accent, #00f5c4); color: var(--accent, #00f5c4); }
+.tScroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.table th {
+  text-align: left; padding: 9px 16px; color: var(--muted, #8a8aa0);
+  font-weight: 700; font-size: .66rem; letter-spacing: .06em; text-transform: uppercase;
+  border-bottom: 1px solid var(--line, #262633); white-space: nowrap;
+}
+.table td { padding: 10px 16px; border-bottom: 1px solid var(--line2, #1e1e2a); white-space: nowrap; }
+.table tr:last-child td { border-bottom: 0; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.chip {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+}
+
+.empty { color: var(--muted, #8a8aa0); text-align: center; padding: 40px 20px; font-size: .9rem; }
+.note { color: var(--muted, #7a7a90); font-size: .74rem; margin-top: 8px; line-height: 1.5; }
+
+@media (max-width: 780px) {
+  .grid2, .pieRow { grid-template-columns: 1fr; }
+  .title { font-size: 2rem; }
+}
