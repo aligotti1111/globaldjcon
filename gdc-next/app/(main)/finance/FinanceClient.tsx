@@ -175,7 +175,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
     }
     return out;
   }, [filtered, monthly, basis, preset, start, end, isDaily, expectedItems]);
-  const barMax = Math.max(1, ...bars.map((b) => b.value + b.expected));
+  const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
   const hasExpected = bars.some((b) => b.expected > 0);
 
@@ -242,21 +242,27 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
           <div className={styles.empty}>No revenue in this period.</div>
         ) : (
           <div className={styles.bars}>
-            {bars.map((b) => {
-              const total = b.value + b.expected;
-              return (
-                <div key={b.key} className={styles.barCol} title={`${b.label} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
-                  <div className={styles.barTrack}>
-                    {showBarVals && total > 0 && <div className={styles.barVal}>{money0.format(total)}</div>}
-                    <div className={styles.barStack} style={{ height: `${(total / barMax) * 100}%` }}>
-                      {b.expected > 0 && <div className={styles.barExp} style={{ height: b.value > 0 ? `${(b.expected / total) * 100}%` : '100%' }} />}
-                      {b.value > 0 && <div className={styles.bar} style={{ flex: 1, borderRadius: 0 }} />}
-                    </div>
+            {bars.map((b) => (
+              <div key={b.key} className={styles.barCol} title={`${b.label} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
+                <div className={styles.barTrack}>
+                  <div className={styles.barGroup}>
+                    {b.value > 0 && (
+                      <div className={styles.barItem}>
+                        {showBarVals && <span className={styles.barVal} style={{ color: '#00F5C4' }}>{money0.format(b.value)}</span>}
+                        <div className={styles.barRec} style={{ height: `${(b.value / barMax) * 100}%` }} />
+                      </div>
+                    )}
+                    {b.expected > 0 && (
+                      <div className={styles.barItem}>
+                        {showBarVals && <span className={styles.barVal} style={{ color: '#8AA0FF' }}>{money0.format(b.expected)}</span>}
+                        <div className={styles.barExp2} style={{ height: `${(b.expected / barMax) * 100}%` }} />
+                      </div>
+                    )}
                   </div>
-                  <div className={styles.barLabel}>{b.label}</div>
                 </div>
-              );
-            })}
+                <div className={styles.barLabel}>{b.label}</div>
+              </div>
+            ))}
           </div>
         )}
         {hasExpected && (
