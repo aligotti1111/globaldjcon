@@ -40,7 +40,6 @@ export const metadata: Metadata = {
 interface ProfileRow {
   role: string | null;
   name: string | null;
-  currency: string | null;
   stripe_connect_id: string | null;
   stripe_connect_ready: boolean | null;
 }
@@ -70,11 +69,14 @@ export default async function FinancePage() {
 
   const { data: profileData } = await admin
     .from('users')
-    .select('role, name, currency, stripe_connect_id, stripe_connect_ready')
+    .select('role, name, stripe_connect_id, stripe_connect_ready')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
   const profile = profileData;
-  if (profile?.role !== 'dj') redirect('/booking-requests');
+  // Owner gate already passed (canBilling). Only bounce genuine host accounts —
+  // don't hard-require role === 'dj', so a query hiccup can never lock an owner
+  // out of their own finances.
+  if (profile?.role === 'host') redirect('/booking-requests');
 
   // All bookings for this DJ (past + future), excluding soft-deleted. Only the
   // financial columns the report needs.
@@ -112,8 +114,7 @@ export default async function FinancePage() {
     if (c) curCount.set(c, (curCount.get(c) || 0) + 1);
   }
   const primaryCurrency =
-    [...curCount.entries()].sort((a, z) => z[1] - a[1])[0]?.[0] ||
-    (profile?.currency || 'USD').toUpperCase();
+    [...curCount.entries()].sort((a, z) => z[1] - a[1])[0]?.[0] || 'USD';
 
   // Live Stripe snapshot — CARD money only. Best-effort; never blocks the page.
   const stripeSnap: StripeSnapshot = {
