@@ -55,9 +55,11 @@ const TYPE_COLORS = ['#00f5c4', '#635BFF', '#e6b455', '#ef6f9c', '#4cc2ff', '#9b
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const addDays = (iso: string, days: number) => {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // All-UTC so a positive-offset timezone (Sydney, London in summer) can't
+  // shift the day and collapse the daily chart to one duplicated bar.
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 };
 
 function rangeFor(preset: Preset, today: string): { start: string; end: string } {
