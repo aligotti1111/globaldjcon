@@ -66,16 +66,17 @@
 /* Period selector: pill tabs on desktop, native dropdown on mobile. */
 .periodSelect {
   display: none;
-  width: 100%;
+  width: auto;
+  align-self: flex-start;
   background: var(--card2, #1b1b26);
   border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text, #e8e8f0);
   font-weight: 700;
-  font-size: .78rem;
+  font-size: .72rem;
   letter-spacing: .04em;
   text-transform: uppercase;
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 
 .toggle {
