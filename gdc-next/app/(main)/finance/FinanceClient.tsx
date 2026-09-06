@@ -160,7 +160,9 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
     if (preset === 'all') {
       const keys = [...recMap.keys(), ...expMap.keys()].sort();
       if (keys.length === 0) return [];
-      firstYM = keys[0];
+      // Start at January of the earliest year so empty months in between still
+      // show at $0 (a continuous timeline, not just the months with money).
+      firstYM = `${keys[0].slice(0, 4)}-01`;
       lastYM = keys[keys.length - 1];
     } else {
       firstYM = start.slice(0, 7);
