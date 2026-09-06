@@ -85,10 +85,9 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, outstanding, expected, stripe, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, outstanding, stripe, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
-  const [includeExpected, setIncludeExpected] = useState(false);
 
   const money0 = useMemo(
     () => new Intl.NumberFormat(undefined, { style: 'currency', currency: primaryCurrency, maximumFractionDigits: 0 }),
@@ -111,7 +110,6 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
   const gigs = useMemo(() => new Set(filtered.map((e) => e.bookingId)).size, [filtered]);
   const earned = pick(totals);
   const avgPerGig = gigs > 0 ? earned / gigs : 0;
-  const projected = earned + pick(outstanding) + pick(expected);
 
   // Continuous month buckets across the data span (bounded by data, so 'all'
   // never explodes into 1970). Falls back to data-only if the span is huge.
@@ -182,57 +180,38 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
           <button type="button" className={`${styles.segBtn} ${basis === 'net' ? styles.segBtnActive : ''}`} onClick={() => setBasis('net')}>Net (after tax)</button>
           <button type="button" className={`${styles.segBtn} ${basis === 'gross' ? styles.segBtnActive : ''}`} onClick={() => setBasis('gross')}>Gross</button>
         </div>
-        <label className={styles.toggle}>
-          <input type="checkbox" checked={includeExpected} onChange={(e) => setIncludeExpected(e.target.checked)} />
-          Include expected
-        </label>
       </div>
 
-      {/* Overview column chart — the KPI figures visualised side by side. Each
-          column is labelled with its value so the small buckets stay readable
-          even when one (usually Expected) dwarfs the rest. */}
+      {/* Earnings by month — the primary chart, full width. Each column is
+          labelled with its amount. */}
       <div className={styles.card} style={{ marginBottom: 22 }}>
-        <div className={styles.cardTitle}>Overview ({basis})</div>
-        <div className={styles.colChart}>
-          {[
-            { label: 'Earned', value: earned, color: '#00f5c4' },
-            { label: 'Tax', value: totals.tax, color: '#8a8aa0' },
-            { label: 'Outstanding', value: pick(outstanding), color: '#e6b455' },
-            { label: 'Expected', value: pick(expected), color: '#8aa0ff' },
-            { label: 'In Stripe', value: inStripe ?? 0, color: '#635BFF' },
-            { label: 'Paid to bank', value: stripe.paidOutRecent ?? 0, color: '#5fd08a' },
-          ].map((b) => {
-            const kpiMax = Math.max(1, earned, totals.tax, pick(outstanding), pick(expected), inStripe ?? 0, stripe.paidOutRecent ?? 0);
-            return (
-              <div key={b.label} className={styles.colItem} title={`${b.label}: ${money2.format(b.value)}`}>
-                <div className={styles.colVal} style={{ color: b.color }}>{money0.format(b.value)}</div>
-                <div className={styles.colTrack}>
-                  <div className={styles.colBar} style={{ height: `${(b.value / kpiMax) * 100}%`, background: b.color }} />
+        <div className={styles.cardTitle}>Earnings by month ({basis})</div>
+        {bars.length === 0 ? (
+          <div className={styles.empty}>No payments in this period.</div>
+        ) : (
+          <div className={styles.bars}>
+            {bars.map((b) => (
+              <div key={b.month} className={styles.barCol} title={`${monthLabel(b.month)} · ${money2.format(b.value)}`}>
+                <div className={styles.barVal}>{b.value > 0 ? money0.format(b.value) : ''}</div>
+                <div className={styles.barTrack}>
+                  <div className={styles.bar} style={{ height: `${(b.value / barMax) * 100}%` }} />
                 </div>
-                <div className={styles.colLabel}>{b.label}</div>
+                <div className={styles.barLabel}>{monthLabel(b.month)}</div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* KPI strip */}
       <div className={styles.kpis}>
         <div className={`${styles.kpi} ${styles.kpiHero}`}>
-          <div className={styles.kpiLabel}>Earned ({basis}) · {rangeLabel(preset)}</div>
+          <div className={styles.kpiLabel}>Revenue ({basis}) · {rangeLabel(preset)}</div>
           <div className={`${styles.kpiValue} ${styles.pos}`}>{money0.format(earned)}</div>
           <div className={styles.kpiSub}>
             {basis === 'net' ? `Gross ${money0.format(totals.gross)}` : `Net ${money0.format(totals.net)}`}
           </div>
         </div>
-
-        {includeExpected && (
-          <div className={styles.kpi}>
-            <div className={styles.kpiLabel}>Projected (incl. expected)</div>
-            <div className={styles.kpiValue}>{money0.format(projected)}</div>
-            <div className={styles.kpiSub}>Earned + outstanding + expected</div>
-          </div>
-        )}
 
         <div className={styles.kpi}>
           <div className={styles.kpiLabel}>Tax collected</div>
@@ -253,47 +232,16 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Expected</div>
-          <div className={`${styles.kpiValue} ${styles.info}`}>{money0.format(pick(expected))}</div>
-          <div className={styles.kpiSub}>Accepted bookings, not invoiced</div>
-        </div>
-
-        <div className={styles.kpi}>
           <div className={styles.kpiLabel}>In Stripe now</div>
           <div className={styles.kpiValue}>{inStripe == null ? '—' : money0.format(inStripe)}</div>
           <div className={styles.kpiSub}>
             {!stripe.connected ? 'Card not connected' : `Card only · ${money0.format(stripe.available || 0)} available`}
           </div>
         </div>
-
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Paid to bank</div>
-          <div className={styles.kpiValue}>{stripe.paidOutRecent == null ? '—' : money0.format(stripe.paidOutRecent)}</div>
-          <div className={styles.kpiSub}>Card payouts (recent)</div>
-        </div>
       </div>
 
-      {/* Charts: monthly bars + method donut */}
-      <div className={styles.grid2}>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Earnings by month ({basis})</div>
-          {bars.length === 0 ? (
-            <div className={styles.empty}>No payments in this period.</div>
-          ) : (
-            <div className={styles.bars}>
-              {bars.map((b) => (
-                <div key={b.month} className={styles.barCol} title={`${monthLabel(b.month)} · ${money2.format(b.value)}`}>
-                  <div className={styles.barVal}>{b.value > 0 ? money0.format(b.value) : ''}</div>
-                  <div className={styles.barTrack}>
-                    <div className={styles.bar} style={{ height: `${(b.value / barMax) * 100}%` }} />
-                  </div>
-                  <div className={styles.barLabel}>{monthLabel(b.month)}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+      {/* Breakdown donuts */}
+      <div className={styles.pieRow}>
         <div className={styles.card}>
           <div className={styles.cardTitle}>By payment method</div>
           <Donut
@@ -301,30 +249,12 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
             fmt={(n) => money0.format(n)}
           />
         </div>
-      </div>
-
-      <div className={styles.pieRow}>
         <div className={styles.card}>
           <div className={styles.cardTitle}>By event type</div>
           <Donut
             slices={byType.map((s, i) => ({ label: s.label, value: pick(s), color: TYPE_COLORS[i % TYPE_COLORS.length] }))}
             fmt={(n) => money0.format(n)}
           />
-        </div>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Received vs expected</div>
-          <Donut
-            slices={[
-              { label: 'Received', value: earned, color: '#00f5c4' },
-              { label: 'Outstanding', value: pick(outstanding), color: '#e6b455' },
-              { label: 'Expected', value: pick(expected), color: '#8aa0ff' },
-            ]}
-            fmt={(n) => money0.format(n)}
-          />
-          <p className={styles.note}>
-            Received is money actually collected across every method. Expected and outstanding are projections from
-            accepted bookings, not money in hand.
-          </p>
         </div>
       </div>
 
@@ -378,8 +308,8 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
 
       <p className={styles.note}>
         &ldquo;Earned&rdquo; is money you actually collected across every rail (card, Venmo, Cash App, PayPal, Zelle,
-        cash, check) plus paid overtime. &ldquo;In Stripe now&rdquo; and &ldquo;Paid to bank&rdquo; are card payments
-        only — the rest never touches Stripe. Net excludes sales tax, which you hold for the state.
+        cash, check) plus paid overtime. &ldquo;In Stripe now&rdquo; is card payments only — the rest never touches
+        Stripe. Net excludes sales tax, which you hold for the state.
         {stripe.error ? ` (Stripe balance unavailable: ${stripe.error})` : ''}
       </p>
     </div>
