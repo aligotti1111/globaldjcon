@@ -61,6 +61,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import SectionBanner from './SectionBanner';
+import PaypalConnectSection from './PaypalConnectSection';
 import {
   CardNetworksMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark,
 } from './BrandMarks';
@@ -1127,6 +1128,23 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   Greying it made the one paragraph that answers "should I use
                   this?" read as fine print. */}
               <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
+
+              {/* PayPal offers TWO ways to get paid. Option 1: connect a PayPal
+                  business account for auto-tracked payments (deposits/balances
+                  mark themselves paid). Option 2: the manual PayPal.me/email
+                  rail below, where the client sends by hand. */}
+              {t === 'paypal' && (
+                <>
+                  <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .5rem' }}>Option 1 — Connect PayPal (business account · auto-tracked)</div>
+                  <PaypalConnectSection />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                    <span style={{ fontSize: '.66rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>Or</span>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                  </div>
+                  <div style={{ ...label, margin: '0 0 .5rem' }}>Option 2 — Get paid by email (manual)</div>
+                </>
+              )}
 
               {cfg.handleLabel ? (
                 <>
