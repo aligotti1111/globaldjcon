@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
-import { sendSmsNotification, withSmsFooter, type SmsEvent } from '@/lib/supabase/sms';
+import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
 import { googleCalendarLink } from '@/lib/ics';
 import { canUsePro, type AccessFields } from '@/lib/access';
 
@@ -767,6 +767,10 @@ export async function POST(req: Request) {
   // booking_status, mob_booking_status, inbox_notification). Branches that
   // don't set it (welcome, claim_*, contact_us, etc.) simply skip SMS.
   let smsPlan: { userId: string; event: SmsEvent; body: string } | null = null;
+  // Per-BOOKING SMS (host opted in on the request form). Separate from smsPlan,
+  // which is account-pref based. Set by the booking milestone branches; fired
+  // alongside the email. notifyBookingSms self-gates on the booking's opt-in.
+  let bookingSmsPlan: { bookingId: string; stage: BookingSmsStage } | null = null;
   // Optional email gate. Notification branches set this to the recipient +
   // event so the send tail can suppress the email if the user opted out of
   // that type. Transactional branches leave it null → always send.
@@ -2500,6 +2504,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Email payload not constructed' }, { status: 500 });
   }
 
+  // Per-booking host SMS for the accept/deny milestone. Both the club
+  // (booking_status) and mobile (mob_booking_status) status emails carry
+  // bookingId + status, so one central check covers both. Only accepted +
+  // denied text (a counter-offer is handled in-app, no text). The opt-in
+  // itself is checked inside notifyBookingSms against the booking row.
+  if ((type === 'booking_status' || type === 'mob_booking_status') && typeof body.bookingId === 'string') {
+    const st = body.status as string | undefined;
+    if (st === 'approved') bookingSmsPlan = { bookingId: body.bookingId, stage: 'accepted' };
+    else if (st === 'denied') bookingSmsPlan = { bookingId: body.bookingId, stage: 'denied' };
+  }
+
   // SMS fires independently of the email gate — text has its own opt-in check
   // inside sendSmsNotification. Defined here so it runs whether or not the
   // email is suppressed. Best-effort, not awaited.
@@ -2507,6 +2522,11 @@ export async function POST(req: Request) {
     if (smsPlan) {
       sendSmsNotification(smsPlan.userId, smsPlan.event, smsPlan.body).catch((e) => {
         console.error('[sms] dispatch failed:', e);
+      });
+    }
+    if (bookingSmsPlan) {
+      notifyBookingSms(bookingSmsPlan.bookingId, bookingSmsPlan.stage).catch((e) => {
+        console.error('[sms] booking dispatch failed:', e);
       });
     }
   };
