@@ -221,6 +221,10 @@ export async function POST(req: Request) {
   const venueName = str(body.venueName).trim();
   const venueAddress = str(body.venueAddress).trim();
   const phone = str(body.phone).trim();
+  // Per-booking text-notification opt-in (checkbox next to the phone field).
+  // When true, the host gets a text on accept/deny/contract/deposit for THIS
+  // booking. Stored on the booking, so it works even for hosts with no account.
+  const smsOptIn = body.smsOptIn === true || body.smsOptIn === 'true';
   // Sent only by hosts whose account has no email (phone signups). Stored on
   // their profile so every email after this — offer, confirmation, contract,
   // planner, cancellation — has somewhere to go. See the write below.
@@ -442,6 +446,7 @@ export async function POST(req: Request) {
       start_time: startTime,
       end_time: endTime || null,
       phone,
+      sms_opt_in: smsOptIn,
       cocktail_needed: wantsCocktail ? true : (isWedding ? !!cocktailNeeded : null),
       cocktail_start_time: wantsCocktail ? cocktailStart : null,
       cocktail_same_room: wantsCocktail ? !!cocktailSameRoom : null,
@@ -695,6 +700,7 @@ export async function POST(req: Request) {
     venue_name: venueName,
     venue_address: venueAddress,
     phone,
+    sms_opt_in: smsOptIn,
     venue_lat: venueLat,
     venue_lon: venueLon,
     start_time: startTime,
