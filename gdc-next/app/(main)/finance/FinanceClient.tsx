@@ -76,11 +76,10 @@ function rangeFor(preset: Preset, today: string): { start: string; end: string }
   }
 }
 
-// "2026-03" → "Mar '26"
-function monthLabel(ym: string): string {
-  const [yy, mm] = ym.split('-');
-  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${names[Number(mm) - 1]} '${yy.slice(2)}`;
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "2026-03" → { m: 'Mar', yr: "'26" }
+function monthParts(ym: string): { m: string; yr: string } {
+  return { m: MONTHS_SHORT[Number(ym.slice(5, 7)) - 1], yr: `'${ym.slice(2, 4)}` };
 }
 
 function nextMonth(ym: string): string {
@@ -125,7 +124,10 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   // on top of received. Past views ('last year') never project. The axis extends
   // to the latest expected event so those future bars are visible.
   const isDaily = preset === 'this_month' || preset === 'last_30';
-  type Bar = { key: string; label: string; value: number; expected: number };
+  // Single-year views (this/next/last year) hide the per-bar year on mobile —
+  // it's redundant with the period label and crowds the axis.
+  const singleYear = preset === 'ytd' || preset === 'next_year' || preset === 'last_year';
+  type Bar = { key: string; label: string; sub?: string; value: number; expected: number };
   const bars = useMemo<Bar[]>(() => {
     const rv = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
     const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
@@ -174,11 +176,19 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
       firstYM = start.slice(0, 7);
       lastYM = end.slice(0, 7);
       for (const m of expMap.keys()) if (m > lastYM) lastYM = m;
+      // "This year" is always the full calendar year (Jan–Dec) — never spill
+      // into next year even when an expected event sits there.
+      if (preset === 'ytd') {
+        const yr = start.slice(0, 4);
+        firstYM = `${yr}-01`;
+        lastYM = `${yr}-12`;
+      }
     }
     const out: Bar[] = [];
     let cur = firstYM;
     for (let i = 0; i < 120 && cur <= lastYM; i++) {
-      out.push({ key: cur, label: monthLabel(cur), value: recMap.get(cur) || 0, expected: expMap.get(cur) || 0 });
+      const mp = monthParts(cur);
+      out.push({ key: cur, label: mp.m, sub: mp.yr, value: recMap.get(cur) || 0, expected: expMap.get(cur) || 0 });
       cur = nextMonth(cur);
     }
     return out;
@@ -232,7 +242,8 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
       </div>
 
       <div className={styles.controls}>
-        <div className={styles.seg} role="tablist" aria-label="Time period">
+        {/* Desktop: pill tabs. Mobile: a dropdown — 7 pills wrap into a mess. */}
+        <div className={`${styles.seg} ${styles.segDesktop}`} role="tablist" aria-label="Time period">
           {PRESETS.map((p) => (
             <button
               key={p.key}
@@ -244,6 +255,14 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
             </button>
           ))}
         </div>
+        <select
+          className={styles.periodSelect}
+          aria-label="Time period"
+          value={preset}
+          onChange={(e) => setPreset(e.target.value as Preset)}
+        >
+          {PRESETS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+        </select>
         <div className={styles.spacer} />
         <div className={styles.seg} aria-label="Amount basis">
           <button type="button" className={`${styles.segBtn} ${basis === 'net' ? styles.segBtnActive : ''}`} onClick={() => setBasis('net')}>Net (after tax)</button>
@@ -261,9 +280,9 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
         {bars.length === 0 ? (
           <div className={styles.empty}>No revenue in this period.</div>
         ) : (
-          <div className={styles.bars}>
+          <div className={`${styles.bars} ${singleYear ? styles.hideYrMobile : ''}`}>
             {bars.map((b) => (
-              <div key={b.key} className={styles.barCol} title={`${b.label} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
+              <div key={b.key} className={styles.barCol} title={`${b.label}${b.sub ? ' ' + b.sub : ''} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
                 <div className={styles.barTrack}>
                   <div className={styles.barGroup}>
                     {b.value > 0 && (
@@ -280,7 +299,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
                     )}
                   </div>
                 </div>
-                <div className={styles.barLabel}>{b.label}</div>
+                <div className={styles.barLabel}>{b.label}{b.sub ? <span className={styles.barYr}> {b.sub}</span> : null}</div>
               </div>
             ))}
           </div>
