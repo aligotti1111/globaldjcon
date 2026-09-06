@@ -855,25 +855,22 @@ export default function ClubBookingForm({
           </FormSection>
         )}
 
-        {/* SMS opt-in — sits right under the phone field. Opts this ONE booking
-            into text updates (accepted, declined, contract to sign, deposit
-            request). Consent line is required for carrier (A2P) compliance. */}
-        <label
-          style={{
-            display: 'flex', alignItems: 'flex-start', gap: '.55rem',
-            margin: '-.35rem 0 .4rem', cursor: 'pointer', userSelect: 'none',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={smsOptIn}
-            onChange={(e) => setSmsOptIn(e.target.checked)}
-            style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, marginTop: 2, flex: 'none' }}
-          />
-          <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.45 }}>
-            Text me updates. Msg &amp; data rates may apply.
-          </span>
-        </label>
+        {/* SMS opt-in — its own section row so it sits cleanly under the phone
+            field without overlapping the divider. Opts this ONE booking into
+            text updates (accepted/declined/counter/contract/deposit). */}
+        <div className={styles.section}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={smsOptIn}
+              onChange={(e) => setSmsOptIn(e.target.checked)}
+              style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
+            />
+            <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)' }}>
+              Text me updates. Msg &amp; data rates may apply.
+            </span>
+          </label>
+        </div>
 
         {/* Email — ONLY for accounts that don't have one (phone signups). */}
         {needsEmail && (
