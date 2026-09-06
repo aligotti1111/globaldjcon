@@ -84,6 +84,7 @@ const DEADLINE_MS = 8000;
 interface ConnectRow {
   stripe_connect_id: string | null;
   stripe_connect_ready: boolean | null;
+  name: string | null;
 }
 
 /**
@@ -134,7 +135,7 @@ async function runStart(req: Request): Promise<NextResponse> {
   if (!admin) return NextResponse.json({ error: 'Admin client unavailable.' }, { status: 500 });
 
   const { data: rowData, error: rowErr } = await withDeadline(
-    admin.from('users').select('stripe_connect_id, stripe_connect_ready').eq('id', user.id).maybeSingle(),
+    admin.from('users').select('stripe_connect_id, stripe_connect_ready, name').eq('id', user.id).maybeSingle(),
     'Database read',
   );
   if (rowErr) return NextResponse.json({ error: `DB: ${rowErr.message}` }, { status: 500 });
@@ -160,6 +161,12 @@ async function runStart(req: Request): Promise<NextResponse> {
           type: 'standard',
           email: user.email || undefined,
           metadata: { user_id: user.id },
+          // Pre-fill the connected account's public business name with the DJ's
+          // name. Without this, Stripe shows the PLATFORM brand ("Global DJ
+          // Connect") for every connected account in the dashboard and on card
+          // statements. The DJ can still change it during onboarding — this is
+          // just the default so their account reads as theirs, not ours.
+          ...(row.name ? { business_profile: { name: row.name } } : {}),
         }),
         'Stripe account create',
       );
