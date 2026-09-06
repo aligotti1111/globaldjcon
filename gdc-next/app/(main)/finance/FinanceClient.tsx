@@ -129,7 +129,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
     const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
     // Expected is money still to come, so only project it on forward-looking
     // windows. Backward windows (last 30 / last 90 / last year) show received only.
-    const projectFuture = preset === 'this_month' || preset === 'ytd' || preset === 'next_year' || preset === 'all';
+    const projectFuture = preset === 'this_month' || preset === 'ytd' || preset === 'next_year';
 
     if (isDaily) {
       const recMap = new Map<string, number>();
