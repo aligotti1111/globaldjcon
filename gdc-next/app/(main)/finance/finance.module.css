@@ -27,36 +27,38 @@
   align-items: center;
   margin: 20px 0 22px;
 }
-/* Matches the profile page's tab bar: dark rounded track, uppercase Space Mono
-   labels, active = solid brand-teal (#00f5c4) pill. */
+/* Mirrors the profile page's section tabs exactly: translucent-white track,
+   uppercase labels, active = teal→cyan gradient with dark text. */
 .seg {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: .4rem;
-  background: var(--deep, #0f0f17);
-  border: 1px solid var(--border, #262633);
-  border-radius: 8px;
-  padding: 4px;
+  gap: 4px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  padding: 5px;
 }
 .segBtn {
-  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
   background: transparent;
-  color: var(--muted, #9a9ab0);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
+  color: rgba(255, 255, 255, .62);
   font-weight: 700;
-  letter-spacing: .06em;
+  font-size: .7rem;
+  letter-spacing: .04em;
   text-transform: uppercase;
-  padding: .6rem .8rem;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
   cursor: pointer;
   white-space: nowrap;
   transition: all .2s;
 }
-.segBtn:hover { color: var(--text, #fff); }
+.segBtn:hover { color: #fff; }
 .segBtnActive {
-  background: #00F5C4;
-  color: #06120f;
+  background: linear-gradient(100deg, #22E3AD, #31D0FF);
+  color: #04241B;
 }
 
 .spacer { flex: 1 1 auto; }
