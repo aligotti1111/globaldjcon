@@ -31,6 +31,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -228,7 +229,12 @@ export async function POST(req: Request) {
   // happened — the DJ showed up, or didn't, and that's a conversation for the
   // two of them, not a status change. event_date is a plain date, so a string
   // compare against today is exact.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // "Today" in the DJ's timezone — otherwise a same-day event becomes
+  // un-cancellable from 8pm ET on the event day instead of at local midnight.
+  const { data: djTz } = booking.dj_id
+    ? await admin.from('users').select('timezone').eq('id', booking.dj_id).maybeSingle<{ timezone: string | null }>()
+    : { data: null };
+  const todayStr = todayInTz(effectiveTimezone(djTz?.timezone, null));
   if (booking.event_date && booking.event_date < todayStr) {
     return fail('This event has already passed and can no longer be cancelled.', 409);
   }
