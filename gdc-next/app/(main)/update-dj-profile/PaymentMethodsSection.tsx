@@ -1139,9 +1139,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   rail below, where the client sends by hand. */}
               {t === 'paypal' && (
                 <>
-                  <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .35rem' }}>Option 1 — Connect PayPal business account</div>
+                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 1 — Connect PayPal business account</div>
                   <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
-                    To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect doesn&rsquo;t middle-man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a business account, see Option 2.
+                    To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect does not middle man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a business account, see Option 2.
                   </p>
                   <PaypalConnectSection />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
@@ -1149,7 +1149,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                     <span style={{ fontSize: '.66rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>Or</span>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
-                  <div style={{ ...label, margin: '0 0 .5rem' }}>Option 2 — Get paid by email (manual)</div>
+                  <div style={{ ...label, fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 2 — Get paid by email (manual)</div>
+                  <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
+                    Enter your <strong style={{ color: 'var(--white)' }}>PayPal.me</strong> link or email. Works on a personal account, but a <strong style={{ color: 'var(--white)' }}>Business account</strong> is recommended for regular income.
+                  </p>
                 </>
               )}
 
