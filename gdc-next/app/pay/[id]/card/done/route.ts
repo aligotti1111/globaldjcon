@@ -9,10 +9,32 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { buildBookingDocAttachment } from '@/lib/receiptDocs';
+import { bookingProgressBox } from '@/lib/bookingProgressBox';
 import { Resend } from 'resend';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
+const SITE_URL = 'https://globaldjconnect.com';
+
+// The SAME branded email shell every other Global DJ Connect email uses
+// (600px, black header with the Bebas wordmark, white body, grey footer). Kept
+// as a local copy — the payments route and send-email route each carry their
+// own copy of this identical shell; the money logic that matters is shared via
+// lib/paymentMethods, so these wrappers can't disagree on anything substantive.
+function shell(content: string): string {
+  return `
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<tr><td style="background:#000000;padding:24px 32px;" align="center">
+<div style="font-family:'Bebas Neue',Impact,Arial,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;font-weight:700;">GLOBAL DJ CONNECT</div>
+</td></tr>
+<tr><td style="padding:32px;">${content}</td></tr>
+<tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
+<p style="margin:0;color:#888;font-size:11px;line-height:1.6;">© ${new Date().getFullYear()} Global DJ Connect · <a href="${SITE_URL}" style="color:#888;">globaldjconnect.com</a></p>
+</td></tr></table>
+</td></tr></table>`;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -142,25 +164,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         paidToDate: nextPaid,
         clientEmail: hostEmail,
       });
-      const inner = `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f4f5f7;padding:24px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><tr><td align="center">
-<table width="480" cellpadding="0" cellspacing="0" role="presentation" style="max-width:480px;width:100%;background:#ffffff;border:1px solid #ececf1;border-radius:16px;overflow:hidden;">
-<tr><td style="background:#0b1f1a;padding:18px 28px;"><div style="color:#7ff3d0;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;">Global DJ Connect</div></td></tr>
-<tr><td style="padding:30px 28px 8px;text-align:center;">
-<div style="width:54px;height:54px;border-radius:50%;background:#e7fbf3;color:#0a8f74;line-height:54px;font-size:26px;font-weight:700;margin:0 auto 14px;">&#10003;</div>
-<div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0a8f74;font-weight:700;">Payment received</div>
-<div style="font-size:36px;font-weight:800;color:#0b1f1a;margin:8px 0 2px;letter-spacing:-.01em;">${money(received, cur)}</div>
-<div style="font-size:14px;color:#6b7280;">paid by card</div>
-</td></tr>
-<tr><td style="padding:16px 28px 28px;text-align:center;"><p style="margin:0;font-size:14px;color:#333333;line-height:1.6;">Thank you! Your ${p.kind === 'deposit' ? 'deposit' : 'payment'}${b.event_date ? ` for <strong>${b.event_date}</strong>` : ''} is confirmed. A receipt is attached for your records.</p></td></tr>
-</table>
-<div style="color:#b4b8c0;font-size:11px;margin:14px 0 0;">© 2026 Global DJ Connect · globaldjconnect.com</div>
-</td></tr></table>`;
+      // Same content shape as the manual 'confirm' receipt in the payments
+      // route: an h1 + line, wrapped in the shared shell, with the booking
+      // progress box appended — so a card receipt reads identically to every
+      // other paid-rail receipt.
+      const outstanding = round2(Math.max(0, Number(p.amount) - nextPaid));
+      const kindNoun = p.kind === 'balance' ? 'balance' : p.kind === 'deposit' ? 'deposit' : 'payment';
+      const content = status === 'paid'
+        ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Payment received — ${money(nextPaid, cur)}</h1>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${kindNoun} is settled${b.event_date ? ` for ${b.event_date}` : ''}. A receipt is attached.</p>`
+        : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Partial payment received</h1>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>${money(outstanding, cur)} still due</strong>. A receipt is attached.</p>`;
+      // The shared booking progress tracker ('' for club bookings). The ledger
+      // is already updated above, so it reflects this payment.
+      const progressBox = await bookingProgressBox(p.booking_id);
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
         from: FROM,
         to: hostEmail,
         subject: `Receipt — ${money(received, cur)}`,
-        html: inner,
+        html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
         attachments: receiptAtt ? [receiptAtt] : undefined,
       });
     } catch {
@@ -177,31 +200,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         const cur = p.currency || 'USD';
         const who = b.requester_name || 'Your client';
         const left = round2(Math.max(0, Number(p.amount) - nextPaid));
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-          from: 'Global DJ Connect <info@globaldjconnect.com>',
-          to: djEmail,
-          subject: `${who} paid ${money(received, cur)} by card`,
-          html: `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f4f5f7;padding:24px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><tr><td align="center">
-<table width="480" cellpadding="0" cellspacing="0" role="presentation" style="max-width:480px;width:100%;background:#ffffff;border:1px solid #ececf1;border-radius:16px;overflow:hidden;">
-<tr><td style="background:#0b1f1a;padding:18px 28px;"><div style="color:#7ff3d0;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;">Global DJ Connect</div></td></tr>
-<tr><td style="padding:30px 28px 6px;text-align:center;">
-<div style="width:54px;height:54px;border-radius:50%;background:#e7fbf3;color:#0a8f74;line-height:54px;font-size:26px;font-weight:700;margin:0 auto 14px;">&#10003;</div>
-<div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0a8f74;font-weight:700;">Payment received</div>
-<div style="font-size:36px;font-weight:800;color:#0b1f1a;margin:8px 0 2px;letter-spacing:-.01em;">${money(received, cur)}</div>
-<div style="font-size:14px;color:#6b7280;">by card from ${who}</div>
-</td></tr>
-<tr><td style="padding:18px 28px 0;">
-<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#fafafa;border:1px solid #eeeeee;border-radius:12px;"><tr><td style="padding:14px 18px;font-size:14px;color:#333333;line-height:1.6;">
+        const djContent = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${who} paid ${money(received, cur)} by card</h1>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="min-width:100%;background:#fafafa;border:1px solid #ededed;border-radius:10px;margin:0 0 16px;">
+<tr><td style="padding:14px 18px;font-size:15px;color:#333;line-height:1.6;">
 Paid straight into your Stripe account${b.event_date ? ` for <strong>${b.event_date}</strong>` : ''}${b.venue_name ? ` · ${b.venue_name}` : ''}.<br>
 ${status === 'paid' ? 'This request is now <strong style="color:#0a8f74;">fully settled</strong>.' : `<strong style="color:#c08a3e;">${money(left, cur)} still due</strong> on this request.`}
 </td></tr></table>
-</td></tr>
-<tr><td style="padding:16px 28px 28px;">
-<p style="margin:0;font-size:12px;color:#9aa0a6;line-height:1.6;">Already confirmed — nothing for you to do. Stripe's fee (2.9% + 30&cent;) comes out before payout; your first payout can take 7–14 days, then about 2 business days after that.</p>
-</td></tr></table>
-<div style="color:#b4b8c0;font-size:11px;margin:14px 0 0;">© 2026 Global DJ Connect · globaldjconnect.com</div>
-</td></tr></table>`,
+<p style="margin:0;color:#999;font-size:12px;line-height:1.6;">Already confirmed — nothing for you to do. Stripe's fee (2.9% + 30&cent;) comes out before payout; your first payout can take 7–14 days, then about 2 business days after that.</p>`;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: FROM,
+          to: djEmail,
+          subject: `${who} paid ${money(received, cur)} by card`,
+          html: shell(djContent),
         });
       }
     } catch {
