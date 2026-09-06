@@ -1832,6 +1832,10 @@ export async function POST(req: Request) {
       }
     }
 
+    // Per-booking host SMS — the DJ sent an offer to review. This branch
+    // returns inline (doesn't reach the shared SMS tail), so fire it here.
+    notifyBookingSms(bookingId, 'offer').catch(() => {});
+
     return NextResponse.json({ ok: true });
 
   } else if (type === 'booking_status') {
@@ -1966,6 +1970,11 @@ export async function POST(req: Request) {
     const recipientName = body.recipientName as string | undefined;
     const senderName = body.senderName as string | undefined;
     const fromRole = body.fromRole as string | undefined;
+    // Only text when the DJ countered the host (recipient = host). A host's
+    // own counter goes to the DJ, so texting the host would be wrong.
+    if (fromRole === 'dj' && typeof body.bookingId === 'string') {
+      bookingSmsPlan = { bookingId: body.bookingId, stage: 'offer' };
+    }
     const counterRate = body.counterRate as number | undefined;
     const counterMessage = body.counterMessage as string | undefined;
     const eventDate = body.eventDate as string | undefined;
@@ -2032,6 +2041,10 @@ export async function POST(req: Request) {
     }
     const recipientName = body.recipientName as string | undefined;
     const djName = body.djName as string | undefined;
+    // A quote is always DJ → host; text the host it's ready to review.
+    if (typeof body.bookingId === 'string') {
+      bookingSmsPlan = { bookingId: body.bookingId, stage: 'offer' };
+    }
     const quotedRate = body.quotedRate as number | undefined;
     const quoteMessage = body.quoteMessage as string | undefined;
     const eventDate = body.eventDate as string | undefined;
@@ -2513,11 +2526,6 @@ export async function POST(req: Request) {
     const st = body.status as string | undefined;
     if (st === 'approved') bookingSmsPlan = { bookingId: body.bookingId, stage: 'accepted' };
     else if (st === 'denied') bookingSmsPlan = { bookingId: body.bookingId, stage: 'denied' };
-  }
-  // DJ sent the host a price to review — offer, counter-offer, or quote. All
-  // three are the same host-facing "review this offer" moment.
-  if ((type === 'offer_sent' || type === 'booking_counter' || type === 'quote_sent') && typeof body.bookingId === 'string') {
-    bookingSmsPlan = { bookingId: body.bookingId, stage: 'offer' };
   }
 
   // SMS fires independently of the email gate — text has its own opt-in check
