@@ -1127,7 +1127,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   the client will have to do, what it costs, what it can't do.
                   Greying it made the one paragraph that answers "should I use
                   this?" read as fine print. */}
-              <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
+              {/* PayPal shows its own Option 1/Option 2 copy below, so the
+                  generic one-line hint is suppressed for it. */}
+              {t !== 'paypal' && (
+                <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
+              )}
 
               {/* PayPal offers TWO ways to get paid. Option 1: connect a PayPal
                   business account for auto-tracked payments (deposits/balances
@@ -1135,7 +1139,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   rail below, where the client sends by hand. */}
               {t === 'paypal' && (
                 <>
-                  <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .5rem' }}>Option 1 — Connect PayPal (business account · auto-tracked)</div>
+                  <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .35rem' }}>Option 1 — Connect PayPal</div>
+                  <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
+                    To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect doesn&rsquo;t middle-man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a business account, see Option 2.
+                  </p>
                   <PaypalConnectSection />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
