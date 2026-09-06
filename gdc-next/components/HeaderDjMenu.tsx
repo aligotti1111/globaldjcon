@@ -223,6 +223,13 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Account Settings
           </Link>
+          {/* Finance report — OWNER ONLY. Hidden from teammates; the page itself
+              also hard-redirects any non-owner who reaches it by URL. */}
+          {!isTeammate && (
+            <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Finance
+            </Link>
+          )}
           {!isTeammate && (
             <button
               type="button"
