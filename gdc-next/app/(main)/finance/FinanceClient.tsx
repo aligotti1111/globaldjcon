@@ -134,15 +134,19 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
     if (isDaily) {
       const recMap = new Map<string, number>();
       for (const e of filtered) recMap.set(e.date, (recMap.get(e.date) || 0) + rv(e));
-      const expMap = new Map<string, number>();
-      let latestExp = '';
-      if (projectFuture) for (const x of expectedItems) {
-        if (x.date < start) continue;
-        expMap.set(x.date, (expMap.get(x.date) || 0) + ev(x));
-        if (x.date > latestExp) latestExp = x.date;
-      }
+      // This month = the FULL calendar month (every day, future days at $0). Last
+      // 30 = the rolling window ending today. Neither spills into other months —
+      // expected events in later months belong to the year/next-year views.
       let endDay = end;
-      if (latestExp && latestExp > endDay) endDay = latestExp;
+      if (preset === 'this_month') {
+        const y = Number(start.slice(0, 4));
+        const m = Number(start.slice(5, 7));
+        endDay = `${start.slice(0, 7)}-${pad(new Date(y, m, 0).getDate())}`;
+      }
+      const expMap = new Map<string, number>();
+      if (projectFuture) for (const x of expectedItems) {
+        if (x.date >= start && x.date <= endDay) expMap.set(x.date, (expMap.get(x.date) || 0) + ev(x));
+      }
       const out: Bar[] = [];
       let cur = start;
       for (let i = 0; i < 62 && cur <= endDay; i++) {
@@ -180,6 +184,15 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
   const hasExpected = bars.some((b) => b.expected > 0);
+  // Month/year context for the chart header, derived from the first/last bucket.
+  const periodLabel = useMemo(() => {
+    if (bars.length === 0) return '';
+    const mn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const fmt = (k: string) => { const p = k.split('-'); return `${mn[Number(p[1]) - 1]} ${p[0]}`; };
+    const a = fmt(bars[0].key);
+    const b = fmt(bars[bars.length - 1].key);
+    return a === b ? a : `${a} – ${b}`;
+  }, [bars]);
 
   const inStripe = stripe.connected && (stripe.available != null || stripe.pending != null)
     ? (stripe.available || 0) + (stripe.pending || 0)
@@ -239,7 +252,10 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
       {/* Revenue over time — the primary chart, full width. Day granularity for
           short windows, month otherwise; every bucket in the period is shown. */}
       <div className={styles.card} style={{ marginBottom: 22 }}>
-        <div className={styles.cardTitle}>Revenue by {isDaily ? 'day' : 'month'} ({basis})</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : 'month'} ({basis})</div>
+          {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)' }}>{periodLabel}</div>}
+        </div>
         {bars.length === 0 ? (
           <div className={styles.empty}>No revenue in this period.</div>
         ) : (
