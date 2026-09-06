@@ -125,14 +125,16 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   const bars = useMemo<Bar[]>(() => {
     const rv = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
     const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
-    const wantFuture = preset !== 'last_year';
+    // Expected is money still to come, so only project it on forward-looking
+    // windows. Backward windows (last 30 / last 90 / last year) show received only.
+    const projectFuture = preset === 'this_month' || preset === 'ytd' || preset === 'all';
 
     if (isDaily) {
       const recMap = new Map<string, number>();
       for (const e of filtered) recMap.set(e.date, (recMap.get(e.date) || 0) + rv(e));
       const expMap = new Map<string, number>();
       let latestExp = '';
-      if (wantFuture) for (const x of expectedItems) {
+      if (projectFuture) for (const x of expectedItems) {
         if (x.date < start) continue;
         expMap.set(x.date, (expMap.get(x.date) || 0) + ev(x));
         if (x.date > latestExp) latestExp = x.date;
@@ -150,7 +152,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
 
     const recMap = new Map(monthly.map((b) => [b.month, basis === 'net' ? b.net : b.gross]));
     const expMap = new Map<string, number>();
-    if (wantFuture) for (const x of expectedItems) { const m = x.date.slice(0, 7); expMap.set(m, (expMap.get(m) || 0) + ev(x)); }
+    if (projectFuture) for (const x of expectedItems) { const m = x.date.slice(0, 7); expMap.set(m, (expMap.get(m) || 0) + ev(x)); }
     let firstYM: string;
     let lastYM: string;
     if (preset === 'all') {
@@ -243,12 +245,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
               return (
                 <div key={b.key} className={styles.barCol} title={`${b.label} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
                   <div className={styles.barTrack}>
-                    {showBarVals && total > 0 && (
-                      <div className={styles.barVals}>
-                        {b.value > 0 && <span className={styles.barVal} style={{ color: '#00f5c4' }}>{money0.format(b.value)}</span>}
-                        {b.expected > 0 && <span className={styles.barVal} style={{ color: '#5DCAA5' }}>{money0.format(b.expected)}</span>}
-                      </div>
-                    )}
+                    {showBarVals && total > 0 && <div className={styles.barVal}>{money0.format(total)}</div>}
                     <div className={styles.barStack} style={{ height: `${(total / barMax) * 100}%` }}>
                       {b.expected > 0 && <div className={styles.barExp} style={{ height: b.value > 0 ? `${(b.expected / total) * 100}%` : '100%' }} />}
                       {b.value > 0 && <div className={styles.bar} style={{ flex: 1, borderRadius: 0 }} />}
