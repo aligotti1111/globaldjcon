@@ -22,6 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getActingContext, canBilling } from '@/lib/acting';
 import { getStripe } from '@/lib/stripe/server';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
+import { canBook, type AccessFields } from '@/lib/access';
 import {
   buildReceivedEvents,
   computeOutstanding,
@@ -44,6 +45,13 @@ interface ProfileRow {
   timezone: string | null;
   stripe_connect_id: string | null;
   stripe_connect_ready: boolean | null;
+  // Subscription/comp access fields — Finance is a paid feature.
+  sub_tier: number | null;
+  sub_status: string | null;
+  sub_period_end: string | null;
+  comp_tier: number | null;
+  comp_expires_at: string | null;
+  comp_source: string | null;
 }
 
 export interface StripeSnapshot {
@@ -71,7 +79,7 @@ export default async function FinancePage() {
 
   const { data: profileData } = await admin
     .from('users')
-    .select('role, name, timezone, stripe_connect_id, stripe_connect_ready')
+    .select('role, name, timezone, stripe_connect_id, stripe_connect_ready, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
   const profile = profileData;
@@ -79,6 +87,9 @@ export default async function FinancePage() {
   // don't hard-require role === 'dj', so a query hiccup can never lock an owner
   // out of their own finances.
   if (profile?.role === 'host') redirect('/booking-requests');
+  // Finance is a paid feature — free (never-subscribed / lapsed, no comp)
+  // accounts get sent to the plans page instead.
+  if (!profile || !canBook(profile as unknown as AccessFields)) redirect('/subscribe');
 
   // All bookings for this DJ (past + future), excluding soft-deleted. Only the
   // financial columns the report needs.
