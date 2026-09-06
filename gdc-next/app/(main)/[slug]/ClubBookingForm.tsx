@@ -587,6 +587,11 @@ export default function ClubBookingForm({
         original_rate: number | null;
         discount_label: string | null;
         discount_amount: number | null;
+        tax_pct: number | null;
+        tax_amount: number | null;
+        total_with_tax: number | null;
+        deposit_pct: number | null;
+        deposit_amount: number | null;
       } = json.booking;
 
       // Notify the DJ — fire-and-forget. Failures don't block the success
@@ -617,7 +622,7 @@ export default function ClubBookingForm({
             // Tax/deposit snapshot so both request emails can render the
             // Total Event Price / Sales tax / Total breakdown (bookingId lets
             // the DJ email fetch it; the explicit fields feed the booker copy).
-            bookingId: created.id,
+            bookingId: json.id,
             taxPct: created.tax_pct,
             taxAmount: created.tax_amount,
             totalWithTax: created.total_with_tax,
@@ -662,7 +667,7 @@ export default function ClubBookingForm({
             // Tax/deposit snapshot so both request emails can render the
             // Total Event Price / Sales tax / Total breakdown (bookingId lets
             // the DJ email fetch it; the explicit fields feed the booker copy).
-            bookingId: created.id,
+            bookingId: json.id,
             taxPct: created.tax_pct,
             taxAmount: created.tax_amount,
             totalWithTax: created.total_with_tax,
