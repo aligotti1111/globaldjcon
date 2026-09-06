@@ -1,4 +1,4 @@
-'use client';
+\'use client';
 
 // MobileBookingForm — booking-request form for mobile DJ profiles.
 // Faithful port of vanilla djp-mob-public.js renderMobPubForm + submission
@@ -1020,14 +1020,16 @@ export default function MobileBookingForm({
             text updates (accepted, declined, contract to sign, deposit request).
             Consent line required for carrier (A2P) compliance. */}
         <div className={styles.formRow}>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
             <input
               type="checkbox"
               checked={smsOptIn}
               onChange={(e) => setSmsOptIn(e.target.checked)}
-              style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, marginTop: 2, flex: 'none' }}
+              style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
             />
-            <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.45 }}>
+            {/* Override .formRow label (uppercase + letter-spacing + bold) so
+                the consent line reads as normal sentence-case body text. */}
+            <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400 }}>
               Text me updates. Msg &amp; data rates may apply.
             </span>
           </label>
