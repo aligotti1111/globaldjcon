@@ -126,7 +126,7 @@ async function dispatchSms(rawPhone: string, body: string, tag: string): Promise
 // BOOKING (bookings.sms_opt_in, bookings.phone). One checkbox on the request
 // form turns this on for that single booking. Fired on the four milestones:
 // accepted, denied, contract sent, deposit/balance requested.
-export type BookingSmsStage = 'accepted' | 'denied' | 'contract' | 'deposit' | 'balance';
+export type BookingSmsStage = 'accepted' | 'denied' | 'offer' | 'contract' | 'deposit' | 'balance';
 
 // "2026-09-06" → "Sep 6". Noon-anchored so a timezone can't shift the day.
 function shortDate(iso: string | null | undefined): string {
@@ -164,6 +164,7 @@ export async function notifyBookingSms(
     const lines: Record<BookingSmsStage, string> = {
       accepted: `Good news — ${djName} accepted your booking for ${date}. Details are in your email.`,
       denied:   `Update — ${djName} couldn't take your booking for ${date}. Details are in your email.`,
+      offer:    `${djName} sent you an offer for your ${date} booking. Review it in your email.`,
       contract: `${djName} sent a contract to sign for your ${date} booking. Check your email to sign.`,
       deposit:  `${djName} requested a deposit for your ${date} booking. Check your email to pay.`,
       balance:  `${djName} requested the balance for your ${date} booking. Check your email to pay.`,
