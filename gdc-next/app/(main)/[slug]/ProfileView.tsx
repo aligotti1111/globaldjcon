@@ -33,7 +33,7 @@ import type { DjProfileData, Testimonial, TabKey } from './profileTypes';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
-  BannerTypeEventsDropdown, HeroActions, OwnerEditableBio, MixAddButton, VideoAddButton,
+  BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, ShareCalendarModal,
   UnderBannerSocials,
@@ -198,7 +198,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [shareModalOpen, setShareModalOpen] = useState(false);
   // Counter that bumps to force the PublicCalendar/MobilePublicCalendar
   // into 12-month rolling mode (used by the Book Now banner button).
-  const [forceCalendar12mo, setForceCalendar12mo] = useState(0);
+  // Book Now (which used to bump this) was removed from the banner; the value
+  // is still passed to the calendar's force12mo prop but no longer changes.
+  const [forceCalendar12mo] = useState(0);
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
@@ -562,43 +564,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               )}
             </div>
           )}
-          {/* Book Now + Message Us — visible to all visitors EXCEPT the
-              profile owner. Sibling of .banner so its z-index can sit
-              above hero content. Book Now scrolls to calendar in 12-month
-              view; Message Us opens compose modal (sends to DJ inbox). */}
-          {!isOwnProfile && (
-            <div className={styles.bannerCtaRow}>
-              {showBookingTab && (
-                <button
-                  type="button"
-                  className={styles.bannerBookNowBtn}
-                  onClick={() => {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('view', '12mo');
-                    window.history.replaceState(null, '', url.toString());
-                    setActiveTab('booking');
-                    setForceCalendar12mo(c => c + 1);
-                    requestAnimationFrame(() => {
-                      const el = document.getElementById('booking-pane-anchor');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    });
-                  }}
-                >
-                  Book Now
-                </button>
-              )}
-              <button
-                type="button"
-                className={styles.bannerMessageUsBtn}
-                onClick={() => {
-                  if (!requireVerified(`/${effectiveSlug}`)) return;
-                  setComposeOpen(true);
-                }}
-              >
-                Message Us
-              </button>
-            </div>
-          )}
+          {/* Book Now + Message Us removed from the banner. Message now lives
+              as a mail icon in the under-banner row (next to phone + Share);
+              booking happens via the Availability tab / calendar. */}
           {/* Top row contains avatar; on mobile via media query, name+badges
               get displayed alongside in heroNameCol */}
           <div className={styles.heroTopRow}>
@@ -679,10 +647,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 </>
               )}
             </div>
-            {/* Mobile-only column: name + badges next to avatar */}
+            {/* Mobile-only column: name + badges next to avatar. Location sits
+                directly under the name here (mobile); on desktop it lives in
+                heroInfo below and this whole column is display:none. */}
             <div className={styles.heroNameCol}>
               <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
               {heroBadgesEl}
+              {location && (
+                <div className={styles.heroLocation}>
+                  <LocationPinIcon /> {location}
+                </div>
+              )}
             </div>
           </div>
 
@@ -730,26 +705,28 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </div>
             )}
 
-            {/* Hero action buttons — phone, message, copy link.
-                Socials are rendered separately as UnderBannerSocials. */}
-            <HeroActions
-              data={data}
-              isLoggedIn={isLoggedIn}
-              isOwnProfile={isOwnProfile}
-              hideSocials={true}
-              onClickMessage={() => {
-                // Owner can't message themselves; logged-out visitors are
-                // sent to /login first, returning to the same profile.
-                if (isOwnProfile) return;
-                if (!requireVerified(`/${effectiveSlug}`)) return;
-                setComposeOpen(true);
-              }}
-            />
+            {/* Phone + message moved out of the hero into the under-banner
+                row (next to Share). Nothing else lived here. */}
           </div>
         </div>
         {/* Under-banner socials strip — full-width row sitting snug
-            against the bottom of the hero/banner. Centered. */}
-        <UnderBannerSocials data={data} effectiveSlug={effectiveSlug} isOwnProfile={isOwnProfile} bookingEnabled={bookingEnabled} onShareClick={() => setShareModalOpen(true)} />
+            against the bottom of the hero/banner. Centered. Hosts the
+            socials, then phone + message (mail), then Share. */}
+        <UnderBannerSocials
+          data={data}
+          effectiveSlug={effectiveSlug}
+          isOwnProfile={isOwnProfile}
+          bookingEnabled={bookingEnabled}
+          onShareClick={() => setShareModalOpen(true)}
+          isLoggedIn={isLoggedIn}
+          onMessageClick={() => {
+            // Owner can't message themselves; logged-out visitors are sent to
+            // /login first, returning to the same profile.
+            if (isOwnProfile) return;
+            if (!requireVerified(`/${effectiveSlug}`)) return;
+            setComposeOpen(true);
+          }}
+        />
 
         {/* BODY */}
         <div className={styles.body}>
