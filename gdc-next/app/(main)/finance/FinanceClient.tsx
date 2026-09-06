@@ -275,7 +275,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
       <div className={styles.card} style={{ marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
           <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : 'month'} ({basis})</div>
-          {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)' }}>{periodLabel}</div>}
+          {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text, #ffffff)' }}>{periodLabel}</div>}
         </div>
         {bars.length === 0 ? (
           <div className={styles.empty}>No revenue in this period.</div>
@@ -307,7 +307,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
         {hasExpected && (
           <div className={styles.chartLegend}>
             <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
-            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — unpaid, by event date</span>
+            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — confirmed bookings with unpaid deposit/balance</span>
           </div>
         )}
       </div>
