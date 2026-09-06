@@ -86,6 +86,20 @@ export function effectiveTimezone(
   return timezoneFromZip(zip) || DEFAULT_TZ;
 }
 
+// Today's calendar date (YYYY-MM-DD) in the given timezone. Use this instead of
+// `new Date().toISOString().slice(0, 10)` (which is UTC) so "today" flips at
+// local midnight in the DJ's zone — otherwise a US DJ's same-day gig jumps to
+// "past" at 8pm ET, and month/period boundaries roll a day early in the evening.
+export function todayInTz(tz: string | null | undefined): string {
+  const zone = tz && isValidTimezone(tz) ? tz : DEFAULT_TZ;
+  try {
+    // en-CA formats as YYYY-MM-DD.
+    return new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
 // The UTC epoch (ms) of local midnight (00:00) on `dateStr` in `tz`.
 // Works without a timezone library: take a UTC guess at that wall-clock time,
 // read what wall-clock it actually maps to in `tz`, and correct by the offset.
