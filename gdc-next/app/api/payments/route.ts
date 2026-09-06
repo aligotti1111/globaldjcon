@@ -25,6 +25,7 @@ import { getStripe } from '@/lib/stripe/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { notifyBookingSms } from '@/lib/supabase/sms';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
 import {
   usableMethods,
@@ -505,6 +506,10 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
         // must not undo a successful request.
       }
     }
+
+    // Per-booking host SMS — a heads-up that a deposit/balance was requested.
+    // Self-gates on the booking's opt-in + phone; best-effort, never blocks.
+    notifyBookingSms(bookingId, kind === 'balance' ? 'balance' : 'deposit').catch(() => {});
 
     return NextResponse.json({ ok: true, payment });
   }
