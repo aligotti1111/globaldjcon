@@ -114,6 +114,26 @@ export function prettyEventType(s: string | null | undefined): string {
   return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Resolve a booking's display event type. event_type is the real field, but
+// club/bar bookings (and some older/manual rows) leave it blank while the
+// category actually lives on booking_type — fall back to that before giving up
+// as 'Other', so the "By event type" chart isn't just one lump of "Other".
+export function resolveEventType(
+  b: { event_type: string | null; booking_type?: string | null } | null | undefined,
+): string {
+  const primary = prettyEventType(b?.event_type);
+  if (primary !== 'Other') return primary;
+  const bt = (b?.booking_type || '').trim();
+  return bt ? prettyEventType(bt) : 'Other';
+}
+
+// The full set of host-facing payment rails, in display order. Used so the
+// "By payment method" chart can list every method — even ones this DJ has never
+// been paid through — with the unused ones greyed out. 'overtime' and 'other'
+// are excluded here (they're not rails a host picks) but still surface if money
+// actually came through them.
+export const PAYMENT_METHOD_ORDER = ['card', 'venmo', 'cashapp', 'paypal', 'zelle', 'cash', 'check'];
+
 // The agreed grand total for a booking, in priority order. total_with_tax is the
 // authoritative figure once quoting settled; the rates are fallbacks for older or
 // manual rows that never got a tax snapshot.
@@ -173,7 +193,7 @@ export function buildReceivedEvents(
       net: round2(gross - tax),
       tax,
       method: normalizeMethod(p.method),
-      eventType: prettyEventType(b?.event_type),
+      eventType: resolveEventType(b),
       venue: b?.venue_name ?? null,
       kind: p.kind || 'other',
       currency: (p.currency || b?.currency || 'USD').toUpperCase(),
@@ -193,7 +213,7 @@ export function buildReceivedEvents(
       net: round2(gross - tax),
       tax,
       method: 'overtime',
-      eventType: prettyEventType(b.event_type),
+      eventType: resolveEventType(b),
       venue: b.venue_name ?? null,
       kind: 'overtime',
       currency: (b.currency || 'USD').toUpperCase(),
