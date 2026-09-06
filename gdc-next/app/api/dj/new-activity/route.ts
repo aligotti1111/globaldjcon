@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
+import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 
 export const runtime = 'nodejs';
@@ -27,7 +28,11 @@ export async function GET() {
   const acting = await getActingContext(user.id);
   const djId = acting.djId;
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const today = new Date().toISOString().slice(0, 10);
+  // "Today" in the DJ's timezone so a same-day gig stays in the feed until the
+  // DJ's local midnight, not UTC's.
+  const { data: djTz } = await admin
+    .from('users').select('timezone').eq('id', djId).maybeSingle<{ timezone: string | null }>();
+  const today = todayInTz(effectiveTimezone(djTz?.timezone, null));
 
   const { data: rows } = await admin
     .from('bookings')
