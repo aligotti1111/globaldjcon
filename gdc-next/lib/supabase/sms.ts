@@ -77,45 +77,100 @@ export async function sendSmsNotification(
   if (!prefs.sms_enabled) return;
   if (!prefs[subToggleCol(event)]) return;
 
-  // Normalize the phone to E.164 (+15551234567). Twilio rejects anything
-  // else with status 21211. Users will enter "(555) 555-5555", "555-555-5555",
-  // "+1 555 555 5555", etc. — strip everything non-digit, then prepend +1
-  // if it's 10 digits (US default) or + if it's 11+ digits.
-  const digits = prefs.sms_phone.replace(/\D/g, '');
-  let to: string;
-  if (digits.length === 10) {
-    to = `+1${digits}`;
-  } else if (digits.length === 11 && digits.startsWith('1')) {
-    to = `+${digits}`;
-  } else if (digits.length >= 10) {
-    // International — preserve as-is with leading +
-    to = `+${digits}`;
-  } else {
-    console.warn('[sms] phone too short to dial, skipping:', prefs.sms_phone);
+  await dispatchSms(prefs.sms_phone, body, event);
+}
+
+// Normalize a raw phone to E.164 (+15551234567). Twilio rejects anything else
+// with status 21211. Handles "(555) 555-5555", "555-555-5555", "+1 555 …":
+// strip non-digits, prepend +1 for 10 digits (US default), + for 11+.
+export function toE164(raw: string | null | undefined): string | null {
+  const digits = (raw || '').replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (digits.length >= 10) return `+${digits}`;
+  return null;
+}
+
+// Low-level Twilio send. Shared by the account-pref path and the per-booking
+// path. Env vars set in Netlify: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+// TWILIO_PHONE_NUMBER. If any are missing (local dev), falls back to
+// console.log so dev work isn't blocked. Never throws — SMS is best-effort.
+async function dispatchSms(rawPhone: string, body: string, tag: string): Promise<void> {
+  const to = toE164(rawPhone);
+  if (!to) {
+    console.warn('[sms] phone too short to dial, skipping:', rawPhone);
     return;
   }
-
-  // ── Twilio send ───────────────────────────────────────────────────
-  // Env vars set in Netlify: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
-  // TWILIO_PHONE_NUMBER. If any are missing (e.g., local dev without a
-  // .env), fall back to console.log so dev work isn't blocked.
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken  = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_PHONE_NUMBER;
   if (!accountSid || !authToken || !fromNumber) {
-    console.log('[sms] Twilio creds missing — would send:', { to, event, body });
+    console.log('[sms] Twilio creds missing — would send:', { to, tag, body });
     return;
   }
   try {
     const twilioMod = await import('twilio');
     const client = twilioMod.default(accountSid, authToken);
     const msg = await client.messages.create({ to, from: fromNumber, body });
-    console.log('[sms] sent:', { to, event, sid: msg.sid });
+    console.log('[sms] sent:', { to, tag, sid: msg.sid });
   } catch (e) {
-    // Best-effort — Twilio failures shouldn't break the email/booking flow.
     // Common error codes: 21211 (invalid To), 21408 (geo permission denied),
     // 21610 (unsubscribed via STOP), 30007 (carrier filtered, e.g., no A2P).
     console.error('[sms] Twilio send failed:', e);
+  }
+}
+
+// ── Per-booking SMS ─────────────────────────────────────────────────────────
+// A separate path from the account-pref one above: the host who filled out a
+// booking request may have no account at all, so opt-in + phone live on the
+// BOOKING (bookings.sms_opt_in, bookings.phone). One checkbox on the request
+// form turns this on for that single booking. Fired on the four milestones:
+// accepted, denied, contract sent, deposit/balance requested.
+export type BookingSmsStage = 'accepted' | 'denied' | 'contract' | 'deposit' | 'balance';
+
+// "2026-09-06" → "Sep 6". Noon-anchored so a timezone can't shift the day.
+function shortDate(iso: string | null | undefined): string {
+  if (!iso) return 'your event';
+  const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return 'your event';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Load the booking's opt-in + phone + context, compose the milestone message,
+// and text the host. Gated ONLY by the per-booking opt-in + a phone on file —
+// no account required. Safe to call unconditionally; misses return silently.
+export async function notifyBookingSms(
+  bookingId: string | null | undefined,
+  stage: BookingSmsStage,
+): Promise<void> {
+  if (!bookingId) return;
+  try {
+    const admin = createAdminClient();
+    const { data: b } = await admin
+      .from('bookings')
+      .select('phone, sms_opt_in, event_date, dj_id')
+      .eq('id', bookingId)
+      .maybeSingle<{ phone: string | null; sms_opt_in: boolean | null; event_date: string | null; dj_id: string | null }>();
+    if (!b || !b.sms_opt_in || !b.phone) return;
+
+    let djName = 'Your DJ';
+    if (b.dj_id) {
+      const { data: dj } = await admin
+        .from('users').select('name').eq('id', b.dj_id).maybeSingle<{ name: string | null }>();
+      if (dj?.name) djName = dj.name;
+    }
+
+    const date = shortDate(b.event_date);
+    const lines: Record<BookingSmsStage, string> = {
+      accepted: `Good news — ${djName} accepted your booking for ${date}. Details are in your email.`,
+      denied:   `Update — ${djName} couldn't take your booking for ${date}. Details are in your email.`,
+      contract: `${djName} sent a contract to sign for your ${date} booking. Check your email to sign.`,
+      deposit:  `${djName} requested a deposit for your ${date} booking. Check your email to pay.`,
+      balance:  `${djName} requested the balance for your ${date} booking. Check your email to pay.`,
+    };
+    await dispatchSms(b.phone, withSmsFooter(lines[stage]), `booking_${stage}`);
+  } catch (e) {
+    console.error('[sms] notifyBookingSms failed:', e);
   }
 }
 
