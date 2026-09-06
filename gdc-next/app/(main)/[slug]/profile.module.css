@@ -1661,12 +1661,10 @@
   .heroInfo {
     width: 100%;
   }
+  /* Divider removed — the name/location and the under-banner row read fine
+     without a rule between them. */
   .heroMobileDivider {
-    display: block;
-    width: 100%;
-    height: 1px;
-    background: var(--border);
-    margin: .9rem 0 .75rem;
+    display: none;
   }
 }
 
