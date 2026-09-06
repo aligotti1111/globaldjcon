@@ -166,6 +166,8 @@ export default function MobileBookingForm({
     return ten.length === 10 ? formatUSPhone(ten) : '';
   })();
   const [phone, setPhone] = useState(accountPhone);
+  // Per-booking text-notification opt-in (checkbox under the phone field).
+  const [smsOptIn, setSmsOptIn] = useState(false);
   /**
    * Whether the number came from the ACCOUNT — not whether the field happens
    * to have something in it. Deriving this from `phone` looked equivalent and
@@ -633,6 +635,7 @@ export default function MobileBookingForm({
           startTime,
           endTime,
           phone: phone.trim(),
+          smsOptIn,
           // Only sent when the account has none. The server writes it to
           // users.contact_email so every later email has somewhere to go.
           contactEmail: needsEmail ? contactEmail.trim().toLowerCase() : null,
@@ -1011,6 +1014,24 @@ export default function MobileBookingForm({
             </FieldCheck>
             </>
           )}
+        </div>
+
+        {/* SMS opt-in — right under the phone field. Opts this ONE booking into
+            text updates (accepted, declined, contract to sign, deposit request).
+            Consent line required for carrier (A2P) compliance. */}
+        <div className={styles.formRow}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
+            <input
+              type="checkbox"
+              checked={smsOptIn}
+              onChange={(e) => setSmsOptIn(e.target.checked)}
+              style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, marginTop: 2, flex: 'none' }}
+            />
+            <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.45 }}>
+              Text me updates for this booking — when it&rsquo;s accepted or declined, and when a
+              contract or deposit request is sent. Msg &amp; data rates may apply; reply STOP to opt out.
+            </span>
+          </label>
         </div>
 
         {/* Email — ONLY for accounts that don't have one (phone signups).
