@@ -185,6 +185,35 @@
 
 /* Donut + legend */
 .pieWrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+
+/* 3D donut: a tilted, extruded conic ring. The scene gives perspective; the
+   disc is rotated on X and its faces are stacked along Z (preserve-3d) so the
+   dark side-wall copies read as real thickness. */
+.disc3dScene {
+  flex: none;
+  width: 150px;
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 620px;
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, .45));
+}
+.disc3d {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  transform-style: preserve-3d;
+  transform: rotateX(60deg);
+}
+.disc3dFace {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Punch the centre hole so the disc becomes a ring. */
+  -webkit-mask: radial-gradient(circle at center, transparent 51%, #000 52%);
+  mask: radial-gradient(circle at center, transparent 51%, #000 52%);
+}
 .legend { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 130px; }
 .legendRow { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
 .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
@@ -205,6 +234,29 @@
   padding: 7px 13px; border-radius: 8px; cursor: pointer;
 }
 .exportBtn:hover { border-color: var(--accent, #00f5c4); color: var(--accent, #00f5c4); }
+/* Payments-table range dropdown — sits beside Export CSV. */
+.rangeSelect {
+  border: 1px solid var(--line, #2a2a38);
+  background: var(--card2, #1b1b26);
+  color: var(--text, #e8e8f0);
+  font: inherit; font-size: .8rem; font-weight: 600;
+  padding: 7px 11px; border-radius: 8px; cursor: pointer;
+}
+.rangeSelect:hover { border-color: var(--accent, #00f5c4); }
+/* Totals footer row — heavier, a hairline rule above, tabular figures. */
+.totalRow td {
+  border-top: 2px solid var(--line, #262633);
+  border-bottom: 0;
+  padding: 12px 16px;
+  font-weight: 800;
+  color: var(--text, #ffffff);
+}
+.totalRow td:first-child {
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: .72rem;
+  color: var(--muted, #9a9ab0);
+}
 .tScroll { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: .82rem; }
 .table th {
