@@ -825,20 +825,20 @@ export default function ClubBookingForm({
             only when the account has no stored number. */}
         {knownPhone ? (
           <div className={styles.section}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-              <div className={styles.sectionLabel} style={{ marginBottom: 0 }}>Phone Number</div>
-              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
+              <div className={styles.sectionLabel} style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Phone</div>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {phone}
               </div>
-              {/* Opt-in sits on the same row as the number, pushed to the right. */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: 'pointer', userSelect: 'none', marginLeft: 'auto' }}>
+              {/* Opt-in on the same row, right after the number. */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginLeft: '1rem', minWidth: 0 }}>
                 <input
                   type="checkbox"
                   checked={smsOptIn}
                   onChange={(e) => setSmsOptIn(e.target.checked)}
                   style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
                 />
-                <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)' }}>
+                <span style={{ fontSize: '.78rem', color: 'var(--muted,#9a9ab0)', whiteSpace: 'nowrap' }}>
                   Text me updates. Msg &amp; data rates may apply.
                 </span>
               </label>
