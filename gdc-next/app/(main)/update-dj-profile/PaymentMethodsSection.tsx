@@ -1139,7 +1139,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   rail below, where the client sends by hand. */}
               {t === 'paypal' && (
                 <>
-                  <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .35rem' }}>Option 1 — Connect PayPal</div>
+                  <div style={{ ...label, color: 'var(--neon)', margin: '0 0 .35rem' }}>Option 1 — Connect PayPal business account</div>
                   <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
                     To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect doesn&rsquo;t middle-man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a business account, see Option 2.
                   </p>
