@@ -242,8 +242,13 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
               const total = b.value + b.expected;
               return (
                 <div key={b.key} className={styles.barCol} title={`${b.label} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
-                  {showBarVals && <div className={styles.barVal}>{total > 0 ? money0.format(total) : ''}</div>}
                   <div className={styles.barTrack}>
+                    {showBarVals && total > 0 && (
+                      <div className={styles.barVals}>
+                        {b.value > 0 && <span className={styles.barVal} style={{ color: '#00f5c4' }}>{money0.format(b.value)}</span>}
+                        {b.expected > 0 && <span className={styles.barVal} style={{ color: '#5DCAA5' }}>{money0.format(b.expected)}</span>}
+                      </div>
+                    )}
                     <div className={styles.barStack} style={{ height: `${(total / barMax) * 100}%` }}>
                       {b.expected > 0 && <div className={styles.barExp} style={{ height: b.value > 0 ? `${(b.expected / total) * 100}%` : '100%' }} />}
                       {b.value > 0 && <div className={styles.bar} style={{ flex: 1, borderRadius: 0 }} />}
