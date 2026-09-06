@@ -2514,6 +2514,11 @@ export async function POST(req: Request) {
     if (st === 'approved') bookingSmsPlan = { bookingId: body.bookingId, stage: 'accepted' };
     else if (st === 'denied') bookingSmsPlan = { bookingId: body.bookingId, stage: 'denied' };
   }
+  // DJ sent the host a price to review — offer, counter-offer, or quote. All
+  // three are the same host-facing "review this offer" moment.
+  if ((type === 'offer_sent' || type === 'booking_counter' || type === 'quote_sent') && typeof body.bookingId === 'string') {
+    bookingSmsPlan = { bookingId: body.bookingId, stage: 'offer' };
+  }
 
   // SMS fires independently of the email gate — text has its own opt-in check
   // inside sendSmsNotification. Defined here so it runs whether or not the
