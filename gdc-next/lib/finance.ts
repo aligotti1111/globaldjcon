@@ -133,8 +133,11 @@ export function taxRatio(b: FinanceBookingInput): number {
 
 // Accepted = a live, agreed booking. status 'approved' covers direct accepts AND
 // accepted counter-offers (both set status='approved' + accepted_at); accepted_at
-// alone catches any path that stamped the time without flipping status.
+// alone catches any path that stamped the time without flipping status. A
+// cancelled booking is never accepted, even if accepted_at was stamped before it
+// was called off.
 export function isAccepted(b: FinanceBookingInput): boolean {
+  if (b.status === 'cancelled') return false;
   return b.status === 'approved' || !!b.accepted_at;
 }
 
@@ -260,6 +263,43 @@ export function computeExpected(
     count += 1;
   }
   return { gross, net: round2(gross - tax), tax, count };
+}
+
+// One booking's still-unpaid money, dated to the EVENT (not to today) — so it
+// plots in the month the gig happens, which is when it'll actually be paid.
+export interface ExpectedItem {
+  bookingId: string;
+  date: string;   // YYYY-MM-DD — the event date
+  gross: number;
+  net: number;
+}
+
+/**
+ * Expected earnings: the remaining agreed amount on accepted, UPCOMING bookings
+ * (deposit + balance not yet collected), each dated to its event. Upcoming only
+ * (event on/after today) — a past gig's uncollected balance was almost always
+ * handled off-app and would just inflate the number, the exact problem that made
+ * the old lump-sum "Expected" useless.
+ */
+export function buildExpectedItems(
+  bookings: FinanceBookingInput[],
+  payments: FinancePaymentInput[],
+  todayISO: string,
+): ExpectedItem[] {
+  const collected = collectedByBooking(payments);
+  const out: ExpectedItem[] = [];
+  for (const b of bookings) {
+    if (!isAccepted(b)) continue;
+    const date = (b.event_date || '').slice(0, 10);
+    if (!date || date < todayISO) continue;
+    const agreed = agreedTotal(b);
+    if (!(agreed > 0)) continue;
+    const remainder = round2(agreed - (collected.get(b.id) || 0));
+    if (!(remainder > 0)) continue;
+    const ratio = taxRatio(b);
+    out.push({ bookingId: b.id, date, gross: remainder, net: round2(remainder * (1 - ratio)) });
+  }
+  return out;
 }
 
 // ── Aggregations over a ReceivedEvent[] (client filters by range first) ──────
