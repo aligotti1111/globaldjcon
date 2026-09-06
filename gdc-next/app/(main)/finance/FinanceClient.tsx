@@ -188,6 +188,34 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
         </label>
       </div>
 
+      {/* Overview column chart — the KPI figures visualised side by side. Each
+          column is labelled with its value so the small buckets stay readable
+          even when one (usually Expected) dwarfs the rest. */}
+      <div className={styles.card} style={{ marginBottom: 22 }}>
+        <div className={styles.cardTitle}>Overview ({basis})</div>
+        <div className={styles.colChart}>
+          {[
+            { label: 'Earned', value: earned, color: '#00f5c4' },
+            { label: 'Tax', value: totals.tax, color: '#8a8aa0' },
+            { label: 'Outstanding', value: pick(outstanding), color: '#e6b455' },
+            { label: 'Expected', value: pick(expected), color: '#8aa0ff' },
+            { label: 'In Stripe', value: inStripe ?? 0, color: '#635BFF' },
+            { label: 'Paid to bank', value: stripe.paidOutRecent ?? 0, color: '#5fd08a' },
+          ].map((b) => {
+            const kpiMax = Math.max(1, earned, totals.tax, pick(outstanding), pick(expected), inStripe ?? 0, stripe.paidOutRecent ?? 0);
+            return (
+              <div key={b.label} className={styles.colItem} title={`${b.label}: ${money2.format(b.value)}`}>
+                <div className={styles.colVal} style={{ color: b.color }}>{money0.format(b.value)}</div>
+                <div className={styles.colTrack}>
+                  <div className={styles.colBar} style={{ height: `${(b.value / kpiMax) * 100}%`, background: b.color }} />
+                </div>
+                <div className={styles.colLabel}>{b.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* KPI strip */}
       <div className={styles.kpis}>
         <div className={`${styles.kpi} ${styles.kpiHero}`}>
@@ -255,6 +283,7 @@ export default function FinanceClient({ events, outstanding, expected, stripe, p
             <div className={styles.bars}>
               {bars.map((b) => (
                 <div key={b.month} className={styles.barCol} title={`${monthLabel(b.month)} · ${money2.format(b.value)}`}>
+                  <div className={styles.barVal}>{b.value > 0 ? money0.format(b.value) : ''}</div>
                   <div className={styles.barTrack}>
                     <div className={styles.bar} style={{ height: `${(b.value / barMax) * 100}%` }} />
                   </div>
