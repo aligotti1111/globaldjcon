@@ -142,7 +142,7 @@ export default function CashAppPay({
         <p style={{ margin: '.35rem 0 1.2rem', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5 }}>
           to {djName}
           {venueName ? ` · ${venueName}` : ''}
-          {eventDate ? ` · ${new Date(eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+          {eventDate ? ` · ${new Date(eventDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
         </p>
 
         {isMobile === null && (
