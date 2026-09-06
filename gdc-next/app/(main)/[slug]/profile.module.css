@@ -1613,16 +1613,15 @@
   .hero {
     flex-direction: column;
     gap: 0;
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
-    /* Lock the hero (and therefore the absolutely-positioned .banner that
-       fills it) to a consistent height on mobile. Without this the hero
-       is purely content-driven, so a club profile — which renders extra
-       pills (years-as-DJ, format/genre tags) the mobile-DJ profile lacks
-       — ends up visibly taller. This min-height matches the natural
-       mobile-DJ hero height; content centers within it. */
-    min-height: 280px;
-    justify-content: center;
+    padding-top: 1.25rem;
+    padding-bottom: 1rem;
+    /* Content-driven height. Previously locked to 280px + centered so club
+       and mobile heroes matched, but with the phone and location pulled up
+       next to the name that left a large empty banner band below. A modest
+       min-height keeps very sparse profiles from looking cramped without
+       creating dead space on fuller ones. */
+    min-height: 0;
+    justify-content: flex-start;
   }
   .heroTopRow {
     display: flex;
@@ -1630,7 +1629,7 @@
     align-items: center;
     gap: 1rem;
     width: 100%;
-    margin-top: 1rem;
+    margin-top: .25rem;
   }
   .heroAvatar {
     width: 99px !important;
