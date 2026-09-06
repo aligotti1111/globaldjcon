@@ -38,13 +38,14 @@ interface Props {
   today: string; // YYYY-MM-DD
 }
 
-type Preset = 'this_month' | 'last_30' | 'last_90' | 'ytd' | 'last_year' | 'all';
+type Preset = 'this_month' | 'last_30' | 'last_90' | 'ytd' | 'next_year' | 'last_year' | 'all';
 
 const PRESETS: { key: Preset; label: string }[] = [
   { key: 'this_month', label: 'This month' },
   { key: 'last_30', label: 'Last 30 days' },
   { key: 'last_90', label: 'Last 90 days' },
   { key: 'ytd', label: 'This year' },
+  { key: 'next_year', label: 'Next year' },
   { key: 'last_year', label: 'Last year' },
   { key: 'all', label: 'All time' },
 ];
@@ -67,6 +68,7 @@ function rangeFor(preset: Preset, today: string): { start: string; end: string }
     case 'last_30': return { start: addDays(today, -29), end: today };
     case 'last_90': return { start: addDays(today, -89), end: today };
     case 'ytd': return { start: `${y}-01-01`, end: today };
+    case 'next_year': return { start: `${y + 1}-01-01`, end: `${y + 1}-12-31` };
     case 'last_year': return { start: `${y - 1}-01-01`, end: `${y - 1}-12-31` };
     case 'all': default: return { start: '1970-01-01', end: today };
   }
@@ -127,7 +129,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
     const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
     // Expected is money still to come, so only project it on forward-looking
     // windows. Backward windows (last 30 / last 90 / last year) show received only.
-    const projectFuture = preset === 'this_month' || preset === 'ytd' || preset === 'all';
+    const projectFuture = preset === 'this_month' || preset === 'ytd' || preset === 'next_year' || preset === 'all';
 
     if (isDaily) {
       const recMap = new Map<string, number>();
@@ -260,7 +262,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
         {hasExpected && (
           <div className={styles.chartLegend}>
             <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
-            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: 'rgba(0,245,196,.30)' }} />Expected — unpaid, by event date</span>
+            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — unpaid, by event date</span>
           </div>
         )}
       </div>
