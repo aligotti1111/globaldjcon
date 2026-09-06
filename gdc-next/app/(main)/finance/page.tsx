@@ -24,7 +24,7 @@ import { getStripe } from '@/lib/stripe/server';
 import {
   buildReceivedEvents,
   computeOutstanding,
-  computeExpected,
+  buildExpectedItems,
   type FinanceBookingInput,
   type FinancePaymentInput,
 } from '@/lib/finance';
@@ -105,7 +105,6 @@ export default async function FinancePage() {
 
   const events = buildReceivedEvents(bookings, payments);
   const outstanding = computeOutstanding(bookings, payments);
-  const expected = computeExpected(bookings, payments);
 
   // Primary currency = most common on the bookings (fallback to profile/USD).
   const curCount = new Map<string, number>();
@@ -150,12 +149,13 @@ export default async function FinancePage() {
   }
 
   const today = new Date().toISOString().slice(0, 10);
+  const expectedItems = buildExpectedItems(bookings, payments, today);
 
   return (
     <FinanceClient
       events={events}
       outstanding={outstanding}
-      expected={expected}
+      expectedItems={expectedItems}
       stripe={stripeSnap}
       primaryCurrency={primaryCurrency}
       djName={profile?.name || 'Your'}
