@@ -28,7 +28,7 @@
   margin: 20px 0 22px;
 }
 /* Matches the profile page's tab bar: dark rounded track, uppercase Space Mono
-   labels, active = bright teal→cyan gradient pill. */
+   labels, active = solid brand-teal (#00f5c4) pill. */
 .seg {
   display: inline-flex;
   flex-wrap: wrap;
@@ -55,7 +55,7 @@
 }
 .segBtn:hover { color: var(--text, #fff); }
 .segBtnActive {
-  background: linear-gradient(135deg, #00F5C4, #22D3EE);
+  background: #00F5C4;
   color: #06120f;
 }
 
@@ -144,7 +144,7 @@
 .barTrack { width: 100%; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
 .bar {
   width: 100%;
-  background: linear-gradient(180deg, var(--accent, #00f5c4), #0aa88a);
+  background: #00F5C4;
   border-radius: 5px 5px 0 0;
   min-height: 2px;
   transition: height .2s;
@@ -159,7 +159,7 @@
 /* Grouped columns: received and expected sit side by side, each its own bar. */
 .barGroup { width: 100%; flex: 1; display: flex; align-items: stretch; justify-content: center; gap: 3px; }
 .barItem { flex: 1; max-width: 30px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
-.barRec { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent, #00f5c4), #0aa88a); }
+.barRec { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: #00F5C4; }
 .barExp2 { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: #8AA0FF; }
 .chartLegend { display: flex; gap: 18px; align-items: center; margin-top: 14px; }
 
