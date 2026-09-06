@@ -274,7 +274,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
           short windows, month otherwise; every bucket in the period is shown. */}
       <div className={styles.card} style={{ marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-          <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : 'month'} ({basis})</div>
+          <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : 'month'}</div>
           {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text, #ffffff)' }}>{periodLabel}</div>}
         </div>
         {bars.length === 0 ? (
