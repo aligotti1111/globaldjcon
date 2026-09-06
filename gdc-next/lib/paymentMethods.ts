@@ -137,7 +137,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   },
   paypal: {
     label: 'PayPal',
-    handleLabel: 'PayPal.me link or email',
+    handleLabel: 'Your PayPal.me link or PayPal email',
     placeholder: 'paypal.me/djnova',
     hint: 'Use your PayPal.me link — the client gets a one-tap button with the amount already filled in. An email works, but they must open PayPal and send it by hand.', footnote: 'PayPal requires a Business account for commercial payments (even unincorporated) and may close a personal account used mainly for business. Business rates run about 2.99% + $0.49.',
     validate: (v) => {
@@ -189,7 +189,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
 // it isn't something a DJ adds as a row in settings (no handle to type), and
 // the host-facing card renders it separately, always first.
 export const TYPE_ORDER: PaymentMethodType[] =
-  ['venmo', 'cashapp', 'paypal', 'zelle', 'cash', 'check', 'other'];
+  ['paypal', 'venmo', 'cashapp', 'zelle', 'cash', 'check', 'other'];
 
 /** Bare handle, prefixes stripped. Stored form. */
 export function cleanHandle(m: Pick<PaymentMethod, 'type' | 'handle'>): string {
