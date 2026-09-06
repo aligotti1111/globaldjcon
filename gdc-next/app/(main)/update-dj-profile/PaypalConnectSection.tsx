@@ -158,7 +158,6 @@ export default function PaypalConnectSection() {
       )}
 
       {err && <p style={{ margin: '10px 0 0', fontSize: '.78rem', color: '#ff5f5f' }}>{err}</p>}
-      <div style={{ ...label, marginTop: 12, opacity: .0, height: 0 }} aria-hidden="true" />
     </div>
   );
 }
