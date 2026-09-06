@@ -1,4 +1,4 @@
-\'use client';
+'use client';
 
 // MobileBookingForm — booking-request form for mobile DJ profiles.
 // Faithful port of vanilla djp-mob-public.js renderMobPubForm + submission
