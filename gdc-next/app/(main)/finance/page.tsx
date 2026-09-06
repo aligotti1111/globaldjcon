@@ -21,6 +21,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getActingContext, canBilling } from '@/lib/acting';
 import { getStripe } from '@/lib/stripe/server';
+import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import {
   buildReceivedEvents,
   computeOutstanding,
@@ -40,6 +41,7 @@ export const metadata: Metadata = {
 interface ProfileRow {
   role: string | null;
   name: string | null;
+  timezone: string | null;
   stripe_connect_id: string | null;
   stripe_connect_ready: boolean | null;
 }
@@ -69,7 +71,7 @@ export default async function FinancePage() {
 
   const { data: profileData } = await admin
     .from('users')
-    .select('role, name, stripe_connect_id, stripe_connect_ready')
+    .select('role, name, timezone, stripe_connect_id, stripe_connect_ready')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
   const profile = profileData;
@@ -148,7 +150,9 @@ export default async function FinancePage() {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // "Today" in the DJ's timezone, not UTC — so month/period boundaries flip at
+  // the DJ's local midnight instead of at 8pm ET.
+  const today = todayInTz(effectiveTimezone(profile?.timezone, null));
   const expectedItems = buildExpectedItems(bookings, payments, today);
 
   return (
