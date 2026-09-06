@@ -14,6 +14,7 @@ import {
   groupByField,
   METHOD_COLORS,
   type ReceivedEvent,
+  type ExpectedItem,
   type Totals,
 } from '@/lib/finance';
 
@@ -30,7 +31,7 @@ interface StripeSnapshot {
 interface Props {
   events: ReceivedEvent[];
   outstanding: Totals;
-  expected: Totals;
+  expectedItems: ExpectedItem[];
   stripe: StripeSnapshot;
   primaryCurrency: string;
   djName: string;
@@ -85,7 +86,7 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, outstanding, stripe, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, outstanding, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
 
@@ -116,38 +117,63 @@ export default function FinanceClient({ events, outstanding, stripe, primaryCurr
   // so the chart is a full timeline, not a lonely bar or two. 'All time' spans
   // the data itself (no 1970 explosion). Bars auto-scale to the tallest value
   // below, so peaks recalibrate on their own as revenue grows.
+  // Expected (unpaid, upcoming) is plotted in the month/day of the EVENT, stacked
+  // on top of received. Past views ('last year') never project. The axis extends
+  // to the latest expected event so those future bars are visible.
   const isDaily = preset === 'this_month' || preset === 'last_30';
-  const bars = useMemo(() => {
-    const val = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
+  type Bar = { key: string; label: string; value: number; expected: number };
+  const bars = useMemo<Bar[]>(() => {
+    const rv = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
+    const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
+    const wantFuture = preset !== 'last_year';
+
     if (isDaily) {
-      const map = new Map<string, number>();
-      for (const e of filtered) map.set(e.date, (map.get(e.date) || 0) + val(e));
-      const out: { key: string; label: string; value: number }[] = [];
+      const recMap = new Map<string, number>();
+      for (const e of filtered) recMap.set(e.date, (recMap.get(e.date) || 0) + rv(e));
+      const expMap = new Map<string, number>();
+      let latestExp = '';
+      if (wantFuture) for (const x of expectedItems) {
+        if (x.date < start) continue;
+        expMap.set(x.date, (expMap.get(x.date) || 0) + ev(x));
+        if (x.date > latestExp) latestExp = x.date;
+      }
+      let endDay = end;
+      if (latestExp && latestExp > endDay) endDay = latestExp;
+      const out: Bar[] = [];
       let cur = start;
-      for (let i = 0; i < 400 && cur <= end; i++) {
-        out.push({ key: cur, label: String(Number(cur.slice(8, 10))), value: map.get(cur) || 0 });
+      for (let i = 0; i < 62 && cur <= endDay; i++) {
+        out.push({ key: cur, label: String(Number(cur.slice(8, 10))), value: recMap.get(cur) || 0, expected: expMap.get(cur) || 0 });
         cur = addDays(cur, 1);
       }
       return out;
     }
-    const map = new Map(monthly.map((b) => [b.month, basis === 'net' ? b.net : b.gross]));
+
+    const recMap = new Map(monthly.map((b) => [b.month, basis === 'net' ? b.net : b.gross]));
+    const expMap = new Map<string, number>();
+    if (wantFuture) for (const x of expectedItems) { const m = x.date.slice(0, 7); expMap.set(m, (expMap.get(m) || 0) + ev(x)); }
     let firstYM: string;
     let lastYM: string;
     if (preset === 'all') {
-      if (monthly.length === 0) return [] as { key: string; label: string; value: number }[];
-      firstYM = monthly[0].month;
-      lastYM = monthly[monthly.length - 1].month;
+      const keys = [...recMap.keys(), ...expMap.keys()].sort();
+      if (keys.length === 0) return [];
+      firstYM = keys[0];
+      lastYM = keys[keys.length - 1];
     } else {
       firstYM = start.slice(0, 7);
       lastYM = end.slice(0, 7);
+      for (const m of expMap.keys()) if (m > lastYM) lastYM = m;
     }
-    const out: { key: string; label: string; value: number }[] = [];
+    const out: Bar[] = [];
     let cur = firstYM;
-    for (let i = 0; i < 120 && cur <= lastYM; i++) { out.push({ key: cur, label: monthLabel(cur), value: map.get(cur) || 0 }); cur = nextMonth(cur); }
+    for (let i = 0; i < 120 && cur <= lastYM; i++) {
+      out.push({ key: cur, label: monthLabel(cur), value: recMap.get(cur) || 0, expected: expMap.get(cur) || 0 });
+      cur = nextMonth(cur);
+    }
     return out;
-  }, [filtered, monthly, basis, preset, start, end, isDaily]);
-  const barMax = Math.max(1, ...bars.map((b) => b.value));
+  }, [filtered, monthly, basis, preset, start, end, isDaily, expectedItems]);
+  const barMax = Math.max(1, ...bars.map((b) => b.value + b.expected));
   const showBarVals = bars.length <= 14;
+  const hasExpected = bars.some((b) => b.expected > 0);
 
   const inStripe = stripe.connected && (stripe.available != null || stripe.pending != null)
     ? (stripe.available || 0) + (stripe.pending || 0)
@@ -212,15 +238,27 @@ export default function FinanceClient({ events, outstanding, stripe, primaryCurr
           <div className={styles.empty}>No revenue in this period.</div>
         ) : (
           <div className={styles.bars}>
-            {bars.map((b) => (
-              <div key={b.key} className={styles.barCol} title={`${b.label} · ${money2.format(b.value)}`}>
-                {showBarVals && <div className={styles.barVal}>{b.value > 0 ? money0.format(b.value) : ''}</div>}
-                <div className={styles.barTrack}>
-                  <div className={styles.bar} style={{ height: `${(b.value / barMax) * 100}%` }} />
+            {bars.map((b) => {
+              const total = b.value + b.expected;
+              return (
+                <div key={b.key} className={styles.barCol} title={`${b.label} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
+                  {showBarVals && <div className={styles.barVal}>{total > 0 ? money0.format(total) : ''}</div>}
+                  <div className={styles.barTrack}>
+                    <div className={styles.barStack} style={{ height: `${(total / barMax) * 100}%` }}>
+                      {b.expected > 0 && <div className={styles.barExp} style={{ height: b.value > 0 ? `${(b.expected / total) * 100}%` : '100%' }} />}
+                      {b.value > 0 && <div className={styles.bar} style={{ flex: 1, borderRadius: 0 }} />}
+                    </div>
+                  </div>
+                  <div className={styles.barLabel}>{b.label}</div>
                 </div>
-                <div className={styles.barLabel}>{b.label}</div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+        )}
+        {hasExpected && (
+          <div className={styles.chartLegend}>
+            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
+            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: 'rgba(0,245,196,.30)' }} />Expected — unpaid, by event date</span>
           </div>
         )}
       </div>
