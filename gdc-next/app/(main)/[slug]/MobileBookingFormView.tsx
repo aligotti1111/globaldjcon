@@ -989,13 +989,24 @@ export default function MobileBookingForm({
             reads as another thing to do. */}
         <div className={styles.formRow}>
           {knownPhone ? (
-            // Label + number on ONE line — the value is read-only (from the
-            // account), so a stacked label just burns a row confirming a fact.
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
-              <label htmlFor="mpf-phone" style={{ marginBottom: 0 }}>Phone Number</label>
-              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+            // Label + number + SMS opt-in all on ONE line — the value is
+            // read-only (from the account), so a stacked label just burns a row.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
+              <label htmlFor="mpf-phone" style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Phone</label>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {phone}
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0, marginLeft: '1rem', minWidth: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={smsOptIn}
+                  onChange={(e) => setSmsOptIn(e.target.checked)}
+                  style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
+                />
+                <span style={{ fontSize: '.78rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                  Text me updates. Msg &amp; data rates may apply.
+                </span>
+              </label>
             </div>
           ) : (
             <>
@@ -1016,24 +1027,25 @@ export default function MobileBookingForm({
           )}
         </div>
 
-        {/* SMS opt-in — right under the phone field. Opts this ONE booking into
-            text updates (accepted, declined, contract to sign, deposit request).
-            Consent line required for carrier (A2P) compliance. */}
-        <div className={styles.formRow}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={smsOptIn}
-              onChange={(e) => setSmsOptIn(e.target.checked)}
-              style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
-            />
-            {/* Override .formRow label (uppercase + letter-spacing + bold) so
-                the consent line reads as normal sentence-case body text. */}
-            <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400 }}>
-              Text me updates. Msg &amp; data rates may apply.
-            </span>
-          </label>
-        </div>
+        {/* SMS opt-in — standalone row only when the phone is an editable input.
+            The known-phone case renders it inline on the phone row above. */}
+        {!knownPhone && (
+          <div className={styles.formRow}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
+              <input
+                type="checkbox"
+                checked={smsOptIn}
+                onChange={(e) => setSmsOptIn(e.target.checked)}
+                style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
+              />
+              {/* Override .formRow label (uppercase + letter-spacing + bold) so
+                  the consent line reads as normal sentence-case body text. */}
+              <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400 }}>
+                Text me updates. Msg &amp; data rates may apply.
+              </span>
+            </label>
+          </div>
+        )}
 
         {/* Email — ONLY for accounts that don't have one (phone signups).
             Everything after this booking is an email; without an address the
