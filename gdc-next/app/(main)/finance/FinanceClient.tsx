@@ -120,9 +120,10 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   // so the chart is a full timeline, not a lonely bar or two. 'All time' spans
   // the data itself (no 1970 explosion). Bars auto-scale to the tallest value
   // below, so peaks recalibrate on their own as revenue grows.
-  // Expected (unpaid, upcoming) is plotted in the month/day of the EVENT, stacked
-  // on top of received. Past views ('last year') never project. The axis extends
-  // to the latest expected event so those future bars are visible.
+  // Expected (unpaid, upcoming) is plotted in the day/month of the EVENT beside
+  // received, but ONLY on the two windows that look forward — this month (the
+  // received/expected crossroads) and next year. Every other window shows
+  // received only (see projectFuture below).
   const isDaily = preset === 'this_month' || preset === 'last_30';
   // Single-year views (this/next/last year) hide the per-bar year on mobile —
   // it's redundant with the period label and crowds the axis.
@@ -131,9 +132,16 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   const bars = useMemo<Bar[]>(() => {
     const rv = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
     const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
-    // Expected is money still to come, so only project it on forward-looking
-    // windows. Backward windows (last 30 / last 90 / last year) show received only.
-    const projectFuture = preset === 'this_month' || preset === 'ytd' || preset === 'next_year';
+    // Received = money already collected (past dates); expected = still to come
+    // (future dates). They only meet at ONE crossroads: the current month, which
+    // holds both received-so-far and what's still owed this month. So expected
+    // only projects on:
+    //   • this_month — the crossroads (received past days + expected remaining days)
+    //   • next_year  — entirely future, so it's all expected
+    // Every other window is received-only: last 30 / last 90 / last year / all
+    // time (all past), and "this year" (received across its past + current months,
+    // no forward projection).
+    const projectFuture = preset === 'this_month' || preset === 'next_year';
 
     if (isDaily) {
       const recMap = new Map<string, number>();
@@ -196,6 +204,13 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
   const hasExpected = bars.some((b) => b.expected > 0);
+  // The current month is the crossroads: some money already received, some still
+  // expected. Surface a single combined figure (received + expected) so "total
+  // showing both" is spelled out, not just implied by the two bar colours. Only
+  // meaningful for this_month — every other window is one-sided.
+  const monthReceived = preset === 'this_month' ? bars.reduce((s, b) => s + b.value, 0) : 0;
+  const monthExpected = preset === 'this_month' ? bars.reduce((s, b) => s + b.expected, 0) : 0;
+  const showMonthTotal = preset === 'this_month' && monthExpected > 0;
   // Month/year context for the chart header, derived from the first/last bucket.
   const periodLabel = useMemo(() => {
     if (bars.length === 0) return '';
@@ -277,6 +292,16 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
           <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : 'month'}</div>
           {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text, #ffffff)' }}>{periodLabel}</div>}
         </div>
+        {showMonthTotal && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 12px', margin: '-4px 0 14px' }}>
+            <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text, #ffffff)' }}>
+              {money2.format(monthReceived + monthExpected)}
+            </span>
+            <span style={{ fontSize: '.78rem', color: 'var(--muted, #8a8aa0)' }}>
+              total expected this month · <span style={{ color: '#00f5c4' }}>{money0.format(monthReceived)} received</span> + <span style={{ color: '#8aa0ff' }}>{money0.format(monthExpected)} expected</span>
+            </span>
+          </div>
+        )}
         {bars.length === 0 ? (
           <div className={styles.empty}>No revenue in this period.</div>
         ) : (
