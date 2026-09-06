@@ -111,21 +111,43 @@ export default function FinanceClient({ events, outstanding, stripe, primaryCurr
   const earned = pick(totals);
   const avgPerGig = gigs > 0 ? earned / gigs : 0;
 
-  // Continuous month buckets across the data span (bounded by data, so 'all'
-  // never explodes into 1970). Falls back to data-only if the span is huge.
+  // Short windows (this month / last 30 days) break down by DAY; everything else
+  // by MONTH. Every bucket in the SELECTED PERIOD is shown, empty ones at $0 —
+  // so the chart is a full timeline, not a lonely bar or two. 'All time' spans
+  // the data itself (no 1970 explosion). Bars auto-scale to the tallest value
+  // below, so peaks recalibrate on their own as revenue grows.
+  const isDaily = preset === 'this_month' || preset === 'last_30';
   const bars = useMemo(() => {
-    if (monthly.length === 0) return [] as { month: string; value: number }[];
+    const val = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
+    if (isDaily) {
+      const map = new Map<string, number>();
+      for (const e of filtered) map.set(e.date, (map.get(e.date) || 0) + val(e));
+      const out: { key: string; label: string; value: number }[] = [];
+      let cur = start;
+      for (let i = 0; i < 400 && cur <= end; i++) {
+        out.push({ key: cur, label: String(Number(cur.slice(8, 10))), value: map.get(cur) || 0 });
+        cur = addDays(cur, 1);
+      }
+      return out;
+    }
     const map = new Map(monthly.map((b) => [b.month, basis === 'net' ? b.net : b.gross]));
-    const first = monthly[0].month;
-    const last = monthly[monthly.length - 1].month;
-    const cont: string[] = [];
-    let cur = first;
-    // Guard the loop and cap length.
-    for (let i = 0; i < 60 && cur <= last; i++) { cont.push(cur); cur = nextMonth(cur); }
-    const list = cont.length > 24 ? monthly.map((b) => b.month) : cont;
-    return list.map((ym) => ({ month: ym, value: map.get(ym) || 0 }));
-  }, [monthly, basis]);
+    let firstYM: string;
+    let lastYM: string;
+    if (preset === 'all') {
+      if (monthly.length === 0) return [] as { key: string; label: string; value: number }[];
+      firstYM = monthly[0].month;
+      lastYM = monthly[monthly.length - 1].month;
+    } else {
+      firstYM = start.slice(0, 7);
+      lastYM = end.slice(0, 7);
+    }
+    const out: { key: string; label: string; value: number }[] = [];
+    let cur = firstYM;
+    for (let i = 0; i < 120 && cur <= lastYM; i++) { out.push({ key: cur, label: monthLabel(cur), value: map.get(cur) || 0 }); cur = nextMonth(cur); }
+    return out;
+  }, [filtered, monthly, basis, preset, start, end, isDaily]);
   const barMax = Math.max(1, ...bars.map((b) => b.value));
+  const showBarVals = bars.length <= 14;
 
   const inStripe = stripe.connected && (stripe.available != null || stripe.pending != null)
     ? (stripe.available || 0) + (stripe.pending || 0)
@@ -182,21 +204,21 @@ export default function FinanceClient({ events, outstanding, stripe, primaryCurr
         </div>
       </div>
 
-      {/* Earnings by month — the primary chart, full width. Each column is
-          labelled with its amount. */}
+      {/* Revenue over time — the primary chart, full width. Day granularity for
+          short windows, month otherwise; every bucket in the period is shown. */}
       <div className={styles.card} style={{ marginBottom: 22 }}>
-        <div className={styles.cardTitle}>Earnings by month ({basis})</div>
+        <div className={styles.cardTitle}>Revenue by {isDaily ? 'day' : 'month'} ({basis})</div>
         {bars.length === 0 ? (
-          <div className={styles.empty}>No payments in this period.</div>
+          <div className={styles.empty}>No revenue in this period.</div>
         ) : (
           <div className={styles.bars}>
             {bars.map((b) => (
-              <div key={b.month} className={styles.barCol} title={`${monthLabel(b.month)} · ${money2.format(b.value)}`}>
-                <div className={styles.barVal}>{b.value > 0 ? money0.format(b.value) : ''}</div>
+              <div key={b.key} className={styles.barCol} title={`${b.label} · ${money2.format(b.value)}`}>
+                {showBarVals && <div className={styles.barVal}>{b.value > 0 ? money0.format(b.value) : ''}</div>}
                 <div className={styles.barTrack}>
                   <div className={styles.bar} style={{ height: `${(b.value / barMax) * 100}%` }} />
                 </div>
-                <div className={styles.barLabel}>{monthLabel(b.month)}</div>
+                <div className={styles.barLabel}>{b.label}</div>
               </div>
             ))}
           </div>
