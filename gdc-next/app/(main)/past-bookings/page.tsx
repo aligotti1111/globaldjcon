@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
+import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from '../upcoming-bookings/UpcomingBookingsClient';
 import type { UpcomingBooking, BookingPayment } from '../upcoming-bookings/page';
@@ -29,6 +30,7 @@ interface ProfileRow {
   country: string | null;
   name: string | null;
   booking_settings: string | null;
+  timezone: string | null;
 }
 
 export default async function PastBookingsPage() {
@@ -45,7 +47,7 @@ export default async function PastBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings')
+    .select('role, dj_type, country, name, booking_settings, timezone')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -63,7 +65,9 @@ export default async function PastBookingsPage() {
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Today in the DJ's timezone (not UTC) so an event only moves to Past after
+  // local midnight, not at 8pm ET.
+  const today = todayInTz(effectiveTimezone(profile?.timezone, null));
 
   // Past approved, cancelled or manual bookings for this DJ (event_date
   // strictly before today), newest first.
