@@ -298,21 +298,22 @@ export async function POST(req: Request) {
     // Current standing is the only honest signal available today.
     const { data: djData } = await admin
       .from('users')
-      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_methods, stripe_connect_ready')
+      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_methods, stripe_connect_ready, paypal_connect_ready')
       .eq('id', acting.djId)
       .maybeSingle();
-    const dj = djData as (AccessFields & { name?: string | null; payment_methods?: unknown; stripe_connect_ready?: boolean | null }) | null;
+    const dj = djData as (AccessFields & { name?: string | null; payment_methods?: unknown; stripe_connect_ready?: boolean | null; paypal_connect_ready?: boolean | null }) | null;
     if (!dj || !canUsePro(dj)) {
       return NextResponse.json({ error: 'Payments are a Pro feature.' }, { status: 403 });
     }
 
     // A DJ is "set up to get paid" if they have any usable manual rail OR a
-    // ready Stripe card connection. Card is never a manual row (it's filtered
-    // out of usableMethods), so it must be checked separately or a card-only
-    // DJ is wrongly told to add a payment method.
+    // ready Stripe card connection OR a connected PayPal. Card/PayPal are never
+    // manual rows (filtered out of usableMethods), so they're checked separately
+    // or a card/PayPal-only DJ is wrongly told to add a payment method.
     const methods = usableMethods((Array.isArray(dj.payment_methods) ? dj.payment_methods : []) as PaymentMethod[]);
     const cardReady = !!dj.stripe_connect_ready;
-    if (methods.length === 0 && !cardReady) {
+    const paypalReady = !!dj.paypal_connect_ready;
+    if (methods.length === 0 && !cardReady && !paypalReady) {
       return NextResponse.json({ error: 'Add a payment method in Booking Settings first.' }, { status: 400 });
     }
 
@@ -453,6 +454,25 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 <p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Secure checkout by Stripe — no account or sign-in needed.</p>
 </td></tr></table>`
         : '';
+      // PayPal (connected / auto-tracked) — a one-tap button to the hosted
+      // PayPal + Venmo checkout that marks this payment paid on its own. Only
+      // when the DJ has connected PayPal; the manual PayPal.me card (if any) is
+      // filtered out below so PayPal isn't offered twice.
+      const paypalBlock = paypalReady
+        ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;min-width:100%;border:1px solid #C5CFE6;border-radius:12px;margin:0 0 12px;background:#EAEEF7;overflow:hidden;">
+<tr><td style="height:4px;background:#003087;font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td style="padding:14px 16px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr>
+<td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:#003087;border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">P</td></tr></table></td>
+<td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#003087;font-size:15px;">PayPal &amp; Venmo</td>
+</tr></table>
+<a href="${SITE_URL}/pay/${payment.id}/paypal" style="display:block;margin:11px 0 0;background:#0070ba;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with PayPal &rarr;</a>
+<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Pay with PayPal or Venmo — no account or sign-in needed.</p>
+</td></tr></table>`
+        : '';
+      // Don't list the manual PayPal.me rail when a connected PayPal button is
+      // shown — one PayPal option, not two.
+      const emailMethods = paypalReady ? methods.filter((m) => m.type !== 'paypal') : methods;
       const content = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="min-width:100%;margin:0 0 20px;border:1px solid #b8f5e4;border-radius:14px;background:#effcf7;">
 <tr><td style="padding:22px 24px;" align="center">
@@ -464,7 +484,7 @@ ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
 Please choose a payment option below to complete the ${noun} required to reserve your date.
 </p>
-${cardBlock}${optionsHtml(methods, amount, cur, reference, djName, payment.id, b.event_date, b.venue_name, noun === 'balance')}
+${cardBlock}${paypalBlock}${optionsHtml(emailMethods, amount, cur, reference, djName, payment.id, b.event_date, b.venue_name, noun === 'balance')}
 <div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
 <p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p>
 <p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
