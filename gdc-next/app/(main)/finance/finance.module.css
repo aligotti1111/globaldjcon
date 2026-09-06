@@ -142,6 +142,11 @@
 }
 .barLabel { font-size: .62rem; color: var(--muted, #8a8aa0); white-space: nowrap; }
 .barVal { font-size: .58rem; font-weight: 700; color: var(--text, #d8d8e6); white-space: nowrap; }
+/* Stacked column: received (solid) at the bottom, expected (translucent) on top.
+   Radius + clip live on the stack so the top segment gets the rounded cap. */
+.barStack { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; border-radius: 5px 5px 0 0; overflow: hidden; }
+.barExp { width: 100%; background: rgba(0, 245, 196, .30); }
+.chartLegend { display: flex; gap: 18px; align-items: center; margin-top: 14px; }
 
 /* Donut + legend */
 .pieWrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
