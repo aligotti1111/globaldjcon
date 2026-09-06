@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { EVENT_TYPE_LABELS } from './constants';
 import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
-  FacebookIcon, TwitchIcon, CalendarIcon,
+  FacebookIcon, TwitchIcon, CalendarIcon, MailIcon,
 } from './icons';
 import type { DjProfileData, Testimonial } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
@@ -2738,7 +2738,7 @@ export function ShareCalendarModal({
 // against the bottom of the banner, centered. For owners, also shows
 // "+ add" buttons for missing socials so they can add inline.
 // ──────────────────────────────────────────────────────────────────────────
-export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void }) {
+export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
   // Copy-link feedback state — used only when booking is NOT active, in
@@ -2880,6 +2880,48 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           setOpenField={setOpenSocialField}
         />
       )}
+      {/* Contact cluster — phone + message. Sits after the socials with its
+          own divider, before Share. Hidden for the owner (no self-message).
+          Phone links to tel: when signed in; logged-out visitors get a
+          disabled "View phone" placeholder (same gate as the old hero
+          phone). Message opens the compose modal (gated to verified users
+          by onMessageClick). */}
+      {!isOwnProfile && (
+        <div className={styles.underBannerContact}>
+          {data.phone && (
+            isLoggedIn ? (
+              <a
+                href={`tel:${data.phone}`}
+                className={`${styles.underBannerSocialBtn} ${styles.underBannerPhone}`}
+                title={data.phone}
+                aria-label="Call"
+              >
+                <PhoneIcon />
+              </a>
+            ) : (
+              <button
+                type="button"
+                className={`${styles.underBannerSocialBtn} ${styles.underBannerPhone}`}
+                title="View phone"
+                aria-label="View phone"
+                disabled
+              >
+                <PhoneIcon />
+              </button>
+            )
+          )}
+          <button
+            type="button"
+            className={`${styles.underBannerSocialBtn} ${styles.underBannerMail}`}
+            title="Message us"
+            aria-label="Message us"
+            onClick={onMessageClick}
+          >
+            <MailIcon />
+          </button>
+        </div>
+      )}
+
       {/* Share button — sits at the end of the socials row, set apart
           from the social icons by a divider gap. When booking is active
           it opens the share-calendar modal; when booking is off there's
