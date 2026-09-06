@@ -13,6 +13,8 @@ import {
   groupByMonth,
   groupByField,
   METHOD_COLORS,
+  METHOD_LABELS,
+  PAYMENT_METHOD_ORDER,
   type ReceivedEvent,
   type ExpectedItem,
   type Totals,
@@ -92,6 +94,9 @@ function nextMonth(ym: string): string {
 export default function FinanceClient({ events, outstanding, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
+  // Independent quick-filter for the payments table only (leaves the charts on
+  // the main period above). 'period' = whatever the charts show.
+  const [tableRange, setTableRange] = useState<'period' | 'last_30' | 'last_90' | 'last_year'>('period');
 
   const money0 = useMemo(
     () => new Intl.NumberFormat(undefined, { style: 'currency', currency: primaryCurrency, maximumFractionDigits: 0 }),
@@ -114,6 +119,36 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   const gigs = useMemo(() => new Set(filtered.map((e) => e.bookingId)).size, [filtered]);
   const earned = pick(totals);
   const avgPerGig = gigs > 0 ? earned / gigs : 0;
+
+  // "By payment method" lists EVERY rail, in a fixed order, so the DJ sees the
+  // full menu — the ones they've never been paid through show greyed at $0.
+  // Any non-standard key that actually carried money (overtime, other) is
+  // appended so nothing collected goes missing.
+  const methodSlices = useMemo(() => {
+    const found = new Map(byMethod.map((s) => [s.key, s]));
+    const base = PAYMENT_METHOD_ORDER.map((k) => {
+      const s = found.get(k);
+      return { key: k, label: METHOD_LABELS[k] || k, value: s ? pick(s) : 0, color: METHOD_COLORS[k] || '#8A8AA0' };
+    });
+    for (const s of byMethod) {
+      if (!PAYMENT_METHOD_ORDER.includes(s.key)) {
+        base.push({ key: s.key, label: s.label, value: pick(s), color: METHOD_COLORS[s.key] || '#8A8AA0' });
+      }
+    }
+    return base;
+  }, [byMethod, basis]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Payments table has its own quick range, independent of the chart period.
+  // 'period' tracks the charts; the others are rolling windows off today across
+  // ALL events (so the table can look wider than the chart when you want).
+  const tableEvents = useMemo(() => {
+    if (tableRange === 'period') return filtered;
+    const start = tableRange === 'last_30' ? addDays(today, -29)
+      : tableRange === 'last_90' ? addDays(today, -89)
+      : addDays(today, -364);
+    return inRange(events, start, today);
+  }, [tableRange, filtered, events, today]);
+  const tableTotals = useMemo(() => summarize(tableEvents), [tableEvents]);
 
   // Short windows (this month / last 30 days) break down by DAY; everything else
   // by MONTH. Every bucket in the SELECTED PERIOD is shown, empty ones at $0 —
@@ -231,7 +266,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
       const s = String(v ?? '');
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const rows = filtered.map((e) => [
+    const rows = tableEvents.map((e) => [
       e.date, e.eventType, e.venue || '', (e.method[0].toUpperCase() + e.method.slice(1)),
       e.kind, e.gross.toFixed(2), e.tax.toFixed(2), e.net.toFixed(2), e.currency,
     ]);
@@ -379,7 +414,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
         <div className={styles.card}>
           <div className={styles.cardTitle}>By payment method</div>
           <Donut
-            slices={byMethod.map((s) => ({ label: s.label, value: pick(s), color: METHOD_COLORS[s.key] || '#8A8AA0' }))}
+            slices={methodSlices}
             fmt={(n) => money0.format(n)}
           />
         </div>
@@ -395,13 +430,26 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
       {/* Job table */}
       <div className={styles.tableCard}>
         <div className={styles.tableHead}>
-          <div className={styles.cardTitle} style={{ margin: 0 }}>Payments received · {filtered.length}</div>
-          <button type="button" className={styles.exportBtn} onClick={exportCsv} disabled={filtered.length === 0}>
-            Export CSV
-          </button>
+          <div className={styles.cardTitle} style={{ margin: 0 }}>Payments received · {tableEvents.length}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <select
+              className={styles.rangeSelect}
+              aria-label="Payments range"
+              value={tableRange}
+              onChange={(e) => setTableRange(e.target.value as typeof tableRange)}
+            >
+              <option value="period">Selected period</option>
+              <option value="last_30">Last 30 days</option>
+              <option value="last_90">Last 90 days</option>
+              <option value="last_year">Past year</option>
+            </select>
+            <button type="button" className={styles.exportBtn} onClick={exportCsv} disabled={tableEvents.length === 0}>
+              Export CSV
+            </button>
+          </div>
         </div>
-        {filtered.length === 0 ? (
-          <div className={styles.empty}>No payments received in this period.</div>
+        {tableEvents.length === 0 ? (
+          <div className={styles.empty}>No payments received in this range.</div>
         ) : (
           <div className={styles.tScroll}>
             <table className={styles.table}>
@@ -418,7 +466,7 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
                 </tr>
               </thead>
               <tbody>
-                {[...filtered].reverse().map((e, i) => (
+                {[...tableEvents].reverse().map((e, i) => (
                   <tr key={`${e.bookingId}-${e.date}-${i}`}>
                     <td>{e.date}</td>
                     <td>{e.eventType}</td>
@@ -435,6 +483,14 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className={styles.totalRow}>
+                  <td colSpan={5}>Total · {tableEvents.length} payment{tableEvents.length === 1 ? '' : 's'}</td>
+                  <td className={styles.num}>{money2.format(tableTotals.gross)}</td>
+                  <td className={styles.num}>{money2.format(tableTotals.tax)}</td>
+                  <td className={styles.num}>{money2.format(tableTotals.net)}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
@@ -454,53 +510,57 @@ function rangeLabel(p: Preset): string {
   return PRESETS.find((x) => x.key === p)?.label || '';
 }
 
-// ── Donut: dependency-free SVG pie with a legend ─────────────────────────────
-function Donut({ slices, fmt }: { slices: { label: string; value: number; color: string }[]; fmt: (n: number) => string }) {
+// ── Donut: dependency-free 3D (tilted + extruded) conic ring with a legend ───
+// A conic-gradient disc, masked to a ring, tilted on X and extruded by stacking
+// darkened copies along the ring's own Z axis (true perpendicular thickness,
+// thanks to preserve-3d on the tilted parent). Zero-value slices are dropped
+// from the ring but still listed — greyed — in the legend, so "By payment
+// method" shows every rail even when one has never been used.
+function Donut({ slices, fmt }: { slices: { key?: string; label: string; value: number; color: string }[]; fmt: (n: number) => string }) {
   const data = slices.filter((s) => s.value > 0);
   const total = data.reduce((s, x) => s + x.value, 0);
-  const size = 140;
-  const stroke = 24;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
 
-  if (total <= 0) {
-    return <div className={styles.empty} style={{ padding: '24px 8px' }}>No data.</div>;
+  // Build the conic gradient stops from the active (non-zero) slices.
+  let acc = 0;
+  const stops: string[] = [];
+  for (const s of data) {
+    const from = (acc / total) * 100;
+    acc += s.value;
+    const to = (acc / total) * 100;
+    stops.push(`${s.color} ${from}% ${to}%`);
   }
+  const grad = total > 0 ? `conic-gradient(from 0deg, ${stops.join(', ')})` : 'conic-gradient(#2a2a38, #2a2a38)';
+  const DEPTH = 14; // px of extruded thickness
 
-  let offset = 0;
   return (
     <div className={styles.pieWrap}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flex: 'none' }}>
-        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#26263380" strokeWidth={stroke} />
-          {data.map((s, i) => {
-            const len = (s.value / total) * circ;
-            const el = (
-              <circle
-                key={i}
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={stroke}
-                strokeDasharray={`${len} ${circ - len}`}
-                strokeDashoffset={-offset}
-              />
-            );
-            offset += len;
-            return el;
-          })}
-        </g>
-      </svg>
+      <div className={styles.disc3dScene}>
+        <div className={styles.disc3d}>
+          {/* Extruded side wall: darkened copies stacked under the top face. */}
+          {Array.from({ length: DEPTH }).map((_, i) => (
+            <div
+              key={i}
+              className={styles.disc3dFace}
+              style={{ background: `linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)), ${grad}`, transform: `translateZ(-${i + 1}px)` }}
+            />
+          ))}
+          {/* Top face: full-colour ring. */}
+          <div className={styles.disc3dFace} style={{ background: grad, transform: 'translateZ(0.5px)' }} />
+        </div>
+      </div>
       <div className={styles.legend}>
-        {data.map((s, i) => (
-          <div key={i} className={styles.legendRow}>
-            <span className={styles.swatch} style={{ background: s.color }} />
-            <span className={styles.legendLabel}>{s.label}</span>
-            <span className={styles.legendVal}>{fmt(s.value)} · {Math.round((s.value / total) * 100)}%</span>
-          </div>
-        ))}
+        {slices.map((s, i) => {
+          const zero = !(s.value > 0);
+          return (
+            <div key={s.key ?? i} className={styles.legendRow} style={zero ? { opacity: 0.45 } : undefined}>
+              <span className={styles.swatch} style={{ background: zero ? '#4a4a58' : s.color }} />
+              <span className={styles.legendLabel}>{s.label}</span>
+              <span className={styles.legendVal}>
+                {zero ? `${fmt(0)} · 0%` : `${fmt(s.value)} · ${Math.round((s.value / total) * 100)}%`}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
