@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal } from '@/lib/docuseal';
+import { notifyBookingSms } from '@/lib/supabase/sms';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -154,6 +155,10 @@ export async function POST(req: Request) {
       .eq('id', bookingId)
       .eq('dj_id', acting.djId);
   } catch { /* non-fatal */ }
+
+  // Per-booking host SMS — the contract is now the client's turn to sign.
+  // Self-gates on the booking's opt-in + phone; best-effort, never blocks.
+  notifyBookingSms(bookingId, 'contract').catch(() => {});
 
   return NextResponse.json({ ok: true });
 }
