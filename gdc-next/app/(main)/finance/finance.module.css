@@ -84,8 +84,17 @@
   color: var(--muted, #8a8aa0);
   font-weight: 700;
 }
-.kpiValue { font-size: 1.7rem; font-weight: 800; margin-top: 6px; letter-spacing: -.01em; }
-.kpiSub { font-size: .78rem; color: var(--muted, #8a8aa0); margin-top: 3px; }
+.kpiValue { font-size: 1.15rem; font-weight: 800; margin-top: 4px; letter-spacing: -.01em; }
+.kpiSub { font-size: .72rem; color: var(--muted, #8a8aa0); margin-top: 2px; }
+
+/* Overview column chart — one coloured column per money bucket, value labelled
+   above (so tiny bars stay readable when one bucket dwarfs the rest). */
+.colChart { display: flex; align-items: flex-end; gap: 10px; height: 200px; }
+.colItem { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; height: 100%; }
+.colVal { font-size: .8rem; font-weight: 800; white-space: nowrap; }
+.colTrack { width: 100%; flex: 1; display: flex; align-items: flex-end; }
+.colBar { width: 100%; border-radius: 6px 6px 0 0; min-height: 3px; transition: height .2s; }
+.colLabel { font-size: .6rem; color: var(--muted, #8a8aa0); text-transform: uppercase; letter-spacing: .05em; text-align: center; line-height: 1.2; }
 .kpiValue.pos { color: var(--accent, #00f5c4); }
 .kpiValue.warn { color: #e6b455; }
 .kpiValue.info { color: #8aa0ff; }
@@ -130,6 +139,7 @@
   transition: height .2s;
 }
 .barLabel { font-size: .62rem; color: var(--muted, #8a8aa0); white-space: nowrap; }
+.barVal { font-size: .58rem; font-weight: 700; color: var(--text, #d8d8e6); white-space: nowrap; }
 
 /* Donut + legend */
 .pieWrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
