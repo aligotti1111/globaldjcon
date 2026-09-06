@@ -1158,7 +1158,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
 
               {cfg.handleLabel ? (
                 <>
-                  <label style={label}>{cfg.handleLabel}</label>
+                  {/* PayPal's field label is suppressed — the Option 2 note
+                      above already tells them what to enter. */}
+                  {t !== 'paypal' && <label style={label}>{cfg.handleLabel}</label>}
                   <input
                     autoFocus
                     value={m.handle}
