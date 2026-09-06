@@ -63,6 +63,21 @@
 
 .spacer { flex: 1 1 auto; }
 
+/* Period selector: pill tabs on desktop, native dropdown on mobile. */
+.periodSelect {
+  display: none;
+  width: 100%;
+  background: var(--card2, #1b1b26);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  color: var(--text, #e8e8f0);
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -152,6 +167,7 @@
   transition: height .2s;
 }
 .barLabel { font-size: .62rem; color: var(--muted, #8a8aa0); white-space: nowrap; }
+.barYr { color: inherit; }
 .barVal { font-size: .58rem; font-weight: 700; color: var(--text, #d8d8e6); white-space: nowrap; }
 .barVals { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 /* Stacked column: received (solid) at the bottom, expected (translucent) on top.
@@ -208,4 +224,9 @@
 @media (max-width: 780px) {
   .grid2, .pieRow { grid-template-columns: 1fr; }
   .title { font-size: 2rem; }
+  /* Period pills → dropdown */
+  .segDesktop { display: none; }
+  .periodSelect { display: block; }
+  /* Single-year views: drop the per-bar year (it's in the period label). */
+  .hideYrMobile .barYr { display: none; }
 }
