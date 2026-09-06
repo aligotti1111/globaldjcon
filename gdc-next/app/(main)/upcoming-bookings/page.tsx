@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import UpcomingBookingsClient from './UpcomingBookingsClient';
 import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
 import { getActingContext } from '@/lib/acting';
+import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import {
   plannerProgress,
   type PlannerField,
@@ -198,6 +199,7 @@ interface ProfileRow {
   country: string | null;
   name: string | null;
   booking_settings: string | null;
+  timezone: string | null;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -214,7 +216,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings')
+    .select('role, dj_type, country, name, booking_settings, timezone')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -235,8 +237,10 @@ export default async function UpcomingBookingsPage() {
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
 
-  // Today (YYYY-MM-DD). event_date is a plain date, so a string compare works.
-  const today = new Date().toISOString().slice(0, 10);
+  // Today (YYYY-MM-DD) in the DJ's timezone — event_date is a plain date, so a
+  // string compare works. Using the DJ's zone (not UTC) keeps a same-day gig in
+  // Upcoming until local midnight instead of dropping it to Past at 8pm ET.
+  const today = todayInTz(effectiveTimezone(profile?.timezone, null));
 
   // Fetch FUTURE approved-or-manual bookings for this DJ. (Past bookings live on
   // the dedicated /past-bookings page.)
