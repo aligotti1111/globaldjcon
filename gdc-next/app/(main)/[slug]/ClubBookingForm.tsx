@@ -871,8 +871,7 @@ export default function ClubBookingForm({
             style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, marginTop: 2, flex: 'none' }}
           />
           <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.45 }}>
-            Text me updates for this booking — when it&rsquo;s accepted or declined, and when a
-            contract or deposit request is sent. Msg &amp; data rates may apply; reply STOP to opt out.
+            Text me updates. Msg &amp; data rates may apply.
           </span>
         </label>
 
