@@ -825,11 +825,23 @@ export default function ClubBookingForm({
             only when the account has no stored number. */}
         {knownPhone ? (
           <div className={styles.section}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
               <div className={styles.sectionLabel} style={{ marginBottom: 0 }}>Phone Number</div>
               <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
                 {phone}
               </div>
+              {/* Opt-in sits on the same row as the number, pushed to the right. */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: 'pointer', userSelect: 'none', marginLeft: 'auto' }}>
+                <input
+                  type="checkbox"
+                  checked={smsOptIn}
+                  onChange={(e) => setSmsOptIn(e.target.checked)}
+                  style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
+                />
+                <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)' }}>
+                  Text me updates. Msg &amp; data rates may apply.
+                </span>
+              </label>
             </div>
           </div>
         ) : (
@@ -855,22 +867,24 @@ export default function ClubBookingForm({
           </FormSection>
         )}
 
-        {/* SMS opt-in — its own section row so it sits cleanly under the phone
-            field without overlapping the divider. Opts this ONE booking into
-            text updates (accepted/declined/counter/contract/deposit). */}
-        <div className={styles.section}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none' }}>
-            <input
-              type="checkbox"
-              checked={smsOptIn}
-              onChange={(e) => setSmsOptIn(e.target.checked)}
-              style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
-            />
-            <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)' }}>
-              Text me updates. Msg &amp; data rates may apply.
-            </span>
-          </label>
-        </div>
+        {/* SMS opt-in — standalone row only when the phone is an editable input
+            (no room to sit inline). The known-phone case renders it on the
+            phone row above. Opts this ONE booking into text updates. */}
+        {!knownPhone && (
+          <div className={styles.section}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={smsOptIn}
+                onChange={(e) => setSmsOptIn(e.target.checked)}
+                style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
+              />
+              <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)' }}>
+                Text me updates. Msg &amp; data rates may apply.
+              </span>
+            </label>
+          </div>
+        )}
 
         {/* Email — ONLY for accounts that don't have one (phone signups). */}
         {needsEmail && (
