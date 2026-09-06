@@ -127,9 +127,11 @@
   margin: 0 0 14px;
 }
 
-/* Bar chart */
-.bars { display: flex; align-items: flex-end; gap: 6px; height: 200px; }
-.barCol { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+/* Bar chart. align-items:stretch (not flex-end) so each column fills the full
+   200px height — otherwise the flex:1 track collapses and every bar renders as a
+   sliver regardless of its value. */
+.bars { display: flex; align-items: stretch; gap: 6px; height: 200px; }
+.barCol { flex: 1 1 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
 .barTrack { width: 100%; flex: 1; display: flex; align-items: flex-end; }
 .bar {
   width: 100%;
