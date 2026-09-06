@@ -614,6 +614,15 @@ export default function ClubBookingForm({
             originalRate: created.original_rate,
             discountLabel: created.discount_label,
             discountAmount: created.discount_amount,
+            // Tax/deposit snapshot so both request emails can render the
+            // Total Event Price / Sales tax / Total breakdown (bookingId lets
+            // the DJ email fetch it; the explicit fields feed the booker copy).
+            bookingId: created.id,
+            taxPct: created.tax_pct,
+            taxAmount: created.tax_amount,
+            totalWithTax: created.total_with_tax,
+            depositPct: created.deposit_pct,
+            depositAmount: created.deposit_amount,
             totalHours: rateInfo.hours,
             // Per-hour rate — only meaningful for hourly bookings; lets the
             // email show "$330/hr × 3 hr" alongside the total.
@@ -650,6 +659,15 @@ export default function ClubBookingForm({
             originalRate: created.original_rate,
             discountLabel: created.discount_label,
             discountAmount: created.discount_amount,
+            // Tax/deposit snapshot so both request emails can render the
+            // Total Event Price / Sales tax / Total breakdown (bookingId lets
+            // the DJ email fetch it; the explicit fields feed the booker copy).
+            bookingId: created.id,
+            taxPct: created.tax_pct,
+            taxAmount: created.tax_amount,
+            totalWithTax: created.total_with_tax,
+            depositPct: created.deposit_pct,
+            depositAmount: created.deposit_amount,
             totalHours: rateInfo.hours,
             hourlyRate: rateInfo.rateType === 'hourly' ? rateInfo.rate : null,
             currency: rateInfo.currency,
