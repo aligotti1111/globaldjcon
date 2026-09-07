@@ -1,0 +1,58 @@
+// /api/dj-booked-dates?djId=...
+//
+// Public endpoint that returns the count of a DJ's APPROVED bookings per
+// date (YYYY-MM-DD → count), for future dates only. Drives the calendar's
+// red / diagonal partial-fill on the public profile.
+//
+// Bypasses RLS via the admin client — anon/customer clients can't read
+// another user's bookings directly, so a client-side query on the public
+// profile comes back empty and manual bookings (which save an approved
+// row but never set the booking_days.booked flag) never show as booked.
+// Returns ONLY event dates — no times, venue, financial, or host info.
+//
+// Only APPROVED bookings are counted. Manual bookings save as
+// status='approved', so they're included. Pending/countered requests are
+// excluded — they don't hold a confirmed slot.
+
+import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const djId = url.searchParams.get('djId');
+    if (!djId) {
+      return NextResponse.json({ error: 'djId required' }, { status: 400 });
+    }
+    const admin = createAdminClient();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const { data, error } = await admin
+      .from('bookings')
+      .select('event_date')
+      .eq('dj_id', djId)
+      .eq('status', 'approved')
+      .gte('event_date', todayStr);
+    if (error) {
+      console.error('[dj-booked-dates] query error', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const counts: Record<string, number> = {};
+    for (const row of (data || []) as Array<{ event_date: string | null }>) {
+      const d = row.event_date;
+      if (!d) continue;
+      counts[d] = (counts[d] || 0) + 1;
+    }
+
+    return NextResponse.json({ counts });
+  } catch (e) {
+    console.error('[dj-booked-dates] unexpected error', e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'Unknown error' },
+      { status: 500 },
+    );
+  }
+}
