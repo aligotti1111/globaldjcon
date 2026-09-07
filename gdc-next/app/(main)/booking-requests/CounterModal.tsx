@@ -1,4 +1,4 @@
-'use client';
+]'use client';
 
 // CounterModal — counter-offer dialog used by both sides of a booking.
 //
@@ -19,7 +19,7 @@
 // inline <s>/<ins> markers so the host sees what changed).
 // The booker side has no package editor — only the DJ owns the package.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import { currencySymbol } from '@/lib/constants';
@@ -106,9 +106,29 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
       when: e.created_at,
     });
   }
-  // The DJ's sales-tax rate (frozen on the booking). Each offer is a pre-tax
-  // number, so we show the tax-inclusive total beneath it when tax applies.
-  const taxPct = Number((booking as BookingRow & { tax_pct?: number | null }).tax_pct) || 0;
+  // The DJ's sales-tax rate. Prefer the value frozen on the booking; if it's
+  // missing (offers-mode requests never stored one, or the DJ turned tax on
+  // after the request came in), fall back to the DJ's CURRENT setting so a new
+  // counter still calculates tax on the amount being sent.
+  const frozenTaxPct = Number((booking as BookingRow & { tax_pct?: number | null }).tax_pct) || 0;
+  const [taxPct, setTaxPct] = useState<number>(frozenTaxPct);
+  useEffect(() => {
+    if (frozenTaxPct > 0 || !booking.dj_id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('users').select('booking_settings').eq('id', booking.dj_id).maybeSingle<{ booking_settings: unknown }>();
+        const raw = (data as { booking_settings?: unknown } | null)?.booking_settings;
+        const bs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const enabled = !!(bs as { tax_enabled?: boolean } | null)?.tax_enabled;
+        const pct = Number((bs as { tax_pct?: number } | null)?.tax_pct) || 0;
+        if (!cancelled && enabled && pct > 0) setTaxPct(pct);
+      } catch { /* leave at frozen (0) */ }
+    })();
+    return () => { cancelled = true; };
+  }, [frozenTaxPct, booking.dj_id]);
   const withTax = (n: number) => Number((n + (n * taxPct) / 100).toFixed(2));
   const fmt2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -352,6 +372,13 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
             />
             <span className={styles.counterCurrencyCode}>{currency}</span>
           </div>
+          {/* Live tax on the amount being sent — the counter is pre-tax, so
+              show what it becomes with the DJ's sales tax added. */}
+          {taxPct > 0 && Number(amount) > 0 && (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#8a8aa0' }}>
+              + {taxPct}% tax · total <span style={{ color: '#6ee7b7', fontWeight: 700 }}>{sym}{fmt2(withTax(Number(amount)))} {currency}</span>
+            </div>
+          )}
         </div>
 
         {/* Optional message */}
