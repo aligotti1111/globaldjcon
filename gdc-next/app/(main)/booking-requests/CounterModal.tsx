@@ -90,10 +90,22 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
   const currency = (booking as BookingRow & { currency?: string }).currency || 'USD';
   const sym = currencySymbol(currency);
 
-  // Show the most recent rate exchanged so the DJ/booker has context for
-  // their counter. Only shown when there's been at least one prior offer.
-  const currentRate = booking.counter_rate || booking.quoted_rate;
-  const currentRateLabel = booking.counter_rate ? 'Last Counter' : 'Their Offer';
+  // Full offer history, so whoever's countering sees the whole back-and-forth,
+  // not just the last number. Starts with the host's ORIGINAL ask (which lives
+  // on the booking, not in the log), then every counter from the negotiation
+  // log in order. The last row is the standing offer they're responding to.
+  const origAmount =
+    (booking as BookingRow & { offer_amount?: number | null }).offer_amount ??
+    booking.quoted_rate;
+  const history: { who: string; amount: number; when?: string | null }[] = [];
+  if (origAmount != null) history.push({ who: 'Host — original request', amount: Number(origAmount) });
+  for (const e of (booking.negotiation_log || [])) {
+    history.push({
+      who: e.from === 'dj' ? 'DJ counter' : 'Host counter',
+      amount: Number(e.amount),
+      when: e.created_at,
+    });
+  }
 
   // Event details — show date/time/duration. The mobile booking adds an
   // event-type label; club bookings just show date/time.
@@ -277,13 +289,32 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
           )}
         </div>
 
-        {/* Reference: prior rate */}
-        {currentRate && (
-          <div className={styles.counterCurrentRate}>
-            <span className={styles.counterCurrentRateLabel}>{currentRateLabel}</span>
-            <span className={styles.counterCurrentRateVal}>
-              {sym}{Number(currentRate).toLocaleString()} {currency}
-            </span>
+        {/* Reference: the full offer history — original ask + every counter. */}
+        {history.length > 0 && (
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '10px 12px', margin: '0 0 14px' }}>
+            <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: '#8a8aa0', marginBottom: 8 }}>
+              {history.length > 1 ? 'Offer history' : 'Their offer'}
+            </div>
+            {history.map((h, i) => {
+              const isLatest = i === history.length - 1;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10,
+                    padding: '4px 0',
+                    borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, color: isLatest ? '#fff' : '#9a9ab0', fontWeight: isLatest ? 700 : 400 }}>
+                    {h.who}{isLatest ? ' · current' : ''}
+                  </span>
+                  <span style={{ fontSize: 13.5, color: isLatest ? '#6ee7b7' : '#c9c9d6', fontWeight: isLatest ? 800 : 600, whiteSpace: 'nowrap' }}>
+                    {sym}{h.amount.toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 
