@@ -23,6 +23,7 @@ import HistoryModal from './HistoryModal';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { bookingsOverlap, formatShortDate, formatTime, timeToMins, MOB_EVENT_LABELS } from './helpers';
+import { currencySymbol } from '@/lib/constants';
 import type { PaymentMethod } from '@/lib/paymentMethods';
 import type { BookingRow, BookingPayment } from './page';
 
@@ -630,9 +631,19 @@ export default function BookingRequestsClient({
   // a normal approve.
   async function acceptCounter(bookingId: string) {
     const target = outgoing.find((x) => x.id === bookingId);
+    // Show the total they're locking in — the offered rate plus the DJ's sales
+    // tax, if any, so there's no surprise on the invoice.
+    const t = target as (BookingRow & { tax_pct?: number | null }) | undefined;
+    const rate = Number(t?.counter_rate ?? t?.quoted_rate ?? t?.offer_amount ?? 0);
+    const taxPct = Number(t?.tax_pct) || 0;
+    const total = taxPct > 0 ? Number((rate + (rate * taxPct) / 100).toFixed(2)) : rate;
+    const sym = currencySymbol(t?.currency || 'USD');
+    const totalLine = rate > 0
+      ? ` Total: ${sym}${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${taxPct > 0 ? ` (incl. ${taxPct}% tax)` : ''}.`
+      : '';
     const ok = await confirm({
       title: 'Approve this offer?',
-      message: `This confirms the booking with ${target?.dj_name || 'the DJ'} and locks in the offered rate. They'll be notified by email.`,
+      message: `This confirms the booking with ${target?.dj_name || 'the DJ'} and locks in the offered rate.${totalLine} They'll be notified by email.`,
       confirmLabel: 'Approve Offer',
       variant: 'primary',
     });
