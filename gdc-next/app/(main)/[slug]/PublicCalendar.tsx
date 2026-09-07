@@ -162,21 +162,20 @@ export default function PublicCalendar({
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const supabase = createClient();
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const { data } = await supabase
-        .from('bookings')
-        .select('event_date')
-        .eq('dj_id', djId)
-        .eq('status', 'approved')
-        .gte('event_date', todayStr);
-      if (!mounted || !data) return;
-      const counts: Record<string, number> = {};
-      for (const row of data as Array<{ event_date: string | null }>) {
-        if (!row.event_date) continue;
-        counts[row.event_date] = (counts[row.event_date] || 0) + 1;
+      // Fetch approved-booking counts via the admin-backed public endpoint.
+      // Querying `bookings` directly from the client hits RLS, which blocks
+      // anon/customer viewers on a public profile from reading another
+      // user's rows — so the count came back empty and manual bookings
+      // (approved row, no booking_days.booked flag) never showed as booked.
+      try {
+        const res = await fetch(`/api/dj-booked-dates?djId=${encodeURIComponent(djId)}`);
+        if (!mounted || !res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        setCountByDate((json?.counts as Record<string, number>) || {});
+      } catch {
+        // Non-fatal — calendar still renders from the booking_days flags.
       }
-      setCountByDate(counts);
     })();
     return () => { mounted = false; };
   }, [djId]);
