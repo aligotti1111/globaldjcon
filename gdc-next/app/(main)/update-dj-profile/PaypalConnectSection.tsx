@@ -143,14 +143,16 @@ export default function PaypalConnectSection(
     >
       {/* Blinking "live" dot — a real heartbeat so the connected state reads as
           actively on, not just a static label. */}
+      {/* Blinking "live" dot — a bright neon dot on a dark pill so it actually
+          pulses/pops rather than blending into a neon fill. */}
       <style>{`
-        @keyframes gdcPaypalBlink { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,245,196,.7); } 50% { opacity: .35; box-shadow: 0 0 0 6px rgba(0,245,196,0); } }
+        @keyframes gdcPaypalBlink { 0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(0,245,196,.8); } 50% { opacity: .25; transform: scale(.8); box-shadow: 0 0 10px 4px rgba(0,245,196,.55); } }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: 'var(--white,#fff)', fontSize: '.9rem' }}>PayPal payments</span>
         {live && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#04121a', background: '#00f5c4', padding: '5px 13px', borderRadius: 999, boxShadow: '0 0 16px rgba(0,245,196,.75)', textTransform: 'uppercase' }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#04121a', display: 'inline-block', animation: 'gdcPaypalBlink 1.3s ease-in-out infinite' }} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase' }}>
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#00f5c4', display: 'inline-block', animation: 'gdcPaypalBlink 1.2s ease-in-out infinite' }} />
             Connected
           </span>
         )}
