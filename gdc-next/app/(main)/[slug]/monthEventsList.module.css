@@ -300,6 +300,20 @@
   border-radius: 5px;
   background: var(--deep);
   border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  box-sizing: border-box;
+}
+.flyerPlaceholderText {
+  font-family: 'Space Mono', monospace;
+  font-size: 7px;
+  line-height: 1.25;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--muted);
 }
 
 .middle {
