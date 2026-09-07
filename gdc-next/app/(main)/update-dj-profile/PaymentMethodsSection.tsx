@@ -228,6 +228,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
 
+  // When the DJ connects PayPal (Option 1), Option 2 (the manual PayPal.me /
+  // email rail) is greyed out and made unclickable — Option 1 overrides it.
+  const [paypalReady, setPaypalReady] = useState(false);
+
   // ── Stripe Connect (cards) ────────────────────────────────────────
   const [card, setCard] = useState<CardState | null>(null);
   const [cardBusy, setCardBusy] = useState(false);
@@ -1119,6 +1123,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
           // nothing to write. Save goes inert rather than running a no-op that
           // reports success.
           const nothingToSave = isLive(t) && !isDirty(t);
+          // Option 1 (Connect PayPal) overrides Option 2 (manual PayPal.me /
+          // email): once connected, the manual rail is greyed and unclickable.
+          const paypalManualDisabled = t === 'paypal' && paypalReady;
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
@@ -1139,20 +1146,28 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   rail below, where the client sends by hand. */}
               {t === 'paypal' && (
                 <>
-                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 1 — Connect PayPal business account</div>
+                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 1 — Connect your PayPal business account</div>
                   <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
-                    To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect does not middle man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a business account, upgrade for free by clicking Connect PayPal — or see Option 2.
+                    To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect does not middle man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a <strong style={{ color: 'var(--white)' }}>business account</strong>, upgrade for free by clicking Connect PayPal — or see Option 2.
                   </p>
-                  <PaypalConnectSection />
+                  <PaypalConnectSection onStatus={setPaypalReady} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                     <span style={{ fontSize: '.66rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>Or</span>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
-                  <div style={{ ...label, fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
-                  <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
-                    Works on a personal account, but a <strong style={{ color: 'var(--white)' }}>Business account</strong> is recommended for regular income.
-                  </p>
+                  <div style={{ opacity: paypalManualDisabled ? 0.45 : 1 }}>
+                    <div style={{ ...label, fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
+                    {paypalManualDisabled ? (
+                      <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--neon)', lineHeight: 1.55 }}>
+                        PayPal is connected via Option 1 — the manual option isn&rsquo;t needed. Disconnect above to use it instead.
+                      </p>
+                    ) : (
+                      <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
+                        Works on a personal account, but a <strong style={{ color: 'var(--white)' }}>Business account</strong> is recommended for regular income.
+                      </p>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -1162,11 +1177,16 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                       above already tells them what to enter. */}
                   {t !== 'paypal' && <label style={label}>{cfg.handleLabel}</label>}
                   <input
-                    autoFocus
+                    autoFocus={!paypalManualDisabled}
                     value={m.handle}
                     placeholder={cfg.placeholder}
+                    disabled={paypalManualDisabled}
                     onChange={(e) => patchType(t, { handle: e.target.value })}
-                    style={{ ...field, borderColor: err ? '#ff6b6b' : 'var(--border)' }}
+                    style={{
+                      ...field,
+                      borderColor: err ? '#ff6b6b' : 'var(--border)',
+                      ...(paypalManualDisabled ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' as const } : null),
+                    }}
                   />
                   {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
 
@@ -1377,14 +1397,15 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   // Match the Settings tab's Save button exactly: neon fill +
                   // dark text when there's something to commit, transparent +
                   // muted "✓ Saved" when clean.
-                  const actionable = !saving && complete && !nothingToSave;
+                  const actionable = !saving && complete && !nothingToSave && !paypalManualDisabled;
                   return (
                     <button
                       type="button"
                       onClick={() => void save()}
-                      disabled={saving || !complete || nothingToSave}
+                      disabled={saving || !complete || nothingToSave || paypalManualDisabled}
                       title={
-                        nothingToSave ? 'Already saved — nothing to update.'
+                        paypalManualDisabled ? 'PayPal is connected via Option 1 — manual option not needed.'
+                          : nothingToSave ? 'Already saved — nothing to update.'
                           : complete ? undefined
                           : 'Fill in the fields above first'
                       }
