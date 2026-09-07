@@ -176,7 +176,10 @@ export default function PaypalConnectSection(
             <button type="button" onClick={() => void refresh()} disabled={busy} style={btn(true, !busy)}>
               {busy ? 'Checking…' : 'Recheck status'}
             </button>
-            <button type="button" onClick={() => void disconnect()} disabled={busy} style={btn(false, !busy)}>Disconnect</button>
+            <button type="button" onClick={() => void disconnect()} disabled={busy}
+              onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.borderColor = '#ff6b6b'; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#9a9ab0)'; e.currentTarget.style.borderColor = 'var(--line,#2a2a38)'; }}
+              style={{ ...btn(false, !busy), transition: 'color .15s, border-color .15s' }}>Disconnect</button>
           </div>
         </>
       ) : (
@@ -187,7 +190,10 @@ export default function PaypalConnectSection(
               Clients now see a <strong style={{ color: '#00f5c4' }}>&quot;Pay with PayPal&quot;</strong> button on deposits and invoices.
             </p>
           </div>
-          <button type="button" onClick={() => void disconnect()} disabled={busy} style={{ ...btn(false, !busy), marginLeft: 'auto', flexShrink: 0, alignSelf: 'flex-start' }}>Disconnect</button>
+          <button type="button" onClick={() => void disconnect()} disabled={busy}
+            onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.borderColor = '#ff6b6b'; } }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#9a9ab0)'; e.currentTarget.style.borderColor = 'var(--line,#2a2a38)'; }}
+            style={{ ...btn(false, !busy), marginLeft: 'auto', flexShrink: 0, alignSelf: 'flex-start', transition: 'color .15s, border-color .15s' }}>Disconnect</button>
         </div>
       )}
 
