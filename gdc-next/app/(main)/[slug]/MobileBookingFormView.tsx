@@ -34,7 +34,6 @@ import { currencySymbol } from '@/lib/constants';
 import {
   type BookingSettings,
   type MobilePackage,
-  packageTiers,
   computeDiscount,
   isSaleActive,
   isPromoUsable,
@@ -1892,9 +1891,10 @@ function PackagesSection({
               dayAdjustPct,
             )!;
             if (cardPrice.isQuote || cardPrice.price == null) {
-              if (packageTiers(pkg).length > 0) {
-                priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
-              }
+              // No computable price (quote-only package, or no tiers set) —
+              // always show "Price on request" in the banner where the price
+              // would go, rather than leaving it blank.
+              priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
             } else {
               priceEl = (
                 <div className={styles.packagePrice}>
