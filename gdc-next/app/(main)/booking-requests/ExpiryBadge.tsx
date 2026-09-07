@@ -1,10 +1,12 @@
 'use client';
 
-// ExpiryBadge — the "Expires in N days" pill on a pending booking request.
-// Counts down to the same deadline the auto-decline cron enforces: the earlier
-// of 10 days after the request came in, or midnight entering the event day, in
-// the DJ's timezone. Only renders for still-pending requests. Turns red inside
-// the last two days so it reads as urgent.
+// ExpiryBadge — the "Expires in N days" pill on a pending request or an
+// unanswered counter-offer. Counts down to the same deadline the auto-decline
+// cron enforces: the earlier of MAX_RESPONSE_DAYS after the clock started, or
+// midnight entering the event day, in the DJ's timezone. The clock starts at
+// created_at for a pending request and at updated_at (when the counter was
+// sent) for a countered one. Turns red inside the last two days so it reads as
+// urgent.
 
 import { expiryInfo } from '@/lib/bookingExpiry';
 import type { BookingRow } from './page';
@@ -17,14 +19,19 @@ export default function ExpiryBadge({
   tz: string | null | undefined;
 }) {
   const status = booking.status || 'pending';
-  if (status !== 'pending') return null;
+  // Both open-negotiation states expire: a pending request (DJ's court) and a
+  // countered offer (booker's court).
+  if (status !== 'pending' && status !== 'countered') return null;
 
   // No explicit tz (e.g. a host, who enters no ZIP) → use the device's zone.
   let resolvedTz = tz || null;
   if (!resolvedTz && typeof Intl !== 'undefined') {
     try { resolvedTz = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* ignore */ }
   }
-  const info = expiryInfo(booking.created_at, booking.event_date, resolvedTz);
+  // A counter-offer's clock starts when it was sent (updated_at), not when the
+  // request first came in — matching the auto-decline cron.
+  const startedAt = status === 'countered' ? (booking.updated_at || booking.created_at) : booking.created_at;
+  const info = expiryInfo(startedAt, booking.event_date, resolvedTz);
   if (info.deadlineMs == null || !info.label) return null;
 
   const urgent = info.expired || info.daysLeft <= 2;
