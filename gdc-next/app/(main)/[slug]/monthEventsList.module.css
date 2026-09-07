@@ -297,21 +297,22 @@
   width: 56px;
   height: 56px;
   flex-shrink: 0;
+  border: 1px dashed var(--border);
   border-radius: 5px;
-  background: var(--deep);
-  border: 1px solid var(--border);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 0 4px;
   box-sizing: border-box;
 }
 .flyerPlaceholderText {
   font-family: 'Space Mono', monospace;
-  font-size: 7px;
-  line-height: 1.25;
-  letter-spacing: .04em;
+  font-size: 10px;
+  letter-spacing: .08em;
   text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.2;
   text-align: center;
   color: var(--muted);
 }
