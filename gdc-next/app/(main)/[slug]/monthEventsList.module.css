@@ -289,6 +289,19 @@
 }
 .uploadBtn:disabled { opacity: .6; cursor: wait; }
 
+/* Empty flyer slot for public viewers on events that have no flyer. Keeps
+   every row's text column aligned to the same left edge whether or not a
+   flyer image exists. Subtle placeholder box — no "+ Flyer" affordance
+   (that's owner-only). */
+.flyerPlaceholder {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  background: var(--deep);
+  border: 1px solid var(--border);
+}
+
 .middle {
   flex: 1;
   display: flex;
@@ -339,7 +352,7 @@
   }
   .datePill { min-width: 60px; }
   .dayNum { font-size: 22px; }
-  .flyerWrap, .uploadBtn { width: 50px; height: 50px; }
+  .flyerWrap, .uploadBtn, .flyerPlaceholder { width: 50px; height: 50px; }
   .meta { white-space: normal; }
   .flyerActions { opacity: 1; }
 }
