@@ -31,16 +31,6 @@ import { createClient } from '@/lib/supabase/client';
 const POLL_MS = 30_000;
 const SEEN_KEY = 'gdc_bookings_seen_keys';
 
-function readSeen(): Set<string> {
-  try {
-    const raw = localStorage.getItem(SEEN_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(arr) ? (arr as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
 export function useUnreadBookingCount(): number {
   const { user } = useAuth();
   const [count, setCount] = useState(0);
@@ -59,11 +49,14 @@ export function useUnreadBookingCount(): number {
     let cancelled = false;
     const db = createClient();
 
-    // Recompute the badge from the current qualifying keys minus the seen set.
+    // The badge is a LIVE count of everything in your court right now
+    // (incoming pending + outgoing counter) — it matches the dropdown's
+    // "Response Required" tally and clears only when a booking is actually
+    // handled (its status moves off pending/counter, so its key drops on the
+    // next poll). The old "seen" model hid the badge the moment you opened the
+    // icon, which read as notifications never showing.
     function recompute() {
-      const seen = readSeen();
-      const n = keysRef.current.reduce((a, k) => (seen.has(k) ? a : a + 1), 0);
-      if (!cancelled) setCount(n);
+      if (!cancelled) setCount(keysRef.current.length);
     }
 
     async function fetchCount() {
