@@ -73,13 +73,18 @@ export async function POST(req: Request) {
         payee: { merchant_id: dj.paypal_merchant_id },
         // custom_id ties the capture/webhook back to this payment row.
         custom_id: p.id,
-        // invoice_id must be unique per attempt or PayPal rejects a repeat.
-        invoice_id: `${reference}-${Date.now()}`,
+        // invoice_id is STABLE per payment row (no timestamp): PayPal refuses a
+        // second capture with an invoice_id it has already settled, which is
+        // exactly the duplicate-payment guard we want — a host who taps twice
+        // can't pay the same deposit twice.
+        invoice_id: reference,
         description: `${noun} — ${dj.name || 'DJ'}`.slice(0, 127),
       }],
     };
 
-    const res = await paypalFetch<{ id?: string }>('/v2/checkout/orders', { method: 'POST', body: order });
+    // onBehalfOf so the order is created for the DJ's account (their settings,
+    // their branding) — consistent with the capture call.
+    const res = await paypalFetch<{ id?: string }>('/v2/checkout/orders', { method: 'POST', body: order, onBehalfOf: dj.paypal_merchant_id });
     if (!res.ok || !res.data.id) {
       return NextResponse.json({ error: `PayPal (order ${res.status}): ${JSON.stringify(res.data).slice(0, 300)}` }, { status: 500 });
     }
