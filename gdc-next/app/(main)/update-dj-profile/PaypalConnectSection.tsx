@@ -128,12 +128,8 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
         <p style={{ margin: 0, fontSize: '.82rem', color: 'var(--muted,#9a9ab0)' }}>Checking PayPal status…</p>
       ) : !connected ? (
         <>
-          <p style={{ margin: '0 0 12px', fontSize: '.82rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.55 }}>
-            Clients pay by PayPal (and Venmo) straight into your own PayPal — deposits and balances mark themselves paid.
-            The money is yours; Global DJ Connect never touches it and takes no cut.
-          </p>
           <button type="button" onClick={() => void connect()} disabled={busy} style={btn(true, !busy)}>
-            {busy ? 'Opening PayPal…' : 'Connect PayPal'}
+            {busy ? 'Opening PayPal…' : 'Connect your PayPal account'}
           </button>
         </>
       ) : !ready ? (
