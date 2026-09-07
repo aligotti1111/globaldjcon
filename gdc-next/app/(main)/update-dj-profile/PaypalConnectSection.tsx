@@ -167,7 +167,7 @@ export default function PaypalConnectSection(
           </button>
           <p style={{ margin: '10px 0 0', fontSize: '.76rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.55 }}>
             Global DJ Connect never gains access to your PayPal account. Connecting builds a pre-loaded payment path,
-            so your clients can complete payment in a single tap — straight into your account, with zero friction.
+            so your clients can complete payment in a single tap — directly into your account, with zero friction.
           </p>
         </>
       ) : !ready ? (
