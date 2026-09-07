@@ -29,7 +29,7 @@ interface StatusResp {
   error?: string;
 }
 
-export default function PaypalConnectSection() {
+export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: boolean) => void } = {}) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -61,9 +61,10 @@ export default function PaypalConnectSection() {
       setConnected(!!json.connected);
       setReady(!!json.ready);
       setEmail(json.email ?? null);
+      onStatus?.(!!json.ready);
     }
     setLoading(false);
-  }, [post]);
+  }, [post, onStatus]);
 
   // On mount: capture the merchant id PayPal appends on return, then check
   // status (with it on first connect, without it otherwise).
@@ -99,7 +100,7 @@ export default function PaypalConnectSection() {
     setErr(null);
     const json = await post({ action: 'disconnect' });
     setBusy(false);
-    if (json) { setConnected(false); setReady(false); setEmail(null); }
+    if (json) { setConnected(false); setReady(false); setEmail(null); onStatus?.(false); }
   }
 
   const btn = (primary: boolean, enabled: boolean): React.CSSProperties => ({
