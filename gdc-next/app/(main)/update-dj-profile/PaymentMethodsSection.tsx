@@ -974,19 +974,40 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
 
         {/* ── The expanded rail ────────────────────────────────────── */}
         {openTile === 'card' && (
-          <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
+          <div
+            style={
+              card?.ready
+                ? {
+                    // Same electric "it's live" treatment as PayPal: neon border,
+                    // teal-tinted gradient fill and an outer glow.
+                    padding: '.9rem',
+                    border: '1px solid rgba(0,245,196,.55)',
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, rgba(0,245,196,.10), rgba(0,245,196,.02))',
+                    boxShadow: '0 0 0 1px rgba(0,245,196,.15), 0 0 22px rgba(0,245,196,.22)',
+                  }
+                : { padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }
+            }
+          >
+            {/* Blinking "live" dot — matches the PayPal connected pill. */}
+            <style>{`
+              @keyframes gdcStripeBlink { 0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(0,245,196,.8); } 50% { opacity: .25; transform: scale(.8); box-shadow: 0 0 10px 4px rgba(0,245,196,.55); } }
+            `}</style>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
               <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments via Stripe</span>
-              {(() => {
+              {card?.ready ? (
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#00f5c4', display: 'inline-block', animation: 'gdcStripeBlink 1.2s ease-in-out infinite' }} />
+                  Connected
+                </span>
+              ) : (() => {
                 const st = card === null
                   ? { text: 'Checking…', c: 'var(--muted)', bg: 'rgba(255,255,255,.05)', b: 'var(--border)' }
-                  : card.ready
-                    ? { text: 'Accepting cards', c: 'var(--success)', bg: 'rgba(34,227,173,.12)', b: 'rgba(34,227,173,.35)' }
-                    : card.connected
-                      ? (card.actionNeeded
-                          ? { text: 'Setup incomplete', c: '#f5a623', bg: 'rgba(245,166,35,.12)', b: 'rgba(245,166,35,.35)' }
-                          : { text: 'Verifying', c: '#f5a623', bg: 'rgba(245,166,35,.12)', b: 'rgba(245,166,35,.35)' })
-                      : { text: 'Not connected', c: 'var(--muted)', bg: 'rgba(255,255,255,.05)', b: 'var(--border)' };
+                  : card.connected
+                    ? (card.actionNeeded
+                        ? { text: 'Setup incomplete', c: '#f5a623', bg: 'rgba(245,166,35,.12)', b: 'rgba(245,166,35,.35)' }
+                        : { text: 'Verifying', c: '#f5a623', bg: 'rgba(245,166,35,.12)', b: 'rgba(245,166,35,.35)' })
+                    : { text: 'Not connected', c: 'var(--muted)', bg: 'rgba(255,255,255,.05)', b: 'var(--border)' };
                 return (
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '.22rem .55rem', borderRadius: 999, fontSize: '.6rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace", color: st.c, background: st.bg, border: `1px solid ${st.b}` }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: st.c, display: 'inline-block', flexShrink: 0 }} />
