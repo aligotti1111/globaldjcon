@@ -638,12 +638,18 @@ export default function BookingRequestsClient({
     const taxPct = Number(t?.tax_pct) || 0;
     const total = taxPct > 0 ? Number((rate + (rate * taxPct) / 100).toFixed(2)) : rate;
     const sym = currencySymbol(t?.currency || 'USD');
-    const totalLine = rate > 0
-      ? ` Total: ${sym}${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${taxPct > 0 ? ` (incl. ${taxPct}% tax)` : ''}.`
-      : '';
+    const totalStr = `${sym}${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${taxPct > 0 ? ` (incl. ${taxPct}% tax)` : ''}`;
     const ok = await confirm({
       title: 'Approve this offer?',
-      message: `This confirms the booking with ${target?.dj_name || 'the DJ'} and locks in the offered rate.${totalLine} They'll be notified by email.`,
+      message: (
+        <>
+          This confirms the booking with {target?.dj_name || 'the DJ'} and locks in the offered rate.
+          {rate > 0 && (
+            <> {' '}<span style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>Total: {totalStr}</span>.</>
+          )}
+          {' '}They&apos;ll be notified by email.
+        </>
+      ),
       confirmLabel: 'Approve Offer',
       variant: 'primary',
     });
