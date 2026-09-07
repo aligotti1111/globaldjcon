@@ -539,6 +539,7 @@ export default function MobilePublicCalendar({
           month={month}
           today={today}
           bookingDays={bookingDays}
+          countByDate={countByDate}
           bookingWindowMonths={bookingWindowMonths}
           defaultBookingsPerDay={defaultBookingsPerDay}
           selectedDate={selectedDate}
@@ -557,6 +558,7 @@ export default function MobilePublicCalendar({
         <RollingMonthsView
           today={today}
           bookingDays={bookingDays}
+          countByDate={countByDate}
           bookingWindowMonths={bookingWindowMonths}
           defaultBookingsPerDay={defaultBookingsPerDay}
           selectedDate={selectedDate}
@@ -660,6 +662,7 @@ function SingleMonthView({
   month,
   today,
   bookingDays,
+  countByDate,
   bookingWindowMonths,
   defaultBookingsPerDay,
   selectedDate,
@@ -675,6 +678,7 @@ function SingleMonthView({
   month: number;
   today: Date;
   bookingDays: MobileBookingDays;
+  countByDate: Record<string, number>;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
   selectedDate: string | null;
@@ -917,6 +921,7 @@ function SingleMonthView({
 function RollingMonthsView({
   today,
   bookingDays,
+  countByDate,
   bookingWindowMonths,
   defaultBookingsPerDay,
   selectedDate,
@@ -928,6 +933,7 @@ function RollingMonthsView({
 }: {
   today: Date;
   bookingDays: MobileBookingDays;
+  countByDate: Record<string, number>;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
   selectedDate: string | null;
