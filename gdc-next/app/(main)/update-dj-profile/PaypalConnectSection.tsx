@@ -29,11 +29,17 @@ interface StatusResp {
   error?: string;
 }
 
-export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: boolean) => void } = {}) {
-  const [loading, setLoading] = useState(true);
+export default function PaypalConnectSection(
+  { onStatus, initialReady = false }: { onStatus?: (ready: boolean) => void; initialReady?: boolean } = {},
+) {
+  // If the parent already knows the DJ is connected (it checks on page load),
+  // seed straight into the "Connected" state and skip the spinner — the click
+  // to open the tile then shows the result instantly instead of after a ~2s
+  // round-trip to PayPal. We still re-verify silently in the background.
+  const [loading, setLoading] = useState(!initialReady);
   const [busy, setBusy] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [connected, setConnected] = useState(initialReady);
+  const [ready, setReady] = useState(initialReady);
   const [email, setEmail] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -53,8 +59,8 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
     }
   }, []);
 
-  const refresh = useCallback(async (merchantId?: string) => {
-    setLoading(true);
+  const refresh = useCallback(async (merchantId?: string, silent = false) => {
+    if (!silent) setLoading(true);
     setErr(null);
     const json = await post(merchantId ? { action: 'status', merchantId } : { action: 'status' });
     if (json) {
@@ -63,7 +69,7 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
       setEmail(json.email ?? null);
       onStatus?.(!!json.ready);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [post, onStatus]);
 
   // On mount: capture the merchant id PayPal appends on return, then check
@@ -82,8 +88,10 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
         window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
       }
     } catch { /* no-op */ }
-    void refresh(merchantId);
-  }, [refresh]);
+    // If we're already seeded connected (parent knew on load), re-verify
+    // silently so the spinner never shows; otherwise do a normal check.
+    void refresh(merchantId, initialReady && !merchantId);
+  }, [refresh, initialReady]);
 
   async function connect() {
     setBusy(true);
@@ -164,9 +172,6 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#00f5c4', textShadow: '0 0 12px rgba(0,245,196,.55)' }}>⚡ You&apos;re live on PayPal</span>
-            </div>
             <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white,#e8fff8)', lineHeight: 1.5 }}>
               {email ? <>Paid into <strong style={{ color: '#00f5c4' }}>{email}</strong>. </> : null}
               Clients now see a <strong style={{ color: '#00f5c4' }}>&quot;Pay with PayPal&quot;</strong> button on deposits and invoices.
