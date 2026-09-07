@@ -162,17 +162,30 @@ export default function PublicCalendar({
   useEffect(() => {
     let mounted = true;
     (async () => {
-      // Fetch approved-booking counts via the admin-backed public endpoint.
+      // Build the per-date approved-booking count from the SAME admin-backed
+      // endpoint that feeds the "Upcoming Events" list below the calendar.
       // Querying `bookings` directly from the client hits RLS, which blocks
       // anon/customer viewers on a public profile from reading another
       // user's rows — so the count came back empty and manual bookings
-      // (approved row, no booking_days.booked flag) never showed as booked.
+      // (approved row, no booking_days.booked flag) never showed red. Using
+      // /api/dj-upcoming-events guarantees the calendar and the events list
+      // agree on exactly which dates are booked.
       try {
-        const res = await fetch(`/api/dj-booked-dates?djId=${encodeURIComponent(djId)}`);
+        const from = new Date().toISOString().slice(0, 10);
+        const toDate = new Date();
+        toDate.setMonth(toDate.getMonth() + 24);
+        const to = toDate.toISOString().slice(0, 10);
+        const params = new URLSearchParams({ djId, from, to });
+        const res = await fetch(`/api/dj-upcoming-events?${params.toString()}`);
         if (!mounted || !res.ok) return;
         const json = await res.json();
         if (!mounted) return;
-        setCountByDate((json?.counts as Record<string, number>) || {});
+        const counts: Record<string, number> = {};
+        for (const ev of (json?.events as Array<{ event_date: string | null }>) || []) {
+          if (!ev.event_date) continue;
+          counts[ev.event_date] = (counts[ev.event_date] || 0) + 1;
+        }
+        setCountByDate(counts);
       } catch {
         // Non-fatal — calendar still renders from the booking_days flags.
       }
