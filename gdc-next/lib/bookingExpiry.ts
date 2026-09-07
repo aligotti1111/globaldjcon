@@ -3,7 +3,7 @@
 // A pending request auto-declines when the DJ hasn't answered by its deadline.
 // The deadline is the EARLIER of two moments:
 //
-//   1. 10 days after the request came in, OR
+//   1. 5 days after the request came in, OR
 //   2. midnight entering the event day (00:00 on the event date),
 //
 // both measured in the DJ's own timezone (a per-DJ account setting, default
@@ -15,7 +15,7 @@
 //   • the booking-request cards (client), to show "Expires in N days".
 
 export const DEFAULT_TZ = 'America/New_York';
-export const MAX_RESPONSE_DAYS = 10;
+export const MAX_RESPONSE_DAYS = 5;
 const DAY_MS = 86_400_000;
 
 // The timezones offered in the account-settings picker (and the allowlist the
@@ -132,7 +132,7 @@ function tzOffsetMs(at: Date, tz: string): number {
 }
 
 // The response deadline (UTC epoch ms), or null if there's nothing to compute
-// against (no created_at). Missing event date → only the 10-day rule applies.
+// against (no created_at). Missing event date → only the 5-day rule applies.
 export function responseDeadlineMs(
   createdAtIso: string | null | undefined,
   eventDate: string | null | undefined,
