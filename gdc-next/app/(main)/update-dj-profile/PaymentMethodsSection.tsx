@@ -270,6 +270,25 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
       }
     } catch { /* no-op */ }
   }, []);
+
+  // Fetch PayPal connect status on mount so the tile grid shows the green
+  // "active" check the moment the page loads — without waiting for the DJ to
+  // open the PayPal tile (PaypalConnectSection only mounts once it's open).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/paypal/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status' }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { ready?: boolean };
+        if (!cancelled && res.ok) setPaypalReady(!!json.ready);
+      } catch { /* no-op */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [accountCountry, setAccountCountry] = useState<string>('United States');
   // Address autocomplete (shared — only one rail's address field is open at a
   // time). Same Nominatim-backed searchAddresses the booking form and account
@@ -519,7 +538,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
     return vc ? !vc(m.contact || '') : true;
   }, [byType]);
 
-  const tileLive = (k: TileKey): boolean => (k === 'card' ? !!card?.ready : isLive(k));
+  // Card is "live" when Stripe is ready; PayPal is live when EITHER the DJ
+  // connected via Option 1 (paypalReady) OR saved a manual PayPal.me/email;
+  // every other rail is live once it has a saved handle.
+  const tileLive = (k: TileKey): boolean =>
+    k === 'card' ? !!card?.ready
+      : k === 'paypal' ? (paypalReady || isLive(k))
+      : isLive(k);
 
   // Which tiles the DJ has ALREADY set up (a connected card, or a saved rail).
   // Used to pick which one opens by default.
