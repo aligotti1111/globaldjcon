@@ -123,7 +123,9 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
       ]);
       const mk = (rows: Row[] | null, kind: 'request' | 'counter'): Item[] =>
         (rows || []).map((r) => {
-          const rate = r.quoted_rate ?? r.offer_amount ?? r.counter_rate ?? null;
+          // The STANDING amount: a counter, once made, supersedes the original
+          // offer — so counter_rate wins. Falls back to the original ask.
+          const rate = r.counter_rate ?? r.quoted_rate ?? r.offer_amount ?? null;
           return {
             id: r.id, kind,
             name: r.requester_name || 'A client',
