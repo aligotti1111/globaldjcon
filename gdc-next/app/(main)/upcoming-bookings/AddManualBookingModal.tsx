@@ -995,7 +995,7 @@ export default function AddManualBookingModal({
               </div>
             </div>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : 'Start Time'}</span>
+              <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : 'Set Start Time'}</span>
               <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
@@ -1005,7 +1005,7 @@ export default function AddManualBookingModal({
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
-                {isWedding ? 'Reception End' : <>End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}</>}
+                {isWedding ? 'Reception End' : <>Set End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}</>}
               </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
@@ -1181,7 +1181,7 @@ export default function AddManualBookingModal({
               gig carries the same fields as a client-booked one. */}
           {djType === 'club' && (
             <div className={styles.venueRateRow}>
-              <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+              <label className={styles.field} style={{ flex: 1.7, minWidth: 0 }}>
                 <span className={styles.fieldLabel}>
                   Equipment <span className={styles.optional}>(optional)</span>
                 </span>
@@ -1197,7 +1197,7 @@ export default function AddManualBookingModal({
                   ))}
                 </select>
               </label>
-              <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+              <label className={styles.field} style={{ flex: 1, minWidth: 0, maxWidth: '38%' }}>
                 <span className={styles.fieldLabel}>
                   Set Type <span className={styles.optional}>(optional)</span>
                 </span>
