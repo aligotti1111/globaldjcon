@@ -1,4 +1,4 @@
-'use client';
+\'use client';
 
 // AddManualBookingModal — the "+ Add Booking Manually" form.
 //
@@ -14,7 +14,7 @@ import {
 } from '../[slug]/mobileBookingForm';
 import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
-import { currencySymbol } from '@/lib/constants';
+import { currencySymbol, CLUB_EQUIPMENT_LABELS, CLUB_SET_TYPE_LABELS } from '@/lib/constants';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 import { COUNTRY_FLAGS, MOBILE_EVENT_TYPES, TIME_OPTIONS, NEON, formatSentDate } from './shared';
@@ -73,6 +73,7 @@ export default function AddManualBookingModal({
   const [country, setCountry] = useState<string>(djCountry || 'United States');
   const [venueType, setVenueType] = useState<string>(existing?.venue_type || '');
   const [setType, setSetType] = useState<string>(existing?.set_type || '');
+  const [equipment, setEquipment] = useState<string>((existing as { equipment?: string | null } | null)?.equipment || '');
   const [eventType, setEventType] = useState<string>(existing?.event_type || '');
   // Event-type-specific sub-fields, mirrored from the public booking form.
   // Pre-filled from an existing booking's event_details so edits round-trip.
@@ -745,6 +746,7 @@ export default function AddManualBookingModal({
         venue_lon: coords?.lon ?? null,
         venue_type: djType === 'club' ? (venueType || null) : null,
         set_type: djType === 'club' ? (setType || null) : null,
+        equipment: djType === 'club' ? (equipment || null) : null,
         event_type: djType === 'mobile' ? (eventType || null) : null,
         event_details: djType === 'mobile'
           ? buildEventDetails(eventType, { subType: eventSubType, birthdayAge, surprise })
@@ -1173,6 +1175,46 @@ export default function AddManualBookingModal({
               </select>
             </div>
           </div>
+
+          {/* Club: Equipment + Set Type, both dropdowns on one line. Same
+              options the public club booking form uses, so a manually-added
+              gig carries the same fields as a client-booked one. */}
+          {djType === 'club' && (
+            <div className={styles.venueRateRow}>
+              <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+                <span className={styles.fieldLabel}>
+                  Equipment <span className={styles.optional}>(optional)</span>
+                </span>
+                <select
+                  value={equipment}
+                  onChange={(e) => setEquipment(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select…</option>
+                  {Object.entries(CLUB_EQUIPMENT_LABELS).map(([val, lbl]) => (
+                    <option key={val} value={val}>{lbl}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+                <span className={styles.fieldLabel}>
+                  Set Type <span className={styles.optional}>(optional)</span>
+                </span>
+                <select
+                  value={setType}
+                  onChange={(e) => setSetType(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select…</option>
+                  {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
+                    <option key={val} value={val}>{lbl}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
 
           {/* Package + Rate — after Event Type. Both stay visible but
               disabled (unclickable) until an event type is selected. The
