@@ -21,7 +21,7 @@ export default function ExpiryBadge({
   const status = booking.status || 'pending';
   // Both open-negotiation states expire: a pending request (DJ's court) and a
   // countered offer (booker's court).
-  if (status !== 'pending' && status !== 'countered') return null;
+  if (status !== 'pending' && status !== 'counter') return null;
 
   // No explicit tz (e.g. a host, who enters no ZIP) → use the device's zone.
   let resolvedTz = tz || null;
@@ -30,7 +30,7 @@ export default function ExpiryBadge({
   }
   // A counter-offer's clock starts when it was sent (updated_at), not when the
   // request first came in — matching the auto-decline cron.
-  const startedAt = status === 'countered' ? (booking.updated_at || booking.created_at) : booking.created_at;
+  const startedAt = status === 'counter' ? (booking.updated_at || booking.created_at) : booking.created_at;
   const info = expiryInfo(startedAt, booking.event_date, resolvedTz);
   if (info.deadlineMs == null || !info.label) return null;
 
