@@ -375,8 +375,8 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
           {/* Live tax on the amount being sent — the counter is pre-tax, so
               show what it becomes with the DJ's sales tax added. */}
           {taxPct > 0 && Number(amount) > 0 && (
-            <div style={{ marginTop: 6, fontSize: 12, color: '#8a8aa0' }}>
-              + {taxPct}% tax · total <span style={{ color: '#6ee7b7', fontWeight: 700 }}>{sym}{fmt2(withTax(Number(amount)))} {currency}</span>
+            <div style={{ marginTop: 8, fontSize: 15, color: '#a6a6bd' }}>
+              + {taxPct}% tax · total <span style={{ color: '#6ee7b7', fontWeight: 800, fontSize: 18 }}>{sym}{fmt2(withTax(Number(amount)))} {currency}</span>
             </div>
           )}
         </div>
