@@ -141,10 +141,18 @@ export default function PaypalConnectSection(
           : { background: 'var(--card,#14141c)', border: '1px solid var(--line,#262633)', borderRadius: 14, padding: '16px 18px' }
       }
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+      {/* Blinking "live" dot — a real heartbeat so the connected state reads as
+          actively on, not just a static label. */}
+      <style>{`
+        @keyframes gdcPaypalBlink { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,245,196,.7); } 50% { opacity: .35; box-shadow: 0 0 0 6px rgba(0,245,196,0); } }
+      `}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: 'var(--white,#fff)', fontSize: '.9rem' }}>PayPal payments</span>
         {live && (
-          <span style={{ fontSize: '.62rem', fontWeight: 800, letterSpacing: '.04em', color: '#04121a', background: '#00f5c4', padding: '3px 9px', borderRadius: 999, boxShadow: '0 0 12px rgba(0,245,196,.6)', textTransform: 'uppercase' }}>● Connected</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#04121a', background: '#00f5c4', padding: '5px 13px', borderRadius: 999, boxShadow: '0 0 16px rgba(0,245,196,.75)', textTransform: 'uppercase' }}>
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#04121a', display: 'inline-block', animation: 'gdcPaypalBlink 1.3s ease-in-out infinite' }} />
+            Connected
+          </span>
         )}
       </div>
 
