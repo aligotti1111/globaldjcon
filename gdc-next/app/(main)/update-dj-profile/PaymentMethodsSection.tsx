@@ -1146,7 +1146,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   type="button"
                   onClick={() => void disconnectStripe()}
                   disabled={cardBusy}
-                  style={{ marginLeft: 'auto', flexShrink: 0, padding: '.7rem 1.1rem', borderRadius: 8, border: '1px solid var(--line,#2a2a38)', background: 'transparent', color: 'var(--muted,#9a9ab0)', fontWeight: 700, fontSize: '.82rem', cursor: cardBusy ? 'default' : 'pointer', opacity: cardBusy ? 0.6 : 1 }}
+                  onMouseEnter={(e) => { if (!cardBusy) { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.borderColor = '#ff6b6b'; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#9a9ab0)'; e.currentTarget.style.borderColor = 'var(--line,#2a2a38)'; }}
+                  style={{ marginLeft: 'auto', flexShrink: 0, padding: '.7rem 1.1rem', borderRadius: 8, border: '1px solid var(--line,#2a2a38)', background: 'transparent', color: 'var(--muted,#9a9ab0)', fontWeight: 700, fontSize: '.82rem', cursor: cardBusy ? 'default' : 'pointer', opacity: cardBusy ? 0.6 : 1, transition: 'color .15s, border-color .15s' }}
                 >
                   Disconnect
                 </button>
