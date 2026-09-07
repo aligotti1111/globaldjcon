@@ -478,12 +478,14 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     steps.push({
       key: 'song_list',
       label: 'DJ Rider — customize & send to host',
-      state: 'todo',
+      state: riderSent ? 'done' : 'todo',
       icon: 'music',
       overridable: false,
-      done: false,
-      color: AMBER,
-      caption: 'Rider',
+      done: riderSent,
+      color: riderSent ? NEON : AMBER,
+      // Status, not the rail's name: matches Contract/Deposit/Balance, which all
+      // read Not Required / Not Sent / Sent rather than repeating their label.
+      caption: riderSent ? 'Sent' : 'Not Sent',
       actions: [
         ...savedRiders.map((r) => ({ label: `Send "${r.name}"`, run: () => sendNamedRider(r) })),
         { label: 'Rider portal', run: () => setRiderChooserOpen(true) },
@@ -494,15 +496,19 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
 
   // ── Guest List (club/bar) ─ the rightmost column, after Balance. ──
   if (booking.booking_type === 'club' && guestlistEnabled && !archive) {
+    // The host confirming the guest list is the "it's out and settled" signal —
+    // the only sent/back state we track for the list.
+    const guestlistDone = !!booking.guestlist_confirmed_at;
     steps.push({
       key: 'guestlist',
       label: 'Guest List — add names & send to host',
-      state: 'todo',
+      state: guestlistDone ? 'done' : 'todo',
       icon: 'doc',
       overridable: false,
-      done: false,
-      color: AMBER,
-      caption: 'Guests',
+      done: guestlistDone,
+      color: guestlistDone ? NEON : AMBER,
+      // Status, not the rail's name — matches the other columns.
+      caption: guestlistDone ? 'Sent' : 'Not Sent',
       actions: [{ label: 'Open guest list', run: () => { window.location.href = `/guestlist-edit/${booking.id}`; } }],
     });
   }
