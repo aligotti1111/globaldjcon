@@ -644,11 +644,18 @@ export async function POST(req: Request) {
   const clubTaxPct = (settings as { tax_enabled?: boolean }).tax_enabled
     ? Number((settings as { tax_pct?: number }).tax_pct) || 0
     : 0;
-  const clubTaxAmount = computedTotalDiscounted != null
-    ? Number(((computedTotalDiscounted * clubTaxPct) / 100).toFixed(2))
+  // The taxable base: the fixed/hourly total, OR — in offers mode — the
+  // booker's own offer. Without this, a DJ who requires sales tax collected
+  // none on offer bookings, and the total the booker saw on the request page
+  // (offer + tax) never made it onto the saved booking.
+  const clubTaxBase = (isOffers && offerNum && !isNaN(offerNum))
+    ? offerNum
+    : computedTotalDiscounted;
+  const clubTaxAmount = clubTaxBase != null
+    ? Number(((clubTaxBase * clubTaxPct) / 100).toFixed(2))
     : null;
-  const clubTotalWithTax = computedTotalDiscounted != null && clubTaxAmount != null
-    ? Number((computedTotalDiscounted + clubTaxAmount).toFixed(2))
+  const clubTotalWithTax = clubTaxBase != null && clubTaxAmount != null
+    ? Number((clubTaxBase + clubTaxAmount).toFixed(2))
     : null;
   const clubDepositAmount = (clubDepositPct > 0 && clubTotalWithTax != null)
     ? Number(((clubTotalWithTax * clubDepositPct) / 100).toFixed(2))
