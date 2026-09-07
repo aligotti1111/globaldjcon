@@ -1,182 +1,196 @@
-// POST /api/paypal/webhook
+// POST /api/paypal/capture-order  { paymentId, orderId }
 //
-// PayPal calls this when a capture completes (and on refunds). It's the backstop
-// that guarantees a booking_payment flips to paid even if the browser closed
-// before /api/paypal/capture-order returned. Both paths are idempotent — a row
-// already 'paid' is left alone.
-//
-// SECURITY: every event is verified against PayPal before we act on it, using
-// /v1/notifications/verify-webhook-signature + PAYPAL_WEBHOOK_ID. An unverified
-// or unconfigured event is acknowledged (200) but never processed, so a spoofed
-// POST can't mark anything paid.
-//
-// custom_id on the capture resource is the booking_payment id we set when the
-// order was created.
+// Public (no login) — the pay page's onApprove calls this to capture the PayPal
+// order and mark the booking_payment paid. Captured on behalf of the DJ's
+// merchant (multiparty), so the funds land in the DJ's PayPal. The webhook
+// (PAYMENT.CAPTURE.COMPLETED) is the backstop that also marks paid, so both are
+// written to be idempotent: a row already 'paid' is left alone.
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { paypalFetch, paypalConfigured } from '@/lib/paypal/server';
+import { sendPaypalPaidEmails } from '@/lib/paypal/notify';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const round2 = (n: number) => Number(n.toFixed(2));
 
-interface CaptureResource {
+interface PaymentRow {
+  id: string; booking_id: string; kind: string;
+  amount: number; amount_paid: number | null; currency: string | null; status: string;
+  paypal_order_id?: string | null;
+}
+interface BookingRow { id: string; dj_id: string | null; currency: string | null; }
+interface DjRow { paypal_merchant_id: string | null; }
+
+interface CaptureObj {
   id?: string;
   status?: string;
   custom_id?: string;
   amount?: { value?: string; currency_code?: string };
 }
-interface WebhookEvent {
-  event_type?: string;
-  resource?: CaptureResource;
+interface OrderResp {
+  id?: string;
+  status?: string;
+  purchase_units?: {
+    custom_id?: string;
+    amount?: { value?: string; currency_code?: string };
+    payee?: { merchant_id?: string };
+    payments?: { captures?: CaptureObj[] };
+  }[];
 }
 
-interface PayRow {
-  id: string;
-  amount: number;
-  amount_paid: number | null;
-  status: string;
-  currency: string | null;
+// Pull PayPal's machine-readable issue code out of an error body, wherever it
+// put it this time.
+function issueOf(data: unknown): string {
+  const d = data as { name?: string; details?: { issue?: string }[] } | null;
+  return d?.details?.[0]?.issue || d?.name || '';
 }
 
 export async function POST(req: Request) {
-  // Always 200 so PayPal doesn't retry-storm us on our own bugs; the body says
-  // what happened.
   try {
-    const raw = await req.text();
-    if (!paypalConfigured() || !process.env.PAYPAL_WEBHOOK_ID) {
-      return NextResponse.json({ ok: false, reason: 'not_configured' });
-    }
+    if (!paypalConfigured()) return NextResponse.json({ error: 'PayPal is not configured.' }, { status: 500 });
 
-    let event: WebhookEvent;
-    try { event = JSON.parse(raw) as WebhookEvent; } catch { return NextResponse.json({ ok: false, reason: 'bad_json' }); }
+    let body: { paymentId?: unknown; orderId?: unknown };
+    try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
+    const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
+    const orderId = typeof body.orderId === 'string' ? body.orderId : '';
+    if (!paymentId || !orderId) return NextResponse.json({ error: 'Missing paymentId or orderId' }, { status: 400 });
 
-    // ── Verify the signature against PayPal ──
-    const h = req.headers;
-    const verifyBody = {
-      auth_algo: h.get('paypal-auth-algo'),
-      cert_url: h.get('paypal-cert-url'),
-      transmission_id: h.get('paypal-transmission-id'),
-      transmission_sig: h.get('paypal-transmission-sig'),
-      transmission_time: h.get('paypal-transmission-time'),
-      webhook_id: process.env.PAYPAL_WEBHOOK_ID,
-      webhook_event: event,
-    };
-    const verify = await paypalFetch<{ verification_status?: string }>(
-      '/v1/notifications/verify-webhook-signature',
-      { method: 'POST', body: verifyBody },
-    );
-    if (!verify.ok || verify.data.verification_status !== 'SUCCESS') {
-      return NextResponse.json({ ok: false, reason: 'verification_failed' });
-    }
-
-    const type = event.event_type || '';
-    const resource = event.resource || {};
     const db = createAdminClient() as unknown as SupabaseClient;
 
-    // ── Refund / reversal: money went back to the buyer ──
-    if (type === 'PAYMENT.CAPTURE.REFUNDED' || type === 'PAYMENT.CAPTURE.REVERSED') {
-      const paymentId = resource.custom_id || '';
-      if (!paymentId) return NextResponse.json({ ok: true, reason: 'no_custom_id' });
-      const { data: pData, error: selErr } = await db
-        .from('booking_payments')
-        .select('id, amount, amount_paid, status, currency')
-        .eq('id', paymentId).maybeSingle();
-      if (selErr) return NextResponse.json({ ok: false, reason: 'db_error' }, { status: 500 });
-      const p = pData as PayRow | null;
-      if (!p) return NextResponse.json({ ok: true, reason: 'payment_not_found' });
-      const refunded = Number(resource.amount?.value ?? 0);
-      const nextPaid = round2(Math.max(0, Number(p.amount_paid || 0) - refunded));
-      const status = nextPaid <= 0.01 ? 'pending' : nextPaid >= Number(p.amount) - 0.01 ? 'paid' : 'partial';
-      const { error: upErr } = await db
-        .from('booking_payments')
-        .update({ amount_paid: nextPaid, status } as unknown as never)
-        .eq('id', p.id);
-      if (upErr) return NextResponse.json({ ok: false, reason: 'db_error' }, { status: 500 });
-      return NextResponse.json({ ok: true, refunded: true, status });
-    }
-
-    // ── Capture denied after a pending hold: undo any paid mark from it ──
-    if (type === 'PAYMENT.CAPTURE.DENIED') {
-      const capId = resource.id || '';
-      if (!capId) return NextResponse.json({ ok: true, reason: 'no_capture_id' });
-      const { data: pData, error: selErr } = await db
-        .from('booking_payments')
-        .select('id, amount, amount_paid, status, currency')
-        .eq('paypal_capture_id', capId).maybeSingle();
-      if (selErr) return NextResponse.json({ ok: false, reason: 'db_error' }, { status: 500 });
-      const p = pData as PayRow | null;
-      if (!p) return NextResponse.json({ ok: true, reason: 'no_matching_capture' });
-      const denied = Number(resource.amount?.value ?? p.amount_paid ?? 0);
-      const nextPaid = round2(Math.max(0, Number(p.amount_paid || 0) - denied));
-      const status = nextPaid <= 0.01 ? 'pending' : nextPaid >= Number(p.amount) - 0.01 ? 'paid' : 'partial';
-      const { error: upErr } = await db
-        .from('booking_payments')
-        .update({ amount_paid: nextPaid, status, paypal_capture_id: null } as unknown as never)
-        .eq('id', p.id);
-      if (upErr) return NextResponse.json({ ok: false, reason: 'db_error' }, { status: 500 });
-      return NextResponse.json({ ok: true, denied: true, status });
-    }
-
-    // Only the "money captured" event marks a payment paid.
-    if (type !== 'PAYMENT.CAPTURE.COMPLETED') {
-      return NextResponse.json({ ok: true, ignored: type || 'unknown' });
-    }
-    // A COMPLETED order can carry a still-pending capture — only a COMPLETED
-    // capture is settled money.
-    if (resource.status && resource.status !== 'COMPLETED') {
-      return NextResponse.json({ ok: true, reason: 'capture_not_completed', captureStatus: resource.status });
-    }
-
-    const paymentId = resource.custom_id || '';
-    if (!paymentId) return NextResponse.json({ ok: true, reason: 'no_custom_id' });
-
-    const { data: pData, error: selErr } = await db
+    const { data: pData } = await db
       .from('booking_payments')
-      .select('id, amount, amount_paid, status, currency')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, paypal_order_id')
       .eq('id', paymentId).maybeSingle();
-    if (selErr) return NextResponse.json({ ok: false, reason: 'db_error' }, { status: 500 });
-    const p = pData as PayRow | null;
-    if (!p) return NextResponse.json({ ok: true, reason: 'payment_not_found' });
+    const p = pData as PaymentRow | null;
+    if (!p) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
+    // Idempotent: already settled → success, don't double-capture.
     if (p.status === 'paid' || p.status === 'waived') return NextResponse.json({ ok: true, alreadyPaid: true });
 
-    // Currency sanity — a mismatched capture isn't for this row.
-    const capCur = (resource.amount?.currency_code || '').toUpperCase();
-    if (capCur && p.currency && capCur !== p.currency.toUpperCase()) {
-      return NextResponse.json({ ok: true, reason: 'currency_mismatch' });
+    // DJ merchant, to capture on their behalf. Never capture without it — a
+    // capture with no auth-assertion would post against the wrong account.
+    const { data: bData } = await db.from('bookings').select('id, dj_id, currency').eq('id', p.booking_id).maybeSingle();
+    const b = bData as BookingRow | null;
+    const djId = b?.dj_id || null;
+    const { data: djData } = djId
+      ? await db.from('users').select('paypal_merchant_id').eq('id', djId).maybeSingle()
+      : { data: null };
+    const merchant = (djData as unknown as DjRow | null)?.paypal_merchant_id || '';
+    if (!merchant) return NextResponse.json({ error: 'This DJ is not connected to PayPal.' }, { status: 409 });
+
+    const cur = (p.currency || b?.currency || 'USD').toUpperCase();
+    const outstanding = round2(Math.max(0, Number(p.amount) - Number(p.amount_paid || 0)));
+
+    // ── Verify the order BEFORE capturing (money hasn't moved yet) ──
+    // Confirms the client-supplied orderId actually belongs to THIS payment,
+    // is payable to THIS DJ, for the right amount and currency, and is ready to
+    // capture. Without this a caller could capture someone else's order through
+    // this payment's id.
+    const look = await paypalFetch<OrderResp>(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, { onBehalfOf: merchant });
+    if (!look.ok) {
+      return NextResponse.json({ error: `PayPal (order ${look.status}): ${JSON.stringify(look.data).slice(0, 200)}` }, { status: 502 });
+    }
+    const opu = look.data.purchase_units?.[0];
+    if ((opu?.custom_id || '') !== p.id) {
+      return NextResponse.json({ error: 'Order does not match this payment.' }, { status: 409 });
+    }
+    if ((opu?.payee?.merchant_id || '') !== merchant) {
+      return NextResponse.json({ error: 'Order is not payable to this DJ.' }, { status: 409 });
+    }
+    if ((opu?.amount?.currency_code || '').toUpperCase() !== cur || round2(Number(opu?.amount?.value)) !== outstanding) {
+      return NextResponse.json({ error: 'Order amount does not match the request.' }, { status: 409 });
     }
 
-    const capturedStr = resource.amount?.value;
-    const captured = capturedStr != null ? Number(capturedStr) : round2(Math.max(0, Number(p.amount) - Number(p.amount_paid || 0)));
+    // ── Claim the row so two tabs / a retried approval can't both capture ──
+    // First writer sets paypal_order_id; the loser gets 0 rows. A retry of the
+    // SAME order is allowed to proceed (it's the same money, and PayPal itself
+    // rejects a genuine double-capture below).
+    const { data: claimData } = await db
+      .from('booking_payments')
+      .update({ paypal_order_id: orderId } as unknown as never)
+      .eq('id', p.id)
+      .is('paypal_order_id', null)
+      .select('id');
+    const claimed = Array.isArray(claimData) && claimData.length > 0;
+    if (!claimed && (p.paypal_order_id || '') !== orderId) {
+      return NextResponse.json({ error: 'A payment is already in progress for this request.' }, { status: 409 });
+    }
+
+    // ── Capture (idempotency key so PayPal dedupes our own retries) ──
+    const res = await paypalFetch<OrderResp>(
+      `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
+      { method: 'POST', body: {}, onBehalfOf: merchant, headers: { 'PayPal-Request-Id': `cap-${p.id}-${orderId}` } },
+    );
+
+    // Already captured (a retry after a dropped connection): the money moved on
+    // the first attempt — GET the order and settle from that instead of 500ing
+    // a host who was, in fact, charged.
+    let orderData = res.data;
+    if (!res.ok) {
+      if (issueOf(res.data) === 'ORDER_ALREADY_CAPTURED') {
+        const re = await paypalFetch<OrderResp>(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, { onBehalfOf: merchant });
+        if (!re.ok) return NextResponse.json({ error: `PayPal (recheck ${re.status})` }, { status: 502 });
+        orderData = re.data;
+      } else {
+        return NextResponse.json({ error: `PayPal (capture ${res.status}): ${JSON.stringify(res.data).slice(0, 300)}` }, { status: 502 });
+      }
+    }
+
+    const cap = orderData.purchase_units?.[0]?.payments?.captures?.[0];
+    // Defense in depth: the capture must carry our payment's custom_id.
+    if (cap?.custom_id && cap.custom_id !== p.id) {
+      return NextResponse.json({ error: 'Capture does not match this payment.' }, { status: 409 });
+    }
+
+    const captureId = cap?.id || null;
+    const capStatus = cap?.status || '';
+
+    // A COMPLETED order can hold a PENDING capture (eCheck, review holds). Money
+    // has NOT settled — don't mark paid; the PAYMENT.CAPTURE.COMPLETED webhook
+    // finalizes it (and PAYMENT.CAPTURE.DENIED clears it). Only COMPLETED here.
+    if (capStatus !== 'COMPLETED') {
+      return NextResponse.json({ ok: true, pending: true, captureStatus: capStatus || 'UNKNOWN' });
+    }
+
+    const capturedStr = cap?.amount?.value;
+    const captured = capturedStr != null ? Number(capturedStr) : outstanding;
     const nextPaid = round2(Number(p.amount_paid || 0) + captured);
     const status = nextPaid >= Number(p.amount) - 0.01 ? 'paid' : 'partial';
-    const captureId = resource.id || null;
 
-    // Idempotent on the capture id: if the capture route already recorded this
-    // exact capture, the guard makes this a no-op — the money is never counted
-    // twice, no matter which path wins the race.
+    // Idempotent on the capture id: if this capture was already recorded (by a
+    // retry or the webhook winning the race), the guard makes the update a
+    // no-op and we report success without adding the money twice.
     const { data: upData, error: upErr } = await db
       .from('booking_payments')
       .update({ amount_paid: nextPaid, status, method: 'paypal', confirmed_at: new Date().toISOString(), paypal_capture_id: captureId } as unknown as never)
       .eq('id', p.id)
       .is('paypal_capture_id', null)
       .select('id');
-    // A real DB failure returns 500 so PayPal RETRIES (it backs off for ~3
-    // days) — the webhook is the backstop, so it must not silently 200 on error.
-    if (upErr) return NextResponse.json({ ok: false, reason: 'db_error' }, { status: 500 });
+    if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
     if (!Array.isArray(upData) || upData.length === 0) {
       return NextResponse.json({ ok: true, alreadyPaid: true });
     }
 
+    // Receipt to the host + notice to the DJ (best-effort — never blocks the
+    // confirmation). Only runs on the write that actually stuck, so the webhook
+    // winning the race won't double-send.
+    try {
+      await sendPaypalPaidEmails(db, {
+        bookingId: p.booking_id,
+        kind: p.kind,
+        currency: cur,
+        receivedNow: captured,
+        paidToDate: nextPaid,
+        amountTotal: Number(p.amount),
+      });
+    } catch { /* best-effort */ }
+
     return NextResponse.json({ ok: true, status });
   } catch (e) {
-    console.error('[paypal/webhook]', e);
-    // 500 → PayPal retries. An empty-bodied 5xx is fine here: this is OUR
-    // endpoint returning a real status code, not an upstream 502 whose body
-    // Cloudflare would eat.
-    return NextResponse.json({ ok: false, reason: 'error' }, { status: 500 });
+    console.error('[paypal/capture-order]', e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Server error' }, { status: 500 });
   }
 }
