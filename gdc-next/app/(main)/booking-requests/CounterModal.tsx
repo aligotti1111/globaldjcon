@@ -106,6 +106,11 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
       when: e.created_at,
     });
   }
+  // The DJ's sales-tax rate (frozen on the booking). Each offer is a pre-tax
+  // number, so we show the tax-inclusive total beneath it when tax applies.
+  const taxPct = Number((booking as BookingRow & { tax_pct?: number | null }).tax_pct) || 0;
+  const withTax = (n: number) => Number((n + (n * taxPct) / 100).toFixed(2));
+  const fmt2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Event details — show date/time/duration. The mobile booking adds an
   // event-type label; club bookings just show date/time.
@@ -301,16 +306,23 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
                 <div
                   key={i}
                   style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10,
-                    padding: '4px 0',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10,
+                    padding: '5px 0',
                     borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.05)',
                   }}
                 >
-                  <span style={{ fontSize: 12.5, color: isLatest ? '#fff' : '#9a9ab0', fontWeight: isLatest ? 700 : 400 }}>
+                  <span style={{ fontSize: 12.5, color: isLatest ? '#fff' : '#9a9ab0', fontWeight: isLatest ? 700 : 400, paddingTop: 1 }}>
                     {h.who}{isLatest ? ' · current' : ''}
                   </span>
-                  <span style={{ fontSize: 13.5, color: isLatest ? '#6ee7b7' : '#c9c9d6', fontWeight: isLatest ? 800 : 600, whiteSpace: 'nowrap' }}>
-                    {sym}{h.amount.toLocaleString()}
+                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'block', fontSize: 13.5, color: isLatest ? '#6ee7b7' : '#c9c9d6', fontWeight: isLatest ? 800 : 600 }}>
+                      {sym}{h.amount.toLocaleString()}
+                    </span>
+                    {taxPct > 0 && (
+                      <span style={{ display: 'block', fontSize: 10.5, color: '#8a8aa0', marginTop: 1 }}>
+                        + {taxPct}% tax · {sym}{fmt2(withTax(h.amount))}
+                      </span>
+                    )}
                   </span>
                 </div>
               );
