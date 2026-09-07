@@ -281,6 +281,21 @@ export default function ClubBookingCard(props: Props) {
                 <div className={styles.priceSub}>
                   Initial Offer: <span>{sym}{Number(b.quoted_rate ?? b.offer_amount).toLocaleString()}</span>
                 </div>
+                {/* Sales tax on the counter, when the DJ requires it — the
+                    counter is a pre-tax number, so show tax + the true total. */}
+                {(() => {
+                  const taxPct = Number((b as { tax_pct?: number | null }).tax_pct) || 0;
+                  if (!(taxPct > 0) || bigPriceVal == null) return null;
+                  const taxAmt = Number(((Number(bigPriceVal) * taxPct) / 100).toFixed(2));
+                  const total = Number((Number(bigPriceVal) + taxAmt).toFixed(2));
+                  const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                  return (
+                    <>
+                      <div className={styles.priceSub}>Tax ({taxPct}%): <span>{sym}{fmt(taxAmt)}</span></div>
+                      <div className={styles.priceSub} style={{ color: 'var(--neon)', fontWeight: 700 }}>Total: <span>{sym}{fmt(total)}</span></div>
+                    </>
+                  );
+                })()}
               </div>
               {durationLabel && (
                 <div className={styles.priceCol}>
