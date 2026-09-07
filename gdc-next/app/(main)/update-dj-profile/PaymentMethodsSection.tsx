@@ -1149,9 +1149,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                     <span style={{ fontSize: '.66rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>Or</span>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
-                  <div style={{ ...label, fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 2 — Get paid by email (manual)</div>
+                  <div style={{ ...label, fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
                   <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
-                    Enter your <strong style={{ color: 'var(--white)' }}>PayPal.me</strong> link or email. Works on a personal account, but a <strong style={{ color: 'var(--white)' }}>Business account</strong> is recommended for regular income.
+                    Works on a personal account, but a <strong style={{ color: 'var(--white)' }}>Business account</strong> is recommended for regular income.
                   </p>
                 </>
               )}
