@@ -697,7 +697,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         // always full colour, a receipt with no check and no word looks
         // identical whether it's gone out or not, and invoice becomes the one
         // column you can't read.)
-        caption: done ? undefined : balanceRow ? 'Pending' : 'Not Sent',
+        caption: done ? 'Paid' : balanceRow ? 'Pending' : 'Not Sent',
         info: balanceRow
           ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
           : depositSettled
