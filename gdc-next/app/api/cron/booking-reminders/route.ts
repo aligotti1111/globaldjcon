@@ -146,7 +146,7 @@ export async function GET(req: Request) {
   const { data: cData } = await db
     .from('bookings')
     .select('id, dj_id, requester_id, requester_name, event_type, venue_type, venue_name, event_date, created_at, updated_at, quoted_rate, offer_amount, counter_rate, currency')
-    .eq('status', 'countered')
+    .eq('status', 'counter')
     .is('deleted_at', null)
     .limit(2000);
   const counters = (cData || []) as unknown as Booking[];
