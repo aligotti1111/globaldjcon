@@ -2119,7 +2119,15 @@ export async function POST(req: Request) {
     const dateStr = fmtDate(eventDate);
     const sym = currencySymbol(currency);
     const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
-    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency);
+    // Break the AGREED price down (agreed + tax = total) so the confirmation
+    // shows the same total everywhere. Passing the agreed price makes tax
+    // compute even on counter/offer bookings, whose stored quoted_rate /
+    // total_with_tax snapshot is null.
+    const billBox = await billBreakdownForBooking(
+      body.bookingId as string | undefined,
+      currency,
+      agreedPrice != null ? Number(agreedPrice) : undefined,
+    );
     const progressBox = await bookingProgressBox(body.bookingId as string | undefined);
 
     // ── Add to Calendar ── A one-tap Google Calendar link + a .ics attachment
