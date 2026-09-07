@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { paypalFetch, paypalConfigured } from '@/lib/paypal/server';
+import { sendPaypalPaidEmails } from '@/lib/paypal/notify';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -172,6 +173,20 @@ export async function POST(req: Request) {
     if (!Array.isArray(upData) || upData.length === 0) {
       return NextResponse.json({ ok: true, alreadyPaid: true });
     }
+
+    // Receipt to the host + notice to the DJ (best-effort — never blocks the
+    // confirmation). Only runs on the write that actually stuck, so the webhook
+    // winning the race won't double-send.
+    try {
+      await sendPaypalPaidEmails(db, {
+        bookingId: p.booking_id,
+        kind: p.kind,
+        currency: cur,
+        receivedNow: captured,
+        paidToDate: nextPaid,
+        amountTotal: Number(p.amount),
+      });
+    } catch { /* best-effort */ }
 
     return NextResponse.json({ ok: true, status });
   } catch (e) {
