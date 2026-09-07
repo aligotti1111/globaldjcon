@@ -1,9 +1,14 @@
 // GET /api/cron/booking-reminders
 //
-// Daily reminder to every DJ who has UNANSWERED booking requests — i.e.
-// incoming bookings still in 'pending' status (the DJ hasn't approved, denied
-// or countered yet). Each DJ gets ONE email listing all of their own pending
-// requests, with a link to /booking-requests.
+// Two daily reminders, sent as SEPARATE emails to the party whose court the
+// ball is in:
+//   1. To every DJ with UNANSWERED requests ('pending') — one email listing
+//      all of that DJ's pending requests.
+//   2. To every host sitting on a DJ's counter-offer ('countered') — one email
+//      listing all of that host's outstanding offers, with the days left before
+//      each auto-declines.
+// Both link to /booking-requests. Grouping is per-recipient, so nobody gets a
+// stack of separate emails.
 //
 // Trigger: the Netlify scheduled function (netlify/functions/booking-reminders.mjs)
 // pings this route once an HOUR. The route itself only does the send when the
@@ -19,6 +24,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
+import { MAX_RESPONSE_DAYS } from '@/lib/bookingExpiry';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -79,6 +85,9 @@ type Booking = {
   offer_amount: number | null;
   counter_rate: number | null;
   currency: string | null;
+  // Only selected for the counter-offer pass.
+  requester_id?: string | null;
+  updated_at?: string | null;
 };
 
 export async function GET(req: Request) {
@@ -130,8 +139,38 @@ export async function GET(req: Request) {
     byDj.set(b.dj_id, list);
   }
 
-  if (byDj.size === 0) {
-    return NextResponse.json({ ok: true, djs: 0, emails: 0, requests: 0 });
+  // ── Counter-offers awaiting the HOST (a separate reminder) ──
+  // A 'countered' booking is the DJ's offer sitting in the booker's court. The
+  // DJ digest above never covers it, so the host gets no nudge before it
+  // auto-declines. Remind them here, grouped per host, as their own email.
+  const { data: cData } = await db
+    .from('bookings')
+    .select('id, dj_id, requester_id, requester_name, event_type, venue_type, venue_name, event_date, created_at, updated_at, quoted_rate, offer_amount, counter_rate, currency')
+    .eq('status', 'countered')
+    .is('deleted_at', null)
+    .limit(2000);
+  const counters = (cData || []) as unknown as Booking[];
+
+  const byHost = new Map<string, Booking[]>();
+  for (const b of counters) {
+    if (!b.requester_id) continue;
+    const list = byHost.get(b.requester_id) || [];
+    list.push(b);
+    byHost.set(b.requester_id, list);
+  }
+
+  // DJ display names for the counter email ("<DJ> sent you an offer").
+  const cDjIds = Array.from(new Set(counters.map((b) => b.dj_id).filter(Boolean))) as string[];
+  const djNameById = new Map<string, string>();
+  if (cDjIds.length > 0) {
+    const { data: djs } = await db.from('users').select('id, name').in('id', cDjIds);
+    for (const u of (djs as unknown as { id: string; name: string | null }[] | null) || []) {
+      djNameById.set(u.id, u.name || 'Your DJ');
+    }
+  }
+
+  if (byDj.size === 0 && byHost.size === 0) {
+    return NextResponse.json({ ok: true, djs: 0, emails: 0, requests: 0, counters: 0 });
   }
 
   const resendKey = process.env.RESEND_API_KEY;
@@ -200,5 +239,61 @@ ${price ? `<div style="font-size:16px;color:#0a6f61;font-weight:700;">${price}</
     } catch { /* non-fatal — keep going for the other DJs */ }
   }
 
-  return NextResponse.json({ ok: true, dryRun: dry, djs: byDj.size, emails, requests });
+  // ── The host counter-offer reminders (separate from the DJ digest) ──
+  let counterEmails = 0;
+  let counters2 = 0;
+  for (const [hostId, list] of byHost.entries()) {
+    const email = await resolveUserEmail(hostId);
+    if (!email) continue;
+
+    // Freshest offer first.
+    list.sort((a, b) => Date.parse(b.updated_at || b.created_at || '') - Date.parse(a.updated_at || a.created_at || ''));
+
+    const rowsHtml = list.map((b) => {
+      const dj = esc(djNameById.get(b.dj_id || '') || 'Your DJ');
+      const label = esc(b.event_type ? (MOB_EVENT_LABELS[b.event_type] || b.event_type) : (b.venue_type || 'Booking'));
+      const when = fmtDate(b.event_date);
+      // The number on the table is the DJ's counter/offer.
+      const rate = b.counter_rate ?? b.offer_amount ?? b.quoted_rate ?? null;
+      const price = rate != null ? money(Number(rate), b.currency) : null;
+      // Days left before it auto-declines: MAX_RESPONSE_DAYS from when the
+      // counter was sent (updated_at).
+      const start = Date.parse(b.updated_at || b.created_at || '');
+      const daysLeft = Number.isNaN(start) ? null : Math.max(0, MAX_RESPONSE_DAYS - Math.floor((nowMs - start) / 86400000));
+      const expires = daysLeft === null ? '' : daysLeft === 0 ? 'Expires today' : daysLeft === 1 ? 'Expires in 1 day' : `Expires in ${daysLeft} days`;
+      return `<tr>
+<td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;">
+<div style="font-size:15px;color:#111;font-weight:700;">${dj} · ${label}</div>
+<div style="font-size:13px;color:#555;margin-top:3px;">${when}</div>
+${expires ? `<div style="font-size:12px;color:#e04b4a;margin-top:3px;font-weight:700;">${expires}</div>` : ''}
+</td>
+<td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;text-align:right;white-space:nowrap;">
+${price ? `<div style="font-size:16px;color:#0a6f61;font-weight:700;">${price}</div>` : ''}
+</td>
+</tr>`;
+    }).join('');
+
+    const n = list.length;
+    const heading = n === 1 ? 'A DJ offer is waiting on you' : `${n} DJ offers are waiting on you`;
+    const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${heading}</h1>
+<p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">Respond before ${n === 1 ? 'it expires' : 'they expire'} — an unanswered offer is automatically declined. Approve, counter, or decline from your dashboard.</p>
+<table cellpadding="0" cellspacing="0" border="0" width="100%">${rowsHtml}</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:24px auto 0;"><tr><td style="background:#0a6f61;border-radius:6px;">
+<a href="${SITE_URL}/booking-requests" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review offers</a>
+</td></tr></table>`;
+
+    if (dry) { counterEmails += 1; counters2 += n; continue; }
+
+    try {
+      await resend.emails.send({ from: FROM, to: email, subject: heading, html: shell(content) });
+      counterEmails += 1;
+      counters2 += n;
+    } catch { /* non-fatal — keep going for other hosts */ }
+  }
+
+  return NextResponse.json({
+    ok: true, dryRun: dry,
+    djs: byDj.size, emails, requests,
+    hosts: byHost.size, counterEmails, counters: counters2,
+  });
 }
