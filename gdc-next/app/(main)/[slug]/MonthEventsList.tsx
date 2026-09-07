@@ -274,8 +274,10 @@ function EventListItem({
               <div className={styles.mo}>{mo}</div>
             </div>
           </div>
-          {/* Empty flyer slot so private rows line up with flyer rows. */}
-          <div className={styles.flyerPlaceholder} aria-hidden="true" />
+          {/* Placeholder flyer slot so private rows line up with flyer rows. */}
+          <div className={styles.flyerPlaceholder}>
+            <span className={styles.flyerPlaceholderText}>No image available</span>
+          </div>
           <div className={styles.middle}>
             <div className={styles.privateLabel}>Private Event</div>
           </div>
@@ -527,9 +529,11 @@ function EventListItem({
           {uploading ? '…' : '+ Flyer'}
         </button>
       ) : (
-        // Public viewer, no flyer: render an empty placeholder box so the
-        // text column lines up with rows that DO have a flyer image.
-        <div className={styles.flyerPlaceholder} aria-hidden="true" />
+        // Public viewer, no flyer: render a placeholder box so the text
+        // column lines up with rows that DO have a flyer image.
+        <div className={styles.flyerPlaceholder}>
+          <span className={styles.flyerPlaceholderText}>No image available</span>
+        </div>
       )}
       <input
         ref={fileInputRef}
