@@ -180,6 +180,32 @@ export default function MobilePublicCalendar({
   const { user: currentUser } = useAuth();
 
   const today = useMemo(() => new Date(), []);
+  // Actual approved bookings per date (client-booked OR manually added), so the
+  // calendar colors a day booked from the real ledger — not only the DJ's
+  // manual "mark booked" flag. Manual bookings insert a row but never set that
+  // flag, which is why they weren't showing here. Mirrors PublicCalendar.
+  const [countByDate, setCountByDate] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supabase = createClient();
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from('bookings')
+        .select('event_date')
+        .eq('dj_id', djId)
+        .eq('status', 'approved')
+        .gte('event_date', todayStr);
+      if (!mounted || !data) return;
+      const counts: Record<string, number> = {};
+      for (const row of data as Array<{ event_date: string | null }>) {
+        if (!row.event_date) continue;
+        counts[row.event_date] = (counts[row.event_date] || 0) + 1;
+      }
+      setCountByDate(counts);
+    })();
+    return () => { mounted = false; };
+  }, [djId]);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   // Month-jump dropdown (the neon "MAY 2026" button between the arrows).
@@ -690,7 +716,7 @@ function SingleMonthView({
       year === today.getFullYear() &&
       month === today.getMonth() &&
       d === today.getDate();
-    const isBooked = !!dayData.booked;
+    const isBooked = (countByDate[key] || 0) > 0 || !!dayData.booked;
     const isUnavail = !!dayData.unavailable;
     const bookingsLeft =
       dayData.bookings_available != null
@@ -934,7 +960,7 @@ function RollingMonthsView({
       const key = dateKey(yr, mo, d);
       const dayData: MobileDayData = bookingDays[key] || {};
       const isPast = key < todayKey;
-      const isBooked = !!dayData.booked;
+      const isBooked = (countByDate[key] || 0) > 0 || !!dayData.booked;
       const isUnavail = !!dayData.unavailable;
       const bookingsLeft =
         dayData.bookings_available != null
