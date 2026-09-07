@@ -75,7 +75,7 @@ export async function GET(req: Request) {
   const { data, error } = await db
     .from('bookings')
     .select('id, dj_id, booking_type, requester_id, requester_name, event_date, venue_name, package_title, created_at, updated_at, status')
-    .in('status', ['pending', 'countered'])
+    .in('status', ['pending', 'counter'])
     .is('deleted_at', null)
     .limit(2000);
   if (error) {
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
   // came in — otherwise a counter on day 4 would expire the next day.
   const expired = rows.filter((b) => {
     const tz = (b.dj_id && tzById.get(b.dj_id)) || effectiveTimezone(null, null);
-    const startedAt = b.status === 'countered' ? (b.updated_at || b.created_at) : b.created_at;
+    const startedAt = b.status === 'counter' ? (b.updated_at || b.created_at) : b.created_at;
     const deadline = responseDeadlineMs(startedAt, b.event_date, tz);
     return deadline != null && now >= deadline;
   });
