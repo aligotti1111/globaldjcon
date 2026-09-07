@@ -155,9 +155,7 @@ async function run(req: Request) {
     }
 
     const message =
-      dj.dj_type === 'club'
-        ? "You're subscribed, but your Book button isn't live yet. Pick an equipment option to activate booking on your profile."
-        : "You're subscribed, but your Book button isn't live yet. Add your first package to activate booking on your profile.";
+      "You're subscribed, but the Booking system is not live. Complete the remaining steps to activate booking on your profile.";
 
     try {
       await resend.emails.send({
