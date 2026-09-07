@@ -1996,10 +1996,10 @@ export async function POST(req: Request) {
     const senderSubjectName = senderName
       ? (senderRoleLabel ? `${senderRoleLabel} ${senderName}` : senderName)
       : (senderRoleLabel ? `the ${senderRoleLabel.toLowerCase()}` : 'the other party');
-    // A counter is a FLAT, all-in negotiation number — no tax/deposit
-    // breakdown. The site's counter card shows just the flat amount, so the
-    // email must match; tax + deposit are applied later, at the invoice stage.
-    // The flat counter amount is already shown in the info box's rateValue.
+    // Sales tax on the counter, when the DJ requires it: the counter is a
+    // pre-tax number, so break it down (offer + tax = total) from the counter
+    // amount at the booking's stored tax %. Matches the counter card on-site.
+    const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, currency, counterRate);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -2020,6 +2020,7 @@ export async function POST(req: Request) {
           rateValue: counterRate ? `${sym}${Number(counterRate).toLocaleString()} ${currency}` : '',
           message: counterMessage,
         })}
+        ${billBox}
         ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Counter Offer')}
       `),
     };
