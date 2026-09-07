@@ -115,12 +115,28 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
     opacity: enabled ? 1 : 0.6,
   });
 
+  const live = connected && ready;
+
   return (
-    <div style={{ background: 'var(--card,#14141c)', border: '1px solid var(--line,#262633)', borderRadius: 14, padding: '16px 18px' }}>
+    <div
+      style={
+        live
+          ? {
+              // Electric "it's live" state: neon border, teal-tinted gradient
+              // fill and an outer glow so a connected account reads as a win.
+              background: 'linear-gradient(135deg, rgba(0,245,196,.10), rgba(0,245,196,.02))',
+              border: '1px solid rgba(0,245,196,.55)',
+              borderRadius: 14,
+              padding: '16px 18px',
+              boxShadow: '0 0 0 1px rgba(0,245,196,.15), 0 0 22px rgba(0,245,196,.22)',
+            }
+          : { background: 'var(--card,#14141c)', border: '1px solid var(--line,#262633)', borderRadius: 14, padding: '16px 18px' }
+      }
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
         <span style={{ fontWeight: 700, color: 'var(--white,#fff)', fontSize: '.9rem' }}>PayPal payments</span>
-        {connected && ready && (
-          <span style={{ fontSize: '.62rem', fontWeight: 700, color: '#00f5c4', background: 'rgba(0,245,196,.14)', padding: '3px 8px', borderRadius: 999 }}>Connected</span>
+        {live && (
+          <span style={{ fontSize: '.62rem', fontWeight: 800, letterSpacing: '.04em', color: '#04121a', background: '#00f5c4', padding: '3px 9px', borderRadius: 999, boxShadow: '0 0 12px rgba(0,245,196,.6)', textTransform: 'uppercase' }}>● Connected</span>
         )}
       </div>
 
@@ -146,12 +162,18 @@ export default function PaypalConnectSection({ onStatus }: { onStatus?: (ready: 
           </div>
         </>
       ) : (
-        <>
-          <p style={{ margin: '0 0 4px', fontSize: '.82rem', color: '#00f5c4' }}>
-            ✓ Connected{email ? ` — ${email}` : ''}. Clients see &quot;Pay with PayPal&quot; on deposits and invoices.
-          </p>
-          <button type="button" onClick={() => void disconnect()} disabled={busy} style={{ ...btn(false, !busy), marginTop: 8 }}>Disconnect</button>
-        </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#00f5c4', textShadow: '0 0 12px rgba(0,245,196,.55)' }}>⚡ You&apos;re live on PayPal</span>
+            </div>
+            <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white,#e8fff8)', lineHeight: 1.5 }}>
+              {email ? <>Paid into <strong style={{ color: '#00f5c4' }}>{email}</strong>. </> : null}
+              Clients now see a <strong style={{ color: '#00f5c4' }}>&quot;Pay with PayPal&quot;</strong> button on deposits and invoices.
+            </p>
+          </div>
+          <button type="button" onClick={() => void disconnect()} disabled={busy} style={{ ...btn(false, !busy), marginLeft: 'auto', flexShrink: 0, alignSelf: 'flex-start' }}>Disconnect</button>
+        </div>
       )}
 
       {err && <p style={{ margin: '10px 0 0', fontSize: '.78rem', color: '#ff5f5f' }}>{err}</p>}
