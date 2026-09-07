@@ -403,6 +403,17 @@ export default function ClubBookingForm({
     : 0;
   const depositBalance = depositBase != null ? Math.max(0, Number((depositBase - depositAmount).toFixed(2))) : null;
 
+  // OFFERS MODE: the booker names their own price, so the fixed-rate math above
+  // has nothing to tax. If the DJ requires sales tax, apply it to the entered
+  // offer so the booker sees the true total (offer + tax) on the request page,
+  // the same way the fixed-rate path does. Deposit follows on the taxed total.
+  const offerNum = isOffers ? Number(offerAmount.trim()) : NaN;
+  const offerValid = isOffers && Number.isFinite(offerNum) && offerNum > 0;
+  const offerTax = (offerValid && taxPct > 0) ? Number(((offerNum * taxPct) / 100).toFixed(2)) : 0;
+  const offerGrand = offerValid ? Number((offerNum + offerTax).toFixed(2)) : null;
+  const offerDeposit = (offerGrand != null && clubDepositPct > 0) ? Number(((offerGrand * clubDepositPct) / 100).toFixed(2)) : 0;
+  const offerBalance = offerGrand != null ? Math.max(0, Number((offerGrand - offerDeposit).toFixed(2))) : null;
+
   function applyClubPromo() {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
@@ -1290,6 +1301,38 @@ export default function ClubBookingForm({
                         {depositBalance != null && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
                             <span>Balance due day of event</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{depositBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                {/* OFFERS: same itemized breakdown, built from the booker's own
+                    offer so sales tax (if the DJ requires it) is shown on the
+                    total they'll actually pay. */}
+                {isOffers && offerValid && (taxPct > 0 || clubDepositPct > 0) && offerGrand != null && (
+                  <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+                    {taxPct > 0 && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                          <span>Your offer</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{offerNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                          <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{offerTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
+                      <span>Total</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{offerGrand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    {clubDepositPct > 0 && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                          <span>Deposit ({clubDepositPct}%)</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{offerDeposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        {offerBalance != null && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                            <span>Balance due day of event</span><span>{currencySymbol(bookingSettings.rate_currency || 'USD')}{offerBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         )}
                       </>
