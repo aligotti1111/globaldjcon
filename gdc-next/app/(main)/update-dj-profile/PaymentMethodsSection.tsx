@@ -996,7 +996,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
               <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments via Stripe</span>
               {card?.ready ? (
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#00f5c4', display: 'inline-block', animation: 'gdcStripeBlink 1.2s ease-in-out infinite' }} />
                   Connected
                 </span>
@@ -1203,7 +1203,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                   rail below, where the client sends by hand. */}
               {t === 'paypal' && (
                 <>
-                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 1 — Connect your PayPal business account</div>
+                  <div style={{ fontFamily: 'inherit', color: 'var(--neon)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-.01em', textTransform: 'none', margin: '0 0 .35rem' }}>Option 1 — Connect your PayPal business account</div>
                   <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--muted)', lineHeight: 1.55 }}>
                     To connect, you must have a PayPal <strong style={{ color: 'var(--white)' }}>Business</strong> account. Global DJ Connect does not middle man the transaction — the host sends the deposit or balance directly to your account. If you don&rsquo;t have a <strong style={{ color: 'var(--white)' }}>business account</strong>, upgrade for free by clicking Connect PayPal — or see Option 2.
                   </p>
@@ -1214,7 +1214,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
                   <div style={{ opacity: paypalManualDisabled ? 0.45 : 1 }}>
-                    <div style={{ ...label, fontSize: '.95rem', margin: '0 0 .35rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
+                    <div style={{ fontFamily: 'inherit', color: 'var(--white)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-.01em', textTransform: 'none', margin: '0 0 .35rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
                     {paypalManualDisabled ? (
                       <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--neon)', lineHeight: 1.55 }}>
                         PayPal is connected via Option 1 — the manual option isn&rsquo;t needed. Disconnect above to use it instead.
