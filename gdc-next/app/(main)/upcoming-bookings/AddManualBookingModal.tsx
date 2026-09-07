@@ -1,4 +1,4 @@
-\'use client';
+'use client';
 
 // AddManualBookingModal — the "+ Add Booking Manually" form.
 //
