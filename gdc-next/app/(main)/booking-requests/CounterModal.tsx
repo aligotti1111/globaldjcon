@@ -1,4 +1,4 @@
-]'use client';
+'use client';
 
 // CounterModal — counter-offer dialog used by both sides of a booking.
 //
