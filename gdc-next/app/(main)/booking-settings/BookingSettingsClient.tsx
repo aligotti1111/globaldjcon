@@ -52,6 +52,19 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     : ['mob_booking_window', 'mob_bookings_per_day', 'mob_deposit_pct', 'rate_currency', 'tax_enabled', 'tax_pct', 'require_contract'];
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
+
+  // Returning from PayPal's Connect onboarding, PayPal sends the DJ back to
+  // /booking-settings?paypal=connected. Land them straight on the Payments tab
+  // so they see the "Connected" state instead of the default Settings tab.
+  // (PaymentMethodsSection reads the same flag to auto-open the PayPal tile,
+  // and PaypalConnectSection then cleans the query string.)
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('paypal') === 'connected') {
+        setSecTab('payments');
+      }
+    } catch { /* no-op */ }
+  }, []);
   // Which manual-save tab (Settings / DJ Rider / Guest List) currently holds
   // unsaved edits. Drives the little "unsaved" dot on the tab bar so the user
   // knows a tab needs saving even after they've navigated away from it.
