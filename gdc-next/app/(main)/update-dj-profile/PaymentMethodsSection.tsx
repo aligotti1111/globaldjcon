@@ -259,6 +259,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
       setRateCurrency(currency.trim().toUpperCase());
     }
   }, [currency]);
+
+  // Returning from PayPal Connect onboarding (?paypal=connected), auto-expand
+  // the PayPal tile so the DJ lands on the "Connected" state. This also mounts
+  // PaypalConnectSection, which reads the same flag and then cleans the URL.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('paypal') === 'connected') {
+        setOpenTile('paypal');
+      }
+    } catch { /* no-op */ }
+  }, []);
   const [accountCountry, setAccountCountry] = useState<string>('United States');
   // Address autocomplete (shared — only one rail's address field is open at a
   // time). Same Nominatim-backed searchAddresses the booking form and account
