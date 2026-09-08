@@ -191,31 +191,22 @@ export default function RiderEditor({
                 ⠿
               </span>
 
-              {isCustom ? (
-                <input
-                  type="text"
-                  value={box.title}
-                  onChange={(e) => patchBox(box.id, { title: e.target.value })}
-                  placeholder="Section name"
-                  maxLength={40}
-                  aria-label="Box name"
-                  style={{
-                    ...input, flex: '1 1 auto', fontWeight: 800,
-                    fontFamily: "'Space Mono', monospace", letterSpacing: '.04em',
-                    color: box.disabled ? MUTED : NEON, textTransform: 'uppercase', fontSize: '.78rem',
-                  }}
-                />
-              ) : (
-                <span
-                  style={{
-                    flex: '1 1 auto', fontFamily: "'Space Mono', monospace",
-                    fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase',
-                    color: box.disabled ? MUTED : NEON, whiteSpace: 'nowrap',
-                  }}
-                >
-                  {box.title}
-                </span>
-              )}
+              {/* Every box title is editable — including the defaults
+                  (Technical, Visuals, Beverages, Booth). Renaming persists;
+                  leaving a default name unchanged just keeps the default. */}
+              <input
+                type="text"
+                value={box.title}
+                onChange={(e) => patchBox(box.id, { title: e.target.value })}
+                placeholder="Section name"
+                maxLength={40}
+                aria-label="Box name"
+                style={{
+                  ...input, flex: '1 1 auto', fontWeight: 800,
+                  fontFamily: "'Space Mono', monospace", letterSpacing: '.04em',
+                  color: box.disabled ? MUTED : NEON, textTransform: 'uppercase', fontSize: '.78rem',
+                }}
+              />
 
               <div style={{ display: 'flex', gap: '.25rem', flexShrink: 0 }}>
                 <button type="button" onClick={() => moveBox(bi, bi - 1)} disabled={bi === 0} aria-label="Move box up" title="Move box up" style={ctl(MUTED, bi === 0)}>↑</button>
