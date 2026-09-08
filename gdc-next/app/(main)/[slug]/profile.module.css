@@ -1945,7 +1945,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: .85rem;
+  gap: .55rem;
   padding: .55rem 1rem;
   background: rgba(5, 5, 7, .6);
   border-top: 1px solid rgba(255, 255, 255, .08);
@@ -1953,30 +1953,33 @@
   flex-wrap: wrap;
 }
 .underBannerSocialBtn {
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
   border: none;
   background: transparent;
+  color: #fff;
   transition: all .15s;
 }
 .underBannerSocialBtn svg {
-  width: 23px;
-  height: 23px;
+  width: 20px;
+  height: 20px;
 }
 .underBannerSocialBtn:hover {
   transform: translateY(-1px);
-  filter: brightness(1.2);
+  filter: brightness(1.08);
 }
-.underBannerSocialSoundcloud { color: #ff5500; }
-.underBannerSocialInstagram { color: #e1306c; }
-.underBannerSocialFacebook { color: #1877f2; }
-.underBannerSocialTiktok { color: #fff; }
-.underBannerSocialTwitch { color: #9146ff; }
-.underBannerSocialWebsite { color: var(--neon); }
+/* Socials: filled brand-color circles, white glyph. */
+.underBannerSocialSoundcloud { background: #ff5500; }
+.underBannerSocialInstagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+.underBannerSocialFacebook { background: #1877f2; }
+.underBannerSocialTiktok { background: #000; border: 1px solid rgba(255, 255, 255, .2); }
+.underBannerSocialTwitch { background: #9146ff; }
+.underBannerSocialWebsite { background: var(--neon); color: #04120d; }
 /* Contact cluster (phone + message) — sits between the socials and Share,
    set apart by its own left divider (same treatment as the Share button). */
 .underBannerContact {
@@ -1987,8 +1990,13 @@
   padding-left: .85rem;
   border-left: 1px solid rgba(255, 255, 255, .14);
 }
-.underBannerPhone { color: #fff; }
-.underBannerMail { color: #fff; }
+/* Contacts: solid-white rounded squares, dark glyph. */
+.underBannerPhone, .underBannerMail {
+  border-radius: 10px;
+  background: #fff;
+  color: #0a0a0f;
+  border: none;
+}
 .underBannerContact button:disabled {
   opacity: .55;
   cursor: not-allowed;
@@ -2108,9 +2116,9 @@
   height: 15px;
 }
 @media (max-width: 700px) {
-  .underBannerSocials { gap: .55rem; padding: .45rem .75rem; }
-  .underBannerSocialBtn { width: 26px; height: 26px; min-width: 26px; }
-  .underBannerSocialBtn svg { width: 19px; height: 19px; }
+  .underBannerSocials { gap: .4rem; padding: .45rem .75rem; }
+  .underBannerSocialBtn { width: 32px; height: 32px; min-width: 32px; }
+  .underBannerSocialBtn svg { width: 18px; height: 18px; }
   .underBannerSocials .actionBtn {
     width: 28px !important;
     height: 28px !important;
