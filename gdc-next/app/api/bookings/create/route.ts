@@ -132,14 +132,26 @@ export async function POST(req: Request) {
   {
     const { data: me } = await supabase
       .from('users')
-      .select('role, slug')
+      .select('role, slug, email_verified')
       .eq('id', user.id)
-      .maybeSingle<{ role: string | null; slug: string | null }>();
+      .maybeSingle<{ role: string | null; slug: string | null; email_verified: boolean | null }>();
     // A DJ/venue profile has a slug; hosts don't. Block anyone with a slug
     // that isn't a venue (catches old DJ accounts with a legacy/blank role).
     if (me?.slug && me.role !== 'venue') {
       return NextResponse.json(
         { error: "DJ accounts can't book other DJs. Use a host account to book." },
+        { status: 403 },
+      );
+    }
+    // Require a confirmed email before booking. This was only ever enforced in
+    // the UI (the booking form is hidden until verified), so a stale client or
+    // a direct request could still create a booking with an unverified address
+    // — the exact thing verification exists to prevent. Enforce it here too.
+    // A phone-signup host has NO auth email (nothing to verify) and is exempt,
+    // matching AuthProvider's rule; they give an email at their first booking.
+    if (user.email && me?.email_verified !== true) {
+      return NextResponse.json(
+        { error: 'Please confirm your email before sending a booking request. Check your inbox for the verification link.' },
         { status: 403 },
       );
     }
@@ -188,6 +200,35 @@ export async function POST(req: Request) {
         .eq('id', userId);
     } catch (e) {
       console.warn('[bookings/create] contact_email save failed:', e);
+    }
+  }
+
+  /**
+   * Remember the booker's phone on their profile so the next booking prefills
+   * it instead of asking again. The form reads users.sms_phone as the "known
+   * phone"; without this write it stays empty and every booking re-asks.
+   *
+   * Writes only when sms_phone is currently empty — a later booking with a
+   * different number typed in shouldn't silently overwrite the number their
+   * account (and text notifications) are tied to. Best-effort: a failed write
+   * never loses the booking that already inserted.
+   */
+  async function saveSmsPhone(userId: string, phoneVal: string): Promise<void> {
+    if (!phoneVal) return;
+    try {
+      const adminDb = createAdminClient();
+      const { data: existing } = await adminDb
+        .from('users')
+        .select('sms_phone')
+        .eq('id', userId)
+        .maybeSingle<{ sms_phone: string | null }>();
+      if (existing?.sms_phone) return; // already known — leave it alone
+      await adminDb
+        .from('users')
+        .update({ sms_phone: phoneVal } as unknown as never)
+        .eq('id', userId);
+    } catch (e) {
+      console.warn('[bookings/create] sms_phone save failed:', e);
     }
   }
 
@@ -528,6 +569,7 @@ export async function POST(req: Request) {
     }
 
     await saveContactEmail(user.id, contactEmail);
+    await saveSmsPhone(user.id, phone);
 
     // Server-computed money snapshot — the client uses this (not its own
     // preview) for the notification emails so they always match the DB row.
@@ -746,6 +788,7 @@ export async function POST(req: Request) {
   }
 
   await saveContactEmail(user.id, contactEmail);
+  await saveSmsPhone(user.id, phone);
 
   return NextResponse.json({
     ok: true,
