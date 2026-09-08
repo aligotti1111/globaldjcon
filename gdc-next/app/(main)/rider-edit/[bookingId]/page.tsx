@@ -25,7 +25,7 @@ import Link from 'next/link';
 import RiderBuilder from '@/components/RiderBuilder';
 import RiderView from '@/app/rider/[id]/RiderView';
 import BusinessLogoSection from '../../update-dj-profile/BusinessLogoSection';
-import { normalizeRiderItems, normalizeRiderMode, type RiderItem, type RiderMode, type NamedRider } from '@/lib/rider';
+import { normalizeRiderItems, normalizeRiderMode, riderHasFields, type RiderItem, type RiderMode, type NamedRider } from '@/lib/rider';
 
 interface RiderMeta {
   djName: string; logoUrl: string | null;
@@ -129,7 +129,7 @@ export default function RiderEditPage() {
 
   useEffect(() => { if (bookingId) load(); }, [bookingId, load]);
 
-  const hasContent = mode === 'upload' ? !!pdfUrl : items.length > 0;
+  const hasContent = mode === 'upload' ? !!pdfUrl : riderHasFields(items);
   const canDeploy = hasContent && !!name.trim();
   // Compare CONTENT, not array identity — the editor returns a fresh items
   // array each render, which would otherwise re-enable the button instantly.
@@ -303,6 +303,7 @@ export default function RiderEditPage() {
                   items={items}
                   mode={mode}
                   pdfUrl={pdfUrl}
+                  riderName={name || null}
                   djName={meta?.djName || ''}
                   logoUrl={meta?.logoUrl || null}
                   eventDate={meta?.event.date || null}
