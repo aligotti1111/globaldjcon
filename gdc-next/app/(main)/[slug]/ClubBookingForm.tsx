@@ -1512,6 +1512,9 @@ function RateDisplay({
           This DJ accepts offers
           {baseRateNum ? ' — enter an amount at or above the base rate' : ''}:
         </div>
+        <div className={styles.rateOffersHint} style={{ marginBottom: '.4rem' }}>
+          Please enter your offer below
+        </div>
         <div className={styles.offerInputRow}>
           <span className={styles.offerSymbol}>{symbol}</span>
           <input
