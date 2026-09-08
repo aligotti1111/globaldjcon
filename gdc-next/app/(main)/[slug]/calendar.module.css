@@ -327,7 +327,12 @@
 /* Day-of-week header row */
 .dayHeaderRow {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr) — NOT plain 1fr. 1fr resolves to minmax(auto, 1fr), so a
+     cell whose content is wider than 1/7 (a long address, the diagonal fill,
+     the ✕/pencil controls) forces its column wider and blows the whole grid
+     past 100%, shifting/clipping columns. minmax(0,…) lets columns shrink
+     below content and stay exactly equal at every width. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-left: 1px solid var(--border);
   border-top: 1px solid var(--border);
   border-radius: 8px 8px 0 0;
@@ -353,7 +358,10 @@
 /* Cells grid */
 .cellsGrid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr) keeps all 7 day columns exactly equal and prevents any
+     cell's content from widening its column and pushing the grid past 100%
+     (the recurring "calendar gets shifted/clipped" bug). */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   /* Embed-style: individual rounded cells with small gaps */
   gap: 4px;
   width: 100%;
