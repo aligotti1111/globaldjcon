@@ -1945,7 +1945,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: .5rem;
+  gap: .85rem;
   padding: .55rem 1rem;
   background: rgba(5, 5, 7, .6);
   border-top: 1px solid rgba(255, 255, 255, .08);
@@ -1953,20 +1953,19 @@
   flex-wrap: wrap;
 }
 .underBannerSocialBtn {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  border: 1px solid currentColor;
-  background: rgba(0, 0, 0, .5);
+  border: none;
+  background: transparent;
   transition: all .15s;
 }
 .underBannerSocialBtn svg {
-  width: 15px;
-  height: 15px;
+  width: 23px;
+  height: 23px;
 }
 .underBannerSocialBtn:hover {
   transform: translateY(-1px);
@@ -1988,8 +1987,8 @@
   padding-left: .85rem;
   border-left: 1px solid rgba(255, 255, 255, .14);
 }
-.underBannerPhone { color: #3ddc84; }
-.underBannerMail { color: var(--neon); }
+.underBannerPhone { color: #fff; }
+.underBannerMail { color: #fff; }
 .underBannerContact button:disabled {
   opacity: .55;
   cursor: not-allowed;
@@ -2109,9 +2108,9 @@
   height: 15px;
 }
 @media (max-width: 700px) {
-  .underBannerSocials { gap: .3rem; padding: .45rem .75rem; }
-  .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
-  .underBannerSocialBtn svg { width: 12px; height: 12px; }
+  .underBannerSocials { gap: .55rem; padding: .45rem .75rem; }
+  .underBannerSocialBtn { width: 26px; height: 26px; min-width: 26px; }
+  .underBannerSocialBtn svg { width: 19px; height: 19px; }
   .underBannerSocials .actionBtn {
     width: 28px !important;
     height: 28px !important;
