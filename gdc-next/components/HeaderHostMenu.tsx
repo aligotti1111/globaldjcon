@@ -93,7 +93,14 @@ export default function HeaderHostMenu({ name, avatarUrl }: HeaderHostMenuProps)
       >
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" className="hdr-dj-menu-avatar" />
+          <img
+            src={avatarUrl}
+            alt=""
+            width={44}
+            height={44}
+            className="hdr-dj-menu-avatar"
+            style={{ borderRadius: '50%', objectFit: 'cover' }}
+          />
         ) : (
           <span className="hdr-dj-menu-avatar hdr-dj-menu-avatar-fallback">{initials}</span>
         )}
