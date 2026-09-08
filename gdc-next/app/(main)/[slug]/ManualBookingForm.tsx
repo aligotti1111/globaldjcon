@@ -444,279 +444,331 @@ export default function ManualBookingForm({
 
   return (
     <div className={styles.form}>
-      {/* Date — hidden when the date is locked by the caller (e.g. day-edit
-          popup where the date is already shown in the modal header). */}
-      {!lockDate && (
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>Date</span>
-          <div
-            className={styles.dateWrap}
-            onClick={openDatePicker}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
-          >
-            <input
-              ref={dateInputRef}
-              type="date"
-              min={todayStr}
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className={styles.dateInput}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Time */}
-      <div className={styles.fieldRow}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Start Time</span>
-          <FieldCheck valid={startTimeValid}>
-            <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${styles.input} ${styles.hasCheckSelect}`}>
-              <option value="">Select…</option>
-              {TIME_OPTIONS.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </FieldCheck>
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}
-          </span>
-          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
-            <option value="">Select…</option>
-            {TIME_OPTIONS.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </label>
+      {/* Header — bold neon uppercase title + ✕ close (mirrors the
+          "Add Booking Manually" modal). The ✕ only appears when the caller
+          gave us a way to close (onCancel). */}
+      <div className={styles.modalHeader}>
+        <h2 className={styles.modalTitle}>{isEdit ? 'Edit Manual Booking' : 'Add Booking Manually'}</h2>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className={styles.modalClose} aria-label="Close" disabled={saving}>
+            ✕
+          </button>
+        )}
       </div>
-      {/* Set duration — shows once both times are picked. */}
-      {setDurationLabel && (
-        <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
-      )}
 
-      {/* Venue name + Rate on one line. Venue name takes the remaining
-          width; the rate box is narrow (~5 chars). */}
-      <div className={styles.venueRateRow}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
-          </span>
-          <FieldCheck valid={venueNameValid}>
-            <input
-              type="text"
-              value={venueName}
-              onChange={(e) => setVenueName(e.target.value)}
-              placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
-              className={`${styles.input} ${styles.hasCheck}`}
-            />
-          </FieldCheck>
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Rate <span className={styles.optional}>(optional)</span>
-          </span>
-          <div className={styles.rateRow}>
-            <div className={styles.rateInputWrap}>
-              <span className={styles.rateSymbol}>
-                {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+      <div className={styles.modalBody}>
+        {/* Date + Start + End on one row. Date is hidden when the caller
+            locked it (e.g. day-edit popup where the date is already shown in
+            the outer modal header) — in that case Start/End sit on a
+            two-column row instead. */}
+        {!lockDate ? (
+          <div className={styles.fieldRow3}>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>Date</span>
+              <div
+                className={styles.dateWrap}
+                onClick={openDatePicker}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
+              >
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  min={todayStr}
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className={styles.dateInput}
+                />
+              </div>
+            </div>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Set Start Time</span>
+              <FieldCheck valid={startTimeValid}>
+                <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${styles.input} ${styles.hasCheckSelect}`}>
+                  <option value="">Select…</option>
+                  {TIME_OPTIONS.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </FieldCheck>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Set End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}
               </span>
+              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Set Start Time</span>
+              <FieldCheck valid={startTimeValid}>
+                <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${styles.input} ${styles.hasCheckSelect}`}>
+                  <option value="">Select…</option>
+                  {TIME_OPTIONS.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </FieldCheck>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Set End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}
+              </span>
+              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        {/* Set duration — shows once both times are picked. */}
+        {setDurationLabel && (
+          <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
+        )}
+
+        {/* Venue name + Rate on one line. Venue name takes the remaining
+            width; the rate box is narrow (~5 chars). */}
+        <div className={styles.venueRateRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+            </span>
+            <FieldCheck valid={venueNameValid}>
               <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                placeholder="0"
-                className={styles.rateInput}
+                type="text"
+                value={venueName}
+                onChange={(e) => setVenueName(e.target.value)}
+                placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+                className={`${styles.input} ${styles.hasCheck}`}
               />
+            </FieldCheck>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Rate <span className={styles.optional}>(optional)</span>
+            </span>
+            <div className={styles.rateRow}>
+              <div className={styles.rateInputWrap}>
+                <span className={styles.rateSymbol}>
+                  {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                  placeholder="0"
+                  className={styles.rateInput}
+                />
+              </div>
+              <select
+                value={rateCurrency}
+                onChange={(e) => setRateCurrency(e.target.value)}
+                className={styles.rateCurrencySelect}
+                aria-label="Currency"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+              </select>
+            </div>
+            <span className={styles.rateNote}>The rate is not shown publicly.</span>
+          </label>
+        </div>
+
+        {/* Venue location (address + country) */}
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>Venue Location</span>
+          <div className={styles.addrRow}>
+            <div className={styles.addrWrap}>
+              <input
+                type="text"
+                value={venueAddress}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setVenueAddress(val);
+                  venueCoordsRef.current = null;
+                  setAddressPicked(false);
+                  if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
+                  if (val.trim().length < 3) {
+                    setAddrSuggestions([]);
+                    setShowAddrSuggestions(false);
+                    return;
+                  }
+                  addrTimerRef.current = setTimeout(async () => {
+                    const cc = COUNTRY_CODES_ADDR[country] || null;
+                    const results = await searchAddresses(val.trim(), cc);
+                    setAddrSuggestions(results);
+                    setShowAddrSuggestions(results.length > 0);
+                  }, 350);
+                }}
+                onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
+                onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
+                placeholder="Start typing address…"
+                className={`${styles.input} ${styles.hasCheck}`}
+                autoComplete="off"
+              />
+              {venueAddressValid && (
+                <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
+              )}
+              {showAddrSuggestions && addrSuggestions.length > 0 && (
+                <div className={styles.addrSuggestions}>
+                  {addrSuggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className={styles.addrSuggestion}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setVenueAddress(s.display);
+                        setAddressPicked(true);
+                        if (s.lat != null && s.lon != null) {
+                          venueCoordsRef.current = { lat: s.lat, lon: s.lon };
+                        } else {
+                          venueCoordsRef.current = null;
+                        }
+                        setShowAddrSuggestions(false);
+                      }}
+                    >
+                      {s.display}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <select
-              value={rateCurrency}
-              onChange={(e) => setRateCurrency(e.target.value)}
-              className={styles.rateCurrencySelect}
-              aria-label="Currency"
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                setAddrSuggestions([]);
+                setShowAddrSuggestions(false);
+                venueCoordsRef.current = null;
+              }}
+              className={styles.countrySelect}
+              aria-label="Country for address search"
             >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="CAD">CAD</option>
-              <option value="AUD">AUD</option>
+              {COUNTRIES.filter((c) => c !== 'Other').map((c) => {
+                const code = (COUNTRY_CODES_ADDR[c] || '').toUpperCase();
+                const flag = flagEmoji(code);
+                return (
+                  <option key={c} value={c}>
+                    {flag ? `${flag} ` : ''}{code || '??'}
+                  </option>
+                );
+              })}
             </select>
           </div>
-          <span className={styles.rateNote}>The rate is not shown publicly.</span>
-        </label>
-      </div>
-
-      {/* Venue location (address + country) */}
-      <div className={styles.field}>
-        <span className={styles.fieldLabel}>Venue Location</span>
-        <div className={styles.addrRow}>
-          <div className={styles.addrWrap}>
-            <input
-              type="text"
-              value={venueAddress}
-              onChange={(e) => {
-                const val = e.target.value;
-                setVenueAddress(val);
-                venueCoordsRef.current = null;
-                setAddressPicked(false);
-                if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
-                if (val.trim().length < 3) {
-                  setAddrSuggestions([]);
-                  setShowAddrSuggestions(false);
-                  return;
-                }
-                addrTimerRef.current = setTimeout(async () => {
-                  const cc = COUNTRY_CODES_ADDR[country] || null;
-                  const results = await searchAddresses(val.trim(), cc);
-                  setAddrSuggestions(results);
-                  setShowAddrSuggestions(results.length > 0);
-                }, 350);
-              }}
-              onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
-              onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
-              placeholder="Start typing address…"
-              className={`${styles.input} ${styles.hasCheck}`}
-              autoComplete="off"
-            />
-            {venueAddressValid && (
-              <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
-            )}
-            {showAddrSuggestions && addrSuggestions.length > 0 && (
-              <div className={styles.addrSuggestions}>
-                {addrSuggestions.map((s, i) => (
-                  <div
-                    key={i}
-                    className={styles.addrSuggestion}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setVenueAddress(s.display);
-                      setAddressPicked(true);
-                      if (s.lat != null && s.lon != null) {
-                        venueCoordsRef.current = { lat: s.lat, lon: s.lon };
-                      } else {
-                        venueCoordsRef.current = null;
-                      }
-                      setShowAddrSuggestions(false);
-                    }}
-                  >
-                    {s.display}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <select
-            value={country}
-            onChange={(e) => {
-              setCountry(e.target.value);
-              setAddrSuggestions([]);
-              setShowAddrSuggestions(false);
-              venueCoordsRef.current = null;
-            }}
-            className={styles.countrySelect}
-            aria-label="Country for address search"
-          >
-            {COUNTRIES.filter((c) => c !== 'Other').map((c) => {
-              const code = (COUNTRY_CODES_ADDR[c] || '').toUpperCase();
-              const flag = flagEmoji(code);
-              return (
-                <option key={c} value={c}>
-                  {flag ? `${flag} ` : ''}{code || '??'}
-                </option>
-              );
-            })}
-          </select>
         </div>
-      </div>
 
-      {/* Type-specific fields */}
-      {djType === 'club' ? (
-        <div className={styles.fieldRow}>
+        {/* Type-specific fields — two-column row for club (Venue Type / Set
+            Type), single field for mobile (Event Type). */}
+        {djType === 'club' ? (
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Venue Type <span className={styles.optional}>(optional)</span>
+              </span>
+              <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {CLUB_VENUE_TYPES.map((v) => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Set Type <span className={styles.optional}>(optional)</span>
+              </span>
+              <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {CLUB_SET_TYPES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Venue Type</span>
-            <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
-              <option value="">Select…</option>
-              {CLUB_VENUE_TYPES.map((v) => (
+            <span className={styles.fieldLabel}>Event Type</span>
+            <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
+              {MOBILE_EVENT_TYPES.map((v) => (
                 <option key={v.value} value={v.value}>{v.label}</option>
               ))}
             </select>
           </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Set Type</span>
-            <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
-              <option value="">Select…</option>
-              {CLUB_SET_TYPES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      ) : (
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Event Type</span>
-          <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
-            {MOBILE_EVENT_TYPES.map((v) => (
-              <option key={v.value} value={v.value}>{v.label}</option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {/* Host invite section */}
-      <div className={styles.hostInviteBlock}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
-          <FieldCheck valid={hostEmailValid}>
-            <input
-              type="email"
-              value={hostEmail}
-              onChange={(e) => setHostEmail(e.target.value)}
-              placeholder="host@example.com"
-              className={`${styles.input} ${styles.hasCheck}`}
-              autoComplete="off"
-            />
-          </FieldCheck>
-        </label>
-        {hostEmailAlreadySent ? (
-          <div className={styles.sentBanner}>
-            <div className={styles.sentBannerText}>
-              Booking details sent {hostEmailSentAt ? `on ${formatSentDate(hostEmailSentAt)}` : ''}.
-            </div>
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resendBusy || saving}
-              className={styles.resendBtn}
-            >
-              {resendBusy ? 'Sending…' : (resendSuccess ? 'Sent ✓' : 'Resend Email')}
-            </button>
-          </div>
-        ) : (
-          <label className={styles.inviteCheckRow}>
-            <input
-              type="checkbox"
-              checked={sendInvite}
-              onChange={(e) => setSendInvite(e.target.checked)}
-              disabled={!hostEmail.trim() || !hostEmail.includes('@')}
-            />
-            <span>
-              Send booking details to host
-              {(!hostEmail.trim() || !hostEmail.includes('@')) && (
-                <span className={styles.checkHint}> · enter a valid email first</span>
-              )}
-            </span>
-          </label>
         )}
+
+        {/* Host details section — a called-out block, mirroring the modal.
+            Header + helper line, the Host Email field, then either the
+            "sent" banner (already sent) or the send-to-host toggle. */}
+        <div className={styles.hostInviteBlock}>
+          <div className={styles.hostDetailsTitle}>
+            Host Details <span className={styles.optional}>(optional)</span>
+          </div>
+          <div className={styles.hostHelper}>
+            Email and Full Name needed to send booking details, contract, or request deposit.
+          </div>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
+            <FieldCheck valid={hostEmailValid}>
+              <input
+                type="email"
+                value={hostEmail}
+                onChange={(e) => setHostEmail(e.target.value)}
+                placeholder="host@example.com"
+                className={`${styles.input} ${styles.hasCheck}`}
+                autoComplete="off"
+              />
+            </FieldCheck>
+          </label>
+          {hostEmailAlreadySent ? (
+            <div className={styles.sentBanner}>
+              <div className={styles.sentBannerText}>
+                Booking details sent {hostEmailSentAt ? `on ${formatSentDate(hostEmailSentAt)}` : ''}.
+              </div>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendBusy || saving}
+                className={styles.resendBtn}
+              >
+                {resendBusy ? 'Sending…' : (resendSuccess ? 'Sent ✓' : 'Resend Email')}
+              </button>
+            </div>
+          ) : (
+            <label className={styles.inviteCheckRow}>
+              <input
+                type="checkbox"
+                checked={sendInvite}
+                onChange={(e) => setSendInvite(e.target.checked)}
+                disabled={!hostEmail.trim() || !hostEmail.includes('@')}
+              />
+              <span>
+                Send booking details to host
+                {(!hostEmail.trim() || !hostEmail.includes('@')) && (
+                  <span className={styles.checkHint}> · enter a valid email first</span>
+                )}
+              </span>
+            </label>
+          )}
+        </div>
+
+        {error && <div className={styles.errorBox}>{error}</div>}
       </div>
 
-      {error && <div className={styles.errorBox}>{error}</div>}
-
-      <div className={styles.actions}>
+      <div className={styles.modalFooter}>
         {onCancel && (
           <button type="button" onClick={onCancel} className={styles.cancelBtn} disabled={saving}>
             Cancel
