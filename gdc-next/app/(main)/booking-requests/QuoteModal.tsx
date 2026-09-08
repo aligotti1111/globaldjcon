@@ -1,4 +1,4 @@
-='use client';
+'use client';
 
 // QuoteModal — DJ responds with a price on a mobile DJ booking that was
 // submitted in "quote mode" (booker didn't pick a package; they just asked
@@ -594,7 +594,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 borderTop: '1px solid rgba(255,255,255,.12)',
                 fontSize: '.7rem',
                 lineHeight: 1.45,
-                color: 'var(--muted)',
+                color: 'var(--white)',
               }}
             >
               Your Event Price below is the all-in quote — it covers the reception
