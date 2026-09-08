@@ -919,7 +919,12 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, .82), rgba(0, 0, 0, 0) 58%);
+  /* Dark on the LEFT (where the avatar/name/location sit, at any height),
+     plus a touch at the bottom — fading to clear on the right so the banner
+     photo still shows. Keeps the white name readable on any banner. */
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, .8) 0%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(to top, rgba(0, 0, 0, .45), rgba(0, 0, 0, 0) 55%);
   pointer-events: none;
 }
 /* Name-length size tiers — keeps the pill tight when the name is long.
