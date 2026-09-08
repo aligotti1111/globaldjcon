@@ -13,8 +13,9 @@ import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import {
-  normalizeRiderItems, normalizeRiderMode, groupRider, riderLine, RIDER_SECTIONS,
-  normalizeNamedRiders, upsertNamedRider, newRiderId, type NamedRider,
+  normalizeRiderItems, normalizeRiderMode, groupRiderBoxes, riderLine, riderHasFields,
+  normalizeNamedRiders, upsertNamedRider, newRiderId, sectionAllowsAttachment,
+  RIDER_ATTACHMENT_MAX_BYTES, type NamedRider,
 } from '@/lib/rider';
 import { buildRiderPdf } from '@/lib/riderPdf';
 
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
 
     if (mode === 'upload') {
       if (!pdfUrl) return NextResponse.json({ error: 'Upload a rider PDF before sending.' }, { status: 400 });
-    } else if (items.length === 0) {
+    } else if (!riderHasFields(items)) {
       return NextResponse.json({ error: 'Add at least one rider field before sending.' }, { status: 400 });
     }
 
@@ -190,12 +191,14 @@ export async function POST(req: Request) {
       } catch { /* library is a convenience — the send already succeeded */ }
     }
 
-    // ── Build the attachment (never throws — the email still sends without it) ──
-    let attachment: { filename: string; content: string } | null = null;
+    // ── Build the attachments (never throws — the email still sends without them) ──
+    // attachments[0] is the rider itself (uploaded PDF or generated PDF); any
+    // Technical/Visuals box files ride along EVERY time the rider is sent.
+    const attachments: { filename: string; content: string }[] = [];
     try {
       if (mode === 'upload') {
         const bytes = await fetchBytes(pdfUrl);
-        if (bytes) attachment = { filename: `DJ-Rider-${djName.replace(/[^a-z0-9]+/gi, '-')}.pdf`, content: Buffer.from(bytes).toString('base64') };
+        if (bytes) attachments.push({ filename: `DJ-Rider-${djName.replace(/[^a-z0-9]+/gi, '-')}.pdf`, content: Buffer.from(bytes).toString('base64') });
       } else {
         const when = fmtDate(b.event_date);
         const timeText = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
@@ -210,10 +213,30 @@ export async function POST(req: Request) {
           venueAddress: b.venue_address,
           items,
         });
-        attachment = { filename: `DJ-Rider-${djName.replace(/[^a-z0-9]+/gi, '-')}.pdf`, content: Buffer.from(pdfBytes).toString('base64') };
+        attachments.push({ filename: `DJ-Rider-${djName.replace(/[^a-z0-9]+/gi, '-')}.pdf`, content: Buffer.from(pdfBytes).toString('base64') });
       }
     } catch {
-      attachment = null;
+      // A failed rider PDF must not block the box attachments below.
+    }
+
+    // Technical + Visuals box attachments — fetched fresh each send so the host
+    // always gets the current file. Any single file >5MB is skipped defensively.
+    const usedNames = new Set(attachments.map((a) => a.filename.toLowerCase()));
+    try {
+      const attBoxes = groupRiderBoxes(items).filter(
+        (bx) => !bx.disabled && bx.attachmentUrl && sectionAllowsAttachment(bx.section),
+      );
+      for (const bx of attBoxes) {
+        const bytes = await fetchBytes(bx.attachmentUrl);
+        if (!bytes || bytes.length > RIDER_ATTACHMENT_MAX_BYTES) continue;
+        // Keep the DJ's original filename; de-dupe collisions so both survive.
+        let filename = (bx.attachmentName || `${bx.section}-attachment`).replace(/[\\/:*?"<>|]+/g, '-');
+        if (usedNames.has(filename.toLowerCase())) filename = `${bx.section}-${filename}`;
+        usedNames.add(filename.toLowerCase());
+        attachments.push({ filename, content: Buffer.from(bytes).toString('base64') });
+      }
+    } catch {
+      // Box attachments are best-effort — never sink the send.
     }
 
     // ── Recipient ── a TEST goes to whoever is signed in (so a teammate gets it
@@ -230,20 +253,26 @@ export async function POST(req: Request) {
       if (mode === 'upload') {
         bodyBlocks = `<p style="margin:0 0 16px;color:#444;font-size:14px;line-height:1.7;">${esc(djName)}'s rider is attached to this email as a PDF. Please review it and let them know if anything can't be provided.</p>`;
       } else {
-        const g = groupRider(items);
+        // Boxes in the DJ's order, skipping disabled ones — mirrors the PDF.
+        const boxes = groupRiderBoxes(items).filter((box) => !box.disabled && box.items.length);
         const list = (arr: typeof items) => arr.map((i) => `<li style="margin:0 0 6px;color:#444;font-size:14px;line-height:1.6;">${esc(riderLine(i))}</li>`).join('');
         const secBlock = (label: string, arr: typeof items) => arr.length
-          ? `<p style="margin:16px 0 6px;color:#111;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">${label}</p><ul style="margin:0 0 8px;padding-left:18px;">${list(arr)}</ul>` : '';
-        bodyBlocks = RIDER_SECTIONS.map(({ key, label }) => secBlock(label, g[key])).join('');
+          ? `<p style="margin:16px 0 6px;color:#111;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">${esc(label)}</p><ul style="margin:0 0 8px;padding-left:18px;">${list(arr)}</ul>` : '';
+        bodyBlocks = boxes.map((box) => secBlock(box.title, box.items)).join('');
       }
 
       const testNote = isTest
         ? `<p style="margin:0 0 16px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;color:#7a5b00;font-size:13px;line-height:1.6;">This is a <strong>test copy</strong> — exactly what the host receives. It was <strong>not</strong> sent to the host.</p>`
         : '';
+      // Rider name (when set) leads the heading; falls back to the DJ's name.
+      const heading = riderName ? `${esc(djName)} — ${esc(riderName)}` : `${esc(djName)}'s rider`;
+      const attachNote = attachments.length
+        ? (attachments.length > 1 ? ' The full rider and its attachments are attached to this email.' : ' The full rider is attached as a PDF.')
+        : '';
       const content = `${testNote}
-<h1 style="margin:0 0 6px;font-size:22px;color:#111;">Hi ${hi} — ${esc(djName)}'s rider</h1>
+<h1 style="margin:0 0 6px;font-size:22px;color:#111;">Hi ${hi} — ${heading}</h1>
 <p style="margin:0 0 16px;color:#666;font-size:14px;line-height:1.7;">
-Here's what ${esc(djName)} needs from the venue for ${esc(when)}${b.venue_name ? ` at ${esc(b.venue_name)}` : ''}.${attachment ? ' The full rider is attached as a PDF.' : ''}
+Here's what ${esc(djName)} needs from the venue for ${esc(when)}${b.venue_name ? ` at ${esc(b.venue_name)}` : ''}.${attachNote}
 </p>
 ${bodyBlocks}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 6px;">
@@ -253,9 +282,10 @@ ${bodyBlocks}
 <p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">Or paste this link:<br/><a href="${url}" style="color:#999;">${url}</a></p>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
+        const subject = `${isTest ? '[TEST] ' : ''}${djName} — ${riderName ? `${riderName} (DJ rider)` : 'DJ rider'} for ${when}`;
         await resend.emails.send({
-          from: FROM, to, subject: `${isTest ? '[TEST] ' : ''}${djName} — DJ rider for ${when}`, html: shell(content),
-          attachments: attachment ? [attachment] : undefined,
+          from: FROM, to, subject, html: shell(content),
+          attachments: attachments.length ? attachments : undefined,
         });
       } catch {
         if (isTest) return NextResponse.json({ ok: true, test: true, warning: 'Could not send the test email — try again.' });
