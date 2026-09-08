@@ -153,8 +153,18 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
         aria-label="Account menu"
       >
         {avatarUrl ? (
+          // width/height + inline round/cover so the avatar is constrained
+          // even before the stylesheet applies — otherwise it flashes at the
+          // image's full natural size on first paint.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" className="hdr-dj-menu-avatar" />
+          <img
+            src={avatarUrl}
+            alt=""
+            width={44}
+            height={44}
+            className="hdr-dj-menu-avatar"
+            style={{ borderRadius: '50%', objectFit: 'cover' }}
+          />
         ) : (
           <span className="hdr-dj-menu-avatar hdr-dj-menu-avatar-fallback">{initials}</span>
         )}
