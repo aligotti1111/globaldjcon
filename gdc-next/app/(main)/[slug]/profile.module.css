@@ -1948,8 +1948,8 @@
   gap: .55rem;
   padding: .55rem 1rem;
   background: rgba(5, 5, 7, .6);
-  border-top: 1px solid rgba(255, 255, 255, .08);
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-top: 2px solid rgba(255, 255, 255, .35);
+  border-bottom: 2px solid rgba(255, 255, 255, .35);
   flex-wrap: wrap;
 }
 .underBannerSocialBtn {
