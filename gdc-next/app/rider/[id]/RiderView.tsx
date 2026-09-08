@@ -139,7 +139,7 @@ export default function RiderView({
                         return (
                           <div key={it.id} style={{ display: 'flex', gap: '.7rem', fontSize: '.95rem', lineHeight: 1.5, alignItems: 'baseline' }}>
                             {lab && <div style={{ minWidth: 150, maxWidth: 150, color: 'rgba(255,255,255,.55)', fontWeight: 600 }}>{lab}</div>}
-                            <div style={{ flex: 1, color: 'rgba(255,255,255,.92)' }}>{val || (lab ? '' : '—')}</div>
+                            <div style={{ flex: 1, color: 'rgba(255,255,255,.92)', whiteSpace: 'pre-wrap' }}>{val || (lab ? '' : '—')}</div>
                           </div>
                         );
                       })}
