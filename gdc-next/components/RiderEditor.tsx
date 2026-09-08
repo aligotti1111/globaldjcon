@@ -175,7 +175,7 @@ export default function RiderEditor({
               border: isOver ? `1.5px solid ${NEON}` : BORDER,
               borderRadius: 12,
               padding: '1rem 1.1rem',
-              background: box.disabled ? 'rgba(255,255,255,.015)' : 'rgba(255,255,255,.03)',
+              background: '#000',
               opacity: isDragging ? 0.5 : box.disabled ? 0.55 : 1,
               boxShadow: isOver ? `0 0 0 3px rgba(0,224,164,.15)` : 'none',
               transition: 'opacity .12s ease, border-color .12s ease, box-shadow .12s ease',
@@ -287,24 +287,27 @@ export default function RiderEditor({
                     </button>
                   </div>
                 ) : (
-                  <label
-                    style={{
-                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', gap: '.45rem',
-                      background: NEON, border: `1px solid ${NEON}`, borderRadius: 8,
-                      color: '#04120d', padding: '.7rem 1rem', fontSize: '.85rem', fontWeight: 800,
-                      cursor: attachBusy[box.id] ? 'default' : 'pointer', opacity: attachBusy[box.id] ? 0.6 : 1,
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      hidden
-                      disabled={!!attachBusy[box.id]}
-                      onChange={(e) => onPickAttachment(box, e)}
-                    />
-                    {attachBusy[box.id] ? 'Uploading…' : '📎 Attach a file (image or PDF)'}
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <label
+                      title="Attach a file (image or PDF)"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.3rem',
+                        background: NEON, border: `1px solid ${NEON}`, borderRadius: 8,
+                        color: '#04120d', padding: '.35rem .55rem', fontSize: '.75rem', fontWeight: 800,
+                        cursor: attachBusy[box.id] ? 'default' : 'pointer', opacity: attachBusy[box.id] ? 0.6 : 1,
+                        boxSizing: 'border-box', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        hidden
+                        disabled={!!attachBusy[box.id]}
+                        onChange={(e) => onPickAttachment(box, e)}
+                      />
+                      {attachBusy[box.id] ? '…' : '📎 Attach'}
+                    </label>
+                  </div>
                 )}
                 <div style={{ color: MUTED, fontSize: '.72rem', marginTop: '.4rem' }}>
                   One file, max 5MB. Sent with the rider every time. For larger
