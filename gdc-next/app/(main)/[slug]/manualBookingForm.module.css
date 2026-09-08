@@ -9,26 +9,26 @@
 /* ── Card shell ────────────────────────────────────────────────────────
    The modal's box: black surface, hairline border, generous width so the
    two-column rows have room to breathe. */
+/* The form is mounted INSIDE the day-edit popup (which already provides the
+   black surface, border, date header, close ✕ and an "Add Booking Manually"
+   hero). So the form itself must NOT paint another card or a second header —
+   it just fills the popup width and lays its fields out. */
 .form {
-  background: #000000;
-  border: 1px solid rgba(255, 255, 255, .6);
-  border-radius: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
-/* ── Header: bold neon uppercase title + ✕ close ──────────────────────── */
+/* Header hidden: the popup already shows the date + ✕ + "Add Booking
+   Manually" hero above this form, so a second title/✕ would duplicate it. */
 .modalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-  padding: 1.1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
+  display: none;
 }
 .modalTitle {
   font-family: 'Bebas Neue', sans-serif;
@@ -51,8 +51,10 @@
 .modalClose:hover { color: var(--white); }
 
 /* ── Body ─────────────────────────────────────────────────────────────── */
+/* No horizontal padding — the day-edit popup already pads its content, so the
+   fields align to the popup edges instead of being double-inset. */
 .modalBody {
-  padding: 1.25rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: .9rem;
@@ -444,9 +446,10 @@ select.input {
   display: flex;
   justify-content: flex-end;
   gap: .65rem;
-  padding: 1rem 1.25rem;
+  margin-top: 1.1rem;
+  padding: 1rem 0 0;
   border-top: 1px solid var(--border);
-  background: var(--deep);
+  background: transparent;
 }
 .cancelBtn {
   font-family: 'Space Mono', monospace;
