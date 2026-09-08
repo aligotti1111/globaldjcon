@@ -583,6 +583,26 @@
   letter-spacing: .03em;
   line-height: 1;
   margin-bottom: .5rem;
+  /* Oversized-type concept: bare white condensed name (no pill), with a
+     dark "halo" text-shadow so it stays legible over any banner. */
+  color: #fff;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, .9),
+    0 2px 12px rgba(0, 0, 0, .8);
+}
+/* Neon underline bar sitting directly under the name. Rendered as a
+   pseudo-element so no extra markup is needed; keeps its neon glow on
+   every banner (its glow is intentional, unlike the name's dark halo). */
+.heroName::after {
+  content: '';
+  display: block;
+  width: 150px;
+  max-width: 100%;
+  height: 3px;
+  margin-top: .5rem;
+  border-radius: 2px;
+  background: var(--neon);
+  box-shadow: 0 0 10px var(--neon);
 }
 .heroBadges {
   display: flex;
@@ -620,15 +640,16 @@
 .heroLocation {
   display: flex;
   align-items: center;
-  gap: .3rem;
-  padding: .28rem .7rem;
-  background: rgba(5, 5, 7, .85);
-  border: 1px solid rgba(255, 255, 255, .15);
-  border-radius: 8px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #fff;
+  gap: .35rem;
+  /* Oversized-type concept: bare mono uppercase location (no pill),
+     near-white with a dark halo so it reads over any banner. */
+  color: rgba(255, 255, 255, .92);
+  font-family: 'Space Mono', monospace;
   font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-shadow: 0 0 4px rgba(0, 0, 0, .9);
+  margin-top: .5rem;
   margin-bottom: .35rem;
   width: fit-content;
   max-width: 100%;
@@ -877,27 +898,29 @@
    only the backgrounds become opaque dark fills. Hero text picks up a
    dark text-shadow so name, location, and badges stay legible on any
    banner color. */
-.heroHasBanner .heroName,
-.heroHasBanner .heroLocation,
 .heroHasBanner .heroYears,
 .heroHasBanner .heroBadges {
   text-shadow:
     0 1px 2px rgba(0, 0, 0, .9),
     0 0 8px rgba(0, 0, 0, .7);
 }
-/* Banner-mode: wrap the DJ/company name in its own dark blurred pill
-   so it stays legible over photo banners. Matches the top-left banner
-   name badge style. */
+/* Oversized-type concept: no dark pill behind the name on banners — the
+   name keeps its own bare white + halo look (see base .heroName), and the
+   scrim below guarantees legibility over light or busy photos. Long names
+   may wrap over two lines rather than being forced onto one. */
 .heroHasBanner .heroName {
-  display: inline-block;
-  padding: .315rem .9rem;
-  background: rgba(5, 5, 7, .85);
-  border: 1px solid rgba(255, 255, 255, .15);
-  border-radius: 8px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   max-width: 100%;
-  white-space: nowrap;
+}
+/* Bottom-to-top dark scrim painted over the banner image (below the hero
+   content, above the banner photo and its badges) so the oversized white
+   name/location read cleanly on light, dark, or busy banners. Rendered as
+   .banner::before so the corner badge + edit button paint on top of it. */
+.heroHasBanner .banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, .82), rgba(0, 0, 0, 0) 58%);
+  pointer-events: none;
 }
 /* Name-length size tiers — keeps the pill tight when the name is long.
    Applied additively to .heroName via JS (nameSizeClass). */
