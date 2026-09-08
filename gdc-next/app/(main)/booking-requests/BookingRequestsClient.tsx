@@ -171,12 +171,12 @@ export default function BookingRequestsClient({
   // approve an offer. Summarizes who/when and what the next step is
   // (contract to sign, or deposit to pay), plus a way to reach the DJ.
   const [lockedIn, setLockedIn] = useState<{
+    djId: string;
     djName: string;
     dateLabel: string;
     requiresContract: boolean;
     depositLabel: string | null;
     djPhone: string | null;
-    djEmail: string | null;
   } | null>(null);
   // historyModal: which booking's negotiation log to display in the
   // read-only History modal (opened from the Rate box "View History" link).
@@ -776,12 +776,12 @@ export default function BookingRequestsClient({
           ? `${depAmt > 0 ? `${depSym}${depAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'A deposit'}${depPct > 0 ? ` (${depPct}%)` : ''}`
           : null;
         setLockedIn({
+          djId: b.dj_id,
           djName: b.dj_name || 'Your DJ',
           dateLabel: b.event_date ? formatShortDate(b.event_date) : 'your date',
           requiresContract: bx.requires_contract === true,
           depositLabel,
           djPhone: b.dj_phone || null,
-          djEmail: b.dj_email || null,
         });
       }
     } catch (err) {
@@ -1399,34 +1399,38 @@ export default function BookingRequestsClient({
               </div>
             </div>
 
-            {/* Connect with the DJ */}
-            {(lockedIn.djPhone || lockedIn.djEmail) && (
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: '.5rem' }}>
-                  Want to connect with {lockedIn.djName}?
-                </div>
-                <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
-                  {lockedIn.djPhone && (
-                    <a
-                      href={`tel:${lockedIn.djPhone}`}
-                      className={styles.counterCancelBtn}
-                      style={{ textDecoration: 'none' }}
-                    >
-                      📞 Call
-                    </a>
-                  )}
-                  {lockedIn.djEmail && (
-                    <a
-                      href={`mailto:${lockedIn.djEmail}`}
-                      className={styles.counterCancelBtn}
-                      style={{ textDecoration: 'none' }}
-                    >
-                      ✉️ Message
-                    </a>
-                  )}
-                </div>
+            {/* Connect with the DJ — in-app message always available; Call
+                only when the DJ has a phone number on file. */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: '.5rem' }}>
+                Want to connect with {lockedIn.djName}?
               </div>
-            )}
+              <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
+                {lockedIn.djPhone && (
+                  <a
+                    href={`tel:${lockedIn.djPhone}`}
+                    className={styles.counterCancelBtn}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    📞 Call
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className={styles.counterCancelBtn}
+                  onClick={() => {
+                    openComposeModal(
+                      lockedIn.djId,
+                      lockedIn.djName,
+                      `Booking on ${lockedIn.dateLabel}`,
+                    );
+                    setLockedIn(null);
+                  }}
+                >
+                  ✉️ Message
+                </button>
+              </div>
+            </div>
 
             <button
               type="button"
