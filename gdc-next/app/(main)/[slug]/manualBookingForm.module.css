@@ -1,26 +1,102 @@
-/* ManualBookingForm — reusable form component. Styles match the modal
-   version in /upcoming-bookings so the experience is identical regardless
-   of whether the form is mounted in a modal or inline in the day-edit
-   popup. */
+/* ManualBookingForm — reusable form component. Styling mirrors the
+   "Add Booking Manually" modal in /upcoming-bookings (AddManualBookingModal
+   + upcomingBookings.module.css) so the two look identical: a black, neon-
+   accented card with a bold uppercase heading, two-column field rows, dark
+   inputs, and a header/body/footer layout. The form is mounted inline (in the
+   day-edit popup accordion), so the card fills its container and simply reads
+   as a wider modal-style box. */
 
+/* ── Card shell ────────────────────────────────────────────────────────
+   The modal's box: black surface, hairline border, generous width so the
+   two-column rows have room to breathe. */
 .form {
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, .6);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  overflow: hidden;
 }
+
+/* ── Header: bold neon uppercase title + ✕ close ──────────────────────── */
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--neon);
+  margin: 0;
+}
+.modalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 .3rem;
+}
+.modalClose:hover { color: var(--white); }
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+.modalBody {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
 .field {
   display: flex;
   flex-direction: column;
-  gap: .4rem;
+  gap: .35rem;
 }
+
+/* Two equal columns (Venue Type / Set Type, Start / End when the date is
+   locked). */
 .fieldRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: .85rem;
+  gap: .75rem;
 }
+/* Three columns: Date / Start Time / End Time. */
+.fieldRow3 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: .45rem;
+}
+.fieldRow3 > .field {
+  min-width: 0;
+}
+.fieldRow3 .input,
+.fieldRow3 .dateInput,
+.fieldRow3 .dateWrap {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 420px) {
+  .fieldRow3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fieldRow3 > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Venue Name (flexible) + Rate (narrow, fixed) on one line. The venue
-   field shrinks to fill whatever width is left rather than wrapping —
-   the accordion popup is narrow, so wrapping would always stack them. */
+   field shrinks to fill the remaining width rather than wrapping. */
 .venueRateRow {
   display: flex;
   gap: .6rem;
@@ -33,11 +109,11 @@
 .venueRateRow > label:last-child {
   flex: 0 0 auto;
 }
+
 .fieldLabel {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: .7rem;
-  font-weight: 600;
-  letter-spacing: .07em;
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--white);
 }
@@ -64,16 +140,25 @@
   font-family: 'DM Sans', sans-serif;
   white-space: nowrap;
 }
+
 .input {
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .6rem .85rem;
+  border-radius: 6px;
+  padding: .42rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
   width: 100%;
+  height: 36px;
+  box-sizing: border-box;
   transition: border-color .15s, box-shadow .15s;
+}
+/* Native <select> renders taller than <input> for the same padding; the
+   explicit height + border-box normalizes them. */
+select.input {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .input:hover { border-color: rgba(255, 255, 255, .2); }
 .input:focus {
@@ -111,13 +196,16 @@
   right: 1.95rem;
 }
 
+/* Date field: wrap the native input in a clickable box so any click on the
+   field surface opens the system date picker. */
 .dateWrap {
   position: relative;
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  min-height: 27px;
+  height: 36px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   transition: border-color .15s, box-shadow .15s;
@@ -130,7 +218,7 @@
 .dateInput {
   background: transparent;
   border: none;
-  padding: .6rem .85rem;
+  padding: .42rem .8rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -145,6 +233,7 @@
 }
 .dateInput:disabled { cursor: not-allowed; opacity: .6; }
 
+/* Address row — input grows; country chip takes its natural width. */
 .addrRow {
   display: flex;
   align-items: stretch;
@@ -186,26 +275,24 @@
   border: 1px solid var(--border);
   color: var(--white);
   font-family: 'Space Mono', monospace;
-  font-size: .7rem;
+  font-size: .75rem;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
   padding: 0 .55rem;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  min-width: 78px;
+  min-width: 88px;
   flex-shrink: 0;
 }
 .countrySelect:focus { outline: none; border-color: var(--neon); }
 
-/* Rate row: currency prefix + numeric input + currency selector. Mirrors
-   the equivalent block in /upcoming-events for visual parity. */
+/* Rate row: currency prefix + numeric input + currency selector. */
 .rateRow {
   display: flex;
   align-items: stretch;
   gap: .35rem;
 }
-/* Currency symbol sits INSIDE the rate input (absolutely positioned)
-   rather than in a separate prefix box — saves horizontal space. */
+/* Currency symbol sits INSIDE the rate input — saves horizontal space. */
 .rateInputWrap {
   position: relative;
   flex: 0 0 auto;
@@ -226,9 +313,9 @@
   min-width: 0;
   background: var(--deep);
   border: 1px solid var(--border);
-  border-radius: 8px 0 0 8px;
+  border-radius: 6px 0 0 6px;
   /* extra left padding so the value clears the currency symbol */
-  padding: .6rem .8rem .6rem 1.5rem;
+  padding: .42rem .8rem .42rem 1.5rem;
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
@@ -258,12 +345,13 @@
   font-weight: 700;
   letter-spacing: .1em;
   padding: 0 .55rem;
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 6px 6px 0;
   cursor: pointer;
   min-width: 64px;
 }
 .rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
 
+/* ── Host details section ─────────────────────────────────────────────── */
 .hostInviteBlock {
   margin-top: .35rem;
   padding: 1rem;
@@ -273,6 +361,22 @@
   display: flex;
   flex-direction: column;
   gap: .75rem;
+}
+/* "HOST DETAILS (optional)" heading for the block. */
+.hostDetailsTitle {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--white);
+  opacity: .7;
+}
+/* Muted helper line under the heading. */
+.hostHelper {
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.4;
+  margin-top: -.4rem;
 }
 .inviteCheckRow {
   display: flex;
@@ -335,11 +439,14 @@
   font-size: .82rem;
 }
 
-.actions {
+/* ── Footer: Cancel / Add Booking, right-aligned ──────────────────────── */
+.modalFooter {
   display: flex;
   justify-content: flex-end;
   gap: .65rem;
-  padding-top: .35rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--deep);
 }
 .cancelBtn {
   font-family: 'Space Mono', monospace;
@@ -349,8 +456,8 @@
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .7rem 1.15rem;
+  border-radius: 6px;
+  padding: .65rem 1rem;
   cursor: pointer;
   transition: color .15s, border-color .15s;
 }
@@ -363,8 +470,8 @@
   background: var(--neon);
   color: #000;
   border: none;
-  border-radius: 8px;
-  padding: .7rem 1.3rem;
+  border-radius: 6px;
+  padding: .65rem 1.1rem;
   cursor: pointer;
   font-weight: 700;
   box-shadow: 0 4px 14px -4px rgba(0, 245, 196, .5);
