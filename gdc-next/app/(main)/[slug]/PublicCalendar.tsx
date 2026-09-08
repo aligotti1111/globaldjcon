@@ -19,6 +19,7 @@
 //     setting `selectedDate` yet; the prop exists to wire up cleanly later.
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './calendar.module.css';
 import MonthEventsList from './MonthEventsList';
 import ManualBookingForm, { type ManualBookingRow } from './ManualBookingForm';
@@ -1381,7 +1382,8 @@ function OwnerDayEditPopup({
     });
   }
 
-  return (
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div className={styles.ownerEditBackdrop} onClick={onClose}>
       <div className={styles.ownerEditBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.ownerEditHeader}>
@@ -1684,7 +1686,8 @@ function OwnerDayEditPopup({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
