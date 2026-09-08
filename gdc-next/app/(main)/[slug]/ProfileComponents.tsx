@@ -2789,15 +2789,9 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
       /* copy failed — nothing more we can do */
     }
   }
-  // The Share button opens a share-options menu (copy / email / socials).
-  // Prefer the native share sheet on devices that support it; otherwise
-  // fall back to the in-page menu.
+  // The Share button opens our in-page share-options menu (copy / email /
+  // socials) on every device — one consistent behavior, no native sheet.
   function handleShare() {
-    const nav = navigator as Navigator & { share?: (d: { title?: string; url?: string }) => Promise<void> };
-    if (typeof nav.share === 'function') {
-      nav.share({ title: shareTitle, url: profileUrl() }).catch(() => setShareOpen((v) => !v));
-      return;
-    }
     setShareOpen((v) => !v);
   }
   const shareMenu: { key: string; label: string; href?: string; onClick?: () => void }[] = [
