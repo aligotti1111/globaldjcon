@@ -53,21 +53,24 @@ export default function RiderEditor({
   function setBoxItems(id: string, next: RiderItem[]) {
     patchBox(id, { items: next });
   }
-  function addField(box: RiderBox) {
-    setBoxItems(box.id, [...box.items, { id: newRiderId(), section: box.section, label: '', value: '' }]);
+  // Each box is a single free-text area. Its text is stored as ONE field row
+  // (label empty, value = the text) so newlines/paragraphs are preserved and
+  // never collapsed. Legacy boxes that still hold multiple label/value rows are
+  // shown as joined lines and fold down to a single text field on first edit.
+  function boxText(box: RiderBox): string {
+    if (box.items.length === 1 && !box.items[0].label) return box.items[0].value;
+    return box.items
+      .map((it) => {
+        const l = (it.label || '').trim();
+        const v = (it.value || '').trim();
+        return l && v ? `${l}: ${v}` : (l || v);
+      })
+      .filter(Boolean)
+      .join('\n');
   }
-  function patchField(box: RiderBox, fid: string, p: Partial<RiderItem>) {
-    setBoxItems(box.id, box.items.map((i) => (i.id === fid ? { ...i, ...p } : i)));
-  }
-  function removeField(box: RiderBox, fid: string) {
-    setBoxItems(box.id, box.items.filter((i) => i.id !== fid));
-  }
-  function moveField(box: RiderBox, idx: number, dir: -1 | 1) {
-    const j = idx + dir;
-    if (j < 0 || j >= box.items.length) return;
-    const next = box.items.slice();
-    [next[idx], next[j]] = [next[j], next[idx]];
-    setBoxItems(box.id, next);
+  function setBoxText(box: RiderBox, text: string) {
+    const id = box.items[0]?.id || newRiderId();
+    setBoxItems(box.id, text.length ? [{ id, section: box.section, label: '', value: text }] : []);
   }
   function addBox() {
     commit([
@@ -146,7 +149,7 @@ export default function RiderEditor({
 
   const input: React.CSSProperties = {
     minWidth: 0,
-    background: 'var(--panel-2, rgba(255,255,255,.04))',
+    background: 'var(--deep, #000)',
     border: BORDER,
     borderRadius: 8,
     color: 'var(--white,#fff)',
@@ -251,46 +254,20 @@ export default function RiderEditor({
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-              {box.items.length === 0 && (
-                <div style={{ color: MUTED, fontSize: '.82rem', fontStyle: 'italic' }}>
-                  Nothing here yet — add a line below.
-                </div>
-              )}
-              {box.items.map((it, i) => (
-                <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-                  <input
-                    type="text"
-                    value={it.label}
-                    onChange={(e) => patchField(box, it.id, { label: e.target.value })}
-                    placeholder="Requirement"
-                    maxLength={80}
-                    style={{ ...input, flex: '1 1 170px', fontWeight: 600 }}
-                  />
-                  <input
-                    type="text"
-                    value={it.value}
-                    onChange={(e) => patchField(box, it.id, { value: e.target.value })}
-                    placeholder="Details (optional)"
-                    maxLength={200}
-                    style={{ ...input, flex: '2 1 220px' }}
-                  />
-                  <div style={{ display: 'flex', gap: '.25rem', flexShrink: 0 }}>
-                    <button type="button" onClick={() => moveField(box, i, -1)} disabled={i === 0} aria-label="Move up" title="Move up" style={ctl(MUTED, i === 0)}>↑</button>
-                    <button type="button" onClick={() => moveField(box, i, 1)} disabled={i === box.items.length - 1} aria-label="Move down" title="Move down" style={ctl(MUTED, i === box.items.length - 1)}>↓</button>
-                    <button type="button" onClick={() => removeField(box, it.id)} aria-label="Remove" title="Remove" style={ctl('#ff6b6b', false)}>✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => addField(box)}
-              style={{ marginTop: '.7rem', background: 'transparent', border: 'none', color: NEON, padding: '.2rem 0', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
-            >
-              + Add field
-            </button>
+            <textarea
+              value={boxText(box)}
+              onChange={(e) => setBoxText(box, e.target.value)}
+              placeholder={`Type your ${box.title.toLowerCase()} requirements…`}
+              rows={4}
+              style={{
+                ...input,
+                width: '100%',
+                resize: 'vertical',
+                lineHeight: 1.5,
+                minHeight: 90,
+                fontFamily: 'inherit',
+              }}
+            />
 
             {/* Attachment — Technical + Visuals boxes only. One image or PDF,
                 ≤5MB, that travels with the rider (attached to the host email
