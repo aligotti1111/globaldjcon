@@ -7,7 +7,7 @@
 //              Print / Save-PDF button.
 
 import { useState } from 'react';
-import { RIDER_SECTIONS, groupRider, type RiderItem, type RiderMode } from '@/lib/rider';
+import { groupRiderBoxes, type RiderItem, type RiderMode } from '@/lib/rider';
 
 function fmtDate(d: string | null): string {
   if (!d) return '';
@@ -45,7 +45,7 @@ export default function RiderView({
   venueName: string | null;
   venueAddress: string | null;
 }) {
-  const g = groupRider(items);
+  const boxes = groupRiderBoxes(items).filter((b) => !b.disabled && (b.items.length > 0 || !!b.attachmentUrl));
   const when = fmtDate(eventDate);
   const isUpload = mode === 'upload' && !!pdfUrl;
 
@@ -125,13 +125,12 @@ export default function RiderView({
         ) : (
           <>
             <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.5rem' }}>
-              {RIDER_SECTIONS.map(({ key, label }) => {
-                const rows = g[key];
-                if (!rows.length) return null;
+              {boxes.map((box) => {
+                const rows = box.items;
                 return (
-                  <div key={key} style={{ marginBottom: '1.3rem' }}>
+                  <div key={box.id} style={{ marginBottom: '1.3rem' }}>
                     <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.6rem' }}>
-                      {label}
+                      {box.title}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
                       {rows.map((it) => {
@@ -145,6 +144,19 @@ export default function RiderView({
                         );
                       })}
                     </div>
+                    {box.attachmentUrl && (
+                      <div style={{ marginTop: rows.length ? '.75rem' : 0 }}>
+                        <a
+                          href={box.attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', color: 'var(--neon,#00e0a4)', fontSize: '.9rem', fontWeight: 700, textDecoration: 'none' }}
+                        >
+                          <span aria-hidden>📎</span>
+                          {box.attachmentName || 'Download attachment'}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 );
               })}
