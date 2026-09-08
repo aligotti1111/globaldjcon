@@ -288,10 +288,11 @@ export default function RiderEditor({
                 ) : (
                   <label
                     style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '.45rem',
-                      background: 'transparent', border: `1px dashed ${NEON}`, borderRadius: 8,
-                      color: NEON, padding: '.45rem .9rem', fontSize: '.82rem', fontWeight: 700,
+                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', gap: '.45rem',
+                      background: NEON, border: `1px solid ${NEON}`, borderRadius: 8,
+                      color: '#04120d', padding: '.7rem 1rem', fontSize: '.85rem', fontWeight: 800,
                       cursor: attachBusy[box.id] ? 'default' : 'pointer', opacity: attachBusy[box.id] ? 0.6 : 1,
+                      boxSizing: 'border-box',
                     }}
                   >
                     <input
