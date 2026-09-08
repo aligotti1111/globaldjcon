@@ -1254,7 +1254,7 @@ function OwnerDayEditPopup({
         .from('bookings')
         .select('id, event_date, status')
         .eq('dj_id', djId)
-        .in('status', ['approved', 'pending', 'countered'])
+        .in('status', ['approved', 'pending', 'counter'])
         .gte('event_date', today);
       const [dayRes, profileRes, allRes] = await Promise.all([
         dayBookingsPromise, profilePromise, allBookingsPromise,
