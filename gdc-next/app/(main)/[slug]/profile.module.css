@@ -2070,7 +2070,15 @@
     font-size: .55rem;
   }
   .shareDesktop { display: none; }
-  .shareMobileDots { display: block; }
+  .shareMobileDots {
+    display: block;
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    padding: 6px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+  }
 }
 /* SocialAddButton inside the under-banner strip: shrink to match the
    34px existing social icons, override actionBtnEmpty's dashed border
