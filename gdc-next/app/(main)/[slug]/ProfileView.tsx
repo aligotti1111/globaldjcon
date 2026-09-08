@@ -726,11 +726,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             if (!requireVerified(`/${effectiveSlug}`)) return;
             setComposeOpen(true);
           }}
-          onPhoneClick={() => {
-            // Logged-out visitors: route to /login (returns to this profile),
-            // then the tel: link renders for signed-in users.
-            requireVerified(`/${effectiveSlug}`);
-          }}
         />
 
         {/* BODY */}
