@@ -2823,7 +2823,12 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
     return s.startsWith('http') ? s : prefix + s.replace('@', '');
   }
   const links: { key: string; href: string; title: string; cls: string; icon: React.ReactNode }[] = [];
-  if (data.website) links.push({ key: 'web', href: n(data.website, 'https://'), title: 'Website', cls: styles.underBannerSocialWebsite, icon: <WebsiteIcon /> });
+  if (data.website) links.push({ key: 'web', href: n(data.website, 'https://'), title: 'Website', cls: styles.underBannerSocialWebsite, icon: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  ) });
   if (data.soundcloud) links.push({ key: 'sc', href: n(data.soundcloud, 'https://soundcloud.com/'), title: 'SoundCloud', cls: styles.underBannerSocialSoundcloud, icon: <SoundcloudIcon /> });
   if (data.instagram) links.push({ key: 'ig', href: n(data.instagram, 'https://instagram.com/'), title: 'Instagram', cls: styles.underBannerSocialInstagram, icon: <InstagramIcon /> });
   if (data.tiktok) links.push({ key: 'tk', href: n(data.tiktok, 'https://tiktok.com/@'), title: 'TikTok', cls: styles.underBannerSocialTiktok, icon: <TiktokIcon /> });
@@ -2936,7 +2941,12 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
               title={data.phone}
               aria-label="Call"
             >
-              <PhoneIcon />
+              {/* Solid classic handset with ring waves. */}
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                <path d="M15.5 6.5c1.4.5 2.5 1.6 3 3" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+                <path d="M15 3.2c2.9.7 5.1 2.9 5.8 5.8" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+              </svg>
             </a>
           )}
           <button
