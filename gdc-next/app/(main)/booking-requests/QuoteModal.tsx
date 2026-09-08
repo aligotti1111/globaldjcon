@@ -79,6 +79,11 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // itemize add-ons; that path is unchanged.)
   const hasCocktail = !!booking.cocktail_needed;
   const hasCeremony = !!booking.ceremony_needed;
+  // Weddings get reception-specific time labels ("Reception Start/End")
+  // since the main event times ARE the reception on a wedding booking.
+  const isWedding = (booking.event_type || '').toLowerCase() === 'weddings';
+  const startLabel = isWedding ? 'Reception Start' : 'Start';
+  const endLabel = isWedding ? 'Reception End' : 'End';
   // Percentage off, as a string ('' = none). Re-opening a sent offer restores
   // the % that was applied.
   const [discountPct, setDiscountPct] = useState(
@@ -310,8 +315,30 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               background: 'rgba(255,255,255,.02)',
             }}
           >
-            {/* Date + time row */}
-            {(booking.event_date || booking.start_time || booking.end_time) && (
+            {/* Date on its own line */}
+            {booking.event_date && (
+              <div style={{ marginBottom: (booking.start_time || booking.end_time) ? '.6rem' : 0 }}>
+                <div
+                  style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: '.5rem',
+                    letterSpacing: '.1em',
+                    textTransform: 'uppercase',
+                    color: 'var(--muted)',
+                    marginBottom: '.15rem',
+                  }}
+                >
+                  Date
+                </div>
+                <div style={{ color: 'var(--neon)', fontWeight: 600, fontSize: '.78rem' }}>
+                  {formatLongDate(booking.event_date)}
+                </div>
+              </div>
+            )}
+
+            {/* Start + end times on the next line. Weddings read
+                "Reception Start / Reception End". */}
+            {(booking.start_time || booking.end_time) && (
               <div
                 style={{
                   display: 'flex',
@@ -319,25 +346,6 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                   gap: '1.25rem',
                 }}
               >
-                {booking.event_date && (
-                  <div>
-                    <div
-                      style={{
-                        fontFamily: "'Space Mono', monospace",
-                        fontSize: '.5rem',
-                        letterSpacing: '.1em',
-                        textTransform: 'uppercase',
-                        color: 'var(--muted)',
-                        marginBottom: '.15rem',
-                      }}
-                    >
-                      Date
-                    </div>
-                    <div style={{ color: 'var(--neon)', fontWeight: 600, fontSize: '.78rem' }}>
-                      {formatLongDate(booking.event_date)}
-                    </div>
-                  </div>
-                )}
                 {booking.start_time && (
                   <div>
                     <div
@@ -350,7 +358,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                         marginBottom: '.15rem',
                       }}
                     >
-                      Start
+                      {startLabel}
                     </div>
                     <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
                       {formatTime12(booking.start_time)}
@@ -369,7 +377,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                         marginBottom: '.15rem',
                       }}
                     >
-                      End
+                      {endLabel}
                     </div>
                     <div style={{ color: 'var(--neon)', fontWeight: 600 }}>
                       {formatTime12(booking.end_time)}
@@ -532,9 +540,29 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         {/* What the price covers — read-only. Cocktail hour and ceremony are
             listed FIRST so the DJ sees everything they're pricing before the
             single Event Price box that follows. */}
-        {!isClubBooking && (hasCocktail || hasCeremony) && (
+        {!isClubBooking && (isWedding || hasCocktail || hasCeremony) && (
           <div className={styles.cocktailBox}>
             <div className={styles.cocktailHeader}>Your price also covers</div>
+            {isWedding && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  padding: '.3rem 0',
+                  fontSize: '.78rem',
+                  color: 'rgba(255,255,255,.85)',
+                }}
+              >
+                <span>💒 Reception</span>
+                <span style={{ color: 'var(--muted)' }}>
+                  {[
+                    booking.start_time ? formatTime12(booking.start_time) : null,
+                    booking.end_time ? formatTime12(booking.end_time) : null,
+                  ].filter(Boolean).join(' – ')}
+                </span>
+              </div>
+            )}
             {hasCeremony && (
               <div
                 style={{
