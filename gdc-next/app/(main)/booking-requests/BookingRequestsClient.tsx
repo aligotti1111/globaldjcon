@@ -1392,7 +1392,7 @@ export default function BookingRequestsClient({
                 {lockedIn.requiresContract ? (
                   <>{lockedIn.djName} will send you a contract to review and sign. Keep an eye on your email.</>
                 ) : lockedIn.depositLabel ? (
-                  <>{lockedIn.depositLabel} deposit is due to reserve your date. You&apos;ll receive a payment link by email.</>
+                  <>Please be on the look out for an email with payment options to complete the deposit request {lockedIn.depositLabel}.</>
                 ) : (
                   <>{lockedIn.djName} will reach out with any final details. You&apos;re all set!</>
                 )}
