@@ -315,7 +315,7 @@
 /* ── MONTH GRID ─────────────────────────────────────────────────── */
 .dayHeaderRow {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-left: 1px solid var(--border);
   border-top: 1px solid var(--border);
   border-radius: 8px 8px 0 0;
@@ -338,7 +338,7 @@
 
 .cellsGrid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   /* Embed-style: individual rounded cells with small gaps instead of
      a continuous grid with shared borders. */
   gap: 4px;
@@ -569,7 +569,7 @@
 }
 .miniDayHeader {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   margin-bottom: 2px;
 }
@@ -581,7 +581,7 @@
 }
 .miniGrid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
 }
 .miniCell {
