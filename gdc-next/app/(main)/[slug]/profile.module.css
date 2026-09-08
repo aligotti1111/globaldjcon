@@ -1968,6 +1968,7 @@
 .underBannerSocialBtn svg {
   width: 20px;
   height: 20px;
+  display: block;
 }
 .underBannerSocialBtn:hover {
   transform: translateY(-1px);
