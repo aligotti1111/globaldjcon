@@ -244,7 +244,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .shead h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);line-height:.95;letter-spacing:.01em;margin:.7rem 0 .7rem}
 .gdc-landing .shead p{color:var(--muted);font-size:1.06rem}
 @media(min-width:1240px){
-.gdc-landing #features .shead h2{white-space:nowrap;overflow:visible}
+.gdc-landing #features .shead h2{white-space:normal;overflow:visible}
 }
 .gdc-landing /* TWO DJ TYPES + pipelines */
   /* 3 steps */
