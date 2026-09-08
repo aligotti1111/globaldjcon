@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, normalizeRiderMode, STARTER_RIDER, type RiderItem, type RiderMode } from '@/lib/rider';
+import { normalizeRiderItems, normalizeRiderMode, withStarterTechnical, type RiderItem, type RiderMode } from '@/lib/rider';
 
 export default function TeamSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,7 @@ export default function TeamSettingsPage() {
   const [riderDefault, setRiderDefault] = useState<RiderItem[]>([]);
   const [riderMode, setRiderMode] = useState<RiderMode>('custom');
   const [riderPdfUrl, setRiderPdfUrl] = useState<string | null>(null);
+  const [riderName, setRiderName] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -25,13 +26,14 @@ export default function TeamSettingsPage() {
     try {
       const res = await fetch('/api/team/settings');
       if (res.status === 403) { setAllowed(false); return; }
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; riderEnabled?: boolean; guestlistEnabled?: boolean; riderDefault?: unknown; riderMode?: unknown; riderPdfUrl?: string | null };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; riderEnabled?: boolean; guestlistEnabled?: boolean; riderDefault?: unknown; riderMode?: unknown; riderPdfUrl?: string | null; riderName?: string | null };
       if (res.ok && data.ok) {
         setRiderEnabled(!!data.riderEnabled);
         setGuestlistEnabled(!!data.guestlistEnabled);
         setRiderDefault(normalizeRiderItems(data.riderDefault));
         setRiderMode(normalizeRiderMode(data.riderMode));
         setRiderPdfUrl(data.riderPdfUrl || null);
+        setRiderName(typeof data.riderName === 'string' ? data.riderName : '');
       }
     } finally { setLoading(false); }
   }, []);
@@ -42,7 +44,7 @@ export default function TeamSettingsPage() {
     try {
       const res = await fetch('/api/team/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ riderEnabled, guestlistEnabled, riderMode, riderPdfUrl, riderDefault: riderDefault.filter((i) => i.section === 'hospitality' || i.section === 'custom') }),
+        body: JSON.stringify({ riderEnabled, guestlistEnabled, riderMode, riderPdfUrl, riderDefault, riderName }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save.');
@@ -79,7 +81,7 @@ export default function TeamSettingsPage() {
       <Link href="/upcoming-bookings" style={{ color: muted, fontSize: '.85rem', textDecoration: 'none' }}>← Back to bookings</Link>
       <h1 style={{ margin: '.6rem 0 .3rem', fontSize: '1.6rem' }}>Rider & Guest List Settings</h1>
       <p style={{ color: muted, fontSize: '.88rem', lineHeight: 1.6, margin: '0 0 1.4rem' }}>
-        Turn the club/bar Rider and Guest List steps on or off, and set the default hospitality items every rider starts from. The technical section is filled from each booking&rsquo;s equipment choice.
+        Turn the club/bar Rider and Guest List steps on or off, and set up the default rider boxes every booking starts from. The Technical box is refilled from each booking&rsquo;s equipment choice.
       </p>
 
       <Toggle on={riderEnabled} set={setRiderEnabled} label="Enable DJ Rider" hint="Adds the Rider step to club/bar bookings." />
@@ -94,12 +96,13 @@ export default function TeamSettingsPage() {
           onItemsChange={setRiderDefault}
           pdfUrl={riderPdfUrl}
           onPdfUrlChange={setRiderPdfUrl}
-          sections={['hospitality', 'custom']}
+          name={riderName}
+          onNameChange={setRiderName}
         />
-        {riderMode === 'custom' && riderDefault.filter((i) => i.section === 'hospitality' || i.section === 'custom').length === 0 && (
-          <button type="button" onClick={() => setRiderDefault(STARTER_RIDER.filter((i) => i.section === 'hospitality').map((i) => ({ ...i })))}
+        {riderMode === 'custom' && !riderDefault.some((i) => i.section === 'technical' && i.type !== 'box') && (
+          <button type="button" onClick={() => setRiderDefault(withStarterTechnical(riderDefault))}
             style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}>
-            Load starter hospitality
+            Load starter technical
           </button>
         )}
       </div>
