@@ -65,11 +65,24 @@ export async function resolveUserEmail(userId: string): Promise<string | null> {
 // Also checks users.contact_email, so an address a phone-signup host gave at
 // booking still resolves to their account — otherwise the same person could
 // be handed a "create an account" link for an account they already have.
-export async function resolveUserIdByEmail(email: string): Promise<string | null> {
+// opts.strict — when true, a lookup FAILURE (listUsers error, DB error, or any
+// thrown exception) propagates to the caller instead of being swallowed into a
+// null "no match". This matters for the uniqueness check: a swallowed error
+// reads as "address is free" and lets a host claim a DJ's address (fail-open).
+// The conflict check passes strict:true so it fails CLOSED — a lookup it can't
+// complete refuses the write and asks the user to retry, rather than allowing
+// something this guard exists to prevent. The email-invite CTA leaves strict
+// off: there, "couldn't tell" → show "create account" is an acceptable default.
+export async function resolveUserIdByEmail(
+  email: string,
+  opts?: { strict?: boolean },
+): Promise<string | null> {
   if (!email) return null;
   const target = email.toLowerCase().trim();
   if (!target) return null;
-  try {
+  const strict = opts?.strict === true;
+
+  const run = async (): Promise<string | null> => {
     const admin = createAdminClient();
     const perPage = 1000;
     // Cap at a few pages so a misconfigured account can't spiral into a
@@ -78,6 +91,7 @@ export async function resolveUserIdByEmail(email: string): Promise<string | null
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
       if (error) {
         console.error('[resolveUserIdByEmail] listUsers error', error);
+        if (strict) throw error; // fail closed — don't pretend "not found"
         break;
       }
       const users = data?.users || [];
@@ -87,13 +101,24 @@ export async function resolveUserIdByEmail(email: string): Promise<string | null
     }
 
     // Not an auth email — check profile delivery addresses.
-    const { data: profile } = await admin
+    const { data: profile, error: profileErr } = await admin
       .from('users')
       .select('id')
       .ilike('contact_email', target)
       .limit(1)
       .maybeSingle<{ id: string }>();
+    if (profileErr) {
+      console.error('[resolveUserIdByEmail] contact_email lookup error', profileErr);
+      if (strict) throw profileErr; // fail closed
+    }
     return profile?.id || null;
+  };
+
+  // Strict callers get the raw error so they can decide to refuse. Lenient
+  // callers keep the old swallow-to-null behavior.
+  if (strict) return run();
+  try {
+    return await run();
   } catch (e) {
     console.error('[resolveUserIdByEmail] error', e);
     return null;
