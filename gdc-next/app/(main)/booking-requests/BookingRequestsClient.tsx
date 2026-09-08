@@ -27,6 +27,35 @@ import { currencySymbol } from '@/lib/constants';
 import type { PaymentMethod } from '@/lib/paymentMethods';
 import type { BookingRow, BookingPayment } from './page';
 
+// Re-snapshot tax/total/deposit to the price being accepted. The stored
+// tax_amount / total_with_tax / deposit_amount were frozen at the ORIGINAL
+// offer; a counter updated counter_rate but left those stale, so invoices
+// billed the old total. Recompute from the accepted price (counter → quoted →
+// offer) using the booking's frozen tax_pct / deposit_pct. Returns {} when
+// there's no usable price so we never overwrite good data with zeros.
+function acceptedMoneyPatch(b: BookingRow | undefined): Record<string, number | null> {
+  if (!b) return {};
+  const bx = b as BookingRow & {
+    counter_rate?: number | null;
+    quoted_rate?: number | null;
+    offer_amount?: number | null;
+    tax_pct?: number | null;
+    deposit_pct?: number | null;
+  };
+  const agreed = Number(bx.counter_rate ?? bx.quoted_rate ?? bx.offer_amount ?? 0);
+  if (!Number.isFinite(agreed) || agreed <= 0) return {};
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const taxPct = Number(bx.tax_pct) || 0;
+  const depPct = Number(bx.deposit_pct) || 0;
+  const taxAmount = taxPct > 0 ? round2((agreed * taxPct) / 100) : 0;
+  const totalWithTax = round2(agreed + taxAmount);
+  return {
+    tax_amount: taxPct > 0 ? taxAmount : null,
+    total_with_tax: totalWithTax,
+    deposit_amount: depPct > 0 ? round2((totalWithTax * depPct) / 100) : null,
+  };
+}
+
 interface CurrentUser {
   id: string;
   name: string;
@@ -386,7 +415,9 @@ export default function BookingRequestsClient({
         .update({
           status,
           updated_at: now,
-          ...(isApprove ? { accepted_at: now } : {}),
+          ...(isApprove
+            ? { accepted_at: now, ...acceptedMoneyPatch(incoming.find((x) => x.id === bookingId)) }
+            : {}),
         } as unknown as never)
         .eq('id', bookingId)
         .eq('dj_id', currentUser.id);
@@ -689,7 +720,7 @@ export default function BookingRequestsClient({
         const now = new Date().toISOString();
         const { error } = await supabase
           .from('bookings')
-          .update({ status: 'approved', updated_at: now, accepted_at: now } as unknown as never)
+          .update({ status: 'approved', updated_at: now, accepted_at: now, ...acceptedMoneyPatch(b) } as unknown as never)
           .eq('id', bookingId)
           .eq('requester_id', currentUser.id);
         if (error) throw error;
