@@ -2741,10 +2741,25 @@ export function ShareCalendarModal({
 export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
-  // Copy-link feedback state — used only when booking is NOT active, in
-  // which case the Share button copies the profile link instead of
-  // opening the share-calendar modal (there's no calendar to share).
+  // Copy-link feedback state — the "Copy link" item in the share menu
+  // confirms with a brief "Copied" flip.
   const [copied, setCopied] = useState(false);
+  // Share menu: a small popover of share targets (copy, email, Facebook,
+  // X, WhatsApp, SMS) anchored to the Share button.
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareWrapRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!shareOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (shareWrapRef.current && !shareWrapRef.current.contains(e.target as Node)) setShareOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShareOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [shareOpen]);
+  function profileUrl(): string { return `${window.location.origin}/${effectiveSlug}`; }
+  const shareTitle = `${data.name || 'DJ'} on Global DJ Connect`;
 
   function copyProfileLink() {
     const url = `${window.location.origin}/${effectiveSlug}`;
@@ -2774,9 +2789,41 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
       /* copy failed — nothing more we can do */
     }
   }
-  // When booking is active the Share button opens the share-calendar
-  // modal; otherwise it just copies the general profile link.
-  const handleShare = bookingEnabled ? onShareClick : copyProfileLink;
+  // The Share button opens a share-options menu (copy / email / socials).
+  // Prefer the native share sheet on devices that support it; otherwise
+  // fall back to the in-page menu.
+  function handleShare() {
+    const nav = navigator as Navigator & { share?: (d: { title?: string; url?: string }) => Promise<void> };
+    if (typeof nav.share === 'function') {
+      nav.share({ title: shareTitle, url: profileUrl() }).catch(() => setShareOpen((v) => !v));
+      return;
+    }
+    setShareOpen((v) => !v);
+  }
+  const shareMenu: { key: string; label: string; href?: string; onClick?: () => void }[] = [
+    { key: 'copy', label: copied ? 'Copied!' : 'Copy link', onClick: copyProfileLink },
+    { key: 'email', label: 'Email' },
+    { key: 'facebook', label: 'Facebook' },
+    { key: 'x', label: 'X (Twitter)' },
+    { key: 'whatsapp', label: 'WhatsApp' },
+    { key: 'sms', label: 'Text message' },
+  ];
+  function shareHref(key: string): string {
+    const url = profileUrl();
+    const eu = encodeURIComponent(url);
+    const et = encodeURIComponent(shareTitle);
+    switch (key) {
+      case 'email': return `mailto:?subject=${et}&body=${et}%0A%0A${eu}`;
+      case 'facebook': return `https://www.facebook.com/sharer/sharer.php?u=${eu}`;
+      case 'x': return `https://twitter.com/intent/tweet?url=${eu}&text=${et}`;
+      case 'whatsapp': return `https://wa.me/?text=${et}%20${eu}`;
+      case 'sms': return `sms:?&body=${et}%20${eu}`;
+      default: return url;
+    }
+  }
+  // Legacy prop kept for compatibility; the calendar-share modal is no
+  // longer opened from this button.
+  void onShareClick;
 
   function n(s: string, prefix: string): string {
     return s.startsWith('http') ? s : prefix + s.replace('@', '');
@@ -2922,33 +2969,23 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
         </div>
       )}
 
-      {/* Share button — sits at the end of the socials row, set apart
-          from the social icons by a divider gap. When booking is active
-          it opens the share-calendar modal; when booking is off there's
-          no calendar to share, so it just copies the profile link (with
-          a brief "Copied" confirmation). */}
-      <button
-        type="button"
-        className={styles.underBannerShareBtn}
-        title={
-          bookingEnabled ? 'Share calendar'
-            : copied ? 'Link copied!' : 'Copy profile link'
-        }
-        aria-label={
-          bookingEnabled ? 'Share calendar'
-            : copied ? 'Profile link copied' : 'Copy profile link'
-        }
-        onClick={handleShare}
-      >
-        {!bookingEnabled && copied ? (
-          <>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span>Copied</span>
-          </>
-        ) : (
-          <>
+      {/* Share button — sits at the end of the socials row, set apart from
+          the social icons by a divider gap. Opens a share-options menu
+          (copy link, email, Facebook, X, WhatsApp, SMS). On mobile it shows
+          a 3-dots icon; on desktop the share icon + "Share" label. */}
+      <span ref={shareWrapRef} className={styles.underBannerShareWrap}>
+        <button
+          type="button"
+          className={styles.underBannerShareBtn}
+          title="Share this profile"
+          aria-label="Share this profile"
+          aria-haspopup="menu"
+          aria-expanded={shareOpen}
+          onClick={handleShare}
+        >
+          {/* Desktop: share icon + label. Mobile: a 3-dots (ellipsis) icon
+              instead, per design. Toggled purely by CSS. */}
+          <span className={styles.shareDesktop}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="18" cy="5" r="3" />
               <circle cx="6" cy="12" r="3" />
@@ -2957,9 +2994,44 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
             <span>Share</span>
-          </>
+          </span>
+          <svg className={styles.shareMobileDots} width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
+        </button>
+
+        {shareOpen && (
+          <div className={styles.shareMenu} role="menu">
+            {shareMenu.map((item) =>
+              item.onClick ? (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="menuitem"
+                  className={styles.shareMenuItem}
+                  onClick={() => { item.onClick!(); }}
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <a
+                  key={item.key}
+                  role="menuitem"
+                  className={styles.shareMenuItem}
+                  href={shareHref(item.key)}
+                  target={item.key === 'email' || item.key === 'sms' ? undefined : '_blank'}
+                  rel="noopener noreferrer"
+                  onClick={() => setShareOpen(false)}
+                >
+                  {item.label}
+                </a>
+              )
+            )}
+          </div>
         )}
-      </button>
+      </span>
     </div>
   );
 }
