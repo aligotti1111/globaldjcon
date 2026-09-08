@@ -62,7 +62,7 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
 
     type Step = { left: string; right: string; done: boolean; skipped?: boolean };
     const steps: Step[] = [];
-    steps.push({ left: 'Booking requested', right: 'Accepted', done: true });
+    steps.push({ left: 'Booking Request', right: 'Accepted', done: true });
 
     // Contract step — only when this DJ requires a contract on this booking
     // (frozen per-booking flag), or one already exists. A DJ who doesn't use
