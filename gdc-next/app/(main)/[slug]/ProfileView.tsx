@@ -304,6 +304,67 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   }, []);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
+  // ── Hero name/location color ────────────────────────────────────────
+  // Owner-chosen color applied to BOTH the hero name and the location line.
+  // Default is white when unset so nothing changes for existing profiles.
+  // Held in local state so the owner's color-picker recolors LIVE, then
+  // persisted via /api/dj/profile-color.
+  const [nameColor, setNameColor] = useState<string>(data.profile_name_color || '#ffffff');
+  async function handleNameColorChange(color: string) {
+    setNameColor(color); // live recolor
+    try {
+      await fetch('/api/dj/profile-color', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color }),
+      });
+    } catch {
+      // Best-effort; the live color still applies until reload.
+    }
+  }
+  // Owner-only compact swatch button wrapping a native color input. Rendered
+  // inline next to the name in both the mobile (heroNameCol) and desktop
+  // (heroInfo) copies.
+  const nameColorControlEl = isOwnProfile ? (
+    <label
+      title="Change name color"
+      aria-label="Change name color"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 22,
+        height: 22,
+        borderRadius: '50%',
+        background: nameColor,
+        border: '2px solid #fff',
+        boxShadow: '0 1px 6px rgba(0,0,0,.6)',
+        cursor: 'pointer',
+        verticalAlign: 'middle',
+        marginLeft: 8,
+        flexShrink: 0,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <input
+        type="color"
+        value={nameColor}
+        onChange={(e) => handleNameColorChange(e.target.value)}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          opacity: 0,
+          cursor: 'pointer',
+          border: 'none',
+          padding: 0,
+        }}
+      />
+    </label>
+  ) : null;
+
   // Set page title to the DJ's name (matches vanilla document.title)
   useEffect(() => {
     if (data.name) {
@@ -651,10 +712,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 directly under the name here (mobile); on desktop it lives in
                 heroInfo below and this whole column is display:none. */}
             <div className={styles.heroNameCol}>
-              <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
+              <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
+                {data.name || 'Unknown DJ'}
+                {nameColorControlEl}
+              </div>
               {heroBadgesEl}
               {location && (
-                <div className={styles.heroLocation}>
+                <div className={styles.heroLocation} style={{ color: nameColor }}>
                   <LocationPinIcon /> {location}
                 </div>
               )}
@@ -665,12 +729,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               via the descendant selector .heroInfo .heroName / .heroInfo .heroBadges
               inside the @media (max-width:900px) block in profile.module.css */}
           <div className={styles.heroInfo}>
-            <div className={`${styles.heroName} ${nameSizeClass}`}>{data.name || 'Unknown DJ'}</div>
+            <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
+              {data.name || 'Unknown DJ'}
+              {nameColorControlEl}
+            </div>
             {heroBadgesEl}
             <div className={styles.heroMobileDivider} />
 
             {location && (
-              <div className={styles.heroLocation}>
+              <div className={styles.heroLocation} style={{ color: nameColor }}>
                 <LocationPinIcon /> {location}
               </div>
             )}
