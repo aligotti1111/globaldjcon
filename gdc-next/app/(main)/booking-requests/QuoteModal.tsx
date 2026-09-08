@@ -1,4 +1,4 @@
-'use client';
+='use client';
 
 // QuoteModal — DJ responds with a price on a mobile DJ booking that was
 // submitted in "quote mode" (booker didn't pick a package; they just asked
@@ -638,7 +638,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                     style={{ width: '100%', padding: '.5rem .4rem' }}
                   >
                     <option value="">—</option>
-                    {Array.from({ length: 100 }, (_, i) => i + 1).map((p) => (
+                    {Array.from({ length: 99 }, (_, i) => i + 1).map((p) => (
                       <option key={p} value={String(p)}>{p}%</option>
                     ))}
                   </select>
