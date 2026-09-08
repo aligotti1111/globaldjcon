@@ -14,8 +14,10 @@
 // pdfUrl and their setters; RiderBuilder only handles the PDF upload call to
 // /api/rider/upload (which returns a stored URL, logo-upload style).
 
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import RiderEditor from '@/components/RiderEditor';
+import RiderView from '@/app/rider/[id]/RiderView';
+import { createClient } from '@/lib/supabase/client';
 import type { RiderItem, RiderMode } from '@/lib/rider';
 
 /** Best-effort human filename from a stored PDF URL (for the status line). */
@@ -66,6 +68,32 @@ export default function RiderBuilder({
   const [msg, setMsg] = useState<string | null>(null);
   const [pickedName, setPickedName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // The DJ's own brand logo + name, shown as branding at the top and in the
+  // host-preview. Fetched here so the parent doesn't have to thread it through.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [djName, setDjName] = useState<string>('');
+  const [showPreview, setShowPreview] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('users')
+          .select('name, contract_logo_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!alive || !data) return;
+        const d = data as { name?: string | null; contract_logo_url?: string | null };
+        setLogoUrl(d.contract_logo_url || null);
+        setDjName(d.name || '');
+      } catch { /* non-fatal — branding just won't show */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const shownName = pickedName || fileNameFromUrl(pdfUrl);
 
@@ -133,6 +161,21 @@ export default function RiderBuilder({
 
   return (
     <div>
+      {logoUrl && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '1.3rem',
+            paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,.1)',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="Your logo" style={{ maxHeight: 48, maxWidth: 160, objectFit: 'contain' }} />
+          <span style={{ color: MUTED, fontSize: '.76rem' }}>
+            Your logo appears at the top of the rider the host sees.
+          </span>
+        </div>
+      )}
+
       {onNameChange && (
         <div style={{ marginBottom: '1.3rem' }}>
           <div
@@ -244,6 +287,65 @@ export default function RiderBuilder({
         </div>
       ) : (
         <RiderEditor items={items} onChange={onItemsChange} />
+      )}
+
+      {/* Preview — opens the rider exactly as the host sees it (logo on top,
+          boxes, attachments), from the current unsaved draft. */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.4rem' }}>
+        <button
+          type="button"
+          onClick={() => setShowPreview(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '.45rem',
+            background: 'transparent', border: `1.5px solid ${NEON}`, borderRadius: 10,
+            color: NEON, padding: '.65rem 1.4rem', fontSize: '.9rem', fontWeight: 800, cursor: 'pointer',
+          }}
+        >
+          👁 Preview rider
+        </button>
+      </div>
+
+      {showPreview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowPreview(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.7)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '2.5rem 1rem',
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: 760 }}>
+            <button
+              type="button"
+              onClick={() => setShowPreview(false)}
+              aria-label="Close preview"
+              style={{
+                position: 'sticky', top: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '.35rem',
+                background: '#fff', color: '#0d0d14', border: 'none', borderRadius: 999,
+                padding: '.5rem .95rem', fontSize: '.82rem', fontWeight: 800, cursor: 'pointer', zIndex: 2,
+              }}
+            >
+              ✕ Close preview
+            </button>
+            <div style={{ borderRadius: 16, overflow: 'hidden', marginTop: '.6rem' }}>
+              <RiderView
+                items={items}
+                mode={mode}
+                pdfUrl={pdfUrl}
+                riderName={name || null}
+                djName={djName || 'Your DJ name'}
+                logoUrl={logoUrl}
+                eventDate={null}
+                startTime={null}
+                endTime={null}
+                eventType={null}
+                venueName={null}
+                venueAddress={null}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
