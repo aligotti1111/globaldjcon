@@ -668,14 +668,42 @@ export default function AddManualBookingModal({
     // Daily-cap check — only fires when adding NEW or moving an existing
     // booking onto a fuller day. Editing an existing booking on its own
     // date is exempt (we'd be counting it against itself).
-    const sameDay = existingBookings.filter(
-      (b) => b.event_date === eventDate && (!isEdit || b.id !== existing.id),
-    ).length;
+    //
+    // Confirmed bookings (approved/manual, not cancelled) count toward the cap.
+    // Open offers/counters do NOT count yet — a negotiation isn't a held slot —
+    // but if accepting ALL of them along with this booking would exceed the cap,
+    // warn so the DJ can withdraw/decline one first instead of overbooking.
     const cap = djType === 'club' ? 1 : Math.max(1, bookingsPerDay || 1);
-    if (sameDay >= cap) {
+    const confirmedSameDay = existingBookings.filter(
+      (b) => b.event_date === eventDate
+        && (!isEdit || b.id !== existing.id)
+        && b.status !== 'cancelled',
+    ).length;
+
+    // existingBookings is approved/manual only, so pending/counter offers for
+    // this date aren't in it — fetch them fresh (best-effort). The DJ can read
+    // their own rows under RLS.
+    let openSameDay = 0;
+    try {
+      const sb = createClient();
+      const { data: openRows } = await sb
+        .from('bookings')
+        .select('id')
+        .eq('dj_id', userId)
+        .eq('event_date', eventDate)
+        .in('status', ['pending', 'counter']);
+      openSameDay = (openRows || []).length;
+    } catch {
+      // Non-fatal — if the lookup fails, just skip the offer warning.
+    }
+
+    if (confirmedSameDay >= cap) {
       const msg = djType === 'club'
         ? `You already have a booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`
-        : `You already have ${sameDay} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
+        : `You already have ${confirmedSameDay} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
+      if (!confirm(msg)) return;
+    } else if (openSameDay > 0 && confirmedSameDay + 1 + openSameDay > cap) {
+      const msg = `Heads up: you have ${openSameDay} active offer/counter(s) out on ${eventDate}. They don't count toward your daily cap of ${cap} yet — but if you accept them along with this booking, you'd be over. Consider withdrawing or declining those offers first so you don't overbook. Add this booking anyway?`;
       if (!confirm(msg)) return;
     }
 
