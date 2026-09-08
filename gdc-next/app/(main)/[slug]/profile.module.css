@@ -2026,11 +2026,13 @@
 .underBannerShareBtn svg { display: block; }
 .underBannerShareBtn:hover { color: #fff; }
 .underBannerShareBtnCopied { color: var(--neon); }
-/* Desktop shows the share icon + "Share" label; the 3-dots is mobile-only. */
+/* Desktop shows the "Share" label only; the 3-dots is mobile-only.
+   NOTE: `.underBannerShareBtn svg { display:block }` above outranks a bare
+   `.shareMobileDots`, so these hide rules are scoped to the button to win
+   on specificity. */
 .shareDesktop { display: inline-flex; align-items: center; gap: .35rem; }
-/* Desktop is just the "Share" label — no dot-like share glyph. */
-.shareDesktop svg { display: none; }
-.shareMobileDots { display: none; }
+.underBannerShareBtn .shareDesktop svg { display: none; }
+.underBannerShareBtn .shareMobileDots { display: none; }
 /* Share-options popover anchored to the Share button. */
 .underBannerShareWrap { position: relative; display: inline-flex; align-items: center; }
 .shareMenu {
@@ -2072,7 +2074,7 @@
     font-size: .55rem;
   }
   .shareDesktop { display: none; }
-  .shareMobileDots {
+  .underBannerShareBtn .shareMobileDots {
     display: block;
     box-sizing: content-box;
     width: 16px;
