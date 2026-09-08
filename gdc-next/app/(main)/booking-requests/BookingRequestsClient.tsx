@@ -1297,7 +1297,17 @@ export default function BookingRequestsClient({
           taxEnabled={currentUser.taxEnabled}
           taxPct={currentUser.taxPct}
           onClose={() => setQuoteModal(null)}
-          onSaved={(updated) => applyBookingUpdate(updated)}
+          onSaved={(updated) => {
+            applyBookingUpdate(updated);
+            // Small on-page confirmation after the modal closes. Club
+            // bookings save a draft (booker doesn't see it yet); mobile
+            // quote bookings send the offer straight to the booker.
+            flash(
+              updated.booking_type === 'club'
+                ? 'Draft saved.'
+                : 'Offer sent.',
+            );
+          }}
         />
       )}
       {historyModal && (
