@@ -1960,27 +1960,27 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: none;
+  border: 1.5px solid #fff;
   background: transparent;
   color: #fff;
   transition: all .15s;
 }
 .underBannerSocialBtn svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: block;
 }
 .underBannerSocialBtn:hover {
   transform: translateY(-1px);
   filter: brightness(1.08);
 }
-/* Socials: filled brand-color circles, white glyph. */
-.underBannerSocialSoundcloud { background: #ff5500; }
-.underBannerSocialInstagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
-.underBannerSocialFacebook { background: #1877f2; }
-.underBannerSocialTiktok { background: #000; border: 1px solid rgba(255, 255, 255, .2); }
-.underBannerSocialTwitch { background: #9146ff; }
-.underBannerSocialWebsite { background: var(--neon); color: #04120d; }
+/* Socials: white outlined circles, white glyph (monochrome). */
+.underBannerSocialSoundcloud,
+.underBannerSocialInstagram,
+.underBannerSocialFacebook,
+.underBannerSocialTiktok,
+.underBannerSocialTwitch,
+.underBannerSocialWebsite { background: transparent; color: #fff; }
 /* Contact cluster (phone + message) — sits between the socials and Share,
    set apart by its own left divider (same treatment as the Share button). */
 .underBannerContact {
@@ -1998,6 +1998,9 @@
   color: #0a0a0f;
   border: none;
 }
+/* Slightly smaller glyph so the handset/envelope keep clear padding
+   inside the filled square and never touch the edges. */
+.underBannerPhone svg, .underBannerMail svg { width: 16px; height: 16px; }
 .underBannerContact button:disabled {
   opacity: .55;
   cursor: not-allowed;
