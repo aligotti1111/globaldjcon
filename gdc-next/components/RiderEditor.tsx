@@ -204,7 +204,8 @@ export default function RiderEditor({
                 style={{
                   ...input, flex: '1 1 auto', fontWeight: 800,
                   fontFamily: "'Space Mono', monospace", letterSpacing: '.04em',
-                  color: box.disabled ? MUTED : NEON, textTransform: 'uppercase', fontSize: '.78rem',
+                  color: box.disabled ? MUTED : NEON, textTransform: 'uppercase',
+                  fontSize: '1.05rem', padding: '.65rem .8rem',
                 }}
               />
 
