@@ -46,6 +46,7 @@ export async function GET() {
     riderDefault: normalizeRiderItems(bs.rider_default),
     riderMode: normalizeRiderMode(bs.rider_mode),
     riderPdfUrl: (typeof bs.rider_pdf_url === 'string' && bs.rider_pdf_url) ? bs.rider_pdf_url : null,
+    riderName: (typeof bs.rider_name === 'string' && bs.rider_name) ? bs.rider_name : '',
     riderEnabled: !!bs.rider_enabled,
     guestlistEnabled: !!bs.guestlist_enabled,
   });
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Your role cannot change these settings.' }, { status: 403 });
   }
 
-  let body: { riderDefault?: unknown; riderMode?: unknown; riderPdfUrl?: unknown; riderEnabled?: unknown; guestlistEnabled?: unknown };
+  let body: { riderDefault?: unknown; riderMode?: unknown; riderPdfUrl?: unknown; riderName?: unknown; riderEnabled?: unknown; guestlistEnabled?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const { data } = await admin.from('users').select('booking_settings').eq('id', acting.djId).maybeSingle();
   const bs = parseSettings((data as unknown as { booking_settings?: unknown } | null)?.booking_settings);
@@ -70,6 +71,7 @@ export async function POST(req: Request) {
   if (body.riderDefault !== undefined) bs.rider_default = normalizeRiderItems(body.riderDefault);
   if (body.riderMode !== undefined) bs.rider_mode = normalizeRiderMode(body.riderMode);
   if (body.riderPdfUrl !== undefined) bs.rider_pdf_url = (typeof body.riderPdfUrl === 'string' && body.riderPdfUrl) ? body.riderPdfUrl : null;
+  if (body.riderName !== undefined) bs.rider_name = (typeof body.riderName === 'string' ? body.riderName.trim() : '') || null;
   if (body.riderEnabled !== undefined) bs.rider_enabled = !!body.riderEnabled;
   if (body.guestlistEnabled !== undefined) bs.guestlist_enabled = !!body.guestlistEnabled;
 
