@@ -24,7 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, normalizeRiderMode, STARTER_RIDER, type RiderItem, type RiderMode } from '@/lib/rider';
+import { normalizeRiderItems, normalizeRiderMode, withStarterTechnical, type RiderItem, type RiderMode } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -296,6 +296,11 @@ export default function ClubBookingTab({
   function setRiderPdfUrl(url: string | null) {
     setLastChangedField('settings');
     patch({ rider_pdf_url: url } as unknown as Partial<BookingSettings>);
+  }
+  const riderName = ((bookingSettings as { rider_name?: string | null }).rider_name) || '';
+  function setRiderName(v: string) {
+    setLastChangedField('settings');
+    patch({ rider_name: v } as unknown as Partial<BookingSettings>);
   }
   const riderEnabled = !!(bookingSettings as { rider_enabled?: boolean }).rider_enabled;
   function setRiderEnabled(v: boolean) {
@@ -914,9 +919,10 @@ export default function ClubBookingTab({
                   <div style={{ marginTop: '1.1rem' }}>
                     <p className={styles.bodyHint}>
                       Choose how your rider is built by default: upload a pre-made PDF, or create a
-                      custom rider from fields. In custom mode you set your default <strong>hospitality</strong>{' '}
-                      and any additional fields &mdash; the starting point for every booking. The{' '}
-                      <strong>technical</strong> section is filled in per booking from that booking&rsquo;s
+                      custom rider from boxes. In custom mode you set up your default boxes &mdash;{' '}
+                      <strong>Technical</strong>, <strong>Visuals</strong> and <strong>Beverages</strong> to start,
+                      plus any extra boxes you add. Drag to reorder, and switch a box off to leave it out.
+                      Per booking, the <strong>Technical</strong> box is refilled from that booking&rsquo;s
                       Equipment choice. Everything stays editable per booking.
                     </p>
                     <RiderBuilder
@@ -926,15 +932,16 @@ export default function ClubBookingTab({
                       onItemsChange={setRiderDefault}
                       pdfUrl={riderPdfUrl}
                       onPdfUrlChange={setRiderPdfUrl}
-                      sections={['hospitality', 'custom']}
+                      name={riderName}
+                      onNameChange={setRiderName}
                     />
-                    {riderMode === 'custom' && riderDefault.filter((i) => i.section === 'hospitality' || i.section === 'custom').length === 0 && (
+                    {riderMode === 'custom' && !riderDefault.some((i) => i.section === 'technical' && i.type !== 'box') && (
                       <button
                         type="button"
-                        onClick={() => setRiderDefault(STARTER_RIDER.filter((i) => i.section === 'hospitality').map((i) => ({ ...i })))}
+                        onClick={() => setRiderDefault(withStarterTechnical(riderDefault))}
                         style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
                       >
-                        Load starter hospitality
+                        Load starter technical
                       </button>
                     )}
                   </div>
