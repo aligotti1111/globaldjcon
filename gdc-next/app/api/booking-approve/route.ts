@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   // (club bookings always carry a set_type).
   const { data: booking, error: lookupErr } = await admin
     .from('bookings')
-    .select('id, dj_id, requester_id, status, event_date, set_type, booking_type')
+    .select('id, dj_id, requester_id, status, event_date, set_type, booking_type, counter_rate, quoted_rate, offer_amount, tax_pct, deposit_pct')
     .eq('id', bookingId)
     .maybeSingle<{
       id: string;
@@ -56,6 +56,11 @@ export async function POST(req: Request) {
       event_date: string | null;
       set_type: string | null;
       booking_type: string | null;
+      counter_rate: number | null;
+      quoted_rate: number | null;
+      offer_amount: number | null;
+      tax_pct: number | null;
+      deposit_pct: number | null;
     }>();
 
   if (lookupErr) {
@@ -77,11 +82,29 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1. Mark the booking approved.
+  // 1. Mark the booking approved AND re-snapshot the money to the price being
+  //    accepted. The stored tax_amount / total_with_tax / deposit_amount were
+  //    frozen at the ORIGINAL offer; a counter changed counter_rate but left
+  //    those stale, so invoices billed the old total. Recompute them here from
+  //    the accepted price using the booking's frozen tax_pct / deposit_pct.
   const nowIso = new Date().toISOString();
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const agreed = Number(
+    booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? 0,
+  );
+  const moneyPatch: Record<string, number | null> = {};
+  if (Number.isFinite(agreed) && agreed > 0) {
+    const taxPct = Number(booking.tax_pct) || 0;
+    const depPct = Number(booking.deposit_pct) || 0;
+    const taxAmount = taxPct > 0 ? round2((agreed * taxPct) / 100) : 0;
+    const totalWithTax = round2(agreed + taxAmount);
+    moneyPatch.tax_amount = taxPct > 0 ? taxAmount : null;
+    moneyPatch.total_with_tax = totalWithTax;
+    moneyPatch.deposit_amount = depPct > 0 ? round2((totalWithTax * depPct) / 100) : null;
+  }
   const { error: updErr } = await admin
     .from('bookings')
-    .update({ status: 'approved', updated_at: nowIso, accepted_at: nowIso } as unknown as never)
+    .update({ status: 'approved', updated_at: nowIso, accepted_at: nowIso, ...moneyPatch } as unknown as never)
     .eq('id', bookingId);
   if (updErr) {
     return NextResponse.json({ error: 'Update failed: ' + updErr.message }, { status: 500 });
