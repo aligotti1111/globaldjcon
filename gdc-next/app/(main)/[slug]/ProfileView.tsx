@@ -757,7 +757,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 onClick={() => setActiveTab('booking')}
                 type="button"
               >
-                {showMobileBookingTab ? 'Booking' : 'Availability'}
+                Booking
               </button>
             )}
             {tabVisibility.about && (
