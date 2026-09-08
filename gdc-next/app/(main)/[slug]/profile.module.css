@@ -2028,6 +2028,8 @@
 .underBannerShareBtnCopied { color: var(--neon); }
 /* Desktop shows the share icon + "Share" label; the 3-dots is mobile-only. */
 .shareDesktop { display: inline-flex; align-items: center; gap: .35rem; }
+/* Desktop is just the "Share" label — no dot-like share glyph. */
+.shareDesktop svg { display: none; }
 .shareMobileDots { display: none; }
 /* Share-options popover anchored to the Share button. */
 .underBannerShareWrap { position: relative; display: inline-flex; align-items: center; }
