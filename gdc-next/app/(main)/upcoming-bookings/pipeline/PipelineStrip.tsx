@@ -60,7 +60,7 @@ export default function PipelineStrip({
   // desktop, which already has column headers). Shorter than stageLabel so it
   // fits a narrow phone column — "Playlist" not "Planner & Playlist".
   const shortLabel = (k: string): string =>
-    k === 'song_list' ? (djType === 'club' ? 'Rider' : 'Playlist')
+    k === 'song_list' ? (djType === 'club' ? 'Rider' : 'Planner')
       : k === 'contract' ? 'Contract'
       : k === 'deposit' ? 'Deposit'
       : k === 'invoice' ? 'Balance'
