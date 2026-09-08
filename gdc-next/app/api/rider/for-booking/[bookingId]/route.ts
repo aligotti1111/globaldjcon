@@ -32,9 +32,10 @@ async function ownedBooking(admin: SupabaseClient, bookingId: string, userId: st
 }
 
 interface DjRiderCtx {
-  rest: RiderItem[];             // hospitality + custom default
+  rest: RiderItem[];             // the DJ's full default rider (boxes + fields);
+                                //  seedRider drops technical + keeps the rest.
   systemDetail: string; decksDetail: string;
-  mode: RiderMode; pdfUrl: string | null;
+  mode: RiderMode; pdfUrl: string | null; name: string;
 }
 
 async function djSettings(admin: SupabaseClient, userId: string): Promise<DjRiderCtx> {
@@ -43,12 +44,13 @@ async function djSettings(admin: SupabaseClient, userId: string): Promise<DjRide
   let parsed: Record<string, unknown> = {};
   if (typeof bs === 'string') { try { parsed = JSON.parse(bs); } catch { parsed = {}; } }
   else if (bs && typeof bs === 'object') { parsed = bs as Record<string, unknown>; }
-  const rest = normalizeRiderItems(parsed.rider_default).filter((i) => i.section === 'hospitality' || i.section === 'custom');
+  const rest = normalizeRiderItems(parsed.rider_default);
   const systemDetail = typeof parsed.equip_full_detail === 'string' ? parsed.equip_full_detail : '';
   const decksDetail = typeof parsed.equip_decks_detail === 'string' ? parsed.equip_decks_detail : '';
   const mode = normalizeRiderMode(parsed.rider_mode);
   const pdfUrl = typeof parsed.rider_pdf_url === 'string' && parsed.rider_pdf_url ? parsed.rider_pdf_url : null;
-  return { rest, systemDetail, decksDetail, mode, pdfUrl };
+  const name = typeof parsed.rider_name === 'string' ? parsed.rider_name : '';
+  return { rest, systemDetail, decksDetail, mode, pdfUrl, name };
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ bookingId: string }> }) {
@@ -101,7 +103,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ booking
   });
   return NextResponse.json({
     ok: true, ...meta, id: null, items: seeded,
-    mode: ctx.mode, pdfUrl: ctx.pdfUrl, name: '',
+    mode: ctx.mode, pdfUrl: ctx.pdfUrl, name: ctx.name,
     status: 'draft', sentAt: null, seeded: true,
   });
 }
