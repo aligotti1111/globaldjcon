@@ -366,6 +366,32 @@ export default function MobileBookingCard(props: Props) {
                 Initial Offer: <span>{cur}{Number(b.quoted_rate).toLocaleString()}</span>
               </div>
             )}
+            {(() => {
+              // Sales tax + taxed total, when the offer was taxed. Stored on
+              // the booking by the DJ's offer (tax_pct/tax_amount/total_with_tax).
+              // Shown here so the booker sees tax before the deposit, not just
+              // a deposit that was silently computed on the taxed total.
+              const bt = b as typeof b & {
+                tax_pct?: number | null;
+                tax_amount?: number | null;
+                total_with_tax?: number | null;
+              };
+              const taxAmt = Number(bt.tax_amount) || 0;
+              const totalWithTax = bt.total_with_tax != null ? Number(bt.total_with_tax) : null;
+              if (taxAmt <= 0 || totalWithTax == null) return null;
+              const money = (n: number) =>
+                `${cur}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              return (
+                <>
+                  <div className={styles.priceSub}>
+                    Sales tax ({Number(bt.tax_pct) || 0}%): {money(taxAmt)}
+                  </div>
+                  <div className={styles.priceSub} style={{ color: 'var(--white)', fontWeight: 700 }}>
+                    Total: {money(totalWithTax)}
+                  </div>
+                </>
+              );
+            })()}
             {!hasCounter && b.deposit_amount != null && (
               <div className={styles.priceDeposit}>
                 Deposit ({b.deposit_pct}%): {cur}{Number(b.deposit_amount).toLocaleString()}
