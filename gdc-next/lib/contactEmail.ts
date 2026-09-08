@@ -44,7 +44,10 @@ export async function contactEmailConflict(
     return 'That email address doesn’t look right.';
   }
   try {
-    const owner = await resolveUserIdByEmail(email);
+    // strict:true — a lookup we can't complete must throw here, not return a
+    // false "no owner". Otherwise the conflict check fails open and a host can
+    // claim a DJ's address whenever the auth lookup errors.
+    const owner = await resolveUserIdByEmail(email, { strict: true });
     if (owner && owner !== userId) {
       return 'That email address is already used by another account. Use a different address, or log in with that email instead.';
     }
