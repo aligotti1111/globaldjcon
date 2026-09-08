@@ -70,7 +70,7 @@ function stGuest(){return{icon:'doc',state:'notsent',S:{
 
 const HEADS={contract:'Contract',deposit:'Deposit',invoice:'Balance',guestlist:'Guest List'};
 function headFor(k,type){ if(k==='song_list')return type==='club'?'Rider':'Planner & Playlist'; return HEADS[k]; }
-function shortLabel(k,type){ if(k==='song_list')return type==='club'?'Rider':'Playlist'; if(k==='invoice')return 'Balance'; if(k==='guestlist')return 'Guests'; return HEADS[k]; }
+function shortLabel(k,type){ if(k==='song_list')return type==='club'?'Rider':'Planner'; if(k==='invoice')return 'Balance'; if(k==='guestlist')return 'Guests'; return HEADS[k]; }
 
 function mkBooking(type,label,date,time,event,val){
   if(type==='mobile') return {type,label,date,time,event,val,
