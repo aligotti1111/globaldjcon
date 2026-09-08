@@ -13,7 +13,7 @@
 // doesn't appear.
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import { groupRider, RIDER_SECTIONS, type RiderItem } from './rider';
+import { groupRiderBoxes, type RiderItem } from './rider';
 
 export interface RiderPdfOptions {
   djName: string;
@@ -126,17 +126,16 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
   page.drawLine({ start: { x: MARGIN, y }, end: { x: rightX, y }, thickness: 1, color: LINE });
   y -= 26;
 
-  // ── Sections of labeled fields ──
-  const g = groupRider(opts.items);
+  // ── Boxes of labeled fields, in the DJ's order, skipping disabled boxes ──
+  const boxes = groupRiderBoxes(opts.items).filter((b) => !b.disabled && b.items.length);
   const labelColW = 150;
   const valX = MARGIN + labelColW;
 
-  for (const { key, label } of RIDER_SECTIONS) {
-    const rows = g[key];
-    if (!rows.length) continue;
+  for (const box of boxes) {
+    const rows = box.items;
 
     ensure(28);
-    drawL(label.toUpperCase(), MARGIN, y, 9, bold, ACCENT);
+    drawL(box.title.toUpperCase(), MARGIN, y, 9, bold, ACCENT);
     y -= 16;
 
     for (const it of rows) {
