@@ -426,7 +426,7 @@ function mobileBookingRequestBox(opts: {
     ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">
          <p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>
          ${opts.packageDetails && opts.packageDetails.trim()
-           ? `<div style="margin:10px 0 0;padding:10px 12px;background:#ffffff;border:1px solid #e6e6e6;border-radius:6px;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`
+           ? `<div style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`
            : ''}
        </div>`
     : '';
