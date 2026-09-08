@@ -16,6 +16,9 @@ export interface DjProfileData {
   banner_url: string | null;
   banner_position: string | null;
   banner_position_mobile: string | null;
+  // Owner-chosen hero name + location color (hex like #rrggbb). Null → default
+  // white (#ffffff) on the public profile.
+  profile_name_color?: string | null;
   tab_visibility: string | null;
   rate: string | null;
   travel_distance: string | null;  // 'worldwide' or numeric miles as string
