@@ -167,6 +167,17 @@ export default function BookingRequestsClient({
     group: 'in' | 'out';
   } | null>(null);
   const [quoteModal, setQuoteModal] = useState<{ booking: BookingRow } | null>(null);
+  // "You're locked in" confirmation — shown to the booker right after they
+  // approve an offer. Summarizes who/when and what the next step is
+  // (contract to sign, or deposit to pay), plus a way to reach the DJ.
+  const [lockedIn, setLockedIn] = useState<{
+    djName: string;
+    dateLabel: string;
+    requiresContract: boolean;
+    depositLabel: string | null;
+    djPhone: string | null;
+    djEmail: string | null;
+  } | null>(null);
   // historyModal: which booking's negotiation log to display in the
   // read-only History modal (opened from the Rate box "View History" link).
   const [historyModal, setHistoryModal] = useState<{ booking: BookingRow; isIncoming: boolean } | null>(null);
@@ -750,6 +761,28 @@ export default function BookingRequestsClient({
         } catch (e) {
           console.warn('Booker approval email failed:', e);
         }
+
+        // Show the booker a "locked in" confirmation with the next step.
+        const bx = b as BookingRow & {
+          requires_contract?: boolean | null;
+          deposit_amount?: number | null;
+          deposit_pct?: number | null;
+          currency?: string;
+        };
+        const depSym = currencySymbol(bx.currency || 'USD');
+        const depAmt = Number(bx.deposit_amount) || 0;
+        const depPct = Number(bx.deposit_pct) || 0;
+        const depositLabel = (depAmt > 0 || depPct > 0)
+          ? `${depAmt > 0 ? `${depSym}${depAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'A deposit'}${depPct > 0 ? ` (${depPct}%)` : ''}`
+          : null;
+        setLockedIn({
+          djName: b.dj_name || 'Your DJ',
+          dateLabel: b.event_date ? formatShortDate(b.event_date) : 'your date',
+          requiresContract: bx.requires_contract === true,
+          depositLabel,
+          djPhone: b.dj_phone || null,
+          djEmail: b.dj_email || null,
+        });
       }
     } catch (err) {
       alert('Error: ' + (err instanceof Error ? err.message : 'Unknown'));
@@ -1309,6 +1342,102 @@ export default function BookingRequestsClient({
             );
           }}
         />
+      )}
+      {lockedIn && (
+        <div className={styles.modalBackdrop} onClick={() => setLockedIn(null)}>
+          <div
+            className={styles.modalBox}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 440, textAlign: 'center' }}
+          >
+            <div style={{ fontSize: '2.2rem', lineHeight: 1, marginBottom: '.5rem' }}>🎉</div>
+            <div
+              style={{
+                fontSize: '1.15rem',
+                fontWeight: 700,
+                color: 'var(--white)',
+                marginBottom: '.4rem',
+              }}
+            >
+              {lockedIn.djName} is locked in for {lockedIn.dateLabel}!
+            </div>
+            <div style={{ fontSize: '.85rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+              Your booking is confirmed.
+            </div>
+
+            {/* Next step */}
+            <div
+              style={{
+                textAlign: 'left',
+                background: 'rgba(255,255,255,.03)',
+                border: '1px solid rgba(255,255,255,.12)',
+                borderRadius: 8,
+                padding: '.85rem 1rem',
+                marginBottom: '1rem',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.6rem',
+                  letterSpacing: '.12em',
+                  textTransform: 'uppercase',
+                  color: 'var(--neon)',
+                  marginBottom: '.4rem',
+                }}
+              >
+                Next step
+              </div>
+              <div style={{ fontSize: '.85rem', color: 'var(--white)', lineHeight: 1.5 }}>
+                {lockedIn.requiresContract ? (
+                  <>{lockedIn.djName} will send you a contract to review and sign. Keep an eye on your email.</>
+                ) : lockedIn.depositLabel ? (
+                  <>{lockedIn.depositLabel} deposit is due to reserve your date. You&apos;ll receive a payment link by email.</>
+                ) : (
+                  <>{lockedIn.djName} will reach out with any final details. You&apos;re all set!</>
+                )}
+              </div>
+            </div>
+
+            {/* Connect with the DJ */}
+            {(lockedIn.djPhone || lockedIn.djEmail) && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: '.5rem' }}>
+                  Want to connect with {lockedIn.djName}?
+                </div>
+                <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
+                  {lockedIn.djPhone && (
+                    <a
+                      href={`tel:${lockedIn.djPhone}`}
+                      className={styles.counterCancelBtn}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      📞 Call
+                    </a>
+                  )}
+                  {lockedIn.djEmail && (
+                    <a
+                      href={`mailto:${lockedIn.djEmail}`}
+                      className={styles.counterCancelBtn}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      ✉️ Message
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setLockedIn(null)}
+              className={styles.counterSubmitBtn}
+              style={{ width: '100%' }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
       )}
       {historyModal && (
         <HistoryModal
