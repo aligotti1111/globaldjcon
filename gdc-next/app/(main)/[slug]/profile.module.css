@@ -1613,15 +1613,15 @@
   .hero {
     flex-direction: column;
     gap: 0;
-    padding-top: 1.9rem;
-    padding-bottom: 1.6rem;
+    padding-top: 2.4rem;
+    padding-bottom: 2rem;
     /* Content-driven height. Previously locked to 280px + centered so club
        and mobile heroes matched, but with the phone and location pulled up
        next to the name that left a large empty banner band below. A modest
        min-height keeps very sparse profiles from looking cramped without
        creating dead space on fuller ones — bumped a touch so the banner
        reads a little taller on phones. */
-    min-height: 210px;
+    min-height: 250px;
     justify-content: flex-start;
   }
   .heroTopRow {
