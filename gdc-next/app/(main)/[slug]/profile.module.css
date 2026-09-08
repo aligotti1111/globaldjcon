@@ -1960,14 +1960,14 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1.5px solid #fff;
+  border: 2px solid #fff;
   background: transparent;
   color: #fff;
-  transition: all .15s;
+  transition: color .15s, background .15s, opacity .15s;
 }
 .underBannerSocialBtn svg {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   display: block;
 }
 .underBannerSocialBtn:hover {
@@ -2024,7 +2024,7 @@
   border-top: none;
   border-right: none;
   border-bottom: none;
-  color: var(--neon);
+  color: #fff;
   font-family: 'Space Mono', monospace;
   font-size: .58rem;
   letter-spacing: .08em;
