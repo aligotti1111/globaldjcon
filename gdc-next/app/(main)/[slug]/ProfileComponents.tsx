@@ -2738,7 +2738,7 @@ export function ShareCalendarModal({
 // against the bottom of the banner, centered. For owners, also shows
 // "+ add" buttons for missing socials so they can add inline.
 // ──────────────────────────────────────────────────────────────────────────
-export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
+export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick, onPhoneClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void; onPhoneClick?: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
   // Copy-link feedback state — the "Copy link" item in the share menu
@@ -2951,7 +2951,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
                 className={`${styles.underBannerSocialBtn} ${styles.underBannerPhone}`}
                 title="View phone"
                 aria-label="View phone"
-                disabled
+                onClick={onPhoneClick}
               >
                 <PhoneIcon />
               </button>
