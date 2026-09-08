@@ -1255,7 +1255,7 @@ export async function POST(req: Request) {
     // Mobile quote-style requests: tell the booker the DJ will reply with
     // an offer, matching the prompt the DJ sees on their side.
     const confQuoteNote = isMobileBooking && (confRateNum == null || isNaN(confRateNum))
-      ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
+      ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin:24px 0;">
            <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate — the DJ will <strong>respond with an offer</strong>.</p>
          </div>`
       : '';
