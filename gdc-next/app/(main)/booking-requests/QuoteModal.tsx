@@ -540,29 +540,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         {/* What the price covers — read-only. Cocktail hour and ceremony are
             listed FIRST so the DJ sees everything they're pricing before the
             single Event Price box that follows. */}
-        {!isClubBooking && (isWedding || hasCocktail || hasCeremony) && (
+        {!isClubBooking && (hasCocktail || hasCeremony) && (
           <div className={styles.cocktailBox}>
             <div className={styles.cocktailHeader}>Your price also covers</div>
-            {isWedding && (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '1rem',
-                  padding: '.3rem 0',
-                  fontSize: '.78rem',
-                  color: 'rgba(255,255,255,.85)',
-                }}
-              >
-                <span>💒 Reception</span>
-                <span style={{ color: 'var(--muted)' }}>
-                  {[
-                    booking.start_time ? formatTime12(booking.start_time) : null,
-                    booking.end_time ? formatTime12(booking.end_time) : null,
-                  ].filter(Boolean).join(' – ')}
-                </span>
-              </div>
-            )}
             {hasCeremony && (
               <div
                 style={{
