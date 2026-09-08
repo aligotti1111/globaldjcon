@@ -294,32 +294,36 @@ export default function ManualBookingForm({
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
 
-    // Conflict check. Club/bar DJs are one-per-day: warn if the date
-    // already has an active booking — approved (a confirmed booking) or
-    // pending/countered (a live request) — with a message matching which.
-    // Mobile DJs use their configured per-day cap instead.
-    const sameDayActive = existingBookings.filter(
-      (b) =>
-        b.event_date === eventDate
-        && (!isEdit || b.id !== existing.id)
-        && (b.status === 'approved' || b.status === 'pending' || b.status === 'countered'),
+    // Conflict check.
+    //   - CONFIRMED bookings (approved) count toward the day's capacity.
+    //   - OPEN requests (pending, or a live counter offer) do NOT count toward
+    //     capacity — a negotiation isn't a held slot. But they're surfaced as a
+    //     warning: if the DJ later accepts one, the day could go over capacity,
+    //     so they're nudged to withdraw/decline it first rather than overbook.
+    const sameDay = existingBookings.filter(
+      (b) => b.event_date === eventDate && (!isEdit || b.id !== existing.id),
+    );
+    const confirmedSameDay = sameDay.filter((b) => b.status === 'approved');
+    // 'counter' is the value the DB actually stores for a live counter offer.
+    const openSameDay = sameDay.filter(
+      (b) => b.status === 'pending' || b.status === 'counter',
     );
     if (djType === 'club') {
-      const hasApproved = sameDayActive.some((b) => b.status === 'approved');
-      const hasPending = sameDayActive.some(
-        (b) => b.status === 'pending' || b.status === 'countered',
-      );
-      if (hasApproved || hasPending) {
-        const msg = hasApproved
-          ? `You already have a confirmed booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`
-          : `You have a pending booking request for ${eventDate} that hasn't been confirmed yet. Adding this booking won't cancel it. Save anyway?`;
-        if (!confirm(msg)) return;
+      // Club/bar DJs are one-per-day.
+      if (confirmedSameDay.length > 0) {
+        if (!confirm(`You already have a confirmed booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`)) return;
+      } else if (openSameDay.length > 0) {
+        if (!confirm(`Heads up: there's an active offer/counter out on ${eventDate}. It doesn't count toward your one-per-day limit yet — but if you accept it, this manual booking would put you over. Consider withdrawing or declining that offer first so you don't overbook. Add this booking anyway?`)) return;
       }
     } else {
       const cap = Math.max(1, bookingsPerDay || 1);
-      if (sameDayActive.length >= cap) {
-        const msg = `You already have ${sameDayActive.length} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
-        if (!confirm(msg)) return;
+      // Only confirmed bookings count toward the cap.
+      if (confirmedSameDay.length >= cap) {
+        if (!confirm(`You already have ${confirmedSameDay.length} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`)) return;
+      } else if (openSameDay.length > 0 && confirmedSameDay.length + 1 + openSameDay.length > cap) {
+        // Adding this booking still fits, but the outstanding offer(s) don't
+        // count yet — accepting them could push the day over the cap.
+        if (!confirm(`Heads up: you have ${openSameDay.length} active offer/counter(s) out on ${eventDate}. They don't count toward your daily cap of ${cap} yet — but if you accept them along with this booking, you'd be over. Consider withdrawing or declining those offers first so you don't overbook. Add this booking anyway?`)) return;
       }
     }
 
