@@ -1,57 +1,147 @@
 'use client';
 
-// RiderEditor — the labeled-field rider editor (CUSTOM mode). Each field is a
-// { label, value } pair — the requirement and its spec — grouped into
-// Technical / Hospitality / Additional. Add / edit / remove / reorder within a
-// section. Purely controlled: it owns no persistence, just items + onChange.
+// RiderEditor — the CUSTOM-mode rider builder, built from draggable BOXES.
 //
-// Layout: clean two-column rows (requirement | details) that wrap to stacked
-// on narrow screens, with quiet reorder/remove controls — no heavy per-field
-// boxes.
+// A rider is a set of boxes. The three defaults are Technical, Visuals and
+// Beverages; the DJ can add more (custom-named) boxes below them. Each box:
+//   · has a heading (the section name, or an editable name for custom boxes),
+//   · holds { label, value } field rows the DJ types into (a value-only row is
+//     just a line of text),
+//   · can be REORDERED by native HTML5 drag-and-drop (or the ↑/↓ buttons), and
+//   · can be DISABLED via a toggle — a disabled box is dimmed and excluded from
+//     the generated host rider / PDF, but its content is preserved.
+//
+// Purely controlled: it owns no persistence. It reads the flat items array,
+// materializes it into ordered boxes (ensuring the defaults exist), and writes
+// the flattened result back through onChange on every edit.
 
-import { RIDER_SECTIONS, type RiderItem, type RiderSection, newRiderId } from '@/lib/rider';
+import { useState, type ChangeEvent, type DragEvent } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import {
+  ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
+  sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
+  type RiderBox, type RiderItem,
+} from '@/lib/rider';
 
 const NEON = 'var(--neon,#00e0a4)';
 const MUTED = 'var(--muted,#8a8aa0)';
 const BORDER = '1px solid var(--border, rgba(255,255,255,.14))';
 
-const VALUE_PLACEHOLDER: Record<RiderSection, string> = {
-  technical: 'Details / spec (optional)',
-  hospitality: 'Details (optional)',
-  custom: 'Details (optional)',
-};
-
 export default function RiderEditor({
   items,
   onChange,
-  sections,
 }: {
   items: RiderItem[];
   onChange: (next: RiderItem[]) => void;
-  /** Limit which sections are shown/editable (default: all). */
-  sections?: RiderSection[];
 }) {
-  const shownSections = RIDER_SECTIONS.filter((s) => !sections || sections.includes(s.key));
+  // Materialize the flat array into ordered boxes, guaranteeing the three
+  // default boxes are always present (even when empty).
+  const boxes = ensureDefaultBoxes(groupRiderBoxes(items));
 
-  function patch(id: string, p: Partial<RiderItem>) {
-    onChange(items.map((i) => (i.id === id ? { ...i, ...p } : i)));
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  // Per-box attachment upload state, keyed by box id.
+  const [attachBusy, setAttachBusy] = useState<Record<string, boolean>>({});
+  const [attachMsg, setAttachMsg] = useState<Record<string, string | null>>({});
+
+  function commit(next: RiderBox[]) {
+    onChange(flattenBoxes(next));
   }
-  function remove(id: string) {
-    onChange(items.filter((i) => i.id !== id));
+  function patchBox(id: string, p: Partial<RiderBox>) {
+    commit(boxes.map((b) => (b.id === id ? { ...b, ...p } : b)));
   }
-  function add(section: RiderSection) {
-    onChange([...items, { id: newRiderId(), section, label: '', value: '' }]);
+  function setBoxItems(id: string, next: RiderItem[]) {
+    patchBox(id, { items: next });
   }
-  function move(id: string, dir: -1 | 1) {
-    const idx = items.findIndex((i) => i.id === id);
-    if (idx < 0) return;
-    const sec = items[idx].section;
-    let j = idx + dir;
-    while (j >= 0 && j < items.length && items[j].section !== sec) j += dir;
-    if (j < 0 || j >= items.length) return;
-    const next = items.slice();
+  function addField(box: RiderBox) {
+    setBoxItems(box.id, [...box.items, { id: newRiderId(), section: box.section, label: '', value: '' }]);
+  }
+  function patchField(box: RiderBox, fid: string, p: Partial<RiderItem>) {
+    setBoxItems(box.id, box.items.map((i) => (i.id === fid ? { ...i, ...p } : i)));
+  }
+  function removeField(box: RiderBox, fid: string) {
+    setBoxItems(box.id, box.items.filter((i) => i.id !== fid));
+  }
+  function moveField(box: RiderBox, idx: number, dir: -1 | 1) {
+    const j = idx + dir;
+    if (j < 0 || j >= box.items.length) return;
+    const next = box.items.slice();
     [next[idx], next[j]] = [next[j], next[idx]];
-    onChange(next);
+    setBoxItems(box.id, next);
+  }
+  function addBox() {
+    commit([
+      ...boxes,
+      { id: newRiderId(), section: 'custom', title: 'New section', disabled: false, items: [] },
+    ]);
+  }
+  function removeBox(id: string) {
+    commit(boxes.filter((b) => b.id !== id));
+  }
+  function moveBox(from: number, to: number) {
+    if (from === to || from < 0 || to < 0 || from >= boxes.length || to >= boxes.length) return;
+    const next = boxes.slice();
+    const [b] = next.splice(from, 1);
+    next.splice(to, 0, b);
+    commit(next);
+  }
+
+  // ── One attachment (image or PDF, ≤5MB) on the Technical / Visuals boxes ──
+  async function onPickAttachment(box: RiderBox, e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const isImg = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isImg && !isPdf) { setAttachMsg((m) => ({ ...m, [box.id]: 'Attachment must be an image or PDF.' })); return; }
+    if (file.size > RIDER_ATTACHMENT_MAX_BYTES) { setAttachMsg((m) => ({ ...m, [box.id]: 'File is too large (max 5MB).' })); return; }
+    setAttachMsg((m) => ({ ...m, [box.id]: null }));
+    setAttachBusy((s) => ({ ...s, [box.id]: true }));
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not signed in');
+      const ext = (file.name.split('.').pop() || (isPdf ? 'pdf' : 'bin')).toLowerCase();
+      const path = `${user.id}/rider_attachment_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type || (isPdf ? 'application/pdf' : undefined) });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = `${data.publicUrl}?t=${Date.now()}`;
+      patchBox(box.id, { attachmentUrl: url, attachmentName: file.name });
+    } catch {
+      setAttachMsg((m) => ({ ...m, [box.id]: 'Upload failed — try again.' }));
+    } finally {
+      setAttachBusy((s) => ({ ...s, [box.id]: false }));
+    }
+  }
+  function removeAttachment(box: RiderBox) {
+    setAttachMsg((m) => ({ ...m, [box.id]: null }));
+    patchBox(box.id, { attachmentUrl: undefined, attachmentName: undefined });
+  }
+
+  // ── Native HTML5 drag-and-drop for box reordering ──
+  function onDragStart(e: DragEvent<HTMLDivElement>, index: number) {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(index)); } catch { /* some browsers */ }
+  }
+  function onDragOver(e: DragEvent<HTMLDivElement>, index: number) {
+    if (dragIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (index !== overIndex) setOverIndex(index);
+  }
+  function onDrop(e: DragEvent<HTMLDivElement>, index: number) {
+    e.preventDefault();
+    if (dragIndex !== null && dragIndex !== index) moveBox(dragIndex, index);
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+  function onDragEnd() {
+    setDragIndex(null);
+    setOverIndex(null);
   }
 
   const input: React.CSSProperties = {
@@ -65,31 +155,114 @@ export default function RiderEditor({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
-      {shownSections.map(({ key, label }) => {
-        const rows = items.filter((i) => i.section === key);
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {boxes.map((box, bi) => {
+        const isCustom = box.section === 'custom';
+        const isDragging = dragIndex === bi;
+        const isOver = overIndex === bi && dragIndex !== null && dragIndex !== bi;
         return (
-          <section key={key}>
-            {/* Section header with a hairline rule */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '.8rem' }}>
-              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase', color: NEON, whiteSpace: 'nowrap' }}>
-                {label}
+          <div
+            key={box.id}
+            draggable
+            onDragStart={(e) => onDragStart(e, bi)}
+            onDragOver={(e) => onDragOver(e, bi)}
+            onDrop={(e) => onDrop(e, bi)}
+            onDragEnd={onDragEnd}
+            style={{
+              border: isOver ? `1.5px solid ${NEON}` : BORDER,
+              borderRadius: 12,
+              padding: '1rem 1.1rem',
+              background: box.disabled ? 'rgba(255,255,255,.015)' : 'rgba(255,255,255,.03)',
+              opacity: isDragging ? 0.5 : box.disabled ? 0.55 : 1,
+              boxShadow: isOver ? `0 0 0 3px rgba(0,224,164,.15)` : 'none',
+              transition: 'opacity .12s ease, border-color .12s ease, box-shadow .12s ease',
+            }}
+          >
+            {/* Box header: drag handle · heading/name · reorder · disable */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.85rem' }}>
+              <span
+                aria-hidden
+                title="Drag to reorder"
+                style={{ cursor: 'grab', color: MUTED, fontSize: '1.1rem', lineHeight: 1, userSelect: 'none', flexShrink: 0 }}
+              >
+                ⠿
               </span>
-              <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.1)' }} />
+
+              {isCustom ? (
+                <input
+                  type="text"
+                  value={box.title}
+                  onChange={(e) => patchBox(box.id, { title: e.target.value })}
+                  placeholder="Section name"
+                  maxLength={40}
+                  aria-label="Box name"
+                  style={{
+                    ...input, flex: '1 1 auto', fontWeight: 800,
+                    fontFamily: "'Space Mono', monospace", letterSpacing: '.04em',
+                    color: box.disabled ? MUTED : NEON, textTransform: 'uppercase', fontSize: '.78rem',
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    flex: '1 1 auto', fontFamily: "'Space Mono', monospace",
+                    fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase',
+                    color: box.disabled ? MUTED : NEON, whiteSpace: 'nowrap',
+                  }}
+                >
+                  {box.title}
+                </span>
+              )}
+
+              <div style={{ display: 'flex', gap: '.25rem', flexShrink: 0 }}>
+                <button type="button" onClick={() => moveBox(bi, bi - 1)} disabled={bi === 0} aria-label="Move box up" title="Move box up" style={ctl(MUTED, bi === 0)}>↑</button>
+                <button type="button" onClick={() => moveBox(bi, bi + 1)} disabled={bi === boxes.length - 1} aria-label="Move box down" title="Move box down" style={ctl(MUTED, bi === boxes.length - 1)}>↓</button>
+                {isCustom && (
+                  <button type="button" onClick={() => removeBox(box.id)} aria-label="Remove box" title="Remove box" style={ctl('#ff6b6b', false)}>✕</button>
+                )}
+              </div>
+
+              {/* Disable toggle */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!box.disabled}
+                aria-label={box.disabled ? 'Enable box' : 'Disable box'}
+                title={box.disabled ? 'Box is off — click to include it' : 'Box is on — click to exclude it'}
+                onClick={() => patchBox(box.id, { disabled: !box.disabled })}
+                style={{
+                  position: 'relative', width: 42, height: 24, borderRadius: 999,
+                  border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                  background: box.disabled ? 'rgba(255,255,255,.18)' : NEON,
+                  transition: 'background .15s ease',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: box.disabled ? 3 : 21,
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                }} />
+              </button>
             </div>
 
+            {box.disabled && (
+              <div style={{ color: MUTED, fontSize: '.76rem', fontStyle: 'italic', marginBottom: '.7rem' }}>
+                This box is off — it won&rsquo;t appear on the rider sent to the host. Its content is kept.
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-              {rows.length === 0 && (
+              {box.items.length === 0 && (
                 <div style={{ color: MUTED, fontSize: '.82rem', fontStyle: 'italic' }}>
-                  Nothing here yet — add a field below.
+                  Nothing here yet — add a line below.
                 </div>
               )}
-              {rows.map((it, i) => (
+              {box.items.map((it, i) => (
                 <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
                   <input
                     type="text"
                     value={it.label}
-                    onChange={(e) => patch(it.id, { label: e.target.value })}
+                    onChange={(e) => patchField(box, it.id, { label: e.target.value })}
                     placeholder="Requirement"
                     maxLength={80}
                     style={{ ...input, flex: '1 1 170px', fontWeight: 600 }}
@@ -97,15 +270,15 @@ export default function RiderEditor({
                   <input
                     type="text"
                     value={it.value}
-                    onChange={(e) => patch(it.id, { value: e.target.value })}
-                    placeholder={VALUE_PLACEHOLDER[key]}
+                    onChange={(e) => patchField(box, it.id, { value: e.target.value })}
+                    placeholder="Details (optional)"
                     maxLength={200}
                     style={{ ...input, flex: '2 1 220px' }}
                   />
                   <div style={{ display: 'flex', gap: '.25rem', flexShrink: 0 }}>
-                    <button type="button" onClick={() => move(it.id, -1)} disabled={i === 0} aria-label="Move up" title="Move up" style={ctl(MUTED, i === 0)}>↑</button>
-                    <button type="button" onClick={() => move(it.id, 1)} disabled={i === rows.length - 1} aria-label="Move down" title="Move down" style={ctl(MUTED, i === rows.length - 1)}>↓</button>
-                    <button type="button" onClick={() => remove(it.id)} aria-label="Remove" title="Remove" style={ctl('#ff6b6b', false)}>✕</button>
+                    <button type="button" onClick={() => moveField(box, i, -1)} disabled={i === 0} aria-label="Move up" title="Move up" style={ctl(MUTED, i === 0)}>↑</button>
+                    <button type="button" onClick={() => moveField(box, i, 1)} disabled={i === box.items.length - 1} aria-label="Move down" title="Move down" style={ctl(MUTED, i === box.items.length - 1)}>↓</button>
+                    <button type="button" onClick={() => removeField(box, it.id)} aria-label="Remove" title="Remove" style={ctl('#ff6b6b', false)}>✕</button>
                   </div>
                 </div>
               ))}
@@ -113,14 +286,80 @@ export default function RiderEditor({
 
             <button
               type="button"
-              onClick={() => add(key)}
+              onClick={() => addField(box)}
               style={{ marginTop: '.7rem', background: 'transparent', border: 'none', color: NEON, padding: '.2rem 0', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
             >
               + Add field
             </button>
-          </section>
+
+            {/* Attachment — Technical + Visuals boxes only. One image or PDF,
+                ≤5MB, that travels with the rider (attached to the host email
+                and linked on the host page every time it's sent). */}
+            {sectionAllowsAttachment(box.section) && (
+              <div style={{ marginTop: '.85rem', paddingTop: '.75rem', borderTop: BORDER }}>
+                {box.attachmentUrl ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+                    <span aria-hidden style={{ color: NEON, fontSize: '1rem', flexShrink: 0 }}>📎</span>
+                    <a
+                      href={box.attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: '#fff', fontSize: '.84rem', wordBreak: 'break-all', textDecoration: 'underline' }}
+                    >
+                      {box.attachmentName || 'Attachment'}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(box)}
+                      aria-label="Remove attachment"
+                      style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem', textDecoration: 'underline', padding: 0 }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '.45rem',
+                      background: 'transparent', border: `1px dashed ${NEON}`, borderRadius: 8,
+                      color: NEON, padding: '.45rem .9rem', fontSize: '.82rem', fontWeight: 700,
+                      cursor: attachBusy[box.id] ? 'default' : 'pointer', opacity: attachBusy[box.id] ? 0.6 : 1,
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      hidden
+                      disabled={!!attachBusy[box.id]}
+                      onChange={(e) => onPickAttachment(box, e)}
+                    />
+                    {attachBusy[box.id] ? 'Uploading…' : '📎 Attach a file (image or PDF)'}
+                  </label>
+                )}
+                <div style={{ color: MUTED, fontSize: '.72rem', marginTop: '.4rem' }}>
+                  One file, max 5MB. Sent with the rider every time. For larger
+                  files, add a link through a hosted provider (Google Drive,
+                  Dropbox, etc.) as a field above instead.
+                </div>
+                {attachMsg[box.id] && (
+                  <div style={{ color: '#ff9a9a', fontSize: '.76rem', marginTop: '.35rem' }}>{attachMsg[box.id]}</div>
+                )}
+              </div>
+            )}
+          </div>
         );
       })}
+
+      <button
+        type="button"
+        onClick={addBox}
+        style={{
+          alignSelf: 'flex-start', background: 'rgba(0,224,164,.08)', border: `1px dashed ${NEON}`,
+          borderRadius: 10, color: NEON, padding: '.6rem 1.1rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer',
+        }}
+      >
+        + Add box
+      </button>
     </div>
   );
 }
