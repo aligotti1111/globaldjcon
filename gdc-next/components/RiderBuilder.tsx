@@ -16,7 +16,20 @@
 
 import { useRef, useState, type ChangeEvent } from 'react';
 import RiderEditor from '@/components/RiderEditor';
-import type { RiderItem, RiderMode, RiderSection } from '@/lib/rider';
+import type { RiderItem, RiderMode } from '@/lib/rider';
+
+/** Best-effort human filename from a stored PDF URL (for the status line). */
+function fileNameFromUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const path = new URL(url, 'https://x').pathname;
+    const last = path.split('/').filter(Boolean).pop() || '';
+    const name = decodeURIComponent(last);
+    return name || 'rider.pdf';
+  } catch {
+    return 'rider.pdf';
+  }
+}
 
 const NEON = 'var(--neon,#00e0a4)';
 const MUTED = 'var(--muted,#8a8aa0)';
@@ -28,10 +41,14 @@ export default function RiderBuilder({
   onItemsChange,
   pdfUrl,
   onPdfUrlChange,
-  sections,
   /** Passed to the upload API so the file is namespaced (optional). */
   bookingId,
   hideChooser,
+  /** Optional Rider name field — shown for BOTH modes when a setter is given.
+   *  Parents that render their own name input (e.g. the per-booking editor)
+   *  simply omit these and nothing extra appears. */
+  name,
+  onNameChange,
 }: {
   mode: RiderMode;
   onModeChange: (m: RiderMode) => void;
@@ -39,14 +56,18 @@ export default function RiderBuilder({
   onItemsChange: (next: RiderItem[]) => void;
   pdfUrl: string | null;
   onPdfUrlChange: (url: string | null) => void;
-  sections?: RiderSection[];
   bookingId?: string | null;
   /** When the parent page owns the mode chooser, hide the inline cards. */
   hideChooser?: boolean;
+  name?: string;
+  onNameChange?: (v: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [pickedName, setPickedName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const shownName = pickedName || fileNameFromUrl(pdfUrl);
 
   async function onPickPdf(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -65,6 +86,7 @@ export default function RiderBuilder({
       const res = await fetch('/api/rider/upload', { method: 'POST', body: fd });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
       if (!res.ok || !data.ok || !data.url) throw new Error(data.error || 'Upload failed.');
+      setPickedName(file.name);
       onPdfUrlChange(data.url);
       setMsg('✓ Rider PDF uploaded.');
     } catch (err) {
@@ -111,6 +133,34 @@ export default function RiderBuilder({
 
   return (
     <div>
+      {onNameChange && (
+        <div style={{ marginBottom: '1.3rem' }}>
+          <div
+            style={{
+              fontFamily: "'Space Mono', monospace", fontSize: '.7rem',
+              letterSpacing: '.08em', textTransform: 'uppercase', color: MUTED, marginBottom: '.4rem',
+            }}
+          >
+            Rider name
+          </div>
+          <input
+            type="text"
+            value={name || ''}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="e.g. House standard, Festival, Small-club minimal"
+            maxLength={80}
+            style={{
+              width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,.04)',
+              border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff',
+              padding: '.6rem .7rem', fontSize: '.92rem', fontWeight: 700,
+            }}
+          />
+          <div style={{ color: MUTED, fontSize: '.76rem', marginTop: '.35rem' }}>
+            Shown to the host and used to label this rider. Applies to both upload and custom modes.
+          </div>
+        </div>
+      )}
+
       {!hideChooser && (
         <>
           <div
@@ -134,38 +184,55 @@ export default function RiderBuilder({
 
       {mode === 'upload' ? (
         <div>
-          <input ref={fileRef} type="file" accept="application/pdf,.pdf" hidden onChange={onPickPdf} />
-          {pdfUrl ? (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {/* The Browse control is always visible: a styled <label> wrapping a
+              hidden file input (so there is ALWAYS a clear way to pick/replace
+              a PDF), plus a status line showing the current file. */}
+          <div
+            style={{
+              border: '1px dashed rgba(255,255,255,.28)', borderRadius: 12,
+              padding: '1.4rem 1.2rem', textAlign: 'center',
+            }}
+          >
+            <div style={{ color: MUTED, fontSize: '.86rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
+              Upload your rider as a PDF. This exact file is attached to the host&rsquo;s email.
+            </div>
+            <label
+              style={{
+                display: 'inline-block', background: NEON, color: '#06231b', borderRadius: 8,
+                padding: '.6rem 1.3rem', fontSize: '.88rem', fontWeight: 700,
+                cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+              }}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf"
+                hidden
+                disabled={busy}
+                onChange={onPickPdf}
+              />
+              {busy ? 'Uploading…' : pdfUrl ? 'Browse — replace PDF' : 'Browse for PDF'}
+            </label>
+            <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: shownName ? '#fff' : MUTED }}>
+              {shownName ? (
+                <span>
+                  <span style={{ color: NEON, fontWeight: 700 }}>Current file:</span> {shownName}
+                </span>
+              ) : (
+                'No file chosen yet.'
+              )}
+            </div>
+            {pdfUrl && (
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => onPdfUrlChange(null)}
-                style={{ background: 'transparent', border: 'none', color: MUTED, textDecoration: 'underline', cursor: 'pointer', fontSize: '.8rem' }}
+                onClick={() => { setPickedName(null); onPdfUrlChange(null); }}
+                style={{ marginTop: '.5rem', background: 'transparent', border: 'none', color: MUTED, textDecoration: 'underline', cursor: 'pointer', fontSize: '.8rem' }}
               >
                 Remove
               </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                border: '1px dashed rgba(255,255,255,.28)', borderRadius: 12,
-                padding: '1.6rem 1.2rem', textAlign: 'center',
-              }}
-            >
-              <div style={{ color: MUTED, fontSize: '.86rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
-                Upload your rider as a PDF. This exact file is attached to the host&rsquo;s email.
-              </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => fileRef.current?.click()}
-                style={{ background: NEON, border: 'none', color: '#06231b', borderRadius: 8, padding: '.6rem 1.3rem', fontSize: '.88rem', fontWeight: 700, cursor: 'pointer' }}
-              >
-                {busy ? 'Uploading…' : 'Choose PDF'}
-              </button>
-            </div>
-          )}
+            )}
+          </div>
           {pdfUrl && (
             <iframe
               title="Rider PDF preview"
@@ -176,7 +243,7 @@ export default function RiderBuilder({
           {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
         </div>
       ) : (
-        <RiderEditor items={items} onChange={onItemsChange} sections={sections} />
+        <RiderEditor items={items} onChange={onItemsChange} />
       )}
     </div>
   );
