@@ -303,10 +303,12 @@ function LoginForm() {
         : { phone: toE164(raw) as string, token: code.trim(), type: 'sms' as const };
       const { data, error: vErr } = await supabase.auth.verifyOtp(payload);
       if (vErr) {
-        if (/expired/i.test(vErr.message)) {
-          throw new Error('That code has expired — send yourself a new one.');
-        }
-        throw new Error('That code doesn’t match. Check it and try again.');
+        // Supabase returns the SAME error ("Token has expired or is invalid")
+        // for both a mistyped code and a genuinely expired one — the message
+        // always contains "expired", so we can't reliably tell them apart.
+        // Use one message that's accurate either way instead of insisting the
+        // code expired when the user simply entered it wrong.
+        throw new Error('That code is invalid or has expired. Double-check it, or send yourself a new one.');
       }
       if (!data?.session) throw new Error('Login failed. Please try again.');
       await finish(data.user?.email || null);
