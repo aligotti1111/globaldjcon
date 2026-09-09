@@ -193,9 +193,10 @@
   border-bottom: 1px solid rgba(255, 255, 255, .15);
   border-bottom-right-radius: 12px;
   color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-size: .85rem;
-  letter-spacing: .06em;
+  font-family: var(--font-archivo), 'Archivo', sans-serif;
+  font-weight: 600;
+  font-size: .82rem;
+  letter-spacing: .05em;
   text-transform: uppercase;
   line-height: 1.1;
   backdrop-filter: blur(8px);
