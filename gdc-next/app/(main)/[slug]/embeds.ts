@@ -23,9 +23,18 @@ export function buildMixEmbed(url: string | null | undefined): EmbedSpec | null 
     };
   }
 
-  // Mixcloud — vanilla strips the host then re-encodes the path
+  // Mixcloud — the widget's feed param is the cloudcast path (e.g.
+  // "/user/show-name/"), which MUST have a trailing slash. Parse the URL so
+  // we handle http/https, www/m/no subdomain, and query strings robustly.
   if (url.includes('mixcloud.com')) {
-    const path = url.replace('https://www.mixcloud.com', '').replace('https://mixcloud.com', '');
+    let path = '';
+    try {
+      path = new URL(url).pathname;
+    } catch {
+      path = url.replace(/^https?:\/\/(www\.|m\.)?mixcloud\.com/i, '');
+    }
+    if (!path.startsWith('/')) path = '/' + path;
+    if (!path.endsWith('/')) path += '/';
     return {
       kind: 'mixcloud',
       src: `https://player.mixcloud.com/widget/iframe/?hide_cover=1&mini=1&feed=${encodeURIComponent(path)}&light=1`,
