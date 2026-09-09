@@ -2931,21 +2931,23 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           setOpenField={setOpenSocialField}
         />
       )}
-      {/* Owner-only phone control — always shown so the DJ can set OR change
-          their call number straight from this page. Visitors see the Call
-          button in the contact cluster below once a number is set. */}
+      {/* Owner-only phone control — sits in its OWN cluster (own divider),
+          apart from the socials, mirroring where visitors see the Call
+          button. Always shown so the DJ can set OR change their number. */}
       {isOwnProfile && (
-        <SocialAddButton
-          userId={data.id}
-          field="phone"
-          label={data.phone ? 'Change phone' : 'Add phone'}
-          placeholder="Your phone number"
-          initialValue={data.phone || ''}
-          icon={<PhoneIcon />}
-          colorClass=""
-          openField={openSocialField}
-          setOpenField={setOpenSocialField}
-        />
+        <div className={styles.underBannerContact}>
+          <SocialAddButton
+            userId={data.id}
+            field="phone"
+            label={data.phone ? 'Change phone' : 'Add phone'}
+            placeholder="Your phone number"
+            initialValue={data.phone || ''}
+            icon={<PhoneIcon />}
+            colorClass=""
+            openField={openSocialField}
+            setOpenField={setOpenSocialField}
+          />
+        </div>
       )}
       {/* Contact cluster — phone + message. Sits after the socials with its
           own divider, before Share. Hidden for the owner (no self-message).
