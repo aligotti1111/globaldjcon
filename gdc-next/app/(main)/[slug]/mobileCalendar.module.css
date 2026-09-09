@@ -349,6 +349,15 @@
   background: transparent;
 }
 
+/* Desktop: taller day cells so the mobile-DJ calendar matches the roomy
+   cell size of the club/bar calendar (single-month view). */
+@media (min-width: 701px) {
+  .cell,
+  .emptyCell {
+    min-height: 104px;
+  }
+}
+
 .cell {
   position: relative;
   /* Each cell is its own bordered+rounded box (matches /embed-calendar) */
