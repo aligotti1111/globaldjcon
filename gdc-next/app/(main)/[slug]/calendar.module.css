@@ -383,6 +383,16 @@
   background: transparent;
 }
 
+/* Desktop: give the (very wide) day cells more height so they read as
+   roomy squares instead of short, crushed strips. Narrow widths keep the
+   compact heights set in the mobile media query below. */
+@media (min-width: 701px) {
+  .cell,
+  .emptyCell {
+    min-height: 104px;
+  }
+}
+
 /* Real day cell — base styles, modifiers below */
 .cell {
   position: relative;
