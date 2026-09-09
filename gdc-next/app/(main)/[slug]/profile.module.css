@@ -1,4 +1,4 @@
-=/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
+/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
    CSS Module → class names auto-hashed, descendant element selectors preserved.
 
    Excluded from port (handled elsewhere or not relevant for Session 1):
@@ -1073,10 +1073,11 @@
 .tabsNav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 0;
   background: transparent;
   border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
   border-radius: 0;
   margin: 0 auto 2rem;
   width: fit-content;
@@ -1085,30 +1086,35 @@
 .tabBtn {
   font-family: 'Space Mono', monospace;
   font-size: .72rem;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  padding: .72rem 1.65rem;
+  padding: .7rem 1.3rem;
   background: transparent;
   border: none;
-  border-radius: 100px;
-  color: var(--neon);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 0;
+  color: var(--muted, #8a8aa0);
   cursor: pointer;
-  transition: all .15s;
+  transition: color .15s, border-color .15s;
   flex: 0 1 auto;
   text-align: center;
 }
 .tabBtn:hover {
-  background: rgba(0, 245, 196, .08);
+  background: transparent;
+  color: #fff;
 }
 .tabBtnActive {
-  background: var(--neon);
-  color: #050507;
+  background: transparent;
+  color: #fff;
   font-weight: 700;
-  box-shadow: 0 0 12px rgba(0, 245, 196, .5);
+  border-bottom-color: var(--neon);
+  box-shadow: none;
 }
 .tabBtnActive:hover {
-  background: var(--neon);
-  filter: brightness(1.05);
+  background: transparent;
+  color: #fff;
+  filter: none;
 }
 /* Owner-only marker — a tiny dot beside a tab label means it's hidden
    from the public. The owner can still click into and view/edit it. */
