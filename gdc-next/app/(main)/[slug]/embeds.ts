@@ -40,7 +40,7 @@ export function buildMixEmbed(url: string | null | undefined): EmbedSpec | null 
       // Mixcloud's canonical widget endpoint is www.mixcloud.com/widget/iframe/.
       // (The older player.mixcloud.com host renders a broken placeholder.)
       src: `https://www.mixcloud.com/widget/iframe/?hide_cover=1&mini=1&light=1&feed=${encodeURIComponent(path)}`,
-      height: 120,
+      height: 60, // mini player is ~60px tall — avoids empty space below it
     };
   }
 
