@@ -1785,6 +1785,123 @@
   opacity: .55;
   cursor: default;
 }
+
+/* ── About tab: bold-italic bio + highlight cards (mobile DJs) ── */
+.bioTextMobile {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--white);
+}
+.aboutStatsWrap {
+  margin-top: 1.5rem;
+}
+.aboutStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+.aboutStatCard {
+  background: #13131b;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .9rem 1rem;
+}
+.aboutStatValue {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--neon);
+  line-height: 1.1;
+}
+.aboutStatLabel {
+  margin-top: .35rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.aboutStatsEditBtn {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  padding: .55rem 1.1rem;
+  background: transparent;
+  border: 1px dashed rgba(0, 245, 196, .35);
+  border-radius: 8px;
+  color: var(--neon);
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.aboutStatsEditBtn:hover {
+  background: rgba(0, 245, 196, .08);
+  border-color: var(--neon);
+}
+.aboutStatsEditor {
+  margin-top: 1rem;
+  background: #0d0d14;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  max-width: 460px;
+}
+.aboutStatsEditorHint {
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  line-height: 1.5;
+  letter-spacing: .02em;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+.aboutStatsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.aboutStatsRowLabel {
+  font-size: .85rem;
+  color: var(--white);
+}
+.aboutStatsRowControl {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.aboutStatsAuto {
+  font-family: 'Space Mono', monospace;
+  font-size: .72rem;
+  color: var(--muted);
+}
+.aboutStatsSelect,
+.aboutStatsInput {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  padding: .35rem .5rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .8rem;
+  max-width: 130px;
+}
+.aboutStatsSelect option {
+  background: #13131b;
+  color: #fff;
+}
+.aboutStatsActions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
 /* Suggested-questions block inside the owner add form. */
 .faqSuggestWrap {
   margin: .6rem 0 1rem;
