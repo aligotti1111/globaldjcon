@@ -3324,22 +3324,18 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           aria-expanded={shareOpen}
           onClick={handleShare}
         >
-          {/* Desktop: share icon + label. Mobile: a 3-dots (ellipsis) icon
-              instead, per design. Toggled purely by CSS. */}
+          {/* Desktop: paper-plane icon + label. Mobile: the same paper-plane
+              icon (slightly larger), no label. Toggled purely by CSS. */}
           <span className={styles.shareDesktop}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
             <span>Share</span>
           </span>
-          <svg className={styles.shareMobileDots} width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <circle cx="5" cy="12" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="19" cy="12" r="2" />
+          <svg className={styles.shareMobileDots} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
           </svg>
         </button>
 
