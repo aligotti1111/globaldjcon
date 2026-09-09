@@ -14,7 +14,7 @@ import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, CalendarIcon, MailIcon,
 } from './icons';
-import type { DjProfileData, Testimonial } from './profileTypes';
+import type { DjProfileData, Testimonial, Faq } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 
@@ -2446,6 +2446,7 @@ export function EditTabsModal({
     images: boolean;
     video: boolean;
     testimonials: boolean;
+    faq: boolean;
   };
   isMobileDJ: boolean;
   onClose: () => void;
@@ -2484,12 +2485,16 @@ export function EditTabsModal({
     { key: 'mixes', label: 'Mixes' },
     { key: 'images', label: 'Photos' },
     { key: 'video', label: 'Video' },
-    // Testimonials are only relevant for mobile DJs.
+    // Testimonials and FAQ are only relevant for mobile DJs.
     ...(isMobileDJ
       ? [{
           key: 'testimonials' as const,
           label: 'Testimonials',
           hint: 'Off by default for new mobile DJs',
+        }, {
+          key: 'faq' as const,
+          label: 'FAQ',
+          hint: 'Off by default — turn on to answer common questions',
         }]
       : []),
   ];
@@ -2653,6 +2658,156 @@ export function TestimonialAddForm({
         onChange={(e) => setBlurb(e.target.value)}
         rows={3}
         placeholder="What they said about you…"
+        className={styles.testimonialAddInput}
+        disabled={busy}
+      />
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button
+          type="button"
+          onClick={() => {
+            reset();
+            setOpen(false);
+          }}
+          disabled={busy}
+          className={styles.testimonialAddCancel}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy}
+          className={styles.testimonialAddSave}
+        >
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── FaqAddForm ─────────────────────────────────────────────────
+// Owner-only inline form to append a new FAQ (question + answer). Lives at
+// the bottom of the FAQ tab pane. Shows suggested questions the owner can
+// tap to prefill the question field. On submit, appends to the existing
+// array and writes back to users.faqs (JSON-stringified). Capped at 10 by
+// the caller (the form is only rendered while there's room).
+const FAQ_SUGGESTIONS = [
+  'Do you provide your own equipment?',
+  'How far are you willing to travel?',
+  'What genres of music do you play?',
+  'Do you take song requests?',
+  "What's your deposit and cancellation policy?",
+  'Do you offer MC / hosting services?',
+  'How far in advance should I book?',
+  'Do you have lighting?',
+  'Are you insured?',
+  'What happens if you get sick or have an emergency?',
+];
+
+export function FaqAddForm({
+  userId,
+  existing,
+}: {
+  userId: string;
+  existing: Faq[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setQuestion('');
+    setAnswer('');
+    setError(null);
+  }
+
+  async function save() {
+    if (!question.trim() || !answer.trim()) {
+      setError('Question and answer are both required.');
+      return;
+    }
+    if (existing.length >= 10) {
+      setError('You can add up to 10 FAQs.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const next: Faq[] = [
+        ...existing,
+        { question: question.trim(), answer: answer.trim() },
+      ];
+      const supabase = createClient();
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ faqs: JSON.stringify(next) } as unknown as never)
+        .eq('id', userId);
+      if (dbErr) throw dbErr;
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={styles.testimonialAddBtn}
+      >
+        + Add FAQ
+      </button>
+    );
+  }
+
+  // Questions the owner hasn't already used, so suggestions stay useful.
+  const usedQuestions = new Set(
+    existing.map((f) => (f.question || '').trim().toLowerCase()),
+  );
+  const suggestions = FAQ_SUGGESTIONS.filter(
+    (q) => !usedQuestions.has(q.toLowerCase()),
+  );
+
+  return (
+    <div className={styles.testimonialAddForm}>
+      <div className={styles.testimonialAddFormLabel}>Question</div>
+      <input
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        placeholder="e.g. Do you provide your own equipment?"
+        className={styles.testimonialAddInput}
+        disabled={busy}
+      />
+      {suggestions.length > 0 && (
+        <div className={styles.faqSuggestWrap}>
+          <div className={styles.faqSuggestLabel}>Need ideas? Tap one:</div>
+          <div className={styles.faqSuggestList}>
+            {suggestions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setQuestion(q)}
+                className={styles.faqSuggestChip}
+                disabled={busy}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={styles.testimonialAddFormLabel}>Answer</div>
+      <textarea
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        rows={3}
+        placeholder="Your answer…"
         className={styles.testimonialAddInput}
         disabled={busy}
       />
