@@ -1150,6 +1150,36 @@
 .tabsSection .tabsNav {
   margin: 0;
 }
+/* Wrapper that lets the right-edge scroll hint sit over the tab row. */
+.tabsNavWrap {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+/* Right-edge chevron shown only when the tab row overflows and there's
+   more to the right. Fades the last tab under it so it reads as "more →".
+   Tapping nudges the row along; the row also scrolls by touch/drag. */
+.tabsScrollHint {
+  position: absolute;
+  top: 0;
+  bottom: 3px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 44px;
+  padding-right: 3px;
+  border: none;
+  cursor: pointer;
+  color: var(--neon);
+  background: linear-gradient(to right, rgba(10, 10, 15, 0), rgba(10, 10, 15, .96) 62%);
+  animation: tabsHintPulse 1.6s ease-in-out infinite;
+}
+@keyframes tabsHintPulse {
+  0%, 100% { opacity: .7; }
+  50% { opacity: 1; }
+}
 /* Owner-only "Edit tabs" button — sits ABOVE the pill-segmented tabs
    nav, aligned to the right edge of the nav. */
 .editTabsRow {
