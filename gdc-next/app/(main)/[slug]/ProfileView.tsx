@@ -532,13 +532,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // whenever there's more to the right, and hide it once scrolled to the
   // end. Tapping it nudges the row along.
   const tabsNavRef = useRef<HTMLElement | null>(null);
-  const [tabsHasOverflow, setTabsHasOverflow] = useState(false);
+  const [tabsMoreRight, setTabsMoreRight] = useState(false);
+  const [tabsMoreLeft, setTabsMoreLeft] = useState(false);
   useEffect(() => {
     const el = tabsNavRef.current;
     if (!el) return;
     const update = () => {
-      const moreToRight = el.scrollWidth - el.clientWidth - el.scrollLeft > 4;
-      setTabsHasOverflow(moreToRight);
+      setTabsMoreRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+      setTabsMoreLeft(el.scrollLeft > 4);
     };
     update();
     el.addEventListener('scroll', update, { passive: true });
@@ -551,6 +552,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
   function scrollTabsRight() {
     tabsNavRef.current?.scrollBy({ left: 140, behavior: 'smooth' });
+  }
+  function scrollTabsLeft() {
+    tabsNavRef.current?.scrollBy({ left: -140, behavior: 'smooth' });
   }
 
   // ── Helper: tab button class ─────────────────────────────────────────
@@ -920,7 +924,19 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </button>
             )}
           </nav>
-            {tabsHasOverflow && (
+            {tabsMoreLeft && (
+              <button
+                type="button"
+                className={`${styles.tabsScrollHint} ${styles.tabsScrollHintLeft}`}
+                onClick={scrollTabsLeft}
+                aria-label="Scroll tabs left"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+            )}
+            {tabsMoreRight && (
               <button
                 type="button"
                 className={styles.tabsScrollHint}
