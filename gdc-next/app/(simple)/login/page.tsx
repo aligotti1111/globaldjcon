@@ -329,6 +329,7 @@ function LoginForm() {
   return (
     <div className={styles.body}>
       <div className={styles.container}>
+        <Link href="/" className={styles.closeX} aria-label="Close and return home">✕</Link>
         <div className={styles.logo}>
           <Link href="/">
             <h1>GLOBAL DJ CONNECT</h1>
