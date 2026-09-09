@@ -458,13 +458,13 @@ export function SocialAddButton({
           width: isEdit ? 17 : 14,
           height: isEdit ? 17 : 14,
           borderRadius: '50%',
-          background: isEdit ? 'var(--neon, #00e0a4)' : '#fff',
+          background: isEdit ? 'transparent' : '#fff',
           color: '#08080d',
           fontSize: '0.66rem',
           fontWeight: 800,
           lineHeight: '13px',
           textAlign: 'center',
-          border: '1.5px solid #08080d',
+          border: isEdit ? 'none' : '1.5px solid #08080d',
           boxSizing: 'border-box',
           pointerEvents: 'none',
           display: 'flex',
@@ -472,7 +472,7 @@ export function SocialAddButton({
           justifyContent: 'center',
         }}>
           {isEdit ? (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#08080d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ filter: 'drop-shadow(0 0 1.5px rgba(0,0,0,.9))' }}>
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
