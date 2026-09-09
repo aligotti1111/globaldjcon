@@ -911,22 +911,6 @@
 .heroHasBanner .heroName {
   max-width: 100%;
 }
-/* Bottom-to-top dark scrim painted over the banner image (below the hero
-   content, above the banner photo and its badges) so the oversized white
-   name/location read cleanly on light, dark, or busy banners. Rendered as
-   .banner::before so the corner badge + edit button paint on top of it. */
-.heroHasBanner .banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* Dark on the LEFT (where the avatar/name/location sit, at any height),
-     plus a touch at the bottom — fading to clear on the right so the banner
-     photo still shows. Keeps the white name readable on any banner. */
-  background:
-    linear-gradient(to right, rgba(0, 0, 0, .8) 0%, rgba(0, 0, 0, 0) 62%),
-    linear-gradient(to top, rgba(0, 0, 0, .45), rgba(0, 0, 0, 0) 55%);
-  pointer-events: none;
-}
 /* Name-length size tiers — keeps the pill tight when the name is long.
    Applied additively to .heroName via JS (nameSizeClass). */
 .heroNameLg { font-size: 2.6rem; }
