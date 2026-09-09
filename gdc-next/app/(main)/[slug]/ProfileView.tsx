@@ -1572,7 +1572,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                             .update({ faqs: JSON.stringify(next) } as unknown as never)
                             .eq('id', data.id);
                           if (error) throw error;
-                          window.location.reload();
+                          const url = new URL(window.location.href);
+                          url.searchParams.set('tab', 'faq');
+                          window.location.href = url.toString();
                         } catch (err) {
                           alert(err instanceof Error ? err.message : 'Delete failed.');
                         }
