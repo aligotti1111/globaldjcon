@@ -42,6 +42,15 @@
 .closeX:hover {
   background: rgba(255, 255, 255, .18);
 }
+/* On mobile the create-account form is tall, so an absolute ✕ scrolls off
+   the top. Pin it to the viewport so it's always reachable. */
+@media (max-width: 700px) {
+  .closeX {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+  }
+}
 
 .logo {
   text-align: center;
