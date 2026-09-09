@@ -73,6 +73,12 @@ const LANDING_CSS = String.raw`
 .gdc-landing .herogrid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
 @media(max-width:920px){
 .gdc-landing .herogrid{grid-template-columns:1fr;gap:36px}
+/* On mobile the 2-column layout collapses, so the image positioned to the
+   right edge under a left-to-right black gradient just reads as an empty
+   black hero. Center the image and switch to a bottom-up scrim so the photo
+   actually shows while keeping the text legible. */
+.gdc-landing .hero-bg{background-position:center center}
+.gdc-landing .hero-bg::after{background:linear-gradient(0deg,#000 6%,rgba(0,0,0,.45) 48%,rgba(0,0,0,.2) 100%)}
 }
 .gdc-landing .hero h1{font-family:var(--disp);font-size:clamp(3rem,7.2vw,5.8rem);line-height:.9;letter-spacing:.01em;margin:1rem 0 1.1rem}
 .gdc-landing .hero h1 .a{color:var(--neon)}
