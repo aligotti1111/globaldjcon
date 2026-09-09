@@ -78,7 +78,7 @@ export function BannerTypeEventsDropdown({ events, customTypes = [] }: { events:
       }}
       style={{ cursor: hasEvents ? 'pointer' : 'default' }}
     >
-      Mobile / Event DJ{hasEvents && ' ▾'}
+      Mobile DJ{hasEvents && ' ▾'}
       {mounted && open && hasEvents && pos && createPortal(
         <div
           className={styles.bannerTypeDropdown}
