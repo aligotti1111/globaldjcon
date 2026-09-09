@@ -2253,11 +2253,10 @@
 .underBannerShareBtn .shareMobileDots {
   display: block;
   box-sizing: content-box;
-  width: 16px;
-  height: 16px;
-  padding: 5px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
 }
 /* Share-options popover anchored to the Share button. */
 .underBannerShareWrap { position: relative; display: inline-flex; align-items: center; }
@@ -2300,9 +2299,9 @@
     font-size: .55rem;
   }
   .underBannerShareBtn .shareMobileDots {
-    width: 14px;
-    height: 14px;
-    padding: 4px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
   }
 }
 /* SocialAddButton inside the under-banner strip: shrink to match the
