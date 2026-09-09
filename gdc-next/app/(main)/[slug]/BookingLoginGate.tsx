@@ -122,6 +122,10 @@ export default function BookingLoginGate({
             </p>
           </>
         )}
+
+        <button type="button" onClick={onClose} className={styles.cancelBtn}>
+          Cancel
+        </button>
       </div>
     </div>
   );
