@@ -948,20 +948,20 @@ export function MixAddButton({
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } else if (e.key === 'Escape') { setExpanded(false); setValue(''); setError(''); } }}
-        placeholder="Paste SoundCloud, Mixcloud, or other mix URL"
-        autoFocus
-        style={{ padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif', width: '100%', maxWidth: 460, alignSelf: 'flex-start' }}
-      />
-      {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem' }}>{error}</div>}
-      <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
-        <button type="button" onClick={() => { setExpanded(false); setValue(''); setError(''); }} style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.8rem' }}>Cancel</button>
-        <button type="button" onClick={handleSave} disabled={saving} style={{ background: 'var(--neon)', border: 'none', color: '#000', borderRadius: 6, padding: '.5rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '.8rem' }}>{saving ? 'Saving…' : 'Add'}</button>
+      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } else if (e.key === 'Escape') { setExpanded(false); setValue(''); setError(''); } }}
+          placeholder="Paste SoundCloud, Mixcloud, or other mix URL"
+          autoFocus
+          style={{ padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif', flex: '1 1 260px', minWidth: 0, maxWidth: 460 }}
+        />
+        <button type="button" onClick={() => { setExpanded(false); setValue(''); setError(''); }} style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.25))', color: 'var(--white,#fff)', borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.8rem', whiteSpace: 'nowrap' }}>Cancel</button>
+        <button type="button" onClick={handleSave} disabled={saving} style={{ background: 'var(--neon)', border: 'none', color: '#000', borderRadius: 6, padding: '.5rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '.8rem', whiteSpace: 'nowrap' }}>{saving ? 'Saving…' : 'Add'}</button>
       </div>
+      {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem' }}>{error}</div>}
     </div>
   );
 }
