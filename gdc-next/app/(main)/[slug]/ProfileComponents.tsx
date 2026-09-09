@@ -368,7 +368,7 @@ export function SocialAddButton({
   setOpenField,
 }: {
   userId: string;
-  field: 'website' | 'soundcloud' | 'instagram' | 'tiktok' | 'facebook' | 'twitch';
+  field: 'website' | 'soundcloud' | 'instagram' | 'tiktok' | 'facebook' | 'twitch' | 'phone';
   label: string;
   placeholder: string;
   icon: React.ReactNode;
@@ -2922,6 +2922,21 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           placeholder="https://twitch.tv/yourname"
           icon={<TwitchIcon />}
           colorClass={styles.actionBtnTwitch}
+          openField={openSocialField}
+          setOpenField={setOpenSocialField}
+        />
+      )}
+      {/* Owner-only quick-add for a phone number, so the DJ can put a
+          call number on their profile straight from this page. Once set,
+          visitors see the Call button in the contact cluster below. */}
+      {isOwnProfile && !data.phone && (
+        <SocialAddButton
+          userId={data.id}
+          field="phone"
+          label="Phone"
+          placeholder="Your phone number"
+          icon={<PhoneIcon />}
+          colorClass=""
           openField={openSocialField}
           setOpenField={setOpenSocialField}
         />
