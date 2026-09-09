@@ -579,10 +579,16 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
   const [draft, setDraft] = useState<string>(initialBio || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Only pull focus into the textarea when the DJ *deliberately* taps to
+  // edit. When About auto-opens the empty-bio editor, an autoFocus would
+  // pop the mobile keyboard and jerk the page on tab-switch (reads as a
+  // "refresh"), so the auto-opened editor starts unfocused.
+  const [autoFocusEdit, setAutoFocusEdit] = useState(false);
 
   function startEdit() {
     setDraft(bio);
     setError(null);
+    setAutoFocusEdit(true);
     setEditing(true);
   }
   function cancel() {
@@ -614,7 +620,7 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
         <textarea
-          autoFocus
+          autoFocus={autoFocusEdit}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Tell people about yourself, your sound, your style…"
