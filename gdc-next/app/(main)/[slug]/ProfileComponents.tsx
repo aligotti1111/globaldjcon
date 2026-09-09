@@ -935,13 +935,15 @@ export function MixAddButton({
 
   if (!expanded) {
     return (
-      <button
-        type="button"
-        onClick={() => setExpanded(true)}
-        style={{ background: 'rgba(0,245,196,.05)', border: '2px dashed var(--neon)', borderRadius: 8, color: 'var(--neon)', cursor: 'pointer', padding: big ? '1.5rem' : '.9rem', fontFamily: "'Space Mono', monospace", fontSize: '.8rem', letterSpacing: '.05em', width: '100%' }}
-      >
-        + Add a mix
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          style={{ background: 'var(--neon)', border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '.55rem 1.1rem', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', fontWeight: 700, letterSpacing: '.05em', whiteSpace: 'nowrap' }}
+        >
+          + Add a mix
+        </button>
+      </div>
     );
   }
   return (
@@ -2713,10 +2715,16 @@ export function FaqAccordion({
     });
   }
 
-  async function remove(i: number) {
-    if (!window.confirm('Delete this FAQ?')) return;
+  // Styled delete confirm (replaces the native window.confirm). Holds the
+  // index pending deletion, or null when no dialog is open.
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function confirmDelete() {
+    if (pendingDelete == null) return;
+    setDeleting(true);
     try {
-      const next = faqs.filter((_, idx) => idx !== i);
+      const next = faqs.filter((_, idx) => idx !== pendingDelete);
       const supabase = createClient();
       const { error } = await supabase
         .from('users')
@@ -2728,6 +2736,8 @@ export function FaqAccordion({
       window.location.href = url.toString();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Delete failed.');
+      setDeleting(false);
+      setPendingDelete(null);
     }
   }
 
@@ -2740,7 +2750,7 @@ export function FaqAccordion({
             {isOwnProfile && (
               <button
                 type="button"
-                onClick={() => remove(i)}
+                onClick={() => setPendingDelete(i)}
                 className={styles.faqDeleteBtn}
                 title="Delete FAQ"
                 aria-label="Delete FAQ"
@@ -2765,6 +2775,42 @@ export function FaqAccordion({
           </div>
         );
       })}
+
+      {pendingDelete != null && (
+        <div
+          className={styles.faqConfirmBackdrop}
+          onClick={() => !deleting && setPendingDelete(null)}
+        >
+          <div
+            className={styles.faqConfirmModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.faqConfirmTitle}>Delete this FAQ?</div>
+            <div className={styles.faqConfirmText}>
+              This question and answer will be permanently removed from your
+              profile.
+            </div>
+            <div className={styles.faqConfirmActions}>
+              <button
+                type="button"
+                className={styles.faqConfirmCancel}
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.faqConfirmDelete}
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
