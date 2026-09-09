@@ -1,4 +1,4 @@
-/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
+=/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
    CSS Module → class names auto-hashed, descendant element selectors preserved.
 
    Excluded from port (handled elsewhere or not relevant for Session 1):
@@ -1073,11 +1073,11 @@
 .tabsNav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  background: rgba(0, 245, 196, .04);
-  border: 1px solid rgba(0, 245, 196, .15);
-  border-radius: 100px;
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   margin: 0 auto 2rem;
   width: fit-content;
   max-width: 100%;
@@ -1685,13 +1685,15 @@
 @media (max-width: 700px) {
   .tabsNav {
     overflow-x: auto;
-    /* Slimmer top-to-bottom on mobile — tighter wrapper padding. */
-    padding: 4px;
+    padding: 0;
+    gap: 2px;
   }
   .tabBtn {
-    /* Reduce vertical padding so the whole pill bar is shorter. */
-    padding-top: .42rem;
-    padding-bottom: .42rem;
+    /* Compact on mobile: smaller text + tighter padding so more tabs fit
+       (the row scrolls sideways if they still overflow). */
+    font-size: .62rem;
+    letter-spacing: .08em;
+    padding: .38rem .8rem;
   }
   .infoGrid {
     grid-template-columns: 1fr;
