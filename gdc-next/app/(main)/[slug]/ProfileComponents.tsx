@@ -2761,14 +2761,17 @@ export function AboutStatsRow({
   return (
     <div className={styles.aboutStatsWrap}>
       {cards.length > 0 && (
-        <div className={styles.aboutStatsGrid}>
-          {cards.map(c => (
-            <div key={c.key} className={styles.aboutStatCard}>
-              <div className={styles.aboutStatValue}>{c.value}</div>
-              <div className={styles.aboutStatLabel}>{c.label}</div>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className={styles.aboutStatsHeading}>Quick Facts</div>
+          <div className={styles.aboutStatsGrid}>
+            {cards.map(c => (
+              <div key={c.key} className={styles.aboutStatCard}>
+                <div className={styles.aboutStatValue}>{c.value}</div>
+                <div className={styles.aboutStatLabel}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {isOwnProfile && !editing && (
