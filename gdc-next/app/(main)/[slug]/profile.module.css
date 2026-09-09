@@ -1672,7 +1672,7 @@
 }
 .faqChevron {
   flex: none;
-  font-size: 1.15rem;
+  font-size: 1.7rem;
   line-height: 1;
   color: var(--neon);
   font-weight: 700;
@@ -1689,8 +1689,8 @@
 /* Owner delete ✕ — sits over the dark banner, top-right. */
 .faqDeleteBtn {
   position: absolute;
-  top: .7rem;
-  right: .7rem;
+  top: .35rem;
+  right: .35rem;
   z-index: 2;
   width: 24px;
   height: 24px;
@@ -1710,6 +1710,80 @@
   background: rgba(255, 95, 95, .2);
   border-color: #ff5f5f;
   color: #ff5f5f;
+}
+/* Styled delete-confirm dialog (replaces the browser's native confirm). */
+.faqConfirmBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+.faqConfirmModal {
+  width: 100%;
+  max-width: 380px;
+  background: #14141b;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+}
+.faqConfirmTitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.faqConfirmText {
+  margin-top: .6rem;
+  font-size: .85rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.faqConfirmActions {
+  margin-top: 1.4rem;
+  display: flex;
+  gap: .6rem;
+  justify-content: flex-end;
+}
+.faqConfirmCancel,
+.faqConfirmDelete {
+  border-radius: 8px;
+  padding: .6rem 1.2rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.faqConfirmCancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: #fff;
+}
+.faqConfirmCancel:hover {
+  background: rgba(255, 255, 255, .08);
+}
+.faqConfirmDelete {
+  background: #ff4d4d;
+  border: 1px solid #ff4d4d;
+  color: #fff;
+}
+.faqConfirmDelete:hover {
+  background: #ff3535;
+}
+.faqConfirmCancel:disabled,
+.faqConfirmDelete:disabled {
+  opacity: .55;
+  cursor: default;
 }
 /* Suggested-questions block inside the owner add form. */
 .faqSuggestWrap {
