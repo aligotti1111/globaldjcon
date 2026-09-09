@@ -1795,18 +1795,28 @@
   color: var(--white);
 }
 .aboutStatsWrap {
-  margin-top: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+.aboutStatsHeading {
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--neon);
+  margin-bottom: .75rem;
 }
 .aboutStatsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 .aboutStatCard {
+  flex: 0 0 auto;
+  min-width: 120px;
   background: #13131b;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: .9rem 1rem;
+  padding: .8rem 1rem;
 }
 .aboutStatValue {
   font-family: 'Space Mono', monospace;
