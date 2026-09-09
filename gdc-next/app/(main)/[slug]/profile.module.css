@@ -195,7 +195,7 @@
   color: #fff;
   font-family: var(--font-archivo), 'Archivo', sans-serif;
   font-weight: 600;
-  font-size: .82rem;
+  font-size: 1.05rem;
   letter-spacing: .05em;
   text-transform: uppercase;
   line-height: 1.1;
@@ -208,7 +208,7 @@
 @media (max-width: 700px) {
   .bannerNameBadge {
     padding: .3rem .8rem .35rem;
-    font-size: .7rem;
+    font-size: .9rem;
     max-width: calc(100% - 32px);
   }
 }
