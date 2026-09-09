@@ -938,9 +938,22 @@
 }
 .heroHasBanner .heroLocation {
   color: #fff;
+  /* Universal legibility: a 1px dark outline in every direction keeps the
+     text readable over ANY banner — including bright or white areas where a
+     soft shadow alone disappears — plus a soft halo for depth. No backing
+     box, so it never clashes with a photo. */
+  text-shadow:
+    -1px -1px 0 rgba(0, 0, 0, .9),
+    1px -1px 0 rgba(0, 0, 0, .9),
+    -1px 1px 0 rgba(0, 0, 0, .9),
+    1px 1px 0 rgba(0, 0, 0, .9),
+    0 0 6px rgba(0, 0, 0, .95),
+    0 2px 10px rgba(0, 0, 0, .85);
 }
 .heroHasBanner .heroLocation svg {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
+  filter:
+    drop-shadow(0 0 2px rgba(0, 0, 0, .95))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
 }
 .heroHasBanner .heroYears {
   background: rgba(15, 15, 20, .95);
