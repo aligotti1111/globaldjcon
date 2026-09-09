@@ -1681,8 +1681,8 @@
 .faqAnswer {
   font-size: .9rem;
   line-height: 1.7;
-  color: #1f1f24;
-  background: #e7e7ea;
+  color: #000;
+  background: #b9b9c0;
   padding: 1.15rem 1.5rem 1.25rem;
   white-space: pre-wrap;
 }
