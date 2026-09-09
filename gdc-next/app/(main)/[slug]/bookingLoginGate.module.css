@@ -25,18 +25,47 @@
 
 .closeBtn {
   position: absolute;
-  top: .85rem;
-  right: 1rem;
+  top: .75rem;
+  right: .75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 50%;
+  color: var(--white, #fff);
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0;
+  z-index: 2;
+}
+.closeBtn:hover {
+  background: rgba(255, 255, 255, .18);
+  color: var(--white, #fff);
+}
+
+/* Always-visible exit at the bottom of the form — on mobile the box
+   scrolls internally, so the top-right ✕ can scroll out of reach. This
+   sits at the end of the form so there's a guaranteed way out. */
+.cancelBtn {
+  display: block;
+  width: 100%;
+  margin-top: 1.1rem;
+  padding: .7rem;
   background: transparent;
   border: none;
   color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
   cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: .25rem .5rem;
 }
-.closeBtn:hover {
-  color: var(--white);
+.cancelBtn:hover {
+  color: var(--white, #fff);
 }
 
 .icon {
