@@ -2747,7 +2747,11 @@ export function FaqAddForm({
         .update({ faqs: JSON.stringify(next) } as unknown as never)
         .eq('id', userId);
       if (dbErr) throw dbErr;
-      window.location.reload();
+      // Reload with ?tab=faq so the user lands back on the FAQ tab
+      // instead of jumping to the default (booking/about).
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'faq');
+      window.location.href = url.toString();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
       setBusy(false);
