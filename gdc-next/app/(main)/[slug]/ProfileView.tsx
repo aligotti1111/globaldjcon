@@ -333,20 +333,37 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 22,
-        height: 22,
-        borderRadius: '50%',
-        background: nameColor,
-        border: '2px solid #fff',
-        boxShadow: '0 1px 6px rgba(0,0,0,.6)',
+        gap: 7,
+        height: 30,
+        padding: '0 10px',
+        borderRadius: 8,
+        background: 'rgba(255,255,255,.08)',
+        border: '1px solid rgba(255,255,255,.22)',
+        color: '#fff',
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 11,
+        letterSpacing: '.05em',
+        textTransform: 'uppercase',
         cursor: 'pointer',
         verticalAlign: 'middle',
-        marginLeft: 8,
+        marginLeft: 10,
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
       }}
     >
+      <span
+        aria-hidden
+        style={{
+          width: 13,
+          height: 13,
+          borderRadius: '50%',
+          background: nameColor,
+          border: '1px solid rgba(255,255,255,.6)',
+          flexShrink: 0,
+        }}
+      />
+      Color
       <input
         type="color"
         value={nameColor}
