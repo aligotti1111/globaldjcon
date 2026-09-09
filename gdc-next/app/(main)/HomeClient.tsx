@@ -350,9 +350,14 @@ export default function HomeClient({ initialDjs }: Props) {
 
   // Reset pagination whenever filters/search/country change so users don't
   // get stuck looking at a paginated subset of stale results.
+  // When an actual search is in play (a name/zip term OR a location like
+  // Near Me), show ALL matching results immediately instead of the 5-card
+  // cap — the cap only exists to keep the plain browse homepage's initial
+  // avatar-optimization light.
   useEffect(() => {
-    setVisibleCount(5);
-  }, [searchTerm, activeFilters, activeCountry]);
+    const isSearching = searchTerm.trim() !== '' || userLocation != null;
+    setVisibleCount(isSearching ? Number.MAX_SAFE_INTEGER : 5);
+  }, [searchTerm, activeFilters, activeCountry, userLocation]);
 
   // ─── Pill filter toggle ───────────────────────────────────────────
   function togglePill(filter: 'mobile' | 'club') {
