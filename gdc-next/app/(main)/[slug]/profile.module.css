@@ -1634,6 +1634,72 @@
   letter-spacing: .05em;
 }
 
+/* ── FAQ tab (mobile DJs only) ─────────────────────────── */
+.faqItem {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+.faqQuestion {
+  font-family: 'Space Mono', monospace;
+  font-size: .82rem;
+  line-height: 1.5;
+  letter-spacing: .02em;
+  color: var(--neon);
+  font-weight: 700;
+  padding-right: 2rem;
+}
+.faqAnswer {
+  font-size: .9rem;
+  line-height: 1.7;
+  color: var(--white);
+  margin-top: .65rem;
+  opacity: .9;
+  white-space: pre-wrap;
+}
+/* Suggested-questions block inside the owner add form. */
+.faqSuggestWrap {
+  margin: .6rem 0 1rem;
+}
+.faqSuggestLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .5rem;
+}
+.faqSuggestList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+.faqSuggestChip {
+  display: inline-flex;
+  align-items: center;
+  padding: .4rem .7rem;
+  background: transparent;
+  border: 1px dashed rgba(0, 245, 196, .35);
+  border-radius: 999px;
+  color: var(--white);
+  font-size: .72rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all .15s;
+}
+.faqSuggestChip:hover {
+  background: rgba(0, 245, 196, .1);
+  border-color: var(--neon);
+  color: var(--neon);
+}
+.faqSuggestChip:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
 /* Empty state for tabs */
 .tabEmpty {
   font-family: 'Space Mono', monospace;
