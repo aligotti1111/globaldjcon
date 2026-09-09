@@ -1705,9 +1705,10 @@
   .tabBtn {
     /* Compact on mobile: smaller text + tighter padding so more tabs fit
        (the row scrolls sideways if they still overflow). */
-    font-size: .62rem;
+    font-size: .74rem;
     letter-spacing: .08em;
-    padding: .38rem .8rem;
+    padding: .5rem .9rem;
+    gap: 6px;
   }
   .infoGrid {
     grid-template-columns: 1fr;
