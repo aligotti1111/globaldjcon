@@ -37,7 +37,9 @@ export function buildMixEmbed(url: string | null | undefined): EmbedSpec | null 
     if (!path.endsWith('/')) path += '/';
     return {
       kind: 'mixcloud',
-      src: `https://player.mixcloud.com/widget/iframe/?hide_cover=1&mini=1&feed=${encodeURIComponent(path)}&light=1`,
+      // Mixcloud's canonical widget endpoint is www.mixcloud.com/widget/iframe/.
+      // (The older player.mixcloud.com host renders a broken placeholder.)
+      src: `https://www.mixcloud.com/widget/iframe/?hide_cover=1&mini=1&light=1&feed=${encodeURIComponent(path)}`,
       height: 120,
     };
   }
