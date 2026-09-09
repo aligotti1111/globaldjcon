@@ -36,7 +36,7 @@
 // Pages inside (simple) get a stripped-down layout instead.
 
 import type { Metadata } from 'next';
-import { Bebas_Neue, DM_Sans, Space_Mono, Inter } from 'next/font/google';
+import { Bebas_Neue, DM_Sans, Space_Mono, Inter, Archivo } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/server';
 import type { CurrentUser, UserProfile } from '@/types/db';
@@ -74,6 +74,14 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
+});
+
+// Archivo — condensed-ish grotesk used for the DJ-type banner tag.
+const archivo = Archivo({
+  weight: ['600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-archivo',
 });
 
 // metadataBase makes every relative/auto-generated URL (opengraph-image,
@@ -152,7 +160,7 @@ export default async function RootLayout({
   // registers the actual family name (e.g. "Bebas Neue"), so existing
   // font-family declarations in CSS modules / global CSS keep working
   // unchanged.
-  const fontClasses = `${bebasNeue.variable} ${dmSans.variable} ${spaceMono.variable} ${inter.variable}`;
+  const fontClasses = `${bebasNeue.variable} ${dmSans.variable} ${spaceMono.variable} ${inter.variable} ${archivo.variable}`;
 
   return (
     <html lang="en" className={fontClasses}>
