@@ -35,8 +35,8 @@ export type { DjProfileData };
 import {
   BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
-  BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, ShareCalendarModal,
-  UnderBannerSocials,
+  BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
+  ShareCalendarModal, UnderBannerSocials,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
 
@@ -1557,39 +1557,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   least one question is added.
                 </div>
               )}
-              {faqs.map((f, i) => (
-                <div key={i} className={styles.faqItem}>
-                  {isOwnProfile && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!window.confirm('Delete this FAQ?')) return;
-                        try {
-                          const next = faqs.filter((_, idx) => idx !== i);
-                          const supabase = createClient();
-                          const { error } = await supabase
-                            .from('users')
-                            .update({ faqs: JSON.stringify(next) } as unknown as never)
-                            .eq('id', data.id);
-                          if (error) throw error;
-                          const url = new URL(window.location.href);
-                          url.searchParams.set('tab', 'faq');
-                          window.location.href = url.toString();
-                        } catch (err) {
-                          alert(err instanceof Error ? err.message : 'Delete failed.');
-                        }
-                      }}
-                      className={styles.testimonialDeleteBtn}
-                      title="Delete FAQ"
-                      aria-label="Delete FAQ"
-                    >
-                      ✕
-                    </button>
-                  )}
-                  <div className={styles.faqQuestion}>{f.question || ''}</div>
-                  <div className={styles.faqAnswer}>{f.answer || ''}</div>
-                </div>
-              ))}
+              <FaqAccordion
+                faqs={faqs}
+                userId={data.id}
+                isOwnProfile={isOwnProfile}
+              />
               {isOwnProfile && faqs.length < 10 && (
                 <FaqAddForm
                   userId={data.id}
