@@ -36,6 +36,7 @@ export interface DjProfileData {
   profile_private: boolean | null;
   claimed: boolean | null;
   testimonials: string | null;      // JSON-stringified
+  faqs: string | null;              // JSON-stringified — mobile DJs only
   booking_settings: string | null;  // JSON-stringified — see bookingSettings.ts
   mix_url_1: string | null;
   mix_url_2: string | null;
@@ -63,4 +64,9 @@ export interface Testimonial {
   date?: string;
 }
 
-export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials';
+export interface Faq {
+  question?: string;
+  answer?: string;
+}
+
+export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq';
