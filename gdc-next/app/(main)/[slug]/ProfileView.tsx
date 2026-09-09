@@ -683,9 +683,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           <div className={styles.heroTopRow}>
             {/* Avatar wrapper — relative-positioned so the camera
                 badge can sit on top of the avatar circle without being
-                clipped by .heroAvatar's overflow:hidden. */}
+                clipped by .heroAvatar's overflow:hidden.
+                When the owner has HIDDEN their picture, visitors see no
+                avatar at all; the owner still sees it (dimmed) so they can
+                toggle it back. */}
+            {(isOwnProfile || !data.avatar_hidden) && (
             <div style={isOwnProfile ? { position: 'relative', flexShrink: 0 } : undefined}>
-              <div className={`${styles.heroAvatar} ${typeClass}`}>
+              <div
+                className={`${styles.heroAvatar} ${typeClass}`}
+                style={isOwnProfile && data.avatar_hidden ? { opacity: 0.4 } : undefined}
+              >
                 {data.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -698,6 +705,26 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   initials(data.name)
                 )}
               </div>
+              {/* Owner-only "Hidden" badge so they know visitors can't see it. */}
+              {isOwnProfile && data.avatar_hidden && (
+                <span style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  background: 'rgba(0,0,0,.75)',
+                  color: '#fff',
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.6rem',
+                  letterSpacing: '.08em',
+                  textTransform: 'uppercase',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  pointerEvents: 'none',
+                  zIndex: 3,
+                  whiteSpace: 'nowrap',
+                }}>Hidden</span>
+              )}
               {/* Owner-only camera badge — always visible, signals
                   that the avatar can be changed. Click opens the native
                   file picker; the chosen file flows through AvatarCrop
@@ -780,6 +807,56 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       </svg>
                     </button>
                   )}
+                  {/* Hide / show toggle — hides the picture from visitors
+                      entirely (kept in the DB so it can be un-hidden). */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const supabase = createClient();
+                        const { error } = await supabase
+                          .from('users')
+                          .update({ avatar_hidden: !data.avatar_hidden } as unknown as never)
+                          .eq('id', data.id);
+                        if (error) throw error;
+                        window.location.reload();
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : 'Could not update.');
+                      }
+                    }}
+                    title={data.avatar_hidden ? 'Show profile picture on your profile' : 'Hide profile picture from your profile'}
+                    aria-label={data.avatar_hidden ? 'Show profile picture' : 'Hide profile picture'}
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      left: 6,
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      background: data.avatar_hidden ? 'var(--neon)' : 'rgba(0,0,0,.75)',
+                      border: '2px solid #000',
+                      color: data.avatar_hidden ? '#000' : '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
+                      zIndex: 3,
+                    }}
+                  >
+                    {data.avatar_hidden ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <path d="M1 1l22 22" />
+                      </svg>
+                    )}
+                  </button>
                   <input
                     ref={avatarFileInputRef}
                     type="file"
@@ -803,6 +880,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 </>
               )}
             </div>
+            )}
             {/* Mobile-only column: name + badges next to avatar. Location sits
                 directly under the name here (mobile); on desktop it lives in
                 heroInfo below and this whole column is display:none. */}
