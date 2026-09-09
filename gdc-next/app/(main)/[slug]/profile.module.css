@@ -1085,16 +1085,16 @@
 }
 .tabBtn {
   font-family: 'Space Mono', monospace;
-  font-size: .72rem;
+  font-size: .92rem;
   letter-spacing: .1em;
   text-transform: uppercase;
-  padding: .7rem 1.3rem;
+  padding: .9rem 1.7rem;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   margin-bottom: -1px;
   border-radius: 0;
-  color: var(--neon);
+  color: rgba(0, 245, 196, .55);
   cursor: pointer;
   transition: color .15s, border-color .15s;
   flex: 0 1 auto;
@@ -1102,14 +1102,15 @@
 }
 .tabBtn:hover {
   background: transparent;
-  color: #fff;
+  color: var(--neon);
 }
 .tabBtnActive {
   background: transparent;
   color: var(--neon);
   font-weight: 700;
   border-bottom-color: var(--neon);
-  box-shadow: none;
+  box-shadow: 0 3px 12px -4px rgba(0, 245, 196, .6);
+  text-shadow: 0 0 10px rgba(0, 245, 196, .5);
 }
 .tabBtnActive:hover {
   background: transparent;
