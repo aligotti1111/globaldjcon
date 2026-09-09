@@ -366,6 +366,7 @@ export function SocialAddButton({
   colorClass,
   openField,
   setOpenField,
+  initialValue,
 }: {
   userId: string;
   field: 'website' | 'soundcloud' | 'instagram' | 'tiktok' | 'facebook' | 'twitch' | 'phone';
@@ -373,6 +374,8 @@ export function SocialAddButton({
   placeholder: string;
   icon: React.ReactNode;
   colorClass: string;
+  /** Prefill the input (e.g. editing an existing phone number). */
+  initialValue?: string;
   // Lifted state — only one SocialAddButton can be expanded at a time.
   // Each button reads openField to know if IT is the open one, and
   // calls setOpenField(field) on click / setOpenField(null) on close.
@@ -380,18 +383,18 @@ export function SocialAddButton({
   setOpenField: (field: string | null) => void;
 }) {
   const expanded = openField === field;
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initialValue || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // When the parent closes us (because another button got opened), reset
-  // local input state so we don't show stale text on next open.
+  // local input state (back to any prefill) so we don't show stale text.
   useEffect(() => {
     if (!expanded) {
-      setValue('');
+      setValue(initialValue || '');
       setError(null);
     }
-  }, [expanded]);
+  }, [expanded, initialValue]);
 
   async function handleSave() {
     const trimmed = value.trim();
@@ -446,11 +449,11 @@ export function SocialAddButton({
           width: 14,
           height: 14,
           borderRadius: '50%',
-          background: 'var(--neon)',
-          color: '#04120d',
-          fontSize: '0.62rem',
+          background: '#fff',
+          color: '#08080d',
+          fontSize: '0.66rem',
           fontWeight: 800,
-          lineHeight: '12px',
+          lineHeight: '13px',
           textAlign: 'center',
           border: '1.5px solid #08080d',
           boxSizing: 'border-box',
@@ -2928,15 +2931,16 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           setOpenField={setOpenSocialField}
         />
       )}
-      {/* Owner-only quick-add for a phone number, so the DJ can put a
-          call number on their profile straight from this page. Once set,
-          visitors see the Call button in the contact cluster below. */}
-      {isOwnProfile && !data.phone && (
+      {/* Owner-only phone control — always shown so the DJ can set OR change
+          their call number straight from this page. Visitors see the Call
+          button in the contact cluster below once a number is set. */}
+      {isOwnProfile && (
         <SocialAddButton
           userId={data.id}
           field="phone"
-          label="Phone"
+          label={data.phone ? 'Change phone' : 'Add phone'}
           placeholder="Your phone number"
+          initialValue={data.phone || ''}
           icon={<PhoneIcon />}
           colorClass=""
           openField={openSocialField}
