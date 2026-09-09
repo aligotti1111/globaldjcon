@@ -396,9 +396,14 @@ export function SocialAddButton({
     }
   }, [expanded, initialValue]);
 
+  // Editing an existing value (vs. adding a brand-new one) changes the
+  // affordance: a pencil badge instead of "+", and clearing the field is
+  // allowed (empty save removes the link) rather than erroring.
+  const isEdit = !!(initialValue && initialValue.trim());
+
   async function handleSave() {
     const trimmed = value.trim();
-    if (!trimmed) {
+    if (!trimmed && !isEdit) {
       setError('Enter something first.');
       return;
     }
@@ -406,9 +411,11 @@ export function SocialAddButton({
     setSaving(true);
     try {
       const supabase = createClient();
+      // Empty while editing => clear the link (store null to remove it).
+      const nextValue = trimmed ? trimmed : null;
       const { error: dbError } = await supabase
         .from('users')
-        .update({ [field]: trimmed } as unknown as never)
+        .update({ [field]: nextValue } as unknown as never)
         .eq('id', userId);
       if (dbError) throw dbError;
       // Reload so HeroActions re-renders with the live link button in
@@ -436,12 +443,12 @@ export function SocialAddButton({
       <button
         type="button"
         onClick={() => setOpenField(field)}
-        title={`Add ${label}`}
-        aria-label={`Add ${label}`}
-        className={`${styles.actionBtn} ${colorClass} ${styles.actionBtnEmpty}`}
+        title={isEdit ? `Change ${label}` : `Add ${label}`}
+        aria-label={isEdit ? `Change ${label}` : `Add ${label}`}
+        className={`${styles.actionBtn} ${colorClass}${isEdit ? '' : ` ${styles.actionBtnEmpty}`}`}
       >
         {icon}
-        {/* Tiny "+" badge in the corner so the affordance reads as add. */}
+        {/* Corner badge: "+" to add a new link, pencil to edit an existing one. */}
         <span style={{
           position: 'absolute',
           top: -2,
@@ -451,14 +458,24 @@ export function SocialAddButton({
           borderRadius: '50%',
           background: '#fff',
           color: '#08080d',
-          fontSize: '0.66rem',
+          fontSize: isEdit ? '0.58rem' : '0.66rem',
           fontWeight: 800,
           lineHeight: '13px',
           textAlign: 'center',
           border: '1.5px solid #08080d',
           boxSizing: 'border-box',
           pointerEvents: 'none',
-        }}>+</span>
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {isEdit ? (
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          ) : '+'}
+        </span>
       </button>
     );
   }
@@ -2833,18 +2850,20 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   function n(s: string, prefix: string): string {
     return s.startsWith('http') ? s : prefix + s.replace('@', '');
   }
-  const links: { key: string; href: string; title: string; cls: string; icon: React.ReactNode }[] = [];
-  if (data.website) links.push({ key: 'web', href: n(data.website, 'https://'), title: 'Website', cls: styles.underBannerSocialWebsite, icon: (
+  type SocialField = 'website' | 'soundcloud' | 'instagram' | 'tiktok' | 'facebook' | 'twitch';
+  const links: { key: string; field: SocialField; raw: string; href: string; title: string; placeholder: string; cls: string; addCls: string; icon: React.ReactNode }[] = [];
+  const websiteIcon = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </svg>
-  ) });
-  if (data.soundcloud) links.push({ key: 'sc', href: n(data.soundcloud, 'https://soundcloud.com/'), title: 'SoundCloud', cls: styles.underBannerSocialSoundcloud, icon: <SoundcloudIcon /> });
-  if (data.instagram) links.push({ key: 'ig', href: n(data.instagram, 'https://instagram.com/'), title: 'Instagram', cls: styles.underBannerSocialInstagram, icon: <InstagramIcon /> });
-  if (data.tiktok) links.push({ key: 'tk', href: n(data.tiktok, 'https://tiktok.com/@'), title: 'TikTok', cls: styles.underBannerSocialTiktok, icon: <TiktokIcon /> });
-  if (data.facebook) links.push({ key: 'fb', href: n(data.facebook, 'https://facebook.com/'), title: 'Facebook', cls: styles.underBannerSocialFacebook, icon: <FacebookIcon /> });
-  if (data.twitch) links.push({ key: 'tw', href: n(data.twitch, 'https://twitch.tv/'), title: 'Twitch', cls: styles.underBannerSocialTwitch, icon: <TwitchIcon /> });
+  );
+  if (data.website) links.push({ key: 'web', field: 'website', raw: data.website, href: n(data.website, 'https://'), title: 'Website', placeholder: 'https://yoursite.com', cls: styles.underBannerSocialWebsite, addCls: styles.actionBtnWebsite, icon: websiteIcon });
+  if (data.soundcloud) links.push({ key: 'sc', field: 'soundcloud', raw: data.soundcloud, href: n(data.soundcloud, 'https://soundcloud.com/'), title: 'SoundCloud', placeholder: 'https://soundcloud.com/yourname', cls: styles.underBannerSocialSoundcloud, addCls: styles.actionBtnSoundcloud, icon: <SoundcloudIcon /> });
+  if (data.instagram) links.push({ key: 'ig', field: 'instagram', raw: data.instagram, href: n(data.instagram, 'https://instagram.com/'), title: 'Instagram', placeholder: 'https://instagram.com/yourname', cls: styles.underBannerSocialInstagram, addCls: styles.actionBtnInstagram, icon: <InstagramIcon /> });
+  if (data.tiktok) links.push({ key: 'tk', field: 'tiktok', raw: data.tiktok, href: n(data.tiktok, 'https://tiktok.com/@'), title: 'TikTok', placeholder: 'https://tiktok.com/@yourname', cls: styles.underBannerSocialTiktok, addCls: styles.actionBtnTiktok, icon: <TiktokIcon /> });
+  if (data.facebook) links.push({ key: 'fb', field: 'facebook', raw: data.facebook, href: n(data.facebook, 'https://facebook.com/'), title: 'Facebook', placeholder: 'https://facebook.com/yourname', cls: styles.underBannerSocialFacebook, addCls: styles.actionBtnFacebook, icon: <FacebookIcon /> });
+  if (data.twitch) links.push({ key: 'tw', field: 'twitch', raw: data.twitch, href: n(data.twitch, 'https://twitch.tv/'), title: 'Twitch', placeholder: 'https://twitch.tv/yourname', cls: styles.underBannerSocialTwitch, addCls: styles.actionBtnTwitch, icon: <TwitchIcon /> });
 
   // The row always renders now — even with no socials — because it hosts
   // the share button at the end.
@@ -2852,16 +2871,34 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   return (
     <div className={styles.underBannerSocials}>
       {links.map(l => (
-        <a
-          key={l.key}
-          href={l.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${styles.underBannerSocialBtn} ${l.cls}`}
-          title={l.title}
-        >
-          {l.icon}
-        </a>
+        isOwnProfile ? (
+          // Owner: each SET social stays editable — the icon opens an inline
+          // editor prefilled with the current value (pencil badge), and
+          // clearing it removes the link.
+          <SocialAddButton
+            key={l.key}
+            userId={data.id}
+            field={l.field}
+            label={l.title}
+            placeholder={l.placeholder}
+            initialValue={l.raw}
+            icon={l.icon}
+            colorClass={l.addCls}
+            openField={openSocialField}
+            setOpenField={setOpenSocialField}
+          />
+        ) : (
+          <a
+            key={l.key}
+            href={l.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${styles.underBannerSocialBtn} ${l.cls}`}
+            title={l.title}
+          >
+            {l.icon}
+          </a>
+        )
       ))}
       {/* Owner-only + add buttons for missing platforms — sit alongside
           the existing social links so all social management is in one row. */}
