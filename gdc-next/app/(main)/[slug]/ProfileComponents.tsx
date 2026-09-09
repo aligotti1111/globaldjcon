@@ -953,7 +953,7 @@ export function MixAddButton({
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } else if (e.key === 'Escape') { setExpanded(false); setValue(''); setError(''); } }}
         placeholder="Paste SoundCloud, Mixcloud, or other mix URL"
         autoFocus
-        style={{ padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif' }}
+        style={{ padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif', width: '100%', maxWidth: 460, alignSelf: 'flex-start' }}
       />
       {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem' }}>{error}</div>}
       <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
