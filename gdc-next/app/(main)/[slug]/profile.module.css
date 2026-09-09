@@ -526,6 +526,14 @@
   gap: 2.5rem;
   border-bottom: 1px solid var(--border);
 }
+/* Desktop hero (and therefore the banner, which fills it) gets a taller
+   minimum so the banner image reads bigger on wide screens. Mobile keeps
+   its own compact height via the max-width:700px overrides below. */
+@media (min-width: 701px) {
+  .hero {
+    min-height: 460px;
+  }
+}
 /* The .banner uses position: absolute inset: 0 and its background-image
    paints within its own bounds — no overflow needed on .hero, which lets
    popups (Events Serviced, tooltips) escape the hero box. */
