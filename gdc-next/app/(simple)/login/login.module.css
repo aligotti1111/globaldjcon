@@ -18,12 +18,16 @@
   max-width: 450px;
   width: 100%;
 }
-/* Close / leave — returns to the homepage. Full-page auth screens had no
-   obvious way out (only the logo), so this gives a clear exit. */
+/* Close / leave — returns to the homepage. Rendered in normal flow at the
+   top of the card, right-aligned, so it's always on screen (an
+   absolutely/fixed-positioned corner button drifted off the visible area on
+   some mobile browsers). */
+.closeRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
 .closeX {
-  position: absolute;
-  top: 14px;
-  right: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -36,19 +40,9 @@
   font-size: 1.15rem;
   line-height: 1;
   text-decoration: none;
-  z-index: 3;
 }
 .closeX:hover {
   background: rgba(255, 255, 255, .18);
-}
-/* On mobile, pin the ✕ to the viewport so it stays reachable while
-   scrolling a taller form. */
-@media (max-width: 700px) {
-  .closeX {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-  }
 }
 
 .logo {
