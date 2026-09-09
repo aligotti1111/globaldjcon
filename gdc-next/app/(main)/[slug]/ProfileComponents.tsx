@@ -441,17 +441,19 @@ export function SocialAddButton({
         {/* Tiny "+" badge in the corner so the affordance reads as add. */}
         <span style={{
           position: 'absolute',
-          top: -4,
-          right: -4,
-          width: 16,
-          height: 16,
+          top: -2,
+          right: -2,
+          width: 14,
+          height: 14,
           borderRadius: '50%',
           background: 'var(--neon)',
-          color: '#000',
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          lineHeight: '16px',
+          color: '#04120d',
+          fontSize: '0.62rem',
+          fontWeight: 800,
+          lineHeight: '12px',
           textAlign: 'center',
+          border: '1.5px solid #08080d',
+          boxSizing: 'border-box',
           pointerEvents: 'none',
         }}>+</span>
       </button>
