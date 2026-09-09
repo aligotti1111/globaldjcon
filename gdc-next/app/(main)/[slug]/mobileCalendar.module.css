@@ -342,6 +342,9 @@
   /* Embed-style: individual rounded cells with small gaps instead of
      a continuous grid with shared borders. */
   gap: 4px;
+  /* Level every row to the tallest cell so all rows are equal height,
+     matching the club/bar calendar (which uses the same rule). */
+  grid-auto-rows: 1fr;
 }
 
 .emptyCell {
