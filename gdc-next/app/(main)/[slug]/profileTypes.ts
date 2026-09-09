@@ -37,6 +37,7 @@ export interface DjProfileData {
   claimed: boolean | null;
   testimonials: string | null;      // JSON-stringified
   faqs: string | null;              // JSON-stringified — mobile DJs only
+  about_stats: string | null;       // JSON-stringified — mobile DJs only
   booking_settings: string | null;  // JSON-stringified — see bookingSettings.ts
   mix_url_1: string | null;
   mix_url_2: string | null;
@@ -67,6 +68,17 @@ export interface Testimonial {
 export interface Faq {
   question?: string;
   answer?: string;
+}
+
+// About-tab highlight cards (mobile DJs only). Each card the owner must
+// activate (`on`) before it shows to visitors. Travel is auto-filled from
+// travel_distance, so it carries only the `on` flag.
+export interface AboutStats {
+  travel?: { on?: boolean };
+  established?: { on?: boolean; year?: number };
+  events?: { on?: boolean; tier?: string };
+  insured?: { on?: boolean };
+  deposit?: { on?: boolean; value?: string };
 }
 
 export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq';
