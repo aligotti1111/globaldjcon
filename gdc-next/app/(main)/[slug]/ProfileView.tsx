@@ -526,6 +526,33 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
 
+  // ── Tab-strip overflow hint ──────────────────────────────────────────
+  // On narrow screens the tab row can hold more tabs than fit. It scrolls
+  // sideways, but that isn't obvious — so we show a right-edge chevron
+  // whenever there's more to the right, and hide it once scrolled to the
+  // end. Tapping it nudges the row along.
+  const tabsNavRef = useRef<HTMLElement | null>(null);
+  const [tabsHasOverflow, setTabsHasOverflow] = useState(false);
+  useEffect(() => {
+    const el = tabsNavRef.current;
+    if (!el) return;
+    const update = () => {
+      const moreToRight = el.scrollWidth - el.clientWidth - el.scrollLeft > 4;
+      setTabsHasOverflow(moreToRight);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [tabVisibility, showBookingTab, showTestimonialsTab]);
+
+  function scrollTabsRight() {
+    tabsNavRef.current?.scrollBy({ left: 140, behavior: 'smooth' });
+  }
+
   // ── Helper: tab button class ─────────────────────────────────────────
   function tabClass(key: TabKey): string {
     return `${styles.tabBtn} ${activeTab === key ? styles.tabBtnActive : ''}`;
@@ -836,7 +863,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 </button>
               </div>
             )}
-            <nav className={styles.tabsNav}>
+            <div className={styles.tabsNavWrap}>
+            <nav className={styles.tabsNav} ref={tabsNavRef}>
             {showBookingTab && (
               <button
                 className={tabClass('booking')}
@@ -892,6 +920,19 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </button>
             )}
           </nav>
+            {tabsHasOverflow && (
+              <button
+                type="button"
+                className={styles.tabsScrollHint}
+                onClick={scrollTabsRight}
+                aria-label="Scroll tabs right"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            )}
+          </div>
           </div>
 
           {/* Booking tab — different component for club vs mobile DJs */}
