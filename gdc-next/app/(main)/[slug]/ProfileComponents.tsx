@@ -448,17 +448,19 @@ export function SocialAddButton({
         className={`${styles.actionBtn} ${colorClass}${isEdit ? '' : ` ${styles.actionBtnEmpty}`}`}
       >
         {icon}
-        {/* Corner badge: "+" to add a new link, pencil to edit an existing one. */}
+        {/* Corner badge: "+" to add a new link, pencil to edit an existing one.
+            The edit badge is bigger and neon-tinted so it reads as an obvious
+            "tap to edit" affordance rather than a smudge on the icon. */}
         <span style={{
           position: 'absolute',
-          top: -2,
-          right: -2,
-          width: 14,
-          height: 14,
+          top: -3,
+          right: -3,
+          width: isEdit ? 17 : 14,
+          height: isEdit ? 17 : 14,
           borderRadius: '50%',
-          background: '#fff',
+          background: isEdit ? 'var(--neon, #00e0a4)' : '#fff',
           color: '#08080d',
-          fontSize: isEdit ? '0.58rem' : '0.66rem',
+          fontSize: '0.66rem',
           fontWeight: 800,
           lineHeight: '13px',
           textAlign: 'center',
@@ -470,7 +472,7 @@ export function SocialAddButton({
           justifyContent: 'center',
         }}>
           {isEdit ? (
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#08080d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
@@ -2117,6 +2119,9 @@ export function BannerEditModal({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True while a file is being dragged over the drop zone — drives the
+  // highlighted "drop to upload" state.
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDesktopRef = useRef<{ startY: number; startPos: number } | null>(null);
   const dragMobileRef = useRef<{ startY: number; startPos: number } | null>(null);
@@ -2127,9 +2132,8 @@ export function BannerEditModal({
     };
   }, [pendingObjectUrl]);
 
-  async function onFilePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  // Shared file handler — used by both the file picker and drag-and-drop.
+  async function applyFile(file: File | undefined | null) {
     if (!file) return;
     const valErr = await validateImageFile(file);
     if (valErr) {
@@ -2142,6 +2146,33 @@ export function BannerEditModal({
     setPendingObjectUrl(blobUrl);
     setPreviewUrl(blobUrl);
     setPendingFile(file);
+  }
+
+  async function onFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    await applyFile(file);
+  }
+
+  // Drag-and-drop: accept an image file dropped anywhere on the drop zone.
+  function onDropZoneDragOver(e: React.DragEvent) {
+    if (e.dataTransfer?.types?.includes('Files')) {
+      e.preventDefault();
+      setDragOver(true);
+    }
+  }
+  function onDropZoneDragLeave(e: React.DragEvent) {
+    // Only clear when leaving the zone itself, not when moving between
+    // children (relatedTarget still inside).
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOver(false);
+    }
+  }
+  async function onDropZoneDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer?.files?.[0];
+    await applyFile(file);
   }
 
   // Generic drag handlers parameterized by which viewport we're editing.
@@ -2256,7 +2287,13 @@ export function BannerEditModal({
               right. Each is independently draggable so the DJ can position
               the image differently for each viewport. When no banner is
               set, clicking either preview opens the file picker. */}
-          <div className={styles.bannerPreviewsRow}>
+          <div
+            className={styles.bannerPreviewsRow}
+            onDragOver={onDropZoneDragOver}
+            onDragLeave={onDropZoneDragLeave}
+            onDrop={onDropZoneDrop}
+            style={dragOver ? { outline: '2px dashed var(--neon, #00e0a4)', outlineOffset: 4, borderRadius: 8 } : undefined}
+          >
             <div className={styles.bannerPreviewBlock}>
               <div className={styles.bannerPreviewLabel}>
                 Desktop view
@@ -2283,7 +2320,7 @@ export function BannerEditModal({
               >
                 {!previewUrl && (
                   <div className={styles.bannerModalEmpty}>
-                    Click to upload
+                    {dragOver ? 'Drop image to upload' : 'Click or drop an image'}
                   </div>
                 )}
                 {previewUrl && (
@@ -2318,7 +2355,7 @@ export function BannerEditModal({
               >
                 {!previewUrl && (
                   <div className={styles.bannerModalEmpty}>
-                    Click to upload
+                    {dragOver ? 'Drop image to upload' : 'Click or drop an image'}
                   </div>
                 )}
                 {previewUrl && (
@@ -2329,8 +2366,9 @@ export function BannerEditModal({
           </div>
 
           <div className={styles.bannerModalHint}>
-            Upload a wide image (recommended <strong>1600 × 400px</strong>, max 5 MB).
-            Drag each preview vertically to set the crop for desktop and mobile
+            Drag &amp; drop an image onto the previews, or use the button below
+            (recommended <strong>1600 × 400px</strong>, max 5 MB). Once set, drag
+            each preview vertically to set the crop for desktop and mobile
             independently.
           </div>
           <div className={styles.bannerModalNote}>
