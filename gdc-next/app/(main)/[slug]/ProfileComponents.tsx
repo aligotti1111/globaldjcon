@@ -2942,7 +2942,11 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
             label={data.phone ? 'Change phone' : 'Add phone'}
             placeholder="Your phone number"
             initialValue={data.phone || ''}
-            icon={<PhoneIcon />}
+            icon={(
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+              </svg>
+            )}
             colorClass=""
             openField={openSocialField}
             setOpenField={setOpenSocialField}
@@ -2965,7 +2969,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
               aria-label="Call"
             >
               {/* Solid classic handset with ring waves. */}
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
                 <path d="M15.5 6.5c1.4.5 2.5 1.6 3 3" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
                 <path d="M15 3.2c2.9.7 5.1 2.9 5.8 5.8" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
