@@ -2687,6 +2687,79 @@ export function TestimonialAddForm({
   );
 }
 
+// ── FaqAccordion ───────────────────────────────────────────────
+// Read-only (visitor) + owner view of the FAQ list, rendered as an
+// accordion. The first question is open by default; tapping any question
+// toggles its answer. Owner sees a delete ✕ on each card. Question sits
+// in a dark-grey banner; the answer opens into a light-grey panel.
+export function FaqAccordion({
+  faqs,
+  userId,
+  isOwnProfile,
+}: {
+  faqs: Faq[];
+  userId: string;
+  isOwnProfile: boolean;
+}) {
+  // First item open by default; -1 means all closed.
+  const [openIdx, setOpenIdx] = useState<number>(0);
+
+  async function remove(i: number) {
+    if (!window.confirm('Delete this FAQ?')) return;
+    try {
+      const next = faqs.filter((_, idx) => idx !== i);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('users')
+        .update({ faqs: JSON.stringify(next) } as unknown as never)
+        .eq('id', userId);
+      if (error) throw error;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'faq');
+      window.location.href = url.toString();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed.');
+    }
+  }
+
+  return (
+    <>
+      {faqs.map((f, i) => {
+        const open = openIdx === i;
+        return (
+          <div key={i} className={styles.faqItem}>
+            {isOwnProfile && (
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className={styles.faqDeleteBtn}
+                title="Delete FAQ"
+                aria-label="Delete FAQ"
+              >
+                ✕
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.faqQuestion}
+              onClick={() => setOpenIdx(open ? -1 : i)}
+              aria-expanded={open}
+            >
+              <span className={styles.faqQuestionText}>{f.question || ''}</span>
+              <span className={styles.faqChevron} aria-hidden="true">
+                {open ? '−' : '+'}
+              </span>
+            </button>
+            {open && (
+              <div className={styles.faqAnswer}>{f.answer || ''}</div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // ── FaqAddForm ─────────────────────────────────────────────────
 // Owner-only inline form to append a new FAQ (question + answer). Lives at
 // the bottom of the FAQ tab pane. Shows suggested questions the owner can
