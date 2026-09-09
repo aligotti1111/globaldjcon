@@ -2112,7 +2112,8 @@
 /* SocialAddButton inside the under-banner strip: shrink to match the
    34px existing social icons, override actionBtnEmpty's dashed border
    so add buttons visually match the populated ones. */
-.underBannerSocials .actionBtn {
+.underBannerSocials .actionBtn,
+.underBannerContact .actionBtn {
   width: 36px !important;
   height: 36px !important;
   min-width: 36px !important;
@@ -2130,7 +2131,8 @@
   flex: 0 0 36px;
   line-height: 1;
 }
-.underBannerSocials .actionBtn svg {
+.underBannerSocials .actionBtn svg,
+.underBannerContact .actionBtn svg {
   width: 19px;
   height: 19px;
 }
