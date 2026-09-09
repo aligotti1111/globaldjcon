@@ -735,6 +735,51 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       <circle cx="12" cy="13" r="4"/>
                     </svg>
                   </button>
+                  {/* Remove profile picture — only when one is set. Clears
+                      users.avatar_url and reloads to show the initials fallback. */}
+                  {data.avatar_url && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm('Remove your profile picture?')) return;
+                        try {
+                          const supabase = createClient();
+                          const { error } = await supabase
+                            .from('users')
+                            .update({ avatar_url: null } as unknown as never)
+                            .eq('id', data.id);
+                          if (error) throw error;
+                          window.location.reload();
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Could not remove picture.');
+                        }
+                      }}
+                      title="Remove profile picture"
+                      aria-label="Remove profile picture"
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        background: '#ff5f5f',
+                        border: '2px solid #000',
+                        color: '#000',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
+                        zIndex: 2,
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                   <input
                     ref={avatarFileInputRef}
                     type="file"
