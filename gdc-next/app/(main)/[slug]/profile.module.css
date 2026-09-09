@@ -1707,7 +1707,7 @@
        (the row scrolls sideways if they still overflow). */
     font-size: .74rem;
     letter-spacing: .08em;
-    padding: .5rem .9rem;
+    padding: .5rem .55rem;
     gap: 6px;
   }
   .infoGrid {
