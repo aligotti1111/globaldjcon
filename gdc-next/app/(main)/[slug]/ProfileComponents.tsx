@@ -865,7 +865,7 @@ export function VideoAddButton({
   }
   const inputStyle: React.CSSProperties = { padding: '.6rem .75rem', borderRadius: 6, border: '1px solid var(--border, rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', fontFamily: 'DM Sans, sans-serif', width: '100%', boxSizing: 'border-box' };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', maxWidth: 460 }}>
       <input type="text" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Paste YouTube or Vimeo URL" autoFocus style={inputStyle} />
       <input type="text" value={titleVal} onChange={(e) => setTitleVal(e.target.value)} placeholder="Title (optional — auto-filled from YouTube)" style={inputStyle} />
       <textarea value={descVal} onChange={(e) => setDescVal(e.target.value)} placeholder="Description (optional)" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
