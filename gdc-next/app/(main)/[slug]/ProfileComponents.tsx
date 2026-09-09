@@ -2701,8 +2701,17 @@ export function FaqAccordion({
   userId: string;
   isOwnProfile: boolean;
 }) {
-  // First item open by default; -1 means all closed.
-  const [openIdx, setOpenIdx] = useState<number>(0);
+  // Multiple can be open at once. First item open by default; toggling one
+  // never closes the others.
+  const [openSet, setOpenSet] = useState<Set<number>>(() => new Set([0]));
+  function toggle(i: number) {
+    setOpenSet(prev => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
 
   async function remove(i: number) {
     if (!window.confirm('Delete this FAQ?')) return;
@@ -2725,7 +2734,7 @@ export function FaqAccordion({
   return (
     <>
       {faqs.map((f, i) => {
-        const open = openIdx === i;
+        const open = openSet.has(i);
         return (
           <div key={i} className={styles.faqItem}>
             {isOwnProfile && (
@@ -2742,7 +2751,7 @@ export function FaqAccordion({
             <button
               type="button"
               className={styles.faqQuestion}
-              onClick={() => setOpenIdx(open ? -1 : i)}
+              onClick={() => toggle(i)}
               aria-expanded={open}
             >
               <span className={styles.faqQuestionText}>{f.question || ''}</span>
