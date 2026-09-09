@@ -1176,6 +1176,16 @@
   background: linear-gradient(to right, rgba(10, 10, 15, 0), rgba(10, 10, 15, .96) 62%);
   animation: tabsHintPulse 1.6s ease-in-out infinite;
 }
+/* Left-edge variant — appears once the row has been scrolled right, so the
+   user knows they can go back. Mirror of the right hint. */
+.tabsScrollHintLeft {
+  right: auto;
+  left: 0;
+  justify-content: flex-start;
+  padding-right: 0;
+  padding-left: 3px;
+  background: linear-gradient(to left, rgba(10, 10, 15, 0), rgba(10, 10, 15, .96) 62%);
+}
 @keyframes tabsHintPulse {
   0%, 100% { opacity: .7; }
   50% { opacity: 1; }
