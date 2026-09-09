@@ -41,6 +41,15 @@
 .closeX:hover {
   background: rgba(255, 255, 255, .18);
 }
+/* On mobile, pin the ✕ to the viewport so it stays reachable while
+   scrolling a taller form. */
+@media (max-width: 700px) {
+  .closeX {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+  }
+}
 
 .logo {
   text-align: center;
