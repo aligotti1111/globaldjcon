@@ -13,6 +13,7 @@ export interface DjProfileData {
   bio: string | null;
   avatar_url: string | null;
   avatar_position: string | null;
+  avatar_hidden: boolean | null;
   banner_url: string | null;
   banner_position: string | null;
   banner_position_mobile: string | null;
