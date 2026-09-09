@@ -14,7 +14,7 @@ import {
   PhoneIcon, WebsiteIcon, SoundcloudIcon, InstagramIcon, TiktokIcon,
   FacebookIcon, TwitchIcon, CalendarIcon, MailIcon,
 } from './icons';
-import type { DjProfileData, Testimonial, Faq } from './profileTypes';
+import type { DjProfileData, Testimonial, Faq, AboutStats } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 
@@ -2685,6 +2685,174 @@ export function TestimonialAddForm({
           {busy ? 'Saving…' : 'Save'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── AboutStatsRow ──────────────────────────────────────────────
+// About-tab highlight cards (mobile DJs only). Each card must be activated
+// by the owner to show to visitors. Travel auto-fills from travel_distance;
+// the rest the owner sets (established year, events tier, insured, deposit).
+function formatTravel(travelDistance: string | null): string {
+  if (!travelDistance) return '';
+  const t = travelDistance.trim();
+  if (!t) return '';
+  if (t.toLowerCase() === 'worldwide') return 'Worldwide';
+  const n = parseInt(t, 10);
+  if (!Number.isNaN(n)) return `${n} mi`;
+  return t;
+}
+
+export function AboutStatsRow({
+  userId,
+  isOwnProfile,
+  stats,
+  travelDistance,
+}: {
+  userId: string;
+  isOwnProfile: boolean;
+  stats: AboutStats;
+  travelDistance: string | null;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<AboutStats>(stats);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const travelValue = formatTravel(travelDistance);
+
+  // Build the list of cards to show to visitors (activated + has a value).
+  type Card = { key: string; label: string; value: string };
+  const cards: Card[] = [];
+  if (stats.travel?.on && travelValue) cards.push({ key: 'travel', label: 'Travel', value: travelValue });
+  if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
+  if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Events', value: stats.events.tier });
+  if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: 'Yes' });
+  if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: stats.deposit.value });
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ about_stats: JSON.stringify(draft) } as unknown as never)
+        .eq('id', userId);
+      if (dbErr) throw dbErr;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'about');
+      window.location.href = url.toString();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+      setBusy(false);
+    }
+  }
+
+  function toggle(key: keyof AboutStats) {
+    setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), on: !(d[key]?.on) } }));
+  }
+
+  const currentYear = new Date().getFullYear();
+  const years: number[] = [];
+  for (let y = currentYear; y >= 1970; y--) years.push(y);
+  const eventTiers = ['50+', '100+', '200+', '500+', '1000+'];
+
+  return (
+    <div className={styles.aboutStatsWrap}>
+      {cards.length > 0 && (
+        <div className={styles.aboutStatsGrid}>
+          {cards.map(c => (
+            <div key={c.key} className={styles.aboutStatCard}>
+              <div className={styles.aboutStatValue}>{c.value}</div>
+              <div className={styles.aboutStatLabel}>{c.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isOwnProfile && !editing && (
+        <button
+          type="button"
+          className={styles.aboutStatsEditBtn}
+          onClick={() => { setDraft(stats); setEditing(true); }}
+        >
+          {cards.length > 0 ? 'Edit highlights' : '+ Add highlights'}
+        </button>
+      )}
+
+      {isOwnProfile && editing && (
+        <div className={styles.aboutStatsEditor}>
+          <div className={styles.aboutStatsEditorHint}>
+            Turn on the highlights you want visitors to see, then fill them in.
+          </div>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Distance you travel</span>
+            <span className={styles.aboutStatsRowControl}>
+              <span className={styles.aboutStatsAuto}>{travelValue || 'Set in booking settings'}</span>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.travel?.on} disabled={!travelValue} onChange={() => toggle('travel')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Established</span>
+            <span className={styles.aboutStatsRowControl}>
+              <select
+                className={styles.aboutStatsSelect}
+                value={draft.established?.year ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, established: { ...(d.established || {}), year: e.target.value ? parseInt(e.target.value, 10) : undefined } }))}
+              >
+                <option value="">Year…</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.established?.on} onChange={() => toggle('established')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Events played</span>
+            <span className={styles.aboutStatsRowControl}>
+              <select
+                className={styles.aboutStatsSelect}
+                value={draft.events?.tier ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, events: { ...(d.events || {}), tier: e.target.value || undefined } }))}
+              >
+                <option value="">Amount…</option>
+                {eventTiers.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.events?.on} onChange={() => toggle('events')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Fully insured</span>
+            <span className={styles.aboutStatsRowControl}>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.insured?.on} onChange={() => toggle('insured')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Deposit to book</span>
+            <span className={styles.aboutStatsRowControl}>
+              <input
+                type="text"
+                className={styles.aboutStatsInput}
+                placeholder="$200"
+                value={draft.deposit?.value ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
+              />
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.deposit?.on} onChange={() => toggle('deposit')} />
+            </span>
+          </label>
+
+          {error && <div className={styles.testimonialAddError}>{error}</div>}
+          <div className={styles.aboutStatsActions}>
+            <button type="button" className={styles.testimonialAddCancel} disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
+            <button type="button" className={styles.testimonialAddSave} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
