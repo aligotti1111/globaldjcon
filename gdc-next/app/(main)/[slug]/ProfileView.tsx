@@ -29,14 +29,14 @@ import {
 
 // Shared profile types now live in ./profileTypes. Re-export DjProfileData
 // so existing importers (e.g. page.tsx) keep working unchanged.
-import type { DjProfileData, Testimonial, Faq, TabKey } from './profileTypes';
+import type { DjProfileData, Testimonial, Faq, AboutStats, TabKey } from './profileTypes';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
   BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
-  ShareCalendarModal, UnderBannerSocials,
+  AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
 
@@ -486,6 +486,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     try {
       const parsed = JSON.parse(data.faqs) as Faq[];
       if (Array.isArray(parsed)) faqs = parsed;
+    } catch { /* invalid JSON — silently ignore */ }
+  }
+
+  // About highlight cards (JSON-stringified, mobile DJs only)
+  let aboutStats: AboutStats = {};
+  if (isMobileDJ && data.about_stats) {
+    try {
+      const parsed = JSON.parse(data.about_stats) as AboutStats;
+      if (parsed && typeof parsed === 'object') aboutStats = parsed;
     } catch { /* invalid JSON — silently ignore */ }
   }
 
@@ -1214,9 +1223,19 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {isOwnProfile ? (
               <OwnerEditableBio userId={data.id} initialBio={data.bio} />
             ) : data.bio ? (
-              <p className={styles.bioText}>{data.bio}</p>
+              <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
             ) : (
               <p className={styles.tabEmpty}>Coming Soon</p>
+            )}
+            {/* Highlight cards — mobile DJs only. Owner activates each card
+                and fills it in; visitors see only activated ones. */}
+            {isMobileDJ && (
+              <AboutStatsRow
+                userId={data.id}
+                isOwnProfile={isOwnProfile}
+                stats={aboutStats}
+                travelDistance={data.travel_distance}
+              />
             )}
             {data.rate && (
               <div className={styles.infoGrid}>
