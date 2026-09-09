@@ -939,7 +939,7 @@ export function MixAddButton({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          style={{ background: 'var(--neon)', border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '.55rem 1.1rem', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', fontWeight: 700, letterSpacing: '.05em', whiteSpace: 'nowrap' }}
+          style={{ background: 'var(--neon)', border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '.55rem 1.1rem', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', fontWeight: 700, letterSpacing: '.05em', whiteSpace: 'nowrap', textTransform: 'uppercase' }}
         >
           + Add a mix
         </button>
