@@ -1220,15 +1220,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
           {/* About tab */}
           <div className={paneClass('about')}>
-            {isOwnProfile ? (
-              <OwnerEditableBio userId={data.id} initialBio={data.bio} />
-            ) : data.bio ? (
-              <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
-            ) : (
-              <p className={styles.tabEmpty}>Coming Soon</p>
-            )}
-            {/* Highlight cards — mobile DJs only. Owner activates each card
-                and fills it in; visitors see only activated ones. */}
+            {/* Quick facts — mobile DJs only. Sits above the bio. Owner
+                activates each card and fills it in; visitors see only
+                activated ones. */}
             {isMobileDJ && (
               <AboutStatsRow
                 userId={data.id}
@@ -1236,6 +1230,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 stats={aboutStats}
                 travelDistance={data.travel_distance}
               />
+            )}
+            {isOwnProfile ? (
+              <OwnerEditableBio userId={data.id} initialBio={data.bio} />
+            ) : data.bio ? (
+              <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
+            ) : (
+              <p className={styles.tabEmpty}>Coming Soon</p>
             )}
             {data.rate && (
               <div className={styles.infoGrid}>
