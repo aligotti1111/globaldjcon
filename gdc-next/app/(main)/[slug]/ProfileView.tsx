@@ -29,13 +29,13 @@ import {
 
 // Shared profile types now live in ./profileTypes. Re-export DjProfileData
 // so existing importers (e.g. page.tsx) keep working unchanged.
-import type { DjProfileData, Testimonial, TabKey } from './profileTypes';
+import type { DjProfileData, Testimonial, Faq, TabKey } from './profileTypes';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
   BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
-  BannerEditModal, EditTabsModal, TestimonialAddForm, ShareCalendarModal,
+  BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, ShareCalendarModal,
   UnderBannerSocials,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
@@ -118,7 +118,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // inline) lands back on the same tab. Validates against TabKey list.
   const tabFromUrl = (() => {
     const t = searchParams.get('tab') || '';
-    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials'];
+    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials', 'faq'];
     return (valid as string[]).includes(t) ? (t as TabKey) : null;
   })();
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -480,6 +480,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     } catch { /* invalid JSON — silently ignore, vanilla does the same */ }
   }
 
+  // FAQ (JSON-stringified, mobile DJs only)
+  let faqs: Faq[] = [];
+  if (isMobileDJ && data.faqs) {
+    try {
+      const parsed = JSON.parse(data.faqs) as Faq[];
+      if (Array.isArray(parsed)) faqs = parsed;
+    } catch { /* invalid JSON — silently ignore */ }
+  }
+
   // ── Tab visibility ──────────────────────────────────────────────────
   // Stored as JSONB on users.tab_visibility. Format:
   //   { about: bool, mixes: bool, images: bool, video: bool, testimonials: bool }
@@ -494,6 +503,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     images: boolean;
     video: boolean;
     testimonials: boolean;
+    faq: boolean;
   } = (() => {
     const defaults = {
       about: true,
@@ -502,6 +512,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       video: true,
       // Mobile DJs default testimonials OFF; club DJs ignored entirely.
       testimonials: !isMobileDJ,
+      // FAQ tab: mobile DJs only, default OFF (owner turns it on).
+      faq: false,
     };
     const raw = data.tab_visibility;
     if (!raw) return defaults;
@@ -522,6 +534,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // whenever enabled (even empty) so they can add some.
   const showTestimonialsTab =
     isMobileDJ && tabVisibility.testimonials && (isOwnProfile || testimonials.length > 0);
+  // FAQ: same gating as testimonials. Owner sees it whenever enabled (even
+  // empty) so they can add entries; visitors only when there's ≥1 FAQ.
+  const showFaqTab =
+    isMobileDJ && tabVisibility.faq && (isOwnProfile || faqs.length > 0);
 
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
@@ -548,7 +564,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [tabVisibility, showBookingTab, showTestimonialsTab]);
+  }, [tabVisibility, showBookingTab, showTestimonialsTab, showFaqTab]);
 
   function scrollTabsRight() {
     tabsNavRef.current?.scrollBy({ left: 140, behavior: 'smooth' });
@@ -1046,6 +1062,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 Testimonials
               </button>
             )}
+            {showFaqTab && (
+              <button
+                className={tabClass('faq')}
+                onClick={() => setActiveTab('faq')}
+                type="button"
+              >
+                FAQ
+              </button>
+            )}
           </nav>
             {tabsMoreLeft && (
               <button
@@ -1515,6 +1540,58 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 <TestimonialAddForm
                   userId={data.id}
                   existing={testimonials}
+                />
+              )}
+            </div>
+          )}
+
+          {/* FAQ tab — mobile DJs only. Owner adds question/answer pairs
+              (one at a time, up to 10) with suggested questions; visitors
+              see them read-only. Gated by showFaqTab (enabled + owner, or
+              enabled + at least one FAQ for visitors). */}
+          {showFaqTab && (
+            <div className={paneClass('faq')}>
+              {isOwnProfile && faqs.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the FAQ tab on your profile until at
+                  least one question is added.
+                </div>
+              )}
+              {faqs.map((f, i) => (
+                <div key={i} className={styles.faqItem}>
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm('Delete this FAQ?')) return;
+                        try {
+                          const next = faqs.filter((_, idx) => idx !== i);
+                          const supabase = createClient();
+                          const { error } = await supabase
+                            .from('users')
+                            .update({ faqs: JSON.stringify(next) } as unknown as never)
+                            .eq('id', data.id);
+                          if (error) throw error;
+                          window.location.reload();
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Delete failed.');
+                        }
+                      }}
+                      className={styles.testimonialDeleteBtn}
+                      title="Delete FAQ"
+                      aria-label="Delete FAQ"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <div className={styles.faqQuestion}>{f.question || ''}</div>
+                  <div className={styles.faqAnswer}>{f.answer || ''}</div>
+                </div>
+              ))}
+              {isOwnProfile && faqs.length < 10 && (
+                <FaqAddForm
+                  userId={data.id}
+                  existing={faqs}
                 />
               )}
             </div>
