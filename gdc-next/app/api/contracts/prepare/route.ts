@@ -540,6 +540,10 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
         contract_id: usedContractId,
         contract_status: 'awaiting_dj',
         contract_sent_at: new Date().toISOString(),
+        // Log-only stamp: never nulled (unlike contract_sent_at, which cancel
+        // clears because it drives the contract quota), so the booking log keeps
+        // the "Contract sent" moment even after a cancel.
+        contract_sent_log_at: new Date().toISOString(),
         // Persist an email the DJ typed into the NO_CLIENT_EMAIL prompt.
         // It was previously used for this one send and thrown away, so the
         // booking still had no host_email afterwards — meaning the deposit
