@@ -64,7 +64,7 @@ export function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmDescriptor
   );
 }
 
-export function PaymentMethodsModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+export function PaymentMethodsModal({ userId, onClose, ownerHint }: { userId: string; onClose: () => void; ownerHint?: boolean }) {
   return (
     <div
       onClick={onClose}
@@ -94,7 +94,7 @@ export function PaymentMethodsModal({ userId, onClose }: { userId: string; onClo
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <PaymentMethodsSection userId={userId} />
+        <PaymentMethodsSection userId={userId} ownerHint={ownerHint} />
       </div>
     </div>
   );
