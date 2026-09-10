@@ -109,16 +109,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
   const { user: currentUser } = useAuth();
   // A staff login (active team member) may NOT book a DJ — booking is for
-  // owners and hosts only. Hiding the tab also hides Book Now and stops the
-  // form from defaulting open.
+  // owners and hosts only. Staff still SEE the availability calendar, but
+  // read-only: no date-tap booking, no owner availability editing.
   const viewerIsStaff = !!currentUser?.isMember;
   // Route inline profile writes through the owner's row directly (owner) or the
   // role-gated API (team member). Keep this in sync as auth resolves.
   useEffect(() => {
     setProfileEditContext({ actingAsMember, uploaderId: currentUser?.id ?? null });
   }, [actingAsMember, currentUser?.id]);
-  const showClubAvailabilityTab = isClubDJ && bookingEnabled && !viewerIsStaff;
-  const showMobileBookingTab = isMobileDJBooking && bookingEnabled && !viewerIsStaff;
+  // Staff DO see the availability tab now — just read-only (see below).
+  const showClubAvailabilityTab = isClubDJ && bookingEnabled;
+  const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
   const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
 
   // If the URL has ?date=YYYY-MM-DD (visitor came from the embed
@@ -1131,8 +1132,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 // wrong because of what it's being told.
                 isLoggedIn={isLoggedIn || !!currentUser}
                 isOwnProfile={isOwnProfile}
+                readOnly={viewerIsStaff}
                 selectedDate={clubSelectedDate}
                 onBookDate={(key) => {
+                  if (viewerIsStaff) return; // staff view the calendar, can't book
                   if (!requireVerified(`/${effectiveSlug}?date=${key}&book=1`)) return;
                   setClubSelectedDate(key);
                 }}
@@ -1142,7 +1145,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 force12mo={forceCalendar12mo}
                 pendingDates={clubPendingDates}
               />
-              {!isOwnProfile && clubSelectedDate && currentUser && currentUser.email_verified && (
+              {!isOwnProfile && !viewerIsStaff && clubSelectedDate && currentUser && currentUser.email_verified && (
                 <ClubBookingForm
                   key={clubSelectedDate}
                   dateKey={clubSelectedDate}
@@ -1205,6 +1208,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 bookingSettings={bookingSettings!}
                 isLoggedIn={isLoggedIn}
                 isOwnProfile={isOwnProfile}
+                readOnly={viewerIsStaff}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
                 force12mo={forceCalendar12mo}
