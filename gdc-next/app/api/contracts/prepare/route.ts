@@ -10,7 +10,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
-import { logActivity } from '@/lib/activityLog';
 import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
 import { getContractUsage } from '@/lib/contractQuota';
 import { canUsePro, type AccessFields } from '@/lib/access';
@@ -560,7 +559,10 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       .eq('dj_id', acting.djId);
   } catch { /* non-fatal */ }
 
-  await logActivity(acting, { action: 'contract.prepared', summary: 'Prepared / sent a contract', bookingId });
+  // NOTE: no activity log here. prepare() runs on the contract modal's mount
+  // (and on re-render), so logging it would record a "sent" that never went out
+  // and could fire several times per real send. The audit entry is written when
+  // the contract actually goes to the client — see /api/contracts/send-client.
   return NextResponse.json({ ok: true, embedSrc, submissionId: submissionId != null ? String(submissionId) : null, hasClientSig, hasDjSig });
   } catch (e) {
     // Guarantee a readable JSON error instead of an infra-level 502.
