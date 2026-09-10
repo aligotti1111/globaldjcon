@@ -23,11 +23,15 @@ import styles from './updateDjProfile.module.css';
 interface Props {
   file: File | null;
   userId: string;
+  // Storage folder to upload into. Defaults to userId. A team member editing
+  // another DJ's profile uploads into their OWN folder (RLS-safe); the public
+  // URL is then saved to the owner's row by the caller.
+  uploadFolder?: string;
   onClose: () => void;
   onSuccess: (publicUrl: string) => void;
 }
 
-export default function AvatarCrop({ file, userId, onClose, onSuccess }: Props) {
+export default function AvatarCrop({ file, userId, uploadFolder, onClose, onSuccess }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -183,7 +187,7 @@ export default function AvatarCrop({ file, userId, onClose, onSuccess }: Props) 
       // any prior avatar — matches vanilla. Append `?t=` cache-buster to
       // public URL so the new image shows up immediately.
       const supabase = createClient();
-      const path = `${userId}/avatar.png`;
+      const path = `${uploadFolder || userId}/avatar.png`;
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, blob, {
