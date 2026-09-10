@@ -20,6 +20,7 @@ const MAX_ROWS = 1000;
 interface LogRow {
   id: string;
   actor_id: string;
+  actor_name: string | null;
   actor_role: string | null;
   action: string;
   summary: string;
@@ -42,26 +43,28 @@ export async function GET() {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data } = await admin
     .from('team_activity_log')
-    .select('id, actor_id, actor_role, action, summary, booking_id, created_at')
+    .select('id, actor_id, actor_name, actor_role, action, summary, booking_id, created_at')
     .eq('owner_id', acting.djId)
     .order('created_at', { ascending: false })
     .limit(MAX_ROWS);
   const rows = (data as unknown as LogRow[] | null) || [];
+  const truncated = rows.length >= MAX_ROWS;
 
-  // Resolve actor names once (owner + each teammate all have a users row).
-  const actorIds = Array.from(new Set(rows.map((r) => r.actor_id)));
-  const names: Record<string, string> = {};
-  if (actorIds.length) {
-    const { data: uData } = await admin.from('users').select('id, name').in('id', actorIds);
+  // Prefer the snapshot name on the row (survives a removed teammate); fall back
+  // to a live users lookup only for rows written before the snapshot existed.
+  const missing = Array.from(new Set(rows.filter((r) => !r.actor_name).map((r) => r.actor_id)));
+  const live: Record<string, string> = {};
+  if (missing.length) {
+    const { data: uData } = await admin.from('users').select('id, name').in('id', missing);
     for (const u of (uData as unknown as { id: string; name: string | null }[] | null) || []) {
-      if (u.name) names[u.id] = u.name;
+      if (u.name) live[u.id] = u.name;
     }
   }
 
   const entries = rows.map((r) => ({
     id: r.id,
     actorId: r.actor_id,
-    actorName: names[r.actor_id] || (r.actor_id === acting.djId ? 'You (Owner)' : 'Teammate'),
+    actorName: r.actor_name || live[r.actor_id] || (r.actor_id === acting.djId ? 'You (Owner)' : 'Teammate'),
     actorRole: r.actor_role,
     action: r.action,
     summary: r.summary,
@@ -69,5 +72,5 @@ export async function GET() {
     createdAt: r.created_at,
   }));
 
-  return NextResponse.json({ ok: true, ownerId: acting.djId, entries });
+  return NextResponse.json({ ok: true, ownerId: acting.djId, entries, truncated });
 }
