@@ -62,7 +62,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Who may edit the public profile (all tabs except Booking): the owner, or a
   // permitted team member. `actingAsMember` is true only for the member case —
   // their writes route through /api/profile/update instead of a direct write.
-  const canEdit = isOwnProfile || canEditProfile;
+  // Whoever may edit (owner or permitted teammate). `previewPublic` lets them
+  // temporarily see the page exactly as a visitor would — all edit chrome
+  // hidden — without leaving the page. It's session state only: a reload always
+  // returns them to owner view.
+  const baseCanEdit = isOwnProfile || canEditProfile;
+  const [previewPublic, setPreviewPublic] = useState(false);
+  const canEdit = baseCanEdit && !previewPublic;
   const actingAsMember = canEditProfile && !isOwnProfile;
   // ── Booking settings parsing & "show booking tab" decision ──────────
   // Vanilla shows a booking tab (and makes it the default) when the DJ has
@@ -663,6 +669,37 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
   return (
     <>
+      {/* Owner/editor view toggle — a floating pill that names the current mode
+          and switches to a live "public view" preview (all edit chrome hidden).
+          Session-only: a reload always returns to owner view. */}
+      {baseCanEdit && (
+        <div
+          style={{
+            position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 18, zIndex: 1200,
+            display: 'flex', alignItems: 'center', gap: 12,
+            background: '#12121a', border: `1px solid ${previewPublic ? 'rgba(255,255,255,.18)' : 'rgba(0,224,164,.4)'}`,
+            borderRadius: 999, padding: '.5rem .55rem .5rem 1rem', boxShadow: '0 10px 30px rgba(0,0,0,.5)',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: previewPublic ? '#8a8aa0' : 'var(--neon,#00e0a4)' }} />
+            {previewPublic ? 'Public view' : 'Owner view'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPreviewPublic((v) => !v)}
+            style={{
+              background: previewPublic ? 'var(--neon,#00e0a4)' : 'transparent',
+              border: `1px solid ${previewPublic ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.25)'}`,
+              borderRadius: 999, color: previewPublic ? '#06231b' : '#fff',
+              padding: '.35rem .9rem', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            {previewPublic ? 'Back to owner view' : 'View as public'}
+          </button>
+        </div>
+      )}
+
       {/* Claim bar — only shown for unclaimed/imported profiles */}
       {data.claimed === false && (
         <div className={styles.claimBar}>
