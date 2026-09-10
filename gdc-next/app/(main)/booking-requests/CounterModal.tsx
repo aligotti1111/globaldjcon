@@ -200,19 +200,40 @@ export default function CounterModal({ booking, group, onClose, onSaved }: Props
         updatePayload.package_details = packageDetailsHtml;
       }
 
-      // RLS: DJ side updates bookings WHERE dj_id = me;
-      // booker side updates WHERE requester_id = me. Either side update
-      // succeeds because the user owns one of those columns.
-      const updateQuery = supabase
-        .from('bookings')
-        .update(updatePayload as unknown as never)
-        .eq('id', booking.id);
-      const finalQuery = group === 'in'
-        ? updateQuery.eq('dj_id', user.id)
-        : updateQuery.eq('requester_id', user.id);
-
-      const { error: updErr } = await finalQuery;
-      if (updErr) throw updErr;
+      // TWO SIDES, TWO WRITE PATHS:
+      //  · DJ side (group 'in') — the DJ countering. This is manager+ only and
+      //    must persist for a TEAM MEMBER, whose browser write RLS would drop
+      //    silently. Route it through the gated server endpoint, which scopes
+      //    the write to the OWNER and appends the negotiation log server-side
+      //    (the browser can't read the current log under RLS for a teammate).
+      //  · Booker side (group 'out') — the booker re-countering. The booker
+      //    owns the row (requester_id) and never has teammates, so a direct
+      //    client write is correct and cheap.
+      if (group === 'in') {
+        const patch = { ...updatePayload };
+        delete (patch as { negotiation_log?: unknown }).negotiation_log;
+        const res = await fetch('/api/bookings/decision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            action: 'counter',
+            patch,
+            appendLog: { from: 'dj', amount: Number(amount), message: message.trim() },
+          }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'Could not save.');
+        }
+      } else {
+        const { error: updErr } = await supabase
+          .from('bookings')
+          .update(updatePayload as unknown as never)
+          .eq('id', booking.id)
+          .eq('requester_id', user.id);
+        if (updErr) throw updErr;
+      }
 
       // Email the OTHER party (recipient) about the counter offer.
       // DJ countered → email the booker; booker countered → email the DJ.
