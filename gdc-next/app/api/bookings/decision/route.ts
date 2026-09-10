@@ -26,6 +26,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getActingContext, canAcceptBookings } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -147,7 +148,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: bData } = await admin
     .from('bookings')
-    .select('id, dj_id, event_date, set_type, counter_rate, quoted_rate, offer_amount, tax_pct, deposit_pct, negotiation_log')
+    .select('id, dj_id, event_date, set_type, counter_rate, quoted_rate, offer_amount, tax_pct, deposit_pct, negotiation_log, requester_name, event_type')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as unknown as BookingLite | null;
@@ -155,6 +156,10 @@ export async function POST(req: Request) {
   if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
   const now = new Date().toISOString();
+
+  // A short human label for the activity log, e.g. "Sarah Lee — 2026-08-12".
+  const bx = b as unknown as { requester_name?: string | null; event_date?: string | null };
+  const bookingLabel = [bx.requester_name, bx.event_date].filter(Boolean).join(' — ') || 'a booking';
 
   // ── Approve / Deny ── the server owns the whole computation.
   if (action === 'approve' || action === 'deny') {
@@ -172,6 +177,11 @@ export async function POST(req: Request) {
     if (action === 'approve') {
       try { await markCalendar(admin, acting.djId, b); } catch { /* non-fatal */ }
     }
+    await logActivity(acting, {
+      action: action === 'approve' ? 'booking.accepted' : 'booking.denied',
+      summary: `${action === 'approve' ? 'Accepted' : 'Denied'} booking — ${bookingLabel}`,
+      bookingId,
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -205,5 +215,10 @@ export async function POST(req: Request) {
     .eq('id', bookingId)
     .eq('dj_id', acting.djId);
   if (error) return NextResponse.json({ error: 'Could not save.' }, { status: 500 });
+  await logActivity(acting, {
+    action: action === 'quote' ? 'booking.quoted' : 'booking.countered',
+    summary: `${action === 'quote' ? 'Sent a quote' : 'Sent a counter offer'} — ${bookingLabel}`,
+    bookingId,
+  });
   return NextResponse.json({ ok: true });
 }
