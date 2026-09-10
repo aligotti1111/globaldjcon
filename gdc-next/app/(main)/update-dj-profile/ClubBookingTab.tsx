@@ -917,6 +917,12 @@ export default function ClubBookingTab({
 
                 {riderEnabled && (
                   <div style={{ marginTop: '1.1rem' }}>
+                    <p className={styles.bodyHint}>
+                      There are two ways to add the rider: 1. Upload a pre-existing rider, or
+                      2. Use Global DJ Connect&rsquo;s drag-and-drop builder to create a custom rider
+                      with your branding at the top. Once the rider is set, you can deploy it with one
+                      click in the booking dashboard under the rider icon.
+                    </p>
                     <RiderBuilder
                       mode={riderMode}
                       onModeChange={setRiderMode}
