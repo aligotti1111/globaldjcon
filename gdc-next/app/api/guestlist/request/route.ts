@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActingContext } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
       .select('id').single();
     if (error || !up) return NextResponse.json({ error: 'Could not save the guest list.' }, { status: 500 });
     const id = (up as unknown as { id: string }).id;
+    await logActivity(acting, { action: 'guestlist.sent', summary: 'Sent a guest list to the host', bookingId });
     const url = `${SITE_URL}/guestlist/${id}`;
 
     const to = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
