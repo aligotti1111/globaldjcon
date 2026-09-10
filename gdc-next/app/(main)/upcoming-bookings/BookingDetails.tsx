@@ -34,7 +34,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, canManageMoney = true, canManageContract = true, onEdit, contractAction, onContractActionHandled, isOwner = false,
+  payments, onMutated, canManageMoney = true, canManageContract = true, onEdit, contractAction, onContractActionHandled, isOwner = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -47,6 +47,9 @@ export default function BookingDetails({
   archive?: boolean;
   payments: BookingPayment[];
   onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
+  /** Ask the server page to re-read this booking so the booking LOG reflects the
+   *  action (contract sent/cancelled, overtime, payment confirmed…). */
+  onMutated?: () => void;
   // Contract-step gate for Request Deposit — computed by BookingRow from the
   // same requires_contract / contract_status / status_overrides logic that
   // drives the status strip.
@@ -305,6 +308,7 @@ export default function BookingDetails({
       });
       if (!res.ok) throw new Error('resend failed');
       setResendDone(true);
+      onMutated?.();
     } catch { alert('Could not resend the contract. Try again in a moment.'); }
     finally { setResendBusy(false); }
   }
@@ -321,6 +325,7 @@ export default function BookingDetails({
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not cancel.');
       setContractSent(false); setResendDone(false); setContractCancelled(true);
+      onMutated?.();
     } catch (e) { alert(e instanceof Error ? e.message : 'Could not cancel the contract.'); }
     finally { setCancelBusy(false); }
   }
@@ -675,6 +680,7 @@ export default function BookingDetails({
           paidAt: booking.overtime_paid_at ?? null,
         }}
         canManage={canManageMoney}
+        onMutated={onMutated}
         rateLabel={booking.overtime_rate != null ? `${money(booking.overtime_rate)}/hr` : 'Not listed'}
       />
     );
@@ -1051,7 +1057,7 @@ export default function BookingDetails({
           userId={userId}
           contractId={sendContractId}
           onClose={() => setSendContractId(null)}
-          onSent={() => { setContractSent(true); setSendContractId(null); setContractCancelled(false); setResendDone(false); }}
+          onSent={() => { setContractSent(true); setSendContractId(null); setContractCancelled(false); setResendDone(false); onMutated?.(); }}
         />
       )}
     </div>
