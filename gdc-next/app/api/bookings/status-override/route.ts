@@ -14,6 +14,7 @@ import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { Resend } from 'resend';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
 import { getActingContext, canAcceptBookings } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -115,6 +116,17 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Could not save.' }, { status: 502 });
   }
+
+  // Activity log — one line naming the step and whether it was set or undone.
+  const stepLabel: Record<string, string> = {
+    contract: 'Contract', deposit: 'Deposit', deposit_skipped: 'Deposit skip',
+    invoice: 'Balance', song_list: 'Planner',
+  };
+  const label = stepLabel[key] || key;
+  const verb = key === 'deposit_skipped'
+    ? (done ? 'Skipped the deposit' : 'Un-skipped the deposit')
+    : (done ? `Marked ${label.toLowerCase()} complete` : `Undid ${label.toLowerCase()} completion`);
+  await logActivity(acting, { action: `step.${key}.${done ? 'done' : 'undone'}`, summary: verb, bookingId });
 
   // When the DJ marks the DEPOSIT complete BY HAND (cash on the night, a bank
   // transfer that never touched the app), send the host a confirmation with the
