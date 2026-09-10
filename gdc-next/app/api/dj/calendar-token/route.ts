@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext, canManageTeam } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 
@@ -78,5 +79,6 @@ export async function POST() {
   const { error } = await db.from('users').update({ calendar_token: token }).eq('id', djId);
   if (error) return NextResponse.json({ error: 'Could not reset your calendar link.' }, { status: 500 });
 
+  await logActivity(acting, { action: 'calendar.link_reset', summary: 'Reset the calendar subscription link' });
   return NextResponse.json({ ok: true, ...links(token) });
 }
