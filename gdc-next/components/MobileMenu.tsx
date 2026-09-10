@@ -190,6 +190,11 @@ export default function MobileMenu() {
   // booking items — not the host "events" view. Their own subscription is empty,
   // so we do NOT gate on bookingEnabled (the owner's plan is what grants access).
   const isStaff = (user?.role as string | undefined) === 'teammate';
+  // Public profile the burger links to: the DJ's own slug, or — for a staff
+  // login — the owner account they manage (so teammates can open + edit it).
+  const profileSlug = isStaff
+    ? ((user as unknown as { ownerSlug?: string | null })?.ownerSlug ?? null)
+    : (isDj ? user?.slug ?? null : null);
   const showDjBookings = (isDj && bookingEnabled) || isStaff;
   // The booking DASHBOARD (Upcoming + Past Bookings) stays reachable for ANY DJ,
   // subscribed or not — a lapsed DJ still has to service the bookings they
@@ -255,9 +260,9 @@ export default function MobileMenu() {
             <Link href="/" onClick={close} className="mobile-menu-item">
               <IconHome />Home
             </Link>
-            {isDj && user.slug && (
-              <Link href={`/${user.slug}`} onClick={close} className="mobile-menu-item primary">
-                <IconUser />My Profile
+            {profileSlug && (
+              <Link href={`/${profileSlug}`} onClick={close} className="mobile-menu-item primary">
+                <IconUser />{isStaff ? 'View Profile' : 'My Profile'}
               </Link>
             )}
             {isDj && (
