@@ -362,12 +362,17 @@ export default function BookingRow({
   // straight back open.
   const [contractAction, setContractAction] = useState<ContractAction | null>(null);
   const roleCanContract = canSendContracts(actingRole);
-  const roleCanMoney = roleCanRequestDeposit(actingRole); // cancel request + payment options
+  const roleCanMoney = roleCanRequestDeposit(actingRole); // request/cancel deposit
+  // Editing the DJ's saved payment options (Venmo/Cash App/PayPal accounts) is
+  // OWNER-ONLY \u2014 no teammate, not even admin/manager, may change where money
+  // lands. Money ACTIONS (request/cancel) stay manager+.
+  const roleCanEditPaymentOptions = actingRole === 'owner';
   // Role-locking for the step dropdowns: show every option an admin would see,
   // but grey out (disable) the ones this role can't use, with a hover tooltip.
-  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Request balance', 'Cancel request', 'Payment options']);
+  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Request balance', 'Cancel request']);
   const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
   function actionLocked(label: string): boolean {
+    if (label === 'Payment options') return !roleCanEditPaymentOptions;
     if (MONEY_LOCK_LABELS.has(label)) return !roleCanMoney;
     if (CONTRACT_LOCK_LABELS.has(label) || label.includes('Copy link')) return !roleCanContract;
     return false;
@@ -1004,7 +1009,7 @@ export default function BookingRow({
           currency={booking.currency || 'USD'}
           depositPct={booking.deposit_pct ?? null}
           onClose={() => setReqOpen(false)}
-          onEditMethods={() => setMethodsOpen(true)}
+          onEditMethods={roleCanEditPaymentOptions ? () => setMethodsOpen(true) : undefined}
           onSubmit={() => void submitRequest()}
         />
       )}
@@ -1013,7 +1018,7 @@ export default function BookingRow({
           as Booking Settings, so a rail added here is added everywhere and
           there's one place for this logic to be wrong. */}
       {methodsOpen && (
-        <PaymentMethodsModal userId={userId} onClose={() => setMethodsOpen(false)} />
+        <PaymentMethodsModal userId={userId} ownerHint={roleCanEditPaymentOptions} onClose={() => setMethodsOpen(false)} />
       )}
 
       {expanded && (
