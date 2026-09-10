@@ -26,6 +26,7 @@ import ProfileView, { type DjProfileData } from './ProfileView';
 import styles from './profile.module.css';
 import type { Metadata } from 'next';
 import { canBook, type AccessFields } from '@/lib/access';
+import { getActingContext, canEditProfile as roleCanEditProfile } from '@/lib/acting';
 
 // Render fresh on every request. The DJ's booking_settings (deposit %,
 // per-day limits, calendar, packages) can change at any time, and a
@@ -205,7 +206,19 @@ export default async function DjProfilePage({ params }: PageProps) {
   const isOwnProfile = !!authUser && authUser.id === profile.id;
   const isLoggedIn = !!authUser;
 
-  if (profile.profile_private && !isOwnProfile) {
+  // Team members with a profile-editing seat can edit this DJ's profile (all
+  // tabs except Booking). Resolve the acting context: an active member of THIS
+  // owner whose role grants profile editing gets canEditProfile.
+  let canEditProfile = false;
+  if (authUser && !isOwnProfile) {
+    try {
+      const acting = await getActingContext(authUser.id);
+      canEditProfile = acting.isMember && acting.djId === profile.id && roleCanEditProfile(acting.role);
+    } catch { /* fall back to no access */ }
+  }
+
+  // Owner OR a permitted team member may view a private profile.
+  if (profile.profile_private && !isOwnProfile && !canEditProfile) {
     return (
       <div className={styles.statusWrap}>
         <div className={styles.statusBox}>
@@ -247,6 +260,7 @@ export default async function DjProfilePage({ params }: PageProps) {
       effectiveSlug={effectiveSlug}
       isLoggedIn={isLoggedIn}
       isOwnProfile={isOwnProfile}
+      canEditProfile={canEditProfile}
       hasBookingAccess={hasBookingAccess}
     />
   );
