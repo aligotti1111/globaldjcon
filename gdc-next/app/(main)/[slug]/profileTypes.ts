@@ -82,6 +82,10 @@ export interface AboutStats {
   events?: { on?: boolean; tier?: string };
   insured?: { on?: boolean };
   deposit?: { on?: boolean; value?: string };
+  destination?: { on?: boolean };
+  backup?: { on?: boolean };
+  eventsTotal?: { on?: boolean; count?: string };
+  depositRequired?: { on?: boolean };
 }
 
 export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq';
