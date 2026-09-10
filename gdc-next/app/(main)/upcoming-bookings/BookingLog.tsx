@@ -61,10 +61,14 @@ export default function BookingLog({ booking, payments }: Props) {
   // once it's past that (awaiting_client / signed) has it actually reached the
   // host. Mirror the pipeline strip, which reads awaiting_dj as "Not sent" and
   // must not claim the host has it.
+  // Read the write-once log stamp so this entry survives a contract CANCEL
+  // (which nulls contract_sent_at to free the quota slot). Fall back to
+  // contract_sent_at for rows created before the log column existed.
+  const contractSentAt = booking.contract_sent_log_at ?? booking.contract_sent_at;
   if (booking.contract_status === 'awaiting_dj') {
-    add(booking.contract_sent_at, 'Contract prepared — awaiting your signature', 'dj');
+    add(contractSentAt, 'Contract prepared — awaiting your signature', 'dj');
   } else {
-    add(booking.contract_sent_at, 'Contract sent to host', 'dj');
+    add(contractSentAt, 'Contract sent to host', 'dj');
   }
   // Set when the DocuSeal contract is fully signed (all parties). You're the
   // signer in this flow, so attribute it to You.
@@ -126,9 +130,11 @@ export default function BookingLog({ booking, payments }: Props) {
   add(booking.rider_confirmed_at, 'Rider confirmed by host', 'host');
   add(booking.guestlist_confirmed_at, 'Guest list confirmed by host', 'host');
 
-  // ── Overtime (DJ-driven) ──
-  add(booking.overtime_invoiced_at, 'Overtime invoice sent', 'dj');
-  add(booking.overtime_paid_at, 'Overtime paid · receipt sent', 'dj');
+  // ── Overtime (DJ-driven) ── Use the write-once log stamps so "invoice sent"
+  // and "paid" survive a CLEAR (which nulls the state columns to reset the UI).
+  // Fall back to the state columns for rows created before the log columns.
+  add(booking.overtime_invoiced_log_at ?? booking.overtime_invoiced_at, 'Overtime invoice sent', 'dj');
+  add(booking.overtime_paid_log_at ?? booking.overtime_paid_at, 'Overtime paid · receipt sent', 'dj');
   add(booking.overtime_cancelled_at, 'Overtime invoice cancelled', 'dj');
 
   // ── Cancellation ── TWO moments, each at its own time: the REQUEST (whoever
