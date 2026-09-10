@@ -9,7 +9,6 @@
 // resize the background image, the logo, and the text.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 // Minimal shape we need — UpcomingBooking (a superset) is assignable to this.
 type StoryBooking = {
@@ -348,24 +347,25 @@ export default function MonthlyStory({
   const logoInput = useRef<HTMLInputElement | null>(null);
   const bgInput = useRef<HTMLInputElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
-  const settingsRef = useRef<Record<string, unknown>>({});
 
   // Load the DJ's slug (for the footer URL) + any previously-saved story logo.
   useEffect(() => {
     let a = true;
     (async () => {
       try {
-        const supabase = createClient();
-        const { data } = await supabase.from('users').select('slug, booking_settings').eq('id', userId).maybeSingle();
-        const row = data as { slug?: string | null; booking_settings?: string | null } | null;
-        if (!a) return;
-        if (row?.slug) setDjSlug(row.slug);
-        const raw = row?.booking_settings;
-        const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as Record<string, unknown>;
-        settingsRef.current = bs;
-        const saved = bs.story_logo_url;
+        // Read via the server route (owner-scoped) — a teammate can't read the
+        // owner's users row directly under RLS.
+        const res = await fetch('/api/dj/story');
+        const j = (await res.json().catch(() => ({}))) as {
+          slug?: string | null;
+          storyLogoUrl?: string | null;
+          storyColors?: Record<string, string> | null;
+        };
+        if (!a || !res.ok) return;
+        if (j.slug) setDjSlug(j.slug);
+        const saved = j.storyLogoUrl;
         if (typeof saved === 'string' && saved) { setLogoUrl(saved); setSaveLogo(true); }
-        const cols = bs.story_colors as Record<string, string> | undefined;
+        const cols = j.storyColors as Record<string, string> | undefined;
         if (cols && typeof cols === 'object') {
           if (cols.headline) setHeadlineColor(cols.headline);
           if (cols.accent) setAccentColor(cols.accent);
@@ -382,24 +382,25 @@ export default function MonthlyStory({
   const footerUrl = djSlug ? `globaldjconnect.com/${djSlug}` : 'globaldjconnect.com';
 
   // Persist (or clear) the story logo in booking_settings for reuse next time.
+  // Server merges into the OWNER's booking_settings (RLS-safe for teammates).
   async function persistLogo(url: string | null) {
     try {
-      const supabase = createClient();
-      const next = { ...settingsRef.current } as Record<string, unknown>;
-      if (url) next.story_logo_url = url; else delete next.story_logo_url;
-      settingsRef.current = next;
-      await supabase.from('users').update({ booking_settings: JSON.stringify(next) } as never).eq('id', userId);
+      await fetch('/api/dj/story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyLogoUrl: url }),
+      });
     } catch { /* ignore */ }
   }
 
   // Persist (or clear) the chosen colors in booking_settings for reuse next time.
   async function persistColors(save: boolean, cols?: { headline: string; accent: string; text: string; address: string; box: string }) {
     try {
-      const supabase = createClient();
-      const next = { ...settingsRef.current } as Record<string, unknown>;
-      if (save && cols) next.story_colors = cols; else delete next.story_colors;
-      settingsRef.current = next;
-      await supabase.from('users').update({ booking_settings: JSON.stringify(next) } as never).eq('id', userId);
+      await fetch('/api/dj/story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyColors: save && cols ? cols : null }),
+      });
     } catch { /* ignore */ }
   }
 
@@ -481,13 +482,14 @@ export default function MonthlyStory({
 
   async function uploadTo(file: File, prefix: string): Promise<string | null> {
     try {
-      const supabase = createClient();
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-      const path = `${userId}/${prefix}_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
-      if (error) return null;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      return `${data.publicUrl}?t=${Date.now()}`;
+      // Upload via the server route — the owner's storage folder is off-limits
+      // to a teammate's browser session (RLS).
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('prefix', prefix);
+      const res = await fetch('/api/dj/story', { method: 'POST', body: fd });
+      const j = (await res.json().catch(() => ({}))) as { url?: string };
+      return res.ok && j.url ? j.url : null;
     } catch { return null; }
   }
 
