@@ -20,6 +20,8 @@ import { createClient } from '@/lib/supabase/client';
 import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
+  RIDER_LIST_STYLES, RIDER_FONT_SIZES, RIDER_FONT_FAMILIES,
+  riderFontFamilyCss, riderFontSizePx, normalizeListStyle, normalizeFontSize, normalizeFontFamily,
   type RiderBox, type RiderItem,
 } from '@/lib/rider';
 
@@ -246,10 +248,48 @@ export default function RiderEditor({
               </div>
             )}
 
+            {/* Per-box display options: how each line is bulleted, plus the
+                text size and font of this box on the sent rider. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginBottom: '.7rem' }}>
+              <label style={styleCtlWrap}>
+                <span style={styleCtlLabel}>List</span>
+                <select
+                  value={normalizeListStyle(box.listStyle)}
+                  onChange={(e) => patchBox(box.id, { listStyle: normalizeListStyle(e.target.value) })}
+                  style={styleCtlSelect}
+                  aria-label="List style for this box"
+                >
+                  {RIDER_LIST_STYLES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+              </label>
+              <label style={styleCtlWrap}>
+                <span style={styleCtlLabel}>Size</span>
+                <select
+                  value={normalizeFontSize(box.fontSize)}
+                  onChange={(e) => patchBox(box.id, { fontSize: normalizeFontSize(e.target.value) })}
+                  style={styleCtlSelect}
+                  aria-label="Text size for this box"
+                >
+                  {RIDER_FONT_SIZES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+              </label>
+              <label style={styleCtlWrap}>
+                <span style={styleCtlLabel}>Font</span>
+                <select
+                  value={normalizeFontFamily(box.fontFamily)}
+                  onChange={(e) => patchBox(box.id, { fontFamily: normalizeFontFamily(e.target.value) })}
+                  style={styleCtlSelect}
+                  aria-label="Font for this box"
+                >
+                  {RIDER_FONT_FAMILIES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+              </label>
+            </div>
+
             <textarea
               value={boxText(box)}
               onChange={(e) => setBoxText(box, e.target.value)}
-              placeholder={`Type your ${box.title.toLowerCase()} requirements…`}
+              placeholder={`Type your ${box.title.toLowerCase()} requirements… (one per line)`}
               rows={4}
               style={{
                 ...input,
@@ -257,7 +297,8 @@ export default function RiderEditor({
                 resize: 'vertical',
                 lineHeight: 1.5,
                 minHeight: 90,
-                fontFamily: 'inherit',
+                fontFamily: riderFontFamilyCss(box.fontFamily),
+                fontSize: riderFontSizePx(box.fontSize),
               }}
             />
 
@@ -336,6 +377,18 @@ export default function RiderEditor({
     </div>
   );
 }
+
+const styleCtlWrap: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: '.35rem',
+};
+const styleCtlLabel: React.CSSProperties = {
+  fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em',
+  textTransform: 'uppercase', color: MUTED,
+};
+const styleCtlSelect: React.CSSProperties = {
+  background: 'var(--deep, #000)', border: BORDER, borderRadius: 8,
+  color: 'var(--white,#fff)', padding: '.35rem .5rem', fontSize: '.8rem',
+};
 
 function ctl(color: string, disabled: boolean): React.CSSProperties {
   return {
