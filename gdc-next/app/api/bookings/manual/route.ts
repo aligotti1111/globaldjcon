@@ -25,7 +25,7 @@ const SELECT_COLS = 'id, event_date, start_time, end_time, venue_name, venue_add
 const WRITABLE = new Set([
   'booking_type', 'event_date', 'start_time', 'end_time',
   'venue_name', 'venue_address', 'venue_lat', 'venue_lon', 'venue_type', 'venue_type_desc',
-  'set_type', 'event_type', 'event_details', 'cocktail_needed', 'cocktail_start_time',
+  'set_type', 'equipment', 'event_type', 'event_details', 'cocktail_needed', 'cocktail_start_time',
   'package_title', 'package_details', 'package_category', 'package_index', 'overtime_rate',
   'host_email', 'host_email_sent_at', 'requester_name', 'offer_amount', 'currency',
   'tax_pct', 'tax_amount', 'total_with_tax', 'deposit_pct', 'deposit_amount',
@@ -88,4 +88,30 @@ export async function PATCH(req: Request) {
     .single();
   if (error) return NextResponse.json({ error: error.message, code: error.code, details: error.details }, { status: 400 });
   return NextResponse.json({ ok: true, booking: data });
+}
+
+// DELETE /api/bookings/manual  { id } — remove a manual booking. Same gate as
+// create/edit (manager+), scoped to the acting owner so a teammate's delete
+// actually lands (a browser DELETE is dropped by RLS with no error, leaving the
+// row in place while the UI shows it gone).
+export async function DELETE(req: Request) {
+  const auth = await authorize();
+  if ('error' in auth) return auth.error;
+  const { djId, admin } = auth;
+
+  let body: { id?: string };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  // Only manual bookings may be hard-deleted here — a real host request is never
+  // erased this way (it is cancelled, keeping the record). is_manual guards that.
+  const { error } = await admin
+    .from('bookings')
+    .delete()
+    .eq('id', id)
+    .eq('dj_id', djId)
+    .eq('is_manual', true);
+  if (error) return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+  return NextResponse.json({ ok: true });
 }
