@@ -22,6 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import type { UpcomingBooking } from '@/app/(main)/upcoming-bookings/page';
@@ -345,6 +346,13 @@ export async function POST(req: Request) {
           .eq('id', bookingId)
           .is('planner_sent_at' as never, null);
       } catch { /* non-fatal — the planner still sent */ }
+      // Log the send HERE, once the planner exists — the action is the send, not
+      // the email (a failed email returns early below and must not lose the log).
+      await logActivity(acting, {
+        action: isResend ? 'planner.resent' : 'planner.sent',
+        summary: isResend ? 'Resent the Planner & Playlist' : 'Sent the Planner & Playlist',
+        bookingId,
+      });
     }
 
     // A test with no saved planner has no /planner/[id] yet — link the DJ to the
