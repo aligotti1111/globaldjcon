@@ -47,6 +47,9 @@ type CurrentUserWithVerified = CurrentUser & {
   // True when this login is an active team member (a staff login). Owners and
   // plain hosts are NOT members. Staff logins may not book DJs themselves.
   isMember?: boolean;
+  // For a team member: the slug of the DJ account they act on, so nav can link
+  // to that profile ("View Profile"). Null/undefined for owners.
+  ownerSlug?: string | null;
 };
 
 interface AuthContextValue {
@@ -168,8 +171,8 @@ export function AuthProvider({
         // non-blocking, so nav renders immediately and tightens once known.
         try {
           const r = await fetch('/api/me/role');
-          const j = (await r.json().catch(() => ({}))) as { role?: string | null; isMember?: boolean };
-          if (mounted && j?.role) setUser((prev) => (prev ? { ...prev, actingRole: j.role as string, isMember: !!j.isMember } : prev));
+          const j = (await r.json().catch(() => ({}))) as { role?: string | null; isMember?: boolean; ownerSlug?: string | null };
+          if (mounted && j?.role) setUser((prev) => (prev ? { ...prev, actingRole: j.role as string, isMember: !!j.isMember, ownerSlug: j.ownerSlug ?? null } : prev));
         } catch { /* nav just shows the default (owner) set until reload */ }
       } else {
         setUser(null);
