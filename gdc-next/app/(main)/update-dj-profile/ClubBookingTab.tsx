@@ -24,7 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, normalizeRiderMode, withStarterTechnical, type RiderItem, type RiderMode } from '@/lib/rider';
+import { normalizeRiderItems, normalizeRiderMode, type RiderItem, type RiderMode } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -932,15 +932,6 @@ export default function ClubBookingTab({
                       name={riderName}
                       onNameChange={setRiderName}
                     />
-                    {riderMode === 'custom' && !riderDefault.some((i) => i.section === 'technical' && i.type !== 'box') && (
-                      <button
-                        type="button"
-                        onClick={() => setRiderDefault(withStarterTechnical(riderDefault))}
-                        style={{ marginTop: '.8rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.5rem .9rem', fontSize: '.85rem', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        Load starter technical
-                      </button>
-                    )}
                   </div>
                 )}
                 {onSaveSettings && (
