@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { getActingContext } from '@/lib/acting';
 import {
   pickTemplate,
   pickTemplateById,
@@ -91,13 +92,21 @@ async function gate(): Promise<
     return { ok: false, res: NextResponse.json({ error: 'Not signed in' }, { status: 401 }) };
   }
   const admin = createAdminClient();
+  // TEAM SEATS: a teammate acts on the OWNER's account. Both the Pro gate and
+  // every dj_id-scoped read/write below must resolve to the OWNER (acting.djId),
+  // never the logged-in member. Reading `.eq('id', user.id)` here was the bug:
+  // a teammate's own row is Free/none, so canUsePro was false and they were told
+  // the owner's Pro planner was "a Pro feature." (The owner's users row is also
+  // hidden from a teammate by RLS, which is why this reads via the admin client.)
+  const acting = await getActingContext(user.id);
+  const djId = acting.djId;
   // `name`, not `dj_name` — there is no users.dj_name, and selecting one that
   // doesn't exist makes PostgREST reject the whole query and hand back null.
   // (That bug told every DJ they weren't Pro for an afternoon.)
   const { data, error } = await admin
     .from('users')
     .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
-    .eq('id', user.id)
+    .eq('id', djId)
     .maybeSingle();
   // A failed query is not an un-subscribed DJ. Never let them share a branch.
   if (error) {
@@ -107,7 +116,9 @@ async function gate(): Promise<
   if (!row || !canUsePro(row)) {
     return { ok: false, res: NextResponse.json({ error: 'Planners are a Pro feature.' }, { status: 403 }) };
   }
-  return { ok: true, userId: user.id, db: admin as unknown as SupabaseClient, admin };
+  // `userId` is used below purely as the DJ id (dj_id filters, template
+  // ownership, booking ownership) — so it is the OWNER's id, not the member's.
+  return { ok: true, userId: djId, db: admin as unknown as SupabaseClient, admin };
 }
 
 // ── GET ───────────────────────────────────────────────────────────────────
