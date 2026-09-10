@@ -240,42 +240,6 @@ export default function RiderBuilder({
     </div>
   );
 
-  // One selectable build option: a clickable header, and — when it's the active
-  // mode — its own body (rider name + that mode's controls) nested inside.
-  const OptionBox = ({ m, title, desc, children }: { m: RiderMode; title: string; desc: string; children: ReactNode }) => {
-    const active = mode === m;
-    return (
-      <div
-        style={{
-          borderRadius: 12, overflow: 'hidden',
-          background: 'rgba(255,255,255,.03)',
-          border: active ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)',
-          transition: 'border-color .15s ease, background .15s ease',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => onModeChange(m)}
-          style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', background: 'transparent', border: 'none', padding: '1rem 1.1rem' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.35rem' }}>
-            <span
-              aria-hidden
-              style={{
-                width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-                border: active ? `5px solid ${NEON}` : '2px solid rgba(255,255,255,.35)',
-                background: active ? '#06231b' : 'transparent',
-              }}
-            />
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: active ? NEON : '#fff' }}>{title}</span>
-          </div>
-          <div style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.5 }}>{desc}</div>
-        </button>
-        {active && <div style={{ padding: '0 1.1rem 1.2rem' }}>{children}</div>}
-      </div>
-    );
-  };
-
   return (
     <div>
       {hideChooser ? (
@@ -300,7 +264,7 @@ export default function RiderBuilder({
             How do you want to build this rider?
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
-            <OptionBox m="upload" title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is.">
+            <OptionBox active={mode === 'upload'} onSelect={() => onModeChange('upload')} title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is.">
               {nameField}
               {uploadBody}
             </OptionBox>
@@ -309,7 +273,7 @@ export default function RiderBuilder({
               <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.1em', color: MUTED }}>OR</span>
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
             </div>
-            <OptionBox m="custom" title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host.">
+            <OptionBox active={mode === 'custom'} onSelect={() => onModeChange('custom')} title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host.">
               {nameField}
               {customBody}
             </OptionBox>
@@ -375,6 +339,46 @@ export default function RiderBuilder({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// One selectable build option: a clickable header, and — when active — its own
+// body (rider name + that mode's controls) nested inside. Defined at MODULE
+// scope (not inside RiderBuilder) so it isn't a brand-new component type on every
+// render; nesting it inside would remount its children and steal focus from any
+// input the DJ is typing in.
+function OptionBox({ active, onSelect, title, desc, children }: {
+  active: boolean; onSelect: () => void; title: string; desc: string; children: ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 12, overflow: 'hidden',
+        background: 'rgba(255,255,255,.03)',
+        border: active ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)',
+        transition: 'border-color .15s ease, background .15s ease',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onSelect}
+        style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', background: 'transparent', border: 'none', padding: '1rem 1.1rem' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.35rem' }}>
+          <span
+            aria-hidden
+            style={{
+              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+              border: active ? `5px solid ${NEON}` : '2px solid rgba(255,255,255,.35)',
+              background: active ? '#06231b' : 'transparent',
+            }}
+          />
+          <span style={{ fontWeight: 800, fontSize: '1rem', color: active ? NEON : '#fff' }}>{title}</span>
+        </div>
+        <div style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.5 }}>{desc}</div>
+      </button>
+      {active && <div style={{ padding: '0 1.1rem 1.2rem' }}>{children}</div>}
     </div>
   );
 }
