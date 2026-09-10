@@ -58,3 +58,6 @@ export const canRequestDeposit = isManagerPlus;
 // Assistant+ (all seats)
 export const canInvoice = isAssistantPlus;      // send an invoice / receipt
 export const canSendDocs = isAssistantPlus;     // planner, playlist, rider, guest list, flyer
+// Build/Edit Profile — every seat (assistant → admin) may edit the public
+// profile (all tabs EXCEPT Booking, which keeps its own booking-role gates).
+export const canEditProfile = isAssistantPlus;
