@@ -83,6 +83,9 @@ interface Props {
   // Called after the booker successfully submits a request, so the parent
   // can refetch pendingDates and the just-booked date flips to "Pending".
   onBookingSubmitted?: () => void;
+  // Read-only viewer (a team member managing this account). Availability is
+  // shown, but no date is bookable — taps do nothing, no "Book" pill.
+  readOnly?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -157,6 +160,7 @@ export default function MobilePublicCalendar({
   force12mo,
   pendingDates,
   onBookingSubmitted,
+  readOnly = false,
 }: Props) {
   // Pull values out of bookingSettings — same defaults as before
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
@@ -404,6 +408,8 @@ export default function MobilePublicCalendar({
 
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
+    // Read-only viewers (managing team members) can look but not book.
+    if (readOnly) return;
     // If the book was triggered from the 12-month rolling view, switch
     // back to single-month and navigate to the booked day's month so
     // the booking form renders in context.
@@ -556,6 +562,7 @@ export default function MobilePublicCalendar({
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
+          readOnly={readOnly}
           onQuickMark={quickMark}
           onOpenEdit={(key) => setOwnerEditKey(key)}
           onEmbedClick={onEmbedClick}
@@ -575,6 +582,7 @@ export default function MobilePublicCalendar({
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
+          readOnly={readOnly}
           onQuickMark={quickMark}
           onOpenEdit={(key) => setOwnerEditKey(key)}
           pendingDates={pendingDates}
@@ -679,6 +687,7 @@ function SingleMonthView({
   selectedDate,
   onBookClick,
   isOwnProfile,
+  readOnly = false,
   onQuickMark,
   onOpenEdit,
   onEmbedClick,
@@ -693,6 +702,7 @@ function SingleMonthView({
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
   selectedDate: string | null;
+  readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
   isOwnProfile: boolean;
   onQuickMark: (key: string) => void;
@@ -826,10 +836,11 @@ function SingleMonthView({
           })()}
         </div>
       );
-    } else if (!isOwnProfile && isAvail) {
+    } else if (!isOwnProfile && !readOnly && isAvail) {
       // Pending takes precedence over Book — if THIS viewer already has a
       // pending request on this date, show a non-clickable "Pending" pill.
-      // The cell stays available for everyone else.
+      // The cell stays available for everyone else. Read-only viewers (team
+      // members) get no Book pill.
       const isPendingForViewer = !!pendingDates?.has(key);
       inner = isPendingForViewer ? (
         <div
@@ -867,7 +878,7 @@ function SingleMonthView({
     // double-booking. Past, fully-booked, unavailable cells: no handler.
     const isPendingForViewerCell = !isOwnProfile && !!pendingDates?.has(key);
     const cellClickHandler =
-      !isOwnProfile && isAvail && !isPendingForViewerCell
+      !isOwnProfile && !readOnly && isAvail && !isPendingForViewerCell
         ? (e: React.MouseEvent) => onBookClick(key, e)
         : undefined;
 
@@ -938,6 +949,7 @@ function RollingMonthsView({
   selectedDate,
   onBookClick,
   isOwnProfile,
+  readOnly = false,
   onQuickMark,
   onOpenEdit,
   pendingDates,
@@ -948,6 +960,7 @@ function RollingMonthsView({
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
   selectedDate: string | null;
+  readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
   isOwnProfile: boolean;
   onQuickMark: (key: string) => void;
@@ -998,7 +1011,7 @@ function RollingMonthsView({
       // clickable — no double-booking the same date.
       const onCellClick = isOwnProfile
         ? (!isPast ? (() => onOpenEdit(key)) : undefined)
-        : (isAvail && !isPendingForViewer ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
+        : (!readOnly && isAvail && !isPendingForViewer ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
       const isClickable = !!onCellClick;
 
       const cellClasses = [styles.miniCell];
@@ -1021,8 +1034,9 @@ function RollingMonthsView({
           {d}
           {/* Public visitor: show "Book" label on available days so
               visitors can book directly from the 12-month grid. If this
-              viewer already has a pending request, show "Pending" instead. */}
-          {!isOwnProfile && isAvail && !isPast && (
+              viewer already has a pending request, show "Pending" instead.
+              Read-only viewers (team members) get no Book label. */}
+          {!isOwnProfile && !readOnly && isAvail && !isPast && (
             <div
               className={
                 isPendingForViewer
