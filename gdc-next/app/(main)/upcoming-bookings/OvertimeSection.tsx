@@ -40,6 +40,8 @@ interface Props {
   initial: OvertimeInitial;
   /** Manager+ money permission. Assistants can't send. */
   canManage: boolean;
+  /** Refresh the booking so the LOG picks up the overtime timestamp. */
+  onMutated?: () => void;
   /** The contract per-hour rate label (e.g. "$400.00/hr"), shown ONLY before an
    *  invoice is sent. Once sent, the Manage control is the sole centerpiece. */
   rateLabel?: string | null;
@@ -54,7 +56,7 @@ function money(n: number, currency: string): string {
 }
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export default function OvertimeSection({ bookingId, currency, taxPct, defaultRate, initial, canManage, rateLabel }: Props) {
+export default function OvertimeSection({ bookingId, currency, taxPct, defaultRate, initial, canManage, onMutated, rateLabel }: Props) {
   const [savedHours, setSavedHours] = useState<number | null>(initial.hours);
   const [savedRate, setSavedRate] = useState<number | null>(initial.rate);
   const [savedTax, setSavedTax] = useState<number | null>(initial.tax);
@@ -118,7 +120,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   async function sendInvoice() {
     if (!valid) { setErr('Enter hours and a rate greater than zero.'); return; }
     setBusy('invoice'); setErr(null); setMsg(null);
-    if (await post('overtime-invoice')) { setInvoicedAt(new Date().toISOString()); rememberSaved(); setMsg('Overtime invoice sent.'); }
+    if (await post('overtime-invoice')) { setInvoicedAt(new Date().toISOString()); rememberSaved(); setMsg('Overtime invoice sent.'); onMutated?.(); }
     setBusy('');
   }
 
@@ -131,6 +133,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
       if (!invoicedAt) setInvoicedAt(now);
       rememberSaved();
       setMsg('Marked paid — receipt sent.');
+      onMutated?.();
     }
     setBusy('');
   }
@@ -171,6 +174,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
       setHours(''); setRate(defaultRate != null ? String(defaultRate) : '');
       setTaxEdited(false); setTaxStr(''); setApplyTax(taxPct > 0);
       setMsg(null); setOpen(false);
+      onMutated?.();
     }
     setBusy('');
   }
