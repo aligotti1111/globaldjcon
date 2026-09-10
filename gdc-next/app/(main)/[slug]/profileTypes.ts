@@ -21,6 +21,9 @@ export interface DjProfileData {
   // white (#ffffff) on the public profile.
   profile_name_color?: string | null;
   tab_visibility: string | null;
+  // Owner-chosen tab order — a JSON array of tab keys (the Booking tab is
+  // always pinned first and is not part of this list). Null → default order.
+  tab_order?: string | null;
   rate: string | null;
   travel_distance: string | null;  // 'worldwide' or numeric miles as string
   website: string | null;
