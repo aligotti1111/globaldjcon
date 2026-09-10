@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext, canEditProfile } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,16 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+
+    // TEAM SEATS: the logo belongs to the OWNER's account. A teammate who may
+    // edit the profile / send documents may change it, and it must be stored on
+    // the owner's row (acting.djId) — keying to user.id stored it on the
+    // teammate's own row and 404'd the per-planner hide/show for them.
+    const acting = await getActingContext(user.id);
+    if (!canEditProfile(acting.role)) {
+      return NextResponse.json({ error: 'You do not have permission to change the logo.' }, { status: 403 });
+    }
+    const djId = acting.djId;
 
     const admin = createAdminClient();
     const db = admin as unknown as SupabaseClient;
@@ -44,14 +55,14 @@ export async function POST(req: Request) {
       const { error: e1 } = await admin
         .from('users')
         .update({ contract_logo_url: url } as unknown as never)
-        .eq('id', user.id);
+        .eq('id', djId);
       if (e1) return NextResponse.json({ error: 'Could not save the logo.' }, { status: 500 });
       // Change overrides all instances — un-hide every planner so the new logo
       // shows everywhere again.
       await db
         .from('booking_planners')
         .update({ logo_hidden: false } as unknown as never)
-        .eq('dj_id', user.id);
+        .eq('dj_id', djId);
       return NextResponse.json({ ok: true, url });
     }
 
@@ -59,7 +70,7 @@ export async function POST(req: Request) {
       const { error } = await admin
         .from('users')
         .update({ contract_logo_url: null } as unknown as never)
-        .eq('id', user.id);
+        .eq('id', djId);
       if (error) return NextResponse.json({ error: 'Could not remove the logo.' }, { status: 500 });
       return NextResponse.json({ ok: true });
     }
@@ -77,7 +88,7 @@ export async function POST(req: Request) {
       const row = bp as unknown as { id: string; dj_id: string } | null;
       // 404 (not 403) if it isn't theirs — don't confirm a guessed id exists.
       if (!row) return NextResponse.json({ error: "This planner hasn't been sent yet." }, { status: 404 });
-      if (row.dj_id !== user.id) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
+      if (row.dj_id !== djId) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
       const { error } = await db
         .from('booking_planners')
         .update({ logo_hidden: op === 'hide' } as unknown as never)
