@@ -11,7 +11,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { seatsFor, type AccessFields } from '@/lib/access';
 import { isTeamRole } from '@/lib/team';
-import { getActingContext, canManageTeam } from '@/lib/acting';
+import { getActingContext, canManageTeam, type ActingContext } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 
@@ -34,6 +35,13 @@ async function seatLimit(admin: SupabaseClient, ownerId: string): Promise<number
 async function manageOwnerId(authUserId: string): Promise<string | null> {
   const acting = await getActingContext(authUserId);
   return canManageTeam(acting.role) ? acting.djId : null;
+}
+
+// Same gate, but returns the full acting context so staffing changes can be
+// attributed in the activity log. Null when the caller can't manage the team.
+async function manageActing(authUserId: string): Promise<ActingContext | null> {
+  const acting = await getActingContext(authUserId);
+  return canManageTeam(acting.role) ? acting : null;
 }
 
 export async function GET() {
@@ -73,8 +81,9 @@ export async function POST(req: Request) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 });
   if (!isTeamRole(role)) return NextResponse.json({ error: 'Pick a role.' }, { status: 400 });
   if (email === (user.email || '').trim().toLowerCase()) return NextResponse.json({ error: "You can't invite yourself." }, { status: 400 });
-  const ownerId = await manageOwnerId(user.id);
-  if (!ownerId) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const acting = await manageActing(user.id);
+  if (!acting) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const ownerId = acting.djId;
 
   const admin = createAdminClient() as unknown as SupabaseClient;
   const limit = await seatLimit(admin, ownerId);
@@ -135,8 +144,12 @@ export async function POST(req: Request) {
 <p style="margin:22px 0;"><a href="${url}" style="background:#000;color:#00f5c4;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;">Accept invite</a></p>
 <p style="color:#999;font-size:12px;word-break:break-all;">${url}</p></div>`;
     try { await new Resend(process.env.RESEND_API_KEY).emails.send({ from: FROM, to: email, subject: `${ownerName} added you to their team`, html }); }
-    catch { return NextResponse.json({ ok: true, warning: 'Invite saved, but the email could not be sent.' }); }
+    catch {
+      await logActivity(acting, { action: 'team.invited', summary: `Invited ${email} as ${role}` });
+      return NextResponse.json({ ok: true, warning: 'Invite saved, but the email could not be sent.' });
+    }
   }
+  await logActivity(acting, { action: 'team.invited', summary: `Invited ${email} as ${role}` });
   return NextResponse.json({ ok: true });
 }
 
@@ -148,15 +161,20 @@ export async function PATCH(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const id = String(body.id || '');
   if (!id) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
-  const ownerId = await manageOwnerId(user.id);
-  if (!ownerId) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const acting = await manageActing(user.id);
+  if (!acting) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const ownerId = acting.djId;
   const upd: Record<string, unknown> = {};
   if (isTeamRole(body.role)) upd.role = body.role;
   if (typeof body.canAddons === 'boolean') upd.can_addons = body.canAddons;
   if (Object.keys(upd).length === 0) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const { error } = await admin.from('team_members').update(upd as unknown as never).eq('id', id).eq('owner_id', ownerId);
+  const { data: updRows, error } = await admin.from('team_members').update(upd as unknown as never).eq('id', id).eq('owner_id', ownerId).select('invited_email');
   if (error) return NextResponse.json({ error: 'Could not update the member.' }, { status: 500 });
+  if (Array.isArray(updRows) && updRows.length > 0 && isTeamRole(body.role)) {
+    const who = (updRows[0] as { invited_email?: string | null }).invited_email || 'a teammate';
+    await logActivity(acting, { action: 'team.role_changed', summary: `Changed ${who}'s role to ${body.role}` });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -168,14 +186,17 @@ export async function DELETE(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const id = String(body.id || '');
   if (!id) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
-  const ownerId = await manageOwnerId(user.id);
-  if (!ownerId) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const acting = await manageActing(user.id);
+  if (!acting) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const ownerId = acting.djId;
   const admin = createAdminClient() as unknown as SupabaseClient;
 
   // Grab the row first so we know WHO we're removing before it's gone.
   const { data: rowData } = await admin.from('team_members')
-    .select('member_id, status').eq('id', id).eq('owner_id', ownerId).maybeSingle();
-  const memberId = (rowData as unknown as { member_id?: string | null } | null)?.member_id || null;
+    .select('member_id, status, invited_email').eq('id', id).eq('owner_id', ownerId).maybeSingle();
+  const memberRow = rowData as unknown as { member_id?: string | null; invited_email?: string | null } | null;
+  const memberId = memberRow?.member_id || null;
+  const memberEmail = memberRow?.invited_email || null;
 
   // An admin managing the team can't delete their OWN membership from here
   // (they'd nuke their own access). They can leave via their account settings.
@@ -185,6 +206,8 @@ export async function DELETE(req: Request) {
 
   const { error } = await admin.from('team_members').delete().eq('id', id).eq('owner_id', ownerId);
   if (error) return NextResponse.json({ error: 'Could not remove the member.' }, { status: 500 });
+
+  await logActivity(acting, { action: 'team.removed', summary: `Removed ${memberEmail || 'a teammate'} from the team` });
 
   // A teammate account is pointless once it's off every team — and worse, it
   // would keep the person's email locked out of ever creating their own DJ or
