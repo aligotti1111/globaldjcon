@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { Resend } from 'resend';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
+import { getActingContext, canAcceptBookings } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -58,6 +59,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing or invalid bookingId/key' }, { status: 400 });
   }
 
+  // TEAM SEATS: resolve the account being acted on. A teammate acts on the
+  // OWNER's bookings (acting.djId), and marking a contract/deposit step done is
+  // a manager+ action — assistants may not (owner/admin/manager only). Keying
+  // this to user.id (the member) 403'd every teammate while the UI, which
+  // toggled optimistically, showed the step done anyway.
+  const acting = await getActingContext(user.id);
+  if (!canAcceptBookings(acting.role)) {
+    return NextResponse.json({ error: 'You do not have permission to change this.' }, { status: 403 });
+  }
+
   const admin = createAdminClient();
   const { data } = await admin
     .from('bookings')
@@ -66,7 +77,7 @@ export async function POST(req: Request) {
     .maybeSingle();
   const row = data as { status_overrides?: Record<string, boolean> | null; dj_id?: string | null } | null;
   if (!row) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-  if (row.dj_id !== user.id) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+  if (row.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
   const overrides: Record<string, boolean> =
     row.status_overrides && typeof row.status_overrides === 'object' ? { ...row.status_overrides } : {};
