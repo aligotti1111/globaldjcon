@@ -55,12 +55,30 @@ interface Props {
   // booking_planners, reduced to a fraction server-side (the answers never come
   // to the browser). Keyed by booking_id; absent = never requested.
   initialPlanners?: Record<string, BookingPlannerSummary>;
+  // Subscription- + settings-derived gating, computed server-side against the
+  // OWNER's account (acting.djId) so a teammate inherits the owner's tier and
+  // settings. The client can't read these itself: the owner's users row is
+  // hidden from a teammate by RLS. All optional — the /past-bookings archive
+  // mount doesn't pass them and doesn't gate on them.
+  canPro?: boolean;
+  isPaid?: boolean;
+  settingsCurrency?: string;
+  requireContract?: boolean;
+  riderEnabled?: boolean;
+  guestlistEnabled?: boolean;
+  clubDepositPct?: number;
+  mobDepositPct?: number;
+  taxPct?: number;
 }
 
 
 export default function UpcomingBookingsClient({
   userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
   initialPayments, initialPlanners,
+  canPro: canProProp, isPaid: isPaidProp, settingsCurrency: settingsCurrencyProp,
+  requireContract: requireContractProp, riderEnabled: riderEnabledProp,
+  guestlistEnabled: guestlistEnabledProp, clubDepositPct: clubDepositPctProp,
+  mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Payment ledger rows per booking (booking_payments). Owned at the top so a
@@ -87,22 +105,26 @@ export default function UpcomingBookingsClient({
   // The DJ's standing club deposit % (from booking_settings). Lets club
   // booking cards show the deposit even when it wasn't stored per-booking —
   // matching what the contract applies.
-  const [clubDepositPct, setClubDepositPct] = useState<number>(0);
-  const [riderEnabled, setRiderEnabled] = useState<boolean>(false);
-  const [guestlistEnabled, setGuestlistEnabled] = useState<boolean>(false);
+  // NOTE on initial values: these are seeded from SERVER-computed props (the
+  // owner's account, via acting.djId + admin). The effect below still refreshes
+  // them from a live users read for OWNERS, but a TEAMMATE can't read the
+  // owner's users row (RLS), so the props are the only correct source there.
+  const [clubDepositPct, setClubDepositPct] = useState<number>(clubDepositPctProp ?? 0);
+  const [riderEnabled, setRiderEnabled] = useState<boolean>(riderEnabledProp ?? false);
+  const [guestlistEnabled, setGuestlistEnabled] = useState<boolean>(guestlistEnabledProp ?? false);
   const [canAddonSettings, setCanAddonSettings] = useState(false);
   // Mobile equivalent. Was never read: nothing on this page needed it until
   // the manual-booking form started seeding its deposit toggle from settings.
-  const [mobDepositPct, setMobDepositPct] = useState<number>(0);
+  const [mobDepositPct, setMobDepositPct] = useState<number>(mobDepositPctProp ?? 0);
   // booking_settings.rate_currency. Club already had this; mobile never did,
   // so mobile money has been printed with a hardcoded "$" everywhere.
-  const [settingsCurrency, setSettingsCurrency] = useState<string>('USD');
+  const [settingsCurrency, setSettingsCurrency] = useState<string>(settingsCurrencyProp ?? 'USD');
   // The DJ's sales-tax % (only when they've turned tax ON) — shows a Tax line
   // on cards for both DJ types.
-  const [taxPct, setTaxPct] = useState<number>(0);
+  const [taxPct, setTaxPct] = useState<number>(taxPctProp ?? 0);
   // Paid-subscriber flag — the Schedule Graphic tool is premium-only. Uses the
   // app's standard access check: sub_status 'active' or 'grace'.
-  const [isPaid, setIsPaid] = useState(false);
+  const [isPaid, setIsPaid] = useState(isPaidProp ?? false);
   /**
    * Pro (tier 2) — the suite lib/access calls "contracts / deposits / event
    * info sheet". The Planner & Playlist IS the event info sheet.
@@ -115,10 +137,10 @@ export default function UpcomingBookingsClient({
    * This is a courtesy, not the paywall. The paywall is in
    * /api/planner/request, because anyone can POST there directly.
    */
-  const [canPro, setCanPro] = useState(false);
+  const [canPro, setCanPro] = useState(canProProp ?? false);
   // Whether the DJ requires a signed contract per booking — drives the Contract
   // segment in each row's status strip.
-  const [requireContract, setRequireContract] = useState(false);
+  const [requireContract, setRequireContract] = useState(requireContractProp ?? false);
   // Show the Rider & Guest List settings link only for Admin/Manager teammates.
   useEffect(() => {
     let on = true;
@@ -139,9 +161,14 @@ export default function UpcomingBookingsClient({
         const supabase = createClient();
         const { data } = await supabase.from('users').select('booking_settings, sub_status, sub_tier, sub_period_end, comp_tier, comp_expires_at, comp_source').eq('id', userId).maybeSingle();
         const row = data as (AccessFields & { booking_settings?: string | null; sub_status?: string | null }) | null;
+        if (!active) return;
+        // A TEAMMATE can't read the owner's users row (RLS) — `row` is null.
+        // Do NOT fall through: that would reset canPro/deposit/tax/currency to
+        // defaults and clobber the correct SERVER-computed props. The props are
+        // the source of truth for teammates; only OWNERS get a live refresh here.
+        if (!row) return;
         const raw = row?.booking_settings;
         const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean; rider_enabled?: boolean; guestlist_enabled?: boolean };
-        if (!active) return;
         const ss = row?.sub_status;
         setIsPaid(ss === 'active' || ss === 'grace');
         // Same helper the server gate uses, so the row and /api/planner/request
