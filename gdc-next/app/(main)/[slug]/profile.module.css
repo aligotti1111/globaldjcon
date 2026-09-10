@@ -1518,14 +1518,16 @@
 /* Owner "+ Add testimonial" button — collapsed state. */
 .testimonialAddBtn {
   display: inline-flex;
+  justify-content: center;
   align-items: center;
-  padding: .75rem 1.4rem;
-  background: transparent;
-  border: 1px dashed rgba(0, 245, 196, .35);
+  padding: .7rem 1.5rem;
+  background: var(--neon);
+  border: 1px solid var(--neon);
   border-radius: 100px;
-  color: var(--neon);
+  color: #06231b;
   font-family: 'Space Mono', monospace;
   font-size: .7rem;
+  font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -1533,9 +1535,7 @@
   margin-top: .5rem;
 }
 .testimonialAddBtn:hover {
-  background: rgba(0, 245, 196, .08);
-  border-color: var(--neon);
-  border-style: solid;
+  filter: brightness(1.08);
 }
 /* Inline add form — expanded state. */
 .testimonialAddForm {
@@ -1870,21 +1870,22 @@
   margin-top: 1rem;
   display: inline-flex;
   align-items: center;
-  padding: .55rem 1.1rem;
-  background: transparent;
-  border: 1px dashed rgba(0, 245, 196, .35);
+  justify-content: center;
+  padding: .6rem 1.3rem;
+  background: var(--neon);
+  border: 1px solid var(--neon);
   border-radius: 8px;
-  color: var(--neon);
+  color: #06231b;
   font-family: 'Space Mono', monospace;
   font-size: .72rem;
+  font-weight: 700;
   letter-spacing: .05em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all .15s;
 }
 .aboutStatsEditBtn:hover {
-  background: rgba(0, 245, 196, .08);
-  border-color: var(--neon);
+  filter: brightness(1.08);
 }
 .aboutStatsEditor {
   margin-top: 1rem;
