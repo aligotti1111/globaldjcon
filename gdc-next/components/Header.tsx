@@ -149,7 +149,7 @@ export default function Header() {
                   {(isDj || isTeammate) && (
                     <HeaderDjMenu
                       name={user.name}
-                      slug={isTeammate ? null : user.slug}
+                      slug={isTeammate ? (user.ownerSlug ?? null) : user.slug}
                       avatarUrl={user.avatar_url}
                       bookingEnabled={bookingEnabled}
                       isTeammate={isTeammate}
