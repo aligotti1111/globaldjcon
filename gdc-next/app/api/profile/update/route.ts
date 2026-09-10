@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getActingContext, canEditProfile } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 
@@ -66,5 +67,8 @@ export async function POST(req: Request) {
     .update(clean as unknown as never)
     .eq('id', acting.djId);
   if (error) return NextResponse.json({ error: 'Could not save.' }, { status: 500 });
+  // Name the changed fields so the log is specific (e.g. "Edited profile — bio, socials").
+  const changed = Object.keys(clean).map((k) => k.replace(/_/g, ' ')).slice(0, 4).join(', ');
+  await logActivity(acting, { action: 'profile.updated', summary: `Edited the profile${changed ? ` — ${changed}` : ''}` });
   return NextResponse.json({ ok: true });
 }
