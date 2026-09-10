@@ -14,7 +14,7 @@
 // pdfUrl and their setters; RiderBuilder only handles the PDF upload call to
 // /api/rider/upload (which returns a stored URL, logo-upload style).
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import RiderEditor from '@/components/RiderEditor';
 import RiderView from '@/app/rider/[id]/RiderView';
 import { createClient } from '@/lib/supabase/client';
@@ -131,71 +131,161 @@ export default function RiderBuilder({
     }
   }
 
-  const Card = ({ m, title, desc }: { m: RiderMode; title: string; desc: string }) => {
+  // The Rider name field — now lives INSIDE whichever build box is selected.
+  const nameField = onNameChange ? (
+    <div style={{ marginBottom: '1.1rem' }}>
+      <div
+        style={{
+          fontFamily: "'Space Mono', monospace", fontSize: '.7rem',
+          letterSpacing: '.08em', textTransform: 'uppercase', color: MUTED, marginBottom: '.4rem',
+        }}
+      >
+        Rider name
+      </div>
+      <input
+        type="text"
+        value={name || ''}
+        onChange={(e) => onNameChange(e.target.value)}
+        placeholder="e.g. House standard, Festival, Small-club minimal"
+        maxLength={80}
+        style={{
+          width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,.04)',
+          border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff',
+          padding: '.6rem .7rem', fontSize: '.92rem', fontWeight: 700,
+        }}
+      />
+      <div style={{ color: MUTED, fontSize: '.76rem', marginTop: '.35rem' }}>
+        Shown to the host and used to label this rider.
+      </div>
+    </div>
+  ) : null;
+
+  // The PDF-upload body (used inside the Upload Rider box).
+  const uploadBody = (
+    <div>
+      <div
+        style={{
+          border: '1px dashed rgba(255,255,255,.28)', borderRadius: 12,
+          padding: '1.4rem 1.2rem', textAlign: 'center',
+        }}
+      >
+        <div style={{ color: MUTED, fontSize: '.86rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
+          Upload your rider as a PDF. This exact file is attached to the host&rsquo;s email.
+        </div>
+        <label
+          style={{
+            display: 'inline-block', background: NEON, color: '#06231b', borderRadius: 8,
+            padding: '.6rem 1.3rem', fontSize: '.88rem', fontWeight: 700,
+            cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <input ref={fileRef} type="file" accept="application/pdf" hidden disabled={busy} onChange={onPickPdf} />
+          {busy ? 'Uploading…' : pdfUrl ? 'Browse — replace PDF' : 'Browse for PDF'}
+        </label>
+        <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: shownName ? '#fff' : MUTED }}>
+          {shownName ? (
+            <span><span style={{ color: NEON, fontWeight: 700 }}>Current file:</span> {shownName}</span>
+          ) : (
+            'No file chosen yet.'
+          )}
+        </div>
+        {pdfUrl && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => { setPickedName(null); onPdfUrlChange(null); }}
+            style={{ marginTop: '.5rem', background: 'transparent', border: 'none', color: MUTED, textDecoration: 'underline', cursor: 'pointer', fontSize: '.8rem' }}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      {pdfUrl && (
+        <iframe
+          title="Rider PDF preview"
+          src={pdfUrl}
+          style={{ width: '100%', height: 620, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, marginTop: '.9rem', background: '#fff' }}
+        />
+      )}
+      {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
+    </div>
+  );
+
+  // The custom-builder body (used inside the Create Custom Rider box).
+  const customBody = (
+    <div>
+      {(logoUrl || djName) && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '1.1rem',
+            padding: '.9rem 1rem', borderRadius: 12,
+            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)',
+          }}
+        >
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="Your logo" style={{ maxHeight: 44, maxWidth: 140, objectFit: 'contain' }} />
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {djName || 'Your DJ name'}
+            </div>
+            <div style={{ color: MUTED, fontSize: '.74rem', marginTop: 2 }}>
+              Your logo and name appear at the top of the rider the host sees.
+            </div>
+          </div>
+        </div>
+      )}
+      <RiderEditor items={items} onChange={onItemsChange} />
+    </div>
+  );
+
+  // One selectable build option: a clickable header, and — when it's the active
+  // mode — its own body (rider name + that mode's controls) nested inside.
+  const OptionBox = ({ m, title, desc, children }: { m: RiderMode; title: string; desc: string; children: ReactNode }) => {
     const active = mode === m;
     return (
-      <button
-        type="button"
-        onClick={() => onModeChange(m)}
+      <div
         style={{
-          flex: 1,
-          minWidth: 200,
-          textAlign: 'left',
-          cursor: 'pointer',
-          borderRadius: 12,
-          padding: '1rem 1.1rem',
-          background: active ? 'rgba(0,224,164,.08)' : 'rgba(255,255,255,.03)',
+          borderRadius: 12, overflow: 'hidden',
+          background: active ? 'rgba(0,224,164,.06)' : 'rgba(255,255,255,.03)',
           border: active ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)',
           transition: 'border-color .15s ease, background .15s ease',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.35rem' }}>
-          <span
-            aria-hidden
-            style={{
-              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-              border: active ? `5px solid ${NEON}` : '2px solid rgba(255,255,255,.35)',
-              background: active ? '#06231b' : 'transparent',
-            }}
-          />
-          <span style={{ fontWeight: 800, fontSize: '1rem', color: active ? NEON : '#fff' }}>{title}</span>
-        </div>
-        <div style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.5 }}>{desc}</div>
-      </button>
+        <button
+          type="button"
+          onClick={() => onModeChange(m)}
+          style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', background: 'transparent', border: 'none', padding: '1rem 1.1rem' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.35rem' }}>
+            <span
+              aria-hidden
+              style={{
+                width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                border: active ? `5px solid ${NEON}` : '2px solid rgba(255,255,255,.35)',
+                background: active ? '#06231b' : 'transparent',
+              }}
+            />
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: active ? NEON : '#fff' }}>{title}</span>
+          </div>
+          <div style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.5 }}>{desc}</div>
+        </button>
+        {active && <div style={{ padding: '0 1.1rem 1.2rem' }}>{children}</div>}
+      </div>
     );
   };
 
   return (
     <div>
-      {onNameChange && (
-        <div style={{ marginBottom: '1.3rem' }}>
-          <div
-            style={{
-              fontFamily: "'Space Mono', monospace", fontSize: '.7rem',
-              letterSpacing: '.08em', textTransform: 'uppercase', color: MUTED, marginBottom: '.4rem',
-            }}
-          >
-            Rider name
-          </div>
-          <input
-            type="text"
-            value={name || ''}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder="e.g. House standard, Festival, Small-club minimal"
-            maxLength={80}
-            style={{
-              width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,.04)',
-              border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff',
-              padding: '.6rem .7rem', fontSize: '.92rem', fontWeight: 700,
-            }}
-          />
-          <div style={{ color: MUTED, fontSize: '.76rem', marginTop: '.35rem' }}>
-            Shown to the host and used to label this rider. Applies to both upload and custom modes.
-          </div>
-        </div>
-      )}
-
-      {!hideChooser && (
+      {hideChooser ? (
+        // The parent owns the chooser: render the name field + the active
+        // mode's body directly, no boxes.
+        <>
+          {nameField}
+          {mode === 'upload' ? uploadBody : customBody}
+        </>
+      ) : (
         <>
           <div
             style={{
@@ -209,107 +299,22 @@ export default function RiderBuilder({
           >
             How do you want to build this rider?
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', marginBottom: '1.3rem' }}>
-            <Card m="upload" title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
+            <OptionBox m="upload" title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is.">
+              {nameField}
+              {uploadBody}
+            </OptionBox>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
               <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.1em', color: MUTED }}>OR</span>
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
             </div>
-            <Card m="custom" title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host." />
+            <OptionBox m="custom" title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host.">
+              {nameField}
+              {customBody}
+            </OptionBox>
           </div>
         </>
-      )}
-
-      {mode === 'upload' ? (
-        <div>
-          {/* The Browse control is always visible: a styled <label> wrapping a
-              hidden file input (so there is ALWAYS a clear way to pick/replace
-              a PDF), plus a status line showing the current file. */}
-          <div
-            style={{
-              border: '1px dashed rgba(255,255,255,.28)', borderRadius: 12,
-              padding: '1.4rem 1.2rem', textAlign: 'center',
-            }}
-          >
-            <div style={{ color: MUTED, fontSize: '.86rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
-              Upload your rider as a PDF. This exact file is attached to the host&rsquo;s email.
-            </div>
-            <label
-              style={{
-                display: 'inline-block', background: NEON, color: '#06231b', borderRadius: 8,
-                padding: '.6rem 1.3rem', fontSize: '.88rem', fontWeight: 700,
-                cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-              }}
-            >
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf"
-                hidden
-                disabled={busy}
-                onChange={onPickPdf}
-              />
-              {busy ? 'Uploading…' : pdfUrl ? 'Browse — replace PDF' : 'Browse for PDF'}
-            </label>
-            <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: shownName ? '#fff' : MUTED }}>
-              {shownName ? (
-                <span>
-                  <span style={{ color: NEON, fontWeight: 700 }}>Current file:</span> {shownName}
-                </span>
-              ) : (
-                'No file chosen yet.'
-              )}
-            </div>
-            {pdfUrl && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => { setPickedName(null); onPdfUrlChange(null); }}
-                style={{ marginTop: '.5rem', background: 'transparent', border: 'none', color: MUTED, textDecoration: 'underline', cursor: 'pointer', fontSize: '.8rem' }}
-              >
-                Remove
-              </button>
-            )}
-          </div>
-          {pdfUrl && (
-            <iframe
-              title="Rider PDF preview"
-              src={pdfUrl}
-              style={{ width: '100%', height: 620, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, marginTop: '.9rem', background: '#fff' }}
-            />
-          )}
-          {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
-        </div>
-      ) : (
-        <div>
-          {/* Custom mode only: the branded header the host sees at the top of
-              the generated rider — the DJ's logo and name. (Uploaded PDFs are
-              sent exactly as-is, so no branding is added there.) */}
-          {(logoUrl || djName) && (
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '1.1rem',
-                padding: '.9rem 1rem', borderRadius: 12,
-                background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)',
-              }}
-            >
-              {logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="Your logo" style={{ maxHeight: 44, maxWidth: 140, objectFit: 'contain' }} />
-              )}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ color: '#fff', fontWeight: 800, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {djName || 'Your DJ name'}
-                </div>
-                <div style={{ color: MUTED, fontSize: '.74rem', marginTop: 2 }}>
-                  Your logo and name appear at the top of the rider the host sees.
-                </div>
-              </div>
-            </div>
-          )}
-          <RiderEditor items={items} onChange={onItemsChange} />
-        </div>
       )}
 
       {/* Preview — opens the rider exactly as the host sees it (logo on top,
