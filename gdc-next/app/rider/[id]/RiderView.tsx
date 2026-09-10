@@ -7,7 +7,7 @@
 //              Print / Save-PDF button.
 
 import { useState } from 'react';
-import { groupRiderBoxes, riderFontFamilyCss, riderFontSizePx, riderListPrefix, normalizeListStyle, type RiderItem, type RiderMode } from '@/lib/rider';
+import { groupRiderBoxes, type RiderItem, type RiderMode } from '@/lib/rider';
 
 function fmtDate(d: string | null): string {
   if (!d) return '';
@@ -127,46 +127,19 @@ export default function RiderView({
             <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.5rem' }}>
               {boxes.map((box) => {
                 const rows = box.items;
-                const family = riderFontFamilyCss(box.fontFamily);
-                const size = riderFontSizePx(box.fontSize);
-                const listStyle = normalizeListStyle(box.listStyle);
-                // Continuous line index across a box's unlabeled rows so
-                // numbered lists count 1,2,3… across the whole box.
-                let lineIdx = 0;
                 return (
                   <div key={box.id} style={{ marginBottom: '1.3rem' }}>
                     <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.6rem' }}>
                       {box.title}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem', fontFamily: family }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
                       {rows.map((it) => {
                         const lab = (it.label || '').trim();
                         const val = (it.value || '').trim();
-                        // Labeled rows keep the label/value layout (not a list).
-                        if (lab) {
-                          return (
-                            <div key={it.id} style={{ display: 'flex', gap: '.7rem', fontSize: size, lineHeight: 1.5, alignItems: 'baseline' }}>
-                              <div style={{ minWidth: 150, maxWidth: 150, color: 'rgba(255,255,255,.55)', fontWeight: 600 }}>{lab}</div>
-                              <div style={{ flex: 1, color: 'rgba(255,255,255,.92)', whiteSpace: 'pre-wrap' }}>{val}</div>
-                            </div>
-                          );
-                        }
-                        // Free-text row: one line per row of text, each with the
-                        // box's chosen bullet/number/check.
-                        const lines = val ? val.split('\n') : [''];
                         return (
-                          <div key={it.id} style={{ display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
-                            {lines.map((line, i) => {
-                              const text = line.trim();
-                              const prefix = text && listStyle !== 'none' ? riderListPrefix(listStyle, lineIdx) : '';
-                              if (text) lineIdx += 1;
-                              return (
-                                <div key={i} style={{ display: 'flex', gap: '.4rem', fontSize: size, lineHeight: 1.5, color: 'rgba(255,255,255,.92)' }}>
-                                  {prefix && <span style={{ color: 'var(--neon,#00e0a4)', flexShrink: 0 }}>{prefix}</span>}
-                                  <span style={{ whiteSpace: 'pre-wrap' }}>{text || (i === 0 && lines.length === 1 ? '—' : '')}</span>
-                                </div>
-                              );
-                            })}
+                          <div key={it.id} style={{ display: 'flex', gap: '.7rem', fontSize: '.95rem', lineHeight: 1.5, alignItems: 'baseline' }}>
+                            {lab && <div style={{ minWidth: 150, maxWidth: 150, color: 'rgba(255,255,255,.55)', fontWeight: 600 }}>{lab}</div>}
+                            <div style={{ flex: 1, color: 'rgba(255,255,255,.92)', whiteSpace: 'pre-wrap' }}>{val || (lab ? '' : '—')}</div>
                           </div>
                         );
                       })}
