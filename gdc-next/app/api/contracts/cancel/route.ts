@@ -42,6 +42,7 @@ export async function POST(req: Request) {
   // Find the submission for this booking (DJ must own it) and its status.
   let submissionId: string | null = null;
   let status: string | null = null;
+  let bookingFound = false;
   try {
     const { data } = await admin
       .from('bookings')
@@ -50,9 +51,15 @@ export async function POST(req: Request) {
       .eq('dj_id', djId)
       .maybeSingle();
     const row = data as { contract_submission_id?: string | null; contract_status?: string | null } | null;
+    bookingFound = !!row;
     submissionId = row?.contract_submission_id || null;
     status = row?.contract_status || null;
   } catch { submissionId = null; }
+
+  // 404 if the booking isn't the acting owner's — otherwise a foreign/junk id
+  // would fall through, update zero rows, and still write a bogus "cancelled a
+  // contract" line into the owner's activity log.
+  if (!bookingFound) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
 
   // A fully signed contract can't be cancelled — it's an executed agreement.
   if (status === 'signed') {
