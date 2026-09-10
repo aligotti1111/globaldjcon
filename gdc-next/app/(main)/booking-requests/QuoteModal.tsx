@@ -233,12 +233,29 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         updated_at: new Date().toISOString(),
       };
 
-      const { error: updErr } = await supabase
-        .from('bookings')
-        .update(updatePayload as unknown as never)
-        .eq('id', booking.id)
-        .eq('dj_id', user.id);
-      if (updErr) throw updErr;
+      // DJ-only action → route through the gated server endpoint so a TEAM
+      // MEMBER (manager+) actually persists: a browser write here would be
+      // dropped by RLS for a teammate, and the negotiation-log read above is
+      // unreliable for them too. The server re-reads and appends the log; strip
+      // the client-built copy from the patch it applies.
+      const patch = { ...updatePayload };
+      delete (patch as { negotiation_log?: unknown }).negotiation_log;
+      const res = await fetch('/api/bookings/decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          action: 'quote',
+          patch,
+          ...(nextStatus === 'counter'
+            ? { appendLog: { from: 'dj', amount: subtotalNum, message: message.trim() } }
+            : {}),
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Could not save.');
+      }
 
       onSaved({
         ...booking,
