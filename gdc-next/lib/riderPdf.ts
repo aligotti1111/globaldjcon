@@ -13,7 +13,7 @@
 // doesn't appear.
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import { groupRiderBoxes, type RiderItem } from './rider';
+import { groupRiderBoxes, normalizeListStyle, type RiderItem, type RiderListStyle } from './rider';
 
 export interface RiderPdfOptions {
   djName: string;
@@ -64,6 +64,13 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
   let page: PDFPage = pdf.addPage([PAGE_W, PAGE_H]);
   const reg = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  // ASCII-safe list marker (the standard PDF fonts can't encode • or ✓).
+  const pdfPrefix = (style: RiderListStyle, index: number): string => {
+    if (style === 'bullet') return '- ';
+    if (style === 'number') return `${index + 1}. `;
+    if (style === 'check') return '[x] ';
+    return '';
+  };
 
   const rightX = PAGE_W - MARGIN;
   const contentW = rightX - MARGIN;
@@ -133,6 +140,8 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
 
   for (const box of boxes) {
     const rows = box.items;
+    const listStyle = normalizeListStyle(box.listStyle);
+    let listIdx = 0;
 
     ensure(28);
     drawL(box.title.toUpperCase(), MARGIN, y, 9, bold, ACCENT);
@@ -154,11 +163,21 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
           y -= 14;
         }
       } else {
-        const valLines = wrap(val, reg, 10, contentW - 10);
-        ensure(valLines.length * 14 + 6);
-        for (const ln of valLines) {
-          drawL(`• ${ln}`, MARGIN, y, 10, reg, INK);
-          y -= 14;
+        // Each source line becomes one item with the box's chosen marker;
+        // long items wrap under a hanging indent.
+        const srcLines = val ? val.split('\n') : [''];
+        for (const src of srcLines) {
+          const text = src.trim();
+          if (!text) continue;
+          const prefix = pdfPrefix(listStyle, listIdx) || '• ';
+          listIdx += 1;
+          const indent = reg.widthOfTextAtSize(prefix, 10);
+          const wrapped = wrap(text, reg, 10, contentW - 10 - indent);
+          ensure(wrapped.length * 14 + 4);
+          wrapped.forEach((ln, i) => {
+            drawL(i === 0 ? `${prefix}${ln}` : ln, i === 0 ? MARGIN : MARGIN + indent, y, 10, reg, INK);
+            y -= 14;
+          });
         }
       }
       y -= 4;
