@@ -89,6 +89,11 @@ interface CurrentUser {
   // the subscription has lapsed: the request stays visible but every DJ-side
   // action is replaced by a renew prompt. Computed server-side via canBook().
   canAct: boolean;
+  // Seat-level permission to RESPOND to incoming requests (approve / deny /
+  // counter / send quote) — manager+ only. Owners are true; an assistant
+  // teammate is false, so the incoming action buttons are hidden for them.
+  // /api/bookings/decision is the real gate; this only hides the controls.
+  canDecide: boolean;
 }
 
 interface Props {
@@ -405,23 +410,23 @@ export default function BookingRequestsClient({
       if (!ok) return;
       declineReason = reason;
     }
-    const supabase = createClient();
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from('bookings')
-        // Stamp accepted_at only on approve so the booking log has a real
-        // "Booking accepted" moment (distinct from contract sent).
-        .update({
-          status,
-          updated_at: now,
-          ...(isApprove
-            ? { accepted_at: now, ...acceptedMoneyPatch(incoming.find((x) => x.id === bookingId)) }
-            : {}),
-        } as unknown as never)
-        .eq('id', bookingId)
-        .eq('dj_id', currentUser.id);
-      if (error) throw error;
+      // Approve/Deny run SERVER-side (/api/bookings/decision): the write is
+      // manager+ only and scoped to the OWNER's account, so a teammate's action
+      // actually persists (a browser write would be silently dropped by RLS and
+      // the emails below would fire against a change that never happened). The
+      // server also stamps accepted_at + the agreed money and updates the
+      // calendar; the client only emails AFTER it confirms success.
+      const res = await fetch('/api/bookings/decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, action: isApprove ? 'approve' : 'deny' }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert('Error: ' + (j?.error || 'Could not save.'));
+        return;
+      }
 
       const b = incoming.find((x) => x.id === bookingId);
       updateIncomingStatus(bookingId, status);
@@ -522,71 +527,10 @@ export default function BookingRequestsClient({
         }
       }
 
-      // Calendar update on approve. Branches by DJ type:
-      // - CLUB DJs: mark booking_days[date].booked = true so the day turns
-      //   red on the calendar and no more bookings can be made on it.
-      // - MOBILE DJs: decrement mob_booking_days[date].bookings_available so
-      //   the per-day capacity tracker reflects the new approved booking.
-      // Re-read settings first so we don't clobber concurrent edits — same
-      // defensive pattern as the owner calendar's persistBookingDays.
-      if (status === 'approved' && b && b.event_date) {
-        const isClubBooking = !!(b as BookingRow & { set_type?: string | null }).set_type;
-        try {
-          const { data: djRow } = await supabase
-            .from('users')
-            .select('booking_settings')
-            .eq('id', currentUser.id)
-            .single<{ booking_settings: string | null }>();
-          let bs: {
-            mob_bookings_per_day?: number;
-            mob_booking_days?: Record<string, {
-              bookings_available?: number;
-              booked?: boolean;
-              unavailable?: boolean;
-              eventName?: string;
-              location?: string;
-              startTime?: string;
-              endTime?: string;
-            }>;
-            booking_days?: Record<string, {
-              booked?: boolean;
-              unavailable?: boolean;
-              eventName?: string;
-              startTime?: string;
-              endTime?: string;
-              location?: string;
-            }>;
-          } = {};
-          if (djRow?.booking_settings) {
-            try {
-              bs = typeof djRow.booking_settings === 'string' ? JSON.parse(djRow.booking_settings) : (djRow.booking_settings as unknown as typeof bs);
-            } catch {
-              bs = {};
-            }
-          }
-          if (isClubBooking) {
-            // CLUB DJ — flip the date's booked flag to true so the public
-            // calendar shows it red and the booking form refuses it.
-            if (!bs.booking_days) bs.booking_days = {};
-            const existing = bs.booking_days[b.event_date] || {};
-            bs.booking_days[b.event_date] = { ...existing, booked: true };
-          } else {
-            // MOBILE DJ — decrement bookings_available.
-            const defaultPerDay = bs.mob_bookings_per_day || 1;
-            if (!bs.mob_booking_days) bs.mob_booking_days = {};
-            const dayData = bs.mob_booking_days[b.event_date] || {};
-            const current = dayData.bookings_available != null ? dayData.bookings_available : defaultPerDay;
-            const newCount = Math.max(0, current - 1);
-            bs.mob_booking_days[b.event_date] = { ...dayData, bookings_available: newCount };
-          }
-          await supabase
-            .from('users')
-            .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
-            .eq('id', currentUser.id);
-        } catch (calErr) {
-          console.error('Calendar update on approve failed:', calErr);
-        }
-      }
+      // NOTE: the approve-time calendar update (club: mark the day booked;
+      // mobile: decrement bookings_available) now happens SERVER-side inside
+      // /api/bookings/decision, scoped to the owner's account — a browser write
+      // here would be dropped by RLS for a teammate.
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       alert('Error: ' + msg);
@@ -1664,7 +1608,7 @@ function FlatList({
               orderNum={null}
               expirySlot={<ExpiryBadge booking={b} tz={currentUser.timezone} />}
               isBlocked={blocked.includes(isIncoming ? b.requester_id : b.dj_id)}
-              canAct={currentUser.canAct}
+              canAct={currentUser.canAct && (isIncoming ? currentUser.canDecide : true)}
               djZip={currentUser.zip}
               djCity={currentUser.city}
               djState={currentUser.state}
@@ -1817,7 +1761,7 @@ function SameDayGrouped({
               isIncoming={isIncoming}
               orderNum={hasMultiple ? idx + 1 : null}
               isBlocked={blocked.includes(b.requester_id)}
-              canAct={currentUser.canAct}
+              canAct={currentUser.canAct && (isIncoming ? currentUser.canDecide : true)}
               djZip={currentUser.zip}
               djCity={currentUser.city}
               djState={currentUser.state}
