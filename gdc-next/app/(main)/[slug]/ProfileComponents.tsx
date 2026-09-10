@@ -2395,6 +2395,7 @@ export function BannerEditModal({
 export function EditTabsModal({
   userId,
   initial,
+  initialOrder,
   isMobileDJ,
   onClose,
 }: {
@@ -2407,51 +2408,104 @@ export function EditTabsModal({
     testimonials: boolean;
     faq: boolean;
   };
+  // The owner's current tab order (keys), from users.tab_order.
+  initialOrder?: string[];
   isMobileDJ: boolean;
   onClose: () => void;
 }) {
+  type TabRowKey = keyof typeof initial;
   const [vis, setVis] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function toggle(key: keyof typeof initial) {
+  function toggle(key: TabRowKey) {
     setVis(v => ({ ...v, [key]: !v[key] }));
   }
+
+  // The keys that appear as draggable rows here. Testimonials + FAQ are only
+  // relevant for mobile DJs, so club DJs never see (or reorder) them.
+  const META: Record<TabRowKey, { label: string; hint?: string }> = {
+    about: { label: 'About' },
+    mixes: { label: 'Mixes' },
+    images: { label: 'Photos' },
+    video: { label: 'Video' },
+    testimonials: { label: 'Testimonials', hint: 'Off by default for new mobile DJs' },
+    faq: { label: 'FAQ', hint: 'Off by default — turn on to answer common questions' },
+  };
+  const AVAILABLE: TabRowKey[] = isMobileDJ
+    ? ['about', 'mixes', 'images', 'video', 'testimonials', 'faq']
+    : ['about', 'mixes', 'images', 'video'];
+
+  // Working order: start from the saved order (filtered to what's available),
+  // then append any available key the saved order didn't include.
+  const [order, setOrder] = useState<TabRowKey[]>(() => {
+    const avail = new Set<TabRowKey>(AVAILABLE);
+    const seen = new Set<TabRowKey>();
+    const out: TabRowKey[] = [];
+    for (const k of initialOrder || []) {
+      if (avail.has(k as TabRowKey) && !seen.has(k as TabRowKey)) {
+        out.push(k as TabRowKey); seen.add(k as TabRowKey);
+      }
+    }
+    for (const k of AVAILABLE) if (!seen.has(k)) out.push(k);
+    return out;
+  });
+
+  // ── Drag to reorder (pointer-based, so it works on mouse AND touch) ──────
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [dragKey, setDragKey] = useState<TabRowKey | null>(null);
+
+  function reorder(list: TabRowKey[], fromKey: TabRowKey, toKey: TabRowKey): TabRowKey[] {
+    const from = list.indexOf(fromKey);
+    const to = list.indexOf(toKey);
+    if (from < 0 || to < 0 || from === to) return list;
+    const next = list.slice();
+    next.splice(from, 1);
+    next.splice(to, 0, fromKey);
+    return next;
+  }
+
+  useEffect(() => {
+    if (!dragKey) return;
+    const activeKey = dragKey; // narrowed, stable for this drag
+    function onMove(e: PointerEvent) {
+      const container = listRef.current;
+      if (!container) return;
+      const rowEls = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-key]'));
+      let targetKey: TabRowKey | null = null;
+      for (const el of rowEls) {
+        const r = el.getBoundingClientRect();
+        // Pick the row whose vertical midpoint the pointer has crossed.
+        if (e.clientY < r.top + r.height / 2) { targetKey = el.dataset.tabKey as TabRowKey; break; }
+        targetKey = el.dataset.tabKey as TabRowKey;
+      }
+      if (targetKey && targetKey !== activeKey) {
+        const dest = targetKey;
+        setOrder(prev => reorder(prev, activeKey, dest));
+      }
+    }
+    function onUp() { setDragKey(null); }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [dragKey]);
 
   async function save() {
     setBusy(true);
     setError(null);
     try {
-      await saveProfile(userId, { tab_visibility: vis });
+      await saveProfile(userId, { tab_visibility: vis, tab_order: order });
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
       setBusy(false);
     }
   }
-
-  const rows: Array<{
-    key: keyof typeof initial;
-    label: string;
-    hint?: string;
-  }> = [
-    { key: 'about', label: 'About' },
-    { key: 'mixes', label: 'Mixes' },
-    { key: 'images', label: 'Photos' },
-    { key: 'video', label: 'Video' },
-    // Testimonials and FAQ are only relevant for mobile DJs.
-    ...(isMobileDJ
-      ? [{
-          key: 'testimonials' as const,
-          label: 'Testimonials',
-          hint: 'Off by default for new mobile DJs',
-        }, {
-          key: 'faq' as const,
-          label: 'FAQ',
-          hint: 'Off by default — turn on to answer common questions',
-        }]
-      : []),
-  ];
 
   return (
     <div className={styles.bannerModalBackdrop} onClick={onClose}>
@@ -2470,27 +2524,49 @@ export function EditTabsModal({
 
         <div className={styles.bannerModalBody}>
           <div className={styles.bannerModalHint}>
-            Choose which tabs are visible to visitors. The <strong>Booking</strong> tab
-            is controlled separately by your booking settings.
+            Toggle which tabs are visible, and drag the handle to reorder them.
+            The <strong>Booking</strong> tab is controlled separately by your
+            booking settings.
           </div>
 
-          <div className={styles.tabsList}>
-            {rows.map(row => (
-              <label key={row.key} className={styles.tabsRow}>
-                <div className={styles.tabsRowText}>
-                  <div className={styles.tabsRowLabel}>{row.label}</div>
-                  {row.hint && (
-                    <div className={styles.tabsRowHint}>{row.hint}</div>
-                  )}
+          <div className={styles.tabsList} ref={listRef}>
+            {order.map(key => {
+              const meta = META[key];
+              return (
+                <div
+                  key={key}
+                  data-tab-key={key}
+                  className={`${styles.tabsRow} ${dragKey === key ? styles.tabsRowDragging : ''}`}
+                >
+                  <button
+                    type="button"
+                    className={styles.tabsDragHandle}
+                    aria-label={`Reorder ${meta.label}`}
+                    onPointerDown={(e) => { e.preventDefault(); setDragKey(key); }}
+                    style={{ touchAction: 'none' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
+                      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
+                      <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+                    </svg>
+                  </button>
+                  <div className={styles.tabsRowText}>
+                    <div className={styles.tabsRowLabel}>{meta.label}</div>
+                    {meta.hint && (
+                      <div className={styles.tabsRowHint}>{meta.hint}</div>
+                    )}
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={vis[key]}
+                    onChange={() => toggle(key)}
+                    className={styles.tabsCheckbox}
+                    aria-label={`Show ${meta.label} tab`}
+                  />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={vis[row.key]}
-                  onChange={() => toggle(row.key)}
-                  className={styles.tabsCheckbox}
-                />
-              </label>
-            ))}
+              );
+            })}
           </div>
 
           {error && <div className={styles.bannerModalError}>{error}</div>}
