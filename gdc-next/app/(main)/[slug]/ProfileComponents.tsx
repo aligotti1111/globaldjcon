@@ -2798,7 +2798,7 @@ export function AboutStatsRow({
           className={styles.aboutStatsEditBtn}
           onClick={() => { setDraft(stats); setEditing(true); }}
         >
-          {cards.length > 0 ? 'Edit highlights' : '+ Add highlights'}
+          {cards.length > 0 ? 'Edit Quick Facts' : '+ Add Quick Facts'}
         </button>
       )}
 
