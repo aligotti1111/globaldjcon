@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
+import { getActingContext, canBilling } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -20,6 +21,12 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // OWNER ONLY — cancelling / resuming the subscription is billing.
+  const acting = await getActingContext(user.id);
+  if (!canBilling(acting.role)) {
+    return NextResponse.json({ error: 'Only the account owner can change the subscription.' }, { status: 403 });
+  }
 
   let body: { action?: unknown };
   try { body = await req.json(); } catch { body = {}; }
