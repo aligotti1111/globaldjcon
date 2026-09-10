@@ -138,6 +138,9 @@ export default function PaymentsBlock({
               ...row,
               amount_paid: typeof json.amount_paid === 'number' ? json.amount_paid : Number(row.amount_paid || 0) + received,
               status: typeof json.status === 'string' ? json.status : row.status,
+              // Stamp locally so the booking log's "received · receipt sent"
+              // entry shows at the right moment now, not on next reload.
+              confirmed_at: (row as { confirmed_at?: string | null }).confirmed_at ?? new Date().toISOString(),
             }
           : row)));
       }
@@ -149,7 +152,9 @@ export default function PaymentsBlock({
     setBusy(p.id);
     try {
       const json = await post({ action: 'waive', paymentId: p.id });
-      if (json) onChange(payments.map((row) => (row.id === p.id ? { ...row, status: 'waived' } : row)));
+      if (json) onChange(payments.map((row) => (row.id === p.id
+        ? { ...row, status: 'waived', confirmed_at: (row as { confirmed_at?: string | null }).confirmed_at ?? new Date().toISOString() }
+        : row)));
     } finally { setBusy(null); }
   }
 
