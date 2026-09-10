@@ -17,6 +17,7 @@ import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal } from '@/lib/docuseal';
 import { notifyBookingSms } from '@/lib/supabase/sms';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -160,5 +161,6 @@ export async function POST(req: Request) {
   // Self-gates on the booking's opt-in + phone; best-effort, never blocks.
   notifyBookingSms(bookingId, 'contract').catch(() => {});
 
+  await logActivity(acting, { action: 'contract.sent', summary: 'Sent a contract to the client', bookingId });
   return NextResponse.json({ ok: true });
 }
