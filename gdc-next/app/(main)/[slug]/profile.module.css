@@ -1287,6 +1287,39 @@
   accent-color: var(--neon);
   cursor: pointer;
 }
+/* Drag-to-reorder handle + row states */
+.tabsRowText {
+  flex: 1;
+}
+.tabsDragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 4px;
+  margin: -4px 2px -4px -2px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.tabsDragHandle:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, .06);
+}
+.tabsDragHandle:active {
+  cursor: grabbing;
+}
+.tabsRowDragging {
+  background: rgba(0, 245, 196, .10);
+  box-shadow: inset 3px 0 0 var(--neon);
+}
+.tabsRowDragging .tabsDragHandle {
+  color: var(--neon);
+  cursor: grabbing;
+}
 
 .tabPane {
   display: none;
