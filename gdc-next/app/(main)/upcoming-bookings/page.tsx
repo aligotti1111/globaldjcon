@@ -126,6 +126,9 @@ export interface UpcomingBooking {
   cancel_requested_by?: string | null;    // 'dj' | 'host'
   cancel_reason?: string | null;
   cancel_requested_at?: string | null;
+  // When the OTHER party answered (accepted/declined). Distinct from
+  // requested_at so the log can show BOTH moments at their real times.
+  cancel_responded_at?: string | null;
   // Booking-readiness pipeline: manual step overrides + per-booking snapshot of
   // whether a contract was required at creation time (freezes the flow).
   status_overrides?: Record<string, boolean> | null;
@@ -137,6 +140,9 @@ export interface UpcomingBooking {
   // Manual "Mark Complete" on a deposit taken outside the app (cash, transfer).
   deposit_completed_at?: string | null;
   deposit_completion_undone_at?: string | null;
+  // Manual "Mark Complete" on the BALANCE / final invoice handled outside the app.
+  balance_completed_at?: string | null;
+  balance_completion_undone_at?: string | null;
   // Playlist & Planner. Written ONLY by trg_sync_planner_status, never by the
   // app — so it can't drift from booking_planners.status the way it would with
   // two writers (the DJ's Request, the client's autosave on a page with no
@@ -272,7 +278,7 @@ export default async function UpcomingBookingsPage() {
   // RLS client returns nothing for a teammate. Scoped hard to djId below.
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, planner_sent_at, planner_status')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, planner_sent_at, planner_status')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
