@@ -23,7 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
-import { getActingContext } from '@/lib/acting';
+import { getActingContext, canSettings, type ActingRole } from '@/lib/acting';
 import {
   pickTemplate,
   pickTemplateById,
@@ -83,7 +83,7 @@ function composedCount(templates: PlannerTemplate[], djId: string, t: PlannerTem
 }
 
 async function gate(): Promise<
-  { ok: true; userId: string; db: SupabaseClient; admin: ReturnType<typeof createAdminClient> }
+  { ok: true; userId: string; role: ActingRole; db: SupabaseClient; admin: ReturnType<typeof createAdminClient> }
   | { ok: false; res: NextResponse }
 > {
   const supabase = await createClient();
@@ -118,7 +118,7 @@ async function gate(): Promise<
   }
   // `userId` is used below purely as the DJ id (dj_id filters, template
   // ownership, booking ownership) — so it is the OWNER's id, not the member's.
-  return { ok: true, userId: djId, db: admin as unknown as SupabaseClient, admin };
+  return { ok: true, userId: djId, role: acting.role, db: admin as unknown as SupabaseClient, admin };
 }
 
 // ── GET ───────────────────────────────────────────────────────────────────
@@ -380,6 +380,12 @@ export async function PUT(req: Request) {
     const g = await gate();
     if (!g.ok) return g.res;
     const { userId, db } = g;
+    // Editing the DJ's saved planner TEMPLATES (rename, save questions) is a
+    // manager+ action, like the other saved-default surfaces (contract templates,
+    // rider library). Assistants may SEND planners, not reshape the library.
+    if (!canSettings(g.role)) {
+      return NextResponse.json({ error: 'Your role cannot edit planner templates.' }, { status: 403 });
+    }
 
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch {
