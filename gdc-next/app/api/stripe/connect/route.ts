@@ -70,6 +70,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
+import { getActingContext, canBilling } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 // Opt out of any caching — this reads per-user state and talks to Stripe.
@@ -125,6 +126,14 @@ async function runStart(req: Request): Promise<NextResponse> {
   const { data: { user }, error: authErr } = await withDeadline(supabase.auth.getUser(), 'Auth check');
   if (authErr) return NextResponse.json({ error: `Auth: ${authErr.message}` }, { status: 401 });
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // OWNER ONLY — where a booking's card payments land is a payment rail, so no
+  // teammate may onboard, connect, or disconnect a Stripe Connect account (they
+  // would attach a payout account to their own row).
+  const actingStart = await getActingContext(user.id);
+  if (!canBilling(actingStart.role)) {
+    return NextResponse.json({ error: 'Only the account owner can manage payouts.' }, { status: 403 });
+  }
 
   let admin: ReturnType<typeof createAdminClient> | null = null;
   try {
@@ -244,6 +253,13 @@ export async function POST(req: Request) {
     const { data: { user }, error: authErr } = await withDeadline(supabase.auth.getUser(), 'Auth check');
     if (authErr) return NextResponse.json({ error: `Auth: ${authErr.message}` }, { status: 401 });
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+    // OWNER ONLY — payout rail (see runStart). No teammate may connect/refresh/
+    // disconnect the account's Stripe Connect payouts.
+    const acting = await getActingContext(user.id);
+    if (!canBilling(acting.role)) {
+      return NextResponse.json({ error: 'Only the account owner can manage payouts.' }, { status: 403 });
+    }
 
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
