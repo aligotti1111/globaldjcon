@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
+import { getActingContext, canBilling } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,13 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  // OWNER ONLY — a teammate must not reach the billing portal (cancel / change
+  // plan / card) for the account, nor their own.
+  const acting = await getActingContext(user.id);
+  if (!canBilling(acting.role)) {
+    return NextResponse.json({ error: 'Only the account owner can manage billing.' }, { status: 403 });
   }
 
   try {
