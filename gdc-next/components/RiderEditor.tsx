@@ -21,7 +21,8 @@ import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
   RIDER_LIST_STYLES, RIDER_FONT_SIZES, RIDER_FONT_FAMILIES,
-  riderFontFamilyCss, riderFontSizePx, normalizeListStyle, normalizeFontSize, normalizeFontFamily,
+  riderFontFamilyCss, riderFontSizePx, riderListPrefix,
+  normalizeListStyle, normalizeFontSize, normalizeFontFamily,
   type RiderBox, type RiderItem,
 } from '@/lib/rider';
 
@@ -286,21 +287,73 @@ export default function RiderEditor({
               </label>
             </div>
 
-            <textarea
-              value={boxText(box)}
-              onChange={(e) => setBoxText(box, e.target.value)}
-              placeholder={`Type your ${box.title.toLowerCase()} requirements… (one per line)`}
-              rows={4}
-              style={{
-                ...input,
-                width: '100%',
-                resize: 'vertical',
-                lineHeight: 1.5,
-                minHeight: 90,
-                fontFamily: riderFontFamilyCss(box.fontFamily),
-                fontSize: riderFontSizePx(box.fontSize),
-              }}
-            />
+            {/* Each requirement is its own line, showing its bullet / number /
+                checkmark individually. Enter adds a line; Backspace on an empty
+                line removes it. */}
+            {(() => {
+              const bt = boxText(box);
+              const lines = bt.length ? bt.split('\n') : [''];
+              const fam = riderFontFamilyCss(box.fontFamily);
+              const fsz = riderFontSizePx(box.fontSize);
+              const style = normalizeListStyle(box.listStyle);
+              const setLines = (arr: string[]) => setBoxText(box, arr.join('\n'));
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                  {lines.map((ln, i) => {
+                    const marker = riderListPrefix(style, i).trim();
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                        <span
+                          aria-hidden
+                          style={{
+                            minWidth: style === 'none' ? 0 : 22, textAlign: 'right', flexShrink: 0,
+                            color: NEON, fontFamily: fam, fontSize: fsz, fontWeight: 700,
+                          }}
+                        >
+                          {marker}
+                        </span>
+                        <input
+                          type="text"
+                          value={ln}
+                          onChange={(e) => { const next = lines.slice(); next[i] = e.target.value; setLines(next); }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const next = lines.slice(); next.splice(i + 1, 0, ''); setLines(next);
+                            } else if (e.key === 'Backspace' && ln === '' && lines.length > 1) {
+                              e.preventDefault();
+                              const next = lines.slice(); next.splice(i, 1); setLines(next);
+                            }
+                          }}
+                          placeholder={i === 0 ? `Type your ${box.title.toLowerCase()} requirements…` : 'Add an item…'}
+                          style={{ ...input, flex: 1, fontFamily: fam, fontSize: fsz }}
+                        />
+                        {lines.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => { const next = lines.slice(); next.splice(i, 1); setLines(next); }}
+                            aria-label="Remove line"
+                            style={ctl('#ff6b6b', false)}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setLines([...lines, ''])}
+                    style={{
+                      alignSelf: 'flex-start', background: 'transparent', border: `1px dashed ${MUTED}`,
+                      borderRadius: 8, color: MUTED, padding: '.35rem .8rem', fontSize: '.78rem', cursor: 'pointer',
+                    }}
+                  >
+                    + Add line
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Attachment — Technical + Visuals boxes only. One image or PDF,
                 ≤5MB, that travels with the rider (attached to the host email
