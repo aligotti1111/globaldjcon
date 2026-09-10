@@ -39,6 +39,7 @@ import {
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
+import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
 
 // Parse booking settings ONCE, outside the component (it's pure data) —
 // but we need profile.dj_type and booking_settings, so it has to live inside.
@@ -49,12 +50,20 @@ interface Props {
   effectiveSlug: string;
   isLoggedIn: boolean;
   isOwnProfile: boolean;
+  // True when the viewer is a team member with a profile-editing seat (not the
+  // owner). Grants editing of every tab EXCEPT Booking.
+  canEditProfile?: boolean;
   // Paywall: true when the DJ has an active subscription/comp (Tier 1+).
   // ANDed with the existing enabled + completeness checks below.
   hasBookingAccess: boolean;
 }
 
-export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, hasBookingAccess }: Props) {
+export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess }: Props) {
+  // Who may edit the public profile (all tabs except Booking): the owner, or a
+  // permitted team member. `actingAsMember` is true only for the member case —
+  // their writes route through /api/profile/update instead of a direct write.
+  const canEdit = isOwnProfile || canEditProfile;
+  const actingAsMember = canEditProfile && !isOwnProfile;
   // ── Booking settings parsing & "show booking tab" decision ──────────
   // Vanilla shows a booking tab (and makes it the default) when the DJ has
   // booking_enabled — but the WIDGET inside that tab differs by DJ type:
@@ -103,6 +112,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // owners and hosts only. Hiding the tab also hides Book Now and stops the
   // form from defaulting open.
   const viewerIsStaff = !!currentUser?.isMember;
+  // Route inline profile writes through the owner's row directly (owner) or the
+  // role-gated API (team member). Keep this in sync as auth resolves.
+  useEffect(() => {
+    setProfileEditContext({ actingAsMember, uploaderId: currentUser?.id ?? null });
+  }, [actingAsMember, currentUser?.id]);
   const showClubAvailabilityTab = isClubDJ && bookingEnabled && !viewerIsStaff;
   const showMobileBookingTab = isMobileDJBooking && bookingEnabled && !viewerIsStaff;
   const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
@@ -224,12 +238,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     });
     if (!ok) return;
     try {
-      const supabase = createClient();
       const next = videoList.filter((_, i) => i !== index);
-      await supabase
-        .from('users')
-        .update({ video_urls: next } as unknown as never)
-        .eq('id', data.id);
+      await saveProfile(data.id, { video_urls: next }, actingAsMember);
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'video');
       window.location.href = url.toString();
@@ -251,12 +261,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     });
     if (!ok) return;
     try {
-      const supabase = createClient();
       const next = mixList.filter((_, i) => i !== index);
-      await supabase
-        .from('users')
-        .update({ mix_urls: next } as unknown as never)
-        .eq('id', data.id);
+      await saveProfile(data.id, { mix_urls: next }, actingAsMember);
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'mixes');
       window.location.href = url.toString();
@@ -325,7 +331,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Owner-only compact swatch button wrapping a native color input. Rendered
   // inline next to the name in both the mobile (heroNameCol) and desktop
   // (heroInfo) copies.
-  const nameColorControlEl = isOwnProfile ? (
+  const nameColorControlEl = canEdit ? (
     <label
       title="Change name color"
       aria-label="Change name color"
@@ -542,11 +548,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // when enabled AND there's at least one testimonial; owner sees it
   // whenever enabled (even empty) so they can add some.
   const showTestimonialsTab =
-    isMobileDJ && tabVisibility.testimonials && (isOwnProfile || testimonials.length > 0);
+    isMobileDJ && tabVisibility.testimonials && (canEdit || testimonials.length > 0);
   // FAQ: same gating as testimonials. Owner sees it whenever enabled (even
   // empty) so they can add entries; visitors only when there's ≥1 FAQ.
   const showFaqTab =
-    isMobileDJ && tabVisibility.faq && (isOwnProfile || faqs.length > 0);
+    isMobileDJ && tabVisibility.faq && (canEdit || faqs.length > 0);
 
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
@@ -655,7 +661,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               that opens from the corner button. Both desktop and mobile
               positions are passed as CSS variables and a media query in
               profile.module.css picks the right one per viewport. */}
-          {(data.banner_url || isOwnProfile || data.dj_type) && (
+          {(data.banner_url || canEdit || data.dj_type) && (
             <div
               className={styles.banner}
               style={
@@ -683,7 +689,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )
               )}
-              {isOwnProfile && (
+              {canEdit && (
                 <button
                   type="button"
                   onClick={() => setBannerModalOpen(true)}
@@ -712,11 +718,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 When the owner has HIDDEN their picture, visitors see no
                 avatar at all; the owner still sees it (dimmed) so they can
                 toggle it back. */}
-            {(isOwnProfile || !data.avatar_hidden) && (
-            <div style={isOwnProfile ? { position: 'relative', flexShrink: 0 } : undefined}>
+            {(canEdit || !data.avatar_hidden) && (
+            <div style={canEdit ? { position: 'relative', flexShrink: 0 } : undefined}>
               <div
                 className={`${styles.heroAvatar} ${typeClass}`}
-                style={isOwnProfile && data.avatar_hidden ? { opacity: 0.4 } : undefined}
+                style={canEdit && data.avatar_hidden ? { opacity: 0.4 } : undefined}
               >
                 {data.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -731,7 +737,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 )}
               </div>
               {/* Owner-only "Hidden" badge so they know visitors can't see it. */}
-              {isOwnProfile && data.avatar_hidden && (
+              {canEdit && data.avatar_hidden && (
                 <span style={{
                   position: 'absolute',
                   top: '50%',
@@ -756,7 +762,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   modal for crop+upload, then we write the URL to users
                   and reload. Sits outside the avatar's overflow:hidden
                   clip so it always shows fully. */}
-              {isOwnProfile && (
+              {canEdit && (
                 <>
                   <button
                     type="button"
@@ -795,12 +801,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       onClick={async () => {
                         if (!window.confirm('Remove your profile picture?')) return;
                         try {
-                          const supabase = createClient();
-                          const { error } = await supabase
-                            .from('users')
-                            .update({ avatar_url: null } as unknown as never)
-                            .eq('id', data.id);
-                          if (error) throw error;
+                          await saveProfile(data.id, { avatar_url: null }, actingAsMember);
                           window.location.reload();
                         } catch (err) {
                           alert(err instanceof Error ? err.message : 'Could not remove picture.');
@@ -838,12 +839,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     type="button"
                     onClick={async () => {
                       try {
-                        const supabase = createClient();
-                        const { error } = await supabase
-                          .from('users')
-                          .update({ avatar_hidden: !data.avatar_hidden } as unknown as never)
-                          .eq('id', data.id);
-                        if (error) throw error;
+                        await saveProfile(data.id, { avatar_hidden: !data.avatar_hidden }, actingAsMember);
                         window.location.reload();
                       } catch (err) {
                         alert(err instanceof Error ? err.message : 'Could not update.');
@@ -980,7 +976,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         <UnderBannerSocials
           data={data}
           effectiveSlug={effectiveSlug}
-          isOwnProfile={isOwnProfile}
+          isOwnProfile={canEdit}
           bookingEnabled={bookingEnabled}
           onShareClick={() => setShareModalOpen(true)}
           isLoggedIn={isLoggedIn}
@@ -999,7 +995,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               centered container so the button aligns to the right edge of
               the pill bar (not the page). */}
           <div className={styles.tabsSection}>
-            {isOwnProfile && (
+            {canEdit && (
               <div className={styles.editTabsRow}>
                 <button
                   type="button"
@@ -1226,12 +1222,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {isMobileDJ && (
               <AboutStatsRow
                 userId={data.id}
-                isOwnProfile={isOwnProfile}
+                isOwnProfile={canEdit}
                 stats={aboutStats}
                 travelDistance={data.travel_distance}
               />
             )}
-            {isOwnProfile ? (
+            {canEdit ? (
               <OwnerEditableBio userId={data.id} initialBio={data.bio} />
             ) : data.bio ? (
               <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
@@ -1259,9 +1255,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <div
                       key={i}
                       className={styles.mediaEmbedWrap}
-                      style={isOwnProfile ? { position: 'relative' } : undefined}
+                      style={canEdit ? { position: 'relative' } : undefined}
                     >
-                      {isOwnProfile && (
+                      {canEdit && (
                         <button
                           type="button"
                           onClick={() => deleteMix(i)}
@@ -1301,7 +1297,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
-                {isOwnProfile && (
+                {canEdit && (
                   <MixAddButton
                     userId={data.id}
                     list={mixList}
@@ -1312,7 +1308,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </div>
             ) : (
               <div className={styles.tabEmpty}>
-                {isOwnProfile ? (
+                {canEdit ? (
                   <MixAddButton
                     userId={data.id}
                     list={mixList}
@@ -1329,7 +1325,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           <div className={paneClass('images')}>
             {galleryPhotos.length > 0 ? (
               <>
-                {isOwnProfile && (
+                {canEdit && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.6rem' }}>
                     <button
                       type="button"
@@ -1354,7 +1350,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   ))}
                   {/* Owner-only inline add — opens manage-photos modal
                       when there's room for more photos. */}
-                  {isOwnProfile && galleryPhotos.length < photoCap && (
+                  {canEdit && galleryPhotos.length < photoCap && (
                   <button
                     type="button"
                     onClick={() => setPhotoManagerOpen(true)}
@@ -1384,7 +1380,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </>
             ) : (
               <div className={styles.tabEmpty}>
-                {isOwnProfile ? (
+                {canEdit ? (
                   <button
                     type="button"
                     onClick={() => setPhotoManagerOpen(true)}
@@ -1424,7 +1420,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   if (!embed) return null;
                   return (
                     <div key={i} className={styles.videoCard} style={isOwnProfile ? { position: 'relative' } : undefined}>
-                      {isOwnProfile && (
+                      {canEdit && (
                         <button
                           type="button"
                           onClick={() => deleteVideo(i)}
@@ -1467,7 +1463,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                           allowFullScreen
                         />
                       </div>
-                      {isOwnProfile ? (
+                      {canEdit ? (
                         <VideoMetaEditor
                           userId={data.id}
                           list={videoList}
@@ -1483,7 +1479,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   );
                 })}
-                {isOwnProfile && (
+                {canEdit && (
                   <VideoAddButton
                     userId={data.id}
                     list={videoList}
@@ -1494,7 +1490,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </div>
             ) : (
               <div className={styles.tabEmpty}>
-                {isOwnProfile ? (
+                {canEdit ? (
                   <VideoAddButton
                     userId={data.id}
                     list={videoList}
@@ -1514,7 +1510,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               all (see showTestimonialsTab logic above). */}
           {showTestimonialsTab && (
             <div className={paneClass('testimonials')}>
-              {isOwnProfile && testimonials.length === 0 && (
+              {canEdit && testimonials.length === 0 && (
                 <div className={styles.testimonialOwnerNote}>
                   Visitors won&apos;t see the Testimonials tab on your profile
                   until at least one is added.
@@ -1522,19 +1518,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               )}
               {testimonials.map((t, i) => (
                 <div key={i} className={styles.testimonialItem}>
-                  {isOwnProfile && (
+                  {canEdit && (
                     <button
                       type="button"
                       onClick={async () => {
                         if (!window.confirm('Delete this testimonial?')) return;
                         try {
                           const next = testimonials.filter((_, idx) => idx !== i);
-                          const supabase = createClient();
-                          const { error } = await supabase
-                            .from('users')
-                            .update({ testimonials: JSON.stringify(next) } as unknown as never)
-                            .eq('id', data.id);
-                          if (error) throw error;
+                          await saveProfile(data.id, { testimonials: JSON.stringify(next) }, actingAsMember);
                           window.location.reload();
                         } catch (err) {
                           alert(err instanceof Error ? err.message : 'Delete failed.');
@@ -1556,7 +1547,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   <div className={styles.testimonialBlurb}>{t.blurb || ''}</div>
                 </div>
               ))}
-              {isOwnProfile && (
+              {canEdit && (
                 <TestimonialAddForm
                   userId={data.id}
                   existing={testimonials}
@@ -1571,7 +1562,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               enabled + at least one FAQ for visitors). */}
           {showFaqTab && (
             <div className={paneClass('faq')}>
-              {isOwnProfile && faqs.length === 0 && (
+              {canEdit && faqs.length === 0 && (
                 <div className={styles.testimonialOwnerNote}>
                   Visitors won&apos;t see the FAQ tab on your profile until at
                   least one question is added.
@@ -1580,9 +1571,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               <FaqAccordion
                 faqs={faqs}
                 userId={data.id}
-                isOwnProfile={isOwnProfile}
+                isOwnProfile={canEdit}
               />
-              {isOwnProfile && faqs.length < 10 && (
+              {canEdit && faqs.length < 10 && (
                 <FaqAddForm
                   userId={data.id}
                   existing={faqs}
@@ -1636,10 +1627,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           crop UI + Supabase Storage upload at ${userId}/avatar.png and
           calls onSuccess with the public URL. We then write that URL
           to users.avatar_url and reload so the hero shows the new pic. */}
-      {pickedAvatarFile && isOwnProfile && (
+      {pickedAvatarFile && canEdit && (
         <AvatarCrop
           file={pickedAvatarFile}
           userId={data.id}
+          uploadFolder={profileUploadFolder(data.id)}
           onClose={() => {
             setPickedAvatarFile(null);
             // Reset the input so picking the same file again still fires
@@ -1648,11 +1640,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           }}
           onSuccess={async (publicUrl) => {
             try {
-              const supabase = createClient();
-              await supabase
-                .from('users')
-                .update({ avatar_url: publicUrl } as unknown as never)
-                .eq('id', data.id);
+              await saveProfile(data.id, { avatar_url: publicUrl }, actingAsMember);
             } catch {
               // Non-blocking; the upload succeeded even if the row update
               // failed. User can retry.
@@ -1666,7 +1654,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
       {/* Banner edit modal — owner-only. Handles upload, replace, and
           vertical reposition for desktop AND mobile views in one place. */}
-      {bannerModalOpen && isOwnProfile && (
+      {bannerModalOpen && canEdit && (
         <BannerEditModal
           userId={data.id}
           initialUrl={data.banner_url}
@@ -1678,7 +1666,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
       {/* Edit tabs modal — owner-only. Toggles which tabs (about, mixes,
           photos, video, testimonials) are visible to the public. */}
-      {tabsModalOpen && isOwnProfile && (
+      {tabsModalOpen && canEdit && (
         <EditTabsModal
           userId={data.id}
           initial={tabVisibility}
@@ -1699,7 +1687,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       {/* Photo manager modal — owner-only. Lets the DJ upload to /
           remove from any of the 4 gallery slots independently. Opened
           from the + button in the Photos tab. */}
-      {photoManagerOpen && isOwnProfile && (
+      {photoManagerOpen && canEdit && (
         <PhotoManagerModal
           userId={data.id}
           photos={galleryPhotos}
