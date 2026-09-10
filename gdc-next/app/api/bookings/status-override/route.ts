@@ -22,7 +22,9 @@ const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const SITE_URL = 'https://globaldjconnect.com';
 
 // Only these keys can be overridden — guards against arbitrary JSON writes.
-const ALLOWED_KEYS = new Set(['contract', 'deposit', 'deposit_skipped', 'song_list']);
+// 'invoice' is the BALANCE step (the final invoice); marking it complete was
+// silently rejected before, so it never saved and never logged.
+const ALLOWED_KEYS = new Set(['contract', 'deposit', 'deposit_skipped', 'song_list', 'invoice']);
 
 function escHtml(s: string | null | undefined): string {
   if (!s) return '';
@@ -102,6 +104,10 @@ export async function POST(req: Request) {
     // log can show the action, mirroring the contract case above.
     if (done) patch.deposit_completed_at = now;
     else patch.deposit_completion_undone_at = now;
+  } else if (key === 'invoice') {
+    // "Mark Complete" on the BALANCE / final invoice handled outside the app.
+    if (done) patch.balance_completed_at = now;
+    else patch.balance_completion_undone_at = now;
   }
 
   try {
