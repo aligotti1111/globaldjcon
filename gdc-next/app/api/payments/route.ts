@@ -21,6 +21,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canMoney, canRequestDeposit, canInvoice } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 import { getStripe } from '@/lib/stripe/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -531,6 +532,11 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
     // Self-gates on the booking's opt-in + phone; best-effort, never blocks.
     notifyBookingSms(bookingId, kind === 'balance' ? 'balance' : 'deposit').catch(() => {});
 
+    await logActivity(acting, {
+      action: `payment.${kind}.requested`,
+      summary: `Sent ${kind === 'balance' ? 'a balance' : 'a deposit'} invoice`,
+      bookingId,
+    });
     return NextResponse.json({ ok: true, payment });
   }
 
@@ -627,6 +633,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
         .update({ status: 'waived', confirmed_at: new Date().toISOString() } as unknown as never)
         .eq('id', paymentId);
       if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+      await logActivity(acting, { action: `payment.${p.kind}.waived`, summary: `Waived a ${p.kind === 'balance' ? 'balance' : 'deposit'}`, bookingId: p.booking_id });
       return NextResponse.json({ ok: true });
     }
 
@@ -695,6 +702,11 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       } catch { /* non-fatal */ }
     }
 
+    await logActivity(acting, {
+      action: `payment.${p.kind}.confirmed`,
+      summary: `Confirmed a ${p.kind === 'balance' ? 'balance' : 'deposit'} payment — ${money(received, p.currency || 'USD')}${status === 'partial' ? ' (partial)' : ''}`,
+      bookingId: p.booking_id,
+    });
     return NextResponse.json({ ok: true, amount_paid: nextPaid, status });
   }
 
@@ -775,6 +787,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       return NextResponse.json({ error: 'Could not send the receipt email.' }, { status: 502 });
     }
 
+    await logActivity(acting, { action: `receipt.${kind}.sent`, summary: `Sent a ${kind === 'deposit' ? 'deposit' : 'payment'} receipt`, bookingId });
     return NextResponse.json({ ok: true });
   }
 
@@ -881,6 +894,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         // out. Clearing an un-invoiced draft is just tidying up — nothing to log.
         overtime_cancelled_at: b.overtime_invoiced_at ? new Date().toISOString() : null,
       } as unknown as never).eq('id', bookingId);
+      await logActivity(acting, { action: 'overtime.cleared', summary: 'Cleared overtime', bookingId });
       return NextResponse.json({ ok: true });
     }
 
@@ -981,6 +995,11 @@ ${optionsBlock}`
       return NextResponse.json({ error: isInv ? 'Could not send the invoice email.' : 'Could not send the receipt email.' }, { status: 502 });
     }
 
+    await logActivity(acting, {
+      action: isInv ? 'overtime.invoiced' : 'overtime.paid',
+      summary: isInv ? `Sent an overtime invoice — ${money(amount, cur)}` : `Marked overtime paid — ${money(amount, cur)}`,
+      bookingId,
+    });
     return NextResponse.json({ ok: true, overtime });
   }
 
