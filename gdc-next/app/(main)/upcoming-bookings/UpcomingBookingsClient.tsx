@@ -453,9 +453,19 @@ export default function UpcomingBookingsClient({
       variant: 'danger',
     });
     if (!ok) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('bookings').delete().eq('id', id).eq('dj_id', userId);
-    if (error) { alert('Delete failed: ' + error.message); return; }
+    // Route through the gated server endpoint (manager+ only, scoped to the
+    // owner). A browser DELETE is silently dropped by RLS for a teammate, which
+    // left the booking in the DB while the UI removed it.
+    const res = await fetch('/api/bookings/manual', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert('Delete failed: ' + (j?.error || 'Could not delete.'));
+      return;
+    }
     setBookings((prev) => prev.filter((b) => b.id !== id));
   }
 
