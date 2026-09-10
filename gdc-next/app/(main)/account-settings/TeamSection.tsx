@@ -82,7 +82,10 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             {members.length} of {seatLimit} seats used. Teammates log in with their own email and get the access you choose. Change a role, then <strong style={{ color: '#fff' }}>Save</strong> — the new access applies to their account right away.
           </p>
 
-          {/* Owner-only: audit trail of who did what, when. */}
+          {/* Owner-only: audit trail of who did what, when. The owner is the
+              viewer who is NOT one of the listed teammates; an admin (who can
+              also open this Team section) is hidden — the API 403s them anyway. */}
+          {!members.some((m) => m.member_id && m.member_id === viewerId) && (
           <div style={{ margin: '0 0 1rem' }}>
             <button
               type="button"
@@ -93,6 +96,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               View activity log
             </button>
           </div>
+          )}
 
           {members.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
