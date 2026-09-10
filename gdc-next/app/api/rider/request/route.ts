@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActingContext } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -171,6 +172,8 @@ export async function POST(req: Request) {
         .single();
       if (error || !up) return NextResponse.json({ error: 'Could not save the rider.' }, { status: 500 });
       id = (up as unknown as { id: string }).id;
+      // Log the send now (the rider is saved); the email below is best-effort.
+      await logActivity(acting, { action: 'rider.sent', summary: 'Sent a rider to the host', bookingId });
     }
     const url = `${SITE_URL}/rider/${id}`;
 
