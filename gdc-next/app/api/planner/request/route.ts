@@ -25,12 +25,12 @@ import { getActingContext } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 import type { UpcomingBooking } from '@/app/(main)/upcoming-bookings/page';
 import {
   pickTemplate,
   composeFields,
   applyPrefill,
-  visibleFields,
   isCustomEventType,
   dropFieldsAnsweredByBooking,
   type PlannerTemplate,
@@ -187,10 +187,10 @@ export async function POST(req: Request) {
     // it just quietly hands you nothing.
     const { data: djData, error: djErr } = await admin
       .from('users')
-      .select('name, planner_lead_days, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+      .select('name, planner_lead_days, mob_custom_event_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
       .eq('id', acting.djId)
       .maybeSingle();
-    const djRow = djData as unknown as (AccessFields & { name?: string | null; planner_lead_days?: number | null }) | null;
+    const djRow = djData as unknown as (AccessFields & { name?: string | null; planner_lead_days?: number | null; mob_custom_event_types?: unknown }) | null;
     // A failed QUERY and a genuinely un-subscribed DJ are different problems and
     // must not share an answer. That conflation is exactly what hid this bug.
     if (djErr) {
@@ -365,7 +365,13 @@ export async function POST(req: Request) {
     if (process.env.RESEND_API_KEY) {
       const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
       const when = fmtDate(b.event_date);
-      const count = visibleFields(planner.fields || []).length;
+
+      // Event type — cased for the subject ("Wedding Planner & Playlist") and
+      // lower-cased for the in-sentence use ("run your wedding smoothly").
+      // Custom event types resolve their label from the DJ's own list.
+      const custom = parseCustomEventTypes(djRow?.mob_custom_event_types);
+      const eventTypeLabel = b.event_type ? mobEventLabel(b.event_type, custom) : 'Event';
+      const eventTypeLower = eventTypeLabel.toLowerCase();
 
       // The latest the client can submit: the event date minus how many days
       // ahead this DJ asks for it (users.planner_lead_days, default 14). Same
@@ -382,33 +388,27 @@ export async function POST(req: Request) {
       }
       const dueBanner = dueLabel
         ? `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your planner by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
 </div>`
         : '';
-
-      const recap = `<div style="background:#f8f8f8;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#666;font-size:13px;line-height:1.7;">
-<strong style="color:#111;">${esc(djName)}</strong><br/>${esc(when)}${b.venue_name ? ` · ${esc(b.venue_name)}` : ''}
-</p></div>`;
 
       const testNote = isTest
         ? `<p style="margin:0 0 16px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;color:#7a5b00;font-size:13px;line-height:1.6;">This is a <strong>test copy</strong> \u2014 exactly what the client receives. It was <strong>not</strong> sent to the client.</p>`
         : '';
       const content = `${testNote}
-<h1 style="margin:0 0 6px;font-size:22px;color:#111;">${isResend ? 'Your planner is still open' : `Hi ${hi} — let's plan your music`}</h1>
+<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, ${isResend ? 'your planner is still open' : "let's plan your event!"}</h1>
 <p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
 ${isResend
   ? `Picking up where you left off — nothing has been lost.`
-  : `${esc(djName)} needs a few details to run your night: the songs that matter, the names to get right, and anything that should never be played.`}
+  : `${esc(djName)} needs a few details to run your ${esc(eventTypeLower)} smoothly: the songs that matter, the names to get right, and anything that should never be played.`}
 </p>
-${recap}
+<p style="margin:0 0 20px;color:#666;font-size:14px;line-height:1.7;">
+As you fill out the Planner &amp; Playlist page, everything you enter auto-saves as you go. Enter what you know now and come back to finish the rest whenever you're ready. The latest the planner can be completed is listed below.
+</p>
 ${dueBanner}
-<p style="margin:0 0 22px;color:#666;font-size:14px;line-height:1.7;">
-There are ${count} questions and <strong style="color:#111;">none of them are required</strong>. It saves as you go, so fill in what you know now and come back for the rest. No account, no password — the link is yours.
-</p>
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
 <tr><td style="background:#000000;border-radius:8px;">
-<a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open your planner</a>
+<a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open your Planner &amp; Playlist</a>
 </td></tr></table>
 <p style="margin:0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">
 Or paste this into your browser:<br/><a href="${url}" style="color:#999;">${url}</a>
@@ -422,9 +422,9 @@ This link is private to your booking — anyone with it can see and edit your pl
         await resend.emails.send({
           from: FROM,
           to,
-          subject: `${isTest ? '[TEST] ' : ''}${isResend
-            ? `Reminder: your planner for ${when}`
-            : `${djName} — plan the music for ${when}`}`,
+          // "<event date> <event type> Planner & Playlist" — a resend prefixes
+          // "Reminder:", a test prefixes "[TEST]".
+          subject: `${isTest ? '[TEST] ' : ''}${isResend ? 'Reminder: ' : ''}${b.event_date ? `${when} ` : ''}${eventTypeLabel} Planner & Playlist`,
           html: shell(content),
         });
       } catch {
