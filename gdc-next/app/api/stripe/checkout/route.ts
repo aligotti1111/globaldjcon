@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { priceIdFor } from '@/lib/stripe/config';
+import { getActingContext, canBilling } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,14 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  // OWNER ONLY. Billing belongs to the account owner: a teammate must never be
+  // able to start a subscription — that would bind a paid plan to the teammate's
+  // own row (invisible to the owner) instead of the account they work on.
+  const acting = await getActingContext(user.id);
+  if (!canBilling(acting.role)) {
+    return NextResponse.json({ error: 'Only the account owner can manage billing.' }, { status: 403 });
   }
 
   // 2. Parse + validate the plan choice.
