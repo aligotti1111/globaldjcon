@@ -187,7 +187,8 @@ export function normalizeRiderItems(raw: unknown): RiderItem[] {
 
 /** Normalize a rider mode value from jsonb; defaults to 'custom'. */
 export function normalizeRiderMode(raw: unknown): RiderMode {
-  return raw === 'upload' ? 'upload' : 'custom';
+  // Default is Upload — an unset rider starts on the Upload Rider option.
+  return raw === 'custom' ? 'custom' : 'upload';
 }
 
 // The equipment choice on a booking (mapped from bookings.equipment).
