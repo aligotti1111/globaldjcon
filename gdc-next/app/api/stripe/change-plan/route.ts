@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { priceIdFor } from '@/lib/stripe/config';
+import { getActingContext, canBilling } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +25,12 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // OWNER ONLY — changing the plan is billing.
+  const acting = await getActingContext(user.id);
+  if (!canBilling(acting.role)) {
+    return NextResponse.json({ error: 'Only the account owner can change the plan.' }, { status: 403 });
+  }
 
   let body: { tier?: unknown; interval?: unknown; preview?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
