@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext, canEditProfile } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,13 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+
+    // Resolve who we're acting as — an owner writes their own row, a team
+    // member with a profile-editing seat writes the owner's row.
+    const acting = await getActingContext(user.id);
+    if (!canEditProfile(acting.role)) {
+      return NextResponse.json({ error: 'Your role cannot edit this profile.' }, { status: 403 });
+    }
 
     const body = (await req.json().catch(() => ({}))) as { color?: string };
     const color = typeof body.color === 'string' ? body.color.trim() : '';
@@ -30,7 +38,7 @@ export async function POST(req: Request) {
     const { error } = await admin
       .from('users')
       .update({ profile_name_color: color } as unknown as never)
-      .eq('id', user.id);
+      .eq('id', acting.djId);
     if (error) return NextResponse.json({ error: 'Could not save the color.' }, { status: 500 });
 
     return NextResponse.json({ ok: true });
