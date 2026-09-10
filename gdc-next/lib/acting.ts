@@ -31,8 +31,18 @@ export async function getActingContext(authUserId: string): Promise<ActingContex
     .limit(1);
   const rows = (data as unknown as { owner_id: string; role: string }[] | null) || [];
   const row = rows[0] || null;
-  if (row && (row.role === 'admin' || row.role === 'manager' || row.role === 'assistant')) {
-    return { authUserId, djId: row.owner_id, role: row.role as ActingRole, isMember: true };
+  // SECURITY: an ACTIVE membership must NEVER resolve to owner. Previously an
+  // active row whose role wasn't exactly admin/manager/assistant (blank, or a
+  // value the invite flow stored differently) fell through to the owner branch
+  // below — silently escalating a teammate to full owner rights (payment
+  // options, billing, everything). Now any active membership is a member; an
+  // unrecognized role is treated as the LEAST-privileged seat (assistant).
+  if (row && row.owner_id) {
+    const role: ActingRole =
+      row.role === 'admin' || row.role === 'manager' || row.role === 'assistant'
+        ? (row.role as ActingRole)
+        : 'assistant';
+    return { authUserId, djId: row.owner_id, role, isMember: true };
   }
   return { authUserId, djId: authUserId, role: 'owner', isMember: false };
 }
