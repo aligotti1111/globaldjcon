@@ -16,6 +16,7 @@ import {
 } from './icons';
 import type { DjProfileData, Testimonial, Faq, AboutStats } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
+import { saveProfile, profileUploadFolder } from './profileSave';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 
 export function BannerTypeEventsDropdown({ events, customTypes = [] }: { events: string[]; customTypes?: CustomEventType[] }) {
@@ -410,14 +411,9 @@ export function SocialAddButton({
     setError(null);
     setSaving(true);
     try {
-      const supabase = createClient();
       // Empty while editing => clear the link (store null to remove it).
       const nextValue = trimmed ? trimmed : null;
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ [field]: nextValue } as unknown as never)
-        .eq('id', userId);
-      if (dbError) throw dbError;
+      await saveProfile(userId, { [field]: nextValue });
       // Reload so HeroActions re-renders with the live link button in
       // place of this add button. Server-loaded props don't update
       // otherwise.
@@ -618,13 +614,8 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
     setError(null);
     setSaving(true);
     try {
-      const supabase = createClient();
       const trimmed = draft.trim();
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ bio: trimmed || null } as unknown as never)
-        .eq('id', userId);
-      if (dbError) throw dbError;
+      await saveProfile(userId, { bio: trimmed || null });
       setBio(trimmed);
       setEditing(false);
     } catch (e) {
@@ -826,13 +817,8 @@ export function VideoAddButton({
           }
         } catch { /* ignore */ }
       }
-      const supabase = createClient();
       const next: VideoItem[] = [...list, { url: trimmed, title: resolvedTitle || null, desc: descVal.trim() || null }];
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ video_urls: next } as unknown as never)
-        .eq('id', userId);
-      if (dbError) throw dbError;
+      await saveProfile(userId, { video_urls: next });
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'video');
       window.location.href = url.toString();
@@ -907,13 +893,8 @@ export function MixAddButton({
     setError(null);
     setSaving(true);
     try {
-      const supabase = createClient();
       const next = [...list, trimmed];
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ mix_urls: next } as unknown as never)
-        .eq('id', userId);
-      if (dbError) throw dbError;
+      await saveProfile(userId, { mix_urls: next });
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'mixes');
       window.location.href = url.toString();
@@ -1016,7 +997,6 @@ export function MediaAddButton({
     setError(null);
     setSaving(true);
     try {
-      const supabase = createClient();
       // Build payload: always the URL, plus title/desc for videos.
       // Title/desc are sent as null if empty so the DB row stays clean.
       const payload: Record<string, string | null> = { [column]: trimmed };
@@ -1041,11 +1021,7 @@ export function MediaAddButton({
         payload[`video_title_${slotNum}`] = resolvedTitle || null;
         payload[`video_desc_${slotNum}`] = descVal.trim() || null;
       }
-      const { error: dbError } = await supabase
-        .from('users')
-        .update(payload as unknown as never)
-        .eq('id', userId);
-      if (dbError) throw dbError;
+      await saveProfile(userId, payload);
       // Reload with ?tab=mixes or ?tab=video so the user lands back on
       // the tab they were adding to instead of jumping to the default
       // (booking/about).
@@ -1319,15 +1295,10 @@ export function VideoMetaEditor({
     setError(null);
     setSaving(true);
     try {
-      const supabase = createClient();
       const next = list.map((v, i) =>
         i === index ? { ...v, title: titleDraft.trim() || null, desc: descDraft.trim() || null } : v
       );
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ video_urls: next } as unknown as never)
-        .eq('id', userId);
-      if (dbError) throw dbError;
+      await saveProfile(userId, { video_urls: next });
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'video');
       window.location.href = url.toString();
@@ -1608,12 +1579,7 @@ export function PhotoManagerModal({
   const atCap = list.length >= cap;
 
   async function persist(next: string[]) {
-    const supabase = createClient();
-    const { error: dbErr } = await supabase
-      .from('users')
-      .update({ gallery_photos: next } as unknown as never)
-      .eq('id', userId);
-    if (dbErr) throw dbErr;
+    await saveProfile(userId, { gallery_photos: next });
   }
 
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1636,7 +1602,7 @@ export function PhotoManagerModal({
           ? crypto.randomUUID()
           : `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
         const id = rand.replace(/[^a-z0-9]/gi, '');
-        const path = `${userId}/gallery_${id}.${ext}`;
+        const path = `${profileUploadFolder(userId)}/gallery_${id}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('avatars')
           .upload(path, file, { upsert: true, contentType: file.type });
@@ -2222,7 +2188,7 @@ export function BannerEditModal({
       let newPublicUrl: string | null = null;
       if (pendingFile) {
         const ext = (pendingFile.name.split('.').pop() || 'jpg').toLowerCase();
-        const path = `${userId}/banner.${ext}`;
+        const path = `${profileUploadFolder(userId)}/banner.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('avatars')
           .upload(path, pendingFile, { upsert: true, contentType: pendingFile.type });
@@ -2235,11 +2201,7 @@ export function BannerEditModal({
         banner_position_mobile: `50% ${posYMobile}%`,
       };
       if (newPublicUrl) patch.banner_url = newPublicUrl;
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update(patch as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
+      await saveProfile(userId, patch);
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
@@ -2252,16 +2214,11 @@ export function BannerEditModal({
     setBusy(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({
-          banner_url: null,
-          banner_position: null,
-          banner_position_mobile: null,
-        } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
+      await saveProfile(userId, {
+        banner_url: null,
+        banner_position: null,
+        banner_position_mobile: null,
+      });
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Remove failed.');
@@ -2465,12 +2422,7 @@ export function EditTabsModal({
     setBusy(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({ tab_visibility: vis } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
+      await saveProfile(userId, { tab_visibility: vis });
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
@@ -2605,12 +2557,7 @@ export function TestimonialAddForm({
         ...existing,
         { blurb: blurb.trim(), name: name.trim(), date: date.trim() || undefined },
       ];
-      const supabase = createClient();
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({ testimonials: JSON.stringify(next) } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
+      await saveProfile(userId, { testimonials: JSON.stringify(next) });
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
@@ -2734,12 +2681,7 @@ export function AboutStatsRow({
     setBusy(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({ about_stats: JSON.stringify(draft) } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
+      await saveProfile(userId, { about_stats: JSON.stringify(draft) });
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'about');
       window.location.href = url.toString();
@@ -2896,12 +2838,7 @@ export function FaqAccordion({
     setDeleting(true);
     try {
       const next = faqs.filter((_, idx) => idx !== pendingDelete);
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('users')
-        .update({ faqs: JSON.stringify(next) } as unknown as never)
-        .eq('id', userId);
-      if (error) throw error;
+      await saveProfile(userId, { faqs: JSON.stringify(next) });
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'faq');
       window.location.href = url.toString();
@@ -3040,12 +2977,7 @@ export function FaqAddForm({
         ...existing,
         { question: question.trim(), answer: answer.trim() },
       ];
-      const supabase = createClient();
-      const { error: dbErr } = await supabase
-        .from('users')
-        .update({ faqs: JSON.stringify(next) } as unknown as never)
-        .eq('id', userId);
-      if (dbErr) throw dbErr;
+      await saveProfile(userId, { faqs: JSON.stringify(next) });
       // Reload with ?tab=faq so the user lands back on the FAQ tab
       // instead of jumping to the default (booking/about).
       const url = new URL(window.location.href);
