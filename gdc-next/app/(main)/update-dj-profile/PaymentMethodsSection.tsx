@@ -607,7 +607,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
     setSaving(true);
     setFeedback(null);
     try {
-      const supabase = createClient();
       // Only real, filled-in rails get written. An opened-but-empty tile
       // vanishes rather than persisting as a broken option a client could see.
       const clean = TYPE_ORDER
@@ -632,11 +631,16 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
               }
             : {}),
         }));
-      const { error } = await supabase
-        .from('users')
-        .update({ payment_methods: clean } as unknown as never)
-        .eq('id', userId);
-      if (error) throw error;
+      // OWNER-ONLY on the server. No team member of any role may change where
+      // money lands — the endpoint rejects non-owners, so this is airtight
+      // regardless of how the editor was reached.
+      const res = await fetch('/api/dj/payment-methods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ methods: clean }),
+      });
+      const jr = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !jr.ok) throw new Error(jr.error || 'Could not save.');
       setMethods(clean);
       setSavedMethods(clean);
       setFeedback({ msg: '✓ Saved.', ok: true });
