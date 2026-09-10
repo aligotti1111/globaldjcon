@@ -921,8 +921,12 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     const patch: Record<string, unknown> = {
       overtime_hours: hours, overtime_charge_rate: rate, overtime_tax: tax, overtime_amount: amount,
     };
-    if (isInv) patch.overtime_invoiced_at = nowIso;
-    else patch.overtime_paid_at = nowIso;
+    if (isInv) { patch.overtime_invoiced_at = nowIso; patch.overtime_invoiced_log_at = nowIso; }
+    else { patch.overtime_paid_at = nowIso; patch.overtime_paid_log_at = nowIso; }
+    // The *_log_at columns are write-once history for the booking log: unlike
+    // overtime_invoiced_at / overtime_paid_at (which 'overtime-clear' nulls to
+    // reset the active-overtime UI), these are never cleared, so the log keeps
+    // the "invoice sent" / "paid" moments after a clear.
     await admin.from('bookings').update(patch as unknown as never).eq('id', bookingId);
 
     const to = await clientEmailFor(b);
