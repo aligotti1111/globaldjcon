@@ -12,7 +12,7 @@ import { randomUUID } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getActingContext, canSettings } from '@/lib/acting';
+import { getActingContext, canManageTeam } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 
@@ -60,14 +60,14 @@ export async function GET() {
 
 export async function POST() {
   // Resetting the token kills EVERY existing calendar subscription for the whole
-  // team, so it's a settings-level action — manager+ only (assistants can read
+  // team, so it's restricted to OWNER + ADMIN (managers and assistants can read
   // the link via GET, not rotate it).
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const acting = await getActingContext(user.id);
-  if (!canSettings(acting.role)) {
-    return NextResponse.json({ error: 'Your role cannot reset the calendar link.' }, { status: 403 });
+  if (!canManageTeam(acting.role)) {
+    return NextResponse.json({ error: 'Only an owner or admin can reset the calendar link.' }, { status: 403 });
   }
   const djId = acting.djId || user.id;
 
