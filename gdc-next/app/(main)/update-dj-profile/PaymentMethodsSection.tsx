@@ -224,6 +224,23 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
   // trains the DJ that the button is meaningless.
   const [savedMethods, setSavedMethods] = useState<PaymentMethod[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // Owner-only gate. Payment options decide where money lands, so NO team
+  // member (admin/manager/assistant) may edit them — whatever surface opened
+  // this editor. null = still checking; false = a non-owner, show locked.
+  const [isOwner, setIsOwner] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/me/role');
+        const j = (await r.json().catch(() => ({}))) as { role?: string | null };
+        if (!cancelled) setIsOwner(j?.role === 'owner');
+      } catch {
+        if (!cancelled) setIsOwner(false); // fail closed
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
@@ -766,7 +783,25 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
     </div>
   );
 
-  if (!loaded) {
+  // Non-owner (team member): show a read-only lock instead of the editor.
+  // The server also rejects the save (403), so this is defense in depth.
+  if (isOwner === false) {
+    return (
+      <div className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitle}>Payment Methods</div>
+        </div>
+        <div className={styles.sectionBody}>
+          <p className={styles.bodyHint}>
+            Only the account owner can view or change payment options — where a
+            booking&rsquo;s money is sent. Ask the owner to update these.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loaded || isOwner === null) {
     return (
       <div className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
