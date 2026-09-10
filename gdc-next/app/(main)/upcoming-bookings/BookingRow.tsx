@@ -184,7 +184,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
 }: {
   booking: UpcomingBooking;
   /** Only the "New activity" sort highlights the changed stage; By Date and
@@ -202,6 +202,10 @@ export default function BookingRow({
   archive?: boolean;
   payments: BookingPayment[];
   onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
+  /** Ask the server page to re-read this booking so the booking LOG (derived
+   *  from server-stamped timestamps) reflects the action just taken. Optimistic
+   *  state updates the badges; only a refresh brings the new timestamps. */
+  onMutated?: () => void;
   /** Tier 2. A courtesy so the row doesn't offer what the server will refuse. */
   canPro: boolean;
   /** The booking's planner, or undefined if one was never requested. */
@@ -318,6 +322,7 @@ export default function BookingRow({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Something went wrong.');
+      onMutated?.();
       return json as { cancel_status: string };
     } catch (e) {
       setCancelErr(e instanceof Error ? e.message : 'Something went wrong.');
@@ -514,10 +519,11 @@ export default function BookingRow({
           const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-request', paymentId }) });
           if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not cancel the request.'); return; }
           onPaymentsChange(booking.id, payments.filter((pp) => pp.id !== paymentId));
+          onMutated?.();
         } catch { alert('Could not cancel the request.'); }
       },
     });
-  } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); } } catch { alert('Could not send the receipt.'); } }
+  } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); onMutated?.(); } } catch { alert('Could not send the receipt.'); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
     try {
       const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download-receipt', bookingId: booking.id, kind }) });
@@ -584,10 +590,13 @@ export default function BookingRow({
     setMenuOpenKey(null);
     setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
     try {
-      await fetch('/api/bookings/status-override', {
+      const res = await fetch('/api/bookings/status-override', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId: booking.id, key, done: next }),
       });
+      // Refresh so the booking LOG picks up the timestamp the server just
+      // stamped (contract/deposit complete, skip, etc.).
+      if (res.ok) onMutated?.();
     } catch { /* keep optimistic UI; will reconcile on next load */ }
   }
   // "Mark complete" on a MONEY step has downstream impact, so confirm it and
@@ -1049,6 +1058,7 @@ export default function BookingRow({
           onContractActionHandled={() => setContractAction(null)}
           payments={payments}
           onPaymentsChange={onPaymentsChange}
+          onMutated={onMutated}
           canRequestDeposit={canRequestDeposit && roleCanMoney}
           canManageMoney={roleCanMoney}
           canManageContract={roleCanContract}
@@ -1265,6 +1275,8 @@ export default function BookingRow({
             });
             // Created but not emailed (dead Resend key). The link works; say so.
             if (r.warning) setPlannerErr(r.warning);
+            // Refresh so the log's "Planner & Playlist sent" entry appears now.
+            onMutated?.();
           }}
         />
       )}
