@@ -23,6 +23,7 @@ const WRITABLE = new Set<string>([
   'profile_name_color',
   'website', 'instagram', 'facebook', 'tiktok', 'twitch', 'soundcloud', 'phone',
   'tab_visibility',
+  'tab_order',
   'testimonials',
   'faqs',
   'about_stats',
