@@ -890,8 +890,7 @@ export default function ClubBookingTab({
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Enable DJ Rider</div>
                     <div className={styles.settingHint}>
-                      Adds a rider step to your club/bar bookings. You customize it per booking on the
-                      card, then send it to the host.
+                      Adds a rider step to your club/bar bookings.
                     </div>
                   </div>
                   <button
