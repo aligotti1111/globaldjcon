@@ -21,7 +21,7 @@ import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
   normalizeListStyle, normalizeFontSize, normalizeFontFamily,
-  riderFontFamilyCss, riderFontSizePx,
+  riderFontFamilyCss, riderFontSizePx, riderListPrefix,
   type RiderListStyle, type RiderFontSize, type RiderFontFamily,
   type RiderBox, type RiderItem,
 } from '@/lib/rider';
@@ -324,6 +324,29 @@ export default function RiderEditor({
                 fontSize: riderFontSizePx(box.fontSize),
               }}
             />
+
+            {/* Live preview — shows exactly how the host will see each line with
+                the chosen bullet / number / checkmark, size and font. */}
+            {(() => {
+              const style = normalizeListStyle(box.listStyle);
+              const bt = boxText(box).trim();
+              if (style === 'none' || !bt) return null;
+              const lines = bt.split('\n').map((l) => l.trim()).filter(Boolean);
+              if (!lines.length) return null;
+              return (
+                <div style={{ marginTop: '.5rem', padding: '.55rem .7rem', border: BORDER, borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: MUTED, marginBottom: '.35rem' }}>Preview</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem', fontFamily: riderFontFamilyCss(box.fontFamily), fontSize: riderFontSizePx(box.fontSize) }}>
+                    {lines.map((line, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '.35rem', color: 'var(--white,#fff)' }}>
+                        <span style={{ color: NEON, flexShrink: 0 }}>{riderListPrefix(style, i)}</span>
+                        <span>{line}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Attachment — Technical + Visuals boxes only. One image or PDF,
                 ≤5MB, that travels with the rider (attached to the host email
