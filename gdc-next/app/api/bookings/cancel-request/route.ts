@@ -32,6 +32,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
+import { getActingContext, canAcceptBookings } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -211,9 +212,21 @@ export async function POST(req: Request) {
       .maybeSingle<BookingRow>();
     if (!data) return fail('Booking not found', 404);
 
-    if (data.dj_id === user.id) actor = 'dj';
-    else if (data.requester_id === user.id) actor = 'host';
-    else return fail('Not your booking', 403);
+    // TEAM SEATS: a teammate acts on the OWNER's booking (dj_id === acting.djId),
+    // and cancelling is a manager+ action. The host is always their own account
+    // (requester_id === user.id) and never a teammate. Keying the DJ side to
+    // user.id 403'd every teammate.
+    const acting = await getActingContext(user.id);
+    if (data.dj_id === acting.djId) {
+      if (!canAcceptBookings(acting.role)) {
+        return fail('You do not have permission to cancel this booking.', 403);
+      }
+      actor = 'dj';
+    } else if (data.requester_id === user.id) {
+      actor = 'host';
+    } else {
+      return fail('Not your booking', 403);
+    }
 
     booking = data;
   }
