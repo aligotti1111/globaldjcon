@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { type MobilePackage } from '../[slug]/bookingSettings';
 
@@ -102,6 +102,21 @@ export default function UpcomingBookingsClient({
       b.id === bookingId ? { ...b, planner_status: row.status } : b
     )));
   }
+
+  // Re-sync the top-level state with fresh SERVER data whenever it arrives.
+  // The booking log is derived from timestamp columns the server stamps (accept,
+  // contract, deposit, planner, overtime, cancellation…). Optimistic local
+  // updates change status badges but NOT those timestamps, so a log entry never
+  // showed until a full reload. Actions now call `refresh()` (router.refresh),
+  // which re-runs the server page; these effects then flow the fresh
+  // bookings/payments/planner rows — timestamps and all — into state, so the log
+  // updates in place. (Server data is authoritative; it supersedes the optimistic
+  // copy the instant the refresh lands.)
+  const router = useRouter();
+  const refresh = () => router.refresh();
+  useEffect(() => { setBookings(initialBookings); }, [initialBookings]);
+  useEffect(() => { setPaymentsMap(initialPayments || {}); }, [initialPayments]);
+  useEffect(() => { setPlannerMap(initialPlanners || {}); }, [initialPlanners]);
   // The DJ's standing club deposit % (from booking_settings). Lets club
   // booking cards show the deposit even when it wasn't stored per-booking —
   // matching what the contract applies.
@@ -609,6 +624,7 @@ export default function UpcomingBookingsClient({
                 archive={archive}
                 payments={paymentsMap[b.id] || []}
                 onPaymentsChange={handlePaymentsChange}
+                onMutated={refresh}
                 canPro={canPro}
                 planner={plannerMap[b.id]}
                 onPlannerChange={handlePlannerChange}
@@ -648,6 +664,7 @@ export default function UpcomingBookingsClient({
                     archive={archive}
                     payments={paymentsMap[b.id] || []}
                     onPaymentsChange={handlePaymentsChange}
+                    onMutated={refresh}
                     canPro={canPro}
                 planner={plannerMap[b.id]}
                     onPlannerChange={handlePlannerChange}
