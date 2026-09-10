@@ -27,6 +27,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { paypalFetch, paypalConfigured } from '@/lib/paypal/server';
+import { getActingContext, canBilling } from '@/lib/acting';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,6 +65,12 @@ export async function POST(req: Request) {
     const { data: { user }, error: authErr } = await withDeadline(supabase.auth.getUser(), 'Auth check');
     if (authErr) return NextResponse.json({ error: `Auth: ${authErr.message}` }, { status: 401 });
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+    // OWNER ONLY — connecting / disconnecting a PayPal merchant is a payout rail.
+    const acting = await getActingContext(user.id);
+    if (!canBilling(acting.role)) {
+      return NextResponse.json({ error: 'Only the account owner can manage payouts.' }, { status: 403 });
+    }
 
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
