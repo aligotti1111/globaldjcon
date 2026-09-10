@@ -214,7 +214,7 @@ const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
 };
 const DEFAULT_MARK_SIZE = 24;
 
-export default function PaymentMethodsSection({ userId, currency, onDirtyChange }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void }) {
+export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
   // edits). The two are equal right after a load or a save; the moment the DJ
@@ -226,9 +226,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
   const [loaded, setLoaded] = useState(false);
   // Owner-only gate. Payment options decide where money lands, so NO team
   // member (admin/manager/assistant) may edit them — whatever surface opened
-  // this editor. null = still checking; false = a non-owner, show locked.
-  const [isOwner, setIsOwner] = useState<boolean | null>(null);
+  // this editor. When the caller already knows the acting role (the booking
+  // dashboard does), it passes ownerHint so there's NO extra round-trip and
+  // the lock (or editor) shows instantly. Otherwise we resolve it ourselves.
+  const [isOwner, setIsOwner] = useState<boolean | null>(ownerHint ?? null);
   useEffect(() => {
+    if (ownerHint !== undefined) { setIsOwner(ownerHint); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -240,7 +243,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange 
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [ownerHint]);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
