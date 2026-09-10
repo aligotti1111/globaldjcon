@@ -890,7 +890,7 @@ export default function ClubBookingTab({
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Enable DJ Rider</div>
                     <div className={styles.settingHint}>
-                      Adds a rider step to your club bookings. You customize it per booking on the
+                      Adds a rider step to your club/bar bookings. You customize it per booking on the
                       card, then send it to the host.
                     </div>
                   </div>
@@ -917,14 +917,6 @@ export default function ClubBookingTab({
 
                 {riderEnabled && (
                   <div style={{ marginTop: '1.1rem' }}>
-                    <p className={styles.bodyHint}>
-                      Choose how your rider is built by default: upload a pre-made PDF, or create a
-                      custom rider from boxes. In custom mode you set up your default boxes &mdash;{' '}
-                      <strong>Technical</strong>, <strong>Visuals</strong> and <strong>Beverages</strong> to start,
-                      plus any extra boxes you add. Drag to reorder, and switch a box off to leave it out.
-                      Per booking, the <strong>Technical</strong> box is refilled from that booking&rsquo;s
-                      Equipment choice. Everything stays editable per booking.
-                    </p>
                     <RiderBuilder
                       mode={riderMode}
                       onModeChange={setRiderMode}
