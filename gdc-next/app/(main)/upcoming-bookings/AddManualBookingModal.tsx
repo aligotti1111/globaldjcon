@@ -709,7 +709,6 @@ export default function AddManualBookingModal({
 
     setSaving(true);
     try {
-      const supabase = createClient();
       const coords = venueCoordsRef.current;
       // Shared payload for both insert and update.
       const trimmedEmail = hostEmail.trim();
@@ -817,21 +816,23 @@ export default function AddManualBookingModal({
         deposit_pct: moneyPreview && moneyPreview.dPct > 0 ? moneyPreview.dPct : null,
         deposit_amount: moneyPreview && moneyPreview.depositAmount > 0 ? moneyPreview.depositAmount : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount';
 
       // Decide whether to send the invite email after save.
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
 
+      // Manual booking writes go through the gated server route (manager+ only,
+      // scoped to the OWNER). A browser insert/update is rejected by RLS for a
+      // teammate (INSERT 42501; UPDATE silently matches 0 rows), so managers and
+      // admins acting for an owner could not add or edit bookings at all.
       if (isEdit) {
-        const { data, error: e } = await supabase
-          .from('bookings')
-          .update(payload as unknown as never)
-          .eq('id', existing.id)
-          .eq('dj_id', userId)
-          .select(selectCols)
-          .single();
-        if (e) throw e;
-        let updated = { ...(data as unknown as UpcomingBooking), is_manual: true };
+        const res = await fetch('/api/bookings/manual', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: existing.id, payload }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j?.error || 'Could not save.');
+        let updated = { ...(j.booking as unknown as UpcomingBooking), is_manual: true };
         // Fire email if requested.
         if (shouldSend) {
           const result = await sendHostInviteEmail({
@@ -846,11 +847,11 @@ export default function AddManualBookingModal({
           });
           if (result.ok) {
             const nowIso = new Date().toISOString();
-            await supabase
-              .from('bookings')
-              .update({ host_email_sent_at: nowIso } as unknown as never)
-              .eq('id', existing.id)
-              .eq('dj_id', userId);
+            await fetch('/api/bookings/manual', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: existing.id, payload: { host_email_sent_at: nowIso } }),
+            });
             updated = { ...updated, host_email_sent_at: nowIso };
             setHostEmailSentAt(nowIso);
           } else {
@@ -864,20 +865,14 @@ export default function AddManualBookingModal({
         }
         onUpdated(updated);
       } else {
-        const insertRow = {
-          ...payload,
-          dj_id: userId,
-          requester_id: userId,
-          is_manual: true,
-          status: 'approved',
-        };
-        const { data, error: e } = await supabase
-          .from('bookings')
-          .insert(insertRow as unknown as never)
-          .select(selectCols)
-          .single();
-        if (e) throw e;
-        let inserted = { ...(data as unknown as UpcomingBooking), is_manual: true };
+        const res = await fetch('/api/bookings/manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j?.error || 'Could not save.');
+        let inserted = { ...(j.booking as unknown as UpcomingBooking), is_manual: true };
         if (shouldSend) {
           const result = await sendHostInviteEmail({
             bookingId: inserted.id,
@@ -891,11 +886,11 @@ export default function AddManualBookingModal({
           });
           if (result.ok) {
             const nowIso = new Date().toISOString();
-            await supabase
-              .from('bookings')
-              .update({ host_email_sent_at: nowIso } as unknown as never)
-              .eq('id', inserted.id)
-              .eq('dj_id', userId);
+            await fetch('/api/bookings/manual', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: inserted.id, payload: { host_email_sent_at: nowIso } }),
+            });
             inserted = { ...inserted, host_email_sent_at: nowIso };
           } else {
             setError('Booking saved, but email failed: ' + (result.error || 'unknown'));
