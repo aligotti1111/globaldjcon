@@ -21,6 +21,7 @@ import UpcomingBookingsClient from './UpcomingBookingsClient';
 import { parseBookingSettings, type BookingSettings } from '../[slug]/bookingSettings';
 import { getActingContext } from '@/lib/acting';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
+import { canUsePro, type AccessFields } from '@/lib/access';
 import {
   plannerProgress,
   type PlannerField,
@@ -193,7 +194,7 @@ export interface BookingPayment {
   confirmed_at?: string | null;
 }
 
-interface ProfileRow {
+interface ProfileRow extends AccessFields {
   role: string | null;
   dj_type: string | null;
   country: string | null;
@@ -216,7 +217,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings, timezone')
+    .select('role, dj_type, country, name, booking_settings, timezone, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -236,6 +237,28 @@ export default async function UpcomingBookingsPage() {
   const bookingsPerDay = settings?.mob_bookings_per_day || 1;
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
+
+  // Subscription- and settings-derived gating, computed HERE (server, admin
+  // client, acting.djId) rather than in the client. A teammate's browser reads
+  // the users row via the RLS client, which returns NOTHING for the owner's row
+  // (same reason this page uses admin above) — so client-side canPro/deposit/tax
+  // silently came back false/unset, telling a teammate the OWNER's Pro planner
+  // was "a Pro feature." The owner's real standing is only knowable server-side.
+  const canPro = !!profile && canUsePro(profile);
+  const isPaid = profile?.sub_status === 'active' || profile?.sub_status === 'grace';
+  const s = (settings || {}) as BookingSettings & {
+    rate_currency?: string; require_contract?: boolean;
+    rider_enabled?: boolean; guestlist_enabled?: boolean;
+    club_deposit_pct?: number; mob_deposit_pct?: number;
+    tax_enabled?: boolean; tax_pct?: number;
+  };
+  const settingsCurrency = s.rate_currency || 'USD';
+  const requireContract = !!s.require_contract;
+  const riderEnabled = !!s.rider_enabled;
+  const guestlistEnabled = !!s.guestlist_enabled;
+  const clubDepositPct = (() => { const v = Number(s.club_deposit_pct); return Number.isFinite(v) && v > 0 ? v : 0; })();
+  const mobDepositPct = (() => { const v = Number(s.mob_deposit_pct); return Number.isFinite(v) && v > 0 ? v : 0; })();
+  const taxPct = (() => { if (!s.tax_enabled) return 0; const t = Number(s.tax_pct); return Number.isFinite(t) && t > 0 ? t : 0; })();
 
   // Today (YYYY-MM-DD) in the DJ's timezone — event_date is a plain date, so a
   // string compare works. Using the DJ's zone (not UTC) keeps a same-day gig in
@@ -432,6 +455,15 @@ export default async function UpcomingBookingsPage() {
       mobPackages={mobPackages ?? null}
       initialPayments={paymentsByBooking}
       initialPlanners={plannersByBooking}
+      canPro={canPro}
+      isPaid={isPaid}
+      settingsCurrency={settingsCurrency}
+      requireContract={requireContract}
+      riderEnabled={riderEnabled}
+      guestlistEnabled={guestlistEnabled}
+      clubDepositPct={clubDepositPct}
+      mobDepositPct={mobDepositPct}
+      taxPct={taxPct}
     />
   );
 }
