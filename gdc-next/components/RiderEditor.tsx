@@ -20,15 +20,28 @@ import { createClient } from '@/lib/supabase/client';
 import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
-  normalizeListStyle, type RiderListStyle, type RiderBox, type RiderItem,
+  normalizeListStyle, normalizeFontSize, normalizeFontFamily,
+  riderFontFamilyCss, riderFontSizePx,
+  type RiderListStyle, type RiderFontSize, type RiderFontFamily,
+  type RiderBox, type RiderItem,
 } from '@/lib/rider';
 
-// The list-style choices, shown as little icon buttons on each box.
+// Each set of choices is shown as little icon buttons on the box.
 const LIST_ICONS: { key: RiderListStyle; glyph: string; title: string }[] = [
   { key: 'none', glyph: '—', title: 'No bullets' },
   { key: 'bullet', glyph: '•', title: 'Bullets' },
   { key: 'number', glyph: '1.', title: 'Numbers' },
   { key: 'check', glyph: '✓', title: 'Checkmarks' },
+];
+const SIZE_OPTIONS: { key: RiderFontSize; label: string }[] = [
+  { key: 'sm', label: 'Small' },
+  { key: 'md', label: 'Medium' },
+  { key: 'lg', label: 'Large' },
+];
+const FONT_OPTIONS: { key: RiderFontFamily; label: string }[] = [
+  { key: 'sans', label: 'Sans' },
+  { key: 'serif', label: 'Serif' },
+  { key: 'mono', label: 'Mono' },
 ];
 
 const NEON = 'var(--neon,#00e0a4)';
@@ -254,31 +267,46 @@ export default function RiderEditor({
               </div>
             )}
 
-            {/* List style — icon buttons. Adds a bullet / number / checkmark
-                to each line on the rider the host sees. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.35rem', marginBottom: '.5rem' }}>
-              {LIST_ICONS.map((o) => {
-                const active = normalizeListStyle(box.listStyle) === o.key;
-                return (
-                  <button
-                    key={o.key}
-                    type="button"
-                    onClick={() => patchBox(box.id, { listStyle: o.key })}
-                    title={o.title}
-                    aria-label={o.title}
-                    aria-pressed={active}
-                    style={{
-                      minWidth: 30, height: 30, padding: '0 .4rem', borderRadius: 7, cursor: 'pointer',
-                      fontSize: '.9rem', fontWeight: 700, lineHeight: 1,
-                      background: active ? NEON : 'transparent',
-                      color: active ? '#04120d' : MUTED,
-                      border: `1px solid ${active ? NEON : 'rgba(255,255,255,.18)'}`,
-                    }}
-                  >
-                    {o.glyph}
-                  </button>
-                );
-              })}
+            {/* Icon controls for this box: list style, text size, font. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
+              {/* List style */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }}>
+                {LIST_ICONS.map((o) => {
+                  const active = normalizeListStyle(box.listStyle) === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => patchBox(box.id, { listStyle: o.key })}
+                      title={o.title}
+                      aria-label={o.title}
+                      aria-pressed={active}
+                      style={iconBtn(active)}
+                    >
+                      {o.glyph}
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,.14)' }} aria-hidden />
+              {/* Text size — dropdown list */}
+              <select
+                value={normalizeFontSize(box.fontSize)}
+                onChange={(e) => patchBox(box.id, { fontSize: e.target.value as RiderFontSize })}
+                aria-label="Text size for this box"
+                style={selectStyle}
+              >
+                {SIZE_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
+              {/* Font family — dropdown list */}
+              <select
+                value={normalizeFontFamily(box.fontFamily)}
+                onChange={(e) => patchBox(box.id, { fontFamily: e.target.value as RiderFontFamily })}
+                aria-label="Font for this box"
+                style={selectStyle}
+              >
+                {FONT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
             </div>
 
             <textarea
@@ -292,7 +320,8 @@ export default function RiderEditor({
                 resize: 'vertical',
                 lineHeight: 1.5,
                 minHeight: 90,
-                fontFamily: 'inherit',
+                fontFamily: riderFontFamilyCss(box.fontFamily),
+                fontSize: riderFontSizePx(box.fontSize),
               }}
             />
 
@@ -370,6 +399,21 @@ export default function RiderEditor({
       </button>
     </div>
   );
+}
+
+const selectStyle: React.CSSProperties = {
+  background: 'var(--deep, #000)', border: BORDER, borderRadius: 7,
+  color: 'var(--white,#fff)', padding: '.3rem .45rem', fontSize: '.8rem', height: 30,
+};
+
+function iconBtn(active: boolean): React.CSSProperties {
+  return {
+    minWidth: 30, height: 30, padding: '0 .4rem', borderRadius: 7, cursor: 'pointer',
+    fontWeight: 700, lineHeight: 1,
+    background: active ? NEON : 'transparent',
+    color: active ? '#04120d' : MUTED,
+    border: `1px solid ${active ? NEON : 'rgba(255,255,255,.18)'}`,
+  };
 }
 
 function ctl(color: string, disabled: boolean): React.CSSProperties {
