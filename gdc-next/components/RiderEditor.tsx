@@ -20,8 +20,16 @@ import { createClient } from '@/lib/supabase/client';
 import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
-  type RiderBox, type RiderItem,
+  normalizeListStyle, type RiderListStyle, type RiderBox, type RiderItem,
 } from '@/lib/rider';
+
+// The list-style choices, shown as little icon buttons on each box.
+const LIST_ICONS: { key: RiderListStyle; glyph: string; title: string }[] = [
+  { key: 'none', glyph: '—', title: 'No bullets' },
+  { key: 'bullet', glyph: '•', title: 'Bullets' },
+  { key: 'number', glyph: '1.', title: 'Numbers' },
+  { key: 'check', glyph: '✓', title: 'Checkmarks' },
+];
 
 const NEON = 'var(--neon,#00e0a4)';
 const MUTED = 'var(--muted,#8a8aa0)';
@@ -246,10 +254,37 @@ export default function RiderEditor({
               </div>
             )}
 
+            {/* List style — icon buttons. Adds a bullet / number / checkmark
+                to each line on the rider the host sees. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.35rem', marginBottom: '.5rem' }}>
+              {LIST_ICONS.map((o) => {
+                const active = normalizeListStyle(box.listStyle) === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => patchBox(box.id, { listStyle: o.key })}
+                    title={o.title}
+                    aria-label={o.title}
+                    aria-pressed={active}
+                    style={{
+                      minWidth: 30, height: 30, padding: '0 .4rem', borderRadius: 7, cursor: 'pointer',
+                      fontSize: '.9rem', fontWeight: 700, lineHeight: 1,
+                      background: active ? NEON : 'transparent',
+                      color: active ? '#04120d' : MUTED,
+                      border: `1px solid ${active ? NEON : 'rgba(255,255,255,.18)'}`,
+                    }}
+                  >
+                    {o.glyph}
+                  </button>
+                );
+              })}
+            </div>
+
             <textarea
               value={boxText(box)}
               onChange={(e) => setBoxText(box, e.target.value)}
-              placeholder={`Type your ${box.title.toLowerCase()} requirements…`}
+              placeholder={`Type your ${box.title.toLowerCase()} requirements… (one per line)`}
               rows={4}
               style={{
                 ...input,
