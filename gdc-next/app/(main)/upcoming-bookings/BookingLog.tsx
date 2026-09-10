@@ -95,6 +95,9 @@ export default function BookingLog({ booking, payments }: Props) {
   // distinct from a confirmed payment in the ledger above.
   add(booking.deposit_completed_at, 'Deposit marked complete', 'dj');
   add(booking.deposit_completion_undone_at, 'Deposit completion undone', 'dj');
+  // Balance / final invoice marked complete by hand (outside the app).
+  add(booking.balance_completed_at, 'Balance marked complete', 'dj');
+  add(booking.balance_completion_undone_at, 'Balance completion undone', 'dj');
   add(booking.deposit_skipped_at, 'Deposit skipped', 'dj');
   add(booking.deposit_skip_undone_at, 'Deposit skip undone', 'dj');
   if (!booking.deposit_skipped_at) {
@@ -128,16 +131,20 @@ export default function BookingLog({ booking, payments }: Props) {
   add(booking.overtime_paid_at, 'Overtime paid · receipt sent', 'dj');
   add(booking.overtime_cancelled_at, 'Overtime invoice cancelled', 'dj');
 
-  // ── Cancellation ── the request is attributed to whoever asked; an
-  // accept/decline is the OTHER party responding.
+  // ── Cancellation ── TWO moments, each at its own time: the REQUEST (whoever
+  // asked) always shows; if it was answered, the ACCEPT/DECLINE shows too — at
+  // cancel_responded_at (the OTHER party). Previously only one line rendered,
+  // and the answer stole the request's timestamp; the request just vanished.
   if (booking.cancel_requested_at) {
     const byDj = booking.cancel_requested_by === 'dj';
+    add(booking.cancel_requested_at, `Cancellation requested by ${byDj ? 'you' : 'host'}`, byDj ? 'dj' : 'host');
+    // The responder is the opposite party. Fall back to the request time only
+    // if the response wasn't separately stamped (legacy rows).
+    const respondedAt = booking.cancel_responded_at || booking.cancel_requested_at;
     if (booking.cancel_status === 'accepted') {
-      add(booking.cancel_requested_at, 'Cancellation accepted', byDj ? 'host' : 'dj');
+      add(respondedAt, 'Cancellation accepted', byDj ? 'host' : 'dj');
     } else if (booking.cancel_status === 'declined') {
-      add(booking.cancel_requested_at, 'Cancellation declined', byDj ? 'host' : 'dj');
-    } else {
-      add(booking.cancel_requested_at, `Cancellation requested by ${byDj ? 'you' : 'host'}`, byDj ? 'dj' : 'host');
+      add(respondedAt, 'Cancellation declined', byDj ? 'host' : 'dj');
     }
   }
 
