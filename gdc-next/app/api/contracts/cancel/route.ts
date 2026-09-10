@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { getActingContext, canSendContracts } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -105,5 +106,6 @@ export async function POST(req: Request) {
     );
   }
 
+  await logActivity(acting, { action: 'contract.cancelled', summary: 'Cancelled a contract', bookingId });
   return NextResponse.json({ ok: true });
 }
