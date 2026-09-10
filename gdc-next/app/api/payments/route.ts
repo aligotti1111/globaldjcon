@@ -864,7 +864,10 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     const b = bData as (BookingRow & { booking_type: string | null; overtime_invoiced_at: string | null }) | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
-    if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
+    // Overtime is a money action end to end — send the overtime request/invoice,
+    // mark it paid (receipt), download it, or clear it. Manager+ only
+    // (owner / admin / manager); assistants cannot touch overtime.
+    if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot manage overtime.' }, { status: 403 });
     if ((b.booking_type || '') === 'club') return NextResponse.json({ error: 'Overtime applies to mobile bookings only.' }, { status: 400 });
 
     const cur = b.currency || 'USD';
