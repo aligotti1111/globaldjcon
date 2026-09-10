@@ -184,7 +184,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               doesn't belong under a heading with settings. */}
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              View My Profile
+              {isTeammate ? 'View Profile' : 'View My Profile'}
             </Link>
           )}
 
