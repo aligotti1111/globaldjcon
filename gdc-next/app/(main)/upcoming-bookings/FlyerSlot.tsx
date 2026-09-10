@@ -7,7 +7,6 @@
 // has to be importable by both rather than a sibling of one of them.
 
 import { useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useConfirm } from '@/components/ConfirmModal';
 import styles from './upcomingBookings.module.css';
 
@@ -20,10 +19,12 @@ import styles from './upcomingBookings.module.css';
 // ───────────────────────────────────────────────────────────────────────
 
 export default function FlyerSlot({
-  bookingId, userId, flyerUrl, onChange, size = 'row', readOnly = false,
+  bookingId, flyerUrl, onChange, size = 'row', readOnly = false,
 }: {
   bookingId: string;
-  userId: string;
+  // Kept for call-site compatibility; the flyer write is now server-side and
+  // resolves the owner itself, so the component no longer needs the id.
+  userId?: string;
   flyerUrl: string | null;
   onChange: (url: string | null) => void;
   size?: 'row' | 'card';
@@ -42,23 +43,17 @@ export default function FlyerSlot({
     if (!file) return;
     setUploading(true);
     try {
-      const supabase = createClient();
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${userId}/flyers/${bookingId}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (uploadErr) throw uploadErr;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
-      // DJ-side update — this view belongs to the DJ, so key on dj_id.
-      const { error: updErr } = await supabase
-        .from('bookings')
-        .update({ flyer_url: publicUrl } as unknown as never)
-        .eq('id', bookingId)
-        .eq('dj_id', userId);
-      if (updErr) throw updErr;
-      onChange(publicUrl);
+      // Upload + save via the server route (assistant+), scoped to the owner —
+      // a teammate can't write to the owner's storage folder or booking row
+      // directly (RLS). The route uploads with the service role and returns the
+      // public URL.
+      const fd = new FormData();
+      fd.append('bookingId', bookingId);
+      fd.append('file', file);
+      const res = await fetch('/api/bookings/flyer', { method: 'POST', body: fd });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || 'Upload failed');
+      onChange(j.url as string);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -77,13 +72,13 @@ export default function FlyerSlot({
     });
     if (!ok) return;
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('bookings')
-        .update({ flyer_url: null } as unknown as never)
-        .eq('id', bookingId)
-        .eq('dj_id', userId);
-      if (error) throw error;
+      const res = await fetch('/api/bookings/flyer', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || 'Remove failed');
       onChange(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Remove failed');
