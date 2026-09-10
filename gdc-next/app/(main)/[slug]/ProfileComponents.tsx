@@ -2714,44 +2714,35 @@ export function TestimonialAddForm({
 
 // ── AboutStatsRow ──────────────────────────────────────────────
 // About-tab highlight cards (mobile DJs only). Each card must be activated
-// by the owner to show to visitors. Travel auto-fills from travel_distance;
-// the rest the owner sets (established year, events tier, insured, deposit).
-function formatTravel(travelDistance: string | null): string {
-  if (!travelDistance) return '';
-  const t = travelDistance.trim();
-  if (!t) return '';
-  if (t.toLowerCase() === 'worldwide') return 'Worldwide';
-  const n = parseInt(t, 10);
-  if (!Number.isNaN(n)) return `${n} mi`;
-  return t;
-}
-
+// by the owner to show to visitors. The owner sets each value (established
+// year, events tier, insured, deposit %, and the yes/no facts).
 export function AboutStatsRow({
   userId,
   isOwnProfile,
   stats,
-  travelDistance,
 }: {
   userId: string;
   isOwnProfile: boolean;
   stats: AboutStats;
-  travelDistance: string | null;
+  // travelDistance is still passed by the caller but no longer surfaced here.
+  travelDistance?: string | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<AboutStats>(stats);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const travelValue = formatTravel(travelDistance);
-
   // Build the list of cards to show to visitors (activated + has a value).
   type Card = { key: string; label: string; value: string };
   const cards: Card[] = [];
-  if (stats.travel?.on && travelValue) cards.push({ key: 'travel', label: 'Travel', value: travelValue });
   if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
   if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Events', value: stats.events.tier });
   if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: 'Yes' });
-  if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: stats.deposit.value });
+  if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
+  if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: 'Yes' });
+  if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: 'Yes' });
+  if (stats.eventsTotal?.on && stats.eventsTotal.count) cards.push({ key: 'eventsTotal', label: 'Events DJed', value: stats.eventsTotal.count });
+  if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: 'Yes' });
 
   async function save() {
     setBusy(true);
@@ -2809,14 +2800,6 @@ export function AboutStatsRow({
           </div>
 
           <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Distance you travel</span>
-            <span className={styles.aboutStatsRowControl}>
-              <span className={styles.aboutStatsAuto}>{travelValue || 'Set in booking settings'}</span>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.travel?.on} disabled={!travelValue} onChange={() => toggle('travel')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
             <span className={styles.aboutStatsRowLabel}>Established</span>
             <span className={styles.aboutStatsRowControl}>
               <select
@@ -2854,16 +2837,52 @@ export function AboutStatsRow({
           </label>
 
           <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Deposit to book</span>
+            <span className={styles.aboutStatsRowLabel}>Deposit to book (%)</span>
             <span className={styles.aboutStatsRowControl}>
               <input
                 type="text"
                 className={styles.aboutStatsInput}
-                placeholder="$200"
+                placeholder="e.g. 50%"
+                inputMode="numeric"
                 value={draft.deposit?.value ?? ''}
                 onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
               />
               <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.deposit?.on} onChange={() => toggle('deposit')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Events DJed (total)</span>
+            <span className={styles.aboutStatsRowControl}>
+              <input
+                type="text"
+                className={styles.aboutStatsInput}
+                placeholder="e.g. 350"
+                value={draft.eventsTotal?.count ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, eventsTotal: { ...(d.eventsTotal || {}), count: e.target.value || undefined } }))}
+              />
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.eventsTotal?.on} onChange={() => toggle('eventsTotal')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Destination weddings</span>
+            <span className={styles.aboutStatsRowControl}>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.destination?.on} onChange={() => toggle('destination')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Backup equipment</span>
+            <span className={styles.aboutStatsRowControl}>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.backup?.on} onChange={() => toggle('backup')} />
+            </span>
+          </label>
+
+          <label className={styles.aboutStatsRow}>
+            <span className={styles.aboutStatsRowLabel}>Deposit required</span>
+            <span className={styles.aboutStatsRowControl}>
+              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.depositRequired?.on} onChange={() => toggle('depositRequired')} />
             </span>
           </label>
 
