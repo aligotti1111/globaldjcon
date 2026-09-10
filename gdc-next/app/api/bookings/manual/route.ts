@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext, canAcceptBookings } from '@/lib/acting';
+import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -48,13 +49,13 @@ async function authorize() {
   if (!canAcceptBookings(acting.role)) {
     return { error: NextResponse.json({ error: 'Your role cannot add or edit bookings.' }, { status: 403 }) };
   }
-  return { djId: acting.djId, admin: createAdminClient() };
+  return { djId: acting.djId, acting, admin: createAdminClient() };
 }
 
 export async function POST(req: Request) {
   const auth = await authorize();
   if ('error' in auth) return auth.error;
-  const { djId, admin } = auth;
+  const { djId, acting, admin } = auth;
 
   let body: { payload?: Record<string, unknown> };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -66,13 +67,19 @@ export async function POST(req: Request) {
     .select(SELECT_COLS)
     .single();
   if (error) return NextResponse.json({ error: error.message, code: error.code, details: error.details }, { status: 400 });
+  const created = data as { id?: string; event_date?: string | null; requester_name?: string | null } | null;
+  await logActivity(acting, {
+    action: 'booking.manual_added',
+    summary: `Added a manual booking — ${[created?.requester_name, created?.event_date].filter(Boolean).join(' — ') || 'new booking'}`,
+    bookingId: created?.id ?? null,
+  });
   return NextResponse.json({ ok: true, booking: data });
 }
 
 export async function PATCH(req: Request) {
   const auth = await authorize();
   if ('error' in auth) return auth.error;
-  const { djId, admin } = auth;
+  const { djId, acting, admin } = auth;
 
   let body: { id?: string; payload?: Record<string, unknown> };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -87,6 +94,16 @@ export async function PATCH(req: Request) {
     .select(SELECT_COLS)
     .single();
   if (error) return NextResponse.json({ error: error.message, code: error.code, details: error.details }, { status: 400 });
+  // Don't log the silent host_email_sent_at follow-up write as an "edit".
+  const keys = Object.keys(clean(body.payload));
+  if (!(keys.length === 1 && keys[0] === 'host_email_sent_at')) {
+    const edited = data as { id?: string; event_date?: string | null; requester_name?: string | null } | null;
+    await logActivity(acting, {
+      action: 'booking.manual_edited',
+      summary: `Edited a manual booking — ${[edited?.requester_name, edited?.event_date].filter(Boolean).join(' — ') || 'booking'}`,
+      bookingId: edited?.id ?? id,
+    });
+  }
   return NextResponse.json({ ok: true, booking: data });
 }
 
@@ -97,7 +114,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const auth = await authorize();
   if ('error' in auth) return auth.error;
-  const { djId, admin } = auth;
+  const { djId, acting, admin } = auth;
 
   let body: { id?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
@@ -113,5 +130,6 @@ export async function DELETE(req: Request) {
     .eq('dj_id', djId)
     .eq('is_manual', true);
   if (error) return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+  await logActivity(acting, { action: 'booking.manual_deleted', summary: 'Deleted a manual booking', bookingId: id });
   return NextResponse.json({ ok: true });
 }
