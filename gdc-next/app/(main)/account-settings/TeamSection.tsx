@@ -9,6 +9,7 @@ import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import SectionBanner from '../update-dj-profile/SectionBanner';
 import { TEAM_ROLES, roleMatrix, type TeamRole } from '@/lib/team';
+import ActivityLogModal from './ActivityLogModal';
 
 interface Member { id: string; invited_email: string; name: string | null; role: string; status: string; member_id: string | null; can_addons: boolean; }
 
@@ -27,6 +28,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
   const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({}); // draft role per member (not yet saved)
   const [highlightRole, setHighlightRole] = useState<TeamRole | null>(null); // column to highlight in the chart
   const [savingRole, setSavingRole] = useState<string | null>(null);
+  const [showActivity, setShowActivity] = useState(false); // owner-only activity-log modal
 
   const load = useCallback(async () => {
     try {
@@ -76,9 +78,21 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
         </p>
       ) : (
         <>
-          <p style={{ color: muted, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
+          <p style={{ color: muted, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 .75rem' }}>
             {members.length} of {seatLimit} seats used. Teammates log in with their own email and get the access you choose. Change a role, then <strong style={{ color: '#fff' }}>Save</strong> — the new access applies to their account right away.
           </p>
+
+          {/* Owner-only: audit trail of who did what, when. */}
+          <div style={{ margin: '0 0 1rem' }}>
+            <button
+              type="button"
+              onClick={() => setShowActivity(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', background: 'transparent', border: '1px solid rgba(255,255,255,.2)', borderRadius: 8, color: '#fff', padding: '.45rem .9rem', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" /></svg>
+              View activity log
+            </button>
+          </div>
 
           {members.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
@@ -234,6 +248,8 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
           </div>
         );
       })()}
+
+      {showActivity && <ActivityLogModal onClose={() => setShowActivity(false)} />}
       </div>{/* end inner padding wrapper */}
     </div>
   );
