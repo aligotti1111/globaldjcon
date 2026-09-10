@@ -423,8 +423,9 @@ This link is private to your booking — anyone with it can see and edit your pl
           from: FROM,
           to,
           // "<event date> <event type> Planner & Playlist" — a resend prefixes
-          // "Reminder:", a test prefixes "[TEST]".
-          subject: `${isTest ? '[TEST] ' : ''}${isResend ? 'Reminder: ' : ''}${b.event_date ? `${when} ` : ''}${eventTypeLabel} Planner & Playlist`,
+          // "Reminder:", a test prefixes "[TEST]". Subject date omits the
+          // weekday (kept in the body banner) to stay short.
+          subject: `${isTest ? '[TEST] ' : ''}${isResend ? 'Reminder: ' : ''}${b.event_date ? `${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ` : ''}${eventTypeLabel} Planner & Playlist`,
           html: shell(content),
         });
       } catch {
