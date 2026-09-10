@@ -555,6 +555,45 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const showFaqTab =
     isMobileDJ && tabVisibility.faq && (canEdit || faqs.length > 0);
 
+  // ── Tab order ───────────────────────────────────────────────────────
+  // The owner can drag tabs into any order in the Edit Tabs modal; that order
+  // is stored as a JSON array of keys on users.tab_order. Booking is always
+  // pinned first and never part of this list. Any tabs missing from a saved
+  // order (e.g. a newer tab) fall in at the end in their default order, so an
+  // old saved order never hides a tab.
+  const DEFAULT_TAB_ORDER: Array<Exclude<TabKey, 'booking'>> = [
+    'about', 'mixes', 'images', 'video', 'testimonials', 'faq',
+  ];
+  const tabOrder: Array<Exclude<TabKey, 'booking'>> = (() => {
+    const raw = data.tab_order;
+    let saved: string[] = [];
+    if (raw) {
+      try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed)) saved = parsed.filter((x): x is string => typeof x === 'string');
+      } catch { /* bad JSON — fall back to default */ }
+    }
+    const allowed = new Set<string>(DEFAULT_TAB_ORDER);
+    const seen = new Set<string>();
+    const out: Array<Exclude<TabKey, 'booking'>> = [];
+    for (const k of saved) {
+      if (allowed.has(k) && !seen.has(k)) { out.push(k as Exclude<TabKey, 'booking'>); seen.add(k); }
+    }
+    for (const k of DEFAULT_TAB_ORDER) {
+      if (!seen.has(k)) out.push(k);
+    }
+    return out;
+  })();
+  // Button descriptors, keyed for the ordered render below.
+  const tabDefs: Record<Exclude<TabKey, 'booking'>, { label: string; show: boolean }> = {
+    about: { label: 'About', show: tabVisibility.about },
+    mixes: { label: 'Mixes', show: tabVisibility.mixes },
+    images: { label: 'Photos', show: tabVisibility.images },
+    video: { label: 'Video', show: tabVisibility.video },
+    testimonials: { label: 'Testimonials', show: showTestimonialsTab },
+    faq: { label: 'FAQ', show: showFaqTab },
+  };
+
   // Avatar URL with object-position support
   const avatarPos = data.avatar_position || '50% 50%';
 
@@ -1023,60 +1062,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 Booking
               </button>
             )}
-            {tabVisibility.about && (
-              <button
-                className={tabClass('about')}
-                onClick={() => setActiveTab('about')}
-                type="button"
-              >
-                About
-              </button>
-            )}
-            {tabVisibility.mixes && (
-              <button
-                className={tabClass('mixes')}
-                onClick={() => setActiveTab('mixes')}
-                type="button"
-              >
-                Mixes
-              </button>
-            )}
-            {tabVisibility.images && (
-              <button
-                className={tabClass('images')}
-                onClick={() => setActiveTab('images')}
-                type="button"
-              >
-                Photos
-              </button>
-            )}
-            {tabVisibility.video && (
-              <button
-                className={tabClass('video')}
-                onClick={() => setActiveTab('video')}
-                type="button"
-              >
-                Video
-              </button>
-            )}
-            {showTestimonialsTab && (
-              <button
-                className={tabClass('testimonials')}
-                onClick={() => setActiveTab('testimonials')}
-                type="button"
-              >
-                Testimonials
-              </button>
-            )}
-            {showFaqTab && (
-              <button
-                className={tabClass('faq')}
-                onClick={() => setActiveTab('faq')}
-                type="button"
-              >
-                FAQ
-              </button>
-            )}
+            {/* Non-booking tabs render in the owner's chosen order
+                (users.tab_order), each still gated by its own visibility. */}
+            {tabOrder.map((key) => {
+              const def = tabDefs[key];
+              if (!def.show) return null;
+              return (
+                <button
+                  key={key}
+                  className={tabClass(key)}
+                  onClick={() => setActiveTab(key)}
+                  type="button"
+                >
+                  {def.label}
+                </button>
+              );
+            })}
           </nav>
             {tabsMoreLeft && (
               <button
@@ -1674,6 +1675,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         <EditTabsModal
           userId={data.id}
           initial={tabVisibility}
+          initialOrder={tabOrder}
           isMobileDJ={isMobileDJ}
           onClose={() => setTabsModalOpen(false)}
         />
