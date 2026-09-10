@@ -7,7 +7,7 @@
 //              Print / Save-PDF button.
 
 import { useState } from 'react';
-import { groupRiderBoxes, type RiderItem, type RiderMode } from '@/lib/rider';
+import { groupRiderBoxes, riderListPrefix, normalizeListStyle, type RiderItem, type RiderMode } from '@/lib/rider';
 
 function fmtDate(d: string | null): string {
   if (!d) return '';
@@ -127,6 +127,8 @@ export default function RiderView({
             <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.5rem' }}>
               {boxes.map((box) => {
                 const rows = box.items;
+                const listStyle = normalizeListStyle(box.listStyle);
+                let lineIdx = 0;
                 return (
                   <div key={box.id} style={{ marginBottom: '1.3rem' }}>
                     <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.6rem' }}>
@@ -136,10 +138,30 @@ export default function RiderView({
                       {rows.map((it) => {
                         const lab = (it.label || '').trim();
                         const val = (it.value || '').trim();
+                        // Labeled rows stay a label/value pair (not a list).
+                        if (lab) {
+                          return (
+                            <div key={it.id} style={{ display: 'flex', gap: '.7rem', fontSize: '.95rem', lineHeight: 1.5, alignItems: 'baseline' }}>
+                              <div style={{ minWidth: 150, maxWidth: 150, color: 'rgba(255,255,255,.55)', fontWeight: 600 }}>{lab}</div>
+                              <div style={{ flex: 1, color: 'rgba(255,255,255,.92)', whiteSpace: 'pre-wrap' }}>{val}</div>
+                            </div>
+                          );
+                        }
+                        // Free-text row: each line gets the box's chosen marker.
+                        const lines = val ? val.split('\n') : [''];
                         return (
-                          <div key={it.id} style={{ display: 'flex', gap: '.7rem', fontSize: '.95rem', lineHeight: 1.5, alignItems: 'baseline' }}>
-                            {lab && <div style={{ minWidth: 150, maxWidth: 150, color: 'rgba(255,255,255,.55)', fontWeight: 600 }}>{lab}</div>}
-                            <div style={{ flex: 1, color: 'rgba(255,255,255,.92)', whiteSpace: 'pre-wrap' }}>{val || (lab ? '' : '—')}</div>
+                          <div key={it.id} style={{ display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
+                            {lines.map((line, i) => {
+                              const text = line.trim();
+                              const prefix = text && listStyle !== 'none' ? riderListPrefix(listStyle, lineIdx) : '';
+                              if (text) lineIdx += 1;
+                              return (
+                                <div key={i} style={{ display: 'flex', gap: '.4rem', fontSize: '.95rem', lineHeight: 1.5, color: 'rgba(255,255,255,.92)' }}>
+                                  {prefix && <span style={{ color: 'var(--neon,#00e0a4)', flexShrink: 0 }}>{prefix}</span>}
+                                  <span style={{ whiteSpace: 'pre-wrap' }}>{text || (i === 0 && lines.length === 1 ? '—' : '')}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })}
