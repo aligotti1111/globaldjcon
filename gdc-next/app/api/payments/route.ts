@@ -894,7 +894,11 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         // out. Clearing an un-invoiced draft is just tidying up — nothing to log.
         overtime_cancelled_at: b.overtime_invoiced_at ? new Date().toISOString() : null,
       } as unknown as never).eq('id', bookingId);
-      await logActivity(acting, { action: 'overtime.cleared', summary: 'Cleared overtime', bookingId });
+      // Only log if an invoice had actually gone out — clearing an un-invoiced
+      // draft is tidying up, not an event (matches overtime_cancelled_at above).
+      if (b.overtime_invoiced_at) {
+        await logActivity(acting, { action: 'overtime.cleared', summary: 'Cleared overtime', bookingId });
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -942,6 +946,14 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     // reset the active-overtime UI), these are never cleared, so the log keeps
     // the "invoice sent" / "paid" moments after a clear.
     await admin.from('bookings').update(patch as unknown as never).eq('id', bookingId);
+
+    // Activity log HERE, on the state change — the email below is best-effort
+    // and returns early on failure, which must not lose the audit entry.
+    await logActivity(acting, {
+      action: isInv ? 'overtime.invoiced' : 'overtime.paid',
+      summary: isInv ? `Sent an overtime invoice — ${money(amount, cur)}` : `Marked overtime paid — ${money(amount, cur)}`,
+      bookingId,
+    });
 
     const to = await clientEmailFor(b);
     if (!to) return NextResponse.json({ error: 'No client email on this booking.' }, { status: 400 });
@@ -995,11 +1007,6 @@ ${optionsBlock}`
       return NextResponse.json({ error: isInv ? 'Could not send the invoice email.' : 'Could not send the receipt email.' }, { status: 502 });
     }
 
-    await logActivity(acting, {
-      action: isInv ? 'overtime.invoiced' : 'overtime.paid',
-      summary: isInv ? `Sent an overtime invoice — ${money(amount, cur)}` : `Marked overtime paid — ${money(amount, cur)}`,
-      bookingId,
-    });
     return NextResponse.json({ ok: true, overtime });
   }
 
@@ -1036,12 +1043,16 @@ ${optionsBlock}`
       return NextResponse.json({ error: 'This request already has a payment and can’t be cancelled.' }, { status: 400 });
     }
 
-    const { error } = await db
+    const { data: delRows, error } = await db
       .from('booking_payments')
       .delete()
-      .eq('id', paymentId);
+      .eq('id', paymentId)
+      .select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
 
+    if (Array.isArray(delRows) && delRows.length > 0) {
+      await logActivity(acting, { action: `payment.${p.kind}.request_withdrawn`, summary: `Withdrew a ${p.kind === 'balance' ? 'balance' : 'deposit'} request`, bookingId: p.booking_id });
+    }
     return NextResponse.json({ ok: true });
   }
 
