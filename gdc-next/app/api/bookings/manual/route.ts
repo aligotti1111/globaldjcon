@@ -123,13 +123,18 @@ export async function DELETE(req: Request) {
 
   // Only manual bookings may be hard-deleted here — a real host request is never
   // erased this way (it is cancelled, keeping the record). is_manual guards that.
-  const { error } = await admin
+  const { data: delRows, error } = await admin
     .from('bookings')
     .delete()
     .eq('id', id)
     .eq('dj_id', djId)
-    .eq('is_manual', true);
+    .eq('is_manual', true)
+    .select('id');
   if (error) return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
-  await logActivity(acting, { action: 'booking.manual_deleted', summary: 'Deleted a manual booking', bookingId: id });
+  // Only log if a row was actually removed (a non-manual / foreign id matches
+  // nothing but returns no error — don't write a phantom "deleted" entry).
+  if (Array.isArray(delRows) && delRows.length > 0) {
+    await logActivity(acting, { action: 'booking.manual_deleted', summary: 'Deleted a manual booking', bookingId: id });
+  }
   return NextResponse.json({ ok: true });
 }
