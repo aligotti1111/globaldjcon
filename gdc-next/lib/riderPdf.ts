@@ -13,10 +13,7 @@
 // doesn't appear.
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import {
-  groupRiderBoxes, normalizeListStyle, normalizeFontSize, normalizeFontFamily,
-  type RiderItem, type RiderListStyle, type RiderFontSize, type RiderFontFamily,
-} from './rider';
+import { groupRiderBoxes, type RiderItem } from './rider';
 
 export interface RiderPdfOptions {
   djName: string;
@@ -67,24 +64,6 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
   let page: PDFPage = pdf.addPage([PAGE_W, PAGE_H]);
   const reg = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  // Serif + mono families, embedded once and picked per box by fontFamily.
-  const timesReg = await pdf.embedFont(StandardFonts.TimesRoman);
-  const timesBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
-  const courReg = await pdf.embedFont(StandardFonts.Courier);
-  const courBold = await pdf.embedFont(StandardFonts.CourierBold);
-  const fontsFor = (fam: RiderFontFamily): { reg: PDFFont; bold: PDFFont } => {
-    if (fam === 'serif') return { reg: timesReg, bold: timesBold };
-    if (fam === 'mono') return { reg: courReg, bold: courBold };
-    return { reg, bold };
-  };
-  const sizeFor = (s: RiderFontSize): number => (s === 'sm' ? 9 : s === 'lg' ? 13 : 10.5);
-  // ASCII-safe list prefix (the standard PDF fonts can't encode • or ✓).
-  const pdfPrefix = (style: RiderListStyle, index: number): string => {
-    if (style === 'bullet') return '- ';
-    if (style === 'number') return `${index + 1}. `;
-    if (style === 'check') return '[x] ';
-    return '';
-  };
 
   const rightX = PAGE_W - MARGIN;
   const contentW = rightX - MARGIN;
@@ -154,13 +133,6 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
 
   for (const box of boxes) {
     const rows = box.items;
-    // Per-box display options chosen in the editor.
-    const bodyFam = normalizeFontFamily(box.fontFamily);
-    const bodyFonts = fontsFor(bodyFam);
-    const bodySize = sizeFor(normalizeFontSize(box.fontSize));
-    const listStyle = normalizeListStyle(box.listStyle);
-    const lineH = bodySize + 4;
-    let listIdx = 0; // continuous index for numbered lists across the box
 
     ensure(28);
     drawL(box.title.toUpperCase(), MARGIN, y, 9, bold, ACCENT);
@@ -172,32 +144,21 @@ export async function buildRiderPdf(opts: RiderPdfOptions): Promise<Uint8Array> 
       // A field with only a value falls back to full-width; with a label it's a
       // two-column label/value row.
       if (lab) {
-        const labLines = wrap(lab, bodyFonts.bold, bodySize, labelColW - 10);
-        const valLines = val ? wrap(val, bodyFonts.reg, bodySize, rightX - valX) : [''];
+        const labLines = wrap(lab, bold, 10, labelColW - 10);
+        const valLines = val ? wrap(val, reg, 10, rightX - valX) : [''];
         const rowLines = Math.max(labLines.length, valLines.length);
-        ensure(rowLines * lineH + 6);
+        ensure(rowLines * 14 + 6);
         for (let i = 0; i < rowLines; i++) {
-          if (labLines[i]) drawL(labLines[i], MARGIN, y, bodySize, bodyFonts.bold, INK);
-          if (valLines[i]) drawL(valLines[i], valX, y, bodySize, bodyFonts.reg, INK);
-          y -= lineH;
+          if (labLines[i]) drawL(labLines[i], MARGIN, y, 10, bold, INK);
+          if (valLines[i]) drawL(valLines[i], valX, y, 10, reg, INK);
+          y -= 14;
         }
       } else {
-        // Each SOURCE line of the free-text becomes one bulleted item; long
-        // items wrap under a hanging indent.
-        const srcLines = val ? val.split('\n') : [''];
-        for (const src of srcLines) {
-          const text = src.trim();
-          if (!text) continue;
-          const prefix = pdfPrefix(listStyle, listIdx);
-          listIdx += 1;
-          const indent = prefix ? bodyFonts.reg.widthOfTextAtSize(prefix, bodySize) : 0;
-          const wrapped = wrap(text, bodyFonts.reg, bodySize, contentW - 10 - indent);
-          ensure(wrapped.length * lineH + 4);
-          wrapped.forEach((ln, i) => {
-            const draw = i === 0 ? `${prefix}${ln}` : ln;
-            drawL(draw, i === 0 ? MARGIN : MARGIN + indent, y, bodySize, bodyFonts.reg, INK);
-            y -= lineH;
-          });
+        const valLines = wrap(val, reg, 10, contentW - 10);
+        ensure(valLines.length * 14 + 6);
+        for (const ln of valLines) {
+          drawL(`• ${ln}`, MARGIN, y, 10, reg, INK);
+          y -= 14;
         }
       }
       y -= 4;
