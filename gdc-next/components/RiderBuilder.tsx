@@ -116,6 +116,12 @@ export default function RiderBuilder({
       if (!res.ok || !data.ok || !data.url) throw new Error(data.error || 'Upload failed.');
       setPickedName(file.name);
       onPdfUrlChange(data.url);
+      // Default the rider name to the PDF's filename (minus extension) when the
+      // DJ hasn't named it yet — they can still edit it to whatever they want.
+      if (onNameChange && !name?.trim()) {
+        const base = file.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim();
+        if (base) onNameChange(base.slice(0, 80));
+      }
       setMsg('✓ Rider PDF uploaded.');
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Upload failed — try again.');
@@ -161,21 +167,6 @@ export default function RiderBuilder({
 
   return (
     <div>
-      {logoUrl && (
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '1.3rem',
-            paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,.1)',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoUrl} alt="Your logo" style={{ maxHeight: 48, maxWidth: 160, objectFit: 'contain' }} />
-          <span style={{ color: MUTED, fontSize: '.76rem' }}>
-            Your logo appears at the top of the rider the host sees.
-          </span>
-        </div>
-      )}
-
       {onNameChange && (
         <div style={{ marginBottom: '1.3rem' }}>
           <div
@@ -218,8 +209,13 @@ export default function RiderBuilder({
           >
             How do you want to build this rider?
           </div>
-          <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap', marginBottom: '1.3rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem', marginBottom: '1.3rem' }}>
             <Card m="upload" title="Upload Rider" desc="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
+              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', letterSpacing: '.1em', color: MUTED }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
+            </div>
             <Card m="custom" title="Create Custom Rider" desc="Build your rider from labeled fields. We generate a branded PDF for the host." />
           </div>
         </>
@@ -286,7 +282,34 @@ export default function RiderBuilder({
           {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
         </div>
       ) : (
-        <RiderEditor items={items} onChange={onItemsChange} />
+        <div>
+          {/* Custom mode only: the branded header the host sees at the top of
+              the generated rider — the DJ's logo and name. (Uploaded PDFs are
+              sent exactly as-is, so no branding is added there.) */}
+          {(logoUrl || djName) && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '1.1rem',
+                padding: '.9rem 1rem', borderRadius: 12,
+                background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)',
+              }}
+            >
+              {logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Your logo" style={{ maxHeight: 44, maxWidth: 140, objectFit: 'contain' }} />
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {djName || 'Your DJ name'}
+                </div>
+                <div style={{ color: MUTED, fontSize: '.74rem', marginTop: 2 }}>
+                  Your logo and name appear at the top of the rider the host sees.
+                </div>
+              </div>
+            </div>
+          )}
+          <RiderEditor items={items} onChange={onItemsChange} />
+        </div>
       )}
 
       {/* Preview — opens the rider exactly as the host sees it (logo on top,
