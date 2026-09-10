@@ -20,9 +20,6 @@ import { createClient } from '@/lib/supabase/client';
 import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
-  RIDER_LIST_STYLES, RIDER_FONT_SIZES, RIDER_FONT_FAMILIES,
-  riderFontFamilyCss, riderFontSizePx, riderListPrefix,
-  normalizeListStyle, normalizeFontSize, normalizeFontFamily,
   type RiderBox, type RiderItem,
 } from '@/lib/rider';
 
@@ -249,111 +246,20 @@ export default function RiderEditor({
               </div>
             )}
 
-            {/* Per-box display options: how each line is bulleted, plus the
-                text size and font of this box on the sent rider. */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginBottom: '.7rem' }}>
-              <label style={styleCtlWrap}>
-                <span style={styleCtlLabel}>List</span>
-                <select
-                  value={normalizeListStyle(box.listStyle)}
-                  onChange={(e) => patchBox(box.id, { listStyle: normalizeListStyle(e.target.value) })}
-                  style={styleCtlSelect}
-                  aria-label="List style for this box"
-                >
-                  {RIDER_LIST_STYLES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </label>
-              <label style={styleCtlWrap}>
-                <span style={styleCtlLabel}>Size</span>
-                <select
-                  value={normalizeFontSize(box.fontSize)}
-                  onChange={(e) => patchBox(box.id, { fontSize: normalizeFontSize(e.target.value) })}
-                  style={styleCtlSelect}
-                  aria-label="Text size for this box"
-                >
-                  {RIDER_FONT_SIZES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </label>
-              <label style={styleCtlWrap}>
-                <span style={styleCtlLabel}>Font</span>
-                <select
-                  value={normalizeFontFamily(box.fontFamily)}
-                  onChange={(e) => patchBox(box.id, { fontFamily: normalizeFontFamily(e.target.value) })}
-                  style={styleCtlSelect}
-                  aria-label="Font for this box"
-                >
-                  {RIDER_FONT_FAMILIES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </label>
-            </div>
-
-            {/* Each requirement is its own line, showing its bullet / number /
-                checkmark individually. Enter adds a line; Backspace on an empty
-                line removes it. */}
-            {(() => {
-              const bt = boxText(box);
-              const lines = bt.length ? bt.split('\n') : [''];
-              const fam = riderFontFamilyCss(box.fontFamily);
-              const fsz = riderFontSizePx(box.fontSize);
-              const style = normalizeListStyle(box.listStyle);
-              const setLines = (arr: string[]) => setBoxText(box, arr.join('\n'));
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                  {lines.map((ln, i) => {
-                    const marker = riderListPrefix(style, i).trim();
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                        <span
-                          aria-hidden
-                          style={{
-                            minWidth: style === 'none' ? 0 : 22, textAlign: 'right', flexShrink: 0,
-                            color: NEON, fontFamily: fam, fontSize: fsz, fontWeight: 700,
-                          }}
-                        >
-                          {marker}
-                        </span>
-                        <input
-                          type="text"
-                          value={ln}
-                          onChange={(e) => { const next = lines.slice(); next[i] = e.target.value; setLines(next); }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const next = lines.slice(); next.splice(i + 1, 0, ''); setLines(next);
-                            } else if (e.key === 'Backspace' && ln === '' && lines.length > 1) {
-                              e.preventDefault();
-                              const next = lines.slice(); next.splice(i, 1); setLines(next);
-                            }
-                          }}
-                          placeholder={i === 0 ? `Type your ${box.title.toLowerCase()} requirements…` : 'Add an item…'}
-                          style={{ ...input, flex: 1, fontFamily: fam, fontSize: fsz }}
-                        />
-                        {lines.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => { const next = lines.slice(); next.splice(i, 1); setLines(next); }}
-                            aria-label="Remove line"
-                            style={ctl('#ff6b6b', false)}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setLines([...lines, ''])}
-                    style={{
-                      alignSelf: 'flex-start', background: 'transparent', border: `1px dashed ${MUTED}`,
-                      borderRadius: 8, color: MUTED, padding: '.35rem .8rem', fontSize: '.78rem', cursor: 'pointer',
-                    }}
-                  >
-                    + Add line
-                  </button>
-                </div>
-              );
-            })()}
+            <textarea
+              value={boxText(box)}
+              onChange={(e) => setBoxText(box, e.target.value)}
+              placeholder={`Type your ${box.title.toLowerCase()} requirements…`}
+              rows={4}
+              style={{
+                ...input,
+                width: '100%',
+                resize: 'vertical',
+                lineHeight: 1.5,
+                minHeight: 90,
+                fontFamily: 'inherit',
+              }}
+            />
 
             {/* Attachment — Technical + Visuals boxes only. One image or PDF,
                 ≤5MB, that travels with the rider (attached to the host email
@@ -430,18 +336,6 @@ export default function RiderEditor({
     </div>
   );
 }
-
-const styleCtlWrap: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: '.35rem',
-};
-const styleCtlLabel: React.CSSProperties = {
-  fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em',
-  textTransform: 'uppercase', color: MUTED,
-};
-const styleCtlSelect: React.CSSProperties = {
-  background: 'var(--deep, #000)', border: BORDER, borderRadius: 8,
-  color: 'var(--white,#fff)', padding: '.35rem .5rem', fontSize: '.8rem',
-};
 
 function ctl(color: string, disabled: boolean): React.CSSProperties {
   return {
