@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getActingContext, canSettings } from '@/lib/acting';
+import { getActingContext } from '@/lib/acting';
 import { isValidTimezone, effectiveTimezone, timezoneFromZip } from '@/lib/bookingExpiry';
 
 export const runtime = 'nodejs';
@@ -48,13 +48,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   // Timezone drives every booking's auto-decline deadline for the whole team, so
-  // changing it is a settings action — manager+ only.
+  // changing it is OWNER ONLY — no teammate of any role may change it.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const acting = await getActingContext(user.id);
-  if (!canSettings(acting.role)) {
-    return NextResponse.json({ error: 'Your role cannot change the timezone.' }, { status: 403 });
+  if (acting.role !== 'owner') {
+    return NextResponse.json({ error: 'Only the account owner can change the timezone.' }, { status: 403 });
   }
   const djId = acting.djId || user.id;
 
