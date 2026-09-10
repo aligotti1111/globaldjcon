@@ -361,7 +361,7 @@ export async function POST(req: Request) {
     const { data: created, error: insErr } = await db
       .from('booking_payments')
       .insert(insertPayload as unknown as never)
-      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date, requested_at, marked_sent_at, confirmed_at')
       .single();
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 502 });
     const payment = created as unknown as PaymentRow;
@@ -541,7 +541,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     const { data: pData } = await db
       .from('booking_payments')
-      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date, requested_at, marked_sent_at, confirmed_at')
       .eq('id', paymentId)
       .maybeSingle();
     const p = pData as PaymentRow | null;
@@ -605,7 +605,7 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     const { data: pData } = await db
       .from('booking_payments')
-      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date, requested_at, marked_sent_at, confirmed_at')
       .eq('id', paymentId)
       .maybeSingle();
     const p = pData as PaymentRow | null;
@@ -993,7 +993,7 @@ ${optionsBlock}`
 
     const { data: pData } = await db
       .from('booking_payments')
-      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date, requested_at, marked_sent_at, confirmed_at')
       .eq('id', paymentId)
       .maybeSingle();
     const p = pData as PaymentRow | null;
@@ -1038,7 +1038,7 @@ ${optionsBlock}`
 
     const { data: pData } = await db
       .from('booking_payments')
-      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date, stripe_session_id')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status, method, due_date, requested_at, marked_sent_at, confirmed_at, stripe_session_id')
       .eq('id', paymentId)
       .maybeSingle();
     const p = pData as PaymentRow | null;
