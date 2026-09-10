@@ -62,15 +62,29 @@ export interface RiderItem {
   /** Box markers only: how the lines inside this box are bulleted on the sent
    *  rider (bullet / number / checkmark). Absent ⇒ 'none' (plain lines). */
   listStyle?: RiderListStyle;
+  /** Box markers only: this box's text size and font on the sent rider.
+   *  Absent ⇒ 'md' / 'sans'. */
+  fontSize?: RiderFontSize;
+  fontFamily?: RiderFontFamily;
 }
 
 /** How a box's lines are bulleted on the rider the host sees. */
 export type RiderListStyle = 'none' | 'bullet' | 'number' | 'check';
+export type RiderFontSize = 'sm' | 'md' | 'lg';
+export type RiderFontFamily = 'sans' | 'serif' | 'mono';
 
 const LIST_STYLES: RiderListStyle[] = ['none', 'bullet', 'number', 'check'];
+const FONT_SIZES: RiderFontSize[] = ['sm', 'md', 'lg'];
+const FONT_FAMILIES: RiderFontFamily[] = ['sans', 'serif', 'mono'];
 
 export function normalizeListStyle(raw: unknown): RiderListStyle {
   return LIST_STYLES.includes(raw as RiderListStyle) ? (raw as RiderListStyle) : 'none';
+}
+export function normalizeFontSize(raw: unknown): RiderFontSize {
+  return FONT_SIZES.includes(raw as RiderFontSize) ? (raw as RiderFontSize) : 'md';
+}
+export function normalizeFontFamily(raw: unknown): RiderFontFamily {
+  return FONT_FAMILIES.includes(raw as RiderFontFamily) ? (raw as RiderFontFamily) : 'sans';
 }
 
 /** The bullet / number / check prefix for a line at `index` (0-based). '' when none. */
@@ -80,6 +94,22 @@ export function riderListPrefix(style: RiderListStyle | undefined, index: number
     case 'number': return `${index + 1}. `;
     case 'check': return '✓ ';
     default: return '';
+  }
+}
+/** CSS font-family stack for a box's chosen font. */
+export function riderFontFamilyCss(f?: RiderFontFamily): string {
+  switch (normalizeFontFamily(f)) {
+    case 'serif': return "Georgia, 'Times New Roman', serif";
+    case 'mono': return "'Space Mono', ui-monospace, monospace";
+    default: return "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif";
+  }
+}
+/** Body font size (px) for a box's chosen size. */
+export function riderFontSizePx(s?: RiderFontSize): number {
+  switch (normalizeFontSize(s)) {
+    case 'sm': return 13;
+    case 'lg': return 18;
+    default: return 15;
   }
 }
 
@@ -189,6 +219,8 @@ export function normalizeRiderItems(raw: unknown): RiderItem[] {
         title: typeof o.title === 'string' ? o.title : '',
         disabled: o.disabled === true,
         listStyle: normalizeListStyle(o.listStyle),
+        fontSize: normalizeFontSize(o.fontSize),
+        fontFamily: normalizeFontFamily(o.fontFamily),
       };
       if (attUrl && sectionAllowsAttachment(section)) {
         box.attachmentUrl = attUrl;
@@ -339,6 +371,9 @@ export interface RiderBox {
   attachmentName?: string;
   /** How this box's lines are bulleted on the sent rider. */
   listStyle?: RiderListStyle;
+  /** This box's text size + font on the sent rider. */
+  fontSize?: RiderFontSize;
+  fontFamily?: RiderFontFamily;
 }
 
 /** Resolve a box's display title, falling back to the section default. */
@@ -370,6 +405,8 @@ export function groupRiderBoxes(items: RiderItem[]): RiderBox[] {
           attachmentUrl: it.attachmentUrl,
           attachmentName: it.attachmentName,
           listStyle: normalizeListStyle(it.listStyle),
+          fontSize: normalizeFontSize(it.fontSize),
+          fontFamily: normalizeFontFamily(it.fontFamily),
         };
         boxes.push(current);
       } else if (current && current.section === it.section) {
@@ -412,6 +449,8 @@ export function flattenBoxes(boxes: RiderBox[]): RiderItem[] {
       disabled: b.disabled,
     };
     if (b.listStyle && b.listStyle !== 'none') marker.listStyle = b.listStyle;
+    if (b.fontSize && b.fontSize !== 'md') marker.fontSize = b.fontSize;
+    if (b.fontFamily && b.fontFamily !== 'sans') marker.fontFamily = b.fontFamily;
     // Persist an attachment only on the sections allowed to carry one.
     if (b.attachmentUrl && sectionAllowsAttachment(b.section)) {
       marker.attachmentUrl = b.attachmentUrl;
