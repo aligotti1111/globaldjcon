@@ -59,6 +59,28 @@ export interface RiderItem {
    */
   attachmentUrl?: string;
   attachmentName?: string;
+  /** Box markers only: how the lines inside this box are bulleted on the sent
+   *  rider (bullet / number / checkmark). Absent ⇒ 'none' (plain lines). */
+  listStyle?: RiderListStyle;
+}
+
+/** How a box's lines are bulleted on the rider the host sees. */
+export type RiderListStyle = 'none' | 'bullet' | 'number' | 'check';
+
+const LIST_STYLES: RiderListStyle[] = ['none', 'bullet', 'number', 'check'];
+
+export function normalizeListStyle(raw: unknown): RiderListStyle {
+  return LIST_STYLES.includes(raw as RiderListStyle) ? (raw as RiderListStyle) : 'none';
+}
+
+/** The bullet / number / check prefix for a line at `index` (0-based). '' when none. */
+export function riderListPrefix(style: RiderListStyle | undefined, index: number): string {
+  switch (normalizeListStyle(style)) {
+    case 'bullet': return '• ';
+    case 'number': return `${index + 1}. `;
+    case 'check': return '✓ ';
+    default: return '';
+  }
 }
 
 /** Sections whose boxes may carry a single file attachment (image or PDF). */
@@ -166,6 +188,7 @@ export function normalizeRiderItems(raw: unknown): RiderItem[] {
         value: '',
         title: typeof o.title === 'string' ? o.title : '',
         disabled: o.disabled === true,
+        listStyle: normalizeListStyle(o.listStyle),
       };
       if (attUrl && sectionAllowsAttachment(section)) {
         box.attachmentUrl = attUrl;
@@ -314,6 +337,8 @@ export interface RiderBox {
   /** Technical/Visuals only: a single attached file that travels with the rider. */
   attachmentUrl?: string;
   attachmentName?: string;
+  /** How this box's lines are bulleted on the sent rider. */
+  listStyle?: RiderListStyle;
 }
 
 /** Resolve a box's display title, falling back to the section default. */
@@ -344,6 +369,7 @@ export function groupRiderBoxes(items: RiderItem[]): RiderBox[] {
           disabled: it.disabled === true, items: [],
           attachmentUrl: it.attachmentUrl,
           attachmentName: it.attachmentName,
+          listStyle: normalizeListStyle(it.listStyle),
         };
         boxes.push(current);
       } else if (current && current.section === it.section) {
@@ -385,6 +411,7 @@ export function flattenBoxes(boxes: RiderBox[]): RiderItem[] {
       title: b.title === DEFAULT_BOX_TITLES[b.section] ? '' : b.title,
       disabled: b.disabled,
     };
+    if (b.listStyle && b.listStyle !== 'none') marker.listStyle = b.listStyle;
     // Persist an attachment only on the sections allowed to carry one.
     if (b.attachmentUrl && sectionAllowsAttachment(b.section)) {
       marker.attachmentUrl = b.attachmentUrl;
