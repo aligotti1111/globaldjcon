@@ -26,7 +26,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveUserEmail, createAdminClient } from '@/lib/supabase/admin';
-import { getActingContext } from '@/lib/acting';
+import { getActingContext, canAcceptBookings } from '@/lib/acting';
 import type { PaymentMethod } from '@/lib/paymentMethods';
 import { timezoneFromZip } from '@/lib/bookingExpiry';
 import { canBook, type AccessFields } from '@/lib/access';
@@ -376,6 +376,11 @@ export default async function BookingRequestsPage() {
         id: me.id,
         name: me.name || '',
         canAct,
+        // Seat-level permission to RESPOND to a request (approve / deny /
+        // counter / quote): manager+ only. Owners resolve to 'owner' (allowed);
+        // an assistant teammate is false, so the client hides those controls.
+        // This is UX; /api/bookings/decision is the real gate.
+        canDecide: canAcceptBookings(acting.role),
         email: authUser.email || null,
         role: me.role,
         djType: me.dj_type,
