@@ -248,7 +248,7 @@ export default function RiderBuilder({
       <div
         style={{
           borderRadius: 12, overflow: 'hidden',
-          background: active ? 'rgba(0,224,164,.06)' : 'rgba(255,255,255,.03)',
+          background: 'rgba(255,255,255,.03)',
           border: active ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)',
           transition: 'border-color .15s ease, background .15s ease',
         }}
