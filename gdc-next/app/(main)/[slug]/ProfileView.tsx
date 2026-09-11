@@ -669,16 +669,21 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
   return (
     <>
-      {/* Owner/editor view toggle — a floating pill that names the current mode
-          and switches to a live "public view" preview (all edit chrome hidden).
-          Session-only: a reload always returns to owner view. */}
+      {/* Owner/editor view toggle — a pill that names the current mode and
+          switches to a live "public view" preview (all edit chrome hidden).
+          Session-only: a reload always returns to owner view.
+          Pinned to the TOP (just under the header) instead of the bottom, so it
+          never sits over the phone's dock / a floating chat bubble and stays in
+          a consistent spot. */}
       {baseCanEdit && (
         <div
           style={{
-            position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 18, zIndex: 1200,
+            position: 'fixed', left: '50%', transform: 'translateX(-50%)',
+            top: 'calc(env(safe-area-inset-top, 0px) + 70px)', zIndex: 1200,
             display: 'flex', alignItems: 'center', gap: 12,
             background: '#12121a', border: `1px solid ${previewPublic ? 'rgba(255,255,255,.18)' : 'rgba(0,224,164,.4)'}`,
             borderRadius: 999, padding: '.5rem .55rem .5rem 1rem', boxShadow: '0 10px 30px rgba(0,0,0,.5)',
+            maxWidth: 'calc(100vw - 24px)',
           }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
