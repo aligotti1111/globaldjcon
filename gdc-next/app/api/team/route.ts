@@ -28,16 +28,7 @@ async function seatLimit(admin: SupabaseClient, ownerId: string): Promise<number
   return seatsFor((data as unknown as AccessFields) || ({} as AccessFields));
 }
 
-// Resolve the caller to the account they may manage: the owner resolves to
-// themselves; an ADMIN teammate resolves to the owner's id. Managers,
-// assistants, and non-members get null -> 403. This is what makes Admin a real
-// step above Manager: only Admin can run staffing.
-async function manageOwnerId(authUserId: string): Promise<string | null> {
-  const acting = await getActingContext(authUserId);
-  return canManageTeam(acting.role) ? acting.djId : null;
-}
-
-// Same gate, but returns the full acting context so staffing changes can be
+// Gate that returns the full acting context so staffing changes can be
 // attributed in the activity log. Null when the caller can't manage the team.
 async function manageActing(authUserId: string): Promise<ActingContext | null> {
   const acting = await getActingContext(authUserId);
@@ -48,12 +39,23 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  const ownerId = await manageOwnerId(user.id);
-  if (!ownerId) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const acting = await getActingContext(user.id);
+  if (!canManageTeam(acting.role)) return NextResponse.json({ error: 'You do not have team access.' }, { status: 403 });
+  const ownerId = acting.djId;
   const admin = createAdminClient() as unknown as SupabaseClient;
 
-  const { data } = await admin.from('team_members').select('id, owner_id, member_id, invited_email, invited_name, role, status, can_addons, invited_at, accepted_at').eq('owner_id', ownerId).order('invited_at', { ascending: true });
-  const members = ((data as unknown as TeamRow[] | null) || []).filter((m) => m.status !== 'revoked');
+  // These three reads don't depend on each other, so run them together instead
+  // of one-after-another — this is what made the Team tab feel slow. The owner
+  // row now carries BOTH the display name and the seat-tier columns in a single
+  // select (was two separate queries), and the auth email lookup (the slowest
+  // hop) runs in parallel rather than last.
+  const [membersRes, ownerRes, ownerEmail] = await Promise.all([
+    admin.from('team_members').select('id, owner_id, member_id, invited_email, invited_name, role, status, can_addons, invited_at, accepted_at').eq('owner_id', ownerId).order('invited_at', { ascending: true }),
+    admin.from('users').select(`name, ${ACCESS_COLS}`).eq('id', ownerId).maybeSingle(),
+    resolveUserEmail(ownerId),
+  ]);
+
+  const members = ((membersRes.data as unknown as TeamRow[] | null) || []).filter((m) => m.status !== 'revoked');
 
   // Pull each accepted teammate's own profile name (the "Full name" they set in
   // their account) so the list shows a real name, not just the email.
@@ -65,15 +67,15 @@ export async function GET() {
   }
   const enriched = members.map((m) => ({ ...m, name: (m.member_id ? nameById[m.member_id] : null) || m.invited_name || null }));
 
-  const limit = await seatLimit(admin, ownerId);
+  const ownerData = ownerRes.data as unknown as (AccessFields & { name?: string | null }) | null;
+  const limit = seatsFor((ownerData as AccessFields) || ({} as AccessFields));
 
   // The account OWNER, for the pinned top row. Not a seat, not removable, no
   // role change — just shown so the team list is complete.
-  const { data: ownerRow } = await admin.from('users').select('name').eq('id', ownerId).maybeSingle();
   const owner = {
     id: ownerId,
-    name: (ownerRow as unknown as { name?: string | null } | null)?.name || null,
-    email: await resolveUserEmail(ownerId),
+    name: ownerData?.name || null,
+    email: ownerEmail,
   };
 
   return NextResponse.json({ ok: true, owner, members: enriched, seatLimit: limit, seatsUsed: enriched.length, viewerId: user.id });
