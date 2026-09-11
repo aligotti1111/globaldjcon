@@ -75,7 +75,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
       const res = await fetch('/api/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, role }) });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; warning?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not invite.');
-      setNote(data.warning || `Invite sent to ${name.trim() || email}.`); setName(''); setEmail(''); load();
+      setNote(data.warning || `Invite sent to ${name.trim() || email}.`); setName(''); setEmail(''); setHighlightRole(null); load();
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not invite.'); }
     finally { setBusy(false); }
   }
@@ -266,7 +266,6 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               <select
                 value={role}
                 onFocus={() => setHighlightRole(role)}
-                onBlur={() => setHighlightRole(null)}
                 onChange={(e) => { setRole(e.target.value as TeamRole); setHighlightRole(e.target.value as TeamRole); }}
                 style={{ background: 'var(--panel-2,rgba(255,255,255,.04))', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, padding: '.5rem .4rem', fontSize: '.85rem' }}
               >
