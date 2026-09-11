@@ -667,44 +667,35 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             ? styles.heroNameSm
             : styles.heroNameXs;
 
+  // Owner/editor view toggle — a compact pill that names the current mode and
+  // switches to a live "public view" preview (all edit chrome hidden).
+  // Session-only: a reload always returns to owner view. Rendered inline in the
+  // booking calendar's header, next to "Embed Calendar" (desktop only) rather
+  // than as a floating overlay — see where it's passed to the calendars below.
+  const ownerViewToggle = baseCanEdit ? (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: previewPublic ? '#8a8aa0' : 'var(--neon,#00e0a4)', whiteSpace: 'nowrap' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: previewPublic ? '#8a8aa0' : 'var(--neon,#00e0a4)' }} />
+        {previewPublic ? 'Public view' : 'Owner view'}
+      </span>
+      <button
+        type="button"
+        onClick={() => setPreviewPublic((v) => !v)}
+        style={{
+          background: previewPublic ? 'var(--neon,#00e0a4)' : 'transparent',
+          border: `1px solid ${previewPublic ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.25)'}`,
+          borderRadius: 999, color: previewPublic ? '#06231b' : '#fff',
+          padding: '.25rem .7rem', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.03em',
+          textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        {previewPublic ? 'Back to owner' : 'View as public'}
+      </button>
+    </div>
+  ) : null;
+
   return (
     <>
-      {/* Owner/editor view toggle — a pill that names the current mode and
-          switches to a live "public view" preview (all edit chrome hidden).
-          Session-only: a reload always returns to owner view.
-          Pinned to the TOP (just under the header) instead of the bottom, so it
-          never sits over the phone's dock / a floating chat bubble and stays in
-          a consistent spot. */}
-      {baseCanEdit && (
-        <div
-          style={{
-            position: 'fixed', left: '50%', transform: 'translateX(-50%)',
-            top: 'calc(env(safe-area-inset-top, 0px) + 70px)', zIndex: 1200,
-            display: 'flex', alignItems: 'center', gap: 12,
-            background: '#12121a', border: `1px solid ${previewPublic ? 'rgba(255,255,255,.18)' : 'rgba(0,224,164,.4)'}`,
-            borderRadius: 999, padding: '.5rem .55rem .5rem 1rem', boxShadow: '0 10px 30px rgba(0,0,0,.5)',
-            maxWidth: 'calc(100vw - 24px)',
-          }}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: previewPublic ? '#8a8aa0' : 'var(--neon,#00e0a4)' }} />
-            {previewPublic ? 'Public view' : 'Owner view'}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPreviewPublic((v) => !v)}
-            style={{
-              background: previewPublic ? 'var(--neon,#00e0a4)' : 'transparent',
-              border: `1px solid ${previewPublic ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.25)'}`,
-              borderRadius: 999, color: previewPublic ? '#06231b' : '#fff',
-              padding: '.35rem .9rem', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-            }}
-          >
-            {previewPublic ? 'Back to owner view' : 'View as public'}
-          </button>
-        </div>
-      )}
-
       {/* Claim bar — only shown for unclaimed/imported profiles */}
       {data.claimed === false && (
         <div className={styles.claimBar}>
@@ -1185,6 +1176,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
+                ownerToggle={ownerViewToggle}
                 force12mo={forceCalendar12mo}
                 pendingDates={clubPendingDates}
               />
@@ -1254,6 +1246,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 readOnly={viewerIsStaff}
                 onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
+                ownerToggle={ownerViewToggle}
                 force12mo={forceCalendar12mo}
                 pendingDates={clubPendingDates}
                 onBookingSubmitted={() => setClubPendingRefreshKey((k) => k + 1)}
