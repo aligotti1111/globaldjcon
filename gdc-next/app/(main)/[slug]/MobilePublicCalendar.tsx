@@ -47,6 +47,9 @@ const MONTH_NAMES_SHORT = [
   'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
 ];
 const DAY_LABEL_LONG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Full names for wide (desktop) screens; the abbreviations above stay on mobile.
+// A CSS media query swaps between them (see mobileCalendar.module.css).
+const DAY_LABEL_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_LABEL_MINI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 interface Props {
@@ -926,8 +929,11 @@ function SingleMonthView({
       )}
 
       <div className={styles.dayHeaderRow}>
-        {DAY_LABEL_LONG.map((name) => (
-          <div key={name} className={styles.dayHeader}>{name}</div>
+        {DAY_LABEL_LONG.map((name, i) => (
+          <div key={name} className={styles.dayHeader}>
+            <span className={styles.dayHeaderFull}>{DAY_LABEL_FULL[i]}</span>
+            <span className={styles.dayHeaderAbbr}>{name}</span>
+          </div>
         ))}
       </div>
 
