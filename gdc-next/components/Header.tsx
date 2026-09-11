@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
-import { canAcceptBookings } from '@/lib/acting';
+import { canAcceptBookings, canDiscounts } from '@/lib/acting';
 import { useUnreadInboxCount } from './useUnreadInboxCount';
 import { useUnreadBookingCount } from './useUnreadBookingCount';
 import HeaderDjMenu from './HeaderDjMenu';
@@ -78,6 +78,9 @@ export default function Header() {
   // bookings, so they don't get the Booking Requests icon or Add-booking nav.
   const actingRole = ((user as unknown as { actingRole?: string })?.actingRole) || 'owner';
   const canBookings = canAcceptBookings(actingRole);
+  // Managers & admins (and owners) can create discounts / promo codes — the one
+  // slice of Booking Settings a teammate can reach. Drives the shortcut item.
+  const canMakeDiscounts = canDiscounts(actingRole);
   // Whether this DJ has bookings activated — gates the booking-only items in
   // the dropdown (Upcoming Bookings, Add Booking Manually).
   // Booking nav items (Upcoming Bookings, Add Booking Manually) are gated on
@@ -154,6 +157,7 @@ export default function Header() {
                       bookingEnabled={bookingEnabled}
                       isTeammate={isTeammate}
                       canAddBookings={canBookings}
+                      canMakeDiscounts={canMakeDiscounts}
                     />
                   )}
 
