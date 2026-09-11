@@ -20,7 +20,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
-import { canAcceptBookings } from '@/lib/acting';
+import { canAcceptBookings, canDiscounts } from '@/lib/acting';
 import { useUpcomingBookingCount } from './useUpcomingBookingCount';
 import { canBook, type AccessFields } from '@/lib/access';
 
@@ -122,6 +122,14 @@ function IconInbox() {
     </svg>
   );
 }
+function IconTag() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  );
+}
 function IconGear() {
   return (
     <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
@@ -150,6 +158,8 @@ export default function MobileMenu() {
   const { user, signOut } = useAuth();
   // Assistants can't accept/deny bookings or add manual ones — hide those nav.
   const canBookings = canAcceptBookings(((user as unknown as { actingRole?: string })?.actingRole) || 'owner');
+  // Owner/admin/manager can create discounts & promo codes — drives the shortcut.
+  const canMakeDiscounts = canDiscounts(((user as unknown as { actingRole?: string })?.actingRole) || 'owner');
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -310,6 +320,13 @@ export default function MobileMenu() {
             {isDj && (
               <Link href="/booking-settings" onClick={close} className="mobile-menu-item">
                 <IconGear />Booking Settings
+              </Link>
+            )}
+            {/* Discounts shortcut — owner/admin/manager. Teammates who can't open
+                Booking Settings still land on a discounts-only view. */}
+            {canMakeDiscounts && (isDj || isStaff) && (
+              <Link href="/booking-settings?section=discounts" onClick={close} className="mobile-menu-item">
+                <IconTag />Add Discount / Promo Code
               </Link>
             )}
             {(isDj || isStaff) && (
