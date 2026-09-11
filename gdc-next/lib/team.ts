@@ -29,6 +29,7 @@ export function roleMatrix(djType: string | null | undefined): RoleCap[] {
     { label: 'Create manual bookings', admin: true, manager: true, assistant: false },
     { label: 'Send & sign contracts', admin: true, manager: true, assistant: false },
     { label: 'Request deposit & balance', admin: true, manager: true, assistant: false },
+    { label: 'Create discounts & promo codes', admin: true, manager: true, assistant: false },
     { label: 'Manage team (invite & remove staff)', admin: true, manager: false, assistant: false },
     { label: 'Change billing/subscription, account settings or booking settings', admin: false, manager: false, assistant: false },
   ];
