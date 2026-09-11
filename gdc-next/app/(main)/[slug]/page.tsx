@@ -20,6 +20,7 @@
 // Everything that IS here matches vanilla 1:1 in markup, styling, and behavior.
 
 import { createClient } from '@/lib/supabase/server';
+import { preload } from 'react-dom';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
@@ -253,6 +254,14 @@ export default async function DjProfilePage({ params }: PageProps) {
   // ADDITIVE to the existing completeness + enabled checks inside ProfileView
   // — both must be satisfied. Sub/comp columns come from the select('*') above.
   const hasBookingAccess = canBook(profile as unknown as AccessFields);
+
+  // Preload the banner as a high-priority image as the HTML streams. The banner
+  // is a CSS background-image, which the browser can't discover until stylesheets
+  // parse — so on mobile it fetched late and popped in. This tells the browser to
+  // start fetching it right away, hoisted into <head> by Next.
+  if (profile.banner_url) {
+    preload(profile.banner_url, { as: 'image', fetchPriority: 'high' });
+  }
 
   return (
     <ProfileView
