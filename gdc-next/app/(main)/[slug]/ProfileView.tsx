@@ -1185,7 +1185,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 // fixes it here rather than in the calendar, which is only
                 // wrong because of what it's being told.
                 isLoggedIn={isLoggedIn || !!currentUser}
-                isOwnProfile={isOwnProfile}
+                // In "View as public" preview mode the owner should see the
+                // calendar exactly as a visitor does — no ✓/✗/pencil owner
+                // controls — so drop isOwnProfile while previewing.
+                isOwnProfile={isOwnProfile && !previewPublic}
                 readOnly={viewerIsStaff}
                 selectedDate={clubSelectedDate}
                 onBookDate={(key) => {
@@ -1194,7 +1197,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   setClubSelectedDate(key);
                 }}
                 onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
-                onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
+                onEmbedClick={isOwnProfile && !previewPublic ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
                 ownerToggle={ownerViewToggle}
                 force12mo={forceCalendar12mo}
@@ -1262,9 +1265,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 djTravelDistance={data.travel_distance}
                 bookingSettings={bookingSettings!}
                 isLoggedIn={isLoggedIn}
-                isOwnProfile={isOwnProfile}
+                // Same as the club calendar: preview mode renders as a visitor.
+                isOwnProfile={isOwnProfile && !previewPublic}
                 readOnly={viewerIsStaff}
-                onEmbedClick={isOwnProfile ? () => setEmbedModalOpen(true) : undefined}
+                onEmbedClick={isOwnProfile && !previewPublic ? () => setEmbedModalOpen(true) : undefined}
                 onShareClick={() => setShareModalOpen(true)}
                 ownerToggle={ownerViewToggle}
                 force12mo={forceCalendar12mo}
