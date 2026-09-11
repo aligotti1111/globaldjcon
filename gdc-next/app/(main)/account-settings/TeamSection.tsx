@@ -327,14 +327,29 @@ function logBtnStyle(open: boolean): CSSProperties {
   };
 }
 
-// One person's activity, grouped by day, newest first. Read-only.
+// One person's activity, newest first, PAGED (a fixed number of entries per
+// page with Prev / Next). The current page is grouped by day. Read-only.
+const LOG_PAGE_SIZE = 8;
 function ActorLog({ entries, err, actorId }: { entries: Entry[] | null; err: string | null; actorId: string }) {
+  const [page, setPage] = useState(0);
   if (err) return <div style={{ color: '#ff9a9a', fontSize: '.8rem', marginTop: '.5rem' }}>{err}</div>;
   if (!entries) return <div style={{ color: MUTED, fontSize: '.8rem', marginTop: '.5rem' }}>Loading…</div>;
   const mine = entries.filter((e) => e.actorId === actorId);
   if (!mine.length) return <div style={{ color: MUTED, fontSize: '.8rem', marginTop: '.5rem' }}>No activity recorded yet.</div>;
+
+  const pageCount = Math.ceil(mine.length / LOG_PAGE_SIZE);
+  const safePage = Math.min(page, pageCount - 1);
+  const pageEntries = mine.slice(safePage * LOG_PAGE_SIZE, safePage * LOG_PAGE_SIZE + LOG_PAGE_SIZE);
+
   const days = new Map<string, Entry[]>();
-  for (const e of mine) { const k = dayKey(e.createdAt); const arr = days.get(k) || []; arr.push(e); days.set(k, arr); }
+  for (const e of pageEntries) { const k = dayKey(e.createdAt); const arr = days.get(k) || []; arr.push(e); days.set(k, arr); }
+
+  const navBtn = (disabled: boolean): CSSProperties => ({
+    background: 'transparent', border: `1px solid ${disabled ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.25)'}`,
+    borderRadius: 6, color: disabled ? 'rgba(255,255,255,.3)' : '#fff', padding: '.25rem .7rem',
+    fontSize: '.74rem', fontWeight: 600, cursor: disabled ? 'default' : 'pointer',
+  });
+
   return (
     <div style={{ marginTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.6rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
       {Array.from(days.entries()).map(([k, dayEntries]) => (
@@ -369,6 +384,14 @@ function ActorLog({ entries, err, actorId }: { entries: Entry[] | null; err: str
           </ol>
         </div>
       ))}
+
+      {pageCount > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', paddingTop: '.2rem' }}>
+          <button type="button" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} style={navBtn(safePage === 0)}>‹ Prev</button>
+          <span style={{ fontSize: '.72rem', color: MUTED }}>Page {safePage + 1} of {pageCount}</span>
+          <button type="button" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)} style={navBtn(safePage >= pageCount - 1)}>Next ›</button>
+        </div>
+      )}
     </div>
   );
 }
