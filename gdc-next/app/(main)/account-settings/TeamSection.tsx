@@ -12,11 +12,16 @@ import { TEAM_ROLES, roleMatrix, type TeamRole } from '@/lib/team';
 
 interface Member { id: string; invited_email: string; name: string | null; role: string; status: string; member_id: string | null; can_addons: boolean; }
 interface Owner { id: string; name: string | null; email: string | null; }
-interface Entry { id: string; actorId: string; actorName: string; actorRole: string | null; action: string; summary: string; bookingId: string | null; createdAt: string; }
+interface EntryBooking { date: string | null; venue: string | null; host: string | null; eventType: string | null; }
+interface Entry { id: string; actorId: string; actorName: string; actorRole: string | null; action: string; summary: string; bookingId: string | null; booking: EntryBooking | null; createdAt: string; }
 
 function dayKey(iso: string): string { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
 function dayLabel(iso: string): string { return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
 function timeLabel(iso: string): string { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+function eventDateLabel(d: string | null): string {
+  if (!d) return '';
+  return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function TeamSection({ djType }: { djType?: string | null }) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -336,12 +341,31 @@ function ActorLog({ entries, err, actorId }: { entries: Entry[] | null; err: str
         <div key={k}>
           <div style={{ fontSize: '.64rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: MUTED, marginBottom: '.3rem' }}>{dayLabel(dayEntries[0].createdAt)}</div>
           <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
-            {dayEntries.map((e) => (
-              <li key={e.id} style={{ display: 'flex', gap: '.55rem', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '.7rem', color: MUTED, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>{timeLabel(e.createdAt)}</span>
-                <span style={{ fontSize: '.82rem', color: '#fff', lineHeight: 1.4 }}>{e.summary}</span>
-              </li>
-            ))}
+            {dayEntries.map((e) => {
+              // The booking this action touched: date · venue · host. Links to
+              // the booking, opening in a new tab.
+              const b = e.booking;
+              const bits = b ? [eventDateLabel(b.date), b.venue, b.host].filter((s): s is string => !!s && !!s.trim()) : [];
+              return (
+                <li key={e.id} style={{ display: 'flex', gap: '.55rem', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '.7rem', color: MUTED, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>{timeLabel(e.createdAt)}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: '.82rem', color: '#fff', lineHeight: 1.4 }}>{e.summary}</span>
+                    {e.bookingId && bits.length > 0 && (
+                      <a
+                        href={`/upcoming-bookings?open=${e.bookingId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: 'block', fontSize: '.72rem', color: 'var(--neon,#00e0a4)', textDecoration: 'none', marginTop: 1 }}
+                        title="Open this booking in a new tab"
+                      >
+                        {bits.join(' · ')} ↗
+                      </a>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </div>
       ))}
