@@ -35,6 +35,62 @@ function parseSettings(raw: unknown): Record<string, unknown> {
   return {};
 }
 
+// ── Activity-log summary ────────────────────────────────────────────────────
+// The client sends the whole discount set on every save, so we can't tell what
+// changed from the body alone. Diff the OWNER's stored settings (before) against
+// the merged result (after) and name the single action the DJ just took.
+function num(v: unknown): number { return typeof v === 'number' ? v : 0; }
+function arr(v: unknown): Record<string, unknown>[] { return Array.isArray(v) ? (v as Record<string, unknown>[]) : []; }
+// A "sale" only counts as a real, running/scheduled site-wide sale once it has
+// a percent — an empty {} is a cleared/ended sale.
+function saleLive(s: unknown): boolean { return !!(s && typeof s === 'object' && num((s as { percent?: unknown }).percent) > 0); }
+
+function describeChange(before: Record<string, unknown>, after: Record<string, unknown>): string {
+  const bSale = before.sale as { percent?: unknown } | undefined;
+  const aSale = after.sale as { percent?: unknown } | undefined;
+  const bLive = saleLive(bSale);
+  const aLive = saleLive(aSale);
+  const bHist = arr(before.sale_history).length;
+  const aHist = arr(after.sale_history).length;
+
+  // Site-wide sale transitions take priority — they're the headline action.
+  if (bLive && !aLive && aHist > bHist) return `Manually ended the site-wide sale (${num(bSale?.percent)}% off)`;
+  if (bLive && !aLive) return 'Cleared the site-wide sale';
+  if (!bLive && aLive) return `Started a site-wide sale (${num(aSale?.percent)}% off)`;
+  if (bLive && aLive && num(bSale?.percent) !== num(aSale?.percent)) return `Changed the site-wide sale to ${num(aSale?.percent)}% off`;
+
+  // Promo-code changes.
+  const bCodes = arr(before.promo_codes);
+  const aCodes = arr(after.promo_codes);
+  const codeOf = (c: Record<string, unknown>) => String(c.code || '').toUpperCase();
+  if (aCodes.length > bCodes.length) {
+    const added = aCodes.find((c) => !bCodes.some((x) => codeOf(x) === codeOf(c)));
+    return `Added promo code ${added ? codeOf(added) : ''}`.trim();
+  }
+  if (aCodes.length < bCodes.length) {
+    const removed = bCodes.find((c) => !aCodes.some((x) => codeOf(x) === codeOf(c)));
+    return `Removed promo code ${removed ? codeOf(removed) : ''}`.trim();
+  }
+  const toggled = aCodes.find((c) => {
+    const b = bCodes.find((x) => codeOf(x) === codeOf(c));
+    return b && b.active !== c.active;
+  });
+  if (toggled) return `${toggled.active === false ? 'Deactivated' : 'Activated'} promo code ${codeOf(toggled)}`.trim();
+  const edited = aCodes.find((c) => {
+    const b = bCodes.find((x) => codeOf(x) === codeOf(c));
+    return b && JSON.stringify(b) !== JSON.stringify(c);
+  });
+  if (edited) return `Updated promo code ${codeOf(edited)}`.trim();
+
+  // Date exclusions (dates where discounts are blocked).
+  const bEx = arr(before.exclusions).length;
+  const aEx = arr(after.exclusions).length;
+  if (aEx > bEx) return 'Blocked discounts on a date';
+  if (aEx < bEx) return 'Removed a discount date block';
+
+  return 'Updated discounts';
+}
+
 async function loadSettings(djId: string): Promise<Record<string, unknown>> {
   const admin = createAdminClient();
   const { data } = await admin
@@ -80,15 +136,17 @@ export async function POST(req: Request) {
   catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
 
   // Merge ONLY the discount keys present in the body onto the owner's current
-  // booking_settings. Any other setting is preserved exactly as saved.
-  const settings = await loadSettings(acting.djId);
+  // booking_settings. Any other setting is preserved exactly as saved. Keep the
+  // BEFORE snapshot so the activity log can describe the specific change.
+  const before = await loadSettings(acting.djId);
+  const after: Record<string, unknown> = { ...before };
   let touched = false;
   for (const k of DISCOUNT_KEYS) {
-    if (k in body) { settings[k] = body[k as DiscountKey]; touched = true; }
+    if (k in body) { after[k] = body[k as DiscountKey]; touched = true; }
   }
   if (!touched) return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 });
 
-  const payload = JSON.stringify(settings);
+  const payload = JSON.stringify(after);
   const admin = createAdminClient();
   const { error } = await admin
     .from('users')
@@ -96,12 +154,11 @@ export async function POST(req: Request) {
     .eq('id', acting.djId);
   if (error) return NextResponse.json({ error: error.message || 'Could not save.' }, { status: 502 });
 
-  // Log the action so the owner's activity log shows who changed discounts.
-  const codeCount = Array.isArray(settings.promo_codes) ? settings.promo_codes.length : 0;
-  const saleOn = !!(settings.sale && typeof settings.sale === 'object' && (settings.sale as { active?: boolean }).active);
+  // Log the specific action so the owner's activity log reads clearly, e.g.
+  // "Started a site-wide sale (10% off)" or "Manually ended the site-wide sale".
   await logActivity(acting, {
     action: 'discounts.updated',
-    summary: `Updated discounts (${codeCount} promo code${codeCount === 1 ? '' : 's'}${saleOn ? ', sale on' : ''})`,
+    summary: describeChange(before, after),
   });
 
   return NextResponse.json({ ok: true });
