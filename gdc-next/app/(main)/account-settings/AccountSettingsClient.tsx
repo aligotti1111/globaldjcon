@@ -668,6 +668,9 @@ export default function AccountSettingsClient({
                 {actingRole === 'admin' ? 'Admin' : actingRole === 'manager' ? 'Manager' : actingRole === 'assistant' ? 'Assistant' : actingRole}
               </span>
             </div>
+            <p style={{ margin: '8px 0 0', fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted,#9aa)' }}>
+              All activity on this account can be tracked by the account owner.
+            </p>
           </div>
         )}
         {profileAlert && <AlertBlock alert={profileAlert} />}
@@ -971,8 +974,10 @@ export default function AccountSettingsClient({
       )}
 
       {/* Timezone — the clock the "Expires in" countdown on the requests this
-          user sends is measured in. Defaults to automatic (from their ZIP). */}
-      <TimezoneSection audience="host" />
+          user sends is measured in. Defaults to automatic (from their ZIP).
+          Owner-only: changing the account timezone is an owner setting, so
+          teammates don't see this section. */}
+      {!isTeammate && <TimezoneSection audience="host" />}
 
       {/* Delete account — teammates only. A staff login has no standalone value,
           and deleting it frees the email for a real account later. */}
