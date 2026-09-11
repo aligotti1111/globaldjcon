@@ -12,9 +12,11 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getActingContext } from '@/lib/acting';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext, canDiscounts } from '@/lib/acting';
 import { canBook, type AccessFields } from '@/lib/access';
 import BookingSettingsClient from './BookingSettingsClient';
+import DiscountsOnlyClient from './DiscountsOnlyClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,25 +38,38 @@ export default async function BookingSettingsPage() {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) redirect('/login?redirect=/booking-settings');
-  // Booking settings are Owner-only. A teammate (member of someone's account)
-  // never manages them — send them back to the bookings they can work.
+  // Booking settings are Owner-only — with ONE exception: managers & admins may
+  // reach a DISCOUNTS-ONLY view (see discountsOnly below) to create promo codes
+  // and sales. Assistants (and any other member) still get sent to the bookings
+  // they can work.
   const acting = await getActingContext(authUser.id);
-  if (acting.isMember) redirect('/upcoming-bookings');
+  const discountsOnly = acting.isMember;
+  if (acting.isMember && !canDiscounts(acting.role)) redirect('/upcoming-bookings');
 
-  const { data: row } = await supabase
-    .from('users')
-    .select('id, role, dj_type, slug, booking_settings, event_types, mob_custom_event_types, mob_specialty_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at')
-    .eq('id', authUser.id)
-    .single<ProfileRow>();
+  // A member acts on the OWNER's account, so the row we configure is the
+  // owner's (acting.djId) — read with the service-role client since a teammate
+  // can't select the owner's users row directly. Owners read their own row.
+  const SELECT = 'id, role, dj_type, slug, booking_settings, event_types, mob_custom_event_types, mob_specialty_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at';
+  const { data: row } = acting.isMember
+    ? await createAdminClient().from('users').select(SELECT).eq('id', acting.djId).single<ProfileRow>()
+    : await supabase.from('users').select(SELECT).eq('id', acting.djId).single<ProfileRow>();
 
   if (!row) redirect('/login?error=profile_not_found');
 
   // DJ-only. Hosts/venues don't take bookings, so send them to their settings.
+  // (The owner account behind a member seat is always a DJ.)
   if (row.role !== 'dj') redirect('/account-settings');
 
   // Whether booking is actually LIVE (subscription/comp). DJs can configure
   // everything regardless, but nothing goes public until this is true.
   const hasBookingAccess = canBook(row as unknown as AccessFields);
+
+  // Manager/admin teammate: show ONLY the Discounts & Promo Codes box, saving
+  // to the owner's account through /api/dj/discounts. The full settings page
+  // stays owner-only.
+  if (discountsOnly) {
+    return <DiscountsOnlyClient bookingSettings={row.booking_settings} />;
+  }
 
   return (
     <BookingSettingsClient
