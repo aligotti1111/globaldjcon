@@ -144,13 +144,17 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                   </div>
                 );
               })()}
-              {members.map((m) => {
+              {members.map((m, i) => {
                 const ownerViewer = !!owner && owner.id === viewerId;
                 const logOpen = openLogId === (m.member_id || '');
                 return (
                 <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', padding: '.6rem .8rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                      {/* Which seat of the plan's allotment this teammate occupies. */}
+                      <div style={{ fontSize: '.6rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: 2 }}>
+                        {i + 1} of {seatLimit}
+                      </div>
                       {m.name && (
                         <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
                       )}
