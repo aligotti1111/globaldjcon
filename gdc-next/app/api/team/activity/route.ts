@@ -61,6 +61,26 @@ export async function GET() {
     }
   }
 
+  // Booking details for any entry tied to a booking — so the log can show the
+  // date / venue / host of what changed, not just a one-line summary.
+  interface BRow { id: string; event_date: string | null; venue_name: string | null; requester_name: string | null; host_email: string | null; event_type: string | null; }
+  const bookingIds = Array.from(new Set(rows.map((r) => r.booking_id).filter((x): x is string => !!x)));
+  const bmap: Record<string, { date: string | null; venue: string | null; host: string | null; eventType: string | null }> = {};
+  if (bookingIds.length) {
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, event_date, venue_name, requester_name, host_email, event_type')
+      .in('id', bookingIds);
+    for (const b of (bData as unknown as BRow[] | null) || []) {
+      bmap[b.id] = {
+        date: b.event_date,
+        venue: b.venue_name,
+        host: (b.requester_name && b.requester_name.trim()) || b.host_email || null,
+        eventType: b.event_type,
+      };
+    }
+  }
+
   const entries = rows.map((r) => ({
     id: r.id,
     actorId: r.actor_id,
@@ -69,6 +89,7 @@ export async function GET() {
     action: r.action,
     summary: r.summary,
     bookingId: r.booking_id,
+    booking: r.booking_id ? (bmap[r.booking_id] ?? null) : null,
     createdAt: r.created_at,
   }));
 
