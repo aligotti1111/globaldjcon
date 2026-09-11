@@ -859,16 +859,17 @@ export default function AccountSettingsClient({
       )}
 
       {/* ── Notifications ──────────────────────────────────────────────
-          Email + text preferences live on their own page now. Hosts and
-          venues get here from this link; DJs use the header/menu link.
-          Hidden for teammates: booking/inbox alerts belong to the account
-          owner, not a staff login. */}
-      {!isDj && !isTeammate && (
+          Email + text preferences live on their own page now. Hosts, venues,
+          and teammates get here from this link; DJs use the header/menu link.
+          Teammates see EMAIL preferences only — the notifications page hides
+          the text/SMS column for staff logins. */}
+      {!isDj && (
         <div className={styles.card}>
           <h2>Notifications</h2>
           <p className={styles.cardHint}>
-            Choose which email and text alerts you receive for bookings and
-            inbox messages.
+            {isTeammate
+              ? 'Choose which email alerts you receive for bookings and inbox messages. Text alerts aren’t available on staff logins.'
+              : 'Choose which email and text alerts you receive for bookings and inbox messages.'}
           </p>
           <Link
             href="/notifications"
