@@ -329,7 +329,7 @@ function logBtnStyle(open: boolean): CSSProperties {
 
 // One person's activity, newest first, PAGED (a fixed number of entries per
 // page with Prev / Next). The current page is grouped by day. Read-only.
-const LOG_PAGE_SIZE = 8;
+const LOG_PAGE_SIZE = 20;
 function ActorLog({ entries, err, actorId }: { entries: Entry[] | null; err: string | null; actorId: string }) {
   const [page, setPage] = useState(0);
   if (err) return <div style={{ color: '#ff9a9a', fontSize: '.8rem', marginTop: '.5rem' }}>{err}</div>;
