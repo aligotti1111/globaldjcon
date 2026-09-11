@@ -65,6 +65,10 @@ export const canManageTeam = (r: ActingRole | string): boolean => r === 'owner' 
 export const canAcceptBookings = isManagerPlus; // accept/deny/counter, add manual bookings
 export const canSendContracts = isManagerPlus;
 export const canRequestDeposit = isManagerPlus;
+// Discounts & promo codes — manager+ may create/edit them (owner/admin/manager).
+// Assistants can't. This is the ONE piece of booking settings a teammate can
+// reach; the rest of Booking Settings stays owner-only.
+export const canDiscounts = isManagerPlus;
 // Assistant+ (all seats)
 export const canInvoice = isAssistantPlus;      // send an invoice / receipt
 export const canSendDocs = isAssistantPlus;     // planner, playlist, rider, guest list, flyer
