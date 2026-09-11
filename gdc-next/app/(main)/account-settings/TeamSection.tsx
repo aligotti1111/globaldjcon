@@ -116,24 +116,26 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                 const open = openLogId === owner.id;
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', padding: '.6rem .8rem', border: '1px solid rgba(0,224,164,.3)', borderRadius: 8, background: 'rgba(0,224,164,.04)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap' }}>
                       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                         {owner.name && <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{owner.name}</div>}
                         {owner.email && <div style={{ fontSize: owner.name ? '.76rem' : '.88rem', color: owner.name ? muted : '#fff', wordBreak: 'break-all', lineHeight: 1.4 }}>{owner.email}</div>}
-                        <div style={{ marginTop: 5 }}>
-                          <span style={{ display: 'inline-block', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', background: 'rgba(0,224,164,.14)', border: '1px solid rgba(0,224,164,.4)', borderRadius: 999, padding: '.12rem .55rem' }}>
-                            Owner{ownerViewer ? ' · you' : ''}
-                          </span>
-                        </div>
                       </div>
-                      {ownerViewer && (
+                      {/* Status pill, top-right — matches the teammate rows. */}
+                      <span style={{ display: 'inline-block', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', background: 'rgba(0,224,164,.14)', border: '1px solid rgba(0,224,164,.4)', borderRadius: 999, padding: '.12rem .55rem', whiteSpace: 'nowrap' }}>
+                        Owner{ownerViewer ? ' · you' : ''}
+                      </span>
+                    </div>
+                    {/* Activity log, bottom-left. */}
+                    {ownerViewer && (
+                      <div>
                         <button type="button" onClick={() => toggleLog(owner.id)} style={logBtnStyle(open)}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" /></svg>
                           Activity log {open ? '▾' : '▸'}
                         </button>
-                      )}
-                    </div>
-                    {open && <ActorLog entries={activity} err={activityErr} actorId={owner.id} />}
+                        {open && <ActorLog entries={activity} err={activityErr} actorId={owner.id} />}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
