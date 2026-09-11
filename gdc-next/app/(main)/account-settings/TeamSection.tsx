@@ -166,8 +166,7 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <select
                           value={pendingRoles[m.id] ?? m.role}
-                          onFocus={() => setHighlightRole((pendingRoles[m.id] ?? m.role) as TeamRole)}
-                          onChange={(e) => { setPendingRoles((prev) => ({ ...prev, [m.id]: e.target.value })); setHighlightRole(e.target.value as TeamRole); }}
+                          onChange={(e) => setPendingRoles((prev) => ({ ...prev, [m.id]: e.target.value }))}
                           style={{ background: 'transparent', color: '#fff', border: `1px solid ${(pendingRoles[m.id] && pendingRoles[m.id] !== m.role) ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.2)'}`, borderRadius: 6, padding: '.25rem .4rem', fontSize: '.8rem' }}
                         >
                           {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
@@ -264,7 +263,13 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Their name" style={{ flex: '1 1 140px', minWidth: 120, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@email.com" style={{ flex: '2 1 180px', minWidth: 180, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
-              <select value={role} onChange={(e) => setRole(e.target.value as TeamRole)} style={{ background: 'var(--panel-2,rgba(255,255,255,.04))', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, padding: '.5rem .4rem', fontSize: '.85rem' }}>
+              <select
+                value={role}
+                onFocus={() => setHighlightRole(role)}
+                onBlur={() => setHighlightRole(null)}
+                onChange={(e) => { setRole(e.target.value as TeamRole); setHighlightRole(e.target.value as TeamRole); }}
+                style={{ background: 'var(--panel-2,rgba(255,255,255,.04))', color: '#fff', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, padding: '.5rem .4rem', fontSize: '.85rem' }}
+              >
                 {TEAM_ROLES.map((r) => <option key={r.value} value={r.value} style={{ color: '#000' }}>{r.label}</option>)}
               </select>
               {/* Invite sits on the right — pushed to the far edge of the row. */}
