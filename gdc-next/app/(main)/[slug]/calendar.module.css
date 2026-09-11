@@ -355,6 +355,15 @@
 .dayHeader:first-child { border-radius: 8px 0 0 0; }
 .dayHeader:last-child { border-radius: 0 8px 0 0; }
 
+/* Day-name labels: abbreviation by default (mobile), full name on desktop. The
+   swap happens at 701px, matching the other desktop-only calendar rules below. */
+.dayHeaderFull { display: none; }
+.dayHeaderAbbr { display: inline; }
+@media (min-width: 701px) {
+  .dayHeaderFull { display: inline; }
+  .dayHeaderAbbr { display: none; }
+}
+
 /* Cells grid */
 .cellsGrid {
   display: grid;
