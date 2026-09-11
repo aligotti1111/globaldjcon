@@ -336,6 +336,15 @@
 .dayHeader:first-child { border-radius: 8px 0 0 0; }
 .dayHeader:last-child { border-radius: 0 8px 0 0; }
 
+/* Day-name labels: abbreviation on mobile, full name on desktop (swap at 701px,
+   matching the other desktop-only rules in this file). */
+.dayHeaderFull { display: none; }
+.dayHeaderAbbr { display: inline; }
+@media (min-width: 701px) {
+  .dayHeaderFull { display: inline; }
+  .dayHeaderAbbr { display: none; }
+}
+
 .cellsGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
