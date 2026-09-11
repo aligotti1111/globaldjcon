@@ -36,6 +36,10 @@ interface HeaderDjMenuProps {
   isTeammate?: boolean;
   /** Manager+ can add manual bookings; assistants can't. */
   canAddBookings?: boolean;
+  /** Manager+ (owner/admin/manager) can create discounts & promo codes — shows
+   *  the "Add Discount / Promo Code" shortcut even for teammates who otherwise
+   *  can't reach Booking Settings. */
+  canMakeDiscounts?: boolean;
 }
 
 function initialsFrom(name: string): string {
@@ -63,7 +67,7 @@ const sectionLabelStyle: React.CSSProperties = {
   color: 'var(--muted, #8a8aa0)',
 };
 
-export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false, canAddBookings = true }: HeaderDjMenuProps) {
+export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false, canAddBookings = true, canMakeDiscounts = false }: HeaderDjMenuProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -211,6 +215,14 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               {!isTeammate && (
                 <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
                   Booking Settings
+                </Link>
+              )}
+              {/* Discounts shortcut — owner/admin/manager. Jumps straight to the
+                  Discounts box. Teammates who can't open Booking Settings still
+                  get here (the target renders a discounts-only view for them). */}
+              {canMakeDiscounts && (
+                <Link href="/booking-settings?section=discounts" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                  Add Discount / Promo Code
                 </Link>
               )}
             </>
