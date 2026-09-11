@@ -364,6 +364,13 @@
   .dayHeaderAbbr { display: none; }
 }
 
+/* Owner view / public-preview toggle: desktop only (hidden on phones). Sits
+   right next to the Embed Calendar button in the month header actions. */
+.ownerToggleWrap { display: none; }
+@media (min-width: 701px) {
+  .ownerToggleWrap { display: inline-flex; align-items: center; }
+}
+
 /* Cells grid */
 .cellsGrid {
   display: grid;
