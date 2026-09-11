@@ -673,24 +673,44 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // booking calendar's header, next to "Embed Calendar" (desktop only) rather
   // than as a floating overlay — see where it's passed to the calendars below.
   const ownerViewToggle = baseCanEdit ? (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: previewPublic ? '#8a8aa0' : 'var(--neon,#00e0a4)', whiteSpace: 'nowrap' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: previewPublic ? '#8a8aa0' : 'var(--neon,#00e0a4)' }} />
-        {previewPublic ? 'Public view' : 'Owner view'}
-      </span>
-      <button
-        type="button"
-        onClick={() => setPreviewPublic((v) => !v)}
-        style={{
-          background: previewPublic ? 'var(--neon,#00e0a4)' : 'transparent',
-          border: `1px solid ${previewPublic ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.25)'}`,
-          borderRadius: 999, color: previewPublic ? '#06231b' : '#fff',
-          padding: '.25rem .7rem', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.03em',
-          textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap',
-        }}
-      >
-        {previewPublic ? 'Back to owner' : 'View as public'}
-      </button>
+    // Two fixed segments — the highlight moves to the active one (the label text
+    // never changes). Click a segment to switch mode.
+    <div
+      role="tablist"
+      aria-label="Preview mode"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 2,
+        background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.14)',
+        borderRadius: 999, padding: 2,
+      }}
+    >
+      {([
+        { on: false, label: 'Owner view' },
+        { on: true, label: 'Public view' },
+      ] as const).map((seg) => {
+        const active = previewPublic === seg.on;
+        return (
+          <button
+            key={seg.label}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => setPreviewPublic(seg.on)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: active ? 'var(--neon,#00e0a4)' : 'transparent',
+              color: active ? '#06231b' : 'rgba(255,255,255,.7)',
+              border: 'none', borderRadius: 999, padding: '.28rem .7rem',
+              fontSize: '.62rem', fontWeight: 700, letterSpacing: '.03em',
+              textTransform: 'uppercase', cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap',
+              transition: 'background .12s, color .12s',
+            }}
+          >
+            {seg.on ? null : <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? '#06231b' : 'var(--neon,#00e0a4)' }} />}
+            {seg.label}
+          </button>
+        );
+      })}
     </div>
   ) : null;
 
