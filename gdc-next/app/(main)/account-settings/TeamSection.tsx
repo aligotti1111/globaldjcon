@@ -253,10 +253,13 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
               })}
             </div>
             <div style={{ fontSize: '.72rem', color: muted, marginTop: '.6rem', paddingTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-              Only you (the Owner) control billing, the subscription, and booking settings.
+              Only you (the Owner) control billing, the subscription, booking settings, and account settings.
             </div>
           </div>
 
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: muted, margin: '0 0 .55rem' }}>
+            Add teammate
+          </div>
           {members.length < seatLimit ? (
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Their name" style={{ flex: '1 1 140px', minWidth: 120, background: 'var(--panel-2,rgba(255,255,255,.04))', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, color: '#fff', padding: '.5rem .6rem', fontSize: '.85rem' }} />
