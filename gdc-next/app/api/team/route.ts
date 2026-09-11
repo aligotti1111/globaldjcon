@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { seatsFor, type AccessFields } from '@/lib/access';
@@ -66,7 +66,17 @@ export async function GET() {
   const enriched = members.map((m) => ({ ...m, name: (m.member_id ? nameById[m.member_id] : null) || m.invited_name || null }));
 
   const limit = await seatLimit(admin, ownerId);
-  return NextResponse.json({ ok: true, members: enriched, seatLimit: limit, seatsUsed: enriched.length, viewerId: user.id });
+
+  // The account OWNER, for the pinned top row. Not a seat, not removable, no
+  // role change — just shown so the team list is complete.
+  const { data: ownerRow } = await admin.from('users').select('name').eq('id', ownerId).maybeSingle();
+  const owner = {
+    id: ownerId,
+    name: (ownerRow as unknown as { name?: string | null } | null)?.name || null,
+    email: await resolveUserEmail(ownerId),
+  };
+
+  return NextResponse.json({ ok: true, owner, members: enriched, seatLimit: limit, seatsUsed: enriched.length, viewerId: user.id });
 }
 
 export async function POST(req: Request) {
