@@ -126,8 +126,12 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
   // Text column is only usable when there's a valid phone AND consent is on.
   const smsReady = smsEnabled && digitsOf(smsPhone) >= 10;
 
+  // Teammates get email preferences for every alert type (booking request,
+  // status change, inbox message) — but NO text/SMS (that stays owner-only, and
+  // the whole Text column is hidden for them below). No DJ "must keep one on"
+  // rule applies, since a teammate isn't the account that owns the booking.
   const rows = isTeammate
-    ? ROWS.filter((r) => r.key === 'inbox_message')
+    ? ROWS
     : (isDj ? ROWS : ROWS.filter((r) => !r.djOnly));
 
   // "Effective" text coverage for the booking-request row: a stored text
