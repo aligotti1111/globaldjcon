@@ -336,10 +336,10 @@ function ActorLog({ entries, err, actorId }: { entries: Entry[] | null; err: str
   const days = new Map<string, Entry[]>();
   for (const e of mine) { const k = dayKey(e.createdAt); const arr = days.get(k) || []; arr.push(e); days.set(k, arr); }
   return (
-    <div style={{ marginTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.6rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+    <div style={{ marginTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.6rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
       {Array.from(days.entries()).map(([k, dayEntries]) => (
-        <div key={k}>
-          <div style={{ fontSize: '.64rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: MUTED, marginBottom: '.3rem' }}>{dayLabel(dayEntries[0].createdAt)}</div>
+        <div key={k} style={{ borderLeft: '2px solid rgba(0,224,164,.4)', paddingLeft: '.7rem' }}>
+          <div style={{ fontSize: '.66rem', fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.45rem' }}>{dayLabel(dayEntries[0].createdAt)}</div>
           <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
             {dayEntries.map((e) => {
               // The booking this action touched: date · venue · host. Links to
