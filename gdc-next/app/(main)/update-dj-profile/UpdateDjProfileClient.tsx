@@ -757,12 +757,20 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
       )}
 
       {/* Team seats — its own tab. DJs render THIS component (not
-          AccountSettingsClient). Self-contained + Pro-gated. */}
-      {tab === 'team' && <TeamSection djType={initialProfile.dj_type} />}
+          AccountSettingsClient). Self-contained + Pro-gated. Kept MOUNTED (hidden
+          when inactive, same as Notifications above) so its /api/team fetch runs
+          on page load — otherwise the tab mounts + fetches only on click, which
+          made it sit blank for a few seconds. */}
+      <div style={{ display: tab === 'team' ? undefined : 'none' }}>
+        <TeamSection djType={initialProfile.dj_type} />
+      </div>
 
       {/* Your Timezone — its own tab. The clock the booking-request auto-decline
-          deadline and the "Expires in N days" countdown are measured in. */}
-      {tab === 'timezone' && <TimezoneSection />}
+          deadline and the "Expires in N days" countdown are measured in. Kept
+          mounted (hidden) for the same reason as Team above — pre-fetch on load. */}
+      <div style={{ display: tab === 'timezone' ? undefined : 'none' }}>
+        <TimezoneSection />
+      </div>
     </div>
   );
 }
