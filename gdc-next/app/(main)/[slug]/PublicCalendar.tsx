@@ -98,6 +98,10 @@ interface Props {
   // exactly like a visitor, but no date is bookable — taps do nothing and the
   // "Book" affordance is suppressed.
   readOnly?: boolean;
+  // Owner-only "Owner view / View as public" preview toggle, rendered inline in
+  // the month header row next to Embed Calendar (desktop only). Passed as a node
+  // from ProfileView so it can drive that page's preview state.
+  ownerToggle?: React.ReactNode;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -156,6 +160,7 @@ export default function PublicCalendar({
   force12mo,
   pendingDates,
   readOnly = false,
+  ownerToggle,
 }: Props) {
   const today = useMemo(() => new Date(), []);
   // For owner mode we maintain a local copy of bookingDays so quick-marks
@@ -539,6 +544,7 @@ export default function PublicCalendar({
           onOwnerEdit={setOwnerEditKey}
           onEmbedClick={onEmbedClick}
           onShareClick={onShareClick}
+          ownerToggle={ownerToggle}
           pendingDates={pendingDates}
         />
       )}
@@ -623,6 +629,7 @@ function SingleMonthView({
   onOwnerEdit,
   onEmbedClick,
   onShareClick,
+  ownerToggle,
   pendingDates,
 }: {
   year: number;
@@ -645,6 +652,8 @@ function SingleMonthView({
   onEmbedClick?: () => void;
   // Share Calendar button — visible to all visitors, opens share modal.
   onShareClick?: () => void;
+  // Owner-only view-mode toggle node, shown next to Embed Calendar (desktop).
+  ownerToggle?: React.ReactNode;
   // Viewer's own pending-request dates — render "Pending" pill instead
   // of "Book" on these dates. Empty/undefined for logged-out or owner.
   pendingDates?: Set<string>;
@@ -874,21 +883,25 @@ function SingleMonthView({
 
   return (
     <div>
-      {onEmbedClick && (
+      {(onEmbedClick || ownerToggle) && (
         <div className={styles.monthHeaderRow}>
           <div className={styles.monthHeaderActions}>
-            <button
-              type="button"
-              className={styles.embedInlineBtn}
-              onClick={onEmbedClick}
-              title="Embed Calendar"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="16 18 22 12 16 6" />
-                <polyline points="8 6 2 12 8 18" />
-              </svg>
-              Embed Calendar
-            </button>
+            {/* Owner view / public preview toggle — desktop only. */}
+            {ownerToggle && <span className={styles.ownerToggleWrap}>{ownerToggle}</span>}
+            {onEmbedClick && (
+              <button
+                type="button"
+                className={styles.embedInlineBtn}
+                onClick={onEmbedClick}
+                title="Embed Calendar"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="16 18 22 12 16 6" />
+                  <polyline points="8 6 2 12 8 18" />
+                </svg>
+                Embed Calendar
+              </button>
+            )}
           </div>
         </div>
       )}
