@@ -48,8 +48,15 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: 'custom', label: 'Custom' },
 ];
 
-// Palette for event-type slices (methods have their own fixed colours).
-const TYPE_COLORS = ['#00f5c4', '#635BFF', '#e6b455', '#ef6f9c', '#4cc2ff', '#9b8cff', '#5fd08a', '#c98bff', '#ff9f6b'];
+// Palette for event-type slices (methods have their own fixed colours). 20
+// visually distinct hues so up to 20 event types each get their own colour
+// without the ring/legend repeating and becoming ambiguous.
+const TYPE_COLORS = [
+  '#00f5c4', '#635BFF', '#e6b455', '#ef6f9c', '#4cc2ff',
+  '#9b8cff', '#5fd08a', '#c98bff', '#ff9f6b', '#f45b69',
+  '#3ec6c0', '#b0c94a', '#ff8ac4', '#7aa5ff', '#d99a2b',
+  '#8ce06a', '#ff6f61', '#5bd1e6', '#a56bff', '#e0d24a',
+];
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const addDays = (iso: string, days: number) => {
@@ -770,19 +777,22 @@ function Donut({ slices, fmt }: { slices: { key?: string; label: string; value: 
           <div className={styles.disc3dFace} style={{ background: grad, transform: 'translateZ(0.5px)' }} />
         </div>
       </div>
-      <div className={styles.legend}>
-        {slices.map((s, i) => {
-          const zero = !(s.value > 0);
-          return (
-            <div key={s.key ?? i} className={styles.legendRow} style={zero ? { opacity: 0.45 } : undefined}>
-              <span className={styles.swatch} style={{ background: zero ? '#4a4a58' : s.color }} />
-              <span className={styles.legendLabel}>{s.label}</span>
-              <span className={styles.legendVal}>
-                {zero ? `${fmt(0)} · 0%` : `${fmt(s.value)} · ${Math.round((s.value / total) * 100)}%`}
-              </span>
-            </div>
-          );
-        })}
+      <div className={styles.legendCol}>
+        <div className={styles.legend}>
+          {slices.map((s, i) => {
+            const zero = !(s.value > 0);
+            return (
+              <div key={s.key ?? i} className={styles.legendRow} style={zero ? { opacity: 0.45 } : undefined}>
+                <span className={styles.swatch} style={{ background: zero ? '#4a4a58' : s.color }} />
+                <span className={styles.legendLabel}>{s.label}</span>
+                <span className={styles.legendVal}>
+                  {zero ? `${fmt(0)} · 0%` : `${fmt(s.value)} · ${Math.round((s.value / total) * 100)}%`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Total stays pinned below the (scrolling) slice list. */}
         <div className={styles.legendRow} style={{ borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 6, paddingTop: 6, fontWeight: 700 }}>
           <span className={styles.swatch} style={{ background: 'transparent' }} />
           <span className={styles.legendLabel}>Total</span>
