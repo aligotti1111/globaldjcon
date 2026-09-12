@@ -25,7 +25,7 @@ import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import { canBook, type AccessFields } from '@/lib/access';
 import {
   buildReceivedEvents,
-  computeOutstanding,
+  computeExpected,
   buildExpectedItems,
   type FinanceBookingInput,
   type FinancePaymentInput,
@@ -117,7 +117,7 @@ export default async function FinancePage() {
   }
 
   const events = buildReceivedEvents(bookings, payments);
-  const outstanding = computeOutstanding(bookings, payments);
+  const expected = computeExpected(bookings, payments);
 
   // Primary currency = most common on the bookings (fallback to profile/USD).
   const curCount = new Map<string, number>();
@@ -169,7 +169,7 @@ export default async function FinancePage() {
   return (
     <FinanceClient
       events={events}
-      outstanding={outstanding}
+      expected={expected}
       expectedItems={expectedItems}
       stripe={stripeSnap}
       primaryCurrency={primaryCurrency}
