@@ -37,6 +37,16 @@ export interface FinanceBookingInput {
   overtime_amount: number | null;
   overtime_tax: number | null;
   overtime_paid_at: string | null;
+  // Manual "mark complete" (money handled off-app: cash, bank transfer, etc.).
+  // These carry NO booking_payments ledger row, so the report values them from
+  // the booking's own deposit figure / agreed total. deposit_amount/pct give the
+  // deposit portion; the *_completed_at stamps say when each step was marked and
+  // date the inflow; status_overrides is the pre-timestamp fallback.
+  deposit_amount: number | null;
+  deposit_pct: number | null;
+  deposit_completed_at: string | null;
+  balance_completed_at: string | null;
+  status_overrides: Record<string, boolean> | null;
 }
 
 export interface FinancePaymentInput {
@@ -161,6 +171,44 @@ export function isAccepted(b: FinanceBookingInput): boolean {
   return b.status === 'approved' || !!b.accepted_at;
 }
 
+// The deposit portion of a booking's agreed total: an explicit deposit_amount
+// wins, else deposit_pct of the agreed total, else 0.
+function depositPortion(b: FinanceBookingInput): number {
+  const agreed = agreedTotal(b);
+  if (b.deposit_amount != null && Number(b.deposit_amount) > 0) return Math.min(agreed, round2(Number(b.deposit_amount)));
+  if (b.deposit_pct != null && Number(b.deposit_pct) > 0) return round2((agreed * Number(b.deposit_pct)) / 100);
+  return 0;
+}
+
+// Was a step marked complete BY HAND (money handled off-app)? Reads the
+// timestamp columns and falls back to status_overrides for rows completed before
+// those columns existed. 'invoice' is the balance/final-invoice override key.
+function manualDone(b: FinanceBookingInput): { depositDone: boolean; balanceDone: boolean } {
+  const ov = b.status_overrides || {};
+  return {
+    depositDone: ov.deposit === true || !!b.deposit_completed_at,
+    balanceDone: ov.invoice === true || !!b.balance_completed_at,
+  };
+}
+
+// Off-app money to recognize for a booking BEYOND what the ledger already shows.
+// Balance marked complete ⇒ the booking is fully settled (target = agreed total);
+// deposit-only marked complete ⇒ target = the deposit portion. We subtract any
+// ledger-collected amount so a real payment plus a manual mark never double-count.
+export function manualReceived(
+  b: FinanceBookingInput,
+  ledgerCollected: number,
+): { amount: number; kind: string; date: string } | null {
+  const { depositDone, balanceDone } = manualDone(b);
+  if (!depositDone && !balanceDone) return null;
+  const target = balanceDone ? agreedTotal(b) : depositPortion(b);
+  if (!(target > 0)) return null;
+  const amount = round2(target - (ledgerCollected || 0));
+  if (!(amount > 0)) return null;
+  const date = ((balanceDone ? b.balance_completed_at : b.deposit_completed_at) || b.event_date || '').slice(0, 10);
+  return { amount, kind: balanceDone ? 'balance' : 'deposit', date };
+}
+
 const isCollected = (p: FinancePaymentInput) =>
   (p.status === 'paid' || p.status === 'partial') && Number(p.amount_paid) > 0;
 
@@ -179,6 +227,7 @@ export function buildReceivedEvents(
 ): ReceivedEvent[] {
   const byId = new Map(bookings.map((b) => [b.id, b]));
   const events: ReceivedEvent[] = [];
+  const ledger = collectedByBooking(payments);
 
   for (const p of payments) {
     if (!isCollected(p)) continue;
@@ -220,6 +269,29 @@ export function buildReceivedEvents(
     });
   }
 
+  // Manual "mark complete" money — deposit/balance settled off-app, with no
+  // ledger row. Valued from the booking's deposit figure / agreed total and
+  // netted against anything already collected in the ledger, so it shows up on
+  // the graphs and totals like any other inflow. Method 'other' (rail unknown).
+  for (const b of bookings) {
+    const mr = manualReceived(b, ledger.get(b.id) || 0);
+    if (!mr) continue;
+    const ratio = taxRatio(b);
+    const tax = round2(mr.amount * ratio);
+    events.push({
+      bookingId: b.id,
+      date: mr.date,
+      gross: mr.amount,
+      net: round2(mr.amount - tax),
+      tax,
+      method: 'other',
+      eventType: resolveEventType(b),
+      venue: b.venue_name ?? null,
+      kind: mr.kind,
+      currency: (b.currency || 'USD').toUpperCase(),
+    });
+  }
+
   return events.filter((e) => e.date).sort((a, z) => a.date.localeCompare(z.date));
 }
 
@@ -229,6 +301,20 @@ function collectedByBooking(payments: FinancePaymentInput[]): Map<string, number
   for (const p of payments) {
     if (!isCollected(p)) continue;
     m.set(p.booking_id, round2((m.get(p.booking_id) || 0) + Number(p.amount_paid)));
+  }
+  return m;
+}
+
+/**
+ * Total money IN per booking = ledger collected PLUS off-app "mark complete"
+ * money. Expected/upcoming figures net against this (not just the ledger) so a
+ * booking whose balance was marked paid by hand stops showing as still-owed.
+ */
+function receivedByBooking(bookings: FinanceBookingInput[], payments: FinancePaymentInput[]): Map<string, number> {
+  const m = collectedByBooking(payments);
+  for (const b of bookings) {
+    const mr = manualReceived(b, m.get(b.id) || 0);
+    if (mr) m.set(b.id, round2((m.get(b.id) || 0) + mr.amount));
   }
   return m;
 }
@@ -260,7 +346,7 @@ export function computeExpected(
   bookings: FinanceBookingInput[],
   payments: FinancePaymentInput[],
 ): Totals {
-  const collected = collectedByBooking(payments);
+  const collected = receivedByBooking(bookings, payments);
   // Outstanding per booking (invoiced-unpaid), to subtract from the remainder.
   const outstandingByBooking = new Map<string, number>();
   for (const p of payments) {
@@ -306,7 +392,7 @@ export function buildExpectedItems(
   payments: FinancePaymentInput[],
   todayISO: string,
 ): ExpectedItem[] {
-  const collected = collectedByBooking(payments);
+  const collected = receivedByBooking(bookings, payments);
   const out: ExpectedItem[] = [];
   for (const b of bookings) {
     if (!isAccepted(b)) continue;
