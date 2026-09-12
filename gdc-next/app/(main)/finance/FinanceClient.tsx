@@ -13,8 +13,6 @@ import {
   groupByMonth,
   groupByField,
   METHOD_COLORS,
-  METHOD_LABELS,
-  PAYMENT_METHOD_ORDER,
   type ReceivedEvent,
   type ExpectedItem,
   type Totals,
@@ -117,8 +115,22 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
   const filtered = useMemo(() => inRange(events, start, end), [events, start, end]);
   const totals = useMemo(() => summarize(filtered), [filtered]);
   const monthly = useMemo(() => groupByMonth(filtered), [filtered]);
-  const byMethod = useMemo(() => groupByField(filtered, 'method'), [filtered]);
   const byType = useMemo(() => groupByField(filtered, 'eventType'), [filtered]);
+
+  // Where the received money came from: deposits vs the balance (final payment).
+  // Overtime and any other inflow fold into Balance so it's a clean two-way split.
+  const bySource = useMemo(() => {
+    let deposit = 0, balance = 0;
+    for (const e of filtered) {
+      const v = basis === 'net' ? e.net : e.gross;
+      if ((e.kind || '').toLowerCase() === 'deposit') deposit += v; else balance += v;
+    }
+    const r2 = (n: number) => Number(n.toFixed(2));
+    return [
+      { key: 'deposit', label: 'Deposit', value: r2(deposit), color: '#00f5c4' },
+      { key: 'balance', label: 'Balance', value: r2(balance), color: '#8AA0FF' },
+    ];
+  }, [filtered, basis]);
 
   const pick = (t: { net: number; gross: number }) => (basis === 'net' ? t.net : t.gross);
 
@@ -166,24 +178,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
     return { net: Number(net.toFixed(2)), gross: Number(gross.toFixed(2)) };
   }, [expectedItems, periodBounds]);
   const totalEvents = eventCounts.total;
-
-  // "By payment method" lists EVERY rail, in a fixed order, so the DJ sees the
-  // full menu — the ones they've never been paid through show greyed at $0.
-  // Any non-standard key that actually carried money (overtime, other) is
-  // appended so nothing collected goes missing.
-  const methodSlices = useMemo(() => {
-    const found = new Map(byMethod.map((s) => [s.key, s]));
-    const base = PAYMENT_METHOD_ORDER.map((k) => {
-      const s = found.get(k);
-      return { key: k, label: METHOD_LABELS[k] || k, value: s ? pick(s) : 0, color: METHOD_COLORS[k] || '#8A8AA0' };
-    });
-    for (const s of byMethod) {
-      if (!PAYMENT_METHOD_ORDER.includes(s.key)) {
-        base.push({ key: s.key, label: s.label, value: pick(s), color: METHOD_COLORS[s.key] || '#8A8AA0' });
-      }
-    }
-    return base;
-  }, [byMethod, basis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Payments table has its own quick range, independent of the chart period.
   // 'period' tracks the charts; the others are rolling windows off today across
@@ -496,9 +490,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
       {/* Breakdown donuts */}
       <div className={styles.pieRow}>
         <div className={styles.card}>
-          <div className={styles.cardTitle}>By payment method</div>
+          <div className={styles.cardTitle}>Deposit vs balance</div>
           <Donut
-            slices={methodSlices}
+            slices={bySource}
             fmt={(n) => money0.format(n)}
           />
         </div>
