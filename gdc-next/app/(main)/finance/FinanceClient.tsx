@@ -27,10 +27,13 @@ interface StripeSnapshot {
   error?: string;
 }
 
+interface BookingMeta { eventDate: string | null; startTime: string | null; endTime: string | null }
+
 interface Props {
   events: ReceivedEvent[];
   eventItems: { date: string; paid: boolean }[]; // every booked event: date + fully-paid flag
   expectedItems: ExpectedItem[];
+  bookingMeta: Record<string, BookingMeta>; // id → event date + time (for the pop-up)
   stripe: StripeSnapshot;
   primaryCurrency: string;
   djName: string;
@@ -94,7 +97,7 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, eventItems, expectedItems, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, eventItems, expectedItems, bookingMeta, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
   // Custom range (used only when preset === 'custom'). Defaults to this year.
@@ -213,16 +216,20 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
     const exp = expectedItems.filter((x) => x.bookingId === openBooking);
     const expectedNet = exp.reduce((s, x) => s + x.net, 0);
     const expectedGross = exp.reduce((s, x) => s + x.gross, 0);
+    const meta = bookingMeta[openBooking];
     return {
       bookingId: openBooking,
       eventType: first.eventType,
       venue: first.venue,
       currency: first.currency,
+      eventDate: meta?.eventDate ?? null,
+      startTime: meta?.startTime ?? null,
+      endTime: meta?.endTime ?? null,
       pays: [...pays].sort((a, z) => a.paidDate.localeCompare(z.paidDate)),
       receivedNet, receivedGross, receivedTax,
       expectedNet, expectedGross,
     };
-  }, [openBooking, events, expectedItems]);
+  }, [openBooking, events, expectedItems, bookingMeta]);
 
   // Short windows (this month / last 30 days) break down by DAY; everything else
   // by MONTH. Every bucket in the SELECTED PERIOD is shown, empty ones at $0 —
@@ -527,9 +534,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
       {/* Breakdown donuts */}
       <div className={styles.pieRow}>
         <div className={styles.card}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
             <div className={styles.cardTitle} style={{ margin: 0 }}>Deposit vs balance</div>
-            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)', whiteSpace: 'nowrap' }}>{periodTag}</div>
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)', whiteSpace: 'nowrap', flexShrink: 0 }}>{periodTag}</div>
           </div>
           <Donut
             slices={bySource}
@@ -537,9 +544,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
           />
         </div>
         <div className={styles.card}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
             <div className={styles.cardTitle} style={{ margin: 0 }}>By event type</div>
-            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)', whiteSpace: 'nowrap' }}>{periodTag}</div>
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)', whiteSpace: 'nowrap', flexShrink: 0 }}>{periodTag}</div>
           </div>
           <Donut
             slices={byType.map((s, i) => ({ label: s.label, value: pick(s), color: TYPE_COLORS[i % TYPE_COLORS.length] }))}
@@ -646,6 +653,9 @@ function BookingDetailCard({
     eventType: string;
     venue: string | null;
     currency: string;
+    eventDate: string | null;
+    startTime: string | null;
+    endTime: string | null;
     pays: ReceivedEvent[];
     receivedNet: number;
     receivedGross: number;
@@ -657,6 +667,28 @@ function BookingDetailCard({
   onClose: () => void;
 }) {
   const label = (k: string) => k.charAt(0).toUpperCase() + k.slice(1);
+  // "2026-09-04" → "Thu, Sep 4, 2026" (parsed as a plain date, no TZ shift).
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return null;
+    const d = new Date(iso.slice(0, 10) + 'T00:00:00');
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  // "18:00" / "18:00:00" → "6:00 PM".
+  const fmtTime = (t: string | null) => {
+    if (!t) return null;
+    const m = /^(\d{1,2}):(\d{2})/.exec(t);
+    if (!m) return t;
+    let h = Number(m[1]);
+    const min = m[2];
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    return `${h}:${min} ${ap}`;
+  };
+  const dateStr = fmtDate(detail.eventDate);
+  const startStr = fmtTime(detail.startTime);
+  const endStr = fmtTime(detail.endTime);
+  const timeStr = startStr ? (endStr ? `${startStr} – ${endStr}` : startStr) : null;
   return (
     <div
       role="dialog"
@@ -691,6 +723,21 @@ function BookingDetailCard({
             ×
           </button>
         </div>
+
+        {(dateStr || timeStr) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', marginTop: 12, fontSize: '.86rem' }}>
+            {dateStr && (
+              <span style={{ color: '#fff' }}>
+                <span style={{ color: 'var(--muted,#8a8aa0)' }}>Event date: </span>{dateStr}
+              </span>
+            )}
+            {timeStr && (
+              <span style={{ color: '#fff' }}>
+                <span style={{ color: 'var(--muted,#8a8aa0)' }}>Time: </span>{timeStr}
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{ fontSize: '.68rem', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#8a8aa0)', margin: '16px 0 8px' }}>
           Payments received
