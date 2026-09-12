@@ -328,8 +328,18 @@ export function computeOutstanding(
   let gross = 0, tax = 0, count = 0;
   for (const p of payments) {
     if (!isOutstanding(p)) continue;
+    const b = byId.get(p.booking_id);
+    // If the DJ already handled this money off-app via "mark complete", the open
+    // invoice is no longer outstanding — drop it so the same money isn't counted
+    // as both Received and Outstanding. Balance complete = whole booking settled;
+    // deposit complete clears a deposit invoice specifically.
+    if (b) {
+      const { depositDone, balanceDone } = manualDone(b);
+      if (balanceDone) continue;
+      if (depositDone && (p.kind || '').toLowerCase() === 'deposit') continue;
+    }
     const owed = round2(Number(p.amount) - Number(p.amount_paid || 0));
-    const ratio = byId.has(p.booking_id) ? taxRatio(byId.get(p.booking_id)!) : 0;
+    const ratio = b ? taxRatio(b) : 0;
     gross = round2(gross + owed);
     tax = round2(tax + owed * ratio);
     count += 1;
@@ -338,22 +348,16 @@ export function computeOutstanding(
 }
 
 /**
- * Expected — the remaining agreed amount on ACCEPTED bookings that hasn't been
- * collected OR invoiced yet. Netted against both so it never double-counts money
- * already in "received" or "outstanding".
+ * Expected — ALL money still owed on ACCEPTED bookings: the agreed total minus
+ * everything already received (ledger payments + off-app "mark complete"). There
+ * is no separate "outstanding" bucket anymore — invoiced-but-unconfirmed money
+ * is just part of what's still expected, so it's counted here once.
  */
 export function computeExpected(
   bookings: FinanceBookingInput[],
   payments: FinancePaymentInput[],
 ): Totals {
   const collected = receivedByBooking(bookings, payments);
-  // Outstanding per booking (invoiced-unpaid), to subtract from the remainder.
-  const outstandingByBooking = new Map<string, number>();
-  for (const p of payments) {
-    if (!isOutstanding(p)) continue;
-    const owed = round2(Number(p.amount) - Number(p.amount_paid || 0));
-    outstandingByBooking.set(p.booking_id, round2((outstandingByBooking.get(p.booking_id) || 0) + owed));
-  }
 
   let gross = 0, tax = 0, count = 0;
   for (const b of bookings) {
@@ -361,8 +365,7 @@ export function computeExpected(
     const agreed = agreedTotal(b);
     if (!(agreed > 0)) continue;
     const got = collected.get(b.id) || 0;
-    const owed = outstandingByBooking.get(b.id) || 0;
-    const remainder = round2(agreed - got - owed);
+    const remainder = round2(agreed - got);
     if (!(remainder > 0)) continue;
     gross = round2(gross + remainder);
     tax = round2(tax + remainder * taxRatio(b));
