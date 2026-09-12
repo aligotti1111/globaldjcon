@@ -32,6 +32,7 @@ interface StripeSnapshot {
 
 interface Props {
   events: ReceivedEvent[];
+  eventDates: string[]; // YYYY-MM-DD of every accepted booking
   expectedItems: ExpectedItem[];
   stripe: StripeSnapshot;
   primaryCurrency: string;
@@ -89,7 +90,7 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, eventDates, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
   // Custom range (used only when preset === 'custom'). Defaults to this year.
@@ -121,9 +122,24 @@ export default function FinanceClient({ events, expectedItems, stripe, primaryCu
 
   const pick = (t: { net: number; gross: number }) => (basis === 'net' ? t.net : t.gross);
 
-  const gigs = useMemo(() => new Set(filtered.map((e) => e.bookingId)).size, [filtered]);
   const earned = pick(totals);
-  const avgPerGig = gigs > 0 ? earned / gigs : 0;
+
+  // Total events booked (accepted) whose date falls in the selected period. The
+  // window is the FULL period the chart shows (This Year = Jan–Dec, not just up
+  // to today), so upcoming events in the period are counted too.
+  const totalEvents = useMemo(() => {
+    let cStart = start, cEnd = end;
+    if (preset === 'this_month') {
+      const y = Number(start.slice(0, 4)), mo = Number(start.slice(5, 7));
+      cEnd = `${start.slice(0, 7)}-${pad(new Date(y, mo, 0).getDate())}`;
+    } else if (preset === 'ytd') {
+      cEnd = `${start.slice(0, 4)}-12-31`;
+    } else if (preset === 'all') {
+      cStart = '0000-01-01'; cEnd = '9999-12-31';
+    }
+    return eventDates.filter((d) => d >= cStart && d <= cEnd).length;
+  }, [eventDates, start, end, preset]);
+  const avgPerEvent = totalEvents > 0 ? earned / totalEvents : 0;
 
   // "By payment method" lists EVERY rail, in a fixed order, so the DJ sees the
   // full menu — the ones they've never been paid through show greyed at $0.
@@ -430,9 +446,9 @@ export default function FinanceClient({ events, expectedItems, stripe, primaryCu
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Gigs paid</div>
-          <div className={styles.kpiValue}>{gigs}</div>
-          <div className={styles.kpiSub}>Avg {money0.format(avgPerGig)} / gig</div>
+          <div className={styles.kpiLabel}>Total events</div>
+          <div className={styles.kpiValue}>{totalEvents}</div>
+          <div className={styles.kpiSub}>Booked in this period · avg {money0.format(avgPerEvent)}</div>
         </div>
 
         <div className={styles.kpi}>
