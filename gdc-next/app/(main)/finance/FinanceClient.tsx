@@ -241,12 +241,22 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // received/expected crossroads) and next year. Every other window shows
   // received only (see projectFuture below).
   const isDaily = preset === 'this_month' || preset === 'last_30';
-  // A custom range longer than 12 months is too wide to read month-by-month, so
+  // A window longer than 12 months is too wide to read month-by-month, so
   // aggregate it by YEAR instead. Span is inclusive month count between the two
   // endpoints (Jan 2027 → Jul 2028 = 19 months ⇒ yearly).
   const monthSpan = (a: string, b: string) =>
     (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + (Number(b.slice(5, 7)) - Number(a.slice(5, 7))) + 1;
-  const isYearly = preset === 'custom' && monthSpan(start, end) > 12;
+  // Earliest → latest date across all received + expected money. "All time" uses
+  // this real span (not its 1970→today bounds) to decide month vs year.
+  const dataBounds = useMemo(() => {
+    let min = '', max = '';
+    for (const e of events) { if (e.date && (!min || e.date < min)) min = e.date; if (e.date && (!max || e.date > max)) max = e.date; }
+    for (const x of expectedItems) { if (x.date && (!min || x.date < min)) min = x.date; if (x.date && (!max || x.date > max)) max = x.date; }
+    return { min, max };
+  }, [events, expectedItems]);
+  const isYearly =
+    (preset === 'custom' && monthSpan(start, end) > 12) ||
+    (preset === 'all' && !!dataBounds.min && monthSpan(dataBounds.min, dataBounds.max) > 12);
   // Single-year views (this/next/last year) hide the per-bar year on mobile —
   // it's redundant with the period label and crowds the axis.
   const singleYear = preset === 'ytd' || preset === 'next_year' || preset === 'last_year';
@@ -296,17 +306,21 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       return out;
     }
 
-    // Custom range wider than a year: one bar per YEAR (labelled "2027"), so a
-    // multi-year window stays readable instead of cramming in 20+ month bars.
+    // Window wider than a year (custom range, or all-time spanning 12+ months):
+    // one bar per YEAR (labelled "2027") so it stays readable instead of cramming
+    // in 20+ month bars. "All time" spans the actual data; custom spans its dates.
     if (isYearly) {
       const recY = new Map<string, number>();
       for (const e of filtered) { const y = e.date.slice(0, 4); recY.set(y, (recY.get(y) || 0) + rv(e)); }
       const expY = new Map<string, number>();
       if (projectFuture) for (const x of expectedItems) {
-        if (x.date >= start && x.date <= end) { const y = x.date.slice(0, 4); expY.set(y, (expY.get(y) || 0) + ev(x)); }
+        // All-time counts every expected month; custom clamps to its range.
+        if (preset === 'all' || (x.date >= start && x.date <= end)) {
+          const y = x.date.slice(0, 4); expY.set(y, (expY.get(y) || 0) + ev(x));
+        }
       }
-      const firstY = Number(start.slice(0, 4));
-      const lastY = Number(end.slice(0, 4));
+      const firstY = Number((preset === 'all' ? dataBounds.min : start).slice(0, 4));
+      const lastY = Number((preset === 'all' ? dataBounds.max : end).slice(0, 4));
       const out: Bar[] = [];
       for (let y = firstY; y <= lastY && out.length < 60; y++) {
         const key = String(y);
