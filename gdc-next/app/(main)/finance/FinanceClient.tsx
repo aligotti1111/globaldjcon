@@ -32,7 +32,7 @@ interface StripeSnapshot {
 
 interface Props {
   events: ReceivedEvent[];
-  outstanding: Totals;
+  expected: Totals;
   expectedItems: ExpectedItem[];
   stripe: StripeSnapshot;
   primaryCurrency: string;
@@ -90,7 +90,7 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, outstanding, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, expected, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
   // Custom range (used only when preset === 'custom'). Defaults to this year.
@@ -421,9 +421,9 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Outstanding</div>
-          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(pick(outstanding))}</div>
-          <div className={styles.kpiSub}>Invoiced, not yet confirmed</div>
+          <div className={styles.kpiLabel}>Expected</div>
+          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(pick(expected))}</div>
+          <div className={styles.kpiSub}>Agreed money not yet received</div>
         </div>
 
         <div className={styles.kpi}>
