@@ -47,6 +47,16 @@ export interface FinanceBookingInput {
   deposit_completed_at: string | null;
   balance_completed_at: string | null;
   status_overrides: Record<string, boolean> | null;
+  // Manually-added booking (the DJ entered it themselves). These are real booked
+  // events even when their status isn't 'approved' / has no accepted_at.
+  is_manual: boolean | null;
+}
+
+// A booking that represents a real, on-the-books event: accepted OR manually
+// added, and not cancelled. Used for the "Total events" tally.
+export function isBookedEvent(b: FinanceBookingInput): boolean {
+  if (b.status === 'cancelled') return false;
+  return isAccepted(b) || b.is_manual === true;
 }
 
 export interface FinancePaymentInput {
