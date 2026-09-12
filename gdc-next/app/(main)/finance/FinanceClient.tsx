@@ -99,7 +99,9 @@ function nextMonth(ym: string): string {
 
 export default function FinanceClient({ events, eventItems, expectedItems, bookingMeta, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
-  const [basis, setBasis] = useState<'net' | 'gross'>('net');
+  // Amount basis is fixed to net (after tax) — the toggle was removed. Gross is
+  // still surfaced as a sub-figure on the KPI cards.
+  const basis: 'net' | 'gross' = 'net';
   // Custom range (used only when preset === 'custom'). Defaults to this year.
   const [customStart, setCustomStart] = useState<string>(`${today.slice(0, 4)}-01-01`);
   const [customEnd, setCustomEnd] = useState<string>(today);
@@ -465,10 +467,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           </div>
         )}
         <div className={styles.spacer} />
-        <div className={styles.seg} aria-label="Amount basis">
-          <button type="button" className={`${styles.segBtn} ${basis === 'net' ? styles.segBtnActive : ''}`} onClick={() => setBasis('net')}>Net (after tax)</button>
-          <button type="button" className={`${styles.segBtn} ${basis === 'gross' ? styles.segBtnActive : ''}`} onClick={() => setBasis('gross')}>Gross</button>
-        </div>
       </div>
 
       {/* Revenue over time — the primary chart, full width. Day granularity for
