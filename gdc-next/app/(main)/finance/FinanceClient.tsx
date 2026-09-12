@@ -147,10 +147,13 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
     const { cStart, cEnd } = periodBounds;
     const inRangeItems = eventItems.filter((e) => e.date >= cStart && e.date <= cEnd);
     const paid = inRangeItems.filter((e) => e.paid).length;
-    // Not paid = anything not fully settled, INCLUDING deposit-only bookings
-    // whose balance is still owed.
-    return { total: inRangeItems.length, paid, unpaid: inRangeItems.length - paid };
-  }, [eventItems, periodBounds]);
+    // Split the unpaid (not fully settled, incl. deposit-only) into events that
+    // have already happened (money you should chase) vs upcoming ones (expected).
+    const unpaidItems = inRangeItems.filter((e) => !e.paid);
+    const pastUnpaid = unpaidItems.filter((e) => e.date < today).length;
+    const expectedUnpaid = unpaidItems.length - pastUnpaid;
+    return { total: inRangeItems.length, paid, pastUnpaid, expectedUnpaid };
+  }, [eventItems, periodBounds, today]);
 
   // Expected money still owed on upcoming bookings in the period — net AND gross,
   // so the KPI can show gross alongside the net figure like Revenue does.
@@ -465,19 +468,27 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
         </div>
 
         <div className={styles.kpi}>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div className={styles.kpiValue}>{totalEvents}</div>
-              <div className={styles.kpiSub}>Total events</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className={styles.kpiValue} style={{ color: '#00f5c4' }}>{eventCounts.paid}</div>
-              <div className={styles.kpiSub}>Paid</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{eventCounts.unpaid}</div>
-              <div className={styles.kpiSub}>Not paid</div>
-            </div>
+          <div className={styles.kpiLabel} style={{ marginBottom: 10 }}>Events · {rangeLabel(preset)}</div>
+          <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            {[
+              { value: totalEvents, label: 'Total', color: '#ffffff' },
+              { value: eventCounts.paid, label: 'Paid', color: '#00f5c4' },
+              { value: eventCounts.pastUnpaid, label: 'Past unpaid', color: '#ff6b6b' },
+              { value: eventCounts.expectedUnpaid, label: 'Expected unpaid', color: '#8AA0FF' },
+            ].map((c, i) => (
+              <div
+                key={c.label}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '2px 6px',
+                  borderLeft: i === 0 ? 'none' : '1px solid rgba(255,255,255,.08)',
+                }}
+              >
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.1, color: c.color }}>{c.value}</div>
+                <div style={{ fontSize: '.62rem', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--muted,#8a8aa0)', marginTop: 4 }}>{c.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
