@@ -26,7 +26,7 @@ import { canBook, type AccessFields } from '@/lib/access';
 import {
   buildReceivedEvents,
   buildExpectedItems,
-  isAccepted,
+  isBookedEvent,
   type FinanceBookingInput,
   type FinancePaymentInput,
 } from '@/lib/finance';
@@ -95,7 +95,7 @@ export default async function FinancePage() {
   // financial columns the report needs.
   const { data: bRows } = await admin
     .from('bookings')
-    .select('id, event_date, status, accepted_at, event_type, venue_name, booking_type, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides')
+    .select('id, event_date, status, accepted_at, event_type, venue_name, booking_type, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides, is_manual')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .limit(2000);
@@ -120,7 +120,7 @@ export default async function FinancePage() {
   // Every booked (accepted) event's date — the "Total events" KPI tallies these
   // within the selected period, whether or not any money has come in yet.
   const eventDates = bookings
-    .filter((b) => isAccepted(b))
+    .filter((b) => isBookedEvent(b))
     .map((b) => (b.event_date || '').slice(0, 10))
     .filter(Boolean);
 
