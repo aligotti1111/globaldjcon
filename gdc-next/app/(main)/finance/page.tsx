@@ -95,7 +95,7 @@ export default async function FinancePage() {
   // financial columns the report needs.
   const { data: bRows } = await admin
     .from('bookings')
-    .select('id, event_date, status, accepted_at, event_type, venue_name, booking_type, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at')
+    .select('id, event_date, status, accepted_at, event_type, venue_name, booking_type, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .limit(2000);
