@@ -244,7 +244,6 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
   }, [filtered, monthly, basis, preset, start, end, isDaily, expectedItems]);
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
-  const hasExpected = bars.some((b) => b.expected > 0);
   // The current month is the crossroads: some money already received, some still
   // expected. Surface a single combined figure (received + expected) so "total
   // showing both" is spelled out, not just implied by the two bar colours. Only
@@ -391,12 +390,12 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
             ))}
           </div>
         )}
-        {hasExpected && (
-          <div className={styles.chartLegend}>
-            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
-            <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — confirmed bookings with unpaid deposit/balance</span>
-          </div>
-        )}
+        {/* Legend always shows so the two colours are explained even when the
+            current range happens to have no expected (unpaid) bookings. */}
+        <div className={styles.chartLegend}>
+          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
+          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — confirmed bookings with unpaid deposit/balance</span>
+        </div>
       </div>
 
       {/* KPI strip */}
