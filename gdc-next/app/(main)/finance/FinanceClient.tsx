@@ -96,6 +96,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
   // Independent quick-filter for the payments table only (leaves the charts on
   // the main period above). 'period' = whatever the charts show.
   const [tableRange, setTableRange] = useState<'period' | 'last_30' | 'last_90' | 'last_year'>('period');
+  // Booking whose detail card is open (null = none). Clicking a payments row
+  // opens an in-page pop-up rather than navigating away from Finance.
+  const [openBooking, setOpenBooking] = useState<string | null>(null);
 
   const money0 = useMemo(
     () => new Intl.NumberFormat(undefined, { style: 'currency', currency: primaryCurrency, maximumFractionDigits: 0 }),
@@ -189,6 +192,30 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
     return inRange(events, start, today);
   }, [tableRange, filtered, events, today]);
   const tableTotals = useMemo(() => summarize(tableEvents), [tableEvents]);
+
+  // Detail for the open pop-up: every payment ever received on that booking
+  // (across ALL time, not just the current range) plus any still-expected money.
+  const bookingDetail = useMemo(() => {
+    if (!openBooking) return null;
+    const pays = events.filter((e) => e.bookingId === openBooking);
+    if (pays.length === 0) return null;
+    const first = pays[0];
+    const receivedNet = pays.reduce((s, e) => s + e.net, 0);
+    const receivedGross = pays.reduce((s, e) => s + e.gross, 0);
+    const receivedTax = pays.reduce((s, e) => s + e.tax, 0);
+    const exp = expectedItems.filter((x) => x.bookingId === openBooking);
+    const expectedNet = exp.reduce((s, x) => s + x.net, 0);
+    const expectedGross = exp.reduce((s, x) => s + x.gross, 0);
+    return {
+      bookingId: openBooking,
+      eventType: first.eventType,
+      venue: first.venue,
+      currency: first.currency,
+      pays: [...pays].sort((a, z) => a.paidDate.localeCompare(z.paidDate)),
+      receivedNet, receivedGross, receivedTax,
+      expectedNet, expectedGross,
+    };
+  }, [openBooking, events, expectedItems]);
 
   // Short windows (this month / last 30 days) break down by DAY; everything else
   // by MONTH. Every bucket in the SELECTED PERIOD is shown, empty ones at $0 —
@@ -302,13 +329,13 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
   }, [bars]);
 
   function exportCsv() {
-    const header = ['Date', 'Event Type', 'Venue', 'Kind', 'Gross', 'Tax', 'Net', 'Currency'];
+    const header = ['Date paid', 'Event Type', 'Venue', 'Kind', 'Gross', 'Tax', 'Net', 'Currency'];
     const cell = (v: string | number) => {
       const s = String(v ?? '');
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const rows = tableEvents.map((e) => [
-      e.date, e.eventType, e.venue || '',
+      e.paidDate, e.eventType, e.venue || '',
       e.kind, e.gross.toFixed(2), e.tax.toFixed(2), e.net.toFixed(2), e.currency,
     ]);
     const csv = [header, ...rows].map((r) => r.map(cell).join(',')).join('\n');
@@ -532,7 +559,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Date</th>
+                  <th>Date paid</th>
                   <th>Event</th>
                   <th>Venue</th>
                   <th>Kind</th>
@@ -543,9 +570,14 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
               </thead>
               <tbody>
                 {[...tableEvents].reverse().map((e, i) => (
-                  <tr key={`${e.bookingId}-${e.date}-${i}`}>
-                    <td>{e.date}</td>
-                    <td>{e.eventType}</td>
+                  <tr
+                    key={`${e.bookingId}-${e.paidDate}-${i}`}
+                    onClick={() => setOpenBooking(e.bookingId)}
+                    style={{ cursor: 'pointer' }}
+                    title="View booking details"
+                  >
+                    <td>{e.paidDate}</td>
+                    <td style={{ color: '#8AA0FF', textDecoration: 'underline', textUnderlineOffset: 2 }}>{e.eventType}</td>
                     <td>{e.venue || '—'}</td>
                     <td>{e.kind}</td>
                     <td className={styles.num}>{money2.format(e.gross)}</td>
@@ -571,6 +603,127 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
         &ldquo;Earned&rdquo; is money you actually collected across every rail (card, Venmo, Cash App, PayPal, Zelle,
         cash, check) plus paid overtime. Net excludes sales tax, which you hold for the state.
       </p>
+
+      {bookingDetail && (
+        <BookingDetailCard
+          detail={bookingDetail}
+          money={money2}
+          onClose={() => setOpenBooking(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── BookingDetailCard: in-page pop-up summarising one booking's money ─────────
+// Opened by clicking a payments-received row. Stays on the Finance page (no
+// navigation). Shows every payment received on the booking, the totals, and any
+// money still expected, with a link to open the full booking in a new tab.
+function BookingDetailCard({
+  detail,
+  money,
+  onClose,
+}: {
+  detail: {
+    bookingId: string;
+    eventType: string;
+    venue: string | null;
+    currency: string;
+    pays: ReceivedEvent[];
+    receivedNet: number;
+    receivedGross: number;
+    receivedTax: number;
+    expectedNet: number;
+    expectedGross: number;
+  };
+  money: Intl.NumberFormat;
+  onClose: () => void;
+}) {
+  const label = (k: string) => k.charAt(0).toUpperCase() + k.slice(1);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Booking details"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(2px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(460px, 100%)', maxHeight: '85vh', overflowY: 'auto',
+          background: '#15151f', border: '1px solid rgba(255,255,255,.14)',
+          borderRadius: 16, padding: '20px 22px', boxShadow: '0 24px 60px rgba(0,0,0,.5)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+          <div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{detail.eventType}</div>
+            {detail.venue && <div style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)', marginTop: 2 }}>{detail.venue}</div>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ background: 'none', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: '1.5rem', lineHeight: 1, cursor: 'pointer', padding: 0 }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ fontSize: '.68rem', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#8a8aa0)', margin: '16px 0 8px' }}>
+          Payments received
+        </div>
+        {detail.pays.length === 0 ? (
+          <div style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>No payments recorded yet.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {detail.pays.map((p, i) => (
+              <div key={`${p.paidDate}-${i}`} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, fontSize: '.86rem' }}>
+                <span style={{ color: '#fff' }}>{label(p.kind)}</span>
+                <span style={{ color: 'var(--muted,#8a8aa0)', flex: 1, textAlign: 'left', marginLeft: 10 }}>{p.paidDate}</span>
+                <span style={{ color: '#fff', fontWeight: 600 }}>{money.format(p.gross)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', margin: '14px 0 0', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6, fontSize: '.86rem' }}>
+          <Row k="Received (gross)" v={money.format(detail.receivedGross)} />
+          <Row k="Tax collected" v={money.format(detail.receivedTax)} muted />
+          <Row k="Received (net)" v={money.format(detail.receivedNet)} strong color="#00f5c4" />
+          {detail.expectedGross > 0 && (
+            <Row k="Still expected (gross)" v={money.format(detail.expectedGross)} strong color="#8AA0FF" />
+          )}
+        </div>
+
+        <a
+          href={`/upcoming-bookings?open=${detail.bookingId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'block', textAlign: 'center', marginTop: 18,
+            padding: '.6rem .8rem', borderRadius: 10,
+            border: '1px solid rgba(255,255,255,.18)', color: '#fff',
+            fontSize: '.85rem', fontWeight: 600, textDecoration: 'none',
+          }}
+        >
+          Open full booking details ↗
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, v, muted, strong, color }: { k: string; v: string; muted?: boolean; strong?: boolean; color?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+      <span style={{ color: muted ? 'var(--muted,#8a8aa0)' : '#fff' }}>{k}</span>
+      <span style={{ color: color || (muted ? 'var(--muted,#8a8aa0)' : '#fff'), fontWeight: strong ? 800 : 600 }}>{v}</span>
     </div>
   );
 }
