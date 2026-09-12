@@ -424,15 +424,15 @@ export default function FinanceClient({ events, expectedItems, stripe, primaryCu
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Gigs paid</div>
-          <div className={styles.kpiValue}>{gigs}</div>
-          <div className={styles.kpiSub}>Avg {money0.format(avgPerGig)} / gig</div>
+          <div className={styles.kpiLabel}>Expected · {rangeLabel(preset)}</div>
+          <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{money0.format(expectedShown)}</div>
+          <div className={styles.kpiSub}>Unpaid on upcoming bookings</div>
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Expected · {rangeLabel(preset)}</div>
-          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(expectedShown)}</div>
-          <div className={styles.kpiSub}>Unpaid on upcoming bookings</div>
+          <div className={styles.kpiLabel}>Gigs paid</div>
+          <div className={styles.kpiValue}>{gigs}</div>
+          <div className={styles.kpiSub}>Avg {money0.format(avgPerGig)} / gig</div>
         </div>
 
         <div className={styles.kpi}>
