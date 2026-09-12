@@ -12,7 +12,6 @@ import {
   summarize,
   groupByMonth,
   groupByField,
-  METHOD_COLORS,
   type ReceivedEvent,
   type ExpectedItem,
   type Totals,
@@ -303,13 +302,13 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
   }, [bars]);
 
   function exportCsv() {
-    const header = ['Date', 'Event Type', 'Venue', 'Method', 'Kind', 'Gross', 'Tax', 'Net', 'Currency'];
+    const header = ['Date', 'Event Type', 'Venue', 'Kind', 'Gross', 'Tax', 'Net', 'Currency'];
     const cell = (v: string | number) => {
       const s = String(v ?? '');
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const rows = tableEvents.map((e) => [
-      e.date, e.eventType, e.venue || '', (e.method[0].toUpperCase() + e.method.slice(1)),
+      e.date, e.eventType, e.venue || '',
       e.kind, e.gross.toFixed(2), e.tax.toFixed(2), e.net.toFixed(2), e.currency,
     ]);
     const csv = [header, ...rows].map((r) => r.map(cell).join(',')).join('\n');
@@ -536,7 +535,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
                   <th>Date</th>
                   <th>Event</th>
                   <th>Venue</th>
-                  <th>Method</th>
                   <th>Kind</th>
                   <th className={styles.num}>Gross</th>
                   <th className={styles.num}>Tax</th>
@@ -549,11 +547,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
                     <td>{e.date}</td>
                     <td>{e.eventType}</td>
                     <td>{e.venue || '—'}</td>
-                    <td>
-                      <span className={styles.chip} style={{ background: (METHOD_COLORS[e.method] || '#8A8AA0') + '22', color: METHOD_COLORS[e.method] || '#b8b8c8' }}>
-                        {e.method[0].toUpperCase() + e.method.slice(1)}
-                      </span>
-                    </td>
                     <td>{e.kind}</td>
                     <td className={styles.num}>{money2.format(e.gross)}</td>
                     <td className={styles.num}>{money2.format(e.tax)}</td>
@@ -563,7 +556,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
               </tbody>
               <tfoot>
                 <tr className={styles.totalRow}>
-                  <td colSpan={5}>Total · {tableEvents.length} payment{tableEvents.length === 1 ? '' : 's'}</td>
+                  <td colSpan={4}>Total · {tableEvents.length} payment{tableEvents.length === 1 ? '' : 's'}</td>
                   <td className={styles.num}>{money2.format(tableTotals.gross)}</td>
                   <td className={styles.num}>{money2.format(tableTotals.tax)}</td>
                   <td className={styles.num}>{money2.format(tableTotals.net)}</td>
