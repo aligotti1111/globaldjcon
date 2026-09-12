@@ -97,7 +97,7 @@ export default async function FinancePage() {
   // financial columns the report needs.
   const { data: bRows } = await admin
     .from('bookings')
-    .select('id, event_date, status, accepted_at, event_type, venue_name, booking_type, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides, is_manual')
+    .select('id, event_date, start_time, end_time, status, accepted_at, event_type, venue_name, booking_type, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides, is_manual')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .limit(2000);
@@ -183,11 +183,23 @@ export default async function FinancePage() {
   const today = todayInTz(effectiveTimezone(profile?.timezone, null));
   const expectedItems = buildExpectedItems(bookings, payments, today);
 
+  // Per-booking event date + time, keyed by id — the payments pop-up shows these
+  // (the aggregated ReceivedEvent stream doesn't carry them).
+  const bookingMeta: Record<string, { eventDate: string | null; startTime: string | null; endTime: string | null }> = {};
+  for (const b of bookings) {
+    bookingMeta[b.id] = {
+      eventDate: b.event_date ?? null,
+      startTime: b.start_time ?? null,
+      endTime: b.end_time ?? null,
+    };
+  }
+
   return (
     <FinanceClient
       events={events}
       eventItems={eventItems}
       expectedItems={expectedItems}
+      bookingMeta={bookingMeta}
       stripe={stripeSnap}
       primaryCurrency={primaryCurrency}
       djName={profile?.name || 'Your'}
