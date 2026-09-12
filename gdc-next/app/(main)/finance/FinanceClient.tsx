@@ -421,6 +421,9 @@ export default function FinanceClient({ events, eventDates, expectedItems, strip
           <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
           <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — confirmed bookings with unpaid deposit/balance</span>
         </div>
+        <p style={{ margin: '8px 0 0', fontSize: '.72rem', color: 'var(--muted, #8a8aa0)', lineHeight: 1.5 }}>
+          Deposits count in the month they’re paid; the balance and everything else count in the month of the event.
+        </p>
       </div>
 
       {/* KPI strip */}
