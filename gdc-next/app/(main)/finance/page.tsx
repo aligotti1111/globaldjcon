@@ -26,6 +26,7 @@ import { canBook, type AccessFields } from '@/lib/access';
 import {
   buildReceivedEvents,
   buildExpectedItems,
+  isAccepted,
   type FinanceBookingInput,
   type FinancePaymentInput,
 } from '@/lib/finance';
@@ -116,6 +117,12 @@ export default async function FinancePage() {
   }
 
   const events = buildReceivedEvents(bookings, payments);
+  // Every booked (accepted) event's date — the "Total events" KPI tallies these
+  // within the selected period, whether or not any money has come in yet.
+  const eventDates = bookings
+    .filter((b) => isAccepted(b))
+    .map((b) => (b.event_date || '').slice(0, 10))
+    .filter(Boolean);
 
   // Primary currency = most common on the bookings (fallback to profile/USD).
   const curCount = new Map<string, number>();
@@ -167,6 +174,7 @@ export default async function FinancePage() {
   return (
     <FinanceClient
       events={events}
+      eventDates={eventDates}
       expectedItems={expectedItems}
       stripe={stripeSnap}
       primaryCurrency={primaryCurrency}
