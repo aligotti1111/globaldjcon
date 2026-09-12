@@ -241,6 +241,12 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // received/expected crossroads) and next year. Every other window shows
   // received only (see projectFuture below).
   const isDaily = preset === 'this_month' || preset === 'last_30';
+  // A custom range longer than 12 months is too wide to read month-by-month, so
+  // aggregate it by YEAR instead. Span is inclusive month count between the two
+  // endpoints (Jan 2027 → Jul 2028 = 19 months ⇒ yearly).
+  const monthSpan = (a: string, b: string) =>
+    (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + (Number(b.slice(5, 7)) - Number(a.slice(5, 7))) + 1;
+  const isYearly = preset === 'custom' && monthSpan(start, end) > 12;
   // Single-year views (this/next/last year) hide the per-bar year on mobile —
   // it's redundant with the period label and crowds the axis.
   const singleYear = preset === 'ytd' || preset === 'next_year' || preset === 'last_year';
@@ -290,6 +296,25 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       return out;
     }
 
+    // Custom range wider than a year: one bar per YEAR (labelled "2027"), so a
+    // multi-year window stays readable instead of cramming in 20+ month bars.
+    if (isYearly) {
+      const recY = new Map<string, number>();
+      for (const e of filtered) { const y = e.date.slice(0, 4); recY.set(y, (recY.get(y) || 0) + rv(e)); }
+      const expY = new Map<string, number>();
+      if (projectFuture) for (const x of expectedItems) {
+        if (x.date >= start && x.date <= end) { const y = x.date.slice(0, 4); expY.set(y, (expY.get(y) || 0) + ev(x)); }
+      }
+      const firstY = Number(start.slice(0, 4));
+      const lastY = Number(end.slice(0, 4));
+      const out: Bar[] = [];
+      for (let y = firstY; y <= lastY && out.length < 60; y++) {
+        const key = String(y);
+        out.push({ key, label: key, value: recY.get(key) || 0, expected: expY.get(key) || 0 });
+      }
+      return out;
+    }
+
     const recMap = new Map(monthly.map((b) => [b.month, basis === 'net' ? b.net : b.gross]));
     const expMap = new Map<string, number>();
     if (projectFuture) for (const x of expectedItems) { const m = x.date.slice(0, 7); expMap.set(m, (expMap.get(m) || 0) + ev(x)); }
@@ -324,7 +349,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       cur = nextMonth(cur);
     }
     return out;
-  }, [filtered, monthly, basis, preset, start, end, isDaily, expectedItems]);
+  }, [filtered, monthly, basis, preset, start, end, isDaily, isYearly, expectedItems]);
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
   // The current month is the crossroads: some money already received, some still
@@ -338,7 +363,8 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   const periodLabel = useMemo(() => {
     if (bars.length === 0) return '';
     const mn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const fmt = (k: string) => { const p = k.split('-'); return `${mn[Number(p[1]) - 1]} ${p[0]}`; };
+    // Yearly buckets have bare-year keys ("2027"); month buckets are "YYYY-MM".
+    const fmt = (k: string) => { const p = k.split('-'); return p.length < 2 ? p[0] : `${mn[Number(p[1]) - 1]} ${p[0]}`; };
     const a = fmt(bars[0].key);
     const b = fmt(bars[bars.length - 1].key);
     return a === b ? a : `${a} – ${b}`;
@@ -433,7 +459,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           short windows, month otherwise; every bucket in the period is shown. */}
       <div className={styles.card} style={{ marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-          <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : 'month'}</div>
+          <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue by {isDaily ? 'day' : isYearly ? 'year' : 'month'}</div>
           {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text, #ffffff)' }}>{periodLabel}</div>}
         </div>
         {showMonthTotal && (
@@ -763,7 +789,7 @@ function BookingDetailCard({
           <Row k="Tax collected" v={money.format(detail.receivedTax)} muted />
           <Row k="Received (net)" v={money.format(detail.receivedNet)} strong color="#00f5c4" />
           {detail.expectedGross > 0 && (
-            <Row k="Still expected (gross)" v={money.format(detail.expectedGross)} strong color="#8AA0FF" />
+            <Row k="Balance (expected)" v={money.format(detail.expectedGross)} strong color="#8AA0FF" />
           )}
         </div>
 
