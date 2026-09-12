@@ -305,10 +305,12 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     } else {
       firstYM = start.slice(0, 7);
       lastYM = end.slice(0, 7);
-      for (const m of expMap.keys()) if (m > lastYM) lastYM = m;
-      // "This year" is always the full calendar year (Jan–Dec) — never spill
-      // into next year even when an expected event sits there.
-      if (preset === 'ytd') {
+      // Fixed calendar-year windows ("This year", "Next year") stay Jan–Dec of
+      // that year — never extend past December to chase an expected booking that
+      // lands in a later year. Other windows extend to cover expected months.
+      const fixedYear = preset === 'ytd' || preset === 'next_year';
+      if (!fixedYear) for (const m of expMap.keys()) if (m > lastYM) lastYM = m;
+      if (fixedYear) {
         const yr = start.slice(0, 4);
         firstYM = `${yr}-01`;
         lastYM = `${yr}-12`;
