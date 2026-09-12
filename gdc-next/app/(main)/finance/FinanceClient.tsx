@@ -127,7 +127,10 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
   // Total events booked (accepted) whose date falls in the selected period. The
   // window is the FULL period the chart shows (This Year = Jan–Dec, not just up
   // to today), so upcoming events in the period are counted too.
-  const eventCounts = useMemo(() => {
+  // The full calendar window the selected period covers (This Year = Jan–Dec,
+  // This Month = the whole month, etc.). Shared by the event tally and the
+  // Expected total so both match the chart.
+  const periodBounds = useMemo(() => {
     let cStart = start, cEnd = end;
     if (preset === 'this_month') {
       const y = Number(start.slice(0, 4)), mo = Number(start.slice(5, 7));
@@ -137,12 +140,28 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
     } else if (preset === 'all') {
       cStart = '0000-01-01'; cEnd = '9999-12-31';
     }
+    return { cStart, cEnd };
+  }, [start, end, preset]);
+
+  const eventCounts = useMemo(() => {
+    const { cStart, cEnd } = periodBounds;
     const inRangeItems = eventItems.filter((e) => e.date >= cStart && e.date <= cEnd);
     const paid = inRangeItems.filter((e) => e.paid).length;
     // Not paid = anything not fully settled, INCLUDING deposit-only bookings
     // whose balance is still owed.
     return { total: inRangeItems.length, paid, unpaid: inRangeItems.length - paid };
-  }, [eventItems, start, end, preset]);
+  }, [eventItems, periodBounds]);
+
+  // Expected money still owed on upcoming bookings in the period — net AND gross,
+  // so the KPI can show gross alongside the net figure like Revenue does.
+  const expectedTotals = useMemo(() => {
+    const { cStart, cEnd } = periodBounds;
+    let net = 0, gross = 0;
+    for (const x of expectedItems) {
+      if (x.date >= cStart && x.date <= cEnd) { net += x.net; gross += x.gross; }
+    }
+    return { net: Number(net.toFixed(2)), gross: Number(gross.toFixed(2)) };
+  }, [expectedItems, periodBounds]);
   const totalEvents = eventCounts.total;
 
   // "By payment method" lists EVERY rail, in a fixed order, so the DJ sees the
@@ -269,10 +288,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
   }, [filtered, monthly, basis, preset, start, end, isDaily, expectedItems]);
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
-  // Expected KPI = the sum of the purple bars actually shown for the selected
-  // period (already in the chosen net/gross basis), so the number and the chart
-  // always match. Rounded to cents to avoid float drift.
-  const expectedShown = Number(bars.reduce((s, b) => s + b.expected, 0).toFixed(2));
   // The current month is the crossroads: some money already received, some still
   // expected. Surface a single combined figure (received + expected) so "total
   // showing both" is spelled out, not just implied by the two bar colours. Only
@@ -442,9 +457,11 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Expected · {rangeLabel(preset)}</div>
-          <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{money0.format(expectedShown)}</div>
-          <div className={styles.kpiSub}>Unpaid on upcoming bookings</div>
+          <div className={styles.kpiLabel}>Expected ({basis}) · {rangeLabel(preset)}</div>
+          <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{money0.format(basis === 'net' ? expectedTotals.net : expectedTotals.gross)}</div>
+          <div className={styles.kpiSub}>
+            {basis === 'net' ? `Gross ${money0.format(expectedTotals.gross)}` : `Net ${money0.format(expectedTotals.net)}`} · unpaid on upcoming
+          </div>
         </div>
 
         <div className={styles.kpi}>
