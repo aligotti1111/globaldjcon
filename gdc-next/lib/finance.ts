@@ -80,7 +80,10 @@ export interface FinancePaymentInput {
 // One confirmed inflow — the atom every chart and total is built from.
 export interface ReceivedEvent {
   bookingId: string;
-  date: string;                 // YYYY-MM-DD — when the money was confirmed
+  date: string;                 // YYYY-MM-DD — ACCOUNTING date the charts group by
+                                // (deposit = paid; balance/other = event month)
+  paidDate: string;             // YYYY-MM-DD — when the money was actually paid,
+                                // regardless of accounting date (used by the table)
   gross: number;                // collected (incl. tax)
   net: number;                  // gross − tax portion (your earnings)
   tax: number;                  // tax portion of this inflow
@@ -211,7 +214,7 @@ function manualDone(b: FinanceBookingInput): { depositDone: boolean; balanceDone
 export function manualReceived(
   b: FinanceBookingInput,
   ledgerCollected: number,
-): { amount: number; kind: string; date: string } | null {
+): { amount: number; kind: string; date: string; paidDate: string } | null {
   const { depositDone, balanceDone } = manualDone(b);
   if (!depositDone && !balanceDone) return null;
   const target = balanceDone ? agreedTotal(b) : depositPortion(b);
@@ -224,7 +227,13 @@ export function manualReceived(
     ? (b.event_date || b.balance_completed_at || '')
     : (b.deposit_completed_at || b.event_date || '')
   ).slice(0, 10);
-  return { amount, kind: balanceDone ? 'balance' : 'deposit', date };
+  // Actual date it was marked paid — the completion timestamp, event date as a
+  // last resort for legacy rows completed before those columns existed.
+  const paidDate = (balanceDone
+    ? (b.balance_completed_at || b.event_date || '')
+    : (b.deposit_completed_at || b.event_date || '')
+  ).slice(0, 10);
+  return { amount, kind: balanceDone ? 'balance' : 'deposit', date, paidDate };
 }
 
 const isCollected = (p: FinancePaymentInput) =>
@@ -260,9 +269,13 @@ export function buildReceivedEvents(
     const dateStr = isDeposit
       ? (p.confirmed_at || p.marked_sent_at || b?.event_date || '')
       : (b?.event_date || p.confirmed_at || p.marked_sent_at || '');
+    // Actual date money changed hands — always the payment's own timestamp,
+    // never the event date (the table shows this; the charts use `date`).
+    const paidStr = (p.confirmed_at || p.marked_sent_at || dateStr || '');
     events.push({
       bookingId: p.booking_id,
       date: dateStr.slice(0, 10),
+      paidDate: paidStr.slice(0, 10),
       gross,
       net: round2(gross - tax),
       tax,
@@ -283,6 +296,7 @@ export function buildReceivedEvents(
     events.push({
       bookingId: b.id,
       date: (b.overtime_paid_at || b.event_date || '').slice(0, 10),
+      paidDate: (b.overtime_paid_at || b.event_date || '').slice(0, 10),
       gross,
       net: round2(gross - tax),
       tax,
@@ -306,6 +320,7 @@ export function buildReceivedEvents(
     events.push({
       bookingId: b.id,
       date: mr.date,
+      paidDate: mr.paidDate,
       gross: mr.amount,
       net: round2(mr.amount - tax),
       tax,
