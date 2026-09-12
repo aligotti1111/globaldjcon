@@ -135,11 +135,19 @@ export function normalizeMethod(m: string | null | undefined): string {
   return k in METHOD_LABELS && k !== 'other' ? k : (k === '' ? 'other' : (METHOD_LABELS[k] ? k : 'other'));
 }
 
-// "weddings", "corporate_event" → "Weddings", "Corporate Event".
+// "weddings", "corporate_event", "sweet16" → "Weddings", "Corporate Event",
+// "Sweet 16". Splits on separators AND a letter→digit boundary so a run-together
+// stored value reads the way it's meant to. (Digit→letter is left alone so
+// ordinals like "16th" aren't broken into "16 th".)
 export function prettyEventType(s: string | null | undefined): string {
   const raw = (s || '').trim();
   if (!raw) return 'Other';
-  return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2')   // Sweet16 → Sweet 16
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // Resolve a booking's display event type. event_type is the real field, but
