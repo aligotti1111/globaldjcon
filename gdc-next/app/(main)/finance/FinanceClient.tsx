@@ -90,16 +90,6 @@ function nextMonth(ym: string): string {
 }
 
 export default function FinanceClient({ events, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
-  // "Expected" = the money still to come from accepted, UPCOMING bookings with an
-  // unpaid deposit/balance — exactly what the chart's blue bars plot. Summed from
-  // the same source so the KPI and the chart always agree (past gigs, usually
-  // settled off-app, are intentionally excluded so they can't inflate this).
-  const expectedTotals = useMemo<Totals>(() => {
-    let gross = 0, net = 0;
-    for (const x of expectedItems) { gross += x.gross; net += x.net; }
-    const r2 = (n: number) => Number(n.toFixed(2));
-    return { gross: r2(gross), net: r2(net), tax: r2(gross - net), count: expectedItems.length };
-  }, [expectedItems]);
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
   // Custom range (used only when preset === 'custom'). Defaults to this year.
@@ -191,7 +181,13 @@ export default function FinanceClient({ events, expectedItems, stripe, primaryCu
     // Every other window is received-only: last 30 / last 90 / last year / all
     // time (all past), and "this year" (received across its past + current months,
     // no forward projection).
-    const projectFuture = preset === 'this_month' || preset === 'next_year';
+    // Expected (unpaid, upcoming) money is always dated to a FUTURE event, so
+    // plotting it in every window only ever lands it on the current + future
+    // buckets that fall inside the selected range — a past-only window (Last 30)
+    // simply has none in range. This is what makes the purple bars show up on
+    // "This year" (current + remaining months) and "All time" too, not just the
+    // two forward-looking presets.
+    const projectFuture = true;
 
     if (isDaily) {
       const recMap = new Map<string, number>();
@@ -253,6 +249,10 @@ export default function FinanceClient({ events, expectedItems, stripe, primaryCu
   }, [filtered, monthly, basis, preset, start, end, isDaily, expectedItems]);
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
   const showBarVals = bars.length <= 14;
+  // Expected KPI = the sum of the purple bars actually shown for the selected
+  // period (already in the chosen net/gross basis), so the number and the chart
+  // always match. Rounded to cents to avoid float drift.
+  const expectedShown = Number(bars.reduce((s, b) => s + b.expected, 0).toFixed(2));
   // The current month is the crossroads: some money already received, some still
   // expected. Surface a single combined figure (received + expected) so "total
   // showing both" is spelled out, not just implied by the two bar colours. Only
@@ -430,8 +430,8 @@ export default function FinanceClient({ events, expectedItems, stripe, primaryCu
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Expected</div>
-          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(pick(expectedTotals))}</div>
+          <div className={styles.kpiLabel}>Expected · {rangeLabel(preset)}</div>
+          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(expectedShown)}</div>
           <div className={styles.kpiSub}>Unpaid on upcoming bookings</div>
         </div>
 
