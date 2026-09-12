@@ -335,6 +335,10 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
     return a === b ? a : `${a} – ${b}`;
   }, [bars]);
 
+  // Concise period label for the donut card headers (top-right). Custom shows
+  // the exact date span; every preset shows its name ("This year", etc.).
+  const periodTag = preset === 'custom' ? `${start} – ${end}` : rangeLabel(preset);
+
   function exportCsv() {
     const header = ['Date paid', 'Event Type', 'Venue', 'Kind', 'Gross', 'Tax', 'Net', 'Currency'];
     const cell = (v: string | number) => {
@@ -523,14 +527,20 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
       {/* Breakdown donuts */}
       <div className={styles.pieRow}>
         <div className={styles.card}>
-          <div className={styles.cardTitle}>Deposit vs balance</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+            <div className={styles.cardTitle} style={{ margin: 0 }}>Deposit vs balance</div>
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)', whiteSpace: 'nowrap' }}>{periodTag}</div>
+          </div>
           <Donut
             slices={bySource}
             fmt={(n) => money0.format(n)}
           />
         </div>
         <div className={styles.card}>
-          <div className={styles.cardTitle}>By event type</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+            <div className={styles.cardTitle} style={{ margin: 0 }}>By event type</div>
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--muted, #8a8aa0)', whiteSpace: 'nowrap' }}>{periodTag}</div>
+          </div>
           <Donut
             slices={byType.map((s, i) => ({ label: s.label, value: pick(s), color: TYPE_COLORS[i % TYPE_COLORS.length] }))}
             fmt={(n) => money0.format(n)}
