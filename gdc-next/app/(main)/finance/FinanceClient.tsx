@@ -365,7 +365,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     return out;
   }, [filtered, monthly, basis, preset, start, end, isDaily, isYearly, expectedItems]);
   const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
-  const showBarVals = bars.length <= 14;
+  // Always label the bars with their amount — every window, not just the ones
+  // with few bars. (Empty $0 bars have no label because there's no bar to sit on.)
+  const showBarVals = true;
   // The current month is the crossroads: some money already received, some still
   // expected. Surface a single combined figure (received + expected) so "total
   // showing both" is spelled out, not just implied by the two bar colours. Only
