@@ -52,11 +52,14 @@ export interface FinanceBookingInput {
   is_manual: boolean | null;
 }
 
-// A booking that represents a real, on-the-books event: accepted OR manually
-// added, and not cancelled. Used for the "Total events" tally.
+// A booking that counts toward the "Total events" tally: EVERY booking on the
+// DJ's books — approved, still-requested (pending), or manually added — except
+// ones that were cancelled or rejected (those never happened). Manual rows can
+// have a blank status, so a status that isn't explicitly cancelled/rejected
+// still counts.
 export function isBookedEvent(b: FinanceBookingInput): boolean {
-  if (b.status === 'cancelled') return false;
-  return isAccepted(b) || b.is_manual === true;
+  const s = (b.status || '').toLowerCase();
+  return s !== 'cancelled' && s !== 'rejected' && s !== 'declined';
 }
 
 export interface FinancePaymentInput {
