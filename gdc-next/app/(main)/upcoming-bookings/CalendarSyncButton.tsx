@@ -33,7 +33,7 @@ export default function CalendarSyncButton({ className }: { className?: string }
         style={{
           background: 'transparent', border: 'none', padding: 0, font: 'inherit',
           fontWeight: 600, color: 'var(--neon,#00e0a4)', textDecoration: 'underline',
-          cursor: 'pointer', whiteSpace: 'nowrap',
+          cursor: 'pointer', whiteSpace: 'nowrap', textTransform: 'uppercase',
         }}
       >
         Sync to Calendar
