@@ -23,6 +23,8 @@
 export interface FinanceBookingInput {
   id: string;
   event_date: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
   status: string | null;
   accepted_at: string | null;
   event_type: string | null;
