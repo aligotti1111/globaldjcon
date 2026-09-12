@@ -27,6 +27,8 @@ import {
   buildReceivedEvents,
   buildExpectedItems,
   isBookedEvent,
+  receivedByBooking,
+  agreedTotal,
   type FinanceBookingInput,
   type FinancePaymentInput,
 } from '@/lib/finance';
@@ -119,10 +121,20 @@ export default async function FinancePage() {
   const events = buildReceivedEvents(bookings, payments);
   // Every booked (accepted) event's date — the "Total events" KPI tallies these
   // within the selected period, whether or not any money has come in yet.
-  const eventDates = bookings
+  // Every booked (accepted/pending/manual) event with its date and whether it's
+  // FULLY paid. "Paid" = received (ledger + off-app "mark complete") covers the
+  // agreed total; a deposit-only booking (balance still owed) counts as NOT paid.
+  const receivedMap = receivedByBooking(bookings, payments);
+  const eventItems = bookings
     .filter((b) => isBookedEvent(b))
-    .map((b) => (b.event_date || '').slice(0, 10))
-    .filter(Boolean);
+    .map((b) => {
+      const date = (b.event_date || '').slice(0, 10);
+      const agreed = agreedTotal(b);
+      const got = receivedMap.get(b.id) || 0;
+      const paid = agreed > 0 && got >= agreed - 0.01;
+      return { date, paid };
+    })
+    .filter((x) => x.date);
 
   // Primary currency = most common on the bookings (fallback to profile/USD).
   const curCount = new Map<string, number>();
@@ -174,7 +186,7 @@ export default async function FinancePage() {
   return (
     <FinanceClient
       events={events}
-      eventDates={eventDates}
+      eventItems={eventItems}
       expectedItems={expectedItems}
       stripe={stripeSnap}
       primaryCurrency={primaryCurrency}
