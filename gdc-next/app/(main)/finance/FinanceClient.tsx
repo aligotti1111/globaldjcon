@@ -40,16 +40,15 @@ interface Props {
   today: string; // YYYY-MM-DD
 }
 
-type Preset = 'this_month' | 'last_30' | 'last_90' | 'ytd' | 'next_year' | 'last_year' | 'all';
+type Preset = 'this_month' | 'last_30' | 'last_90' | 'ytd' | 'next_year' | 'last_year' | 'all' | 'custom';
 
 const PRESETS: { key: Preset; label: string }[] = [
   { key: 'this_month', label: 'This month' },
   { key: 'last_30', label: 'Last 30 days' },
-  { key: 'last_90', label: 'Last 90 days' },
   { key: 'ytd', label: 'This year' },
   { key: 'next_year', label: 'Next year' },
-  { key: 'last_year', label: 'Last year' },
   { key: 'all', label: 'All time' },
+  { key: 'custom', label: 'Custom' },
 ];
 
 // Palette for event-type slices (methods have their own fixed colours).
@@ -94,6 +93,9 @@ function nextMonth(ym: string): string {
 export default function FinanceClient({ events, outstanding, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
+  // Custom range (used only when preset === 'custom'). Defaults to this year.
+  const [customStart, setCustomStart] = useState<string>(`${today.slice(0, 4)}-01-01`);
+  const [customEnd, setCustomEnd] = useState<string>(today);
   // Independent quick-filter for the payments table only (leaves the charts on
   // the main period above). 'period' = whatever the charts show.
   const [tableRange, setTableRange] = useState<'period' | 'last_30' | 'last_90' | 'last_year'>('period');
@@ -107,7 +109,11 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
     [primaryCurrency],
   );
 
-  const { start, end } = rangeFor(preset, today);
+  // Custom preset reads the two date inputs; everything else uses a fixed rule.
+  // Guard against a start after end by swapping so the range is always valid.
+  const { start, end } = preset === 'custom'
+    ? (customStart <= customEnd ? { start: customStart, end: customEnd } : { start: customEnd, end: customStart })
+    : rangeFor(preset, today);
   const filtered = useMemo(() => inRange(events, start, end), [events, start, end]);
   const totals = useMemo(() => summarize(filtered), [filtered]);
   const monthly = useMemo(() => groupByMonth(filtered), [filtered]);
@@ -313,6 +319,27 @@ export default function FinanceClient({ events, outstanding, expectedItems, stri
         >
           {PRESETS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
+        {preset === 'custom' && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              type="date"
+              aria-label="Start date"
+              value={customStart}
+              max={customEnd}
+              onChange={(e) => setCustomStart(e.target.value)}
+              style={{ colorScheme: 'dark', background: 'rgba(255,255,255,.05)', color: '#fff', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '.4rem .6rem', fontSize: '.82rem' }}
+            />
+            <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.8rem' }}>to</span>
+            <input
+              type="date"
+              aria-label="End date"
+              value={customEnd}
+              min={customStart}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              style={{ colorScheme: 'dark', background: 'rgba(255,255,255,.05)', color: '#fff', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '.4rem .6rem', fontSize: '.82rem' }}
+            />
+          </div>
+        )}
         <div className={styles.spacer} />
         <div className={styles.seg} aria-label="Amount basis">
           <button type="button" className={`${styles.segBtn} ${basis === 'net' ? styles.segBtnActive : ''}`} onClick={() => setBasis('net')}>Net (after tax)</button>
