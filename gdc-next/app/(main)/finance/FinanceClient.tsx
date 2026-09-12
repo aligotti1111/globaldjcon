@@ -32,7 +32,6 @@ interface StripeSnapshot {
 
 interface Props {
   events: ReceivedEvent[];
-  expected: Totals;
   expectedItems: ExpectedItem[];
   stripe: StripeSnapshot;
   primaryCurrency: string;
@@ -90,7 +89,17 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, expected, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
+  // "Expected" = the money still to come from accepted, UPCOMING bookings with an
+  // unpaid deposit/balance — exactly what the chart's blue bars plot. Summed from
+  // the same source so the KPI and the chart always agree (past gigs, usually
+  // settled off-app, are intentionally excluded so they can't inflate this).
+  const expectedTotals = useMemo<Totals>(() => {
+    let gross = 0, net = 0;
+    for (const x of expectedItems) { gross += x.gross; net += x.net; }
+    const r2 = (n: number) => Number(n.toFixed(2));
+    return { gross: r2(gross), net: r2(net), tax: r2(gross - net), count: expectedItems.length };
+  }, [expectedItems]);
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
   // Custom range (used only when preset === 'custom'). Defaults to this year.
@@ -422,8 +431,8 @@ export default function FinanceClient({ events, expected, expectedItems, stripe,
 
         <div className={styles.kpi}>
           <div className={styles.kpiLabel}>Expected</div>
-          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(pick(expected))}</div>
-          <div className={styles.kpiSub}>Agreed money not yet received</div>
+          <div className={`${styles.kpiValue} ${styles.warn}`}>{money0.format(pick(expectedTotals))}</div>
+          <div className={styles.kpiSub}>Unpaid on upcoming bookings</div>
         </div>
 
         <div className={styles.kpi}>
