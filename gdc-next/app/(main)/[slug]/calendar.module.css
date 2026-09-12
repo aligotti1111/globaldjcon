@@ -362,6 +362,14 @@
 @media (min-width: 701px) {
   .dayHeaderFull { display: inline; }
   .dayHeaderAbbr { display: none; }
+  /* Full names need more room to read than the tiny mono abbreviations —
+     larger, tighter-tracked, and a clean sans instead of Space Mono. */
+  .dayHeader {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+  }
 }
 
 /* Owner view / public-preview toggle: desktop only (hidden on phones). Sits
