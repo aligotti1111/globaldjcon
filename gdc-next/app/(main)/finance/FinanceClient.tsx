@@ -637,6 +637,11 @@ function Donut({ slices, fmt }: { slices: { key?: string; label: string; value: 
             </div>
           );
         })}
+        <div className={styles.legendRow} style={{ borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 6, paddingTop: 6, fontWeight: 700 }}>
+          <span className={styles.swatch} style={{ background: 'transparent' }} />
+          <span className={styles.legendLabel}>Total</span>
+          <span className={styles.legendVal} style={{ color: '#fff' }}>{fmt(total)}</span>
+        </div>
       </div>
     </div>
   );
