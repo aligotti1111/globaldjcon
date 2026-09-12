@@ -218,7 +218,12 @@ export function manualReceived(
   if (!(target > 0)) return null;
   const amount = round2(target - (ledgerCollected || 0));
   if (!(amount > 0)) return null;
-  const date = ((balanceDone ? b.balance_completed_at : b.deposit_completed_at) || b.event_date || '').slice(0, 10);
+  // Dating rule: a DEPOSIT counts in the month it was handled (deposits are often
+  // paid well in advance); a BALANCE / full settle counts in the EVENT's month.
+  const date = (balanceDone
+    ? (b.event_date || b.balance_completed_at || '')
+    : (b.deposit_completed_at || b.event_date || '')
+  ).slice(0, 10);
   return { amount, kind: balanceDone ? 'balance' : 'deposit', date };
 }
 
@@ -248,9 +253,16 @@ export function buildReceivedEvents(
     const ratio = b ? taxRatio(b) : 0;
     const gross = round2(Number(p.amount_paid));
     const tax = round2(gross * ratio);
+    // Dating rule: a DEPOSIT counts in the month it was actually paid (often well
+    // ahead of the gig); everything else (balance / other) counts in the EVENT's
+    // month, so the bulk of a booking lands in the month it happens.
+    const isDeposit = (p.kind || '').toLowerCase() === 'deposit';
+    const dateStr = isDeposit
+      ? (p.confirmed_at || p.marked_sent_at || b?.event_date || '')
+      : (b?.event_date || p.confirmed_at || p.marked_sent_at || '');
     events.push({
       bookingId: p.booking_id,
-      date: (p.confirmed_at || p.marked_sent_at || b?.event_date || '').slice(0, 10),
+      date: dateStr.slice(0, 10),
       gross,
       net: round2(gross - tax),
       tax,
