@@ -439,7 +439,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
         <div className={styles.kpi}>
           <div className={styles.kpiLabel}>Tax collected</div>
           <div className={styles.kpiValue}>{money0.format(totals.tax)}</div>
-          <div className={styles.kpiSub}>Held for the state — not income</div>
         </div>
 
         <div className={styles.kpi}>
@@ -449,13 +448,16 @@ export default function FinanceClient({ events, eventItems, expectedItems, prima
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Total events · {totalEvents}</div>
-          <div style={{ display: 'flex', gap: 20, marginTop: 2 }}>
-            <div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div className={styles.kpiValue}>{totalEvents}</div>
+              <div className={styles.kpiSub}>Total events</div>
+            </div>
+            <div style={{ flex: 1 }}>
               <div className={styles.kpiValue} style={{ color: '#00f5c4' }}>{eventCounts.paid}</div>
               <div className={styles.kpiSub}>Paid</div>
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
               <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{eventCounts.unpaid}</div>
               <div className={styles.kpiSub}>Not paid</div>
             </div>
