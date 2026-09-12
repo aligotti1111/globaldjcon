@@ -250,7 +250,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               the page itself also hard-redirects anyone who reaches it by URL. */}
           {!isTeammate && bookingEnabled && (
             <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Finance
+              Finance/Earnings
             </Link>
           )}
           {!isTeammate && (
