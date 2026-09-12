@@ -32,7 +32,7 @@ interface StripeSnapshot {
 
 interface Props {
   events: ReceivedEvent[];
-  eventDates: string[]; // YYYY-MM-DD of every accepted booking
+  eventItems: { date: string; paid: boolean }[]; // every booked event: date + fully-paid flag
   expectedItems: ExpectedItem[];
   stripe: StripeSnapshot;
   primaryCurrency: string;
@@ -90,7 +90,7 @@ function nextMonth(ym: string): string {
   return `${yy}-${pad(mm)}`;
 }
 
-export default function FinanceClient({ events, eventDates, expectedItems, stripe, primaryCurrency, djName, today }: Props) {
+export default function FinanceClient({ events, eventItems, expectedItems, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
   const [basis, setBasis] = useState<'net' | 'gross'>('net');
   // Custom range (used only when preset === 'custom'). Defaults to this year.
@@ -127,7 +127,7 @@ export default function FinanceClient({ events, eventDates, expectedItems, strip
   // Total events booked (accepted) whose date falls in the selected period. The
   // window is the FULL period the chart shows (This Year = Jan–Dec, not just up
   // to today), so upcoming events in the period are counted too.
-  const totalEvents = useMemo(() => {
+  const eventCounts = useMemo(() => {
     let cStart = start, cEnd = end;
     if (preset === 'this_month') {
       const y = Number(start.slice(0, 4)), mo = Number(start.slice(5, 7));
@@ -137,9 +137,13 @@ export default function FinanceClient({ events, eventDates, expectedItems, strip
     } else if (preset === 'all') {
       cStart = '0000-01-01'; cEnd = '9999-12-31';
     }
-    return eventDates.filter((d) => d >= cStart && d <= cEnd).length;
-  }, [eventDates, start, end, preset]);
-  const avgPerEvent = totalEvents > 0 ? earned / totalEvents : 0;
+    const inRangeItems = eventItems.filter((e) => e.date >= cStart && e.date <= cEnd);
+    const paid = inRangeItems.filter((e) => e.paid).length;
+    // Not paid = anything not fully settled, INCLUDING deposit-only bookings
+    // whose balance is still owed.
+    return { total: inRangeItems.length, paid, unpaid: inRangeItems.length - paid };
+  }, [eventItems, start, end, preset]);
+  const totalEvents = eventCounts.total;
 
   // "By payment method" lists EVERY rail, in a fixed order, so the DJ sees the
   // full menu — the ones they've never been paid through show greyed at $0.
@@ -285,10 +289,6 @@ export default function FinanceClient({ events, eventDates, expectedItems, strip
     const b = fmt(bars[bars.length - 1].key);
     return a === b ? a : `${a} – ${b}`;
   }, [bars]);
-
-  const inStripe = stripe.connected && (stripe.available != null || stripe.pending != null)
-    ? (stripe.available || 0) + (stripe.pending || 0)
-    : null;
 
   function exportCsv() {
     const header = ['Date', 'Event Type', 'Venue', 'Method', 'Kind', 'Gross', 'Tax', 'Net', 'Currency'];
@@ -449,16 +449,16 @@ export default function FinanceClient({ events, eventDates, expectedItems, strip
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Total events</div>
-          <div className={styles.kpiValue}>{totalEvents}</div>
-          <div className={styles.kpiSub}>Booked in this period · avg {money0.format(avgPerEvent)}</div>
-        </div>
-
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>In Stripe now</div>
-          <div className={styles.kpiValue}>{inStripe == null ? '—' : money0.format(inStripe)}</div>
-          <div className={styles.kpiSub}>
-            {!stripe.connected ? 'Card not connected' : `Card only · ${money0.format(stripe.available || 0)} available`}
+          <div className={styles.kpiLabel}>Total events · {totalEvents}</div>
+          <div style={{ display: 'flex', gap: 20, marginTop: 2 }}>
+            <div>
+              <div className={styles.kpiValue} style={{ color: '#00f5c4' }}>{eventCounts.paid}</div>
+              <div className={styles.kpiSub}>Paid</div>
+            </div>
+            <div>
+              <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{eventCounts.unpaid}</div>
+              <div className={styles.kpiSub}>Not paid</div>
+            </div>
           </div>
         </div>
       </div>
@@ -552,9 +552,7 @@ export default function FinanceClient({ events, eventDates, expectedItems, strip
 
       <p className={styles.note}>
         &ldquo;Earned&rdquo; is money you actually collected across every rail (card, Venmo, Cash App, PayPal, Zelle,
-        cash, check) plus paid overtime. &ldquo;In Stripe now&rdquo; is card payments only — the rest never touches
-        Stripe. Net excludes sales tax, which you hold for the state.
-        {stripe.error ? ` (Stripe balance unavailable: ${stripe.error})` : ''}
+        cash, check) plus paid overtime. Net excludes sales tax, which you hold for the state.
       </p>
     </div>
   );
