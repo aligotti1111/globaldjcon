@@ -214,7 +214,11 @@
   -webkit-mask: radial-gradient(circle at center, transparent 51%, #000 52%);
   mask: radial-gradient(circle at center, transparent 51%, #000 52%);
 }
-.legend { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 130px; }
+/* legendCol holds the scrolling slice list plus the pinned Total row. */
+.legendCol { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 130px; }
+/* Scrolls once there are many event types (up to ~20) so a long legend can't
+   blow the card's height out — the Total row (a sibling) stays pinned below. */
+.legend { display: flex; flex-direction: column; gap: 7px; max-height: 220px; overflow-y: auto; }
 .legendRow { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
 .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
 .legendLabel { flex: 1; color: var(--text, #d8d8e6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
