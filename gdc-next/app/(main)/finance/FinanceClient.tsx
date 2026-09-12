@@ -495,7 +495,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
         </div>
 
         <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Tax collected</div>
+          <div className={styles.kpiLabel}>Tax collected · {rangeLabel(preset)}</div>
           <div className={styles.kpiValue}>{money0.format(totals.tax)}</div>
         </div>
 
