@@ -335,7 +335,7 @@ function collectedByBooking(payments: FinancePaymentInput[]): Map<string, number
  * money. Expected/upcoming figures net against this (not just the ledger) so a
  * booking whose balance was marked paid by hand stops showing as still-owed.
  */
-function receivedByBooking(bookings: FinanceBookingInput[], payments: FinancePaymentInput[]): Map<string, number> {
+export function receivedByBooking(bookings: FinanceBookingInput[], payments: FinancePaymentInput[]): Map<string, number> {
   const m = collectedByBooking(payments);
   for (const b of bookings) {
     const mr = manualReceived(b, m.get(b.id) || 0);
