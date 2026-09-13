@@ -448,30 +448,41 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     const n = parseInt(m[1], 16);
     return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
   }
-  // Style for the text-hugging band span (clone so multi-line wraps keep the band
-  // on every line). Empty object when there's no band.
+  // Style for the colour band behind the hero name / location. Tuned per element:
+  //
+  //   name  — Bebas Neue, all-caps. An INLINE span's background is locked to the
+  //           font's line box, which reserves a big block of empty descender
+  //           space that gets painted no matter what padding/line-height you set —
+  //           that's why the band looked oversized and wouldn't tighten. Making it
+  //           `inline-block` lets the box follow line-height, so a tight
+  //           line-height (.78) + small padding wraps the band snugly around the
+  //           caps like a highlighter. (No box-decoration-break needed: the name
+  //           is single-line; the size tiers shrink long names to fit.)
+  //
+  //   location — Space Mono, small mixed-case with real descenders. Left inline
+  //           with clone so it can wrap, full line-height, and even generous
+  //           top/bottom padding so the strip reads as a solid band.
+  //
+  // Both verified on the live rendered hero.
   function bandSpanStyle(hex: string | null, which: 'name' | 'location' = 'name'): React.CSSProperties {
     const bg = bandRgba(hex);
     if (!bg) return {};
-    // Tuned per element because the two use different fonts:
-    //   name     — Bebas Neue, all-caps (no descenders). line-height:.86 pulls the
-    //              band's box in from the font's empty descender space so it hugs
-    //              the caps tightly instead of looking oversized; a little more top
-    //              than bottom padding keeps the caps visually centred.
-    //   location — Space Mono, small mixed-case. Keeps full line-height (has real
-    //              descenders) and even, generous top/bottom padding so the strip
-    //              reads as a solid band, not a thin sliver.
-    // Both verified on the live rendered hero.
-    const isLoc = which === 'location';
-    const lineHeight = isLoc ? 1 : 0.86;
-    const padding = isLoc ? '.34em .3em .34em' : '.12em .16em .04em';
+    if (which === 'location') {
+      return {
+        background: bg,
+        lineHeight: 1,
+        padding: '.34em .3em',
+        borderRadius: '.16em',
+        boxDecorationBreak: 'clone',
+        WebkitBoxDecorationBreak: 'clone',
+      };
+    }
     return {
       background: bg,
-      lineHeight,
-      padding,
+      display: 'inline-block',
+      lineHeight: 0.78,
+      padding: '.06em .16em',
       borderRadius: '.16em',
-      boxDecorationBreak: 'clone',
-      WebkitBoxDecorationBreak: 'clone',
     };
   }
   // One three-dot (⋯) button per element opens a small popover where the owner
