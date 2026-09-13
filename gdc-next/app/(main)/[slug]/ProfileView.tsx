@@ -83,6 +83,14 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
   const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '7px 4px' };
   const labelStyle: React.CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#fff', textTransform: 'uppercase', letterSpacing: '.05em' };
   const swatchInput: React.CSSProperties = { width: 30, height: 22, padding: 0, border: '1px solid rgba(255,255,255,.4)', borderRadius: 5, background: 'transparent', cursor: 'pointer' };
+  // Live preview band behind the "Color band" label: the chosen band colour at
+  // ~50% opacity, or a subtle neutral tint when no band is set yet.
+  const bandLabelBg = (() => {
+    const m = band ? /^#?([0-9a-fA-F]{6})$/.exec(band) : null;
+    if (!m) return 'rgba(255,255,255,.14)';
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, .5)`;
+  })();
 
   return (
     <span ref={ref} style={{ position: 'relative', display: 'inline-flex', marginLeft: 10, transform: 'translateY(-2px)', verticalAlign: 'middle', flexShrink: 0, zIndex: open ? 3000 : undefined }}>
@@ -107,12 +115,12 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
         >
           <div style={{ ...labelStyle, fontSize: 9.5, color: 'var(--neon)', padding: '4px 4px 2px' }}>{noun} style</div>
           <div style={rowStyle}>
-            <span style={labelStyle}>Text colour</span>
-            <input type="color" value={textColor} onChange={(e) => onText(e.target.value)} style={swatchInput} aria-label={`${noun} text colour`} />
+            <span style={labelStyle}>Text color</span>
+            <input type="color" value={textColor} onChange={(e) => onText(e.target.value)} style={swatchInput} aria-label={`${noun} text color`} />
           </div>
           <div style={{ height: 1, background: 'rgba(255,255,255,.1)' }} />
           <div style={rowStyle}>
-            <span style={labelStyle}>Colour band</span>
+            <span style={{ ...labelStyle, background: bandLabelBg, padding: '.12em .4em', borderRadius: 4 }}>Color band</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {band && (
                 <button type="button" onClick={() => onBand(null)} style={{ background: 'none', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', cursor: 'pointer' }}>
@@ -124,8 +132,8 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
                 value={band || textColor}
                 onChange={(e) => onBand(e.target.value)}
                 style={swatchInput}
-                title={band ? 'Change band colour' : 'Add a colour band'}
-                aria-label={`${noun} colour band`}
+                title={band ? 'Change band color' : 'Add a color band'}
+                aria-label={`${noun} color band`}
               />
             </span>
           </div>
