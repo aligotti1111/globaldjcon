@@ -92,12 +92,12 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
         title={`Style the ${noun.toLowerCase()}`}
         aria-label={`Style the ${noun.toLowerCase()}`}
         aria-expanded={open}
-        style={{ height: 24, width: 16, padding: 0, borderRadius: 5, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+        style={{ height: 20, width: 16, padding: 0, borderRadius: 5, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 0 }}
       >
-        <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden="true">
-          <circle cx="2" cy="2" r="1.8" />
-          <circle cx="2" cy="8" r="1.8" />
-          <circle cx="2" cy="14" r="1.8" />
+        <svg width="4" height="14" viewBox="0 0 4 14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+          <circle cx="2" cy="2" r="1.7" />
+          <circle cx="2" cy="7" r="1.7" />
+          <circle cx="2" cy="12" r="1.7" />
         </svg>
       </button>
       {open && (
@@ -433,7 +433,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
   // Hex → rgba at a fixed opacity, for the semi-transparent band. Guards against
   // a bad value by falling back to a neutral dark band.
-  function bandRgba(hex: string | null, alpha = 0.5): string | undefined {
+  function bandRgba(hex: string | null, alpha = 0.85): string | undefined {
     if (!hex) return undefined;
     const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
     if (!m) return undefined;
