@@ -450,18 +450,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   }
   // Style for the text-hugging band span (clone so multi-line wraps keep the band
   // on every line). Empty object when there's no band.
-  function bandSpanStyle(hex: string | null): React.CSSProperties {
+  function bandSpanStyle(hex: string | null, which: 'name' | 'location' = 'name'): React.CSSProperties {
     const bg = bandRgba(hex);
     if (!bg) return {};
+    // Padding is tuned per element because the two use different fonts:
+    //   name     — Bebas Neue, all-caps, glyphs sit HIGH in the line box, so it
+    //              needs more top than bottom (.17/.04) to look centered.
+    //   location — Space Mono, mixed-case with real descenders, sits roughly
+    //              centred, so it gets even top/bottom padding (a fuller bottom
+    //              than the name's). Both verified on the live rendered hero.
+    const padding = which === 'location' ? '.15em .3em .15em' : '.17em .32em .04em';
     return {
       background: bg,
-      // Bebas Neue's caps sit high in the line box, so equal padding leaves a
-      // bigger gap below the letters than above (bottom-heavy). line-height:1
-      // collapses the box, then more top padding than bottom (.17em vs .04em ≈
-      // the ~4px offset measured against the live font) centers the caps in the
-      // band. Verified on the rendered hero, not eyeballed.
       lineHeight: 1,
-      padding: '.17em .32em .04em',
+      padding,
       borderRadius: '.16em',
       boxDecorationBreak: 'clone',
       WebkitBoxDecorationBreak: 'clone',
@@ -1086,7 +1088,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               {heroBadgesEl}
               {location && (
                 <div className={styles.heroLocation} style={{ color: locationColor }}>
-                  <span style={bandSpanStyle(locationBg)}><LocationPinIcon /> {location}</span>
+                  <span style={bandSpanStyle(locationBg, 'location')}><LocationPinIcon /> {location}</span>
                   {locationColorControlEl}
                 </div>
               )}
@@ -1106,7 +1108,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
             {location && (
               <div className={styles.heroLocation} style={{ color: locationColor }}>
-                <span style={bandSpanStyle(locationBg)}><LocationPinIcon /> {location}</span>
+                <span style={bandSpanStyle(locationBg, 'location')}><LocationPinIcon /> {location}</span>
                 {locationColorControlEl}
               </div>
             )}
