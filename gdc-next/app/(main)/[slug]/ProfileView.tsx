@@ -92,9 +92,13 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
         title={`Style the ${noun.toLowerCase()}`}
         aria-label={`Style the ${noun.toLowerCase()}`}
         aria-expanded={open}
-        style={{ height: 24, minWidth: 26, padding: '0 8px', borderRadius: 999, background: 'rgba(0,0,0,.5)', border: '1px solid var(--neon)', color: 'var(--neon)', fontSize: 15, lineHeight: 1, cursor: 'pointer', fontWeight: 700 }}
+        style={{ height: 26, width: 34, padding: 0, borderRadius: 7, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
       >
-        ⋮
+        <svg width="16" height="4" viewBox="0 0 16 4" fill="currentColor" aria-hidden="true">
+          <circle cx="2" cy="2" r="1.7" />
+          <circle cx="8" cy="2" r="1.7" />
+          <circle cx="14" cy="2" r="1.7" />
+        </svg>
       </button>
       {open && (
         <div
