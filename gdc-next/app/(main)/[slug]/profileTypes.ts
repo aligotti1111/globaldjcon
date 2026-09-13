@@ -17,9 +17,15 @@ export interface DjProfileData {
   banner_url: string | null;
   banner_position: string | null;
   banner_position_mobile: string | null;
-  // Owner-chosen hero name + location color (hex like #rrggbb). Null → default
-  // white (#ffffff) on the public profile.
+  // Owner-chosen hero name color (hex like #rrggbb). Null → default white.
   profile_name_color?: string | null;
+  // Location text color, independent of the name. Null → falls back to the name
+  // color so existing profiles are unchanged.
+  profile_location_color?: string | null;
+  // Optional semi-transparent color band behind the name / location (hex; null =
+  // no band). Rendered at ~50% opacity behind just the text.
+  profile_name_bg?: string | null;
+  profile_location_bg?: string | null;
   tab_visibility: string | null;
   // Owner-chosen tab order — a JSON array of tab keys (the Booking tab is
   // always pinned first and is not part of this list). Null → default order.
