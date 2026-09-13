@@ -12,7 +12,7 @@ import { randomUUID } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getActingContext, canManageTeam } from '@/lib/acting';
+import { getActingContext, canBilling } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
@@ -30,17 +30,15 @@ function links(token: string) {
   };
 }
 
-async function resolveDjId(): Promise<string | null> {
+export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const acting = await getActingContext(user.id);
-  return acting.djId || user.id;
-}
-
-export async function GET() {
-  const djId = await resolveDjId();
-  if (!djId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const djId = acting.djId || user.id;
+  // Only the owner may rotate the shared token (see POST). The client uses this
+  // to hide the "Reset calendar link" control from teammates entirely.
+  const canReset = canBilling(acting.role);
 
   const admin = createAdminClient();
   // calendar_token postdates the generated types — one untyped cast to read /
@@ -56,19 +54,19 @@ export async function GET() {
     if (error) return NextResponse.json({ error: 'Could not create your calendar link.' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, ...links(token) });
+  return NextResponse.json({ ok: true, canReset, ...links(token) });
 }
 
 export async function POST() {
   // Resetting the token kills EVERY existing calendar subscription for the whole
-  // team, so it's restricted to OWNER + ADMIN (managers and assistants can read
-  // the link via GET, not rotate it).
+  // team, so it's restricted to the OWNER only. Teammates (admin/manager/
+  // assistant) can read the link via GET, but never rotate it.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   const acting = await getActingContext(user.id);
-  if (!canManageTeam(acting.role)) {
-    return NextResponse.json({ error: 'Only an owner or admin can reset the calendar link.' }, { status: 403 });
+  if (!canBilling(acting.role)) {
+    return NextResponse.json({ error: 'Only the account owner can reset the calendar link.' }, { status: 403 });
   }
   const djId = acting.djId || user.id;
 
