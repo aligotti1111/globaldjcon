@@ -85,21 +85,21 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
   const swatchInput: React.CSSProperties = { width: 30, height: 22, padding: 0, border: '1px solid rgba(255,255,255,.4)', borderRadius: 5, background: 'transparent', cursor: 'pointer' };
 
   return (
-    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', marginLeft: 10, transform: 'translateY(-2px)', verticalAlign: 'middle', flexShrink: 0 }}>
+    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', marginLeft: 10, transform: 'translateY(-2px)', verticalAlign: 'middle', flexShrink: 0, zIndex: open ? 3000 : undefined }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={`Style the ${noun.toLowerCase()}`}
         aria-label={`Style the ${noun.toLowerCase()}`}
         aria-expanded={open}
-        style={{ height: 24, minWidth: 32, padding: '0 8px', borderRadius: 999, background: 'rgba(0,0,0,.5)', border: '1px solid var(--neon)', color: 'var(--neon)', fontSize: 15, lineHeight: 1, letterSpacing: 2, cursor: 'pointer', fontWeight: 700 }}
+        style={{ height: 24, minWidth: 26, padding: '0 8px', borderRadius: 999, background: 'rgba(0,0,0,.5)', border: '1px solid var(--neon)', color: 'var(--neon)', fontSize: 15, lineHeight: 1, cursor: 'pointer', fontWeight: 700 }}
       >
-        ⋯
+        ⋮
       </button>
       {open && (
         <div
           role="menu"
-          style={{ position: 'absolute', top: 30, right: 0, zIndex: 60, minWidth: 214, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.55)', padding: '6px 10px 8px', textAlign: 'left' }}
+          style={{ position: 'absolute', top: 30, right: 0, zIndex: 3000, minWidth: 214, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.55)', padding: '6px 10px 8px', textAlign: 'left' }}
         >
           <div style={{ ...labelStyle, fontSize: 9.5, color: 'var(--neon)', padding: '4px 4px 2px' }}>{noun} style</div>
           <div style={rowStyle}>
