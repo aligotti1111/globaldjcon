@@ -455,12 +455,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     if (!bg) return {};
     return {
       background: bg,
-      // Tight line-height so the band hugs the glyphs instead of the font's full
-      // inline box (which reserves empty descender space below the baseline and
-      // made the bottom look longer than the top). With line-height collapsed,
-      // equal top/bottom padding reads evenly around the text.
+      // Bebas Neue's caps sit high in the line box, so equal padding leaves a
+      // bigger gap below the letters than above (bottom-heavy). line-height:1
+      // collapses the box, then more top padding than bottom (.17em vs .04em ≈
+      // the ~4px offset measured against the live font) centers the caps in the
+      // band. Verified on the rendered hero, not eyeballed.
       lineHeight: 1,
-      padding: '.08em .32em',
+      padding: '.17em .32em .04em',
       borderRadius: '.16em',
       boxDecorationBreak: 'clone',
       WebkitBoxDecorationBreak: 'clone',
