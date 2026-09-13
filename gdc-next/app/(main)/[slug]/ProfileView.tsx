@@ -58,6 +58,82 @@ interface Props {
   hasBookingAccess: boolean;
 }
 
+// Owner-only "⋯" menu shown next to the hero name and the location. One button
+// opens a small popover where the text colour and the semi-transparent colour
+// band are set separately (band can also be removed). One instance per element.
+function HeroColorMenu({ which, textColor, onText, band, onBand }: {
+  which: 'name' | 'location';
+  textColor: string;
+  onText: (hex: string) => void;
+  band: string | null;
+  onBand: (hex: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const noun = which === 'name' ? 'Name' : 'Location';
+  const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '7px 4px' };
+  const labelStyle: React.CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#fff', textTransform: 'uppercase', letterSpacing: '.05em' };
+  const swatchInput: React.CSSProperties = { width: 30, height: 22, padding: 0, border: '1px solid rgba(255,255,255,.4)', borderRadius: 5, background: 'transparent', cursor: 'pointer' };
+
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', marginLeft: 10, transform: 'translateY(-2px)', verticalAlign: 'middle', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={`Style the ${noun.toLowerCase()}`}
+        aria-label={`Style the ${noun.toLowerCase()}`}
+        aria-expanded={open}
+        style={{ height: 24, minWidth: 32, padding: '0 8px', borderRadius: 999, background: 'rgba(0,0,0,.5)', border: '1px solid var(--neon)', color: 'var(--neon)', fontSize: 15, lineHeight: 1, letterSpacing: 2, cursor: 'pointer', fontWeight: 700 }}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div
+          role="menu"
+          style={{ position: 'absolute', top: 30, right: 0, zIndex: 60, minWidth: 214, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.55)', padding: '6px 10px 8px', textAlign: 'left' }}
+        >
+          <div style={{ ...labelStyle, fontSize: 9.5, color: 'var(--neon)', padding: '4px 4px 2px' }}>{noun} style</div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Text colour</span>
+            <input type="color" value={textColor} onChange={(e) => onText(e.target.value)} style={swatchInput} aria-label={`${noun} text colour`} />
+          </div>
+          <div style={{ height: 1, background: 'rgba(255,255,255,.1)' }} />
+          <div style={rowStyle}>
+            <span style={labelStyle}>Colour band</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {band && (
+                <button type="button" onClick={() => onBand(null)} style={{ background: 'none', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              )}
+              <input
+                type="color"
+                value={band || textColor}
+                onChange={(e) => onBand(e.target.value)}
+                style={swatchInput}
+                title={band ? 'Change band colour' : 'Add a colour band'}
+                aria-label={`${noun} colour band`}
+              />
+            </span>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--muted,#8a8aa0)', lineHeight: 1.4, padding: '2px 4px 0' }}>
+            The band is a semi-transparent strip behind the {noun.toLowerCase()}.
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
 export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess }: Props) {
   // Who may edit the public profile (all tabs except Booking): the owner, or a
   // permitted team member. `actingAsMember` is true only for the member case —
@@ -373,73 +449,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       WebkitBoxDecorationBreak: 'clone',
     };
   }
-  // A single owner-facing pill wrapping a native colour input. `swatch` is the
-  // dot colour; `value` is what the picker opens on.
-  function colorPill(opts: {
-    label: string;
-    title: string;
-    swatch: string;
-    value: string;
-    onPick: (hex: string) => void;
-  }): React.ReactNode {
-    return (
-      <label
-        title={opts.title}
-        aria-label={opts.title}
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          height: 24, padding: '0 9px', borderRadius: 999,
-          background: 'rgba(0,0,0,.5)', border: '1px solid var(--neon)', color: 'var(--neon)',
-          fontFamily: "'Space Mono', monospace", fontSize: 9.5, letterSpacing: '.06em',
-          textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', verticalAlign: 'middle',
-          flexShrink: 0, position: 'relative', overflow: 'hidden',
-        }}
-      >
-        <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: opts.swatch, border: '1px solid rgba(255,255,255,.6)', flexShrink: 0 }} />
-        {opts.label}
-        <input
-          type="color"
-          value={opts.value}
-          onChange={(e) => opts.onPick(e.target.value)}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
-        />
-      </label>
-    );
-  }
-
-  // The owner-only control cluster shown next to the name AND next to the
-  // location: a text-colour pill plus a semi-transparent "band" pill. The band
-  // pill opens a colour picker; when a band is set it also shows a ✕ to clear it.
-  function colorCluster(opts: {
-    which: 'name' | 'location';
-    textColor: string;
-    onText: (hex: string) => void;
-    band: string | null;
-    onBand: (hex: string | null) => void;
-  }): React.ReactNode {
-    if (!canEdit) return null;
-    const noun = opts.which === 'name' ? 'name' : 'location';
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 10, transform: 'translateY(-2px)', flexShrink: 0, verticalAlign: 'middle' }}>
-        {colorPill({ label: 'Color', title: `Change ${noun} colour`, swatch: opts.textColor, value: opts.textColor, onPick: opts.onText })}
-        {colorPill({ label: opts.band ? 'Band' : '+ Band', title: `${opts.band ? 'Change' : 'Add'} a colour band behind the ${noun}`, swatch: opts.band || 'transparent', value: opts.band || opts.textColor, onPick: opts.onBand })}
-        {opts.band && (
-          <button
-            type="button"
-            title={`Remove the ${noun} band`}
-            aria-label={`Remove the ${noun} band`}
-            onClick={() => opts.onBand(null)}
-            style={{ height: 24, width: 24, borderRadius: 999, background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.35)', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}
-          >
-            ×
-          </button>
-        )}
-      </span>
-    );
-  }
-
-  const nameColorControlEl = colorCluster({ which: 'name', textColor: nameColor, onText: handleNameColorChange, band: nameBg, onBand: handleNameBgChange });
-  const locationColorControlEl = colorCluster({ which: 'location', textColor: locationColor, onText: handleLocationColorChange, band: locationBg, onBand: handleLocationBgChange });
+  // One three-dot (⋯) button per element opens a small popover where the owner
+  // sets the text colour and the band colour separately. Rendered next to both
+  // the name and the location.
+  const nameColorControlEl = canEdit ? (
+    <HeroColorMenu which="name" textColor={nameColor} onText={handleNameColorChange} band={nameBg} onBand={handleNameBgChange} />
+  ) : null;
+  const locationColorControlEl = canEdit ? (
+    <HeroColorMenu which="location" textColor={locationColor} onText={handleLocationColorChange} band={locationBg} onBand={handleLocationBgChange} />
+  ) : null;
 
   // Set page title to the DJ's name (matches vanilla document.title)
   useEffect(() => {
