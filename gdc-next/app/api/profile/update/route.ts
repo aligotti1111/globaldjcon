@@ -20,7 +20,7 @@ const WRITABLE = new Set<string>([
   'bio',
   'avatar_url', 'avatar_position', 'avatar_hidden',
   'banner_url', 'banner_position', 'banner_position_mobile',
-  'profile_name_color',
+  'profile_name_color', 'profile_location_color', 'profile_name_bg', 'profile_location_bg',
   'website', 'instagram', 'facebook', 'tiktok', 'twitch', 'soundcloud', 'phone',
   'tab_visibility',
   'tab_order',
