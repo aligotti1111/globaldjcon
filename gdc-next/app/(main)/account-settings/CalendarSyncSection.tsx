@@ -34,6 +34,9 @@ export default function CalendarSyncSection() {
   // the subscribe (it happens inside their calendar app), so we treat clicking
   // Subscribe / Add to Google / Copy as "started using it" and remember it.
   const [linkUsed, setLinkUsed] = useState(false);
+  // Owner-only: only the account owner may rotate the shared team token. The
+  // server enforces this; this flag hides the control from teammates.
+  const [canReset, setCanReset] = useState(false);
 
   useEffect(() => {
     try { if (localStorage.getItem('gdcCalendarLinkUsed') === '1') setLinkUsed(true); } catch { /* ignore */ }
@@ -49,9 +52,9 @@ export default function CalendarSyncSection() {
     (async () => {
       try {
         const res = await fetch('/api/dj/calendar-token');
-        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; webcalUrl?: string; httpsUrl?: string; error?: string };
+        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; webcalUrl?: string; httpsUrl?: string; canReset?: boolean; error?: string };
         if (!alive) return;
-        if (res.ok && d.ok) { setWebcalUrl(d.webcalUrl || ''); setHttpsUrl(d.httpsUrl || ''); }
+        if (res.ok && d.ok) { setWebcalUrl(d.webcalUrl || ''); setHttpsUrl(d.httpsUrl || ''); setCanReset(!!d.canReset); }
         else setErr(d.error || 'Could not load your calendar link.');
       } catch { if (alive) setErr('Could not load your calendar link.'); }
       finally { if (alive) setLoading(false); }
@@ -243,9 +246,10 @@ export default function CalendarSyncSection() {
       </div>
 
       {/* Reset — rotates the token so the old links stop working (use if it ever
-          leaks). Only shown once the DJ has actually used the link (subscribe /
-          add / copy); existing subscriptions must be re-added afterward. */}
-      {linkUsed && (
+          leaks). OWNER ONLY: it kills the shared link for the whole team, so
+          teammates never see this control. Only shown once the owner has used
+          the link (subscribe / add / copy); everyone must re-add afterward. */}
+      {linkUsed && canReset && (
       <div style={{ marginTop: '1.1rem', paddingTop: '.9rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
         {!confirmReset ? (
           <button
@@ -257,7 +261,7 @@ export default function CalendarSyncSection() {
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-            <span style={{ color: '#ffb4b4', fontSize: '.8rem' }}>Reset makes a NEW link — it can&apos;t remove calendars you already added. First remove the old calendar from each device, THEN re-add with the new link. Skipping that first step is what makes every booking show twice.</span>
+            <span style={{ color: '#ffb4b4', fontSize: '.8rem' }}>Heads up: this is a shared link. Resetting breaks calendar sync for EVERYONE on your team — every teammate who added it will stop getting updates until they re-add the new link. It also can&apos;t remove calendars already added, so each person must first remove the old calendar from their devices, THEN re-add with the new link (skipping that makes bookings show twice). Only reset if the link has leaked.</span>
             <button type="button" onClick={reset} disabled={busy} style={{ background: '#c0392b', color: '#fff', border: 'none', borderRadius: 6, padding: '.4rem .8rem', fontWeight: 700, fontSize: '.78rem', cursor: busy ? 'default' : 'pointer' }}>
               {busy ? 'Resetting…' : 'Yes, reset'}
             </button>
