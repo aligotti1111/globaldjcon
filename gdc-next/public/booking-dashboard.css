@@ -1,1 +1,197 @@
 
+.gdc-dash{
+  --bg:#000; --ink:#f0f0f8; --muted:#9a9aac; --faint:#6c6c86;
+  --neon:#00f5c4; --amber:#f5e642; --gold:#c08a3e;
+  --card:#131318; --line:rgba(255,255,255,.08);
+  --mono:'Space Mono',ui-monospace,monospace;
+  --disp:'Bebas Neue',Impact,sans-serif;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+.gdc-dash *{box-sizing:border-box}
+.gdc-dash{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.gdc-dash .wrap{max-width:920px;margin:0 auto}
+.gdc-dash .eyebrow{text-align:center;font-family:var(--mono);font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--neon);margin:0 0 10px}
+.gdc-dash h1{text-align:center;font-family:var(--disp);font-weight:400;font-size:2.6rem;letter-spacing:.01em;margin:0 0 8px;line-height:.95}
+.gdc-dash .sub{text-align:center;color:var(--muted);font-size:.92rem;max-width:560px;margin:0 auto 6px;line-height:1.5}
+.gdc-dash .sub b.n{color:var(--neon)} .gdc-dash .sub b.a{color:var(--amber)}
+.gdc-dash .hintline{text-align:center;color:var(--faint);font-size:.76rem;margin:6px 0 28px}
+
+.gdc-dash .section{margin:0 0 26px}
+.gdc-dash .slabel{font-family:var(--sans);font-weight:700;font-size:.95rem;letter-spacing:.01em;margin:0 0 10px;padding-left:2px}
+.gdc-dash .section.mobile .slabel{color:var(--neon)} .gdc-dash .section.club .slabel{color:var(--amber)}
+.gdc-dash .monthhead{font-family:var(--disp);font-weight:700;font-size:1.5rem;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);margin:0 0 12px;padding-left:2px;-webkit-text-stroke:.6px var(--ink)}
+
+
+.gdc-dash .st{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px}
+.gdc-dash .st .lab{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:#f0f0f8;white-space:nowrap}
+.gdc-dash .stbtn{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:4px 6px;font:inherit;color:inherit}
+.gdc-dash .stbtn:hover{background:rgba(255,255,255,.06)}
+.gdc-dash .stbtn.open{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)}
+.gdc-dash .stbtn:disabled{cursor:default;background:none}
+.gdc-dash .top{display:inline-flex;align-items:center;gap:2px}
+.gdc-dash .ring{position:relative;width:32px;height:32px;border-radius:50%;border:2px solid #3a3a4c;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#c2c2ce;transition:.15s}
+.gdc-dash .ring svg{width:17px;height:17px}
+.gdc-dash .st.waiting .ring{border-color:rgba(255,255,255,.16);color:#b9b9c6}
+.gdc-dash .st.done .ring{border-color:var(--neon);background:rgba(0,245,196,.14);color:var(--neon)}
+.gdc-dash .st.skipped .ring{border-color:rgba(255,255,255,.28);color:#f2f2f7}
+.gdc-dash .badge{position:absolute;right:-3px;bottom:-3px;width:15px;height:15px;border-radius:50%;background:var(--neon);border:2px solid var(--card);display:flex;align-items:center;justify-content:center}
+.gdc-dash .badge svg{width:8px;height:8px;stroke:#06231b;stroke-width:5;fill:none}
+.gdc-dash .chev{color:#6c6c86;display:inline-flex}
+.gdc-dash .chev svg{width:9px;height:9px}
+.gdc-dash .cap{font-size:10px;font-weight:500;letter-spacing:.02em;line-height:1;text-align:center;white-space:nowrap}
+.gdc-dash .dash{color:#3a3a4c;font-size:16px;height:32px;display:flex;align-items:center}
+.gdc-dash .dateb{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.gdc-dash .dateb .n{font-family:var(--disp);font-size:2.3rem;line-height:1;color:var(--neon)}
+.gdc-dash .dateb .dm{font-family:var(--mono);font-size:.54rem;letter-spacing:.1em;color:var(--muted);line-height:1.3}
+.gdc-dash .rowchev{color:var(--muted);display:inline-flex}
+.gdc-dash .rowchev svg{width:18px;height:18px}
+
+
+.gdc-dash .deskwrap{--dcols:74px 62px 210px 1fr 120px 84px 84px 84px 84px 24px}
+.gdc-dash .drow .flyer{margin-left:0;justify-self:center;width:56px;height:56px}
+.gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
+.gdc-dash .colheads span{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;white-space:nowrap}
+.gdc-dash .colheads .l{text-align:left}.gdc-dash .colheads .r{text-align:center}
+.gdc-dash .drow{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 18px;margin-bottom:10px}
+.gdc-dash .mobwrap .card+.card{margin-top:14px}
+.gdc-dash .section.mobile .drow{box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 26px rgba(0,245,196,.05)}
+.gdc-dash .section.club .drow{box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 26px rgba(245,230,66,.05)}
+.gdc-dash .drow .dateb{justify-self:start}
+.gdc-dash .dvtime{justify-self:start;font-size:.9rem;color:var(--ink);white-space:nowrap}
+.gdc-dash .dvevent{justify-self:start;font-size:.9rem;color:var(--ink);white-space:nowrap}
+.gdc-dash .dval{justify-self:center;font-family:var(--mono);font-weight:700;font-size:.9rem;color:var(--neon)}
+.gdc-dash .drow[onclick]{cursor:pointer}
+.gdc-dash .drow.open{border-radius:14px 14px 0 0;margin-bottom:0}
+.gdc-dash .rowchev{transition:transform .2s}
+.gdc-dash .rowchev.up{transform:rotate(180deg)}
+.gdc-dash .dvtime.stacked{display:flex;flex-direction:column;gap:5px;align-items:flex-start;white-space:normal}
+.gdc-dash .deskdetail{border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;background:var(--card);padding:16px 18px 18px;margin-bottom:10px}
+.gdc-dash .deskdetail .mobdetail{padding:0;border-top:none}
+.gdc-dash .drow .st{justify-self:center}
+.gdc-dash .drow .st .lab{display:none}
+.gdc-dash .drow .rowchev{justify-self:end}
+
+
+.gdc-dash .mobwrap{display:none}
+.gdc-dash .card{background:var(--card);border:1px solid var(--line);border-radius:16px}
+.gdc-dash .section.mobile .card{box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 28px rgba(0,245,196,.05)}
+.gdc-dash .section.club .card{box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 28px rgba(245,230,66,.05)}
+.gdc-dash .toprow{display:flex;align-items:center;gap:12px;padding:14px 16px 12px}
+.gdc-dash .trtime{font-size:.86rem;color:var(--ink);white-space:nowrap;flex-shrink:0}
+.gdc-dash .trevent{font-weight:700;font-size:.9rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gdc-dash .trchev{margin-left:auto;color:var(--muted);display:inline-flex;flex-shrink:0}
+.gdc-dash .trchev svg{width:18px;height:18px}
+.gdc-dash .flyer{margin-left:auto;flex-shrink:0;width:46px;height:46px;border:1.5px dashed rgba(255,255,255,.22);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--faint)}
+.gdc-dash .flyer .p{font-size:.9rem;line-height:1}
+.gdc-dash .flyer .l{font-family:var(--mono);font-size:.42rem;letter-spacing:.08em}
+.gdc-dash .flyer-img{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.gdc-dash .flyer-img img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.gdc-dash .cnote{margin:12px 2px 0;font-size:.8rem;line-height:1.5;color:var(--muted)}
+.gdc-dash .cardnote{position:relative;margin:4px 12px 14px;padding:10px 34px 10px 13px;border:1px solid rgba(0,224,164,.35);background:rgba(34,227,173,.06);border-radius:9px;color:var(--ink);font-size:.82rem;line-height:1.5}
+.gdc-dash .cardnote b{color:#4ddcb4}
+.gdc-dash .cnx{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--muted);font-size:.9rem;line-height:1;cursor:pointer;padding:2px 4px}
+.gdc-dash .cnx:hover{color:var(--ink)}
+.gdc-dash .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:14px 4px 16px;border-top:1px solid var(--line)}
+.gdc-dash .valuebar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.03);border-top:1px solid var(--line);border-radius:0 0 16px 16px}
+.gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#c9c9d3}
+.gdc-dash .valuebar .amt{font-family:var(--mono);font-weight:700;font-size:1rem;color:var(--neon)}
+
+.gdc-dash .trchev{transition:transform .2s}
+.gdc-dash .trchev.up{transform:rotate(180deg)}
+.gdc-dash .toprow[onclick]{cursor:pointer}
+.gdc-dash .mobdetail{display:flex;flex-direction:column;gap:12px;padding:14px 12px 4px;border-top:1px solid var(--line)}
+.gdc-dash .drow2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.gdc-dash .dsec{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px 8px;background:#0a0a0f}
+.gdc-dash .dsec.pricing{background-image:linear-gradient(rgba(34,227,173,.06),rgba(0,0,0,0));border-color:rgba(255,255,255,.16)}
+.gdc-dash .dpill{display:inline-flex;background-image:linear-gradient(100deg,#22e3ad,#31d0ff);color:#04241b;font-family:var(--sans);font-weight:600;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;padding:6px 13px;border-radius:8px;margin-bottom:6px}
+.gdc-dash .dgrid3,.gdc-dash .dgrid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.gdc-dash .df{display:flex;flex-direction:column;gap:3px;margin-top:10px}
+.gdc-dash .dgrid3 .df,.gdc-dash .dgrid2 .df{margin-top:0}
+.gdc-dash .dk{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.gdc-dash .dv{font-size:.94rem;color:var(--ink)}
+.gdc-dash .dv.time{color:var(--neon);font-weight:600}
+.gdc-dash .df.evtime{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.gdc-dash .dsub{display:block;font-size:.74rem;color:var(--muted);margin-top:2px}
+.gdc-dash .dv.price{font-family:var(--mono);font-weight:700;color:var(--ink);display:block!important;max-width:none!important;margin:0!important;grid-template-columns:none!important}
+.gdc-dash .dlink{color:var(--neon);text-decoration:underline;cursor:pointer}
+.gdc-dash .dovertime .dlink{color:#00e0a4}
+.gdc-dash .dovertime{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+.gdc-dash .dovertime b{color:var(--ink);font-family:var(--mono)}
+.gdc-dash .dmsg{margin-top:12px;background:#14141f;border:1px solid rgba(255,255,255,.14);color:var(--ink);font-weight:700;font-size:.8rem;padding:.55rem .9rem;border-radius:9px;cursor:pointer}
+.gdc-dash .pkgname{font-weight:700;font-size:.95rem;margin-top:2px}
+.gdc-dash .pkglist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gdc-dash .pkglist li{position:relative;padding-left:16px;font-size:.86rem;color:var(--ink);line-height:1.4}
+.gdc-dash .pkglist li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:#4ddcb4}
+.gdc-dash .dpricerow{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+.gdc-dash .dk2{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+/* toprow middle: badges + value */
+.gdc-dash .trmid{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.gdc-dash .trline{display:flex;align-items:center;gap:10px;min-width:0}
+.gdc-dash .evtags{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.gdc-dash .evtag{font-family:var(--sans);font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#4ddcb4;white-space:nowrap;line-height:1.25}
+.gdc-dash .trval{font-family:var(--mono);font-weight:700;font-size:.86rem;color:var(--neon);flex-shrink:0}
+/* schedule */
+.gdc-dash .schwrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.gdc-dash .schhead,.gdc-dash .pshead{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.gdc-dash .schrow{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.gdc-dash .schl{font-weight:700;font-size:.86rem;color:var(--ink);min-width:110px}
+.gdc-dash .scht{font-size:.9rem;color:#00e0a4;font-weight:600}
+.gdc-dash .schn{font-size:.78rem;color:var(--muted)}
+/* pricing */
+.gdc-dash .dpricerow.total{margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
+.gdc-dash .dpricerow.total .ptot{font-weight:700;color:var(--ink);font-size:.9rem}
+.gdc-dash .dpricerow.total .price{font-size:1rem;margin-left:auto!important;text-align:right!important}
+.gdc-dash .dv.rt{text-align:right}
+.gdc-dash .disc{display:block;color:#4ddcb4;font-size:.8rem;font-weight:400;margin-top:2px}
+.gdc-dash .paysched{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.02)}
+/* notes */
+.gdc-dash .noterow{display:flex;align-items:center;justify-content:space-between;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:.6rem .7rem}
+.gdc-dash .noteph{color:var(--faint);font-size:.82rem;font-style:italic}
+.gdc-dash .notepost{font-family:var(--mono);font-size:.55rem;letter-spacing:.12em;color:var(--faint)}
+/* booking log */
+.gdc-dash .loghead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.gdc-dash .loglegend{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;color:var(--muted)}
+.gdc-dash .loglist{display:flex;flex-direction:column;gap:12px}
+.gdc-dash .logrow{display:flex;gap:10px}
+.gdc-dash .logdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.gdc-dash .logdot.you{background:var(--neon)}
+.gdc-dash .logdot.host{background:#4a9eff}
+.gdc-dash .logtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gdc-dash .logwho{font-family:var(--mono);font-size:.5rem;font-weight:700;letter-spacing:.08em;padding:.15rem .4rem;border-radius:5px}
+.gdc-dash .logwho.you{background:rgba(0,245,196,.14);color:var(--neon)}
+.gdc-dash .logwho.host{background:rgba(74,158,255,.16);color:#4a9eff}
+.gdc-dash .logtext{font-weight:700;font-size:.84rem;color:var(--ink)}
+.gdc-dash .logwhen{font-family:var(--mono);font-size:.62rem;color:var(--faint);margin-top:3px}
+
+@media(max-width:680px){
+  .gdc-dash .deskwrap{display:none}
+  .gdc-dash .mobwrap{display:block}
+  .gdc-dash h1{font-size:2.2rem}
+  .gdc-dash .toprow .flyer{width:66px;height:66px}
+}
+
+
+.gdc-dash .menu{position:absolute;top:60px;left:0;z-index:50;min-width:172px;max-width:214px;background:#14141f;border:1px solid rgba(255,255,255,.14);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:4px;text-align:left;white-space:normal}
+
+.gdc-dash .strip .st:nth-last-child(-n+2) .menu, .gdc-dash .drow .st:nth-last-child(-n+3) .menu{left:auto;right:0}
+/* The dashboard's icon-row also uses the class name ".strip", which collides with
+   the landing page's marquee ".gdc-landing .strip" — that one sets overflow:hidden
+   and a -webkit-mask, and it was CLIPPING the open dropdown at the row's bottom
+   edge (the menu's lower items vanished). Force the dashboard strip back to
+   visible + no mask (3-class selector out-specifies the landing rule). */
+.gdc-dash .card .strip{overflow:visible;-webkit-mask:none;mask:none}
+/* And lift the card holding an open menu above the following card so a tall menu
+   isn't painted under the next booking card. */
+.gdc-dash .card:has(.menu){position:relative;z-index:20}
+.gdc-dash .menu .mh{color:#fff;font-size:.8rem;font-weight:800;letter-spacing:.02em;padding:.5rem .7rem .4rem}
+.gdc-dash .menu .div{height:1px;background:rgba(255,255,255,.1);margin:0 6px 4px}
+.gdc-dash .menu .info{color:#fff;font-size:.75rem;font-weight:600;line-height:1.4;padding:.45rem .6rem .35rem}
+.gdc-dash .menu .hint{color:#ff8a8a;font-size:.7rem;line-height:1.45;padding:.5rem .6rem .1rem}
+.gdc-dash .menu button.act{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--neon);font-weight:700;font-size:.78rem;padding:.5rem .6rem;border-radius:6px;cursor:pointer}
+.gdc-dash .menu button.act:hover{background:rgba(255,255,255,.06)}
+.gdc-dash .menu button.act.danger{color:#ff7676}
+.gdc-dash .menu button.act.muted{color:#c9c9d3}
+
+.gdc-dash .resetbar{display:flex;justify-content:center;margin:8px 0 0}
+.gdc-dash .reset{background:none;border:1px solid rgba(255,255,255,.14);color:var(--muted);font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;padding:.6rem 1.1rem;border-radius:100px;cursor:pointer}
+.gdc-dash .reset:hover{color:var(--ink);border-color:var(--ink)}
