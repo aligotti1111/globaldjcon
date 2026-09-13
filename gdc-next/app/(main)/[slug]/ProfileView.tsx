@@ -910,8 +910,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 clipped by .heroAvatar's overflow:hidden.
                 When the owner has HIDDEN their picture, visitors see no
                 avatar at all; the owner still sees it (dimmed) so they can
-                toggle it back. */}
-            {(canEdit || !data.avatar_hidden) && (
+                toggle it back. Visitors also see NO circle by default until an
+                image is actually added — an empty initials circle is owner-only
+                (so they can tap the centred camera to add one). */}
+            {(canEdit || (data.avatar_url && !data.avatar_hidden)) && (
             <div style={canEdit ? { position: 'relative', flexShrink: 0 } : undefined}>
               <div
                 className={`${styles.heroAvatar} ${typeClass}`}
@@ -929,8 +931,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   initials(data.name)
                 )}
               </div>
-              {/* Owner-only "Hidden" badge so they know visitors can't see it. */}
-              {canEdit && data.avatar_hidden && (
+              {/* Owner-only "Hidden" badge so they know visitors can't see it.
+                  Only when a picture actually exists — with no image the centred
+                  camera owns the middle of the circle. */}
+              {canEdit && data.avatar_hidden && data.avatar_url && (
                 <span style={{
                   position: 'absolute',
                   top: '50%',
@@ -964,8 +968,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     aria-label={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
                     style={{
                       position: 'absolute',
-                      bottom: 6,
-                      right: 6,
+                      // With an image the camera is a small badge in the corner;
+                      // with no image yet it sits dead-centre in the circle as the
+                      // clear "add a photo" affordance.
+                      ...(data.avatar_url
+                        ? { bottom: 6, right: 6 }
+                        : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
                       width: 40,
                       height: 40,
                       borderRadius: '50%',
@@ -1027,7 +1035,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </button>
                   )}
                   {/* Hide / show toggle — hides the picture from visitors
-                      entirely (kept in the DB so it can be un-hidden). */}
+                      entirely (kept in the DB so it can be un-hidden). Only shown
+                      when a picture exists; an empty circle is already public-hidden. */}
+                  {data.avatar_url && (
                   <button
                     type="button"
                     onClick={async () => {
@@ -1071,6 +1081,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       </svg>
                     )}
                   </button>
+                  )}
                   <input
                     ref={avatarFileInputRef}
                     type="file"
