@@ -323,79 +323,123 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Held in local state so the owner's color-picker recolors LIVE, then
   // persisted via /api/dj/profile-color.
   const [nameColor, setNameColor] = useState<string>(data.profile_name_color || '#ffffff');
-  async function handleNameColorChange(color: string) {
-    setNameColor(color); // live recolor
+  // Location now has its OWN text colour (falls back to the name colour if the
+  // owner never set one, so existing profiles look unchanged). Plus an optional
+  // semi-transparent band behind each of the name and the location, stored as a
+  // hex colour (null = no band). All four are independently editable.
+  const [locationColor, setLocationColor] = useState<string>(
+    data.profile_location_color || data.profile_name_color || '#ffffff',
+  );
+  const [nameBg, setNameBg] = useState<string | null>(data.profile_name_bg || null);
+  const [locationBg, setLocationBg] = useState<string | null>(data.profile_location_bg || null);
+
+  // Persist one field to the DJ's row. `value` null clears it (band off). The
+  // route validates and maps the field name → its column.
+  async function saveColorField(field: 'name' | 'location' | 'name_bg' | 'location_bg', value: string | null) {
     try {
       await fetch('/api/dj/profile-color', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color }),
+        body: JSON.stringify({ field, color: value }),
       });
     } catch {
-      // Best-effort; the live color still applies until reload.
+      // Best-effort; the live colour still applies until reload.
     }
   }
-  // Owner-only compact swatch button wrapping a native color input. Rendered
-  // inline next to the name in both the mobile (heroNameCol) and desktop
-  // (heroInfo) copies.
-  const nameColorControlEl = canEdit ? (
-    <label
-      title="Change name color"
-      aria-label="Change name color"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        height: 24,
-        padding: '0 9px',
-        borderRadius: 999,
-        background: 'rgba(0,0,0,.5)',
-        border: '1px solid var(--neon)',
-        color: 'var(--neon)',
-        fontFamily: "'Space Mono', monospace",
-        fontSize: 9.5,
-        letterSpacing: '.06em',
-        textTransform: 'uppercase',
-        fontWeight: 700,
-        cursor: 'pointer',
-        verticalAlign: 'middle',
-        marginLeft: 10,
-        transform: 'translateY(-2px)',
-        flexShrink: 0,
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <span
-        aria-hidden
+  function handleNameColorChange(color: string) { setNameColor(color); saveColorField('name', color); }
+  function handleLocationColorChange(color: string) { setLocationColor(color); saveColorField('location', color); }
+  function handleNameBgChange(color: string | null) { setNameBg(color); saveColorField('name_bg', color); }
+  function handleLocationBgChange(color: string | null) { setLocationBg(color); saveColorField('location_bg', color); }
+
+  // Hex → rgba at a fixed opacity, for the semi-transparent band. Guards against
+  // a bad value by falling back to a neutral dark band.
+  function bandRgba(hex: string | null, alpha = 0.5): string | undefined {
+    if (!hex) return undefined;
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return undefined;
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+  // Style for the text-hugging band span (clone so multi-line wraps keep the band
+  // on every line). Empty object when there's no band.
+  function bandSpanStyle(hex: string | null): React.CSSProperties {
+    const bg = bandRgba(hex);
+    if (!bg) return {};
+    return {
+      background: bg,
+      padding: '.04em .32em',
+      borderRadius: '.16em',
+      boxDecorationBreak: 'clone',
+      WebkitBoxDecorationBreak: 'clone',
+    };
+  }
+  // A single owner-facing pill wrapping a native colour input. `swatch` is the
+  // dot colour; `value` is what the picker opens on.
+  function colorPill(opts: {
+    label: string;
+    title: string;
+    swatch: string;
+    value: string;
+    onPick: (hex: string) => void;
+  }): React.ReactNode {
+    return (
+      <label
+        title={opts.title}
+        aria-label={opts.title}
         style={{
-          width: 11,
-          height: 11,
-          borderRadius: '50%',
-          background: nameColor,
-          border: '1px solid rgba(255,255,255,.6)',
-          flexShrink: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          height: 24, padding: '0 9px', borderRadius: 999,
+          background: 'rgba(0,0,0,.5)', border: '1px solid var(--neon)', color: 'var(--neon)',
+          fontFamily: "'Space Mono', monospace", fontSize: 9.5, letterSpacing: '.06em',
+          textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', verticalAlign: 'middle',
+          flexShrink: 0, position: 'relative', overflow: 'hidden',
         }}
-      />
-      Color
-      <input
-        type="color"
-        value={nameColor}
-        onChange={(e) => handleNameColorChange(e.target.value)}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          opacity: 0,
-          cursor: 'pointer',
-          border: 'none',
-          padding: 0,
-        }}
-      />
-    </label>
-  ) : null;
+      >
+        <span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: opts.swatch, border: '1px solid rgba(255,255,255,.6)', flexShrink: 0 }} />
+        {opts.label}
+        <input
+          type="color"
+          value={opts.value}
+          onChange={(e) => opts.onPick(e.target.value)}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
+        />
+      </label>
+    );
+  }
+
+  // The owner-only control cluster shown next to the name AND next to the
+  // location: a text-colour pill plus a semi-transparent "band" pill. The band
+  // pill opens a colour picker; when a band is set it also shows a ✕ to clear it.
+  function colorCluster(opts: {
+    which: 'name' | 'location';
+    textColor: string;
+    onText: (hex: string) => void;
+    band: string | null;
+    onBand: (hex: string | null) => void;
+  }): React.ReactNode {
+    if (!canEdit) return null;
+    const noun = opts.which === 'name' ? 'name' : 'location';
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 10, transform: 'translateY(-2px)', flexShrink: 0, verticalAlign: 'middle' }}>
+        {colorPill({ label: 'Color', title: `Change ${noun} colour`, swatch: opts.textColor, value: opts.textColor, onPick: opts.onText })}
+        {colorPill({ label: opts.band ? 'Band' : '+ Band', title: `${opts.band ? 'Change' : 'Add'} a colour band behind the ${noun}`, swatch: opts.band || 'transparent', value: opts.band || opts.textColor, onPick: opts.onBand })}
+        {opts.band && (
+          <button
+            type="button"
+            title={`Remove the ${noun} band`}
+            aria-label={`Remove the ${noun} band`}
+            onClick={() => opts.onBand(null)}
+            style={{ height: 24, width: 24, borderRadius: 999, background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.35)', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}
+          >
+            ×
+          </button>
+        )}
+      </span>
+    );
+  }
+
+  const nameColorControlEl = colorCluster({ which: 'name', textColor: nameColor, onText: handleNameColorChange, band: nameBg, onBand: handleNameBgChange });
+  const locationColorControlEl = colorCluster({ which: 'location', textColor: locationColor, onText: handleLocationColorChange, band: locationBg, onBand: handleLocationBgChange });
 
   // Set page title to the DJ's name (matches vanilla document.title)
   useEffect(() => {
@@ -1000,13 +1044,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 heroInfo below and this whole column is display:none. */}
             <div className={styles.heroNameCol}>
               <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
-                {data.name || 'Unknown DJ'}
+                <span style={bandSpanStyle(nameBg)}>{data.name || 'Unknown DJ'}</span>
                 {nameColorControlEl}
               </div>
               {heroBadgesEl}
               {location && (
-                <div className={styles.heroLocation} style={{ color: nameColor }}>
-                  <LocationPinIcon /> {location}
+                <div className={styles.heroLocation} style={{ color: locationColor }}>
+                  <span style={bandSpanStyle(locationBg)}><LocationPinIcon /> {location}</span>
+                  {locationColorControlEl}
                 </div>
               )}
             </div>
@@ -1017,15 +1062,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               inside the @media (max-width:900px) block in profile.module.css */}
           <div className={styles.heroInfo}>
             <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
-              {data.name || 'Unknown DJ'}
+              <span style={bandSpanStyle(nameBg)}>{data.name || 'Unknown DJ'}</span>
               {nameColorControlEl}
             </div>
             {heroBadgesEl}
             <div className={styles.heroMobileDivider} />
 
             {location && (
-              <div className={styles.heroLocation} style={{ color: nameColor }}>
-                <LocationPinIcon /> {location}
+              <div className={styles.heroLocation} style={{ color: locationColor }}>
+                <span style={bandSpanStyle(locationBg)}><LocationPinIcon /> {location}</span>
+                {locationColorControlEl}
               </div>
             )}
 
