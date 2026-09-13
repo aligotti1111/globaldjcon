@@ -481,7 +481,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       background: bg,
       display: 'inline-block',
       lineHeight: 0.78,
-      padding: '.06em .16em',
+      // More top than bottom: at line-height .78 the caps sit low in the box, so
+      // .17/.06 evens the gap above and below the letters. Verified on the hero.
+      padding: '.17em .16em .06em',
       borderRadius: '.16em',
     };
   }
