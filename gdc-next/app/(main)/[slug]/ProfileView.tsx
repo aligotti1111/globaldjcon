@@ -92,7 +92,7 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
         title={`Style the ${noun.toLowerCase()}`}
         aria-label={`Style the ${noun.toLowerCase()}`}
         aria-expanded={open}
-        style={{ height: 20, width: 16, padding: 0, borderRadius: 5, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 0 }}
+        style={{ height: 26, width: 16, padding: 0, borderRadius: 5, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 0 }}
       >
         <svg width="4" height="14" viewBox="0 0 4 14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
           <circle cx="2" cy="2" r="1.7" />
@@ -447,7 +447,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     if (!bg) return {};
     return {
       background: bg,
-      padding: '.04em .32em',
+      // More top padding than bottom: the font reserves descender space below the
+      // baseline (empty for all-caps), which otherwise makes the band look
+      // bottom-heavy. This evens the band above/below the letters.
+      padding: '.16em .32em .03em',
       borderRadius: '.16em',
       boxDecorationBreak: 'clone',
       WebkitBoxDecorationBreak: 'clone',
