@@ -173,6 +173,11 @@
 .gdc-dash .menu{position:absolute;top:60px;left:0;z-index:50;min-width:172px;max-width:214px;background:#14141f;border:1px solid rgba(255,255,255,.14);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:4px;text-align:left;white-space:normal}
 
 .gdc-dash .strip .st:nth-last-child(-n+2) .menu, .gdc-dash .drow .st:nth-last-child(-n+3) .menu{left:auto;right:0}
+/* When a stage menu is open, lift its row AND its card above later siblings so
+   the dropdown isn't painted under the "Total Value" bar (a later sibling of the
+   icon strip) or the next booking card. Without this the menu's bottom is hidden. */
+.gdc-dash .strip:has(.menu), .gdc-dash .drow:has(.menu){position:relative;z-index:5}
+.gdc-dash .card:has(.menu){position:relative;z-index:20}
 .gdc-dash .menu .mh{color:#fff;font-size:.8rem;font-weight:800;letter-spacing:.02em;padding:.5rem .7rem .4rem}
 .gdc-dash .menu .div{height:1px;background:rgba(255,255,255,.1);margin:0 6px 4px}
 .gdc-dash .menu .info{color:#fff;font-size:.75rem;font-weight:600;line-height:1.4;padding:.45rem .6rem .35rem}
