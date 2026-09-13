@@ -623,7 +623,7 @@ const LANDING_BODY = String.raw`
 
 <!-- BOOKING DASHBOARD SAMPLE (interactive) -->
 <section id="dashsample" style="padding:56px 0 24px">
-  <link rel="stylesheet" href="/booking-dashboard.css">
+  <link rel="stylesheet" href="/booking-dashboard.css?v=2">
   <div class="wrap">
     <div class="shead reveal">
       <div class="label">See how the pipeline works</div>
@@ -1156,8 +1156,10 @@ export default function HomePage() {
     s.textContent = LANDING_SCRIPT;
     document.body.appendChild(s);
     // Interactive booking-dashboard sample (its CSS + JS are static files in /public).
+    // ?v= is a cache-buster — bump it whenever booking-dashboard.js/.css change so
+    // browsers holding an old cached copy (which caused a clipped dropdown) refetch.
     const d = document.createElement('script');
-    d.src = '/booking-dashboard.js';
+    d.src = '/booking-dashboard.js?v=2';
     document.body.appendChild(d);
     return () => { s.remove(); d.remove(); };
   }, []);
