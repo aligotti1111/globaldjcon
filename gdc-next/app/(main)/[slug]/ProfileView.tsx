@@ -447,10 +447,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     if (!bg) return {};
     return {
       background: bg,
-      // More top padding than bottom: the font reserves descender space below the
-      // baseline (empty for all-caps), which otherwise makes the band look
-      // bottom-heavy. This evens the band above/below the letters.
-      padding: '.16em .32em .03em',
+      // Tight line-height so the band hugs the glyphs instead of the font's full
+      // inline box (which reserves empty descender space below the baseline and
+      // made the bottom look longer than the top). With line-height collapsed,
+      // equal top/bottom padding reads evenly around the text.
+      lineHeight: 1,
+      padding: '.08em .32em',
       borderRadius: '.16em',
       boxDecorationBreak: 'clone',
       WebkitBoxDecorationBreak: 'clone',
