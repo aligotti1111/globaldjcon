@@ -453,16 +453,21 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   function bandSpanStyle(hex: string | null, which: 'name' | 'location' = 'name'): React.CSSProperties {
     const bg = bandRgba(hex);
     if (!bg) return {};
-    // Padding is tuned per element because the two use different fonts:
-    //   name     — Bebas Neue, all-caps, glyphs sit HIGH in the line box, so it
-    //              needs more top than bottom (.17/.04) to look centered.
-    //   location — Space Mono, mixed-case with real descenders, sits roughly
-    //              centred, so it gets even top/bottom padding (a fuller bottom
-    //              than the name's). Both verified on the live rendered hero.
-    const padding = which === 'location' ? '.15em .3em .15em' : '.17em .32em .04em';
+    // Tuned per element because the two use different fonts:
+    //   name     — Bebas Neue, all-caps (no descenders). line-height:.86 pulls the
+    //              band's box in from the font's empty descender space so it hugs
+    //              the caps tightly instead of looking oversized; a little more top
+    //              than bottom padding keeps the caps visually centred.
+    //   location — Space Mono, small mixed-case. Keeps full line-height (has real
+    //              descenders) and even, generous top/bottom padding so the strip
+    //              reads as a solid band, not a thin sliver.
+    // Both verified on the live rendered hero.
+    const isLoc = which === 'location';
+    const lineHeight = isLoc ? 1 : 0.86;
+    const padding = isLoc ? '.34em .3em .34em' : '.12em .16em .04em';
     return {
       background: bg,
-      lineHeight: 1,
+      lineHeight,
       padding,
       borderRadius: '.16em',
       boxDecorationBreak: 'clone',
