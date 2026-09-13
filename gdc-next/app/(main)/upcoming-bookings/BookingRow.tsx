@@ -372,6 +372,10 @@ export default function BookingRow({
   // OWNER-ONLY \u2014 no teammate, not even admin/manager, may change where money
   // lands. Money ACTIONS (request/cancel) stay manager+.
   const roleCanEditPaymentOptions = actingRole === 'owner';
+  // SENDING a cancellation request is OWNER-ONLY (it can end a committed
+  // booking). Teammates never see the "Request cancellation" button; the server
+  // also rejects the request action for non-owners.
+  const roleCanRequestCancel = actingRole === 'owner';
   // Role-locking for the step dropdowns: show every option an admin would see,
   // but grey out (disable) the ones this role can't use, with a hover tooltip.
   const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Skip deposit', 'Request balance', 'Cancel request']);
@@ -1196,25 +1200,28 @@ export default function BookingRow({
           ) : !cancelFormOpen ? (
             /* Bottom-right of the panel, in an outlined box rather than a bare
                underlined link — findable, but sitting apart from the actions
-               a DJ actually wants to click. */
-            <button
-              type="button"
-              onClick={() => setCancelFormOpen(true)}
-              style={{
-                display: 'block',
-                marginLeft: 'auto',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,.18)',
-                borderRadius: 6,
-                padding: '.4rem .7rem',
-                color: 'var(--muted,#8a8aa0)',
-                fontSize: '.72rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Request cancellation
-            </button>
+               a DJ actually wants to click. OWNER-ONLY: teammates don't get to
+               start a cancellation. */
+            roleCanRequestCancel ? (
+              <button
+                type="button"
+                onClick={() => setCancelFormOpen(true)}
+                style={{
+                  display: 'block',
+                  marginLeft: 'auto',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,.18)',
+                  borderRadius: 6,
+                  padding: '.4rem .7rem',
+                  color: 'var(--muted,#8a8aa0)',
+                  fontSize: '.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Request cancellation
+              </button>
+            ) : null
           ) : (
             <div>
               <div style={{ fontSize: '.75rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5, marginBottom: '.5rem' }}>
