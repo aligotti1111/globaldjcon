@@ -32,7 +32,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
-import { getActingContext, canAcceptBookings } from '@/lib/acting';
+import { getActingContext, canAcceptBookings, canBilling } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
 
 export const runtime = 'nodejs';
@@ -224,6 +224,12 @@ export async function POST(req: Request) {
     if (data.dj_id === acting.djId) {
       if (!canAcceptBookings(acting.role)) {
         return fail('You do not have permission to cancel this booking.', 403);
+      }
+      // SENDING a cancellation request is OWNER-ONLY. Answering one (accept/
+      // decline) stays manager+, but starting the request — which can end a
+      // committed booking — is reserved for the account owner.
+      if (action === 'request' && !canBilling(acting.role)) {
+        return fail('Only the account owner can request a cancellation.', 403);
       }
       actor = 'dj';
       djActing = acting;
