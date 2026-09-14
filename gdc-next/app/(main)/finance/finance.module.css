@@ -289,6 +289,9 @@
 
 @media (max-width: 780px) {
   .grid2, .pieRow { grid-template-columns: 1fr; }
+  /* KPI cards stack full-width so multi-stat cards (Events has 5) aren't crammed
+     into a half-width column where the last stat spills off the card. */
+  .kpis { grid-template-columns: 1fr; }
   .title { font-size: 2rem; }
   /* Period pills → dropdown */
   .segDesktop { display: none; }
