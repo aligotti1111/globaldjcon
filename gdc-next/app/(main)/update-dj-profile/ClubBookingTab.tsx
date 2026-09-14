@@ -343,6 +343,9 @@ export default function ClubBookingTab({
     if (!riderHasContent) riderMissing.push(riderMode === 'upload' ? 'an uploaded PDF' : 'at least one filled box');
   }
   const riderComplete = riderMissing.length === 0;
+  // A rider only counts as SAVED (and so collapses to the summary) once it has a
+  // name AND content. An unnamed work-in-progress keeps the builder open.
+  const riderSaved = riderHasContent && riderName.trim() !== '';
   // Once a rider is saved we collapse the builder to a one-line "Saved rider —
   // <name> [Edit]" row; clicking Edit re-opens the builder.
   const [riderEditing, setRiderEditing] = useState(false);
@@ -978,7 +981,7 @@ export default function ClubBookingTab({
 
                 {/* Saved rider — one line: the rider's name + an Edit button that
                     re-opens the builder. Shown once there's saved content. */}
-                {riderHasContent && !riderEditing && (
+                {riderSaved && !riderEditing && (
                   <div style={{ marginTop: '.9rem' }}>
                     {riderJustSaved && (
                       <div style={{ marginBottom: '.5rem', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 700 }}>
@@ -1022,7 +1025,7 @@ export default function ClubBookingTab({
                   </div>
                 )}
 
-                {riderEnabled && (!riderHasContent || riderEditing) && (
+                {riderEnabled && (!riderSaved || riderEditing) && (
                   <div style={{ marginTop: '1.1rem' }}>
                     <div className={styles.bodyHint} style={{ marginBottom: '1rem' }}>
                       <div>There are two ways to add the rider:</div>
