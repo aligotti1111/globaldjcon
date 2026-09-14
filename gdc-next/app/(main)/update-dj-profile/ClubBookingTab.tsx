@@ -287,7 +287,14 @@ export default function ClubBookingTab({
     setLastChangedField('settings');
     patch({ rider_default: items } as unknown as Partial<BookingSettings>);
   }
-  const riderMode: RiderMode = normalizeRiderMode((bookingSettings as { rider_mode?: unknown }).rider_mode);
+  // Don't pre-select a mode until the DJ actually picks one. normalizeRiderMode
+  // always returns a concrete mode, so read the raw value: only 'upload'/'custom'
+  // count as chosen — anything else (unset/null) leaves both cards unselected.
+  const riderModeRaw = (bookingSettings as { rider_mode?: unknown }).rider_mode;
+  const riderMode: RiderMode | null =
+    riderModeRaw === 'upload' || riderModeRaw === 'custom'
+      ? normalizeRiderMode(riderModeRaw)
+      : null;
   function setRiderMode(m: RiderMode) {
     setLastChangedField('settings');
     patch({ rider_mode: m } as unknown as Partial<BookingSettings>);
