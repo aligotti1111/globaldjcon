@@ -86,6 +86,12 @@ export interface ReceivedEvent {
                                 // (deposit = paid; balance/other = event month)
   paidDate: string;             // YYYY-MM-DD — when the money was actually paid,
                                 // regardless of accounting date (used by the table)
+  eventDate: string;            // YYYY-MM-DD — the booking's EVENT date. Lets the
+                                // report classify collected money as "past events"
+                                // (event already happened) vs "future events" (a
+                                // deposit already in hand on an upcoming gig). As
+                                // soon as the event date passes, that money counts
+                                // as past — the split is derived from today, not stored.
   gross: number;                // collected (incl. tax)
   net: number;                  // gross − tax portion (your earnings)
   tax: number;                  // tax portion of this inflow
@@ -286,6 +292,7 @@ export function buildReceivedEvents(
       bookingId: p.booking_id,
       date: dateStr.slice(0, 10),
       paidDate: paidStr.slice(0, 10),
+      eventDate: (b?.event_date || dateStr || '').slice(0, 10),
       gross,
       net: round2(gross - tax),
       tax,
@@ -307,6 +314,7 @@ export function buildReceivedEvents(
       bookingId: b.id,
       date: (b.overtime_paid_at || b.event_date || '').slice(0, 10),
       paidDate: (b.overtime_paid_at || b.event_date || '').slice(0, 10),
+      eventDate: (b.event_date || b.overtime_paid_at || '').slice(0, 10),
       gross,
       net: round2(gross - tax),
       tax,
@@ -331,6 +339,7 @@ export function buildReceivedEvents(
       bookingId: b.id,
       date: mr.date,
       paidDate: mr.paidDate,
+      eventDate: (b.event_date || mr.date || '').slice(0, 10),
       gross: mr.amount,
       net: round2(mr.amount - tax),
       tax,
