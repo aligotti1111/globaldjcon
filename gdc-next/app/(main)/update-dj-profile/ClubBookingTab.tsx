@@ -94,7 +94,7 @@ export default function ClubBookingTab({
   // Confirm modal — used to require explicit acknowledgement before
   // disabling booking. The Confirm hook returns the confirm() async fn
   // plus a JSX element to render once at the top of the component tree.
-  const { confirmDialog } = useConfirm();
+  const { confirm, confirmDialog } = useConfirm();
 
   // ── Booking config (subscription-gated; no manual toggle) ────────
   // Always render the config; whether booking goes live publicly is decided
@@ -295,6 +295,23 @@ export default function ClubBookingTab({
     setRiderModeState(m);
     setLastChangedField('settings');
     patch({ rider_mode: m } as unknown as Partial<BookingSettings>);
+  }
+  // Delete the saved rider (with confirm). Clears the rider fields, resets the
+  // builder to blank, and persists — so it's gone, not just staged.
+  async function deleteRider() {
+    const ok = await confirm({
+      title: 'Delete this rider?',
+      message: 'This removes your saved rider. You can build a new one any time.',
+      confirmLabel: 'Delete rider',
+    });
+    if (!ok) return;
+    setLastChangedField('settings');
+    patch({ rider_default: [], rider_mode: null, rider_pdf_url: null, rider_name: '' } as unknown as Partial<BookingSettings>);
+    setRiderModeState(null);
+    setRiderEditing(false);
+    setRiderJustSaved(false);
+    // Let the cleared settings flow up, then persist on the next tick.
+    setTimeout(() => onSaveSettings?.(), 0);
   }
   const riderPdfUrl = ((bookingSettings as { rider_pdf_url?: string | null }).rider_pdf_url) || null;
   function setRiderPdfUrl(url: string | null) {
@@ -977,17 +994,30 @@ export default function ClubBookingTab({
                           {riderName.trim() || (riderMode === 'upload' ? 'Uploaded PDF' : 'Custom rider')}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => { setRiderEditing(true); setRiderJustSaved(false); }}
-                        style={{
-                          flexShrink: 0, background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
-                          borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
-                          fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
-                        }}
-                      >
-                        Edit
-                      </button>
+                      <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => { setRiderEditing(true); setRiderJustSaved(false); }}
+                          style={{
+                            background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
+                            borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
+                            fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={deleteRider}
+                          style={{
+                            background: 'transparent', border: '1px solid rgba(255,120,120,.6)', color: '#ff8b8b',
+                            borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
+                            fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
