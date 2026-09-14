@@ -24,7 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, normalizeRiderMode, type RiderItem, type RiderMode } from '@/lib/rider';
+import { normalizeRiderItems, type RiderItem, type RiderMode } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -287,15 +287,12 @@ export default function ClubBookingTab({
     setLastChangedField('settings');
     patch({ rider_default: items } as unknown as Partial<BookingSettings>);
   }
-  // Don't pre-select a mode until the DJ actually picks one. normalizeRiderMode
-  // always returns a concrete mode, so read the raw value: only 'upload'/'custom'
-  // count as chosen — anything else (unset/null) leaves both cards unselected.
-  const riderModeRaw = (bookingSettings as { rider_mode?: unknown }).rider_mode;
-  const riderMode: RiderMode | null =
-    riderModeRaw === 'upload' || riderModeRaw === 'custom'
-      ? normalizeRiderMode(riderModeRaw)
-      : null;
+  // Force a manual pick every time: never pre-select a mode, even if one was
+  // saved before. Starts null on each mount — only a click on Upload/Custom
+  // selects a card and reveals its body.
+  const [riderMode, setRiderModeState] = useState<RiderMode | null>(null);
   function setRiderMode(m: RiderMode) {
+    setRiderModeState(m);
     setLastChangedField('settings');
     patch({ rider_mode: m } as unknown as Partial<BookingSettings>);
   }
