@@ -265,8 +265,16 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // this real span (not its 1970→today bounds) to decide month vs year.
   const dataBounds = useMemo(() => {
     let min = '', max = '';
-    for (const e of events) { if (e.date && (!min || e.date < min)) min = e.date; if (e.date && (!max || e.date > max)) max = e.date; }
-    for (const x of expectedItems) { if (x.date && (!min || x.date < min)) min = x.date; if (x.date && (!max || x.date > max)) max = x.date; }
+    const fold = (d: string | null | undefined) => {
+      if (!d) return;
+      if (!min || d < min) min = d;
+      if (!max || d > max) max = d;
+    };
+    // Fold in BOTH the accounting date and the event date of every inflow, so a
+    // deposit already collected on a far-future gig still extends the axis to that
+    // gig's year (future-received money is plotted by event date — see splitRec).
+    for (const e of events) { fold(e.date); fold(e.eventDate); }
+    for (const x of expectedItems) fold(x.date);
     return { min, max };
   }, [events, expectedItems]);
   const isYearly =
@@ -299,19 +307,25 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     // Split received money into two buckets keyed the same way (day / year /
     // month): past-event money and future-event money (deposits already in hand
     // on gigs still to come). keyOf maps a received inflow to its bucket key.
-    const splitRec = (keyOf: (e: ReceivedEvent) => string) => {
+    // Past money buckets by its accounting date (deposit = paid date, balance =
+    // event month). FUTURE money buckets by the EVENT date, so a deposit already
+    // collected on an upcoming gig sits in that gig's period — right beside the
+    // Expected balance for the same event — instead of in the month it was paid.
+    const splitRec = (keyOf: (dateStr: string) => string) => {
       const past = new Map<string, number>();
       const fut = new Map<string, number>();
       for (const e of filtered) {
-        const k = keyOf(e);
-        const m = isFutureEvt(e) ? fut : past;
+        const future = isFutureEvt(e);
+        const bucketDate = future ? (e.eventDate || e.date) : e.date;
+        const k = keyOf(bucketDate);
+        const m = future ? fut : past;
         m.set(k, (m.get(k) || 0) + rv(e));
       }
       return { past, fut };
     };
 
     if (isDaily) {
-      const { past: recPast, fut: recFut } = splitRec((e) => e.date);
+      const { past: recPast, fut: recFut } = splitRec((d) => d);
       // This month = the FULL calendar month (every day, future days at $0). Last
       // 30 = the rolling window ending today. Neither spills into other months —
       // expected events in later months belong to the year/next-year views.
@@ -338,7 +352,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     // one bar per YEAR (labelled "2027") so it stays readable instead of cramming
     // in 20+ month bars. "All time" spans the actual data; custom spans its dates.
     if (isYearly) {
-      const { past: recPast, fut: recFut } = splitRec((e) => e.date.slice(0, 4));
+      const { past: recPast, fut: recFut } = splitRec((d) => d.slice(0, 4));
       const expY = new Map<string, number>();
       if (projectFuture) for (const x of expectedItems) {
         // All-time counts every expected month; custom clamps to its range.
@@ -356,7 +370,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       return out;
     }
 
-    const { past: recPast, fut: recFut } = splitRec((e) => e.date.slice(0, 7));
+    const { past: recPast, fut: recFut } = splitRec((d) => d.slice(0, 7));
     const expMap = new Map<string, number>();
     if (projectFuture) for (const x of expectedItems) { const m = x.date.slice(0, 7); expMap.set(m, (expMap.get(m) || 0) + ev(x)); }
     let firstYM: string;
@@ -375,7 +389,12 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       // that year — never extend past December to chase an expected booking that
       // lands in a later year. Other windows extend to cover expected months.
       const fixedYear = preset === 'ytd' || preset === 'next_year';
-      if (!fixedYear) for (const m of expMap.keys()) if (m > lastYM) lastYM = m;
+      if (!fixedYear) {
+        for (const m of expMap.keys()) if (m > lastYM) lastYM = m;
+        // Future-received money is event-dated too — extend to cover a fully-paid
+        // upcoming gig that has no expected balance left.
+        for (const m of recFut.keys()) if (m > lastYM) lastYM = m;
+      }
       if (fixedYear) {
         const yr = start.slice(0, 4);
         firstYM = `${yr}-01`;
