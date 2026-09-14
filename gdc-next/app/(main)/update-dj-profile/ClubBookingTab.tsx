@@ -329,6 +329,29 @@ export default function ClubBookingTab({
   // Once a rider is saved we collapse the builder to a one-line "Saved rider —
   // <name> [Edit]" row; clicking Edit re-opens the builder.
   const [riderEditing, setRiderEditing] = useState(false);
+  // Shows a "Rider saved" confirmation when the builder collapses after a save.
+  const [riderJustSaved, setRiderJustSaved] = useState(false);
+  // Send-a-test-email state (see the button at the bottom of the DJ Rider card).
+  const [riderTestBusy, setRiderTestBusy] = useState(false);
+  const [riderTestMsg, setRiderTestMsg] = useState<string | null>(null);
+  async function sendRiderTest() {
+    setRiderTestMsg(null);
+    setRiderTestBusy(true);
+    try {
+      const res = await fetch('/api/rider/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: riderDefault, mode: riderMode ?? 'custom', pdfUrl: riderPdfUrl, name: riderName }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; emailedTo?: string; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not send the test.');
+      setRiderTestMsg(`✓ Test email sent${data.emailedTo ? ` to ${data.emailedTo}` : ''} — check your inbox.`);
+    } catch (e) {
+      setRiderTestMsg(e instanceof Error ? e.message : 'Could not send the test — try again.');
+    } finally {
+      setRiderTestBusy(false);
+    }
+  }
   const guestlistEnabled = !!(bookingSettings as { guestlist_enabled?: boolean }).guestlist_enabled;
   function setGuestlistEnabled(v: boolean) {
     setLastChangedField('settings');
@@ -939,26 +962,33 @@ export default function ClubBookingTab({
                 {/* Saved rider — one line: the rider's name + an Edit button that
                     re-opens the builder. Shown once there's saved content. */}
                 {riderHasContent && !riderEditing && (
-                  <div style={{ marginTop: '.9rem', padding: '.7rem .9rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>
-                        Saved rider
+                  <div style={{ marginTop: '.9rem' }}>
+                    {riderJustSaved && (
+                      <div style={{ marginBottom: '.5rem', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 700 }}>
+                        ✓ Rider saved
                       </div>
-                      <div style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {riderName.trim() || (riderMode === 'upload' ? 'Uploaded PDF' : 'Custom rider')}
+                    )}
+                    <div style={{ padding: '.7rem .9rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>
+                          Saved rider
+                        </div>
+                        <div style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {riderName.trim() || (riderMode === 'upload' ? 'Uploaded PDF' : 'Custom rider')}
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => { setRiderEditing(true); setRiderJustSaved(false); }}
+                        style={{
+                          flexShrink: 0, background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
+                          borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
+                          fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
+                        }}
+                      >
+                        Edit
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setRiderEditing(true)}
-                      style={{
-                        flexShrink: 0, background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
-                        borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
-                        fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
-                      }}
-                    >
-                      Edit
-                    </button>
                   </div>
                 )}
 
@@ -1002,7 +1032,7 @@ export default function ClubBookingTab({
                       <button
                         type="button"
                         disabled={!canSave}
-                        onClick={() => { onSaveSettings?.(); setRiderEditing(false); }}
+                        onClick={() => { onSaveSettings?.(); setRiderEditing(false); setRiderJustSaved(true); }}
                         style={{
                           background: canSave ? 'var(--neon)' : 'transparent',
                           color: canSave ? '#04121a' : 'var(--muted)',
@@ -1022,6 +1052,33 @@ export default function ClubBookingTab({
                     </div>
                   );
                 })()}
+
+                {/* Send yourself a test — see exactly what the host receives when
+                    this rider is sent through the site. Goes to your own email. */}
+                {riderEnabled && riderHasContent && (
+                  <div style={{ marginTop: '1.4rem', paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.5rem', textAlign: 'center' }}>
+                    <div style={{ color: 'var(--muted)', fontSize: '.78rem', maxWidth: 420 }}>
+                      Send yourself a test to see exactly what the host receives when this rider is sent through the site.
+                    </div>
+                    <button
+                      type="button"
+                      disabled={riderTestBusy}
+                      onClick={sendRiderTest}
+                      style={{
+                        background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
+                        borderRadius: 8, padding: '.6rem 1.4rem', fontSize: '.85rem', fontWeight: 700,
+                        cursor: riderTestBusy ? 'default' : 'pointer', opacity: riderTestBusy ? 0.6 : 1,
+                      }}
+                    >
+                      {riderTestBusy ? 'Sending…' : 'Send test email'}
+                    </button>
+                    {riderTestMsg && (
+                      <div style={{ color: riderTestMsg.startsWith('✓') ? 'var(--neon,#00e0a4)' : '#ff8b8b', fontSize: '.78rem' }}>
+                        {riderTestMsg}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
