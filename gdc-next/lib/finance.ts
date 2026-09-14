@@ -252,8 +252,22 @@ export function manualReceived(
   return { amount, kind: balanceDone ? 'balance' : 'deposit', date, paidDate };
 }
 
-const isCollected = (p: FinancePaymentInput) =>
-  (p.status === 'paid' || p.status === 'partial') && Number(p.amount_paid) > 0;
+// The confirmed amount from one payment row.
+//   • paid / partial → what actually arrived (amount_paid).
+//   • waived         → the DJ marked the balance settled off-app. The dashboard
+//     shows it as "Paid" (green check), so the report must agree: count the full
+//     asked amount as received rather than leaving that money stranded in
+//     "Expected" forever. Waived rows often carry amount_paid = 0, which is why
+//     they were being dropped — this is the fix for "I marked it paid but it
+//     didn't count".
+// Anything else (requested / pending) has confirmed nothing.
+export function collectedAmount(p: FinancePaymentInput): number {
+  if (p.status === 'waived') return round2(Number(p.amount || 0) || Number(p.amount_paid || 0));
+  if (p.status === 'paid' || p.status === 'partial') return round2(Number(p.amount_paid || 0));
+  return 0;
+}
+
+const isCollected = (p: FinancePaymentInput) => collectedAmount(p) > 0;
 
 const isOutstanding = (p: FinancePaymentInput) =>
   (p.status === 'requested' || p.status === 'pending_confirmation') &&
@@ -277,7 +291,9 @@ export function buildReceivedEvents(
     if (!isCollected(p)) continue;
     const b = byId.get(p.booking_id);
     const ratio = b ? taxRatio(b) : 0;
-    const gross = round2(Number(p.amount_paid));
+    // collectedAmount, not amount_paid — so a WAIVED balance (marked settled with
+    // amount_paid = 0) is still valued at what was owed instead of vanishing.
+    const gross = round2(collectedAmount(p));
     const tax = round2(gross * ratio);
     // Dating rule (the ACCOUNTING date, used for range filtering + totals):
     //   • DEPOSIT           → the month it was actually paid (often well ahead).
@@ -371,8 +387,9 @@ export function buildReceivedEvents(
 function collectedByBooking(payments: FinancePaymentInput[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const p of payments) {
-    if (!isCollected(p)) continue;
-    m.set(p.booking_id, round2((m.get(p.booking_id) || 0) + Number(p.amount_paid)));
+    const got = collectedAmount(p);
+    if (!(got > 0)) continue;
+    m.set(p.booking_id, round2((m.get(p.booking_id) || 0) + got));
   }
   return m;
 }
