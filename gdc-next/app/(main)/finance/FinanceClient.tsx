@@ -643,8 +643,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
                 key={c.label}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   textAlign: 'center',
-                  padding: '2px 6px',
+                  padding: '2px 4px',
                   borderLeft: i === 0 ? 'none' : '1px solid rgba(255,255,255,.08)',
                 }}
               >
