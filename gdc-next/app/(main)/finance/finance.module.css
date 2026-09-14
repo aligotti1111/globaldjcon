@@ -289,6 +289,9 @@
 
 @media (max-width: 780px) {
   .grid2, .pieRow { grid-template-columns: 1fr; }
+  /* Only the Events card (5 stats, always the last KPI) spans the full width on
+     mobile so nothing spills off; Revenue + Tax keep their default sizing. */
+  .kpis > :last-child { grid-column: 1 / -1; }
   .title { font-size: 2rem; }
   /* Period pills → dropdown */
   .segDesktop { display: none; }
