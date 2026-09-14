@@ -159,7 +159,11 @@
    200px height — otherwise the flex:1 track collapses and every bar renders as a
    sliver regardless of its value. */
 .bars { display: flex; align-items: stretch; gap: 6px; height: 200px; }
-.barCol { flex: 1 1 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+.barCol { flex: 1 1 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; padding-top: 4px; border-radius: 8px; }
+/* Faint alternating "lanes" so it's obvious which bar + amount belong to which
+   month — otherwise adjacent bars blur together and a value reads against the
+   wrong label. */
+.barCol:nth-child(2n) { background: rgba(255, 255, 255, .035); }
 .barTrack { width: 100%; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
 .bar {
   width: 100%;
