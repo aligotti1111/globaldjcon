@@ -134,7 +134,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     ? (customStart <= customEnd ? { start: customStart, end: customEnd } : { start: customEnd, end: customStart })
     : rangeFor(preset, today);
   const filtered = useMemo(() => inRange(events, start, end), [events, start, end]);
-  const totals = useMemo(() => summarize(filtered), [filtered]);
   const byType = useMemo(() => groupByField(filtered, 'eventType'), [filtered]);
 
   // Classify one received inflow: "future" if the EVENT it belongs to hasn't
@@ -161,7 +160,19 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
 
   const pick = (t: { net: number; gross: number }) => (basis === 'net' ? t.net : t.gross);
 
-  const earned = pick(totals);
+  // Received money split into past-event vs future-event buckets (net + tax) —
+  // feeds the Revenue and Tax KPI cards, which mirror the chart's three series
+  // (Past / Future / Expected).
+  const receivedSplit = useMemo(() => {
+    const r2 = (n: number) => Number(n.toFixed(2));
+    let pastNet = 0, pastTax = 0, futNet = 0, futTax = 0;
+    for (const e of filtered) {
+      if (isFutureEvt(e)) { futNet += e.net; futTax += e.tax; }
+      else { pastNet += e.net; pastTax += e.tax; }
+    }
+    return { pastNet: r2(pastNet), pastTax: r2(pastTax), futNet: r2(futNet), futTax: r2(futTax) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, today]);
 
   // Total events booked (accepted) whose date falls in the selected period. The
   // window is the FULL period the chart shows (This Year = Jan–Dec, not just up
@@ -575,26 +586,29 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
 
       {/* KPI strip */}
       <div className={styles.kpis}>
-        <div className={`${styles.kpi} ${styles.kpiHero}`}>
-          <div className={styles.kpiLabel}>Revenue ({basis}) · {rangeLabel(preset)}</div>
-          <div className={`${styles.kpiValue} ${styles.pos}`}>{money0.format(earned)}</div>
-          <div className={styles.kpiSub}>
-            {basis === 'net' ? `Gross ${money0.format(totals.gross)}` : `Net ${money0.format(totals.net)}`}
-          </div>
-        </div>
+        <KpiBreakdown
+          label={`Revenue (net) · ${rangeLabel(preset)}`}
+          rows={[
+            { label: 'Past Events', value: receivedSplit.pastNet, color: REC_PAST },
+            { label: 'Future Events', value: receivedSplit.futNet, color: REC_FUTURE },
+            { label: 'Expected', value: expectedTotals.net, color: EXP_COLOR },
+          ]}
+          total={receivedSplit.pastNet + receivedSplit.futNet + expectedTotals.net}
+          totalColor="var(--neon, #00f5c4)"
+          fmt={(n) => money0.format(n)}
+        />
 
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Tax collected · {rangeLabel(preset)}</div>
-          <div className={styles.kpiValue}>{money0.format(totals.tax)}</div>
-        </div>
-
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Expected ({basis}) · {rangeLabel(preset)}</div>
-          <div className={styles.kpiValue} style={{ color: '#8AA0FF' }}>{money0.format(basis === 'net' ? expectedTotals.net : expectedTotals.gross)}</div>
-          <div className={styles.kpiSub}>
-            {basis === 'net' ? `Gross ${money0.format(expectedTotals.gross)}` : `Net ${money0.format(expectedTotals.net)}`} · unpaid on upcoming
-          </div>
-        </div>
+        <KpiBreakdown
+          label={`Tax · ${rangeLabel(preset)}`}
+          rows={[
+            { label: 'Past Events', value: receivedSplit.pastTax, color: REC_PAST },
+            { label: 'Future Events', value: receivedSplit.futTax, color: REC_FUTURE },
+            { label: 'Expected', value: Number((expectedTotals.gross - expectedTotals.net).toFixed(2)), color: EXP_COLOR },
+          ]}
+          total={receivedSplit.pastTax + receivedSplit.futTax + (expectedTotals.gross - expectedTotals.net)}
+          totalColor="#fff"
+          fmt={(n) => money0.format(n)}
+        />
 
         <div className={styles.kpi}>
           <div className={styles.kpiLabel} style={{ marginBottom: 10 }}>Events · {rangeLabel(preset)}</div>
@@ -885,6 +899,37 @@ function Row({ k, v, muted, strong, color }: { k: string; v: string; muted?: boo
 
 function rangeLabel(p: Preset): string {
   return PRESETS.find((x) => x.key === p)?.label || '';
+}
+
+// ── KpiBreakdown: a KPI card that lists Past / Future / Expected sub-amounts and
+// a bold Total, colour-matched to the chart series. Used for Revenue and Tax. ──
+function KpiBreakdown({ label, rows, total, totalColor, fmt }: {
+  label: string;
+  rows: { label: string; value: number; color: string }[];
+  total: number;
+  totalColor: string;
+  fmt: (n: number) => string;
+}) {
+  return (
+    <div className={styles.kpi}>
+      <div className={styles.kpiLabel}>{label}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
+        {rows.map((r) => (
+          <div key={r.label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, fontSize: '.82rem' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--muted,#8a8aa0)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} />
+              {r.label}
+            </span>
+            <span style={{ color: '#fff', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.value)}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 }}>
+          <span style={{ fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#9a9ab0)', fontWeight: 700 }}>Total</span>
+          <span style={{ color: totalColor, fontWeight: 800, fontSize: '1.15rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Donut: dependency-free 3D (tilted + extruded) conic ring with a legend ───
