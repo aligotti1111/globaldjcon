@@ -271,6 +271,10 @@
 .table td { padding: 10px 16px; border-bottom: 1px solid var(--line2, #1e1e2a); white-space: nowrap; }
 .table tr:last-child td { border-bottom: 0; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* `.table th` sets text-align:left at higher specificity than `.num`, so numeric
+   HEADER cells need this same-specificity override to right-align with their
+   column's values (Gross/Tax/Net). */
+.table th.num { text-align: right; }
 .chip {
   display: inline-block; padding: 2px 8px; border-radius: 999px;
   font-size: .68rem; font-weight: 700; letter-spacing: .02em;
@@ -287,4 +291,9 @@
   .periodSelect { display: block; }
   /* Single-year views: drop the per-bar year (it's in the period label). */
   .hideYrMobile .barYr { display: none; }
+  /* Chart legend: stack the three series one per row instead of wrapping the
+     labels mid-word, and top-align each swatch with its multi-line label. */
+  .chartLegend { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .chartLegend .legendRow { align-items: flex-start; }
+  .chartLegend .swatch { margin-top: 3px; }
 }
