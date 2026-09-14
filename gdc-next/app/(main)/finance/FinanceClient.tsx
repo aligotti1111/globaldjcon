@@ -134,7 +134,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     ? (customStart <= customEnd ? { start: customStart, end: customEnd } : { start: customEnd, end: customStart })
     : rangeFor(preset, today);
   const filtered = useMemo(() => inRange(events, start, end), [events, start, end]);
-  const byType = useMemo(() => groupByField(filtered, 'eventType'), [filtered]);
 
   // Classify one received inflow: "future" if the EVENT it belongs to hasn't
   // happened yet (a deposit already in hand on an upcoming gig), "past" once the
@@ -143,29 +142,10 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // when a booking somehow has no event date.
   const isFutureEvt = (e: ReceivedEvent) => (e.eventDate || e.date) >= today;
 
-  // Where the received money came from: deposits vs the balance (final payment).
-  // Overtime and any other inflow fold into Balance so it's a clean two-way split.
-  const bySource = useMemo(() => {
-    let deposit = 0, balance = 0;
-    for (const e of filtered) {
-      const v = basis === 'net' ? e.net : e.gross;
-      if ((e.kind || '').toLowerCase() === 'deposit') deposit += v; else balance += v;
-    }
-    const r2 = (n: number) => Number(n.toFixed(2));
-    return [
-      { key: 'deposit', label: 'Deposit', value: r2(deposit), color: '#00f5c4' },
-      { key: 'balance', label: 'Balance', value: r2(balance), color: '#8AA0FF' },
-    ];
-  }, [filtered, basis]);
-
-  const pick = (t: { net: number; gross: number }) => (basis === 'net' ? t.net : t.gross);
-
-  // Total events booked (accepted) whose date falls in the selected period. The
-  // window is the FULL period the chart shows (This Year = Jan–Dec, not just up
-  // to today), so upcoming events in the period are counted too.
   // The full calendar window the selected period covers (This Year = Jan–Dec,
-  // This Month = the whole month, etc.). Shared by the event tally and the
-  // Expected total so both match the chart.
+  // This Month = the whole month, All Time = everything). Shared by the event
+  // tally, the Expected total AND the received breakdowns so they all agree with
+  // the chart.
   const periodBounds = useMemo(() => {
     let cStart = start, cEnd = end;
     if (preset === 'this_month') {
@@ -179,28 +159,54 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     return { cStart, cEnd };
   }, [start, end, preset]);
 
-  // Received money split into past-event vs future-event buckets (net + tax),
-  // feeding the Revenue and Tax KPI cards. FUTURE money is counted only when its
-  // EVENT falls inside the displayed window — the same rule the chart and the
-  // Expected total use — so the card's "Future Events" matches the chart's gold
-  // bars. (A deposit collected THIS year on a gig two years out belongs to that
-  // future year's window, not this one.) Past money is already windowed by the
-  // range filter on `filtered`.
-  const receivedSplit = useMemo(() => {
+  // Received money that belongs to THIS window: past money always (already range-
+  // filtered), plus future money only when its EVENT falls inside the window — so
+  // every "received" breakdown (Revenue card, Deposit-vs-Balance, By-event-type)
+  // matches the chart, which plots future money by event date. A deposit collected
+  // now on a gig two years out belongs to that future year, not this one.
+  const filteredWindowed = useMemo(() => {
     const { cStart, cEnd } = periodBounds;
+    return filtered.filter((e) => {
+      if (!isFutureEvt(e)) return true;
+      const evd = e.eventDate || e.date;
+      return evd >= cStart && evd <= cEnd;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, periodBounds, today]);
+
+  const byType = useMemo(() => groupByField(filteredWindowed, 'eventType'), [filteredWindowed]);
+
+  // Where the received money came from: deposits vs the balance (final payment).
+  // Overtime and any other inflow fold into Balance so it's a clean two-way split.
+  const bySource = useMemo(() => {
+    let deposit = 0, balance = 0;
+    for (const e of filteredWindowed) {
+      const v = basis === 'net' ? e.net : e.gross;
+      if ((e.kind || '').toLowerCase() === 'deposit') deposit += v; else balance += v;
+    }
+    const r2 = (n: number) => Number(n.toFixed(2));
+    return [
+      { key: 'deposit', label: 'Deposit', value: r2(deposit), color: '#00f5c4' },
+      { key: 'balance', label: 'Balance', value: r2(balance), color: '#8AA0FF' },
+    ];
+  }, [filteredWindowed, basis]);
+
+  const pick = (t: { net: number; gross: number }) => (basis === 'net' ? t.net : t.gross);
+
+  // Received money split into past-event vs future-event buckets (net + tax) for
+  // the Revenue and Tax KPI cards. Reads filteredWindowed, so future money already
+  // excludes gigs outside the displayed window — the card's "Future Events" then
+  // matches the chart's gold bars and the Deposit-vs-Balance donut.
+  const receivedSplit = useMemo(() => {
     const r2 = (n: number) => Number(n.toFixed(2));
     let pastNet = 0, pastTax = 0, futNet = 0, futTax = 0;
-    for (const e of filtered) {
-      if (isFutureEvt(e)) {
-        const evd = e.eventDate || e.date;
-        if (evd >= cStart && evd <= cEnd) { futNet += e.net; futTax += e.tax; }
-      } else {
-        pastNet += e.net; pastTax += e.tax;
-      }
+    for (const e of filteredWindowed) {
+      if (isFutureEvt(e)) { futNet += e.net; futTax += e.tax; }
+      else { pastNet += e.net; pastTax += e.tax; }
     }
     return { pastNet: r2(pastNet), pastTax: r2(pastTax), futNet: r2(futNet), futTax: r2(futTax) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, periodBounds, today]);
+  }, [filteredWindowed, today]);
 
   const eventCounts = useMemo(() => {
     const { cStart, cEnd } = periodBounds;
