@@ -571,10 +571,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           <span className={styles.legendRow}><span className={styles.swatch} style={{ background: REC_FUTURE }} />Received - Future Events</span>
           <span className={styles.legendRow}><span className={styles.swatch} style={{ background: EXP_COLOR }} />Expected - Confirmed Bookings with Unpaid Deposit/Balance</span>
         </div>
-        <p style={{ margin: '8px 0 0', fontSize: '.72rem', color: 'var(--muted, #8a8aa0)', lineHeight: 1.5 }}>
-          Deposits count in the month they’re paid; the balance and everything else count in the month of the event.
-          Money moves from “future events” to “past events” automatically once the event date passes.
-        </p>
       </div>
 
       {/* KPI strip */}
