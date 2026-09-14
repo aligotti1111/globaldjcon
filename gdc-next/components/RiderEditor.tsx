@@ -432,7 +432,7 @@ export default function RiderEditor({
                 <div style={{ color: MUTED, fontSize: '.72rem', marginTop: '.4rem' }}>
                   One file, max 5MB. Sent with the rider every time. For larger
                   files, add a link through a hosted provider (Google Drive,
-                  Dropbox, etc.) as a field above instead.
+                  Dropbox, etc.) in the text field above.
                 </div>
                 {attachMsg[box.id] && (
                   <div style={{ color: '#ff9a9a', fontSize: '.76rem', marginTop: '.35rem' }}>{attachMsg[box.id]}</div>
