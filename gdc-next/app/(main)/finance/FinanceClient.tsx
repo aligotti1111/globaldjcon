@@ -160,20 +160,6 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
 
   const pick = (t: { net: number; gross: number }) => (basis === 'net' ? t.net : t.gross);
 
-  // Received money split into past-event vs future-event buckets (net + tax) —
-  // feeds the Revenue and Tax KPI cards, which mirror the chart's three series
-  // (Past / Future / Expected).
-  const receivedSplit = useMemo(() => {
-    const r2 = (n: number) => Number(n.toFixed(2));
-    let pastNet = 0, pastTax = 0, futNet = 0, futTax = 0;
-    for (const e of filtered) {
-      if (isFutureEvt(e)) { futNet += e.net; futTax += e.tax; }
-      else { pastNet += e.net; pastTax += e.tax; }
-    }
-    return { pastNet: r2(pastNet), pastTax: r2(pastTax), futNet: r2(futNet), futTax: r2(futTax) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, today]);
-
   // Total events booked (accepted) whose date falls in the selected period. The
   // window is the FULL period the chart shows (This Year = Jan–Dec, not just up
   // to today), so upcoming events in the period are counted too.
@@ -192,6 +178,29 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     }
     return { cStart, cEnd };
   }, [start, end, preset]);
+
+  // Received money split into past-event vs future-event buckets (net + tax),
+  // feeding the Revenue and Tax KPI cards. FUTURE money is counted only when its
+  // EVENT falls inside the displayed window — the same rule the chart and the
+  // Expected total use — so the card's "Future Events" matches the chart's gold
+  // bars. (A deposit collected THIS year on a gig two years out belongs to that
+  // future year's window, not this one.) Past money is already windowed by the
+  // range filter on `filtered`.
+  const receivedSplit = useMemo(() => {
+    const { cStart, cEnd } = periodBounds;
+    const r2 = (n: number) => Number(n.toFixed(2));
+    let pastNet = 0, pastTax = 0, futNet = 0, futTax = 0;
+    for (const e of filtered) {
+      if (isFutureEvt(e)) {
+        const evd = e.eventDate || e.date;
+        if (evd >= cStart && evd <= cEnd) { futNet += e.net; futTax += e.tax; }
+      } else {
+        pastNet += e.net; pastTax += e.tax;
+      }
+    }
+    return { pastNet: r2(pastNet), pastTax: r2(pastTax), futNet: r2(futNet), futTax: r2(futTax) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, periodBounds, today]);
 
   const eventCounts = useMemo(() => {
     const { cStart, cEnd } = periodBounds;
