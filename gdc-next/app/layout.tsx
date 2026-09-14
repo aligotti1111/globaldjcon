@@ -38,6 +38,7 @@
 import type { Metadata } from 'next';
 import { Bebas_Neue, DM_Sans, Space_Mono, Inter, Archivo } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
+import Toaster from '@/components/Toaster';
 import { createClient } from '@/lib/supabase/server';
 import type { CurrentUser, UserProfile } from '@/types/db';
 import './styles/index.css';
@@ -166,6 +167,7 @@ export default async function RootLayout({
     <html lang="en" className={fontClasses}>
       <body>
         <AuthProvider initialUser={initialUser}>{children}</AuthProvider>
+        <Toaster />
       </body>
     </html>
   );
