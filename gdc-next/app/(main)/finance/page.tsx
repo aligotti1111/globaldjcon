@@ -26,7 +26,7 @@ import { canBook, type AccessFields } from '@/lib/access';
 import {
   buildReceivedEvents,
   buildExpectedItems,
-  isBookedEvent,
+  isAccepted,
   receivedByBooking,
   agreedTotal,
   type FinanceBookingInput,
@@ -123,14 +123,15 @@ export default async function FinancePage() {
   // it was collected (see buildReceivedEvents) instead of the future event month.
   const today = todayInTz(effectiveTimezone(profile?.timezone, null));
   const events = buildReceivedEvents(bookings, payments, today);
-  // Every booked (accepted) event's date — the "Total events" KPI tallies these
-  // within the selected period, whether or not any money has come in yet.
-  // Every booked (accepted/pending/manual) event with its date and whether it's
-  // FULLY paid. "Paid" = received (ledger + off-app "mark complete") covers the
-  // agreed total; a deposit-only booking (balance still owed) counts as NOT paid.
+  // Every ACCEPTED event's date — the "Total events" KPI (and its Paid / Unpaid
+  // split) tallies these within the selected period. Accepted only: a host
+  // request that was never accepted (still pending) is not a confirmed gig and
+  // must not inflate "Past unpaid". Manual bookings are inserted as approved, so
+  // they still count. "Paid" = received (ledger + off-app "mark complete") covers
+  // the agreed total; a deposit-only booking (balance still owed) counts NOT paid.
   const receivedMap = receivedByBooking(bookings, payments);
   const eventItems = bookings
-    .filter((b) => isBookedEvent(b))
+    .filter((b) => isAccepted(b))
     .map((b) => {
       const date = (b.event_date || '').slice(0, 10);
       const agreed = agreedTotal(b);
