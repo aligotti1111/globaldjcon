@@ -287,6 +287,13 @@ export function buildReceivedEvents(
   const events: ReceivedEvent[] = [];
   const ledger = collectedByBooking(payments);
 
+  // Money is always collected by now, so its ACCOUNTING date can never be after
+  // "today". Completion timestamps are stored in UTC: a balance marked complete
+  // at 9pm Eastern is 01:00 the NEXT DAY in UTC, so slicing it yields tomorrow's
+  // date — which then falls outside every window that ends at today and the money
+  // vanishes. Clamp to today so an evening action can't push the date forward.
+  const clampDate = (d: string) => (d && d > todayISO ? todayISO : d);
+
   for (const p of payments) {
     if (!isCollected(p)) continue;
     const b = byId.get(p.booking_id);
@@ -314,7 +321,7 @@ export function buildReceivedEvents(
     const paidStr = (p.confirmed_at || p.marked_sent_at || dateStr || '');
     events.push({
       bookingId: p.booking_id,
-      date: dateStr.slice(0, 10),
+      date: clampDate(dateStr.slice(0, 10)),
       paidDate: paidStr.slice(0, 10),
       eventDate: (b?.event_date || dateStr || '').slice(0, 10),
       gross,
@@ -336,7 +343,7 @@ export function buildReceivedEvents(
     const tax = round2(Number(b.overtime_tax ?? 0));
     events.push({
       bookingId: b.id,
-      date: (b.overtime_paid_at || b.event_date || '').slice(0, 10),
+      date: clampDate((b.overtime_paid_at || b.event_date || '').slice(0, 10)),
       paidDate: (b.overtime_paid_at || b.event_date || '').slice(0, 10),
       eventDate: (b.event_date || b.overtime_paid_at || '').slice(0, 10),
       gross,
@@ -366,7 +373,7 @@ export function buildReceivedEvents(
     const eventFuture = !!b.event_date && b.event_date.slice(0, 10) > todayISO;
     events.push({
       bookingId: b.id,
-      date: eventFuture ? mr.paidDate : mr.date,
+      date: clampDate(eventFuture ? mr.paidDate : mr.date),
       paidDate: mr.paidDate,
       eventDate: (b.event_date || mr.date || '').slice(0, 10),
       gross: mr.amount,
