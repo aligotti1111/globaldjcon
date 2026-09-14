@@ -211,13 +211,17 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   const eventCounts = useMemo(() => {
     const { cStart, cEnd } = periodBounds;
     const inRangeItems = eventItems.filter((e) => e.date >= cStart && e.date <= cEnd);
-    const paid = inRangeItems.filter((e) => e.paid).length;
+    // "Paid" = the event's balance is fully settled. Split into events that have
+    // already happened vs upcoming ones you've already been paid for.
+    const paidItems = inRangeItems.filter((e) => e.paid);
+    const paidPast = paidItems.filter((e) => e.date < today).length;
+    const paidFuture = paidItems.length - paidPast;
     // Split the unpaid (not fully settled, incl. deposit-only) into events that
     // have already happened (money you should chase) vs upcoming ones (expected).
     const unpaidItems = inRangeItems.filter((e) => !e.paid);
     const pastUnpaid = unpaidItems.filter((e) => e.date < today).length;
     const expectedUnpaid = unpaidItems.length - pastUnpaid;
-    return { total: inRangeItems.length, paid, pastUnpaid, expectedUnpaid };
+    return { total: inRangeItems.length, paidPast, paidFuture, pastUnpaid, expectedUnpaid };
   }, [eventItems, periodBounds, today]);
 
   // Expected money still owed on upcoming bookings in the period — net AND gross,
@@ -630,9 +634,10 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           <div style={{ display: 'flex', alignItems: 'stretch' }}>
             {[
               { value: totalEvents, label: 'Total', color: '#ffffff' },
-              { value: eventCounts.paid, label: 'Paid', color: '#00f5c4' },
+              { value: eventCounts.paidPast, label: 'Paid past', color: REC_PAST },
+              { value: eventCounts.paidFuture, label: 'Paid future', color: REC_FUTURE },
               { value: eventCounts.pastUnpaid, label: 'Past unpaid', color: '#ff6b6b' },
-              { value: eventCounts.expectedUnpaid, label: 'Expected unpaid', color: '#8AA0FF' },
+              { value: eventCounts.expectedUnpaid, label: 'Expected unpaid', color: EXP_COLOR },
             ].map((c, i) => (
               <div
                 key={c.label}
@@ -643,8 +648,8 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
                   borderLeft: i === 0 ? 'none' : '1px solid rgba(255,255,255,.08)',
                 }}
               >
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.1, color: c.color }}>{c.value}</div>
-                <div style={{ fontSize: '.62rem', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--muted,#8a8aa0)', marginTop: 4 }}>{c.label}</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, lineHeight: 1.1, color: c.color }}>{c.value}</div>
+                <div style={{ fontSize: '.58rem', textTransform: 'uppercase', letterSpacing: '.03em', color: 'var(--muted,#8a8aa0)', marginTop: 4 }}>{c.label}</div>
               </div>
             ))}
           </div>
