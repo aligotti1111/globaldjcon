@@ -118,7 +118,11 @@ export default async function FinancePage() {
     payments = payments.concat((pRows || []) as FinancePaymentInput[]);
   }
 
-  const events = buildReceivedEvents(bookings, payments);
+  // "Today" in the DJ's timezone, not UTC — so month/period boundaries flip at
+  // the DJ's local midnight, and money collected on a FUTURE gig is dated to when
+  // it was collected (see buildReceivedEvents) instead of the future event month.
+  const today = todayInTz(effectiveTimezone(profile?.timezone, null));
+  const events = buildReceivedEvents(bookings, payments, today);
   // Every booked (accepted) event's date — the "Total events" KPI tallies these
   // within the selected period, whether or not any money has come in yet.
   // Every booked (accepted/pending/manual) event with its date and whether it's
@@ -178,9 +182,6 @@ export default async function FinancePage() {
     }
   }
 
-  // "Today" in the DJ's timezone, not UTC — so month/period boundaries flip at
-  // the DJ's local midnight instead of at 8pm ET.
-  const today = todayInTz(effectiveTimezone(profile?.timezone, null));
   const expectedItems = buildExpectedItems(bookings, payments, today);
 
   // Per-booking event date + time, keyed by id — the payments pop-up shows these
