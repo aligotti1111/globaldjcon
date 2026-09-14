@@ -24,7 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, type RiderItem, type RiderMode } from '@/lib/rider';
+import { normalizeRiderItems, groupRiderBoxes, type RiderItem, type RiderMode } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -932,6 +932,42 @@ export default function ClubBookingTab({
                     }} />
                   </button>
                 </div>
+
+                {/* Saved rider — a quick list of what's in the default rider, shown
+                    right under the enable hint once there's content saved. */}
+                {riderHasContent && (
+                  <div style={{ marginTop: '.9rem', padding: '.8rem 1rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.5rem' }}>
+                      Saved rider{riderName.trim() ? ` — ${riderName.trim()}` : ''}
+                    </div>
+                    {riderMode === 'upload' ? (
+                      <div style={{ fontSize: '.85rem', color: '#fff' }}>Uploaded PDF — sent to the host as-is.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
+                        {groupRiderBoxes(riderDefault)
+                          .map((b) => {
+                            const lines = b.items.flatMap((it) => {
+                              const lbl = (it.label || '').trim();
+                              const parts = (it.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+                              if (lbl && parts.length) return parts.map((p) => `${lbl}: ${p}`);
+                              if (parts.length) return parts;
+                              return lbl ? [lbl] : [];
+                            });
+                            return { box: b, lines };
+                          })
+                          .filter((x) => !x.box.disabled && x.lines.length > 0)
+                          .map(({ box, lines }) => (
+                            <div key={box.id}>
+                              <div style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.78rem', marginBottom: '.2rem' }}>{box.title}</div>
+                              <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#fff', fontSize: '.82rem', lineHeight: 1.5 }}>
+                                {lines.map((ln, i) => <li key={i}>{ln}</li>)}
+                              </ul>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {riderEnabled && (
                   <div style={{ marginTop: '1.1rem' }}>
