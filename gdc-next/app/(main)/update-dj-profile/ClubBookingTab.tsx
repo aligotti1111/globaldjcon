@@ -24,7 +24,7 @@ import {
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, groupRiderBoxes, type RiderItem, type RiderMode } from '@/lib/rider';
+import { normalizeRiderItems, type RiderItem, type RiderMode } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -326,6 +326,9 @@ export default function ClubBookingTab({
     if (!riderHasContent) riderMissing.push(riderMode === 'upload' ? 'an uploaded PDF' : 'at least one filled box');
   }
   const riderComplete = riderMissing.length === 0;
+  // Once a rider is saved we collapse the builder to a one-line "Saved rider —
+  // <name> [Edit]" row; clicking Edit re-opens the builder.
+  const [riderEditing, setRiderEditing] = useState(false);
   const guestlistEnabled = !!(bookingSettings as { guestlist_enabled?: boolean }).guestlist_enabled;
   function setGuestlistEnabled(v: boolean) {
     setLastChangedField('settings');
@@ -933,43 +936,33 @@ export default function ClubBookingTab({
                   </button>
                 </div>
 
-                {/* Saved rider — a quick list of what's in the default rider, shown
-                    right under the enable hint once there's content saved. */}
-                {riderHasContent && (
-                  <div style={{ marginTop: '.9rem', padding: '.8rem 1rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.5rem' }}>
-                      Saved rider{riderName.trim() ? ` — ${riderName.trim()}` : ''}
-                    </div>
-                    {riderMode === 'upload' ? (
-                      <div style={{ fontSize: '.85rem', color: '#fff' }}>Uploaded PDF — sent to the host as-is.</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-                        {groupRiderBoxes(riderDefault)
-                          .map((b) => {
-                            const lines = b.items.flatMap((it) => {
-                              const lbl = (it.label || '').trim();
-                              const parts = (it.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
-                              if (lbl && parts.length) return parts.map((p) => `${lbl}: ${p}`);
-                              if (parts.length) return parts;
-                              return lbl ? [lbl] : [];
-                            });
-                            return { box: b, lines };
-                          })
-                          .filter((x) => !x.box.disabled && x.lines.length > 0)
-                          .map(({ box, lines }) => (
-                            <div key={box.id}>
-                              <div style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.78rem', marginBottom: '.2rem' }}>{box.title}</div>
-                              <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#fff', fontSize: '.82rem', lineHeight: 1.5 }}>
-                                {lines.map((ln, i) => <li key={i}>{ln}</li>)}
-                              </ul>
-                            </div>
-                          ))}
+                {/* Saved rider — one line: the rider's name + an Edit button that
+                    re-opens the builder. Shown once there's saved content. */}
+                {riderHasContent && !riderEditing && (
+                  <div style={{ marginTop: '.9rem', padding: '.7rem .9rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>
+                        Saved rider
                       </div>
-                    )}
+                      <div style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {riderName.trim() || (riderMode === 'upload' ? 'Uploaded PDF' : 'Custom rider')}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRiderEditing(true)}
+                      style={{
+                        flexShrink: 0, background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
+                        borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
+                        fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
+                      }}
+                    >
+                      Edit
+                    </button>
                   </div>
                 )}
 
-                {riderEnabled && (
+                {riderEnabled && (!riderHasContent || riderEditing) && (
                   <div style={{ marginTop: '1.1rem' }}>
                     <div className={styles.bodyHint} style={{ marginBottom: '1rem' }}>
                       <div>There are two ways to add the rider:</div>
@@ -1009,7 +1002,7 @@ export default function ClubBookingTab({
                       <button
                         type="button"
                         disabled={!canSave}
-                        onClick={onSaveSettings}
+                        onClick={() => { onSaveSettings?.(); setRiderEditing(false); }}
                         style={{
                           background: canSave ? 'var(--neon)' : 'transparent',
                           color: canSave ? '#04121a' : 'var(--muted)',
