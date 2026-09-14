@@ -52,7 +52,7 @@ export default function RiderBuilder({
   name,
   onNameChange,
 }: {
-  mode: RiderMode;
+  mode: RiderMode | null;
   onModeChange: (m: RiderMode) => void;
   items: RiderItem[];
   onItemsChange: (next: RiderItem[]) => void;
@@ -247,7 +247,7 @@ export default function RiderBuilder({
         // mode's body directly, no boxes.
         <>
           {nameField}
-          {mode === 'upload' ? uploadBody : customBody}
+          {mode === 'upload' ? uploadBody : mode === 'custom' ? customBody : null}
         </>
       ) : (
         <>
@@ -323,7 +323,7 @@ export default function RiderBuilder({
             <div style={{ borderRadius: 16, overflow: 'hidden', marginTop: '.6rem' }}>
               <RiderView
                 items={items}
-                mode={mode}
+                mode={mode ?? 'upload'}
                 pdfUrl={pdfUrl}
                 riderName={name || null}
                 djName={djName || 'Your DJ name'}
