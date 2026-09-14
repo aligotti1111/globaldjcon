@@ -546,7 +546,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           short windows, month otherwise; every bucket in the period is shown. */}
       <div className={styles.card} style={{ marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-          <div className={styles.cardTitle} style={{ margin: 0 }}>Revenue (net) by {isDaily ? 'day' : isYearly ? 'year' : 'month'}</div>
+          <div className={styles.cardTitle} style={{ margin: 0, color: 'var(--neon, #00f5c4)' }}>Revenue (net) by {isDaily ? 'day' : isYearly ? 'year' : 'month'}</div>
           {periodLabel && <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text, #ffffff)' }}>{periodLabel}</div>}
         </div>
         {showMonthTotal && (
