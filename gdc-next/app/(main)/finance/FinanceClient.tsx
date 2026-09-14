@@ -52,8 +52,8 @@ type Preset = 'this_month' | 'last_30' | 'last_90' | 'ytd' | 'next_year' | 'last
 const PRESETS: { key: Preset; label: string }[] = [
   { key: 'this_month', label: 'This month' },
   { key: 'last_30', label: 'Last 30 days' },
-  { key: 'ytd', label: 'This year' },
-  { key: 'next_year', label: 'Next year' },
+  { key: 'ytd', label: 'This Year' },
+  { key: 'next_year', label: 'Next Year' },
   { key: 'all', label: 'All time' },
   { key: 'custom', label: 'Custom' },
 ];
@@ -993,7 +993,7 @@ function Donut({ slices, fmt }: { slices: { key?: string; label: string; value: 
               <div key={s.key ?? i} className={styles.legendRow} style={zero ? { opacity: 0.45 } : undefined}>
                 <span className={styles.swatch} style={{ background: zero ? '#4a4a58' : s.color }} />
                 <span className={styles.legendLabel}>{s.label}</span>
-                <span className={styles.legendVal}>
+                <span className={styles.legendVal} style={zero ? undefined : { color: s.color }}>
                   {zero ? `${fmt(0)} · 0%` : `${fmt(s.value)} · ${Math.round((s.value / total) * 100)}%`}
                 </span>
               </div>
