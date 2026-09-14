@@ -80,17 +80,17 @@ export default function RiderView({
     <div style={{ minHeight: '100vh', background: '#0d0d14', color: '#fff', padding: '2rem 1rem' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         {logoUrl && (
-          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '.9rem' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoUrl} alt={`${djName} logo`} style={{ maxHeight: 90, maxWidth: 260, objectFit: 'contain' }} />
+            <img src={logoUrl} alt={`${djName} logo`} style={{ maxHeight: 56, maxWidth: 170, objectFit: 'contain' }} />
           </div>
         )}
 
-        <div style={{ textAlign: 'center', marginBottom: '.4rem', fontWeight: 800, fontSize: '1.6rem' }}>
-          DJ Rider
+        <div style={{ textAlign: 'center', marginBottom: '.15rem', fontWeight: 800, fontSize: '1.6rem' }}>
+          {djName}
         </div>
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.72)', fontSize: '.95rem', marginBottom: '.3rem' }}>
-          {djName}
+          DJ Rider
         </div>
         {riderName && (
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600, marginBottom: '.3rem' }}>
