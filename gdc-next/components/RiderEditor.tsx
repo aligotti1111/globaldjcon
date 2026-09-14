@@ -27,8 +27,9 @@ import {
 } from '@/lib/rider';
 
 // Each set of choices is shown as little icon buttons on the box.
+// No 'none' button — nothing selected IS "none". Clicking an active style again
+// toggles it back off (handled in the click below).
 const LIST_ICONS: { key: RiderListStyle; glyph: string; title: string }[] = [
-  { key: 'none', glyph: '—', title: 'No bullets' },
   { key: 'bullet', glyph: '•', title: 'Bullets' },
   { key: 'number', glyph: '1.', title: 'Numbers' },
   { key: 'check', glyph: '✓', title: 'Checkmarks' },
@@ -289,7 +290,7 @@ export default function RiderEditor({
                     <button
                       key={o.key}
                       type="button"
-                      onClick={() => patchBox(box.id, { listStyle: o.key })}
+                      onClick={() => patchBox(box.id, { listStyle: active ? 'none' : o.key })}
                       title={o.title}
                       aria-label={o.title}
                       aria-pressed={active}
