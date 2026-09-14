@@ -15,13 +15,13 @@
 // materializes it into ordered boxes (ensuring the defaults exist), and writes
 // the flattened result back through onChange on every edit.
 
-import { useState, type ChangeEvent, type DragEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type DragEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
   sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
   normalizeListStyle, normalizeFontSize, normalizeFontFamily,
-  riderFontFamilyCss, riderFontSizePx,
+  riderFontFamilyCss, riderFontSizePx, riderListPrefix,
   type RiderListStyle, type RiderFontSize, type RiderFontFamily,
   type RiderBox, type RiderItem,
 } from '@/lib/rider';
@@ -93,6 +93,18 @@ export default function RiderEditor({
     const id = box.items[0]?.id || newRiderId();
     setBoxItems(box.id, text.length ? [{ id, section: box.section, label: '', value: text }] : []);
   }
+  // After a line is added/removed we want the caret to land on the right row.
+  // The list rebuilds from a flat string each keystroke, so we can't hold a ref
+  // per input; instead we tag each input with data-rline and refocus by lookup.
+  const pendingFocus = useRef<string | null>(null);
+  function focusLine(boxId: string, idx: number) { pendingFocus.current = `${boxId}::${idx}`; }
+  useEffect(() => {
+    const key = pendingFocus.current;
+    if (!key) return;
+    pendingFocus.current = null;
+    const el = document.querySelector(`input[data-rline="${key}"]`) as HTMLInputElement | null;
+    if (el) { el.focus(); const v = el.value; try { el.setSelectionRange(v.length, v.length); } catch { /* noop */ } }
+  });
   function addBox() {
     commit([
       ...boxes,
@@ -309,21 +321,65 @@ export default function RiderEditor({
               </select>
             </div>
 
-            <textarea
-              value={boxText(box)}
-              onChange={(e) => setBoxText(box, e.target.value)}
-              placeholder={`Type your ${box.title.toLowerCase()} requirements… (one per line)`}
-              rows={4}
-              style={{
-                ...input,
-                width: '100%',
-                resize: 'vertical',
-                lineHeight: 1.5,
-                minHeight: 90,
-                fontFamily: riderFontFamilyCss(box.fontFamily),
-                fontSize: riderFontSizePx(box.fontSize),
-              }}
-            />
+            {(() => {
+              // One editable row per line, each with its live marker (bullet /
+              // number / check) shown right in the box — no separate preview.
+              const listStyle = normalizeListStyle(box.listStyle);
+              const raw = boxText(box);
+              const lines = raw === '' ? [''] : raw.split('\n');
+              const setLines = (next: string[]) => setBoxText(box, next.join('\n'));
+              const ff = riderFontFamilyCss(box.fontFamily);
+              const fs = riderFontSizePx(box.fontSize);
+              return (
+                <div
+                  style={{
+                    ...input,
+                    width: '100%',
+                    minHeight: 90,
+                    padding: '.55rem .7rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '.15rem',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {lines.map((line, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '.45rem' }}>
+                      {listStyle !== 'none' && (
+                        <span style={{ color: NEON, flexShrink: 0, minWidth: '1.2em', fontFamily: ff, fontSize: fs }}>
+                          {riderListPrefix(listStyle, i)}
+                        </span>
+                      )}
+                      <input
+                        data-rline={`${box.id}::${i}`}
+                        value={line}
+                        placeholder={i === 0 && lines.length === 1 ? `Type your ${box.title.toLowerCase()} requirements…` : ''}
+                        onChange={(e) => { const next = lines.slice(); next[i] = e.target.value; setLines(next); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const next = lines.slice();
+                            next.splice(i + 1, 0, '');
+                            setLines(next);
+                            focusLine(box.id, i + 1);
+                          } else if (e.key === 'Backspace' && line === '' && lines.length > 1) {
+                            e.preventDefault();
+                            const next = lines.slice();
+                            next.splice(i, 1);
+                            setLines(next);
+                            focusLine(box.id, Math.max(0, i - 1));
+                          }
+                        }}
+                        style={{
+                          flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
+                          color: 'var(--white,#fff)', fontFamily: ff, fontSize: fs, padding: '.1rem 0',
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Attachment — Technical + Visuals boxes only. One image or PDF,
                 ≤5MB, that travels with the rider (attached to the host email
