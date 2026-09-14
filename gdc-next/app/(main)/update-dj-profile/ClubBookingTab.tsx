@@ -311,6 +311,21 @@ export default function ClubBookingTab({
     setLastChangedField('settings');
     patch({ rider_enabled: v } as unknown as Partial<BookingSettings>);
   }
+  // A rider can't be saved unless it has a name AND some content: a chosen PDF
+  // (upload mode) or at least one filled box/field (custom mode). Only enforced
+  // while the rider is enabled — a disabled rider blocks nothing.
+  const riderHasContent =
+    riderMode === 'upload'
+      ? !!riderPdfUrl
+      : riderMode === 'custom'
+        ? riderDefault.some((it) => it.type !== 'box' && (it.value || '').trim() !== '')
+        : false;
+  const riderMissing: string[] = [];
+  if (riderEnabled) {
+    if (riderName.trim() === '') riderMissing.push('a rider name');
+    if (!riderHasContent) riderMissing.push(riderMode === 'upload' ? 'an uploaded PDF' : 'at least one filled box');
+  }
+  const riderComplete = riderMissing.length === 0;
   const guestlistEnabled = !!(bookingSettings as { guestlist_enabled?: boolean }).guestlist_enabled;
   function setGuestlistEnabled(v: boolean) {
     setLastChangedField('settings');
@@ -946,30 +961,38 @@ export default function ClubBookingTab({
                     />
                   </div>
                 )}
-                {onSaveSettings && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.9rem' }}>
-                    <button
-                      type="button"
-                      disabled={!settingsDirty}
-                      onClick={onSaveSettings}
-                      style={{
-                        background: settingsDirty ? 'var(--neon)' : 'transparent',
-                        color: settingsDirty ? '#04121a' : 'var(--muted)',
-                        border: `1px solid ${settingsDirty ? 'var(--neon)' : 'var(--border)'}`,
-                        borderRadius: 7,
-                        padding: '.55rem 1.2rem',
-                        fontFamily: "'Space Mono', monospace",
-                        fontSize: '.62rem',
-                        fontWeight: 700,
-                        letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        cursor: settingsDirty ? 'pointer' : 'not-allowed',
-                      }}
-                    >
-                      {settingsDirty ? 'Save' : '✓ Saved'}
-                    </button>
-                  </div>
-                )}
+                {onSaveSettings && (() => {
+                  const canSave = settingsDirty && riderComplete;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem', marginTop: '.9rem' }}>
+                      {riderEnabled && !riderComplete && (
+                        <div style={{ color: '#ff8b8b', fontSize: '.72rem', textAlign: 'right' }}>
+                          Add {riderMissing.join(' and ')} before saving the rider.
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!canSave}
+                        onClick={onSaveSettings}
+                        style={{
+                          background: canSave ? 'var(--neon)' : 'transparent',
+                          color: canSave ? '#04121a' : 'var(--muted)',
+                          border: `1px solid ${canSave ? 'var(--neon)' : 'var(--border)'}`,
+                          borderRadius: 7,
+                          padding: '.55rem 1.2rem',
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: '.62rem',
+                          fontWeight: 700,
+                          letterSpacing: '.06em',
+                          textTransform: 'uppercase',
+                          cursor: canSave ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {settingsDirty ? 'Save' : '✓ Saved'}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
