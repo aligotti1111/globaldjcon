@@ -267,6 +267,7 @@ const isOutstanding = (p: FinancePaymentInput) =>
 export function buildReceivedEvents(
   bookings: FinanceBookingInput[],
   payments: FinancePaymentInput[],
+  todayISO: string,
 ): ReceivedEvent[] {
   const byId = new Map(bookings.map((b) => [b.id, b]));
   const events: ReceivedEvent[] = [];
@@ -278,11 +279,18 @@ export function buildReceivedEvents(
     const ratio = b ? taxRatio(b) : 0;
     const gross = round2(Number(p.amount_paid));
     const tax = round2(gross * ratio);
-    // Dating rule: a DEPOSIT counts in the month it was actually paid (often well
-    // ahead of the gig); everything else (balance / other) counts in the EVENT's
-    // month, so the bulk of a booking lands in the month it happens.
+    // Dating rule (the ACCOUNTING date, used for range filtering + totals):
+    //   • DEPOSIT           → the month it was actually paid (often well ahead).
+    //   • balance/other on a PAST event → the EVENT's month, so the bulk of a
+    //     booking lands in the month it happens.
+    //   • balance/other on a FUTURE event → the month it was COLLECTED. Money
+    //     already in hand on an upcoming gig must not be stamped with the future
+    //     event date, or every window that ends at "today" (All Time included)
+    //     would filter it out and the collected money would vanish from the
+    //     report. The chart still plots it in the event's period via `eventDate`.
     const isDeposit = (p.kind || '').toLowerCase() === 'deposit';
-    const dateStr = isDeposit
+    const eventFuture = !!b?.event_date && b.event_date.slice(0, 10) > todayISO;
+    const dateStr = (isDeposit || eventFuture)
       ? (p.confirmed_at || p.marked_sent_at || b?.event_date || '')
       : (b?.event_date || p.confirmed_at || p.marked_sent_at || '');
     // Actual date money changed hands — always the payment's own timestamp,
@@ -335,9 +343,14 @@ export function buildReceivedEvents(
     if (!mr) continue;
     const ratio = taxRatio(b);
     const tax = round2(mr.amount * ratio);
+    // Same future-event rule as the ledger loop: money already handled off-app on
+    // an upcoming gig is dated to WHEN it was marked (mr.paidDate), not the future
+    // event month (mr.date) — otherwise a range ending "today" drops it. The chart
+    // still plots it in the event's period via eventDate.
+    const eventFuture = !!b.event_date && b.event_date.slice(0, 10) > todayISO;
     events.push({
       bookingId: b.id,
-      date: mr.date,
+      date: eventFuture ? mr.paidDate : mr.date,
       paidDate: mr.paidDate,
       eventDate: (b.event_date || mr.date || '').slice(0, 10),
       gross: mr.amount,
