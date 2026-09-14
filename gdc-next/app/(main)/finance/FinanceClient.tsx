@@ -10,12 +10,19 @@ import styles from './finance.module.css';
 import {
   inRange,
   summarize,
-  groupByMonth,
   groupByField,
   type ReceivedEvent,
   type ExpectedItem,
   type Totals,
 } from '@/lib/finance';
+
+// Chart series colours, one place so the bars and the legend can't drift apart.
+//   past   — money collected for events that have already happened
+//   future — money already in hand (deposits) on events still to come
+//   exp    — still-owed money on confirmed upcoming bookings
+const REC_PAST = '#00f5c4';
+const REC_FUTURE = '#e6b455';
+const EXP_COLOR = '#8AA0FF';
 
 interface StripeSnapshot {
   connected: boolean;
@@ -128,8 +135,14 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     : rangeFor(preset, today);
   const filtered = useMemo(() => inRange(events, start, end), [events, start, end]);
   const totals = useMemo(() => summarize(filtered), [filtered]);
-  const monthly = useMemo(() => groupByMonth(filtered), [filtered]);
   const byType = useMemo(() => groupByField(filtered, 'eventType'), [filtered]);
+
+  // Classify one received inflow: "future" if the EVENT it belongs to hasn't
+  // happened yet (a deposit already in hand on an upcoming gig), "past" once the
+  // event date has passed. Derived from `today`, so money moves from future to
+  // past on its own as the date rolls over. Falls back to the accounting date
+  // when a booking somehow has no event date.
+  const isFutureEvt = (e: ReceivedEvent) => (e.eventDate || e.date) >= today;
 
   // Where the received money came from: deposits vs the balance (final payment).
   // Overtime and any other inflow fold into Balance so it's a clean two-way split.
@@ -262,7 +275,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // Single-year views (this/next/last year) hide the per-bar year on mobile —
   // it's redundant with the period label and crowds the axis.
   const singleYear = preset === 'ytd' || preset === 'next_year' || preset === 'last_year';
-  type Bar = { key: string; label: string; sub?: string; value: number; expected: number };
+  type Bar = { key: string; label: string; sub?: string; recPast: number; recFut: number; expected: number };
   const bars = useMemo<Bar[]>(() => {
     const rv = (e: ReceivedEvent) => (basis === 'net' ? e.net : e.gross);
     const ev = (x: ExpectedItem) => (basis === 'net' ? x.net : x.gross);
@@ -283,9 +296,22 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     // two forward-looking presets.
     const projectFuture = true;
 
+    // Split received money into two buckets keyed the same way (day / year /
+    // month): past-event money and future-event money (deposits already in hand
+    // on gigs still to come). keyOf maps a received inflow to its bucket key.
+    const splitRec = (keyOf: (e: ReceivedEvent) => string) => {
+      const past = new Map<string, number>();
+      const fut = new Map<string, number>();
+      for (const e of filtered) {
+        const k = keyOf(e);
+        const m = isFutureEvt(e) ? fut : past;
+        m.set(k, (m.get(k) || 0) + rv(e));
+      }
+      return { past, fut };
+    };
+
     if (isDaily) {
-      const recMap = new Map<string, number>();
-      for (const e of filtered) recMap.set(e.date, (recMap.get(e.date) || 0) + rv(e));
+      const { past: recPast, fut: recFut } = splitRec((e) => e.date);
       // This month = the FULL calendar month (every day, future days at $0). Last
       // 30 = the rolling window ending today. Neither spills into other months —
       // expected events in later months belong to the year/next-year views.
@@ -302,7 +328,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       const out: Bar[] = [];
       let cur = start;
       for (let i = 0; i < 62 && cur <= endDay; i++) {
-        out.push({ key: cur, label: String(Number(cur.slice(8, 10))), value: recMap.get(cur) || 0, expected: expMap.get(cur) || 0 });
+        out.push({ key: cur, label: String(Number(cur.slice(8, 10))), recPast: recPast.get(cur) || 0, recFut: recFut.get(cur) || 0, expected: expMap.get(cur) || 0 });
         cur = addDays(cur, 1);
       }
       return out;
@@ -312,8 +338,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     // one bar per YEAR (labelled "2027") so it stays readable instead of cramming
     // in 20+ month bars. "All time" spans the actual data; custom spans its dates.
     if (isYearly) {
-      const recY = new Map<string, number>();
-      for (const e of filtered) { const y = e.date.slice(0, 4); recY.set(y, (recY.get(y) || 0) + rv(e)); }
+      const { past: recPast, fut: recFut } = splitRec((e) => e.date.slice(0, 4));
       const expY = new Map<string, number>();
       if (projectFuture) for (const x of expectedItems) {
         // All-time counts every expected month; custom clamps to its range.
@@ -326,18 +351,18 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
       const out: Bar[] = [];
       for (let y = firstY; y <= lastY && out.length < 60; y++) {
         const key = String(y);
-        out.push({ key, label: key, value: recY.get(key) || 0, expected: expY.get(key) || 0 });
+        out.push({ key, label: key, recPast: recPast.get(key) || 0, recFut: recFut.get(key) || 0, expected: expY.get(key) || 0 });
       }
       return out;
     }
 
-    const recMap = new Map(monthly.map((b) => [b.month, basis === 'net' ? b.net : b.gross]));
+    const { past: recPast, fut: recFut } = splitRec((e) => e.date.slice(0, 7));
     const expMap = new Map<string, number>();
     if (projectFuture) for (const x of expectedItems) { const m = x.date.slice(0, 7); expMap.set(m, (expMap.get(m) || 0) + ev(x)); }
     let firstYM: string;
     let lastYM: string;
     if (preset === 'all') {
-      const keys = [...recMap.keys(), ...expMap.keys()].sort();
+      const keys = [...recPast.keys(), ...recFut.keys(), ...expMap.keys()].sort();
       if (keys.length === 0) return [];
       // Start at January of the earliest year so empty months in between still
       // show at $0 (a continuous timeline, not just the months with money).
@@ -361,12 +386,13 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     let cur = firstYM;
     for (let i = 0; i < 120 && cur <= lastYM; i++) {
       const mp = monthParts(cur);
-      out.push({ key: cur, label: mp.m, sub: mp.yr, value: recMap.get(cur) || 0, expected: expMap.get(cur) || 0 });
+      out.push({ key: cur, label: mp.m, sub: mp.yr, recPast: recPast.get(cur) || 0, recFut: recFut.get(cur) || 0, expected: expMap.get(cur) || 0 });
       cur = nextMonth(cur);
     }
     return out;
-  }, [filtered, monthly, basis, preset, start, end, isDaily, isYearly, expectedItems]);
-  const barMax = Math.max(1, ...bars.map((b) => Math.max(b.value, b.expected)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, basis, preset, start, end, isDaily, isYearly, expectedItems, dataBounds, today]);
+  const barMax = Math.max(1, ...bars.map((b) => Math.max(b.recPast, b.recFut, b.expected)));
   // Always label the bars with their amount — every window, not just the ones
   // with few bars. (Empty $0 bars have no label because there's no bar to sit on.)
   const showBarVals = true;
@@ -374,7 +400,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // expected. Surface a single combined figure (received + expected) so "total
   // showing both" is spelled out, not just implied by the two bar colours. Only
   // meaningful for this_month — every other window is one-sided.
-  const monthReceived = preset === 'this_month' ? bars.reduce((s, b) => s + b.value, 0) : 0;
+  const monthReceived = preset === 'this_month' ? bars.reduce((s, b) => s + b.recPast + b.recFut, 0) : 0;
   const monthExpected = preset === 'this_month' ? bars.reduce((s, b) => s + b.expected, 0) : 0;
   const showMonthTotal = preset === 'this_month' && monthExpected > 0;
   // Month/year context for the chart header, derived from the first/last bucket.
@@ -491,18 +517,24 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
         ) : (
           <div className={`${styles.bars} ${singleYear ? styles.hideYrMobile : ''}`}>
             {bars.map((b) => (
-              <div key={b.key} className={styles.barCol} title={`${b.label}${b.sub ? ' ' + b.sub : ''} · received ${money2.format(b.value)}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
+              <div key={b.key} className={styles.barCol} title={`${b.label}${b.sub ? ' ' + b.sub : ''}${b.recPast > 0 ? ` · received (past) ${money2.format(b.recPast)}` : ''}${b.recFut > 0 ? ` · received (future) ${money2.format(b.recFut)}` : ''}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
                 <div className={styles.barTrack}>
                   <div className={styles.barGroup}>
-                    {b.value > 0 && (
+                    {b.recPast > 0 && (
                       <div className={styles.barItem}>
-                        {showBarVals && <span className={styles.barVal} style={{ color: '#00F5C4' }}>{money0.format(b.value)}</span>}
-                        <div className={styles.barRec} style={{ height: `${(b.value / barMax) * 100}%` }} />
+                        {showBarVals && <span className={styles.barVal} style={{ color: REC_PAST }}>{money0.format(b.recPast)}</span>}
+                        <div className={styles.barRec} style={{ height: `${(b.recPast / barMax) * 100}%`, background: REC_PAST }} />
+                      </div>
+                    )}
+                    {b.recFut > 0 && (
+                      <div className={styles.barItem}>
+                        {showBarVals && <span className={styles.barVal} style={{ color: REC_FUTURE }}>{money0.format(b.recFut)}</span>}
+                        <div className={styles.barRec} style={{ height: `${(b.recFut / barMax) * 100}%`, background: REC_FUTURE }} />
                       </div>
                     )}
                     {b.expected > 0 && (
                       <div className={styles.barItem}>
-                        {showBarVals && <span className={styles.barVal} style={{ color: '#8AA0FF' }}>{money0.format(b.expected)}</span>}
+                        {showBarVals && <span className={styles.barVal} style={{ color: EXP_COLOR }}>{money0.format(b.expected)}</span>}
                         <div className={styles.barExp2} style={{ height: `${(b.expected / barMax) * 100}%` }} />
                       </div>
                     )}
@@ -516,11 +548,13 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
         {/* Legend always shows so the two colours are explained even when the
             current range happens to have no expected (unpaid) bookings. */}
         <div className={styles.chartLegend}>
-          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#00f5c4' }} />Received</span>
-          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: '#8AA0FF' }} />Expected — confirmed bookings with unpaid deposit/balance</span>
+          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: REC_PAST }} />Received — past events</span>
+          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: REC_FUTURE }} />Received — future events (deposits already in on upcoming gigs)</span>
+          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: EXP_COLOR }} />Expected — confirmed bookings with unpaid deposit/balance</span>
         </div>
         <p style={{ margin: '8px 0 0', fontSize: '.72rem', color: 'var(--muted, #8a8aa0)', lineHeight: 1.5 }}>
           Deposits count in the month they’re paid; the balance and everything else count in the month of the event.
+          Money moves from “future events” to “past events” automatically once the event date passes.
         </p>
       </div>
 
@@ -629,9 +663,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
                   <th>Event</th>
                   <th>Venue</th>
                   <th>Kind</th>
-                  <th className={styles.num}>Gross</th>
-                  <th className={styles.num}>Tax</th>
-                  <th className={styles.num}>Net</th>
+                  <th className={styles.num} style={{ textAlign: 'right' }}>Gross</th>
+                  <th className={styles.num} style={{ textAlign: 'right' }}>Tax</th>
+                  <th className={styles.num} style={{ textAlign: 'right' }}>Net</th>
                 </tr>
               </thead>
               <tbody>
