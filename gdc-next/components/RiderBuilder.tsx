@@ -74,6 +74,8 @@ export default function RiderBuilder({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [djName, setDjName] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -128,6 +130,42 @@ export default function RiderBuilder({
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  // Upload / replace the DJ's business logo right here on the rider page —
+  // same storage bucket + /api/dj/logo flow as account settings, so the change
+  // shows everywhere the logo appears.
+  async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setMsg('Logo must be an image.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setMsg('Logo is too large (max 4MB).'); return; }
+    setMsg(null);
+    setLogoBusy(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not signed in.');
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${user.id}/contract_logo_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = `${data.publicUrl}?t=${Date.now()}`;
+      const res = await fetch('/api/dj/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'set', url }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setLogoUrl(url);
+      setMsg('✓ Logo saved.');
+    } catch {
+      setMsg('Logo upload failed — try again.');
+    } finally {
+      setLogoBusy(false);
+      if (logoFileRef.current) logoFileRef.current.value = '';
     }
   }
 
@@ -214,28 +252,66 @@ export default function RiderBuilder({
   // The custom-builder body (used inside the Create Custom Rider box).
   const customBody = (
     <div>
-      {(logoUrl || djName) && (
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '1.1rem',
+          padding: '.9rem 1rem', borderRadius: 12,
+          background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)',
+        }}
+      >
+        <input ref={logoFileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
         <div
           style={{
-            display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '1.1rem',
-            padding: '.9rem 1rem', borderRadius: 12,
-            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)',
+            position: 'relative', width: 96, height: 52, flexShrink: 0, borderRadius: 8, overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.04)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="Your logo" style={{ maxHeight: 44, maxWidth: 140, objectFit: 'contain' }} />
+          {logoUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <button
+                type="button" disabled={logoBusy} onClick={() => logoFileRef.current?.click()}
+                title="Replace logo" aria-label="Replace logo"
+                style={{
+                  position: 'absolute', top: 3, right: 3, width: 22, height: 22, borderRadius: 6,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                  background: 'rgba(0,0,0,.6)', border: '1px solid rgba(255,255,255,.25)', color: '#fff', cursor: 'pointer',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button" disabled={logoBusy} onClick={() => logoFileRef.current?.click()}
+              title="Upload logo" aria-label="Upload logo"
+              style={{
+                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 2,
+                background: 'transparent', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '.6rem',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              {logoBusy ? '…' : 'Logo'}
+            </button>
           )}
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {djName || 'Your DJ name'}
-            </div>
-            <div style={{ color: MUTED, fontSize: '.74rem', marginTop: 2 }}>
-              Your logo and name appear at the top of the rider the host sees.
-            </div>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {djName || 'Your DJ name'}
+          </div>
+          <div style={{ color: MUTED, fontSize: '.74rem', marginTop: 2 }}>
+            Your logo and name appear at the top of the rider the host sees.{' '}
+            {logoUrl ? 'Tap the pencil to change it.' : 'Upload a logo to show it here.'}
           </div>
         </div>
-      )}
+      </div>
       <RiderEditor items={items} onChange={onItemsChange} />
     </div>
   );
