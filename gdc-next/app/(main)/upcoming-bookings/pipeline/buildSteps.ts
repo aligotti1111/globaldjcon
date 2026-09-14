@@ -284,7 +284,13 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     // stored flag) also covers bookings whose balance predates the flag. The
     // manual "Skip deposit" button still sets the override for the no-balance
     // case. A deposit with real money collected is never auto-skipped.
-    const balanceRequested = payments.some((p) => p.kind === 'balance');
+    // Balance is "in play" when a balance payment row exists (requested or paid)
+    // OR the DJ manually marked the balance/invoice complete (overrides.invoice)
+    // — e.g. paid in full in cash with no separate deposit. In both cases a
+    // deposit that never went out is moot, so it reads as skipped rather than a
+    // stuck "Not sent". (Previously only a real balance ROW triggered this, so a
+    // manually-marked-paid balance left the deposit sitting on "Not sent".)
+    const balanceRequested = payments.some((p) => p.kind === 'balance') || !!overrides.invoice;
     const depositSkipped = !reallySettled && depositRealPaidNow <= 0 && (!!overrides.deposit_skipped || balanceRequested);
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
@@ -412,7 +418,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // that explains WHY the stage says "Skipped". Otherwise, once money has
       // been asked for, report received/asked.
       info: (depositSkipped && balanceRequested)
-        ? 'Skipped — the full balance was requested, so no separate deposit is being collected.'
+        ? 'Skipped — the full balance is being collected, so no separate deposit is taken.'
         : depositRow
           ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
           : undefined,
