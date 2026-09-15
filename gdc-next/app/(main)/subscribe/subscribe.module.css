@@ -2,7 +2,7 @@
    with fallbacks so it renders correctly even if a token is missing. */
 
 .wrap {
-  max-width: 860px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 3rem 1.25rem 4rem;
 }
@@ -127,6 +127,8 @@
   color: var(--white, #fff);
   line-height: 1;
   margin-bottom: 1rem;
+  /* Keep "$29.99 /mo" on a single line — never let the period wrap below. */
+  white-space: nowrap;
 }
 
 .period {
