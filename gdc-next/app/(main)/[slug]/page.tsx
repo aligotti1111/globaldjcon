@@ -21,6 +21,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { preload } from 'react-dom';
+import { optimizedImageUrl } from '@/lib/img';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
@@ -260,7 +261,9 @@ export default async function DjProfilePage({ params }: PageProps) {
   // parse — so on mobile it fetched late and popped in. This tells the browser to
   // start fetching it right away, hoisted into <head> by Next.
   if (profile.banner_url) {
-    preload(profile.banner_url, { as: 'image', fetchPriority: 'high' });
+    // Preload the OPTIMIZED url (same one the banner background uses), so the
+    // browser fetches the small resized/WebP version, not the raw upload.
+    preload(optimizedImageUrl(profile.banner_url), { as: 'image', fetchPriority: 'high' });
   }
 
   return (
