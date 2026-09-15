@@ -59,7 +59,7 @@ function fmtPrice(n: number): string {
 // drift from the table. `included` drives the check vs cross styling.
 function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: string; included: boolean; emphasis?: boolean }[] {
   const feats: { text: string; included: boolean; emphasis?: boolean }[] = [
-    { text: 'Take bookings', included: d.booking },
+    { text: 'Booking System', included: d.booking },
     { text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0, emphasis: true },
     { text: 'Deposits', included: d.proFeatures },
     { text: 'Invoicing', included: d.proFeatures },
