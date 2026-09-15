@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { type BookingSettings, parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
+import { markStepViewed } from '@/components/SetupChecklist';
 import BookingTab from '../update-dj-profile/BookingTab';
 import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
@@ -61,15 +62,23 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
+      // Valid deep-link targets — the setup checklist links here with ?section=,
+      // so any tab id (not just discounts) can open directly.
+      const VALID: SecTab[] = ['settings', 'packages', 'discounts', 'payments', 'contracts', 'planners', 'rates', 'rider', 'guests'];
+      const section = q.get('section') as SecTab | null;
       if (q.get('paypal') === 'connected') {
         setSecTab('payments');
-      } else if (q.get('section') === 'discounts') {
-        // Deep-link from the "Add discount/promo code" header shortcut — open
-        // straight to the Discounts box instead of the default Settings tab.
-        setSecTab('discounts');
+      } else if (section && VALID.includes(section)) {
+        setSecTab(section);
       }
     } catch { /* no-op */ }
   }, []);
+
+  // Onboarding: record each tab the DJ opens as "viewed" for the setup
+  // checklist strip (fires on mount for the initial tab, then on every switch).
+  useEffect(() => {
+    if (initialProfile.id) markStepViewed(initialProfile.id, secTab);
+  }, [secTab, initialProfile.id]);
   // Which manual-save tab (Settings / DJ Rider / Guest List) currently holds
   // unsaved edits. Drives the little "unsaved" dot on the tab bar so the user
   // knows a tab needs saving even after they've navigated away from it.
