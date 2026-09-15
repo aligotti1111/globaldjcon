@@ -500,10 +500,10 @@ const LANDING_CSS = String.raw`
 @media(max-width:760px){
 .gdc-landing .howgrid{grid-template-columns:1fr}
 }
-.gdc-landing .howcol{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px 28px;display:flex;flex-direction:column}
-.gdc-landing .howh{font-family:var(--disp);font-size:1.7rem;letter-spacing:.01em;margin-bottom:8px}
-.gdc-landing .howcol.mobile .howh{color:var(--neon)}
-.gdc-landing .howcol.club .howh{color:var(--amber)}
+.gdc-landing .howcol{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px 28px;display:flex;flex-direction:column;overflow:hidden}
+.gdc-landing .howh{font-family:var(--disp);font-size:1.7rem;letter-spacing:.01em;margin:-26px -28px 20px;padding:16px 28px;border-radius:18px 18px 0 0}
+.gdc-landing .howcol.mobile .howh{background:var(--neon);color:#04120d}
+.gdc-landing .howcol.club .howh{background:var(--amber);color:#141200}
 .gdc-landing .howcol.club .howstep .num{color:var(--amber)}
 .gdc-landing .reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.2,.8,.2,1)}
 .gdc-landing .reveal.in{opacity:1;transform:none}
