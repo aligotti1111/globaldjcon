@@ -16,7 +16,7 @@
 // a DJ owner with booking access (subscribed/comp) — never hosts, teammates, or
 // not-yet-subscribed accounts.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
@@ -206,57 +206,63 @@ export default function SetupChecklist() {
     if (completedPath !== null && pathname !== completedPath) return null;
   }
 
+  const NEON = 'var(--neon,#00e0a4)';
+  // The current step = the first one not yet done (gets the highlighted ring).
+  const currentIdx = model.steps.findIndex((s) => !s.done);
+
   return (
     <div
       style={{
         borderBottom: '1px solid rgba(255,255,255,.1)',
         background: 'rgba(0,0,0,.35)',
-        padding: '.55rem 1rem',
+        padding: '.7rem 1rem',
       }}
     >
-      <div
-        style={{
-          maxWidth: 1180, margin: '0 auto', display: 'flex', alignItems: 'center',
-          gap: '.9rem', flexWrap: 'wrap', justifyContent: 'center',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em',
-            textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', whiteSpace: 'nowrap',
-          }}
-        >
-          Finish setup · {model.doneCount}/{model.steps.length}
-        </span>
-        <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {model.steps.map((s) => (
-            <Link
-              key={s.id}
-              href={`/booking-settings?section=${s.id}`}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '.4rem', textDecoration: 'none',
-                border: `1px solid ${s.done ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`,
-                background: s.done ? 'rgba(0,224,164,.12)' : 'transparent',
-                color: s.done ? 'var(--neon,#00e0a4)' : 'var(--white,#fff)',
-                borderRadius: 999, padding: '.3rem .7rem', fontSize: '.78rem', fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span
-                aria-hidden
-                style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  width: 15, height: 15, borderRadius: '50%', flexShrink: 0,
-                  border: `1.5px solid ${s.done ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.35)'}`,
-                  background: s.done ? 'var(--neon,#00e0a4)' : 'transparent',
-                  color: '#04121a', fontSize: '.6rem', fontWeight: 800,
-                }}
-              >
-                {s.done ? '✓' : ''}
-              </span>
-              {s.label}
-            </Link>
-          ))}
+      <div style={{ maxWidth: 760, margin: '0 auto', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', minWidth: 'min-content' }}>
+          {model.steps.map((s, i) => {
+            const isCurrent = i === currentIdx;
+            const circleStyle: CSSProperties = s.done
+              ? { background: NEON, border: `2px solid ${NEON}`, color: '#04121a' }
+              : isCurrent
+                ? { background: 'transparent', border: `2px solid ${NEON}`, color: NEON }
+                : { background: 'transparent', border: '2px solid rgba(255,255,255,.3)', color: 'var(--muted,#8a8aa0)' };
+            const labelColor = s.done ? NEON : isCurrent ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)';
+            return (
+              <Fragment key={s.id}>
+                {i > 0 && (
+                  <div
+                    aria-hidden
+                    style={{
+                      height: 2, flex: 1, minWidth: 22, marginTop: 13,
+                      background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)',
+                    }}
+                  />
+                )}
+                <Link
+                  href={`/booking-settings?section=${s.id}`}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    flex: '0 0 auto', width: 84, textDecoration: 'none', gap: 6,
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      fontSize: '.8rem', fontWeight: 800, ...circleStyle,
+                    }}
+                  >
+                    {s.done ? '✓' : i + 1}
+                  </span>
+                  <span style={{ fontSize: '.68rem', lineHeight: 1.25, textAlign: 'center', color: labelColor, fontWeight: 600 }}>
+                    {s.label}
+                  </span>
+                </Link>
+              </Fragment>
+            );
+          })}
         </div>
       </div>
     </div>
