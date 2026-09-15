@@ -383,7 +383,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               className={`${styles.card} ${featured ? styles.cardFeatured : ''} ${isCurrent ? styles.cardCurrent : ''}`}
             >
               {featured && <div className={styles.popularBadge}>Most Popular</div>}
-              {isCurrent && <div className={styles.currentBadge}>Current plan</div>}
               <div className={styles.planName}>{def.label}</div>
               <div className={styles.price}>
                 {price}
