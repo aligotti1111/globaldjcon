@@ -420,7 +420,7 @@
 /* Real day cell — base styles, modifiers below */
 .cell {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, .4);
+  border: 1px solid var(--border);
   border-radius: 4px;
   min-height: 70px;
   padding: .4rem .15rem .3rem;
@@ -431,7 +431,7 @@
   gap: 3px;
   overflow: hidden;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, .12);
+  background: transparent;
   transition: all 0.15s;
 }
 .cellNoBottomBorder {
@@ -1472,25 +1472,14 @@
   bottom: 3px;
   right: 3px;
 }
+.miniOwnerQuickMark:hover,
 .miniOwnerEditPencil:hover {
   border-color: var(--neon);
-}
-/* The ✕ inverts on hover: filled neon with a dark glyph. */
-.miniOwnerQuickMark:hover {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #050507;
 }
 .miniOwnerQuickMarkActive {
   background: var(--neon);
   border-color: var(--neon);
   color: #050507;
-}
-/* When it's already active (✓ on neon), hover inverts the other way. */
-.miniOwnerQuickMarkActive:hover {
-  background: var(--deep);
-  border-color: var(--neon);
-  color: var(--neon);
 }
 @media (max-width: 700px) {
   .miniOwnerQuickMark,
