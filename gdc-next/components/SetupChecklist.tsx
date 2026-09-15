@@ -95,8 +95,11 @@ export default function SetupChecklist() {
   const [completedPath, setCompletedPath] = useState<string | null>(null);
   const dismissed = useRef(false);             // hidden for good this mount (post-completion nav)
 
-  // Only DJ owners (not hosts, admins, or teammates) get the setup strip.
-  const isDjOwner = !!user && user.role === 'dj' && !(user as { isMember?: boolean }).isMember;
+  // Only the ACCOUNT OWNER gets the setup strip — a DJ acting as 'owner'. This
+  // excludes hosts, admins, and every teammate (role 'teammate', or a DJ signed
+  // in on a non-owner seat), matching how the header derives ownership.
+  const actingRole = (user as { actingRole?: string } | null)?.actingRole ?? 'owner';
+  const isDjOwner = !!user && user.role === 'dj' && actingRole === 'owner';
   const userId = user?.id ?? null;
 
   const load = useCallback(async () => {
