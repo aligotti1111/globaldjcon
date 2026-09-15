@@ -779,11 +779,21 @@
   font-size: .8rem;
   font-weight: 700;
   color: rgba(255, 255, 255, .3);
+  padding: 0 3px;
+  border-radius: 3px;
+  transition: background .12s, color .12s;
 }
+/* Inverts on hover: neon chip with a dark glyph. */
 .ownerQuickMark:hover {
-  color: rgba(255, 255, 255, .7);
+  background: var(--neon);
+  color: #050507;
 }
 .ownerQuickMarkActive {
+  color: var(--neon);
+}
+/* Already active (✓ on neon) → hover inverts the other way. */
+.ownerQuickMarkActive:hover {
+  background: var(--deep);
   color: var(--neon);
 }
 .ownerEditPencil {
