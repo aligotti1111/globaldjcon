@@ -107,11 +107,29 @@
   padding: 2rem 1.75rem;
   display: flex;
   flex-direction: column;
+  /* Anchor the absolutely-positioned badges (Most Popular / Current plan). */
+  position: relative;
 }
 
 .cardFeatured {
   border-color: var(--neon, #00e0a4);
   box-shadow: 0 0 0 1px var(--neon, #00e0a4);
+}
+
+/* "Most Popular" — a ribbon centered on the card's top edge, OUT of the content
+   flow, so the plan name and price line up with every other card. */
+.popularBadge {
+  position: absolute;
+  top: -0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--neon, #00e0a4);
+  color: #06231b;
 }
 
 .planName {
