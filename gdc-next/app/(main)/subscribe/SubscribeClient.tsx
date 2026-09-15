@@ -518,35 +518,49 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         </div>
       )}
 
-      {/* Cancel confirmation / scheduled notice — shown below the buttons only
-          when relevant, using the on-site cancel/resume flow (no Stripe portal). */}
-      {isSubscribed && isPaid && (confirmCancel || cancelInfo?.scheduled) && (
+      {/* Scheduled-cancel notice — inline status once a cancel is queued. */}
+      {isSubscribed && isPaid && cancelInfo?.scheduled && (
         <div className={styles.manageRow} style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', marginTop: '1rem' }}>
-          {cancelInfo?.scheduled ? (
-            <>
-              <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
-                Your subscription is set to cancel
-                {cancelInfo.date ? ` on ${new Date(cancelInfo.date).toLocaleDateString()}` : ''}. You keep access until then.
-              </span>
-              <button type="button" className={styles.manageBtn} onClick={() => cancelSub('resume')} disabled={cancelBusy}>
-                {cancelBusy ? 'Working…' : 'Resume subscription'}
+          <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
+            Your subscription is set to cancel
+            {cancelInfo.date ? ` on ${new Date(cancelInfo.date).toLocaleDateString()}` : ''}. You keep access until then.
+          </span>
+          <button type="button" className={styles.manageBtn} onClick={() => cancelSub('resume')} disabled={cancelBusy}>
+            {cancelBusy ? 'Working…' : 'Resume subscription'}
+          </button>
+        </div>
+      )}
+
+      {/* Cancel confirmation — styled modal popup (matches the switch dialog). */}
+      {isSubscribed && isPaid && confirmCancel && !cancelInfo?.scheduled && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+          onClick={(e) => { if (e.target === e.currentTarget && !cancelBusy) setConfirmCancel(false); }}
+        >
+          <div style={{ background: 'var(--panel,#14141c)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.6rem', maxWidth: 430, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontWeight: 800, fontSize: '1.15rem', marginBottom: '.7rem' }}>Cancel your subscription?</div>
+            <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.92rem', lineHeight: 1.55, margin: '0 0 1.2rem' }}>
+              You&apos;ll keep full access until the end of your current billing period, and you can resume any time before then.
+            </p>
+            <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmCancel(false)}
+                disabled={cancelBusy}
+                style={{ width: 'auto', border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--neon,#00e0a4)', borderRadius: 10, padding: '0.8rem 1.2rem', fontSize: '0.95rem', fontWeight: 700, cursor: cancelBusy ? 'default' : 'pointer' }}
+              >
+                Keep plan
               </button>
-            </>
-          ) : (
-            <>
-              <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
-                Cancel your subscription? You&apos;ll keep access until the end of the current billing period.
-              </span>
-              <div style={{ display: 'flex', gap: '.5rem' }}>
-                <button type="button" className={styles.manageBtn} onClick={() => setConfirmCancel(false)} disabled={cancelBusy}>
-                  Keep plan
-                </button>
-                <button type="button" className={styles.manageBtn} onClick={() => cancelSub('cancel')} disabled={cancelBusy}>
-                  {cancelBusy ? 'Cancelling…' : 'Yes, cancel'}
-                </button>
-              </div>
-            </>
-          )}
+              <button
+                type="button"
+                onClick={() => cancelSub('cancel')}
+                disabled={cancelBusy}
+                style={{ width: 'auto', border: 'none', background: '#ff5f5f', color: '#2a0000', borderRadius: 10, padding: '0.8rem 1.2rem', fontSize: '0.95rem', fontWeight: 700, cursor: cancelBusy ? 'default' : 'pointer', opacity: cancelBusy ? 0.6 : 1 }}
+              >
+                {cancelBusy ? 'Cancelling…' : 'Yes, cancel'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
