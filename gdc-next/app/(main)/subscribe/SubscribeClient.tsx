@@ -352,7 +352,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           const def = TIERS[tier];
           const price = fmtPrice(interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice);
           const period = interval === 'monthly' ? '/mo' : '/yr';
-          const isCurrent = isPaid && currentTier === tier;
+          // Current = the tier you're on, whether that's a paid subscription OR
+          // a complimentary grant. (Was isPaid-only, so comps never highlighted.)
+          const isCurrent = isSubscribed && currentTier === tier;
           const isLoading = loadingTier === tier;
           const featured = tier === FEATURED_TIER;
           // Buyable only when a Stripe price ID exists for this tier+interval.
@@ -381,7 +383,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 ))}
               </ul>
 
-              {!isPaid && (
+              {!isPaid && !isCurrent && (
                 <>
                   <button
                     type="button"
