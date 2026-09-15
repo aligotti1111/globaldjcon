@@ -159,10 +159,18 @@ function gateInvoice(m){
   if(!settled&&['notsent','requested','done'].includes(inv.state)) inv.state='locked';
 }
 function render(){
+  // The mount lives inside a React dangerouslySetInnerHTML block. This external
+  // script is appended in a useEffect, but on some browsers (notably Safari) it
+  // can execute a beat before that node is present in the DOM. Guard against a
+  // null mount and retry on the next frame instead of throwing — a throw here
+  // used to kill the initial render, leaving a blank sample until the user hit
+  // "Reset" (which re-runs render() once the node exists).
+  const mount=document.getElementById('gdc-dash-mount');
+  if(!mount){ (window.requestAnimationFrame||setTimeout)(render,50); return; }
   MODELS.forEach(gateInvoice);
   const groups=[];
   MODELS.forEach((m,i)=>{ let g=groups.find(x=>x.type===m.type); if(!g){g={type:m.type,label:m.label,items:[]};groups.push(g);} g.items.push({m,i}); });
-  document.getElementById('gdc-dash-mount').innerHTML=groups.map(groupHTML).join('');
+  mount.innerHTML=groups.map(groupHTML).join('');
 }
 function dateHTML(m){return `<div class="dateb"><span class="n">${m.date.n}</span><span class="dm">${m.date.d}<br>${m.date.m}</span></div>`;}
 function groupHTML(g){
@@ -280,4 +288,8 @@ function toggleMenu(mi,key,e){e.stopPropagation();OPEN=(OPEN&&OPEN.mi===mi&&OPEN
 function doAction(mi,key,i,e){e.stopPropagation();const stg=MODELS[mi].stages[key];const a=stg.S[stg.state].actions[i];if(a.note)MODELS[mi].note=a.note;if(a.to)stg.state=a.to;OPEN=null;render();}
 function resetAll(){MODELS=buildModels();OPEN=null;render();}
 document.addEventListener('click',()=>{if(OPEN){OPEN=null;render();}});
+// Boot: render now (render() self-heals if the mount isn't in the DOM yet), and
+// again if Safari restores this page from its back/forward cache with an empty
+// mount. render() is idempotent, so a repeat call is harmless.
 render();
+window.addEventListener('pageshow',function(){ var m=document.getElementById('gdc-dash-mount'); if(m&&!m.innerHTML.trim()) render(); });
