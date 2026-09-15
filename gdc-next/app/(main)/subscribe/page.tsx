@@ -10,6 +10,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getAccess, type AccessFields, type AccessState, type AccessSource, type Tier } from '@/lib/access';
+import { getStripe } from '@/lib/stripe/server';
 import SubscribeClient from './SubscribeClient';
 
 export const dynamic = 'force-dynamic';
@@ -23,17 +24,21 @@ export default async function SubscribePage() {
   let source: AccessSource = null;
   let accessUntil: string | null = null;
   let djType: 'mobile' | 'club' | null = null;
+  // Whether a paid subscriber is billed monthly or yearly — so the plan picker
+  // can offer "switch to yearly/monthly" on the tier they're already on.
+  let currentInterval: 'monthly' | 'yearly' | null = null;
 
   if (user) {
     const { data } = await supabase
       .from('users')
-      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, dj_type')
+      .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, dj_type, stripe_subscription_id')
       .eq('id', user.id)
       .maybeSingle();
     const fields = data as unknown as (AccessFields & {
       sub_period_end?: string | null;
       comp_expires_at?: string | null;
       dj_type?: string | null;
+      stripe_subscription_id?: string | null;
     }) | null;
     if (fields?.dj_type === 'club' || fields?.dj_type === 'mobile') djType = fields.dj_type;
     if (fields) {
@@ -48,6 +53,21 @@ export default async function SubscribePage() {
           : access.source === 'admin' || access.source === 'code'
           ? fields.comp_expires_at ?? null
           : null;
+
+      // Read the live billing interval for a paid subscriber. Best-effort: a
+      // Stripe hiccup just leaves currentInterval null (the picker falls back to
+      // tier-only "current plan" — no interval switch shown, nothing breaks).
+      if (access.source === 'stripe' && fields.stripe_subscription_id) {
+        try {
+          const stripe = getStripe();
+          const sub = await stripe.subscriptions.retrieve(fields.stripe_subscription_id);
+          const recurring = sub.items?.data?.[0]?.price?.recurring?.interval;
+          if (recurring === 'year') currentInterval = 'yearly';
+          else if (recurring === 'month') currentInterval = 'monthly';
+        } catch {
+          currentInterval = null;
+        }
+      }
     }
   }
 
@@ -59,6 +79,7 @@ export default async function SubscribePage() {
       source={source}
       accessUntil={accessUntil}
       djType={djType}
+      currentInterval={currentInterval}
     />
   );
 }
