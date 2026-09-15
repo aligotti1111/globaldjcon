@@ -142,6 +142,7 @@ function shortDate(iso: string | null | undefined): string {
 export async function notifyBookingSms(
   bookingId: string | null | undefined,
   stage: BookingSmsStage,
+  opts?: { payUrl?: string | null },
 ): Promise<void> {
   if (!bookingId) return;
   try {
@@ -161,13 +162,23 @@ export async function notifyBookingSms(
     }
 
     const date = shortDate(b.event_date);
+    // When a pay URL is supplied (deposit/balance), text the direct link to the
+    // /pay hub — one page with every payment option — instead of "check your
+    // email". Fall back to the email prompt if no link was passed.
+    const payUrl = opts?.payUrl?.trim() || '';
+    const depositBody = payUrl
+      ? `${djName} requested a deposit for your ${date} booking. Pay here: ${payUrl}`
+      : `${djName} requested a deposit for your ${date} booking. Check your email to pay.`;
+    const balanceBody = payUrl
+      ? `${djName} requested the balance for your ${date} booking. Pay here: ${payUrl}`
+      : `${djName} requested the balance for your ${date} booking. Check your email to pay.`;
     const lines: Record<BookingSmsStage, string> = {
       accepted: `Good news — ${djName} accepted your booking for ${date}. Details are in your email.`,
       denied:   `Update — ${djName} couldn't take your booking for ${date}. Details are in your email.`,
       offer:    `${djName} sent you an offer for your ${date} booking. Review it in your email.`,
       contract: `${djName} sent a contract to sign for your ${date} booking. Check your email to sign.`,
-      deposit:  `${djName} requested a deposit for your ${date} booking. Check your email to pay.`,
-      balance:  `${djName} requested the balance for your ${date} booking. Check your email to pay.`,
+      deposit:  depositBody,
+      balance:  balanceBody,
     };
     await dispatchSms(b.phone, withSmsFooter(lines[stage]), `booking_${stage}`);
   } catch (e) {
