@@ -480,6 +480,17 @@
   transition: all 0.15s;
 }
 
+/* Desktop: bigger, roomier Book button to match the larger day cells. Scoped
+   to wide screens so the compact mobile cells keep the small pill. */
+@media (min-width: 701px) {
+  .bookBadge {
+    font-size: .8rem;
+    padding: 5px 14px;
+    border-radius: 5px;
+    letter-spacing: .06em;
+  }
+}
+
 /* Pending booking pill — shown only to the viewer who has a pending
    request on this date. Muted amber distinguishes it from the green
    "Book" pill so the viewer knows their request awaits a DJ response. */
