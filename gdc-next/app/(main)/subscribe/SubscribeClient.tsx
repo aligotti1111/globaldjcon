@@ -120,7 +120,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [cancelInfo, setCancelInfo] = useState<{ scheduled: boolean; date: string | null } | null>(null);
   const [previewingTier, setPreviewingTier] = useState<PaidTier | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<
-    { tier: PaidTier; label: string; forward: string; amountDue: number | null; currency: string } | null
+    { tier: PaidTier; label: string; forward: string; amountDue: number | null; currency: string; interval: Interval } | null
   >(null);
 
   const money = (cents: number, cur: string) =>
@@ -176,7 +176,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
 
   // Step 1 — ask Stripe what switching would cost right now, then open the
   // confirmation dialog so the DJ sees the charge before committing.
-  async function requestSwitch(tier: PaidTier, label: string, forward: string) {
+  async function requestSwitch(tier: PaidTier, label: string, forward: string, targetInterval: Interval = interval) {
     setError(null);
     setSwitchMsg(null);
     setPreviewingTier(tier);
@@ -184,7 +184,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       const res = await fetch('/api/stripe/change-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, interval, preview: true }),
+        body: JSON.stringify({ tier, interval: targetInterval, preview: true }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; amountDue?: number | null; currency?: string };
       if (res.status === 401) { window.location.href = '/login?redirect=/subscribe'; return; }
@@ -195,6 +195,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         forward,
         amountDue: typeof data.amountDue === 'number' ? data.amountDue : null,
         currency: data.currency || 'usd',
+        interval: targetInterval,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
@@ -204,7 +205,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   }
 
   // Step 2 — confirmed: update the existing subscription (no Stripe portal).
-  async function changePlan(tier: PaidTier) {
+  async function changePlan(tier: PaidTier, targetInterval: Interval = interval) {
     setError(null);
     setSwitchMsg(null);
     setSwitchingTier(tier);
@@ -212,7 +213,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       const res = await fetch('/api/stripe/change-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, interval }),
+        body: JSON.stringify({ tier, interval: targetInterval }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.status === 401) {
@@ -426,19 +427,37 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 </button>
               )}
 
-              {isSubscribed && isCurrent && isPaid && (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    fontWeight: 700,
-                    color: 'var(--neon,#00e0a4)',
-                    padding: '.6rem 0',
-                    fontSize: '.95rem',
-                  }}
-                >
-                  {'✓'} Your current plan
-                </div>
-              )}
+              {isSubscribed && isCurrent && isPaid && (() => {
+                // On the plan they're on, offer a one-click switch to the OTHER
+                // billing interval (monthly⇄yearly) right here — no need to flip
+                // the top toggle first. Only when we know their current interval.
+                const other: Interval | null = currentInterval === 'monthly' ? 'yearly' : currentInterval === 'yearly' ? 'monthly' : null;
+                const otherPrice = other ? fmtPrice(other === 'monthly' ? def.monthlyPrice : def.yearlyPrice) : '';
+                const otherPeriod = other === 'monthly' ? '/mo' : '/yr';
+                const busySwitch = previewingTier === tier || switchingTier === tier;
+                return (
+                  <div style={{ textAlign: 'center', padding: '.4rem 0 0' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--neon,#00e0a4)', fontSize: '.95rem', padding: '.2rem 0 .5rem' }}>
+                      {'✓'} Your current plan
+                    </div>
+                    {other && purchasable && (
+                      <button
+                        type="button"
+                        className={styles.manageBtn}
+                        onClick={() => requestSwitch(tier, def.label, `${otherPrice}${otherPeriod}`, other)}
+                        disabled={switchingTier !== null || previewingTier !== null}
+                        style={{ width: '100%' }}
+                      >
+                        {busySwitch
+                          ? 'Checking…'
+                          : other === 'yearly'
+                            ? 'Switch to yearly — 2 months free'
+                            : 'Switch to monthly billing'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {isSubscribed && isCurrent && isComp && (
                 <div className={styles.compNote}>
@@ -482,7 +501,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 <button type="button" className={styles.manageBtn} onClick={() => setPendingSwitch(null)} disabled={busy}>
                   Keep current plan
                 </button>
-                <button type="button" className={styles.subscribeBtn} onClick={() => changePlan(p.tier)} disabled={busy}>
+                <button type="button" className={styles.subscribeBtn} onClick={() => changePlan(p.tier, p.interval)} disabled={busy}>
                   {busy ? 'Switching…' : willCharge ? `Pay ${money(p.amountDue as number, p.currency)} & switch` : 'Confirm switch'}
                 </button>
               </div>
