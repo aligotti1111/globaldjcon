@@ -363,9 +363,8 @@
 .cellsGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  /* Embed-style: individual rounded cells with small gaps instead of
-     a continuous grid with shared borders. */
-  gap: 4px;
+  /* Continuous grid: cells sit flush against each other, no gaps. */
+  gap: 0;
   /* Level every row to the tallest cell so all rows are equal height,
      matching the club/bar calendar (which uses the same rule). */
   grid-auto-rows: 1fr;
@@ -387,9 +386,9 @@
 
 .cell {
   position: relative;
-  /* Each cell is its own bordered+rounded box (matches /embed-calendar) */
+  /* Flush cells: no rounded corners, no gaps — boxes touch edge to edge. */
   border: 1px solid rgba(255, 255, 255, .4);
-  border-radius: 4px;
+  border-radius: 0;
   min-height: 70px;
   padding: .4rem .15rem .3rem;
   display: flex;
@@ -983,12 +982,12 @@
    geometry tightens. */
 @media (max-width: 700px) {
   .cellsGridCompact {
-    gap: 1px;
+    gap: 0;
   }
   .cellsGridCompact .cell {
     aspect-ratio: 1;
     min-height: 0;
-    border-radius: 2px;
+    border-radius: 0;
     padding: .2rem .1rem;
     gap: 1px;
   }
