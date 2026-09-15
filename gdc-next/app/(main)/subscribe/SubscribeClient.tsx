@@ -49,6 +49,10 @@ interface Props {
   // The DJ's type — tailors club-only vs mobile-only feature bullets. null =
   // logged-out / unknown, in which case both sets show.
   djType?: 'mobile' | 'club' | null;
+  // A paid subscriber's current billing interval, so the picker can offer a
+  // switch to the other interval on the tier they're already on. null = unknown
+  // (comp, logged-out, or Stripe read failed) → falls back to tier-only current.
+  currentInterval?: Interval | null;
 }
 
 function fmtPrice(n: number): string {
@@ -88,7 +92,7 @@ function planName(tier: Tier): string {
   return TIER_LABELS[tier] ?? 'Free';
 }
 
-function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, djType }: Props) {
+function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, djType, currentInterval }: Props) {
   const searchParams = useSearchParams();
   const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
 
@@ -101,7 +105,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     ? new Date(accessUntil).toLocaleDateString()
     : null;
 
-  const [interval, setBillingInterval] = useState<Interval>('monthly');
+  // Open on the interval the DJ is already billed at, so their current plan
+  // reads as current and the OTHER interval is one toggle away.
+  const [interval, setBillingInterval] = useState<Interval>(currentInterval ?? 'monthly');
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
   // When set, the embedded Stripe Checkout renders in an on-site modal.
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -356,8 +362,15 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           const price = fmtPrice(interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice);
           const period = interval === 'monthly' ? '/mo' : '/yr';
           // Current = the tier you're on, whether that's a paid subscription OR
-          // a complimentary grant. (Was isPaid-only, so comps never highlighted.)
-          const isCurrent = isSubscribed && currentTier === tier;
+          // a complimentary grant. For a PAID subscriber whose billing interval
+          // we know, the card is only "current" when the toggled interval also
+          // matches — so switching monthly⇄yearly on the same tier surfaces a
+          // Switch button instead of dead-ending on "current plan". Comps and
+          // unknown-interval subs fall back to tier-only (no interval switch).
+          const sameTier = isSubscribed && currentTier === tier;
+          const isCurrent = sameTier && (!isPaid || !currentInterval || interval === currentInterval);
+          // A same-tier switch is really a billing-interval change, not a tier move.
+          const isIntervalSwitch = sameTier && isPaid && !!currentInterval && interval !== currentInterval;
           const isLoading = loadingTier === tier;
           const featured = tier === FEATURED_TIER;
           // Buyable only when a Stripe price ID exists for this tier+interval.
@@ -409,7 +422,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   disabled={switchingTier !== null || previewingTier !== null || !purchasable}
                   title={!purchasable ? 'Not available yet' : undefined}
                 >
-                  {!purchasable ? 'Coming soon' : previewingTier === tier ? 'Checking\u2026' : switchingTier === tier ? 'Switching\u2026' : `Switch to ${def.label}`}
+                  {!purchasable ? 'Coming soon' : previewingTier === tier ? 'Checking\u2026' : switchingTier === tier ? 'Switching\u2026' : isIntervalSwitch ? `Switch to ${interval} billing` : `Switch to ${def.label}`}
                 </button>
               )}
 
