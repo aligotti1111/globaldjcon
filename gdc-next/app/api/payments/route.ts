@@ -530,7 +530,9 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     // Per-booking host SMS — a heads-up that a deposit/balance was requested.
     // Self-gates on the booking's opt-in + phone; best-effort, never blocks.
-    notifyBookingSms(bookingId, kind === 'balance' ? 'balance' : 'deposit').catch(() => {});
+    notifyBookingSms(bookingId, kind === 'balance' ? 'balance' : 'deposit', {
+      payUrl: payment?.id ? `${SITE_URL}/pay/${payment.id}` : null,
+    }).catch(() => {});
 
     await logActivity(acting, {
       action: `payment.${kind}.requested`,
