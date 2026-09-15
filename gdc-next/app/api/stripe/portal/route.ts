@@ -65,6 +65,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: session.url });
   } catch (e) {
     console.error('[stripe/portal] error', e);
-    return NextResponse.json({ error: 'Could not open billing portal' }, { status: 500 });
+    // Surface Stripe's own reason (owner-only route) so a misconfiguration —
+    // most commonly "the Customer Portal has not been configured/activated in
+    // the Stripe Dashboard for this mode" — is diagnosable instead of hidden.
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `Could not open billing portal: ${detail}` }, { status: 500 });
   }
 }
