@@ -53,6 +53,9 @@ export async function POST(req: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: 'setup',
       ui_mode: 'embedded_page' as unknown as 'embedded',
+      // Setup-mode embedded sessions require a currency (nominal — no charge is
+      // made; it only sets up the card as the customer's saved payment method).
+      currency: 'usd',
       customer: customerId,
       return_url: `${origin}/subscribe/card-updated?session_id={CHECKOUT_SESSION_ID}`,
     });
