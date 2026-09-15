@@ -398,7 +398,7 @@
   justify-content: center;
   gap: 3px;
   overflow: hidden;
-  background: rgba(255, 255, 255, .12);
+  background: transparent;
   transition: all 0.15s;
 }
 .cellNoBottomBorder {
@@ -778,23 +778,27 @@
   left: 4px;
   font-size: .8rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, .3);
+  color: rgba(255, 255, 255, .55);
   padding: 0 3px;
   border-radius: 3px;
   transition: background .12s, color .12s;
 }
-/* Inverts on hover: neon chip with a dark glyph. */
+/* Inverts on hover: a white chip with a dark glyph — stays visible on both the
+   black cell and the neon hovered cell (never blends in). */
 .ownerQuickMark:hover {
-  background: var(--neon);
+  background: #fff;
   color: #050507;
 }
 .ownerQuickMarkActive {
   color: var(--neon);
 }
-/* Already active (✓ on neon) → hover inverts the other way. */
 .ownerQuickMarkActive:hover {
-  background: var(--deep);
-  color: var(--neon);
+  background: #fff;
+  color: #050507;
+}
+/* When the whole cell is neon on hover, keep the ✕ dark so it doesn't wash out. */
+.cellAvail:hover .ownerQuickMark {
+  color: #050507;
 }
 .ownerEditPencil {
   right: 4px;
