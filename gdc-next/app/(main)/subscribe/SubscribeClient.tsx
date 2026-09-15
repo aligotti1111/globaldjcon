@@ -105,7 +105,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
   // When set, the embedded Stripe Checkout renders in an on-site modal.
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const [cardLoading, setCardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [switchingTier, setSwitchingTier] = useState<PaidTier | null>(null);
   const [switchMsg, setSwitchMsg] = useState<string | null>(null);
@@ -145,23 +145,26 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     }
   }
 
-  async function openPortal() {
+  // Update the card ON-SITE: fetch an embedded setup session and mount it in the
+  // same modal the subscription checkout uses — no redirect to Stripe's portal.
+  async function updateCard() {
     setError(null);
-    setPortalLoading(true);
+    setCardLoading(true);
     try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' });
-      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      const res = await fetch('/api/stripe/update-card', { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as { clientSecret?: string; error?: string };
       if (res.status === 401) {
         window.location.href = '/login?redirect=/subscribe';
         return;
       }
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Could not open the billing portal.');
+      if (!res.ok || !data.clientSecret) {
+        throw new Error(data.error || 'Could not start card update.');
       }
-      window.location.href = data.url;
+      setClientSecret(data.clientSecret);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
-      setPortalLoading(false);
+    } finally {
+      setCardLoading(false);
     }
   }
 
@@ -491,16 +494,16 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
             <>
               <button
                 type="button"
-                onClick={openPortal}
-                disabled={portalLoading}
+                onClick={updateCard}
+                disabled={cardLoading}
                 style={{
                   width: 'auto', border: '1px solid var(--neon,#00e0a4)', background: 'transparent',
                   color: 'var(--neon,#00e0a4)', borderRadius: 10, padding: '0.85rem 1.2rem',
-                  fontSize: '0.95rem', fontWeight: 700, cursor: portalLoading ? 'default' : 'pointer',
-                  opacity: portalLoading ? 0.6 : 1,
+                  fontSize: '0.95rem', fontWeight: 700, cursor: cardLoading ? 'default' : 'pointer',
+                  opacity: cardLoading ? 0.6 : 1,
                 }}
               >
-                {portalLoading ? 'Opening…' : 'Update payment method'}
+                {cardLoading ? 'Opening…' : 'Update payment method'}
               </button>
               <button
                 type="button"
