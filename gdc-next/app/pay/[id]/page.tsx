@@ -90,7 +90,7 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
 
   const { data: djData } = await admin
     .from('users')
-    .select('name, payment_methods, stripe_connect_ready, paypal_connect_ready, contract_logo_url, logo_hidden')
+    .select('name, payment_methods, stripe_connect_ready, paypal_connect_ready, contract_logo_url')
     .eq('id', booking.dj_id)
     .maybeSingle();
   const dj = djData as unknown as {
@@ -99,12 +99,12 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
     stripe_connect_ready?: boolean | null;
     paypal_connect_ready?: boolean | null;
     contract_logo_url?: string | null;
-    logo_hidden?: boolean | null;
   } | null;
 
   // The DJ's business logo (users.contract_logo_url), shown at the top of the
-  // hub — unless they've hidden it. Same field the planner/rider pages use.
-  const logoUrl = dj?.logo_hidden ? null : (dj?.contract_logo_url || null);
+  // hub. NOTE: logo_hidden lives on booking_planners/booking_riders, NOT users —
+  // selecting it here would error the whole query and 404 the page.
+  const logoUrl = dj?.contract_logo_url || null;
 
   const cardReady = !!dj?.stripe_connect_ready;
   const paypalReady = !!dj?.paypal_connect_ready;
