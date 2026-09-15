@@ -74,11 +74,22 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     } catch { /* no-op */ }
   }, []);
 
-  // Onboarding: record each tab the DJ opens as "viewed" for the setup
-  // checklist strip (fires on mount for the initial tab, then on every switch).
+  // Onboarding: mark a tab "viewed" only when the DJ LEAVES it — either by
+  // switching to another tab or by exiting the page. This keeps the current
+  // step visible in the setup checklist WHILE they're on it for the first time;
+  // it only checks off (and the strip updates/disappears) after they move on.
+  const viewedTabRef = useRef<SecTab>(secTab);
+  const firstViewRun = useRef(true);
   useEffect(() => {
-    if (initialProfile.id) markStepViewed(initialProfile.id, secTab);
+    if (firstViewRun.current) { firstViewRun.current = false; viewedTabRef.current = secTab; return; }
+    // secTab changed → they just left the previous tab; mark that one viewed.
+    if (initialProfile.id) markStepViewed(initialProfile.id, viewedTabRef.current);
+    viewedTabRef.current = secTab;
   }, [secTab, initialProfile.id]);
+  useEffect(() => {
+    // Leaving Booking Settings entirely → mark whatever tab they were last on.
+    return () => { if (initialProfile.id) markStepViewed(initialProfile.id, viewedTabRef.current); };
+  }, [initialProfile.id]);
   // Which manual-save tab (Settings / DJ Rider / Guest List) currently holds
   // unsaved edits. Drives the little "unsaved" dot on the tab bar so the user
   // knows a tab needs saving even after they've navigated away from it.
