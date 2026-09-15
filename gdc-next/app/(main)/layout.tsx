@@ -14,6 +14,7 @@ import VerifyEmailBanner from '@/components/VerifyEmailBanner';
 import EmailVerifiedBanner from '@/components/EmailVerifiedBanner';
 import BookingClaimedBanner from '@/components/BookingClaimedBanner';
 import ActivateBookingBanner from '@/components/ActivateBookingBanner';
+import SetupChecklist from '@/components/SetupChecklist';
 import { UnsavedChangesProvider } from '@/components/UnsavedChangesProvider';
 
 export default function MainLayout({
@@ -29,6 +30,7 @@ export default function MainLayout({
         <VerifyEmailBanner />
         <ActivateBookingBanner />
         <Header />
+        <SetupChecklist />
         <MobileMenu />
         {children}
         <Footer />
