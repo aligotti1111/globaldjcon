@@ -16,7 +16,7 @@
 // a DJ owner with booking access (subscribed/comp) — never hosts, teammates, or
 // not-yet-subscribed accounts.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
@@ -88,6 +88,12 @@ export default function SetupChecklist() {
   const pathname = usePathname();
   const [row, setRow] = useState<Row | null>(null);
   const [viewed, setViewed] = useState<Set<string>>(new Set());
+  // Completion behavior: once the DJ checks the LAST step, keep the strip
+  // visible (fully checked) while they're still on the page it completed on, and
+  // only hide after they navigate away — instead of vanishing under them.
+  const shownIncomplete = useRef(false);       // did we ever render it incomplete this mount?
+  const [completedPath, setCompletedPath] = useState<string | null>(null);
+  const dismissed = useRef(false);             // hidden for good this mount (post-completion nav)
 
   // Only DJ owners (not hosts, admins, or teammates) get the setup strip.
   const isDjOwner = !!user && user.role === 'dj' && !(user as { isMember?: boolean }).isMember;
@@ -167,9 +173,35 @@ export default function SetupChecklist() {
     return { steps, doneCount: steps.filter((s) => s.done).length };
   }, [row, viewed]);
 
-  if (loading || !isDjOwner || !model) return null;
-  // Disappear entirely once every step is checked.
-  if (model.doneCount >= model.steps.length) return null;
+  // Track completion so the strip lingers (checked) on the page it completed on,
+  // then hides after the DJ navigates away.
+  useEffect(() => {
+    if (!model) return;
+    const complete = model.doneCount >= model.steps.length;
+    if (!complete) {
+      shownIncomplete.current = true;
+      if (completedPath !== null) setCompletedPath(null);
+      return;
+    }
+    // complete:
+    if (shownIncomplete.current && completedPath === null) {
+      setCompletedPath(pathname);              // pin the page it completed on
+    } else if (completedPath !== null && pathname !== completedPath) {
+      dismissed.current = true;                // they left → gone for good
+    }
+  }, [model, pathname, completedPath]);
+
+  if (loading || !isDjOwner || !model || dismissed.current) return null;
+
+  const complete = model.doneCount >= model.steps.length;
+  if (complete) {
+    // Already complete when this page first loaded (finished in a past session)
+    // → never show. Only linger when they just completed it live.
+    if (!shownIncomplete.current) return null;
+    // Completed live: keep showing (all checked) until they leave the page it
+    // completed on; after that, hide for good.
+    if (completedPath !== null && pathname !== completedPath) return null;
+  }
 
   return (
     <div
