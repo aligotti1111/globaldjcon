@@ -46,7 +46,7 @@ const CopyIcon = ({ done }: { done: boolean }) => (
 );
 
 export default function PayHub({
-  amount, currency, djName, kind, reference, settled, venueName, eventDate, options,
+  amount, currency, djName, kind, reference, settled, venueName, eventDate, logoUrl, options,
 }: {
   amount: number;
   currency: string;
@@ -56,6 +56,7 @@ export default function PayHub({
   settled: boolean;
   venueName: string | null;
   eventDate: string | null;
+  logoUrl?: string | null;
   options: HubOption[];
 }) {
   const [copied, setCopied] = useState<number | null>(null);
@@ -102,15 +103,27 @@ export default function PayHub({
   return (
     <div style={wrap}>
       <div style={card}>
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.6rem' }}>
-          Global DJ Connect
-        </div>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={djName}
+            style={{ display: 'block', maxHeight: 56, maxWidth: 180, objectFit: 'contain', marginBottom: '.7rem' }}
+          />
+        ) : (
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.6rem' }}>
+            Global DJ Connect
+          </div>
+        )}
 
+        <div style={{ fontWeight: 700, color: 'var(--white,#fff)', fontSize: '1.05rem', lineHeight: 1.2, marginBottom: '.15rem' }}>
+          {djName}
+        </div>
         <div style={{ fontSize: '1.9rem', fontWeight: 800, color: 'var(--white,#fff)', lineHeight: 1.1 }}>
           {money(amount, currency)}
         </div>
         <p style={{ margin: '.35rem 0 1.3rem', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', lineHeight: 1.5 }}>
-          {kindLabel} to {djName}
+          {kindLabel}
           {venueName ? ` · ${venueName}` : ''}
           {eventDate ? ` · ${new Date(eventDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
         </p>
