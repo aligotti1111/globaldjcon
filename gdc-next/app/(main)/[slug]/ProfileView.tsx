@@ -21,6 +21,7 @@ import BookingLoginGate from './BookingLoginGate';
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
+import { optimizedImageUrl } from '@/lib/img';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
   LocationPinIcon, ClaimAlertIcon,
@@ -860,7 +861,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               style={
                 data.banner_url
                   ? ({
-                      backgroundImage: `url(${data.banner_url})`,
+                      backgroundImage: `url(${optimizedImageUrl(data.banner_url)})`,
                       ['--banner-pos' as string]: data.banner_position || '50% 50%',
                       ['--banner-pos-mobile' as string]:
                         data.banner_position_mobile || data.banner_position || '50% 50%',
