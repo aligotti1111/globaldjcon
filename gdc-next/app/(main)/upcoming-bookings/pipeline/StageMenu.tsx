@@ -10,7 +10,6 @@
 // stopPropagation because, being position:fixed, they're still DOM children of
 // the row and their clicks would otherwise bubble into the row's expand toggle.
 
-import { stageLabel } from './types';
 import { NEON } from '../shared';
 
 // Only the fields the menu reads — BookingRow's richer step object is
@@ -50,7 +49,7 @@ interface Props {
 }
 
 export default function StageMenu({
-  st, pos, djType, openedLabelText, actionLocked, overrideLocked,
+  st, pos, openedLabelText, actionLocked, overrideLocked,
   onClose, onRunAction, onToggleOverride,
 }: Props) {
   // Deposit/balance are confirmed by hand for every rail except card (Stripe
@@ -61,10 +60,6 @@ export default function StageMenu({
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); onClose(); }} />
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, maxWidth: 210, whiteSpace: 'nowrap' }}>
-        <div style={{ color: 'var(--white,#fff)', fontSize: '.8rem', fontWeight: 800, letterSpacing: '.02em', padding: '.5rem .7rem .4rem' }}>
-          {stageLabel(st.key, djType)}
-        </div>
-        <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 4px' }} />
         {st.manualComplete && (
           <div style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 700, padding: '.35rem .7rem .4rem', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'normal', maxWidth: 190 }}>
             <span style={{ fontSize: '.82rem' }}>&#10003;</span> Manually marked complete
