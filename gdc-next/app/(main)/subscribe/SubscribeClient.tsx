@@ -475,18 +475,53 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         );
       })()}
 
-      {/* Subscribed → send them to set up / activate booking. */}
+      {/* Subscribed → one row of ACTION BUTTONS: Booking Settings + (for paid)
+          Update payment method + Cancel subscription, side by side. */}
       {isSubscribed && (
-        <div className={styles.manageRow}>
-          <Link href="/booking-settings" className={styles.subscribeBtn} style={{ textDecoration: 'none', display: 'inline-block' }}>
+        <div className={styles.manageRow} style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', justifyContent: 'center', alignItems: 'center' }}>
+          <Link
+            href="/booking-settings"
+            className={styles.subscribeBtn}
+            style={{ textDecoration: 'none', display: 'inline-block', width: 'auto' }}
+          >
             Go to Booking Settings
           </Link>
+
+          {isPaid && !cancelInfo?.scheduled && !confirmCancel && (
+            <>
+              <button
+                type="button"
+                onClick={openPortal}
+                disabled={portalLoading}
+                style={{
+                  width: 'auto', border: '1px solid var(--neon,#00e0a4)', background: 'transparent',
+                  color: 'var(--neon,#00e0a4)', borderRadius: 10, padding: '0.85rem 1.2rem',
+                  fontSize: '0.95rem', fontWeight: 700, cursor: portalLoading ? 'default' : 'pointer',
+                  opacity: portalLoading ? 0.6 : 1,
+                }}
+              >
+                {portalLoading ? 'Opening…' : 'Update payment method'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmCancel(true)}
+                style={{
+                  width: 'auto', border: '1px solid rgba(255,120,120,.55)', background: 'transparent',
+                  color: '#ff8b8b', borderRadius: 10, padding: '0.85rem 1.2rem',
+                  fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Cancel subscription
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {/* Bottom manage — on-site cancel / resume; card update still via portal. */}
-      {isSubscribed && isPaid && (
-        <div className={styles.manageRow} style={{ flexDirection: 'column', gap: '.6rem', alignItems: 'center' }}>
+      {/* Cancel confirmation / scheduled notice — shown below the buttons only
+          when relevant, using the on-site cancel/resume flow (no Stripe portal). */}
+      {isSubscribed && isPaid && (confirmCancel || cancelInfo?.scheduled) && (
+        <div className={styles.manageRow} style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', marginTop: '1rem' }}>
           {cancelInfo?.scheduled ? (
             <>
               <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
@@ -497,7 +532,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 {cancelBusy ? 'Working…' : 'Resume subscription'}
               </button>
             </>
-          ) : confirmCancel ? (
+          ) : (
             <>
               <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
                 Cancel your subscription? You&apos;ll keep access until the end of the current billing period.
@@ -510,15 +545,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   {cancelBusy ? 'Cancelling…' : 'Yes, cancel'}
                 </button>
               </div>
-            </>
-          ) : (
-            <>
-              <button type="button" className={styles.manageBtn} onClick={openPortal} disabled={portalLoading}>
-                {portalLoading ? 'Opening…' : 'Update payment method'}
-              </button>
-              <button type="button" className={styles.manageBtn} onClick={() => setConfirmCancel(true)}>
-                Cancel subscription
-              </button>
             </>
           )}
         </div>
