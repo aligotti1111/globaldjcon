@@ -1254,7 +1254,12 @@ export default function HomePage() {
       const btn = card.querySelector<HTMLElement>('.btn');
       if (!btn || idx === 0) return;
       btn.classList.remove('is-current');
-      if (idx === currentTier) { btn.textContent = 'Current Plan'; btn.classList.add('is-current'); }
+      // The tier they're ON → "Manage Plan" (routes to /subscribe, which is the
+      // only place that knows their billing interval, so it can offer a
+      // monthly⇄yearly switch correctly). We deliberately DON'T say "Current
+      // Plan" here — that would be wrong when the Annual toggle is showing a
+      // month-to-month subscriber the yearly option.
+      if (idx === currentTier) btn.textContent = 'Manage Plan';
       else if (idx > currentTier) btn.textContent = 'Upgrade';
       else btn.textContent = 'Switch';
     });
