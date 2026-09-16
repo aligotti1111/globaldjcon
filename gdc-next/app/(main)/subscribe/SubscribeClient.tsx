@@ -65,7 +65,7 @@ type Feat = { key: string; text: string; included: boolean; emphasis?: boolean }
 // number in its label) so tiers can be diffed against each other.
 function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
   const feats: Feat[] = [
-    { key: 'booking', text: 'Booking System', included: d.booking },
+    { key: 'booking', text: 'Booking Engine', included: d.booking },
     { key: 'contracts', text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0, emphasis: true },
     { key: 'deposits', text: 'Deposits', included: d.proFeatures },
     { key: 'invoicing', text: 'Invoicing', included: d.proFeatures },
@@ -80,6 +80,9 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
     { key: 'calendar', text: 'Embeddable calendar', included: d.embedCalendar },
     { key: 'seats', text: d.seats > 0 ? `${d.seats} team logins` : 'Team logins', included: d.seats > 0, emphasis: d.seats > 0 },
   ];
+  // A logged-in DJ sees only the features for their own account type; a
+  // logged-out visitor (djType null, e.g. the front-page pricing) sees all,
+  // each with a type label so it's clear which DJ type it applies to.
   if (djType !== 'club') {
     feats.push({ key: 'planner', text: 'Planner & Playlist (Mobile DJs)', included: true });
   }
@@ -93,6 +96,40 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
 function planName(tier: Tier): string {
   return TIER_LABELS[tier] ?? 'Free';
 }
+
+// Full feature list for a tier, ordered for display: Booking Engine pinned
+// first, then the items that are new or increased vs the tier below (flagged
+// `hot`), then the rest. `hot` drives the inline highlight. For the lowest paid
+// tier (no `prev`), its own emphasis items are treated as the highlights.
+type OrderedFeat = Feat & { hot: boolean };
+function orderedFeatures(d: TierDef, prev: TierDef | null, djType?: 'mobile' | 'club' | null): OrderedFeat[] {
+  const prevByKey = prev
+    ? new Map(planFeatures(prev, djType).filter((f) => f.included).map((f) => [f.key, f.text]))
+    : null;
+  const feats: OrderedFeat[] = planFeatures(d, djType).map((f) => {
+    const hot = !f.included
+      ? false
+      : prevByKey
+        ? (!prevByKey.has(f.key) || prevByKey.get(f.key) !== f.text)
+        : !!f.emphasis;
+    return { ...f, hot };
+  });
+  const rank = (f: OrderedFeat) => (f.key === 'booking' ? 0 : f.hot ? 1 : 2);
+  return feats.map((f, i) => [f, i] as const)
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1])
+    .map(([f]) => f);
+}
+
+const CHECK_SVG = (
+  <svg viewBox="0 0 24 24" fill="none" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const X_SVG = (
+  <svg viewBox="0 0 24 24" fill="none" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
 
 function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, djType, currentInterval }: Props) {
   const searchParams = useSearchParams();
@@ -330,8 +367,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       )}
 
       <div className={styles.header}>
+        <div className={styles.eyebrow}>Membership</div>
         <h1 className={styles.title}>
-          {isPaid ? 'Your plan' : 'Choose your plan'}
+          {isPaid ? 'Your Plan' : 'Choose Your Plan'}
         </h1>
 
         {/* Interval toggle — buying (new/comp) and switching (paid). */}
@@ -384,24 +422,40 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           // Buyable only when a Stripe price ID exists for this tier+interval.
           const purchasable = !!priceIdFor(tier, interval);
 
+          // v3 price parts + progressive feature ordering.
+          const prevDef = tier > 1 ? TIERS[(tier - 1) as PaidTier] : null;
+          const feats = orderedFeatures(def, prevDef, djType);
+          const priceNum = interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice;
+          const amtStr = priceNum.toFixed(2);
+          const perLabel = interval === 'monthly' ? '/ month' : '/ year';
+          const altLine = interval === 'monthly'
+            ? `or ${fmtPrice(def.yearlyPrice)} / yr`
+            : `or ${fmtPrice(def.monthlyPrice)} / mo`;
+          void price; void period; // superseded by the parts above
+
           return (
             <div
               key={tier}
               className={`${styles.card} ${featured ? styles.cardFeatured : ''} ${isCurrent ? styles.cardCurrent : ''}`}
             >
-              {featured && <div className={styles.popularBadge}>Most Popular</div>}
+              <div className={styles.popRow}>
+                {featured && <span className={styles.popularBadge}>Most Popular</span>}
+              </div>
               <div className={styles.planName}>{def.label}</div>
               <div className={styles.price}>
-                {price}
-                <span className={styles.period}>{period}</span>
+                <span className={styles.cur}>$</span>
+                <span className={styles.amt}>{amtStr}</span>
+                <span className={styles.period}>{perLabel}</span>
               </div>
-              <ul className={styles.blurb} style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                {planFeatures(def, djType).map((feat) => (
-                  <li key={feat.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', opacity: feat.included ? 1 : 0.45 }}>
-                    <span aria-hidden style={{ color: feat.included ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontWeight: 700, lineHeight: 1.4 }}>
-                      {feat.included ? '\u2713' : '\u2717'}
-                    </span>
-                    <span style={feat.emphasis && feat.included ? { fontWeight: 700, color: 'var(--white,#fff)' } : undefined}>{feat.text}</span>
+              <div className={styles.yr}>{altLine}</div>
+              <ul className={styles.featList}>
+                {feats.map((feat) => (
+                  <li
+                    key={feat.key}
+                    className={`${styles.feat} ${feat.included ? '' : styles.featOff} ${feat.hot ? styles.featHot : ''}`}
+                  >
+                    <span aria-hidden className={styles.featChk}>{feat.included ? CHECK_SVG : X_SVG}</span>
+                    <span>{feat.text}</span>
                   </li>
                 ))}
               </ul>
