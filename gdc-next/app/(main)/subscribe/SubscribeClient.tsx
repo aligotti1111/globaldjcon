@@ -70,8 +70,9 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: st
     { text: 'Inbox messaging', included: true },
     { text: 'QR code to your profile', included: d.qrCode },
     { text: `${d.photos} profile photos`, included: d.photos > 0, emphasis: true },
-    { text: `${d.videos} videos`, included: d.videos > 0, emphasis: true },
-    { text: `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
+    // Paid tiers get unlimited embedded videos/mixes; Free keeps its small count.
+    { text: d.tier > 0 ? 'Unlimited videos' : `${d.videos} videos`, included: d.videos > 0, emphasis: true },
+    { text: d.tier > 0 ? 'Unlimited mixes' : `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
     { text: 'Embeddable calendar', included: d.embedCalendar },
     // Team logins (extra seats) — Pro and up. Starter shows it crossed out.
     { text: d.seats > 0 ? `${d.seats} team logins` : 'Team logins', included: d.seats > 0, emphasis: d.seats > 0 },
