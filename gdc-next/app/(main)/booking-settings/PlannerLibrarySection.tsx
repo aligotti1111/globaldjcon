@@ -151,14 +151,6 @@ export default function PlannerLibrarySection() {
   }
   useEffect(() => { void load(); }, []);
 
-  function openPreview(t: TemplateLite) {
-    // Pass the exact row id AND the name — event type alone can't tell the two
-    // wedding templates (with / without ceremony) apart; the name is a fallback
-    // if the id path isn't available.
-    const qs = new URLSearchParams({ templateId: t.id, name: t.name });
-    if (t.eventType) qs.set('eventType', t.eventType);
-    window.open(`/planner-preview?${qs}`, '_blank');
-  }
   function openEdit(t: TemplateLite) {
     const qs = new URLSearchParams({ name: t.name, templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
@@ -268,8 +260,7 @@ export default function PlannerLibrarySection() {
                     ><PencilIcon /></button>
                   </span>
                   <span style={countStyle}>{t.count} questions</span>
-                  <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
-                  <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit Template</button>
+                  <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Preview/Edit Template</button>
                 </>
               )}
             </div>
