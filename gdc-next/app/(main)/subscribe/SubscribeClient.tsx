@@ -315,6 +315,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           {isComp && accessUntilLabel && (
             <span className={styles.graceNote}>{' '}Access through {accessUntilLabel}.</span>
           )}
+          {isPaid && accessUntilLabel && currentState === 'active' && (
+            <span className={styles.graceNote}>
+              {' '}{cancelInfo?.scheduled ? `Access ends ${accessUntilLabel}.` : `Renews ${accessUntilLabel}.`}
+            </span>
+          )}
           {currentState === 'grace' && (
             <span className={styles.graceNote}>
               {' '}Your last payment didn&apos;t go through — please update your card to keep your access.
