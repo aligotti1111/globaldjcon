@@ -931,7 +931,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     onClick={() => setLightboxSrc(data.avatar_url!)}
                   />
                 ) : (
-                  initials(data.name)
+                  // Owner with no photo: leave the circle empty (camera + hint
+                  // fill it). Visitors never see this empty circle. Initials
+                  // still show as the fallback for a hidden-but-set avatar.
+                  canEdit ? null : initials(data.name)
                 )}
               </div>
               {/* Owner-only "Hidden" badge so they know visitors can't see it.
@@ -1008,9 +1011,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                         transform: 'translateX(-50%)',
                         width: '82%',
                         textAlign: 'center',
-                        color: 'var(--muted,#8a8aa0)',
+                        color: 'rgba(255,255,255,.45)',
                         fontFamily: "'Space Mono', monospace",
-                        fontSize: '.58rem',
+                        fontSize: '.5rem',
                         lineHeight: 1.35,
                         letterSpacing: '.02em',
                         pointerEvents: 'none',
