@@ -1,55 +1,29 @@
 'use client';
 
-// SetupChecklist — a horizontal onboarding strip shown under the header for a
-// SUBSCRIBED DJ who hasn't finished setting up their booking page. It walks them
-// through the Booking Settings tabs in order; each step gets a ✓ when done.
+// SetupChecklist — a ONE-TIME "Review booking settings" nudge shown only to a
+// DJ during their FIRST subscription. Once they open or dismiss it, the account
+// flag users.setup_reviewed flips true and it never shows again — including
+// after a cancel → resubscribe, and across devices (the flag lives on the
+// account, not in per-browser localStorage).
 //
-// Two kinds of steps:
-//   · 'data'   — done is derived from real data (always accurate, no storage):
-//                mobile Packages (≥1 package), Payments (≥1 usable method or
-//                Stripe card ready), club Equipment & Rates (a selection made).
-//   · 'viewed' — done once the DJ has OPENED that tab. Recorded in localStorage
-//                by BookingSettingsClient (key gdc_setup_viewed_<userId>), which
-//                dispatches a 'gdc-setup-progress' event we listen for.
+// On the homepage it portals into the search row (#gdc-setup-slot) so it shares
+// that line; anywhere else it renders as a slim strip under the header.
 //
-// The whole strip disappears the moment every step is checked. It only shows for
-// a DJ owner with booking access (subscribed/comp) — never hosts, teammates, or
-// not-yet-subscribed accounts.
+// Only the ACCOUNT OWNER with booking access (subscribed/comped) ever sees it.
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import { canBook, type AccessFields } from '@/lib/access';
-import { parseBookingSettings, packageTiers, type MobilePackage } from '@/app/(main)/[slug]/bookingSettings';
-import { usableMethods, type PaymentMethod } from '@/lib/paymentMethods';
 
-type StepId = 'settings' | 'packages' | 'contracts' | 'payments' | 'planners' | 'rates' | 'rider' | 'guests';
-
-interface StepDef { id: StepId; label: string; kind: 'data' | 'viewed' }
-
-const MOBILE_STEPS: StepDef[] = [
-  { id: 'settings', label: 'Settings', kind: 'viewed' },
-  { id: 'packages', label: 'Packages', kind: 'data' },
-  { id: 'contracts', label: 'Contracts', kind: 'viewed' },
-  { id: 'payments', label: 'Payments', kind: 'data' },
-  { id: 'planners', label: 'Planner & Playlist', kind: 'viewed' },
-];
-
-const CLUB_STEPS: StepDef[] = [
-  { id: 'settings', label: 'Settings', kind: 'viewed' },
-  { id: 'rates', label: 'Equipment & Rates', kind: 'data' },
-  { id: 'contracts', label: 'Contracts', kind: 'viewed' },
-  { id: 'rider', label: 'DJ Rider', kind: 'viewed' },
-  { id: 'guests', label: 'Guest List', kind: 'viewed' },
-  { id: 'payments', label: 'Payments', kind: 'data' },
-];
-
+// ── Legacy helpers kept for import compatibility (BookingSettingsClient still
+//    calls markStepViewed on tab view). They no longer drive this component but
+//    remain harmless no-op-ish localStorage writers. ─────────────────────────
 const viewedKey = (userId: string) => `gdc_setup_viewed_${userId}`;
 
-/** Shared reader so BookingSettingsClient and this strip agree on the store. */
 export function readViewedSteps(userId: string): Set<string> {
   try {
     const raw = localStorage.getItem(viewedKey(userId));
@@ -60,7 +34,6 @@ export function readViewedSteps(userId: string): Set<string> {
   }
 }
 
-/** Record a tab as viewed and notify any open strip in the same tab. */
 export function markStepViewed(userId: string, stepId: string) {
   try {
     const set = readViewedSteps(userId);
@@ -73,36 +46,22 @@ export function markStepViewed(userId: string, stepId: string) {
 
 interface Row {
   dj_type: 'mobile' | 'club' | null;
-  booking_settings: string | null;
-  payment_methods: PaymentMethod[] | null;
-  stripe_connect_ready: boolean | null;
   sub_tier: number | null;
   sub_status: string | null;
   sub_period_end: string | null;
   comp_tier: number | null;
   comp_expires_at: string | null;
   comp_source: string | null;
+  setup_reviewed: boolean | null;
 }
 
 export default function SetupChecklist() {
   const { user, loading } = useAuth();
   const pathname = usePathname();
   const [row, setRow] = useState<Row | null>(null);
-  const [viewed, setViewed] = useState<Set<string>>(new Set());
-  // Completion behavior: once the DJ checks the LAST step, keep the strip
-  // visible (fully checked) while they're still on the page it completed on, and
-  // only hide after they navigate away — instead of vanishing under them.
-  const shownIncomplete = useRef(false);       // did we ever render it incomplete this mount?
-  const [completedPath, setCompletedPath] = useState<string | null>(null);
-  const dismissed = useRef(false);             // hidden for good this mount (post-completion nav)
-  // On the homepage the search bar exposes a mount slot (#gdc-setup-slot); when
-  // present we portal the stepper INTO it so it shares the search row. Elsewhere
-  // (no slot) it falls back to a slim strip under the header.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [dismissed, setDismissed] = useState(false);
 
-  // Only the ACCOUNT OWNER gets the setup strip — a DJ acting as 'owner'. This
-  // excludes hosts, admins, and every teammate (role 'teammate', or a DJ signed
-  // in on a non-owner seat), matching how the header derives ownership.
   const actingRole = (user as { actingRole?: string } | null)?.actingRole ?? 'owner';
   const isDjOwner = !!user && user.role === 'dj' && actingRole === 'owner';
   const userId = user?.id ?? null;
@@ -113,7 +72,7 @@ export default function SetupChecklist() {
       const supabase = createClient();
       const { data } = await supabase
         .from('users')
-        .select('dj_type, booking_settings, payment_methods, stripe_connect_ready, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+        .select('dj_type, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, setup_reviewed')
         .eq('id', userId)
         .maybeSingle();
       setRow((data as unknown as Row) ?? null);
@@ -122,8 +81,6 @@ export default function SetupChecklist() {
     }
   }, [userId]);
 
-  // Refetch the data-derived signals on mount and whenever they navigate (so a
-  // package/payment added on Booking Settings reflects when they come back).
   useEffect(() => { if (isDjOwner) load(); }, [isDjOwner, pathname, load]);
 
   // Locate the homepage search-row slot (retry a few frames; it lives in the
@@ -140,150 +97,53 @@ export default function SetupChecklist() {
     return () => cancelAnimationFrame(raf);
   }, [isDjOwner, pathname]);
 
-  // Read viewed steps on mount + whenever a tab is opened (same-tab event) or
-  // the window regains focus / another tab writes.
-  useEffect(() => {
-    if (!userId) return;
-    const sync = () => setViewed(readViewedSteps(userId));
-    sync();
-    window.addEventListener('gdc-setup-progress', sync);
-    window.addEventListener('focus', sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener('gdc-setup-progress', sync);
-      window.removeEventListener('focus', sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, [userId, pathname]);
+  // Mark the account as having seen the prompt (persists across resubscribe /
+  // devices), and hide it immediately.
+  const markReviewed = useCallback(() => {
+    setDismissed(true);
+    void fetch('/api/dj/setup-reviewed', { method: 'POST' }).catch(() => {});
+  }, []);
 
-  const model = useMemo(() => {
-    if (!row) return null;
-    const djType = row.dj_type;
-    if (djType !== 'mobile' && djType !== 'club') return null;
-
-    // Only subscribed / comped DJs get the checklist.
-    if (!canBook(row as unknown as AccessFields)) return null;
-
-    const bs = (parseBookingSettings(row.booking_settings) || {}) as Record<string, unknown>;
-
-    // Data signal: has at least one bookable package (mobile).
-    const packs = (bs.mob_packages as Record<string, MobilePackage[]> | undefined) || {};
-    const hasPackage = Object.values(packs).some(
-      (arr) => Array.isArray(arr) && arr.some(
-        (pkg) => !!pkg && !!(pkg.title && String(pkg.title).trim()) &&
-          (pkg.reqAll === true || packageTiers(pkg).length > 0),
-      ),
-    );
-
-    // Data signal: an equipment selection exists (club).
-    const hasEquip = !!bs.equip_full || !!bs.equip_decks || !!bs.equip_none;
-
-    // Data signal: a usable payment method, or Stripe card is ready.
-    const hasPayment = usableMethods(row.payment_methods || []).length > 0 || row.stripe_connect_ready === true;
-
-    const dataDone: Record<string, boolean> = {
-      packages: hasPackage,
-      rates: hasEquip,
-      payments: hasPayment,
-    };
-
-    const steps = (djType === 'club' ? CLUB_STEPS : MOBILE_STEPS).map((s) => ({
-      ...s,
-      done: s.kind === 'data' ? !!dataDone[s.id] : viewed.has(s.id),
-    }));
-
-    return { steps, doneCount: steps.filter((s) => s.done).length };
-  }, [row, viewed]);
-
-  // Track completion so the strip lingers (checked) on the page it completed on,
-  // then hides after the DJ navigates away.
-  useEffect(() => {
-    if (!model) return;
-    const complete = model.doneCount >= model.steps.length;
-    if (!complete) {
-      shownIncomplete.current = true;
-      if (completedPath !== null) setCompletedPath(null);
-      return;
-    }
-    // complete:
-    if (shownIncomplete.current && completedPath === null) {
-      setCompletedPath(pathname);              // pin the page it completed on
-    } else if (completedPath !== null && pathname !== completedPath) {
-      dismissed.current = true;                // they left → gone for good
-    }
-  }, [model, pathname, completedPath]);
-
-  if (loading || !isDjOwner || !model || dismissed.current) return null;
-
-  const complete = model.doneCount >= model.steps.length;
-  if (complete) {
-    // Already complete when this page first loaded (finished in a past session)
-    // → never show. Only linger when they just completed it live.
-    if (!shownIncomplete.current) return null;
-    // Completed live: keep showing (all checked) until they leave the page it
-    // completed on; after that, hide for good.
-    if (completedPath !== null && pathname !== completedPath) return null;
-  }
+  if (loading || !isDjOwner || dismissed) return null;
+  if (!row) return null;
+  const djType = row.dj_type;
+  if (djType !== 'mobile' && djType !== 'club') return null;
+  // Only subscribed/comped owners, and only until they've reviewed once.
+  if (!canBook(row as unknown as AccessFields)) return null;
+  if (row.setup_reviewed) return null;
 
   const NEON = 'var(--neon,#00e0a4)';
-  // The current step = the first one not yet done (gets the highlighted ring).
-  const currentIdx = model.steps.findIndex((s) => !s.done);
-
-  // Compact single-line stepper: number + label inline per step. Shared by both
-  // the portal (homepage search row) and the fallback strip.
-  const stepper = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 'min-content', gap: 6, overflowX: 'auto' }}>
-          {model.steps.map((s, i) => {
-            const isCurrent = i === currentIdx;
-            const circleStyle: CSSProperties = s.done
-              ? { background: NEON, border: `1.5px solid ${NEON}`, color: '#04121a' }
-              : isCurrent
-                ? { background: 'transparent', border: `1.5px solid ${NEON}`, color: NEON }
-                : { background: 'transparent', border: '1.5px solid rgba(255,255,255,.3)', color: 'var(--muted,#8a8aa0)' };
-            const labelColor = s.done ? NEON : isCurrent ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)';
-            return (
-              <Fragment key={s.id}>
-                {i > 0 && (
-                  <div
-                    aria-hidden
-                    style={{
-                      height: 1, flex: 1, minWidth: 12,
-                      background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)',
-                    }}
-                  />
-                )}
-                <Link
-                  href={`/booking-settings?section=${s.id}`}
-                  style={{
-                    display: 'inline-flex', flexDirection: 'row', alignItems: 'center',
-                    flex: '0 0 auto', textDecoration: 'none', gap: 5, whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                      fontSize: '.6rem', fontWeight: 800, ...circleStyle,
-                    }}
-                  >
-                    {s.done ? '✓' : i + 1}
-                  </span>
-                  <span style={{ fontSize: '.62rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>
-                    {s.label}
-                  </span>
-                </Link>
-              </Fragment>
-            );
-          })}
+  const prompt = (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+      <Link
+        href="/booking-settings"
+        onClick={markReviewed}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none',
+          background: NEON, color: '#04121a', fontWeight: 700, fontSize: '.72rem',
+          padding: '.4rem .8rem', borderRadius: 999, letterSpacing: '.02em',
+        }}
+      >
+        Review booking settings →
+      </Link>
+      <button
+        type="button"
+        onClick={markReviewed}
+        aria-label="Dismiss"
+        style={{
+          background: 'transparent', border: 'none', color: 'var(--muted,#8a8aa0)',
+          fontSize: '.9rem', lineHeight: 1, cursor: 'pointer', padding: '2px 4px',
+        }}
+      >
+        ✕
+      </button>
     </div>
   );
 
-  // Homepage: portal into the search row. Everywhere else: slim strip under header.
-  if (slot) return createPortal(stepper, slot);
+  if (slot) return createPortal(prompt, slot);
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', background: 'rgba(0,0,0,.35)', padding: '.35rem .75rem' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>{stepper}</div>
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', background: 'rgba(0,0,0,.35)', padding: '.4rem .75rem' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', justifyContent: 'center' }}>{prompt}</div>
     </div>
   );
 }
