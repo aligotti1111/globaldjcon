@@ -103,7 +103,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const isComp = source === 'admin' || source === 'code';
   const isPaid = source === 'stripe';
   const accessUntilLabel = accessUntil
-    ? new Date(accessUntil).toLocaleDateString()
+    ? new Date(accessUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null;
 
   // Open on the interval the DJ is already billed at, so their current plan
