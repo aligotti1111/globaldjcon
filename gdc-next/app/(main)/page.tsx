@@ -28,6 +28,11 @@ const LANDING_CSS = String.raw`
 .gdc-landing.gdc-signedin .price .plan:first-child{display:none!important}
 /* Hosts don't subscribe — hide the whole pricing section for a signed-in host. */
 .gdc-landing.gdc-host #pricing{display:none!important}
+/* Show only the feature rows for the account's DJ type (logged-out sees both). */
+.gdc-landing.gdc-mobile .plan li.club-only{display:none}
+.gdc-landing.gdc-club .plan li.mob-only{display:none}
+/* The plan a subscriber is already on — dim, non-clickable label. */
+.gdc-landing .plan .btn.is-current{opacity:.65;pointer-events:none;background:transparent;border:1px solid var(--line);color:var(--neon)}
 .gdc-landing *, .gdc-landing{box-sizing:border-box;margin:0;padding:0}
 .gdc-landing{scroll-behavior:smooth}
 .gdc-landing{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -785,9 +790,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
           <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Embeddable calendar</li>
           <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Team logins</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Starter</a>
       </div>
@@ -808,9 +813,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
       </div>
@@ -830,9 +835,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
       </div>
@@ -852,9 +857,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Enterprise</a>
       </div>
@@ -1212,10 +1217,12 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 // only ever re-renders when the signed-in state actually flips (once), not on
 // every auth-object change or sibling modal toggle. The reveal script also
 // self-heals via a MutationObserver as a second line of defence.
-const LandingMarkup = memo(function LandingMarkup({ signedIn, isHost }: { signedIn: boolean; isHost: boolean }) {
+const LandingMarkup = memo(function LandingMarkup(
+  { signedIn, isHost, djType }: { signedIn: boolean; isHost: boolean; djType: 'mobile' | 'club' | null },
+) {
   return (
     <div
-      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${isHost ? 'gdc-host' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
+      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${isHost ? 'gdc-host' : ''} ${djType === 'mobile' ? 'gdc-mobile' : ''} ${djType === 'club' ? 'gdc-club' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
       dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
     />
   );
@@ -1227,8 +1234,31 @@ export default function HomePage() {
   // The paid plans stay so they can still upgrade.
   const { user } = useAuth();
   const signedIn = !!user;
+  const u = user as { role?: string; dj_type?: string | null; sub_tier?: number | null; comp_tier?: number | null } | null;
   // Hosts don't have subscriptions, so hide the pricing section for them.
-  const isHost = (user as { role?: string } | null)?.role === 'host';
+  const isHost = u?.role === 'host';
+  // DJ type → filter feature rows to the account's own type on the pricing cards.
+  const djType: 'mobile' | 'club' | null = u?.dj_type === 'mobile' || u?.dj_type === 'club' ? u.dj_type : null;
+  // The tier this DJ is currently on (paid or comped). 0 = Free / none.
+  const currentTier = signedIn && u?.role === 'dj' ? Math.max(u?.sub_tier ?? 0, u?.comp_tier ?? 0) : 0;
+
+  // Relabel the pricing CTAs for a SUBSCRIBED DJ: their current plan reads
+  // "Current Plan" (disabled), higher tiers "Upgrade", lower "Switch". An
+  // unsubscribed (Free) DJ keeps "Choose X" — they're subscribing for the first
+  // time. Runs after the static markup is committed; re-runs if state changes.
+  useEffect(() => {
+    if (currentTier < 1) return; // Free / host / logged-out → leave labels as-is
+    const cards = document.querySelectorAll<HTMLElement>('#pricing .plan');
+    cards.forEach((card, idx) => {
+      // idx 0 = Free, 1 = Starter … 4 = Enterprise → tier index matches.
+      const btn = card.querySelector<HTMLElement>('.btn');
+      if (!btn || idx === 0) return;
+      btn.classList.remove('is-current');
+      if (idx === currentTier) { btn.textContent = 'Current Plan'; btn.classList.add('is-current'); }
+      else if (idx > currentTier) btn.textContent = 'Upgrade';
+      else btn.textContent = 'Switch';
+    });
+  }, [currentTier, signedIn, djType]);
   // The plan CTAs live in the static LANDING_BODY string, so they can't read
   // React state. Mirror the auth flag onto window: signed-in clicks go to
   // /subscribe (the manage-subscription page — it shows the plan you're on and
@@ -1262,7 +1292,7 @@ export default function HomePage() {
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <LandingMarkup signedIn={signedIn} isHost={isHost} />
+      <LandingMarkup signedIn={signedIn} isHost={isHost} djType={djType} />
     </>
   );
 }
