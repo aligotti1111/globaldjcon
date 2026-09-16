@@ -253,6 +253,21 @@
 .manageBtn:hover { border-color: rgba(255, 255, 255, 0.4); }
 .manageBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Plain text link for the interval switch under the current plan. */
+.switchLink {
+  border: none;
+  background: none;
+  padding: 0.2rem 0;
+  color: var(--neon, #00e0a4);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.switchLink:hover { filter: brightness(1.1); }
+.switchLink:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: none; }
+
 /* ── Result banners ──────────────────────────────────────── */
 .error {
   max-width: 560px;
