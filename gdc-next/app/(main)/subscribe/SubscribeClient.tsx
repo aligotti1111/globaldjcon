@@ -58,38 +58,49 @@ function fmtPrice(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
+type Feat = { key: string; text: string; included: boolean; emphasis?: boolean };
+
 // Itemized feature list built from the tier's flags — no hand-written copy to
-// drift from the table. `included` drives the check vs cross styling.
-function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: string; included: boolean; emphasis?: boolean }[] {
-  const feats: { text: string; included: boolean; emphasis?: boolean }[] = [
-    { text: 'Booking System', included: d.booking },
-    { text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0, emphasis: true },
-    { text: 'Deposits', included: d.proFeatures },
-    { text: 'Invoicing', included: d.proFeatures },
-    { text: 'Receipts', included: d.proFeatures },
-    // Finance & earnings reports — all paid tiers (Starter and up).
-    { text: 'Finance & earnings reports', included: d.proFeatures },
-    { text: 'Inbox messaging', included: true },
-    { text: 'QR code to your profile', included: d.qrCode },
-    { text: `${d.photos} profile photos`, included: d.photos > 0, emphasis: true },
+// drift from the table. Each item carries a stable `key` (independent of the
+// number in its label) so tiers can be diffed against each other.
+function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
+  const feats: Feat[] = [
+    { key: 'booking', text: 'Booking System', included: d.booking },
+    { key: 'contracts', text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0, emphasis: true },
+    { key: 'deposits', text: 'Deposits', included: d.proFeatures },
+    { key: 'invoicing', text: 'Invoicing', included: d.proFeatures },
+    { key: 'receipts', text: 'Receipts', included: d.proFeatures },
+    { key: 'finance', text: 'Finance & earnings reports', included: d.proFeatures },
+    { key: 'inbox', text: 'Inbox messaging', included: true },
+    { key: 'qr', text: 'QR code to your profile', included: d.qrCode },
+    { key: 'photos', text: `${d.photos} profile photos`, included: d.photos > 0, emphasis: true },
     // Paid tiers get unlimited embedded videos/mixes; Free keeps its small count.
-    { text: d.tier > 0 ? 'Unlimited videos' : `${d.videos} videos`, included: d.videos > 0, emphasis: true },
-    { text: d.tier > 0 ? 'Unlimited mixes' : `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
-    { text: 'Embeddable calendar', included: d.embedCalendar },
-    // Team logins (extra seats) — Pro and up. Starter shows it crossed out.
-    { text: d.seats > 0 ? `${d.seats} team logins` : 'Team logins', included: d.seats > 0, emphasis: d.seats > 0 },
+    { key: 'videos', text: d.tier > 0 ? 'Unlimited videos' : `${d.videos} videos`, included: d.videos > 0, emphasis: true },
+    { key: 'mixes', text: d.tier > 0 ? 'Unlimited mixes' : `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
+    { key: 'calendar', text: 'Embeddable calendar', included: d.embedCalendar },
+    { key: 'seats', text: d.seats > 0 ? `${d.seats} team logins` : 'Team logins', included: d.seats > 0, emphasis: d.seats > 0 },
   ];
-  // Mobile-DJ-only extras (also shown to logged-out visitors: djType null).
   if (djType !== 'club') {
-    feats.push({ text: 'Event planner', included: true });
-    feats.push({ text: 'Playlist & song requests', included: true });
+    feats.push({ key: 'planner', text: 'Event planner', included: true });
+    feats.push({ key: 'songs', text: 'Playlist & song requests', included: true });
   }
-  // Club/Bar-DJ-only extras.
   if (djType !== 'mobile') {
-    feats.push({ text: 'Send rider', included: true });
-    feats.push({ text: 'Guest list', included: true });
+    feats.push({ key: 'rider', text: 'Send rider', included: true });
+    feats.push({ key: 'guestlist', text: 'Guest list', included: true });
   }
   return feats;
+}
+
+// Progressive display: the lowest card shows its full included list; every card
+// above it shows ONLY what's newly added or increased vs the tier below it, so
+// the value stacks instead of repeating the same rows on every card.
+function progressiveFeatures(d: TierDef, prev: TierDef | null, djType?: 'mobile' | 'club' | null): Feat[] {
+  const curr = planFeatures(d, djType).filter((f) => f.included);
+  if (!prev) return curr;
+  const prevByKey = new Map(planFeatures(prev, djType).filter((f) => f.included).map((f) => [f.key, f.text]));
+  // Keep an item only if it's new (not in the tier below) or its label changed
+  // (an increased count, e.g. contracts / photos / team logins).
+  return curr.filter((f) => !prevByKey.has(f.key) || prevByKey.get(f.key) !== f.text);
 }
 
 function planName(tier: Tier): string {
@@ -367,8 +378,12 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {switchMsg && <div className={styles.success}>{switchMsg}</div>}
 
       <div className={styles.cards}>
-        {visibleTiers.map((tier) => {
+        {visibleTiers.map((tier, idx) => {
           const def = TIERS[tier];
+          // The card below this one (for the progressive "what's added" list).
+          const prevDef = idx > 0 ? TIERS[visibleTiers[idx - 1]] : null;
+          const prevLabel = prevDef ? prevDef.label : null;
+          const shownFeats = progressiveFeatures(def, prevDef, djType);
           const price = fmtPrice(interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice);
           const period = interval === 'monthly' ? '/mo' : '/yr';
           // Current = the tier you're on, whether that's a paid subscription OR
@@ -397,13 +412,18 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 {price}
                 <span className={styles.period}>{period}</span>
               </div>
+              {prevLabel && (
+                <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--neon,#00e0a4)', margin: '0 0 .6rem' }}>
+                  Everything in {prevLabel}, plus:
+                </div>
+              )}
               <ul className={styles.blurb} style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                {planFeatures(def, djType).map((feat) => (
-                  <li key={feat.text} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', opacity: feat.included ? 1 : 0.45 }}>
-                    <span aria-hidden style={{ color: feat.included ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontWeight: 700, lineHeight: 1.4 }}>
-                      {feat.included ? '\u2713' : '\u2717'}
+                {shownFeats.map((feat) => (
+                  <li key={feat.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem' }}>
+                    <span aria-hidden style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, lineHeight: 1.4 }}>
+                      {'\u2713'}
                     </span>
-                    <span style={feat.emphasis && feat.included ? { fontWeight: 700, color: 'var(--white,#fff)' } : undefined}>{feat.text}</span>
+                    <span style={feat.emphasis ? { fontWeight: 700, color: 'var(--white,#fff)' } : undefined}>{feat.text}</span>
                   </li>
                 ))}
               </ul>
