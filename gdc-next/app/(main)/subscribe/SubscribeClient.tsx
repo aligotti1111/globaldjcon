@@ -92,14 +92,11 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
 }
 
 // Progressive display: the lowest card shows its full included list; every card
-// above it shows ONLY what's newly added or increased vs the tier below it, so
-// the value stacks instead of repeating the same rows on every card.
+// above it shows ONLY what's newly added or increased vs the tier below it.
 function progressiveFeatures(d: TierDef, prev: TierDef | null, djType?: 'mobile' | 'club' | null): Feat[] {
   const curr = planFeatures(d, djType).filter((f) => f.included);
   if (!prev) return curr;
   const prevByKey = new Map(planFeatures(prev, djType).filter((f) => f.included).map((f) => [f.key, f.text]));
-  // Keep an item only if it's new (not in the tier below) or its label changed
-  // (an increased count, e.g. contracts / photos / team logins).
   return curr.filter((f) => !prevByKey.has(f.key) || prevByKey.get(f.key) !== f.text);
 }
 
