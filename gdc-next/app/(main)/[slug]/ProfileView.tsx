@@ -562,7 +562,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     && (data as { mix_urls?: string[] }).mix_urls!.length > 0)
     ? (data as { mix_urls?: string[] }).mix_urls!.filter((u): u is string => !!u)
     : legacyMix;
-  const mixCap = hasBookingAccess ? 10 : 4;
+  // Paying (or comped) accounts get UNLIMITED mixes; free accounts stay capped.
+  const mixCap = hasBookingAccess ? Infinity : 4;
   // Gallery — new array model (gallery_photos) with fallback to the legacy
   // 4 fixed slots so existing photos still show until re-saved.
   const legacyGallery = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
@@ -583,7 +584,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const videoList: VideoItem[] = (Array.isArray(rawVideoArr) && rawVideoArr.length > 0)
     ? rawVideoArr.filter((v) => v && !!v.url)
     : legacyVideos;
-  const videoCap = hasBookingAccess ? 10 : 3;
+  // Paying (or comped) accounts get UNLIMITED videos; free accounts stay capped.
+  const videoCap = hasBookingAccess ? Infinity : 3;
 
   // Testimonials (JSON-stringified, mobile DJs only)
   let testimonials: Testimonial[] = [];
