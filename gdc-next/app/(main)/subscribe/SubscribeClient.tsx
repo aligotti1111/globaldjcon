@@ -67,6 +67,8 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: st
     { text: 'Deposits', included: d.proFeatures },
     { text: 'Invoicing', included: d.proFeatures },
     { text: 'Receipts', included: d.proFeatures },
+    // Finance & earnings reports — all paid tiers (Starter and up).
+    { text: 'Finance & earnings reports', included: d.proFeatures },
     { text: 'Inbox messaging', included: true },
     { text: 'QR code to your profile', included: d.qrCode },
     { text: `${d.photos} profile photos`, included: d.photos > 0, emphasis: true },
