@@ -832,7 +832,7 @@ export function VideoAddButton({
     return (
       <div style={{ padding: '.75rem .9rem', border: '1px solid var(--neon)', borderRadius: 8, background: 'rgba(0,245,196,.06)', fontFamily: 'DM Sans, sans-serif', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
         You&apos;ve reached the free limit of {cap} videos.{' '}
-        <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> to add up to 10.
+        <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> for unlimited.
       </div>
     );
   }
@@ -887,7 +887,7 @@ export function MixAddButton({
     const trimmed = value.trim();
     if (!trimmed) { setError('Paste a URL first.'); return; }
     if (atCap) {
-      setError(isPaid ? `You've reached ${cap} mixes. Remove one first.` : `Free accounts can add ${cap} mixes. Upgrade for up to 10.`);
+      setError(isPaid ? `You've reached ${cap} mixes. Remove one first.` : `Free accounts can add ${cap} mixes. Upgrade for unlimited.`);
       return;
     }
     setError(null);
@@ -908,7 +908,7 @@ export function MixAddButton({
     return (
       <div style={{ padding: '.75rem .9rem', border: '1px solid var(--neon)', borderRadius: 8, background: 'rgba(0,245,196,.06)', fontFamily: 'DM Sans, sans-serif', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
         You&apos;ve reached the free limit of {cap} mixes.{' '}
-        <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> to add up to 10.
+        <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Upgrade</a> for unlimited.
       </div>
     );
   }
