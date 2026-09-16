@@ -194,25 +194,15 @@ export default function SetupChecklist() {
   const isReviewed = !!row?.setup_reviewed || reviewedLocal;
   const NEON = 'var(--neon,#00e0a4)';
 
-  // ── DONE / RETURNING → compact "Review booking settings" pill ──
+  // Once setup is complete (or on any later resubscribe), show NOTHING. There is
+  // no "Review booking settings" prompt — the checklist only ever appears while
+  // the FIRST-TIME setup is still incomplete.
+  if (isReviewed) return null;
+
   // ── FIRST-TIME (setup not finished) → full step-by-step checklist ──
-  // Both render INLINE in the homepage search row (the #gdc-setup-slot), so the
-  // prompt sits on the same line as the DJ search rather than in its own band.
+  // Renders INLINE in the homepage search row (the #gdc-setup-slot).
   let content: JSX.Element;
-  if (isReviewed) {
-    content = (
-      <Link
-        href="/booking-settings"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none',
-          background: NEON, color: '#04121a', fontWeight: 700, fontSize: '.72rem',
-          padding: '.4rem .8rem', borderRadius: 999, whiteSpace: 'nowrap', margin: '0 auto',
-        }}
-      >
-        Review booking settings →
-      </Link>
-    );
-  } else {
+  {
     const currentIdx = model.steps.findIndex((s) => !s.done);
     const CIRCLE = 22; // px — connectors align to its vertical center
     content = (
