@@ -1,31 +1,16 @@
-/* Subscribe page — "v3" elevated look: one unified panel, tiers split by
-   hairlines, ambient glow behind the featured column. Uses the app fonts
-   (Bebas Neue / Inter / Space Mono, registered globally via next/font) and the
-   neon token, with fallbacks so it renders even if a token is missing. */
+/* Subscribe page — "sleek / premium" card layout: separate rounded cards, each
+   tinted with its own tier accent (a hero band up top), the plan name in the
+   same font as the price, and a Most Popular treatment (accent border + glow +
+   top-right label). Body font is left to the app's global font — not overridden
+   here. Uses the --accent custom prop set per-card from the component, with the
+   neon token as the default. */
 
 .wrap {
   position: relative;
-  max-width: 1220px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 3.25rem 1.25rem 5rem;
-  overflow: hidden;
+  padding: 2.5rem 1.25rem 5rem;
 }
-/* Ambient neon glow behind the featured (center) column. */
-.wrap::before {
-  content: '';
-  position: absolute;
-  top: -140px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 640px;
-  height: 640px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 224, 164, 0.15), transparent 62%);
-  filter: blur(20px);
-  pointer-events: none;
-  z-index: 0;
-}
-.wrap > * { position: relative; z-index: 1; }
 
 /* ── Header ──────────────────────────────────────────────── */
 .header { text-align: center; margin-bottom: 1.5rem; }
@@ -84,111 +69,125 @@
 }
 .toggleActive .saveTag { background: rgba(6, 35, 27, 0.18); color: #06231b; }
 
-/* ── The unified plan panel ──────────────────────────────── */
+/* ── Card grid ───────────────────────────────────────────── */
 .cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0;
+  gap: 14px;
   align-items: stretch;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  border-radius: 24px;
-  overflow: hidden;
-  background: var(--card, #0a0e0d);
   margin-top: 2rem;
 }
 @media (max-width: 1024px) { .cards { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
 
-/* Each tier is a column divided by a hairline, not a floating card. */
+/* Each tier is its own floating card, tinted by --accent. */
 .card {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 1.9rem 1.6rem 1.75rem;
-  border-left: 1px solid var(--border, rgba(255, 255, 255, 0.07));
+  background: var(--card, #0c100f);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.07));
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 24px 48px -32px rgba(0, 0, 0, 0.9);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s;
 }
-.card:first-child { border-left: none; }
-@media (max-width: 1024px) { .card:nth-child(odd) { border-left: none; } }
-@media (max-width: 640px) {
-  .card { border-left: none; border-top: 1px solid var(--border, rgba(255, 255, 255, 0.07)); }
-  .card:first-child { border-top: none; }
-}
+.card:hover { transform: translateY(-3px); border-color: rgba(255, 255, 255, 0.14); }
 
-/* Featured column — slightly lifted surface + neon top-ribbon. */
-.cardFeatured { background: linear-gradient(180deg, #0e1413, rgba(0, 224, 164, 0.02)); }
-.cardFeatured::before {
+/* Featured (Most Popular) — accent border + glow. */
+.cardFeatured {
+  background: var(--cardHi, #111615);
+  border-color: color-mix(in srgb, var(--accent, #00e0a4) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #00e0a4) 25%, transparent),
+    0 30px 60px -34px color-mix(in srgb, var(--accent, #00e0a4) 45%, transparent);
+}
+.cardFeatured:hover { border-color: color-mix(in srgb, var(--accent, #00e0a4) 70%, transparent); }
+
+/* ── Hero band — tinted with the tier accent ─────────────── */
+.hero {
+  position: relative;
+  padding: 1.5rem 1.5rem 1.25rem;
+  background:
+    radial-gradient(120% 120% at 15% 0%, color-mix(in srgb, var(--accent, #00e0a4) 22%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent, #00e0a4) 12%, transparent), transparent);
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.07));
+}
+.hero::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--neon, #00e0a4), transparent);
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent, #00e0a4) 70%, transparent), transparent);
 }
 
-/* Row that reserves height for the "Most Popular" pill so plan names align. */
-.popRow { min-height: 1.6rem; margin-bottom: 0.4rem; }
+/* Most Popular label — top-right, in the tier accent. */
 .popularBadge {
-  display: inline-flex;
-  align-items: center;
+  position: absolute;
+  top: 1rem;
+  right: 1.15rem;
   font-family: 'Space Mono', monospace;
-  font-size: 0.56rem;
-  letter-spacing: 0.16em;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--accent, #00e0a4);
   font-weight: 800;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: linear-gradient(120deg, var(--neon, #00e0a4), #4dffcb);
-  color: #04241b;
 }
 
+/* Plan name — same font as the price (app body font), accent-colored eyebrow. */
 .planName {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.55rem;
-  letter-spacing: 0.05em;
-  color: #fff;
-  line-height: 1;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent, #00e0a4);
 }
 
-/* ── Price ───────────────────────────────────────────────── */
+/* ── Price — shares the plan name's font ─────────────────── */
 .price {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 3px;
-  margin: 0.85rem 0 0.15rem;
+  margin: 0.75rem 0 0.1rem;
   white-space: nowrap;
 }
-.cur { font-size: 1.1rem; font-weight: 700; color: #fff; margin-top: 0.5rem; }
+.cur { font-size: 1.35rem; font-weight: 600; color: #fff; }
 .amt {
-  font-size: 3rem;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 0.9;
+  font-family: inherit;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
 .period {
-  align-self: flex-end;
-  font-size: 0.78rem;
-  color: var(--faint, #586460);
-  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--faint, #6b7573);
   margin-left: 2px;
 }
 .yr {
   font-family: 'Space Mono', monospace;
   font-size: 0.68rem;
-  color: var(--faint, #586460);
+  color: var(--faint, #6b7573);
   letter-spacing: 0.02em;
-  margin-bottom: 1.25rem;
+  margin-top: 0.4rem;
 }
 
-/* ── Feature list ────────────────────────────────────────── */
+/* ── Body — feature list + CTA ───────────────────────────── */
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
 .featList {
   list-style: none;
   margin: 0 0 1.4rem;
-  padding: 1.25rem 0 0;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.07));
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.62rem;
   flex: 1;
 }
 .feat {
@@ -197,7 +196,7 @@
   gap: 0.6rem;
   font-size: 0.84rem;
   line-height: 1.35;
-  color: var(--muted, #8b9591);
+  color: var(--ink, #f2f6f5);
   text-transform: capitalize;
 }
 .featChk {
@@ -208,45 +207,38 @@
   color: var(--neon, #00e0a4);
 }
 .featChk svg { width: 15px; height: 15px; display: block; }
-.featOff { color: var(--faint, #586460); }
-.featOff .featChk { color: var(--faint, #586460); opacity: 0.55; }
+.featOff { color: var(--faint, #6b7573); }
+.featOff .featChk { color: var(--faint, #6b7573); opacity: 0.55; }
 /* New / increased for this tier — highlighted inline. */
-.featHot { color: #fff; font-weight: 700; }
-.featHot .featChk { color: #4dffcb; }
+.featHot { color: var(--neon, #00e0a4); font-weight: 700; }
+.featHot .featChk { color: var(--neon, #00e0a4); }
 
 /* ── Buttons ─────────────────────────────────────────────── */
 .subscribeBtn {
   width: 100%;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 0.85rem 1rem;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  background: linear-gradient(120deg, var(--neon, #00e0a4), #4dffcb);
-  color: #04241b;
-  box-shadow: 0 12px 28px -14px rgba(0, 224, 164, 0.9);
+  background: var(--neon, #00e0a4);
+  color: #04140f;
   transition: filter 0.15s ease, opacity 0.15s ease;
 }
 .subscribeBtn:hover { filter: brightness(1.05); }
-.subscribeBtn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.subscribeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Secondary / ghost button (interval switch, dialogs, resume). */
+/* Secondary / ghost button (dialogs, resume). */
 .manageBtn {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
   padding: 0.8rem 1rem;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
   color: #fff;
   transition: border-color 0.15s ease;
 }
