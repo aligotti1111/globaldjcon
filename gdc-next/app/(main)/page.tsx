@@ -516,6 +516,10 @@ const LANDING_CSS = String.raw`
 .gdc-landing .searchbar .wrap{padding-left:1.2rem;padding-right:1.2rem}
 /* On phones, drop back into the flow (right side, scrollable) so it can't overlap the search box. */
 .gdc-landing #gdc-setup-slot{position:static;transform:none;flex:1;min-width:0;justify-content:flex-end;overflow-x:auto;max-width:none}
+/* First-time DJ checklist active: hide the search box and give the whole row to the checklist. */
+.gdc-landing .searchbar .wrap.gdc-checklist-active .searchfield,
+.gdc-landing .searchbar .wrap.gdc-checklist-active .searchbtn{display:none}
+.gdc-landing .searchbar .wrap.gdc-checklist-active #gdc-setup-slot{justify-content:center}
 }
 .gdc-landing .searchfield{width:340px;max-width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:#0c0c11;border:1px solid rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s}
 .gdc-landing .searchfield:focus-within{border-color:var(--neon);box-shadow:0 0 0 4px rgba(0,245,196,.1)}
