@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { type BookingSettings, parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
@@ -42,6 +42,7 @@ interface Props {
 
 export default function BookingSettingsClient({ initialProfile, hasBookingAccess }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const djType = initialProfile.dj_type;
   const isMobile = djType === 'mobile';
   // Fields owned by the MANUAL-save tabs (Settings — and for club, DJ Rider /
@@ -59,20 +60,22 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // so they see the "Connected" state instead of the default Settings tab.
   // (PaymentMethodsSection reads the same flag to auto-open the PayPal tile,
   // and PaypalConnectSection then cleans the query string.)
+  // Re-runs whenever the query string changes (searchParams dep) — not just on
+  // mount — so clicking a setup-checklist step while ALREADY on this page still
+  // switches tabs instead of doing nothing.
   useEffect(() => {
     try {
-      const q = new URLSearchParams(window.location.search);
       // Valid deep-link targets — the setup checklist links here with ?section=,
       // so any tab id (not just discounts) can open directly.
       const VALID: SecTab[] = ['settings', 'packages', 'discounts', 'payments', 'contracts', 'planners', 'rates', 'rider', 'guests'];
-      const section = q.get('section') as SecTab | null;
-      if (q.get('paypal') === 'connected') {
+      const section = searchParams.get('section') as SecTab | null;
+      if (searchParams.get('paypal') === 'connected') {
         setSecTab('payments');
       } else if (section && VALID.includes(section)) {
         setSecTab(section);
       }
     } catch { /* no-op */ }
-  }, []);
+  }, [searchParams]);
 
   // Onboarding: mark a tab "viewed" for the setup checklist as soon as it's
   // opened (fires on mount for the initial tab, then on every switch).
