@@ -428,7 +428,13 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           // A same-tier switch is really a billing-interval change, not a tier move.
           const isIntervalSwitch = sameTier && isPaid && !!currentInterval && interval !== currentInterval;
           const isLoading = loadingTier === tier;
-          const featured = tier === FEATURED_TIER;
+          // When subscribed, the neon-green featured treatment marks the plan
+          // they're managing (the current one) — not "Most Popular". When just
+          // browsing, the featured tier gets the Most Popular highlight.
+          const featured = isSubscribed ? isCurrent : tier === FEATURED_TIER;
+          // The current (managed) plan is always neon green; browsing keeps each
+          // tier's own accent.
+          const accent = isSubscribed && isCurrent ? '#00e0a4' : TIER_ACCENTS[tier];
           // Buyable only when a Stripe price ID exists for this tier+interval.
           const purchasable = !!priceIdFor(tier, interval);
 
