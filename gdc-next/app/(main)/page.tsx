@@ -507,7 +507,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .billopt.on .save{color:#000}
 .gdc-landing .plan .yr{font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
 .gdc-landing .plan ul{list-style:none;margin:0 0 18px;flex:1}
-.gdc-landing .plan li{padding:.4rem 0;color:var(--muted);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start;text-transform:capitalize}
+.gdc-landing .plan li{padding:.4rem 0;color:var(--ink);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start;text-transform:capitalize}
 .gdc-landing .plan li svg{width:15px;height:15px;stroke:var(--neon);flex-shrink:0;margin-top:2px;fill:none}
 /* New / increased for this tier — highlighted like the subscribe page. */
 .gdc-landing .plan li.hot{color:#fff;font-weight:700}
