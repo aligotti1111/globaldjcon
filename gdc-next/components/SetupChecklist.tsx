@@ -215,7 +215,8 @@ export default function SetupChecklist() {
               )}
               <Link
                 href={`/booking-settings?section=${s.id}`}
-                style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 4, whiteSpace: 'nowrap' }}
+                title={`Go to ${s.label}`}
+                style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 4, whiteSpace: 'nowrap', cursor: 'pointer', padding: '2px 4px', borderRadius: 8 }}
               >
                 {/* label OVER the bubble */}
                 <span style={{ fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>{s.label}</span>
