@@ -91,15 +91,6 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
   return feats;
 }
 
-// Progressive display: the lowest card shows its full included list; every card
-// above it shows ONLY what's newly added or increased vs the tier below it.
-function progressiveFeatures(d: TierDef, prev: TierDef | null, djType?: 'mobile' | 'club' | null): Feat[] {
-  const curr = planFeatures(d, djType).filter((f) => f.included);
-  if (!prev) return curr;
-  const prevByKey = new Map(planFeatures(prev, djType).filter((f) => f.included).map((f) => [f.key, f.text]));
-  return curr.filter((f) => !prevByKey.has(f.key) || prevByKey.get(f.key) !== f.text);
-}
-
 function planName(tier: Tier): string {
   return TIER_LABELS[tier] ?? 'Free';
 }
@@ -375,12 +366,8 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {switchMsg && <div className={styles.success}>{switchMsg}</div>}
 
       <div className={styles.cards}>
-        {visibleTiers.map((tier, idx) => {
+        {visibleTiers.map((tier) => {
           const def = TIERS[tier];
-          // The card below this one (for the progressive "what's added" list).
-          const prevDef = idx > 0 ? TIERS[visibleTiers[idx - 1]] : null;
-          const prevLabel = prevDef ? prevDef.label : null;
-          const shownFeats = progressiveFeatures(def, prevDef, djType);
           const price = fmtPrice(interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice);
           const period = interval === 'monthly' ? '/mo' : '/yr';
           // Current = the tier you're on, whether that's a paid subscription OR
@@ -409,18 +396,13 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 {price}
                 <span className={styles.period}>{period}</span>
               </div>
-              {prevLabel && (
-                <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--neon,#00e0a4)', margin: '0 0 .6rem' }}>
-                  Everything in {prevLabel}, plus:
-                </div>
-              )}
               <ul className={styles.blurb} style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                {shownFeats.map((feat) => (
-                  <li key={feat.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem' }}>
-                    <span aria-hidden style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, lineHeight: 1.4 }}>
-                      {'\u2713'}
+                {planFeatures(def, djType).map((feat) => (
+                  <li key={feat.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', opacity: feat.included ? 1 : 0.45 }}>
+                    <span aria-hidden style={{ color: feat.included ? 'var(--neon,#00e0a4)' : 'var(--muted,#8a8aa0)', fontWeight: 700, lineHeight: 1.4 }}>
+                      {feat.included ? '\u2713' : '\u2717'}
                     </span>
-                    <span style={feat.emphasis ? { fontWeight: 700, color: 'var(--white,#fff)' } : undefined}>{feat.text}</span>
+                    <span style={feat.emphasis && feat.included ? { fontWeight: 700, color: 'var(--white,#fff)' } : undefined}>{feat.text}</span>
                   </li>
                 ))}
               </ul>
