@@ -508,9 +508,14 @@ const LANDING_CSS = String.raw`
 .gdc-landing .reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.2,.8,.2,1)}
 .gdc-landing .reveal.in{opacity:1;transform:none}
 .gdc-landing .searchbar{border-bottom:1px solid var(--line);background:#000}
-.gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:10px;padding-top:16px;padding-bottom:16px;max-width:none;margin:0;padding-left:4rem;padding-right:4rem}
+.gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:10px;padding-top:16px;padding-bottom:16px;max-width:none;margin:0;padding-left:4rem;padding-right:4rem;position:relative}
+/* Owner setup stepper: absolutely centered across the whole search row. */
+.gdc-landing #gdc-setup-slot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;justify-content:center;pointer-events:none;max-width:calc(100% - 8rem)}
+.gdc-landing #gdc-setup-slot>*{pointer-events:auto}
 @media(max-width:900px){
 .gdc-landing .searchbar .wrap{padding-left:1.2rem;padding-right:1.2rem}
+/* On phones, drop back into the flow (right side, scrollable) so it can't overlap the search box. */
+.gdc-landing #gdc-setup-slot{position:static;transform:none;flex:1;min-width:0;justify-content:flex-end;overflow-x:auto;max-width:none}
 }
 .gdc-landing .searchfield{width:340px;max-width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:#0c0c11;border:1px solid rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s}
 .gdc-landing .searchfield:focus-within{border-color:var(--neon);box-shadow:0 0 0 4px rgba(0,245,196,.1)}
