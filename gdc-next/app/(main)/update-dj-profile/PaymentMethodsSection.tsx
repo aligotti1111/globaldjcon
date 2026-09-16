@@ -837,14 +837,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       <SectionBanner
         icon="payments"
         title="Payment Methods"
-        subtitle="Pick how you want to collect deposits and balances — money goes straight to you."
+        subtitle="Pick the ways you want to get paid. Clients choose whichever suits them — you're never handcuffing them to one. Money goes straight to you; Global DJ Connect never touches it and takes no cut."
       />
       <div className={styles.sectionBody}>
-        <p className={styles.bodyHint}>
-          Pick the ways you want to get paid. Clients choose whichever suits
-          them — you&apos;re never handcuffing them to one. Money goes straight
-          to you; Global DJ Connect never touches it and takes no cut.
-        </p>
 
         {/* Currency mismatch — Venmo/Zelle are USD-only, Cash App US/UK. If the
             DJ prices in a currency one of their live rails can't represent, the
