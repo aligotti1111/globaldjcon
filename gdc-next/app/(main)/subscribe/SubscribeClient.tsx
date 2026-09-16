@@ -36,6 +36,15 @@ const PAID_TIERS: PaidTier[] = [1, 2, 3, 4];
 // The card we visually highlight as the popular pick.
 const FEATURED_TIER: PaidTier = 2;
 
+// Per-tier accent colors — tint each card's hero band, name, Most Popular label
+// and (for the featured card) its border/glow.
+const TIER_ACCENTS: Record<PaidTier, string> = {
+  1: '#9aa3a0', // Starter — gray
+  2: '#00e0a4', // Pro — neon
+  3: '#31d0ff', // Premium Pro — blue
+  4: '#f5c451', // Enterprise — gold
+};
+
 interface Props {
   isLoggedIn: boolean;
   currentTier: Tier;
@@ -438,17 +447,19 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
             <div
               key={tier}
               className={`${styles.card} ${featured ? styles.cardFeatured : ''} ${isCurrent ? styles.cardCurrent : ''}`}
+              style={{ ['--accent' as string]: TIER_ACCENTS[tier] } as React.CSSProperties}
             >
-              <div className={styles.popRow}>
+              <div className={styles.hero}>
                 {featured && <span className={styles.popularBadge}>Most Popular</span>}
+                <div className={styles.planName}>{def.label}</div>
+                <div className={styles.price}>
+                  <span className={styles.cur}>$</span>
+                  <span className={styles.amt}>{amtStr}</span>
+                  <span className={styles.period}>{perLabel}</span>
+                </div>
+                <div className={styles.yr}>{altLine}</div>
               </div>
-              <div className={styles.planName}>{def.label}</div>
-              <div className={styles.price}>
-                <span className={styles.cur}>$</span>
-                <span className={styles.amt}>{amtStr}</span>
-                <span className={styles.period}>{perLabel}</span>
-              </div>
-              <div className={styles.yr}>{altLine}</div>
+              <div className={styles.body}>
               <ul className={styles.featList}>
                 {feats.map((feat) => (
                   <li
@@ -525,6 +536,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   {accessUntilLabel ? ` through ${accessUntilLabel}` : ''} — no billing.
                 </div>
               )}
+              </div>
             </div>
           );
         })}
