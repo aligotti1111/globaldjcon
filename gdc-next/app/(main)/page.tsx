@@ -33,12 +33,14 @@ const LANDING_CSS = String.raw`
 .gdc-landing .pn-in{display:none}
 .gdc-landing.gdc-signedin .pn-out{display:none}
 .gdc-landing.gdc-signedin .pn-in{display:block}
-/* Feature rows by DJ type. Club/Bar rows show ONLY for a signed-in club/bar
-   DJ; everyone else — including logged-out visitors — sees the mobile-DJ set
-   (so Planner & Playlist shows, DJ Rider / Guest list stay hidden). */
-.gdc-landing .plan li.club-only{display:none}
-.gdc-landing.gdc-club .plan li.club-only{display:flex}
+/* Show only the feature rows for the account's DJ type (logged-out sees both). */
+.gdc-landing.gdc-mobile .plan li.club-only{display:none}
 .gdc-landing.gdc-club .plan li.mob-only{display:none}
+/* The "(Mobile DJs)" / "(Club/Bar DJs)" qualifier is only useful to a
+   logged-out visitor seeing every row. Once signed into that account type,
+   the row is obviously theirs — drop the parenthetical. */
+.gdc-landing.gdc-mobile .plan li.mob-only .tq{display:none}
+.gdc-landing.gdc-club .plan li.club-only .tq{display:none}
 /* The plan a subscriber is already on — dim, non-clickable label. */
 .gdc-landing .plan .btn.is-current{opacity:.65;pointer-events:none;background:transparent;border:1px solid var(--line);color:var(--neon)}
 .gdc-landing *, .gdc-landing{box-sizing:border-box;margin:0;padding:0}
@@ -798,9 +800,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
           <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Embeddable calendar</li>
           <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Team logins</li>
-          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Starter</a>
       </div>
@@ -821,9 +823,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
-          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
       </div>
@@ -843,9 +845,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
-          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
       </div>
@@ -865,9 +867,9 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
-          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
-          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
+          <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Enterprise</a>
       </div>
