@@ -997,6 +997,29 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       <circle cx="12" cy="13" r="4"/>
                     </svg>
                   </button>
+                  {/* No photo yet: tell the owner this circle is hidden from
+                      visitors until they add one (only THEY see this circle). */}
+                  {!data.avatar_url && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '68%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '82%',
+                        textAlign: 'center',
+                        color: 'var(--muted,#8a8aa0)',
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.58rem',
+                        lineHeight: 1.35,
+                        letterSpacing: '.02em',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                      }}
+                    >
+                      This circle won&rsquo;t show to visitors until you add a photo.
+                    </span>
+                  )}
                   {/* Remove profile picture — only when one is set. Clears
                       users.avatar_url and reloads to show the initials fallback. */}
                   {data.avatar_url && (
