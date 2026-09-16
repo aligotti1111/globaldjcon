@@ -177,6 +177,18 @@ export default function SetupChecklist() {
     }
   }, [isDjOwner, row, allComplete]);
 
+  // On mobile, while the FIRST-TIME stepper is showing in the search row, hide
+  // the search box and give the whole row to the checklist. Toggles a class on
+  // the search-row wrapper; the CSS (page.tsx) only acts on it at mobile widths.
+  useEffect(() => {
+    const wrap = slot?.parentElement || null;
+    if (!wrap) return;
+    const reviewed = !!row?.setup_reviewed || reviewedLocal;
+    const showStepper = isDjOwner && !!model && !reviewed;
+    wrap.classList.toggle('gdc-checklist-active', showStepper);
+    return () => { wrap.classList.remove('gdc-checklist-active'); };
+  }, [slot, row, reviewedLocal, model, isDjOwner]);
+
   if (loading || !isDjOwner || !model) return null;
 
   const isReviewed = !!row?.setup_reviewed || reviewedLocal;
