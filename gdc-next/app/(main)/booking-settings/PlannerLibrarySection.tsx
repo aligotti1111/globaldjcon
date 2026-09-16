@@ -67,6 +67,12 @@ const miniBtnStyle: CSSProperties = {
   color: 'var(--white,#fff)', borderRadius: 6, padding: '.32rem .7rem',
   fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
 };
+// Preview / Edit Template render as plain underlined text links — no button frame.
+const linkBtnStyle: CSSProperties = {
+  flex: '0 0 auto', background: 'transparent', border: 'none', padding: '.2rem .15rem',
+  color: 'var(--white,#fff)', fontSize: '.72rem', fontWeight: 600, cursor: 'pointer',
+  whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: '3px',
+};
 const iconBtnStyle: CSSProperties = {
   flex: '0 0 auto', background: 'transparent', border: 'none',
   color: 'var(--muted,#8a8aa0)', cursor: 'pointer', fontSize: '.85rem', padding: '.2rem .35rem',
@@ -262,8 +268,8 @@ export default function PlannerLibrarySection() {
                     ><PencilIcon /></button>
                   </span>
                   <span style={countStyle}>{t.count} questions</span>
-                  <button type="button" onClick={() => openPreview(t)} style={miniBtnStyle}>Preview</button>
-                  <button type="button" onClick={() => openEdit(t)} style={miniBtnStyle}>Edit Template</button>
+                  <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
+                  <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit Template</button>
                 </>
               )}
             </div>
