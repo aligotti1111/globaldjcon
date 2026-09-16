@@ -564,6 +564,8 @@ const LANDING_BODY = String.raw`
     <button class="searchbtn" type="button" aria-label="Use my location" onclick="if(navigator.geolocation){this.style.opacity='.5';navigator.geolocation.getCurrentPosition(function(p){location.href='/djs?lat='+p.coords.latitude+'&lng='+p.coords.longitude;},function(){location.href='/djs?near=1';});}else{location.href='/djs?near=1';}">
       <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
     </button>
+    <!-- Owner setup stepper portals in here so it shares the search row. -->
+    <div id="gdc-setup-slot" style="flex:1;min-width:0;display:flex;justify-content:flex-end;overflow-x:auto"></div>
   </div>
 </div>
 
