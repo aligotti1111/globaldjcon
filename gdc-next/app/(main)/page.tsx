@@ -457,35 +457,38 @@ const LANDING_CSS = String.raw`
 .gdc-landing .mini-pipe .pn{flex:1;text-align:center;position:relative;font-family:var(--mono);font-size:.55rem;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
 .gdc-landing .mini-pipe .pn .c{width:34px;height:34px;border-radius:50%;border:1px solid var(--neon);background:rgba(0,245,196,.12);display:grid;place-items:center;margin:0 auto 6px;color:var(--neon);font-family:var(--disp);font-size:.95rem}
 .gdc-landing .mini-pipe .pn:not(:last-child)::after{content:"";position:absolute;top:16px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,var(--neon),rgba(0,245,196,.2));z-index:0}
-/* v3 look: one unified panel, tiers split by hairlines, featured column lifted
-   with a neon top-ribbon. */
-.gdc-landing .price{display:grid;grid-template-columns:repeat(5,1fr);gap:0;max-width:1220px;margin:0 auto;align-items:stretch;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--card)}
+/* Sleek/premium look: separate rounded cards, each tinted with its tier --accent
+   (a hero band up top), the name in the price's font, and a Most Popular
+   treatment (accent border + glow + top-right label). */
+.gdc-landing .price{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;max-width:1220px;margin:0 auto;align-items:stretch}
 @media(max-width:980px){
 .gdc-landing .price{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:560px){
 .gdc-landing .price{grid-template-columns:1fr}
 }
-/* Signed in → Free card is hidden, so drop the grid to 4 columns (otherwise the
-   hidden card leaves an empty 5th track and the paid cards look squeezed). */
+/* Signed in → Free card is hidden, so drop the grid to 4 columns. */
 @media(min-width:981px){
 .gdc-landing.gdc-signedin .price{grid-template-columns:repeat(4,1fr)}
 }
-.gdc-landing .plan{background:transparent;border:none;border-left:1px solid var(--line);border-radius:0;padding:26px 20px 24px;position:relative;display:flex;flex-direction:column}
-.gdc-landing .plan:first-child{border-left:none}
-@media(max-width:980px){
-.gdc-landing .plan:nth-child(odd){border-left:none}
-.gdc-landing .plan{border-top:1px solid var(--line)}
-.gdc-landing .plan:nth-child(1),.gdc-landing .plan:nth-child(2){border-top:none}
-}
-@media(max-width:560px){
-.gdc-landing .plan{border-left:none;border-top:1px solid var(--line)}
-.gdc-landing .plan:first-child{border-top:none}
-}
-.gdc-landing .plan.pro{background:linear-gradient(180deg,#0e1413,rgba(0,224,164,.02))}
-.gdc-landing .plan.pro::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--neon),transparent)}
-.gdc-landing .plan .pn{font-family:var(--disp);font-size:1.55rem;letter-spacing:.05em;color:#fff}
-.gdc-landing .plan.pro .pn{color:var(--neon)}
+/* Each tier is its own floating card, tinted by --accent. */
+.gdc-landing .plan{--accent:var(--muted);position:relative;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 48px -32px rgba(0,0,0,.9);transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s}
+.gdc-landing .plan:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.14)}
+/* Per-tier accent colors. */
+.gdc-landing .plan.free{--accent:#6b7573}
+.gdc-landing .plan.starter{--accent:#9aa3a0}
+.gdc-landing .plan.pro{--accent:#00e0a4}
+.gdc-landing .plan.premium{--accent:#31d0ff}
+.gdc-landing .plan.enterprise{--accent:#f5c451}
+/* Featured (Most Popular) card — accent border + glow. */
+.gdc-landing .plan.pro{border-color:color-mix(in srgb,var(--accent) 55%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 25%,transparent),0 30px 60px -34px color-mix(in srgb,var(--accent) 45%,transparent)}
+.gdc-landing .plan.pro:hover{border-color:color-mix(in srgb,var(--accent) 70%,transparent)}
+/* Hero band — tinted with the tier accent. */
+.gdc-landing .plan .hero{position:relative;padding:24px 22px 20px;background:radial-gradient(120% 120% at 15% 0%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 60%),linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,transparent),transparent);border-bottom:1px solid var(--line)}
+.gdc-landing .plan .hero::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 70%,transparent),transparent)}
+.gdc-landing .plan .body{display:flex;flex-direction:column;flex:1;padding:20px 22px 22px}
+/* Plan name — same font as the price (--disp), accent-colored eyebrow. */
+.gdc-landing .plan .pn{font-family:var(--disp);font-size:1.05rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);line-height:1}
 .gdc-landing .plan .amt{font-family:var(--disp);font-size:2.4rem;letter-spacing:.01em;margin:.5rem 0 .1rem;color:#fff}
 .gdc-landing .plan .amt span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
 /* Monthly / Annual billing toggle. The plan cards carry BOTH prices as .p-mo /
@@ -503,7 +506,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .billopt .save{font-size:.6rem;color:var(--neon)}
 .gdc-landing .billopt.on .save{color:#000}
 .gdc-landing .plan .yr{font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
-.gdc-landing .plan ul{list-style:none;margin:14px 0 18px;flex:1}
+.gdc-landing .plan ul{list-style:none;margin:0 0 18px;flex:1}
 .gdc-landing .plan li{padding:.4rem 0;color:var(--muted);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start;text-transform:capitalize}
 .gdc-landing .plan li svg{width:15px;height:15px;stroke:var(--neon);flex-shrink:0;margin-top:2px;fill:none}
 /* New / increased for this tier — highlighted like the subscribe page. */
@@ -517,7 +520,7 @@ const LANDING_CSS = String.raw`
 /* Raised $ on the price, matching /subscribe. */
 .gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--disp)}
 .gdc-landing .plan .btn{width:100%;justify-content:center;margin-top:auto}
-.gdc-landing .best{position:absolute;top:14px;right:18px;font-family:var(--mono);font-size:.56rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,var(--neon),#4dffcb);color:#04241b;padding:4px 10px;border-radius:100px}
+.gdc-landing .best{position:absolute;top:16px;right:18px;z-index:2;font-family:var(--mono);font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);background:none;padding:0;border-radius:0}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
 .gdc-landing .band h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);letter-spacing:.01em;margin-bottom:.6rem}
 .gdc-landing .band p{color:var(--muted);margin-bottom:1.6rem;font-size:1.04rem}
@@ -773,9 +776,12 @@ const LANDING_BODY = String.raw`
       </div>
     </div>
     <div class="price bill-mo">
-      <div class="plan reveal">
+      <div class="plan free reveal">
+        <div class="hero">
         <div class="pn">Free</div><div class="amt"><span class="cur">$</span>0<span class="per"> / month</span></div>
         <div class="yr">&nbsp;</div>
+        </div>
+        <div class="body">
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Profile &amp; directory listing</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Shareable profile link</li>
@@ -783,10 +789,14 @@ const LANDING_BODY = String.raw`
           <li class="no">No bookings, quotes or contracts</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Get started free</a>
+        </div>
       </div>
-      <div class="plan reveal">
+      <div class="plan starter reveal">
+        <div class="hero">
         <div class="pn">Starter</div><div class="amt"><span class="p-mo"><span class="cur">$</span>14.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>149.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $149.90 / yr</span><span class="p-yr">$12.49 / mo · billed annually</span></div>
+        </div>
+        <div class="body">
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 5x e-signed contracts / month</li>
@@ -805,11 +815,15 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Starter</a>
+        </div>
       </div>
       <div class="plan pro reveal">
         <span class="best">Most popular</span>
+        <div class="hero">
         <div class="pn">Pro</div><div class="amt"><span class="p-mo"><span class="cur">$</span>29.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>299.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $299.90 / yr</span><span class="p-yr">$24.99 / mo · billed annually</span></div>
+        </div>
+        <div class="body">
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 30x e-signed contracts / month</li>
@@ -828,10 +842,14 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
+        </div>
       </div>
-      <div class="plan reveal">
+      <div class="plan premium reveal">
+        <div class="hero">
         <div class="pn">Premium Pro</div><div class="amt"><span class="p-mo"><span class="cur">$</span>49.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>499.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $499.90 / yr</span><span class="p-yr">$41.66 / mo · billed annually</span></div>
+        </div>
+        <div class="body">
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100x e-signed contracts / month</li>
@@ -850,10 +868,14 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
+        </div>
       </div>
-      <div class="plan reveal">
+      <div class="plan enterprise reveal">
+        <div class="hero">
         <div class="pn">Enterprise</div><div class="amt"><span class="p-mo"><span class="cur">$</span>99.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>999.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $999.90 / yr</span><span class="p-yr">$83.33 / mo · billed annually</span></div>
+        </div>
+        <div class="body">
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 250x e-signed contracts / month</li>
@@ -872,6 +894,7 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Enterprise</a>
+        </div>
       </div>
     </div>
   </div>
