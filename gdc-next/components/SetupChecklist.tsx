@@ -109,7 +109,13 @@ export default function SetupChecklist() {
 
   useEffect(() => {
     if (!userId) return;
-    const sync = () => setViewed(readViewedSteps(userId));
+    const sync = () => {
+      setViewed(readViewedSteps(userId));
+      // Also re-pull the row so DATA steps (packages / payments / equipment)
+      // flip to done right after the DJ saves them on the same page, instead of
+      // waiting for a full reload.
+      if (isDjOwner) load();
+    };
     sync();
     window.addEventListener('gdc-setup-progress', sync);
     window.addEventListener('focus', sync);
@@ -119,7 +125,7 @@ export default function SetupChecklist() {
       window.removeEventListener('focus', sync);
       window.removeEventListener('storage', sync);
     };
-  }, [userId, pathname]);
+  }, [userId, pathname, isDjOwner, load]);
 
   // Homepage search-row slot for the compact "Review booking settings" pill.
   useEffect(() => {
