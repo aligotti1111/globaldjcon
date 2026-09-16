@@ -26,6 +26,8 @@ const LANDING_CSS = String.raw`
     --mono:var(--f-mono),'Space Mono',monospace; --disp:var(--f-bebas),'Bebas Neue',sans-serif; --body:var(--f-dmsans),'DM Sans',sans-serif;
   }
 .gdc-landing.gdc-signedin .price .plan:first-child{display:none!important}
+/* Hosts don't subscribe — hide the whole pricing section for a signed-in host. */
+.gdc-landing.gdc-host #pricing{display:none!important}
 .gdc-landing *, .gdc-landing{box-sizing:border-box;margin:0;padding:0}
 .gdc-landing{scroll-behavior:smooth}
 .gdc-landing{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -440,18 +442,31 @@ const LANDING_CSS = String.raw`
 .gdc-landing .mini-pipe .pn{flex:1;text-align:center;position:relative;font-family:var(--mono);font-size:.55rem;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
 .gdc-landing .mini-pipe .pn .c{width:34px;height:34px;border-radius:50%;border:1px solid var(--neon);background:rgba(0,245,196,.12);display:grid;place-items:center;margin:0 auto 6px;color:var(--neon);font-family:var(--disp);font-size:.95rem}
 .gdc-landing .mini-pipe .pn:not(:last-child)::after{content:"";position:absolute;top:16px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,var(--neon),rgba(0,245,196,.2));z-index:0}
-.gdc-landing .price{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;max-width:1200px;margin:0 auto;align-items:stretch}
+/* v3 look: one unified panel, tiers split by hairlines, featured column lifted
+   with a neon top-ribbon. */
+.gdc-landing .price{display:grid;grid-template-columns:repeat(5,1fr);gap:0;max-width:1220px;margin:0 auto;align-items:stretch;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--card)}
 @media(max-width:980px){
 .gdc-landing .price{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:560px){
 .gdc-landing .price{grid-template-columns:1fr}
 }
-.gdc-landing .plan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 18px;position:relative;display:flex;flex-direction:column}
-.gdc-landing .plan.pro{border-color:rgba(0,245,196,.4)}
-.gdc-landing .plan .pn{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.gdc-landing .plan{background:transparent;border:none;border-left:1px solid var(--line);border-radius:0;padding:26px 20px 24px;position:relative;display:flex;flex-direction:column}
+.gdc-landing .plan:first-child{border-left:none}
+@media(max-width:980px){
+.gdc-landing .plan:nth-child(odd){border-left:none}
+.gdc-landing .plan{border-top:1px solid var(--line)}
+.gdc-landing .plan:nth-child(1),.gdc-landing .plan:nth-child(2){border-top:none}
+}
+@media(max-width:560px){
+.gdc-landing .plan{border-left:none;border-top:1px solid var(--line)}
+.gdc-landing .plan:first-child{border-top:none}
+}
+.gdc-landing .plan.pro{background:linear-gradient(180deg,#0e1413,rgba(0,224,164,.02))}
+.gdc-landing .plan.pro::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--neon),transparent)}
+.gdc-landing .plan .pn{font-family:var(--disp);font-size:1.55rem;letter-spacing:.05em;color:#fff}
 .gdc-landing .plan.pro .pn{color:var(--neon)}
-.gdc-landing .plan .amt{font-family:var(--disp);font-size:2.2rem;letter-spacing:.01em;margin:.35rem 0 .1rem}
+.gdc-landing .plan .amt{font-family:var(--disp);font-size:2.4rem;letter-spacing:.01em;margin:.5rem 0 .1rem;color:#fff}
 .gdc-landing .plan .amt span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
 /* Monthly / Annual billing toggle. The plan cards carry BOTH prices as .p-mo /
    .p-yr spans; a class on .price (bill-mo | bill-yr) swaps which shows, so the
@@ -474,7 +489,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan li.no{color:var(--faint);font-style:italic;padding-left:22px;position:relative}
 .gdc-landing .plan li.no::before{content:"—";position:absolute;left:2px;color:var(--faint)}
 .gdc-landing .plan .btn{width:100%;justify-content:center}
-.gdc-landing .best{position:absolute;top:-11px;right:22px;font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--neon);color:#000;padding:.3rem .7rem;border-radius:100px}
+.gdc-landing .best{position:absolute;top:14px;right:18px;font-family:var(--mono);font-size:.56rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,var(--neon),#4dffcb);color:#04241b;padding:4px 10px;border-radius:100px}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
 .gdc-landing .band h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);letter-spacing:.01em;margin-bottom:.6rem}
 .gdc-landing .band p{color:var(--muted);margin-bottom:1.6rem;font-size:1.04rem}
@@ -1147,10 +1162,10 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 // only ever re-renders when the signed-in state actually flips (once), not on
 // every auth-object change or sibling modal toggle. The reveal script also
 // self-heals via a MutationObserver as a second line of defence.
-const LandingMarkup = memo(function LandingMarkup({ signedIn }: { signedIn: boolean }) {
+const LandingMarkup = memo(function LandingMarkup({ signedIn, isHost }: { signedIn: boolean; isHost: boolean }) {
   return (
     <div
-      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
+      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${isHost ? 'gdc-host' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
       dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
     />
   );
@@ -1162,6 +1177,8 @@ export default function HomePage() {
   // The paid plans stay so they can still upgrade.
   const { user } = useAuth();
   const signedIn = !!user;
+  // Hosts don't have subscriptions, so hide the pricing section for them.
+  const isHost = (user as { role?: string } | null)?.role === 'host';
   // The plan CTAs live in the static LANDING_BODY string, so they can't read
   // React state. Mirror the auth flag onto window: signed-in clicks go to
   // /subscribe (the manage-subscription page — it shows the plan you're on and
@@ -1195,7 +1212,7 @@ export default function HomePage() {
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <LandingMarkup signedIn={signedIn} />
+      <LandingMarkup signedIn={signedIn} isHost={isHost} />
     </>
   );
 }
