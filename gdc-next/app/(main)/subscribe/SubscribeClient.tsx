@@ -503,16 +503,15 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                     {other && purchasable && (
                       <button
                         type="button"
-                        className={styles.manageBtn}
+                        className={styles.switchLink}
                         onClick={() => requestSwitch(tier, def.label, `${otherPrice}${otherPeriod}`, other)}
                         disabled={switchingTier !== null || previewingTier !== null}
-                        style={{ width: '100%' }}
                       >
                         {busySwitch
                           ? 'Checking…'
                           : other === 'yearly'
-                            ? 'Switch to yearly — 2 months free'
-                            : 'Switch to monthly billing'}
+                            ? 'Switch To Yearly'
+                            : 'Switch To Monthly'}
                       </button>
                     )}
                   </div>
