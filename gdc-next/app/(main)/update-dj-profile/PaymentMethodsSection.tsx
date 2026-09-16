@@ -665,6 +665,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       setSavedMethods(clean);
       setFeedback({ msg: '✓ Saved.', ok: true });
       setTimeout(() => setFeedback(null), 2500);
+      // Nudge the setup checklist to re-check the Payments step now that a rail
+      // is saved — otherwise its green check waits for a full page reload.
+      try { window.dispatchEvent(new Event('gdc-setup-progress')); } catch { /* no-op */ }
     } catch (e) {
       setFeedback({ msg: e instanceof Error ? e.message : 'Could not save.', ok: false });
     } finally {
