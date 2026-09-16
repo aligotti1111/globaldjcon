@@ -218,6 +218,9 @@ export default function SetupChecklist() {
     content = (
       // margin:0 auto centers the whole stepper within the search row.
       <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 6, margin: '0 auto' }}>
+        <span style={{ alignSelf: 'center', fontSize: '.66rem', fontWeight: 700, color: 'var(--white,#fff)', marginRight: 8, whiteSpace: 'nowrap' }}>
+          Complete steps to activate booking engine
+        </span>
         {model.steps.map((s, i) => {
           const isCurrent = i === currentIdx;
           const circleStyle: CSSProperties = s.done
