@@ -67,9 +67,10 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
   const feats: Feat[] = [
     { key: 'booking', text: 'Booking Engine', included: d.booking },
     { key: 'contracts', text: `${d.contractQuota} signed contracts / month`, included: d.contractQuota > 0, emphasis: true },
-    { key: 'deposits', text: 'Deposits', included: d.proFeatures },
-    { key: 'invoicing', text: 'Invoicing', included: d.proFeatures },
-    { key: 'receipts', text: 'Receipts', included: d.proFeatures },
+    // Deposits + invoicing combined: the DJ adds their payment options and
+    // collects deposits & balances through the platform, paid straight to them.
+    { key: 'deposits', text: 'Collect deposits & balances', included: d.proFeatures },
+    { key: 'receipts', text: 'Auto receipts', included: d.proFeatures },
     { key: 'finance', text: 'Finance & earnings reports', included: d.proFeatures },
     { key: 'inbox', text: 'Inbox messaging', included: true },
     { key: 'qr', text: 'QR code to your profile', included: d.qrCode },
