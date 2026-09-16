@@ -496,7 +496,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan li.no::before{content:"—";position:absolute;left:2px;color:var(--faint)}
 /* Raised $ on the price, matching /subscribe. */
 .gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--disp)}
-.gdc-landing .plan .btn{width:100%;justify-content:center}
+.gdc-landing .plan .btn{width:100%;justify-content:center;margin-top:auto}
 .gdc-landing .best{position:absolute;top:14px;right:18px;font-family:var(--mono);font-size:.56rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,var(--neon),#4dffcb);color:#04241b;padding:4px 10px;border-radius:100px}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
 .gdc-landing .band h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);letter-spacing:.01em;margin-bottom:.6rem}
