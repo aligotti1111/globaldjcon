@@ -1296,6 +1296,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         </p>
                   )}
 
+                  {/* Off-app manual rail: we can't see the money land, so the DJ
+                      marks it paid themselves and the receipt fires from there. */}
+                  {t === 'venmo' && (
+                    <p style={{ margin: '.4rem 0 0', color: '#f5c451', fontSize: '.72rem', lineHeight: 1.5 }}>
+                      Global DJ Connect can&rsquo;t track Venmo payments off-app. When payment is complete, mark it complete in your booking dashboard and the receipt will auto-send.
+                    </p>
+                  )}
+
                   {/* Offered, not auto-filled. Silently writing their account
                       number into a field they didn't touch means they can't
                       tell what's saved from what's suggested — and a DJ may
