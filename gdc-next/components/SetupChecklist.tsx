@@ -216,11 +216,9 @@ export default function SetupChecklist() {
     const currentIdx = model.steps.findIndex((s) => !s.done);
     const CIRCLE = 22; // px — connectors align to its vertical center
     content = (
-      // margin:0 auto centers the whole stepper within the search row.
-      <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 6, margin: '0 auto' }}>
-        <span style={{ alignSelf: 'center', fontSize: '.66rem', fontWeight: 700, color: 'var(--white,#fff)', marginRight: 8, whiteSpace: 'nowrap' }}>
-          Complete steps to activate booking engine
-        </span>
+      // margin:0 auto centers the whole thing; label sits BELOW the steps.
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 'min-content', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 6 }}>
         {model.steps.map((s, i) => {
           const isCurrent = i === currentIdx;
           const circleStyle: CSSProperties = s.done
@@ -248,6 +246,10 @@ export default function SetupChecklist() {
             </Fragment>
           );
         })}
+        </div>
+        <span style={{ fontSize: '.66rem', fontWeight: 700, color: 'var(--white,#fff)', whiteSpace: 'nowrap' }}>
+          Complete steps to activate booking engine
+        </span>
       </div>
     );
   }
