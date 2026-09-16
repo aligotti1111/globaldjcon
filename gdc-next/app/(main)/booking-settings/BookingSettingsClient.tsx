@@ -201,6 +201,9 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         setSavedSnapshot(payload);
         setAutosaveStatus('saved');
         setTimeout(() => setAutosaveStatus('idle'), 5000);
+        // Let the setup checklist re-check its data steps (packages / equipment)
+        // right after this save, instead of waiting for a full reload.
+        try { window.dispatchEvent(new Event('gdc-setup-progress')); } catch { /* no-op */ }
       } catch {
         setAutosaveStatus('error');
       }
@@ -251,6 +254,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       setSavedSnapshot(snap);
       setAutosaveStatus('saved');
       setTimeout(() => setAutosaveStatus('idle'), 4000);
+      try { window.dispatchEvent(new Event('gdc-setup-progress')); } catch { /* no-op */ }
     } catch {
       setAutosaveStatus('error');
     }
