@@ -17,7 +17,6 @@
 // automatically once their IDs are added.
 
 import { Suspense, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
@@ -74,6 +73,8 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): { text: st
     { text: `${d.videos} videos`, included: d.videos > 0, emphasis: true },
     { text: `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
     { text: 'Embeddable calendar', included: d.embedCalendar },
+    // Team logins (extra seats) — Pro and up. Starter shows it crossed out.
+    { text: d.seats > 0 ? `${d.seats} team logins` : 'Team logins', included: d.seats > 0, emphasis: d.seats > 0 },
   ];
   // Mobile-DJ-only extras (also shown to logged-out visitors: djType null).
   if (djType !== 'club') {
@@ -513,14 +514,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           Update payment method + Cancel subscription, side by side. */}
       {isSubscribed && (
         <div className={styles.manageRow} style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', justifyContent: 'center', alignItems: 'center' }}>
-          <Link
-            href="/booking-settings"
-            className={styles.subscribeBtn}
-            style={{ textDecoration: 'none', display: 'inline-block', width: 'auto' }}
-          >
-            Go to Booking Settings
-          </Link>
-
           {isPaid && !cancelInfo?.scheduled && !confirmCancel && (
             <>
               <button
