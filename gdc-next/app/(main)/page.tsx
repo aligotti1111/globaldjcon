@@ -637,7 +637,7 @@ const LANDING_BODY = String.raw`
       <h1>THE <span class="a">ENTIRE BOOKING PROCESS</span> IN ONE PLATFORM</h1>
       <p class="lede">Global DJ Connect turns the booking process into one link or QR code you share with clients — instant quotes, contracts and deposits handled, money straight to your account. <b class="hl">0% platform cut.</b></p>
       <div class="hero-cta">
-        <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Create your DJ page →</a>
+        <a class="btn btn-neon pn-out" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Create your DJ page →</a>
         <a class="btn btn-ghost" href="#how">See how it works</a>
       </div>
     </div>
