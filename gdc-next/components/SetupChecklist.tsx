@@ -188,7 +188,7 @@ export default function SetupChecklist() {
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none',
           background: NEON, color: '#04121a', fontWeight: 700, fontSize: '.72rem',
-          padding: '.4rem .8rem', borderRadius: 999, whiteSpace: 'nowrap',
+          padding: '.4rem .8rem', borderRadius: 999, whiteSpace: 'nowrap', margin: '0 auto',
         }}
       >
         Review booking settings →
@@ -196,8 +196,10 @@ export default function SetupChecklist() {
     );
   } else {
     const currentIdx = model.steps.findIndex((s) => !s.done);
+    const CIRCLE = 22; // px — connectors align to its vertical center
     content = (
-      <div style={{ display: 'flex', alignItems: 'center', minWidth: 'min-content', gap: 6 }}>
+      // margin:0 auto centers the whole stepper within the search row.
+      <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 6, margin: '0 auto' }}>
         {model.steps.map((s, i) => {
           const isCurrent = i === currentIdx;
           const circleStyle: CSSProperties = s.done
@@ -209,16 +211,17 @@ export default function SetupChecklist() {
           return (
             <Fragment key={s.id}>
               {i > 0 && (
-                <div aria-hidden style={{ height: 1, width: 18, flex: '0 0 auto', background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
+                <div aria-hidden style={{ height: 1, width: 18, flex: '0 0 auto', marginBottom: CIRCLE / 2, background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
               )}
               <Link
                 href={`/booking-settings?section=${s.id}`}
-                style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 5, whiteSpace: 'nowrap' }}
+                style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 4, whiteSpace: 'nowrap' }}
               >
-                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', flexShrink: 0, fontSize: '.62rem', fontWeight: 800, ...circleStyle }}>
+                {/* label OVER the bubble */}
+                <span style={{ fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>{s.label}</span>
+                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: CIRCLE, height: CIRCLE, borderRadius: '50%', flexShrink: 0, fontSize: '.64rem', fontWeight: 800, ...circleStyle }}>
                   {s.done ? '✓' : i + 1}
                 </span>
-                <span style={{ fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>{s.label}</span>
               </Link>
             </Fragment>
           );
