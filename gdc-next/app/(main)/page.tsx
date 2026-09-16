@@ -33,8 +33,11 @@ const LANDING_CSS = String.raw`
 .gdc-landing .pn-in{display:none}
 .gdc-landing.gdc-signedin .pn-out{display:none}
 .gdc-landing.gdc-signedin .pn-in{display:block}
-/* Show only the feature rows for the account's DJ type (logged-out sees both). */
-.gdc-landing.gdc-mobile .plan li.club-only{display:none}
+/* Feature rows by DJ type. Club/Bar rows show ONLY for a signed-in club/bar
+   DJ; everyone else — including logged-out visitors — sees the mobile-DJ set
+   (so Planner & Playlist shows, DJ Rider / Guest list stay hidden). */
+.gdc-landing .plan li.club-only{display:none}
+.gdc-landing.gdc-club .plan li.club-only{display:flex}
 .gdc-landing.gdc-club .plan li.mob-only{display:none}
 /* The plan a subscriber is already on — dim, non-clickable label. */
 .gdc-landing .plan .btn.is-current{opacity:.65;pointer-events:none;background:transparent;border:1px solid var(--line);color:var(--neon)}
