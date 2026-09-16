@@ -521,6 +521,12 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--disp)}
 .gdc-landing .plan .btn{width:100%;justify-content:center;margin-top:auto}
 .gdc-landing .best{position:absolute;top:16px;right:18px;z-index:2;font-family:var(--mono);font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);background:none;padding:0;border-radius:0}
+/* When a subscriber views the pricing, the neon-green featured treatment marks
+   the plan they manage (their current tier) — not "Most popular". */
+.gdc-landing .price.has-current .best{display:none}
+.gdc-landing .plan.is-current-plan{--accent:#00e0a4;border-color:color-mix(in srgb,#00e0a4 55%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,#00e0a4 25%,transparent),0 30px 60px -34px color-mix(in srgb,#00e0a4 45%,transparent)}
+/* A non-current Pro card drops its featured border while someone's managing. */
+.gdc-landing .price.has-current .plan.pro:not(.is-current-plan){border-color:var(--line);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 48px -32px rgba(0,0,0,.9)}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
 .gdc-landing .band h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);letter-spacing:.01em;margin-bottom:.6rem}
 .gdc-landing .band p{color:var(--muted);margin-bottom:1.6rem;font-size:1.04rem}
@@ -1280,20 +1286,29 @@ export default function HomePage() {
   // unsubscribed (Free) DJ keeps "Choose X" — they're subscribing for the first
   // time. Runs after the static markup is committed; re-runs if state changes.
   useEffect(() => {
-    if (currentTier < 1) return; // Free / host / logged-out → leave labels as-is
+    const priceGrid = document.querySelector<HTMLElement>('#pricing .price');
     const cards = document.querySelectorAll<HTMLElement>('#pricing .plan');
+    // Clear any prior current-plan highlight first (SPA navigation / logout).
+    priceGrid?.classList.remove('has-current');
+    cards.forEach((card) => card.classList.remove('is-current-plan'));
+    if (currentTier < 1) return; // Free / host / logged-out → leave labels as-is
+    // Mark the whole grid so the "Most popular" ribbon steps aside — for a
+    // subscriber, the neon-green highlight belongs on the plan they manage.
+    priceGrid?.classList.add('has-current');
     cards.forEach((card, idx) => {
       // idx 0 = Free, 1 = Starter … 4 = Enterprise → tier index matches.
       const btn = card.querySelector<HTMLElement>('.btn');
       if (!btn || idx === 0) return;
       btn.classList.remove('is-current');
-      // The tier they're ON → "Manage Plan" (routes to /subscribe, which is the
-      // only place that knows their billing interval, so it can offer a
-      // monthly⇄yearly switch correctly). We deliberately DON'T say "Current
-      // Plan" here — that would be wrong when the Annual toggle is showing a
-      // month-to-month subscriber the yearly option.
-      if (idx === currentTier) btn.textContent = 'Manage Plan';
-      else if (idx > currentTier) btn.textContent = 'Upgrade';
+      // The tier they're ON → neon-green featured card + "Manage Plan" (routes
+      // to /subscribe, which is the only place that knows their billing interval,
+      // so it can offer a monthly⇄yearly switch correctly). We deliberately
+      // DON'T say "Current Plan" — that would be wrong when the Annual toggle is
+      // showing a month-to-month subscriber the yearly option.
+      if (idx === currentTier) {
+        card.classList.add('is-current-plan');
+        btn.textContent = 'Manage Plan';
+      } else if (idx > currentTier) btn.textContent = 'Upgrade';
       else btn.textContent = 'Switch';
     });
   }, [currentTier, signedIn, djType]);
