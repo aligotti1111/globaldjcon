@@ -58,10 +58,6 @@ function PencilIcon() {
     </svg>
   );
 }
-const countStyle: CSSProperties = {
-  flex: '0 0 auto', fontSize: '.66rem', color: 'var(--muted,#8a8aa0)',
-  fontFamily: "'Space Mono', monospace",
-};
 const miniBtnStyle: CSSProperties = {
   flex: '0 0 auto', background: 'transparent', border: '1px solid rgba(140,140,170,.35)',
   color: 'var(--white,#fff)', borderRadius: 6, padding: '.32rem .7rem',
@@ -259,7 +255,6 @@ export default function PlannerLibrarySection() {
                       aria-label={`Rename ${t.name}`}
                     ><PencilIcon /></button>
                   </span>
-                  <span style={countStyle}>{t.count} questions</span>
                   <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Preview/Edit Template</button>
                 </>
               )}
