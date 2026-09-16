@@ -484,10 +484,18 @@ const LANDING_CSS = String.raw`
 .gdc-landing .billopt.on .save{color:#000}
 .gdc-landing .plan .yr{font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
 .gdc-landing .plan ul{list-style:none;margin:14px 0 18px;flex:1}
-.gdc-landing .plan li{padding:.4rem 0;color:var(--muted);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start}
-.gdc-landing .plan li svg{width:16px;height:16px;stroke:var(--neon);flex-shrink:0;margin-top:3px;fill:none}
+.gdc-landing .plan li{padding:.4rem 0;color:var(--muted);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start;text-transform:capitalize}
+.gdc-landing .plan li svg{width:15px;height:15px;stroke:var(--neon);flex-shrink:0;margin-top:2px;fill:none}
+/* New / increased for this tier — highlighted like the subscribe page. */
+.gdc-landing .plan li.hot{color:#fff;font-weight:700}
+.gdc-landing .plan li.hot svg{stroke:#4dffcb}
+/* Not included on this tier — dim row + dim X. */
+.gdc-landing .plan li.off{color:var(--faint)}
+.gdc-landing .plan li.off svg{stroke:var(--faint);opacity:.5}
 .gdc-landing .plan li.no{color:var(--faint);font-style:italic;padding-left:22px;position:relative}
 .gdc-landing .plan li.no::before{content:"—";position:absolute;left:2px;color:var(--faint)}
+/* Raised $ on the price, matching /subscribe. */
+.gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--disp)}
 .gdc-landing .plan .btn{width:100%;justify-content:center}
 .gdc-landing .best{position:absolute;top:14px;right:18px;font-family:var(--mono);font-size:.56rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,var(--neon),#4dffcb);color:#04241b;padding:4px 10px;border-radius:100px}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
@@ -746,7 +754,7 @@ const LANDING_BODY = String.raw`
     </div>
     <div class="price bill-mo">
       <div class="plan reveal">
-        <div class="pn">Free</div><div class="amt">$0<span> / mo</span></div>
+        <div class="pn">Free</div><div class="amt"><span class="cur">$</span>0<span class="per"> / month</span></div>
         <div class="yr">&nbsp;</div>
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Profile &amp; directory listing</li>
@@ -754,57 +762,94 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 4 photos · 1 video · 1 mix</li>
           <li class="no">No bookings, quotes or contracts</li>
         </ul>
-        <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Get started</a>
+        <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Get started free</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Starter</div><div class="amt"><span class="p-mo">$14.99<span> / mo</span></span><span class="p-yr">$149.90<span> / yr</span></span></div>
+        <div class="pn">Starter</div><div class="amt"><span class="p-mo"><span class="cur">$</span>14.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>149.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $149.90 / yr</span><span class="p-yr">$12.49 / mo · billed annually</span></div>
         <ul>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Free, plus:</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine &amp; instant quotes</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Deposits &amp; payments (0% cut)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 5 / mo</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner, rider &amp; guest list</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Discounts &amp; promo codes</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Calendar sync + SMS &amp; email</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Profile QR code</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 10 photos · 3 videos · 3 mixes</li>
-          <li class="no">No embed calendar or team seats</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 5x e-signed contracts / month</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 10 profile photos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Auto receipts</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Finance &amp; earnings reports</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Inbox messaging</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
+          <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Embeddable calendar</li>
+          <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Team logins</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Starter</a>
       </div>
       <div class="plan pro reveal">
         <span class="best">Most popular</span>
-        <div class="pn">Pro</div><div class="amt"><span class="p-mo">$29.99<span> / mo</span></span><span class="p-yr">$299.90<span> / yr</span></span></div>
+        <div class="pn">Pro</div><div class="amt"><span class="p-mo"><span class="cur">$</span>29.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>299.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $299.90 / yr</span><span class="p-yr">$24.99 / mo · billed annually</span></div>
         <ul>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Starter, plus:</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embed calendar (live availability)</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Team — 2 seats &amp; roles</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 30 / mo</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 25 photos · 6 videos · 6 mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 30x e-signed contracts / month</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 25 profile photos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 2 team logins</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Auto receipts</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Finance &amp; earnings reports</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Inbox messaging</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Premium Pro</div><div class="amt"><span class="p-mo">$49.99<span> / mo</span></span><span class="p-yr">$499.90<span> / yr</span></span></div>
+        <div class="pn">Premium Pro</div><div class="amt"><span class="p-mo"><span class="cur">$</span>49.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>499.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $499.90 / yr</span><span class="p-yr">$41.66 / mo · billed annually</span></div>
         <ul>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Pro, plus:</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 100 / mo</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Team — 5 seats</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 50 photos · 10 videos · 10 mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100x e-signed contracts / month</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 50 profile photos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 5 team logins</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Auto receipts</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Finance &amp; earnings reports</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Inbox messaging</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
       </div>
       <div class="plan reveal">
-        <div class="pn">Enterprise</div><div class="amt"><span class="p-mo">$99.99<span> / mo</span></span><span class="p-yr">$999.90<span> / yr</span></span></div>
+        <div class="pn">Enterprise</div><div class="amt"><span class="p-mo"><span class="cur">$</span>99.99<span class="per"> / month</span></span><span class="p-yr"><span class="cur">$</span>999.90<span class="per"> / year</span></span></div>
         <div class="yr"><span class="p-mo">or $999.90 / yr</span><span class="p-yr">$83.33 / mo · billed annually</span></div>
         <ul>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Everything in Premium Pro, plus:</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Contracts &amp; e‑sign — 250 / mo</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Team — 15 seats</li>
-          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100 photos · 20 videos · 20 mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 250x e-signed contracts / month</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100 profile photos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 15 team logins</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Auto receipts</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Finance &amp; earnings reports</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Inbox messaging</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> QR code to your profile</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist (Mobile DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider (Club/Bar DJs)</li>
+          <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list (Club/Bar DJs)</li>
         </ul>
         <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Enterprise</a>
       </div>
