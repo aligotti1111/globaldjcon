@@ -28,6 +28,11 @@ const LANDING_CSS = String.raw`
 .gdc-landing.gdc-signedin .price .plan:first-child{display:none!important}
 /* Hosts don't subscribe — hide the whole pricing section for a signed-in host. */
 .gdc-landing.gdc-host #pricing{display:none!important}
+/* Pricing heading swaps: logged-out invites you to create a free profile; a
+   signed-in DJ already has one, so it reads as choosing a subscription. */
+.gdc-landing .pn-in{display:none}
+.gdc-landing.gdc-signedin .pn-out{display:none}
+.gdc-landing.gdc-signedin .pn-in{display:block}
 /* Show only the feature rows for the account's DJ type (logged-out sees both). */
 .gdc-landing.gdc-mobile .plan li.club-only{display:none}
 .gdc-landing.gdc-club .plan li.mob-only{display:none}
@@ -755,7 +760,7 @@ const LANDING_BODY = String.raw`
   <div class="wrap">
     <div class="shead reveal">
       <div class="label">Pricing</div>
-      <h2>CREATE A FREE DJ PROFILE</h2>
+      <h2 class="pn-out">CREATE A FREE DJ PROFILE</h2><h2 class="pn-in">CHOOSE YOUR SUBSCRIPTION</h2>
       <p>You only pay your card processor's normal fee — we never take a percentage of what you earn. Yearly billing = 2 months free.</p>
       <div class="billtoggle">
         <button type="button" class="billopt on" onclick="gdcBill('mo',this)">Monthly</button>
