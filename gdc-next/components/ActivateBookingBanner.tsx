@@ -18,7 +18,6 @@
 // inside the effect (client-only) to avoid SSR issues.
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from './AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import { canBook, type AccessFields } from '@/lib/access';
@@ -150,11 +149,9 @@ export default function ActivateBookingBanner() {
         return;
       }
 
-      const msg =
-        row.dj_type === 'club'
-          ? "You're subscribed! Pick an equipment option to activate booking on your profile."
-          : "You're subscribed! Add your first package to activate booking on your profile.";
-      setView({ msg });
+      // The rest ("add a package / pick equipment") is what the setup checklist
+      // already spells out step by step, so the banner just confirms the state.
+      setView({ msg: "You're subscribed!" });
     })();
 
     return () => {
@@ -195,24 +192,6 @@ export default function ActivateBookingBanner() {
         <path d="M12 8v4M12 16h.01" />
       </svg>
       <span>{view.msg}</span>
-      <Link
-        href="/booking-settings"
-        style={{
-          background: 'transparent',
-          border: '1px solid rgba(0, 224, 164, 0.4)',
-          color: 'var(--neon, #00e0a4)',
-          padding: '4px 10px',
-          borderRadius: '4px',
-          fontFamily: 'inherit',
-          fontSize: '11px',
-          letterSpacing: 'inherit',
-          textTransform: 'uppercase',
-          textDecoration: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        Booking Settings
-      </Link>
       <button
         type="button"
         onClick={dismiss}
