@@ -81,12 +81,11 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
     { key: 'seats', text: d.seats > 0 ? `${d.seats} team logins` : 'Team logins', included: d.seats > 0, emphasis: d.seats > 0 },
   ];
   if (djType !== 'club') {
-    feats.push({ key: 'planner', text: 'Event planner', included: true });
-    feats.push({ key: 'songs', text: 'Playlist & song requests', included: true });
+    feats.push({ key: 'planner', text: 'Planner & Playlist (Mobile DJs)', included: true });
   }
   if (djType !== 'mobile') {
-    feats.push({ key: 'rider', text: 'Send rider', included: true });
-    feats.push({ key: 'guestlist', text: 'Guest list', included: true });
+    feats.push({ key: 'rider', text: 'DJ Rider (Club/Bar DJs)', included: true });
+    feats.push({ key: 'guestlist', text: 'Guest list (Club/Bar DJs)', included: true });
   }
   return feats;
 }
