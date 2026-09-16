@@ -451,6 +451,11 @@ const LANDING_CSS = String.raw`
 @media(max-width:560px){
 .gdc-landing .price{grid-template-columns:1fr}
 }
+/* Signed in → Free card is hidden, so drop the grid to 4 columns (otherwise the
+   hidden card leaves an empty 5th track and the paid cards look squeezed). */
+@media(min-width:981px){
+.gdc-landing.gdc-signedin .price{grid-template-columns:repeat(4,1fr)}
+}
 .gdc-landing .plan{background:transparent;border:none;border-left:1px solid var(--line);border-radius:0;padding:26px 20px 24px;position:relative;display:flex;flex-direction:column}
 .gdc-landing .plan:first-child{border-left:none}
 @media(max-width:980px){
