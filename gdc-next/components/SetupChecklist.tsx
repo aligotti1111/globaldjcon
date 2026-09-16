@@ -17,6 +17,7 @@
 // not-yet-subscribed accounts.
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
@@ -94,6 +95,10 @@ export default function SetupChecklist() {
   const shownIncomplete = useRef(false);       // did we ever render it incomplete this mount?
   const [completedPath, setCompletedPath] = useState<string | null>(null);
   const dismissed = useRef(false);             // hidden for good this mount (post-completion nav)
+  // On the homepage the search bar exposes a mount slot (#gdc-setup-slot); when
+  // present we portal the stepper INTO it so it shares the search row. Elsewhere
+  // (no slot) it falls back to a slim strip under the header.
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
 
   // Only the ACCOUNT OWNER gets the setup strip — a DJ acting as 'owner'. This
   // excludes hosts, admins, and every teammate (role 'teammate', or a DJ signed
@@ -120,6 +125,20 @@ export default function SetupChecklist() {
   // Refetch the data-derived signals on mount and whenever they navigate (so a
   // package/payment added on Booking Settings reflects when they come back).
   useEffect(() => { if (isDjOwner) load(); }, [isDjOwner, pathname, load]);
+
+  // Locate the homepage search-row slot (retry a few frames; it lives in the
+  // hero's injected markup, which may mount a beat after this component).
+  useEffect(() => {
+    if (!isDjOwner) { setSlot(null); return; }
+    let raf = 0; let tries = 0;
+    const find = () => {
+      const el = typeof document !== 'undefined' ? document.getElementById('gdc-setup-slot') : null;
+      if (el) { setSlot(el); return; }
+      if (tries++ < 20) raf = requestAnimationFrame(find); else setSlot(null);
+    };
+    find();
+    return () => cancelAnimationFrame(raf);
+  }, [isDjOwner, pathname]);
 
   // Read viewed steps on mount + whenever a tab is opened (same-tab event) or
   // the window regains focus / another tab writes.
@@ -210,23 +229,17 @@ export default function SetupChecklist() {
   // The current step = the first one not yet done (gets the highlighted ring).
   const currentIdx = model.steps.findIndex((s) => !s.done);
 
-  return (
-    <div
-      style={{
-        borderBottom: '1px solid rgba(255,255,255,.1)',
-        background: 'rgba(0,0,0,.35)',
-        padding: '.7rem 1rem',
-      }}
-    >
-      <div style={{ maxWidth: 760, margin: '0 auto', overflowX: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', minWidth: 'min-content' }}>
+  // Compact single-line stepper: number + label inline per step. Shared by both
+  // the portal (homepage search row) and the fallback strip.
+  const stepper = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 'min-content', gap: 6, overflowX: 'auto' }}>
           {model.steps.map((s, i) => {
             const isCurrent = i === currentIdx;
             const circleStyle: CSSProperties = s.done
-              ? { background: NEON, border: `2px solid ${NEON}`, color: '#04121a' }
+              ? { background: NEON, border: `1.5px solid ${NEON}`, color: '#04121a' }
               : isCurrent
-                ? { background: 'transparent', border: `2px solid ${NEON}`, color: NEON }
-                : { background: 'transparent', border: '2px solid rgba(255,255,255,.3)', color: 'var(--muted,#8a8aa0)' };
+                ? { background: 'transparent', border: `1.5px solid ${NEON}`, color: NEON }
+                : { background: 'transparent', border: '1.5px solid rgba(255,255,255,.3)', color: 'var(--muted,#8a8aa0)' };
             const labelColor = s.done ? NEON : isCurrent ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)';
             return (
               <Fragment key={s.id}>
@@ -234,7 +247,7 @@ export default function SetupChecklist() {
                   <div
                     aria-hidden
                     style={{
-                      height: 2, flex: 1, minWidth: 22, marginTop: 13,
+                      height: 1, flex: 1, minWidth: 12,
                       background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)',
                     }}
                   />
@@ -242,29 +255,35 @@ export default function SetupChecklist() {
                 <Link
                   href={`/booking-settings?section=${s.id}`}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    flex: '0 0 auto', width: 84, textDecoration: 'none', gap: 6,
+                    display: 'inline-flex', flexDirection: 'row', alignItems: 'center',
+                    flex: '0 0 auto', textDecoration: 'none', gap: 5, whiteSpace: 'nowrap',
                   }}
                 >
                   <span
                     aria-hidden
                     style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                      fontSize: '.8rem', fontWeight: 800, ...circleStyle,
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                      fontSize: '.6rem', fontWeight: 800, ...circleStyle,
                     }}
                   >
                     {s.done ? '✓' : i + 1}
                   </span>
-                  <span style={{ fontSize: '.68rem', lineHeight: 1.25, textAlign: 'center', color: labelColor, fontWeight: 600 }}>
+                  <span style={{ fontSize: '.62rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>
                     {s.label}
                   </span>
                 </Link>
               </Fragment>
             );
           })}
-        </div>
-      </div>
+    </div>
+  );
+
+  // Homepage: portal into the search row. Everywhere else: slim strip under header.
+  if (slot) return createPortal(stepper, slot);
+  return (
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', background: 'rgba(0,0,0,.35)', padding: '.35rem .75rem' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>{stepper}</div>
     </div>
   );
 }
