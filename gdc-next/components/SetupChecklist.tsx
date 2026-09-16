@@ -176,9 +176,13 @@ export default function SetupChecklist() {
   const isReviewed = !!row?.setup_reviewed || reviewedLocal;
   const NEON = 'var(--neon,#00e0a4)';
 
-  // ── DONE / RETURNING → compact "Review booking settings" pill (corner) ──
+  // ── DONE / RETURNING → compact "Review booking settings" pill ──
+  // ── FIRST-TIME (setup not finished) → full step-by-step checklist ──
+  // Both render INLINE in the homepage search row (the #gdc-setup-slot), so the
+  // prompt sits on the same line as the DJ search rather than in its own band.
+  let content: JSX.Element;
   if (isReviewed) {
-    const pill = (
+    content = (
       <Link
         href="/booking-settings"
         style={{
@@ -190,47 +194,44 @@ export default function SetupChecklist() {
         Review booking settings →
       </Link>
     );
-    if (slot) return createPortal(pill, slot);
-    return (
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', background: 'rgba(0,0,0,.35)', padding: '.4rem .75rem' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', justifyContent: 'center' }}>{pill}</div>
+  } else {
+    const currentIdx = model.steps.findIndex((s) => !s.done);
+    content = (
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 'min-content', gap: 6 }}>
+        {model.steps.map((s, i) => {
+          const isCurrent = i === currentIdx;
+          const circleStyle: CSSProperties = s.done
+            ? { background: NEON, border: `1.5px solid ${NEON}`, color: '#04121a' }
+            : isCurrent
+              ? { background: 'transparent', border: `1.5px solid ${NEON}`, color: NEON }
+              : { background: 'transparent', border: '1.5px solid rgba(255,255,255,.3)', color: 'var(--muted,#8a8aa0)' };
+          const labelColor = s.done ? NEON : isCurrent ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)';
+          return (
+            <Fragment key={s.id}>
+              {i > 0 && (
+                <div aria-hidden style={{ height: 1, width: 18, flex: '0 0 auto', background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
+              )}
+              <Link
+                href={`/booking-settings?section=${s.id}`}
+                style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 5, whiteSpace: 'nowrap' }}
+              >
+                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', flexShrink: 0, fontSize: '.62rem', fontWeight: 800, ...circleStyle }}>
+                  {s.done ? '✓' : i + 1}
+                </span>
+                <span style={{ fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>{s.label}</span>
+              </Link>
+            </Fragment>
+          );
+        })}
       </div>
     );
   }
 
-  // ── FIRST-TIME (setup not finished) → full checklist, centered under header ──
-  const currentIdx = model.steps.findIndex((s) => !s.done);
+  if (slot) return createPortal(content, slot);
+  // Fallback (non-homepage pages have no slot): a slim strip.
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', background: 'rgba(0,0,0,.35)', padding: '.5rem 1rem' }}>
-      <div style={{ maxWidth: 760, margin: '0 auto', overflowX: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 'min-content', gap: 6 }}>
-          {model.steps.map((s, i) => {
-            const isCurrent = i === currentIdx;
-            const circleStyle: CSSProperties = s.done
-              ? { background: NEON, border: `1.5px solid ${NEON}`, color: '#04121a' }
-              : isCurrent
-                ? { background: 'transparent', border: `1.5px solid ${NEON}`, color: NEON }
-                : { background: 'transparent', border: '1.5px solid rgba(255,255,255,.3)', color: 'var(--muted,#8a8aa0)' };
-            const labelColor = s.done ? NEON : isCurrent ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)';
-            return (
-              <Fragment key={s.id}>
-                {i > 0 && (
-                  <div aria-hidden style={{ height: 1, flex: 1, minWidth: 12, background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
-                )}
-                <Link
-                  href={`/booking-settings?section=${s.id}`}
-                  style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 5, whiteSpace: 'nowrap' }}
-                >
-                  <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', flexShrink: 0, fontSize: '.62rem', fontWeight: 800, ...circleStyle }}>
-                    {s.done ? '✓' : i + 1}
-                  </span>
-                  <span style={{ fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600 }}>{s.label}</span>
-                </Link>
-              </Fragment>
-            );
-          })}
-        </div>
-      </div>
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', background: 'rgba(0,0,0,.35)', padding: '.4rem .75rem' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>{content}</div>
     </div>
   );
 }
