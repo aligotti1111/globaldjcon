@@ -509,17 +509,24 @@ const LANDING_CSS = String.raw`
 .gdc-landing .reveal.in{opacity:1;transform:none}
 .gdc-landing .searchbar{border-bottom:1px solid var(--line);background:#000}
 .gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:10px;padding-top:16px;padding-bottom:16px;max-width:none;margin:0;padding-left:4rem;padding-right:4rem;position:relative}
-/* Owner setup stepper: absolutely centered across the whole search row. */
-.gdc-landing #gdc-setup-slot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;justify-content:center;pointer-events:none;max-width:calc(100% - 8rem)}
+/* Owner setup stepper. Default: in the flow, right of the search box. */
+.gdc-landing #gdc-setup-slot{justify-content:flex-end}
+/* WIDE screens only: there's room for the search box AND a page-centered
+   checklist, so absolutely center it across the whole row. */
+@media(min-width:1261px){
+.gdc-landing #gdc-setup-slot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);flex:none;justify-content:center;pointer-events:none;max-width:calc(100% - 8rem)}
 .gdc-landing #gdc-setup-slot>*{pointer-events:auto}
-@media(max-width:900px){
-.gdc-landing .searchbar .wrap{padding-left:1.2rem;padding-right:1.2rem}
-/* On phones, drop back into the flow (right side, scrollable) so it can't overlap the search box. */
-.gdc-landing #gdc-setup-slot{position:static;transform:none;flex:1;min-width:0;justify-content:flex-end;overflow-x:auto;max-width:none}
-/* First-time DJ checklist active: hide the search box and give the whole row to the checklist. */
+}
+/* NARROWER than that: a centered checklist would collide with the search box.
+   So when the first-time checklist is active, hide the search box entirely and
+   give the whole row to the (centered) checklist. */
+@media(max-width:1260px){
 .gdc-landing .searchbar .wrap.gdc-checklist-active .searchfield,
 .gdc-landing .searchbar .wrap.gdc-checklist-active .searchbtn{display:none}
 .gdc-landing .searchbar .wrap.gdc-checklist-active #gdc-setup-slot{justify-content:center}
+}
+@media(max-width:900px){
+.gdc-landing .searchbar .wrap{padding-left:1.2rem;padding-right:1.2rem}
 }
 .gdc-landing .searchfield{width:340px;max-width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:#0c0c11;border:1px solid rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s}
 .gdc-landing .searchfield:focus-within{border-color:var(--neon);box-shadow:0 0 0 4px rgba(0,245,196,.1)}
@@ -574,7 +581,7 @@ const LANDING_BODY = String.raw`
       <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
     </button>
     <!-- Owner setup stepper portals in here so it shares the search row. -->
-    <div id="gdc-setup-slot" style="flex:1;min-width:0;display:flex;justify-content:flex-end;overflow-x:auto"></div>
+    <div id="gdc-setup-slot" style="flex:1;min-width:0;display:flex;overflow-x:auto"></div>
   </div>
 </div>
 
