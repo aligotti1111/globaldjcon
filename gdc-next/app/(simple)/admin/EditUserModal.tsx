@@ -100,6 +100,10 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
   })();
   const [grantTier, setGrantTier] = useState<number>(initialGrantTier);
   const [grantDate, setGrantDate] = useState<string>(initialGrantDate);
+  // A paying subscriber's plan + renewal are managed by Stripe, so the admin
+  // free-access controls are locked for them (read-only display only).
+  const isSubscribed = !!(user && (user.sub_tier ?? 0) > 0 &&
+    (user.sub_status === 'active' || user.sub_status === 'grace'));
 
   // Live slug preview
   const slugPreview = (slug || '').toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'slug';
@@ -173,13 +177,17 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
 
       // Free access (comp) — applied as part of the save. A date present
       // grants/updates it; a cleared date removes it (only if there was one).
+      // Locked for active subscribers — their access is Stripe-managed, so we
+      // never write/clear a comp for them.
       const trimmedDate = grantDate.trim();
       const hadComp = !!user.comp_expires_at;
       let compRes: { success: boolean; error?: string } = { success: true };
-      if (trimmedDate) {
-        compRes = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: trimmedDate });
-      } else if (hadComp) {
-        compRes = await clearCompAction({ user_id: user.id });
+      if (!isSubscribed) {
+        if (trimmedDate) {
+          compRes = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: trimmedDate });
+        } else if (hadComp) {
+          compRes = await clearCompAction({ user_id: user.id });
+        }
       }
       if (!compRes.success) {
         setFeedback({ msg: '✗ Profile saved, but access update failed: ' + (compRes.error || ''), type: 'err' });
@@ -404,20 +412,41 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
           </label>
         </div>
 
-        {/* Free access (comp) — part of the normal save */}
+        {/* Subscription & access — shows what they're on + lets the admin grant
+            free access or push the access date. The comp is part of the save. */}
         <div className={styles.formDivider} />
-        <div className={styles.formSectionLabel}>Free Access</div>
-        <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.6rem' }}>
-          Paid plan: {planLabel(user.sub_tier)} · {statusLabel(user.sub_status)}
-          {user.sub_period_end ? ` (ends ${new Date(user.sub_period_end).toLocaleDateString()})` : ''}
+        <div className={styles.formSectionLabel}>Subscription &amp; Access</div>
+        {/* Current status line: paid subscription (with renewal date) or none. */}
+        <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.15rem' }}>
+          {user.sub_tier && (user.sub_status === 'active' || user.sub_status === 'grace') ? (
+            <>Paid plan: <b>{planLabel(user.sub_tier)}</b> · {statusLabel(user.sub_status)}
+              {user.sub_period_end
+                ? ` · ${user.sub_status === 'active' ? 'renews' : 'retry by'} ${new Date(user.sub_period_end).toLocaleDateString()}`
+                : ''}</>
+          ) : (
+            <>No active paid subscription.</>
+          )}
+        </p>
+        {/* Complimentary (admin-granted) access, if any. */}
+        {user.comp_tier && user.comp_expires_at && new Date(user.comp_expires_at).getTime() > Date.now() ? (
+          <p className={styles.formHint} style={{ marginTop: 0, marginBottom: '.15rem', color: 'var(--neon, #00e0a4)' }}>
+            Free access: <b>{planLabel(user.comp_tier)}</b> through {new Date(user.comp_expires_at).toLocaleDateString()}.
+          </p>
+        ) : null}
+        <p className={styles.formHint} style={{ marginBottom: '.6rem' }}>
+          {isSubscribed
+            ? 'This account has an active paid subscription — its plan and renewal are managed through Stripe, so free-access controls are locked here.'
+            : 'Give this user free access at a plan, or move the date ahead to extend it. This is separate from any paid subscription — effective access is always the higher of the two. Clear the date to remove free access.'}
         </p>
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Plan</label>
+            <label className={styles.formLabel}>Free access plan</label>
             <select
               className={styles.formSelect}
               value={grantTier}
               onChange={(e) => setGrantTier(parseInt(e.target.value, 10))}
+              disabled={isSubscribed}
+              style={isSubscribed ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
             >
               <option value={1}>Starter</option>
               <option value={2}>Pro</option>
@@ -432,10 +461,14 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
               type="date"
               value={grantDate}
               onChange={(e) => setGrantDate(e.target.value)}
+              disabled={isSubscribed}
+              style={isSubscribed ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
             />
-            <p className={styles.formHint}>
-              Set a date to give free access through it. Clear the date to remove access. Applied on Save.
-            </p>
+            {!isSubscribed && (
+              <p className={styles.formHint}>
+                Set a date to give free access through it. Clear the date to remove access. Applied on Save.
+              </p>
+            )}
           </div>
         </div>
 
