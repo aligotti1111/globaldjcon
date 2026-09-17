@@ -22,6 +22,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import { TIER_LABELS, type Tier } from '@/lib/access';
 
 export const runtime = 'nodejs';
@@ -59,7 +60,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Please sign in to redeem a code.' }, { status: 401 });
   }
 
+  // Team members act on the OWNER's account and have no subscription of their
+  // own, so a comp on their login is meaningless and abusable. Only the account
+  // owner (a DJ) can redeem — block members outright (both preview and apply).
+  const acting = await getActingContext(user.id);
+  if (acting.isMember) {
+    return NextResponse.json(
+      { ok: false, error: 'Team members can’t redeem codes — the account owner handles the subscription.' },
+      { status: 403 },
+    );
+  }
+
   const admin = createAdminClient() as unknown as SupabaseClient;
+
+  // Only DJ owner accounts subscribe, so only they can redeem a comp code.
+  const { data: selfProfile } = await admin
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle<{ role: string | null }>();
+  if (selfProfile?.role !== 'dj') {
+    return NextResponse.json(
+      { ok: false, error: 'Only DJ accounts can redeem a code.' },
+      { status: 403 },
+    );
+  }
 
   // Look the code up (case-insensitive since stored uppercase).
   const { data: codeData } = await admin
