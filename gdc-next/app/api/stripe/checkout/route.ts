@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   }
 
   // 2. Parse + validate the plan choice.
-  let body: { tier?: unknown; interval?: unknown; embedded?: unknown };
+  let body: { tier?: unknown; interval?: unknown; embedded?: unknown; promoCode?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -47,6 +47,9 @@ export async function POST(req: Request) {
   const tier = Number(body.tier);
   const interval = String(body.interval);
   const embedded = body.embedded === true;
+  // Optional discount code entered in our "Apply Promo Code" box before picking
+  // a plan. We resolve it to the Stripe promotion code and pre-apply it below.
+  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim().toUpperCase() : '';
   const priceId = priceIdFor(tier, interval);
   if (!priceId) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
@@ -100,6 +103,23 @@ export async function POST(req: Request) {
       ? `No charge today — your plan begins ${new Date(compExpMs).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, when your complimentary access ends.`
       : null;
 
+    // Resolve a discount code → its Stripe promotion code id. When present we
+    // PRE-APPLY it via `discounts` and must NOT also set allow_promotion_codes
+    // (Stripe rejects both on the same session). An unknown/inactive code is
+    // ignored (checkout proceeds at full price with the manual code field on).
+    let promotionCodeId: string | null = null;
+    if (promoCode) {
+      const { data: dc } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
+        .from('discount_codes')
+        .select('stripe_promo_id, active')
+        .eq('code', promoCode)
+        .maybeSingle<{ stripe_promo_id: string; active: boolean }>();
+      if (dc && dc.active) promotionCodeId = dc.stripe_promo_id;
+    }
+    const discountFields = promotionCodeId
+      ? { discounts: [{ promotion_code: promotionCodeId }] }
+      : { allow_promotion_codes: true as const };
+
     // 4. Create the Checkout Session.
     const origin =
       req.headers.get('origin') ||
@@ -125,7 +145,7 @@ export async function POST(req: Request) {
             ...(trialEnd ? { trial_end: trialEnd } : {}),
           },
           ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
-          allow_promotion_codes: true,
+          ...discountFields,
         }
       : {
           mode: 'subscription' as const,
@@ -139,7 +159,7 @@ export async function POST(req: Request) {
             ...(trialEnd ? { trial_end: trialEnd } : {}),
           },
           ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
-          allow_promotion_codes: true,
+          ...discountFields,
         };
 
     // Create the session. If the stored customer id doesn't exist in the current
