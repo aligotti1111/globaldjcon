@@ -90,8 +90,12 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
     return t >= 1 && t <= 4 ? t : 1;
   })();
   const initialGrantDate = (() => {
-    if (!user?.comp_expires_at) return '';
-    const d = new Date(user.comp_expires_at);
+    // Show the account's current access-through date: an existing comp expiry
+    // if set, otherwise the paid subscription's renewal date — so the field is
+    // pre-filled (not blank) and the admin can move it forward from there.
+    const raw = user?.comp_expires_at || user?.sub_period_end || '';
+    if (!raw) return '';
+    const d = new Date(raw);
     if (isNaN(d.getTime())) return '';
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
