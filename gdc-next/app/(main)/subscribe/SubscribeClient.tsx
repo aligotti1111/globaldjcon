@@ -54,6 +54,10 @@ interface Props {
   source: AccessSource;
   // End date of the current access (paid period end or comp expiry), ISO.
   accessUntil: string | null;
+  // Admin/code comp expiry, ISO — when a paid subscriber ALSO has a comp that
+  // outlasts their billing period, this is what keeps them active if they
+  // cancel. Used to show "active until <comp date>" on a scheduled cancel.
+  compUntil?: string | null;
   // The DJ's type — tailors club-only vs mobile-only feature bullets. null =
   // logged-out / unknown, in which case both sets show.
   djType?: 'mobile' | 'club' | null;
@@ -141,7 +145,7 @@ const X_SVG = (
   </svg>
 );
 
-function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, djType, currentInterval }: Props) {
+function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, compUntil, djType, currentInterval }: Props) {
   const searchParams = useSearchParams();
   const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
 
@@ -153,6 +157,17 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const accessUntilLabel = accessUntil
     ? new Date(accessUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null;
+  // If a paid subscriber ALSO has a comp that outlasts their billing period,
+  // cancelling doesn't drop them at period end — the comp keeps them active
+  // until its date. So the "active until" date on a scheduled cancel is the
+  // LATER of the two.
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const periodMs = accessUntil ? new Date(accessUntil).getTime() : 0;
+  const compMs = compUntil ? new Date(compUntil).getTime() : 0;
+  const cancelEndLabel = compMs > periodMs && compUntil
+    ? fmtDate(compUntil)
+    : accessUntilLabel;
 
   // Open on the interval the DJ is already billed at, so their current plan
   // reads as current and the OTHER interval is one toggle away.
@@ -365,7 +380,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           )}
           {isPaid && accessUntilLabel && currentState === 'active' && (
             <span className={styles.graceNote}>
-              {' '}{cancelInfo?.scheduled ? `Access ends ${accessUntilLabel}.` : `Renews ${accessUntilLabel}.`}
+              {' '}{cancelInfo?.scheduled ? `Active until ${cancelEndLabel}.` : `Renews ${accessUntilLabel}.`}
             </span>
           )}
           {currentState === 'grace' && (
