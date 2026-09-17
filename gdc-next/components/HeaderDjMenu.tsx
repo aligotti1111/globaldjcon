@@ -43,7 +43,7 @@ interface HeaderDjMenuProps {
 }
 
 function initialsFrom(name: string): string {
-  const parts = name.trim().split(/\s+/);
+  const parts = (name || '').trim().split(/\s+/);
   if (parts.length === 0 || !parts[0]) return '?';
   const first = parts[0]?.[0] ?? '';
   const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : '';
