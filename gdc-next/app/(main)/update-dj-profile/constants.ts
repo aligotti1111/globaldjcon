@@ -73,6 +73,14 @@ export const TRAVEL_DISTANCES: { val: string; label: string }[] = [
     .map(v => ({ val: v, label: `${v} miles` })),
 ];
 
+// US states + DC + territories, stored as the full name (matches how the app
+// saves state). Used by the admin editor's State dropdown.
+export const US_STATES: { val: string; label: string }[] = [
+  { val: '', label: 'Select state...' },
+  ...['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','District of Columbia','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming','Puerto Rico','Guam','U.S. Virgin Islands']
+    .map(s => ({ val: s, label: s })),
+];
+
 // Generated descending from current year (2026) down to 1960. Vanilla
 // hardcodes the list; we generate from `new Date()` so it stays current
 // without manual edits.
