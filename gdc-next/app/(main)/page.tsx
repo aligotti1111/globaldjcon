@@ -509,9 +509,9 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan ul{list-style:none;margin:0 0 18px;flex:1}
 .gdc-landing .plan li{padding:.4rem 0;color:var(--ink);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start;text-transform:capitalize}
 .gdc-landing .plan li svg{width:15px;height:15px;stroke:var(--neon);flex-shrink:0;margin-top:2px;fill:none}
-/* New / increased for this tier — highlighted like the subscribe page. */
-.gdc-landing .plan li.hot{color:#fff;font-weight:700}
-.gdc-landing .plan li.hot svg{stroke:#4dffcb}
+/* New / increased for this tier — bold + neon green. Regular rows stay white. */
+.gdc-landing .plan li.hot{color:var(--neon);font-weight:700}
+.gdc-landing .plan li.hot svg{stroke:var(--neon)}
 /* Not included on this tier — dim row + dim X. */
 .gdc-landing .plan li.off{color:var(--faint)}
 .gdc-landing .plan li.off svg{stroke:var(--faint);opacity:.5}
@@ -521,12 +521,9 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--disp)}
 .gdc-landing .plan .btn{width:100%;justify-content:center;margin-top:auto}
 .gdc-landing .best{position:absolute;top:16px;right:18px;z-index:2;font-family:var(--mono);font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);background:none;padding:0;border-radius:0}
-/* When a subscriber views the pricing, the neon-green featured treatment marks
-   the plan they manage (their current tier) — not "Most popular". */
-.gdc-landing .price.has-current .best{display:none}
+/* When a subscriber views the pricing, the neon-green featured treatment ALSO
+   marks the plan they manage (their current tier). "Most Popular" stays on Pro. */
 .gdc-landing .plan.is-current-plan{--accent:#00e0a4;border-color:color-mix(in srgb,#00e0a4 55%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,#00e0a4 25%,transparent),0 30px 60px -34px color-mix(in srgb,#00e0a4 45%,transparent)}
-/* A non-current Pro card drops its featured border while someone's managing. */
-.gdc-landing .price.has-current .plan.pro:not(.is-current-plan){border-color:var(--line);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 48px -32px rgba(0,0,0,.9)}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
 .gdc-landing .band h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);letter-spacing:.01em;margin-bottom:.6rem}
 .gdc-landing .band p{color:var(--muted);margin-bottom:1.6rem;font-size:1.04rem}
