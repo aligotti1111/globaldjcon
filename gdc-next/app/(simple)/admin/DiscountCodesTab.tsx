@@ -1,0 +1,208 @@
+'use client';
+
+// DiscountCodesTab — admin "Promotions": paid DISCOUNT CODES.
+// Unlike a comp code (free access), a discount code takes a % off a PAID
+// subscription at Stripe checkout. Creating one makes a real Stripe coupon +
+// promotion code; the DJ enters it in the same "Apply Promo Code" box and it
+// comes off automatically when they pick a plan.
+
+import { useState } from 'react';
+import styles from './admin.module.css';
+import {
+  createDiscountCodeAction,
+  deactivateDiscountCodeAction,
+  type DiscountCodeRow,
+} from './actions';
+
+export default function DiscountCodesTab({ initialCodes }: { initialCodes: DiscountCodeRow[] }) {
+  const [codes, setCodes] = useState<DiscountCodeRow[]>(initialCodes);
+  const [code, setCode] = useState('');
+  const [percent, setPercent] = useState(20);
+  const [duration, setDuration] = useState<'once' | 'forever'>('once');
+  const [maxUses, setMaxUses] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [fb, setFb] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  async function create() {
+    setFb(null);
+    setBusy(true);
+    try {
+      const res = await createDiscountCodeAction({
+        code,
+        percent_off: percent,
+        duration,
+        max_redemptions: maxUses === '' ? null : Number(maxUses),
+        expires_at: expiresAt || null,
+        note: note || null,
+      });
+      if (res.success && res.code) {
+        setCodes((prev) => [res.code as DiscountCodeRow, ...prev]);
+        setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setPercent(20); setDuration('once');
+        setFb({ msg: '✓ Discount code created', ok: true });
+      } else {
+        setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+      }
+    } catch (e) {
+      setFb({ msg: '✗ ' + (e as Error).message, ok: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggle(c: DiscountCodeRow) {
+    const next = !c.active;
+    try {
+      const res = await deactivateDiscountCodeAction(c.id, next);
+      if (res.success) {
+        setCodes((prev) => prev.map((x) => (x.id === c.id ? { ...x, active: next } : x)));
+      } else {
+        alert('✗ ' + (res.error || 'Update failed'));
+      }
+    } catch (e) {
+      alert('✗ ' + (e as Error).message);
+    }
+  }
+
+  return (
+    <div>
+      <div className={styles.formSectionLabel}>Create Discount Code</div>
+      <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.7rem' }}>
+        A discount code takes a percentage off a paid subscription at checkout. It creates a real Stripe coupon —
+        DJs enter it in the same “Apply Promo Code” box and the discount applies when they pick a plan.
+      </p>
+
+      <div className={styles.formGrid}>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Code</label>
+          <input
+            className={styles.formInput}
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="LAUNCH20"
+            style={{ textTransform: 'uppercase' }}
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Percent off</label>
+          <input
+            className={styles.formInput}
+            type="number"
+            min={1}
+            max={100}
+            value={percent}
+            onChange={(e) => setPercent(Number(e.target.value))}
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Applies to</label>
+          <select className={styles.formSelect} value={duration} onChange={(e) => setDuration(e.target.value as 'once' | 'forever')}>
+            <option value="once">First month only</option>
+            <option value="forever">Every month (forever)</option>
+          </select>
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Max uses (blank = unlimited)</label>
+          <input
+            className={styles.formInput}
+            type="number"
+            min={1}
+            value={maxUses}
+            onChange={(e) => setMaxUses(e.target.value)}
+            placeholder="Unlimited"
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Code expires (blank = never)</label>
+          <input
+            className={styles.formInput}
+            type="date"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Note (admin only)</label>
+          <input
+            className={styles.formInput}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Launch promo"
+          />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.6rem' }}>
+        <button
+          type="button"
+          onClick={create}
+          disabled={busy}
+          className={`${styles.btn} ${styles.btnAdmin}`}
+        >
+          {busy ? 'Creating…' : 'Create Discount Code'}
+        </button>
+        {fb && (
+          <span className={`${styles.formFb} ${fb.ok ? styles.formFbOk : styles.formFbErr}`}>{fb.msg}</span>
+        )}
+      </div>
+
+      {/* Existing codes */}
+      <div className={styles.usersHeaderBar} style={{ marginTop: '1.5rem' }}>
+        <div className={styles.formSectionLabel} style={{ margin: 0 }}>Discount Codes</div>
+        <div className={styles.usersHeaderRight}>
+          <span className={styles.usersCount}>{codes.length} {codes.length === 1 ? 'code' : 'codes'}</span>
+        </div>
+      </div>
+
+      {codes.length === 0 ? (
+        <div className={styles.emptyAdmin}>No discount codes yet.</div>
+      ) : (
+        <div className={styles.adminList}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.2rem 1rem .4rem' }}>
+            {(() => {
+              const h: React.CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' };
+              return (
+                <>
+                  <div style={{ ...h, flex: 1.2, minWidth: 120 }}>Code</div>
+                  <div style={{ ...h, flex: 1, minWidth: 90 }}>Discount</div>
+                  <div style={{ ...h, flex: 1, minWidth: 110 }}>Applies</div>
+                  <div style={{ ...h, flex: 1, minWidth: 100 }}>Expires</div>
+                  <div style={{ ...h, flex: '0 0 120px', textAlign: 'right' }}>Actions</div>
+                </>
+              );
+            })()}
+          </div>
+          {codes.map((c) => (
+            <div key={c.id} className={styles.adminRow}>
+              <div className={styles.arName}>
+                {c.code}
+                {!c.active && (
+                  <span style={{ marginLeft: '.4rem', fontSize: '.55rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#ff8b8b', border: '1px solid #ff8b8b', borderRadius: 4, padding: '1px 5px' }}>
+                    Off
+                  </span>
+                )}
+                {c.note && <span style={{ marginLeft: '.4rem', color: 'var(--muted)', fontSize: '.75rem' }}>· {c.note}</span>}
+              </div>
+              <div className={styles.arDetail}>{c.percent_off}% off</div>
+              <div className={styles.arDetail}>{c.duration === 'once' ? 'First month' : 'Every month'}</div>
+              <div className={styles.arDetail} style={{ color: c.expires_at ? 'var(--white)' : '#6b6b88' }}>
+                {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}
+              </div>
+              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 120px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => toggle(c)}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                  style={c.active ? { borderColor: '#ff8b8b', color: '#ff8b8b' } : { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }}
+                >
+                  {c.active ? 'Deactivate' : 'Activate'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
