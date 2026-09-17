@@ -17,6 +17,9 @@ interface HeaderHostMenuProps {
   name: string;
   /** Public avatar URL — when null, we render an initials circle instead. */
   avatarUrl: string | null;
+  /** Platform admin (single-admin, by email) — shows an "Admin Panel" link at
+   *  the top of the dropdown. Only ever true for the one admin account. */
+  isAdmin?: boolean;
 }
 
 function initialsFrom(name: string): string {
@@ -27,7 +30,7 @@ function initialsFrom(name: string): string {
   return (first + second).toUpperCase().slice(0, 2);
 }
 
-export default function HeaderHostMenu({ name, avatarUrl }: HeaderHostMenuProps) {
+export default function HeaderHostMenu({ name, avatarUrl, isAdmin = false }: HeaderHostMenuProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -111,6 +114,15 @@ export default function HeaderHostMenu({ name, avatarUrl }: HeaderHostMenuProps)
       </button>
       {open && popPos && (
         <div className="hdr-dj-menu-pop" role="menu" style={{ top: popPos.top, right: popPos.right }}>
+          {/* Admin Panel — only for the single platform-admin account. */}
+          {isAdmin && (
+            <>
+              <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Admin Panel
+              </Link>
+              <div className="hdr-dj-menu-sep" />
+            </>
+          )}
           <Link href="/upcoming-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Upcoming Events
           </Link>
