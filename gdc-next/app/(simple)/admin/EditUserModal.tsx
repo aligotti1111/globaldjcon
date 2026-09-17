@@ -405,8 +405,10 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
               value={grantTier}
               onChange={(e) => setGrantTier(parseInt(e.target.value, 10))}
             >
-              <option value={1}>Booking</option>
+              <option value={1}>Starter</option>
               <option value={2}>Pro</option>
+              <option value={3}>Premium Pro</option>
+              <option value={4}>Enterprise</option>
             </select>
           </div>
           <div className={styles.formGroup}>
@@ -454,9 +456,13 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
 
 // ── Display helpers ─────────────────────────────────────────────────
 function planLabel(tier: number | null | undefined): string {
-  if (tier === 2) return 'Pro';
-  if (tier === 1) return 'Booking';
-  return 'None';
+  switch (tier) {
+    case 4: return 'Enterprise';
+    case 3: return 'Premium Pro';
+    case 2: return 'Pro';
+    case 1: return 'Starter';
+    default: return 'None';
+  }
 }
 
 function statusLabel(status: string | null | undefined): string {
