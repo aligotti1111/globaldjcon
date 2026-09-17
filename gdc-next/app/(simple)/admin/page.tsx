@@ -130,7 +130,10 @@ export default async function AdminPage() {
   // yields an empty list instead of crashing the whole admin page.
   let compCodes: import('./actions').CompCodeRow[] = [];
   try {
-    const { data } = await admin
+    // comp_codes isn't in the generated Supabase types yet — use an untyped
+    // client for this read.
+    const untypedAdmin = admin as unknown as import('@supabase/supabase-js').SupabaseClient;
+    const { data } = await untypedAdmin
       .from('comp_codes')
       .select('*')
       .order('created_at', { ascending: false });
