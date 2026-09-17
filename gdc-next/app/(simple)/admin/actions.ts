@@ -736,6 +736,66 @@ export async function createCompCodeAction(input: {
   return { success: true, code: data as CompCodeRow };
 }
 
+export interface CompRedemption {
+  user_id: string;
+  name: string | null;
+  slug: string | null;
+  email: string | null;
+  redeemed_at: string;
+  granted_months: number;
+  new_expires_at: string;
+}
+
+// Who redeemed a given comp code — name/email + when + what it granted.
+export async function listCompCodeRedemptionsAction(
+  codeId: string,
+): Promise<{ redemptions: CompRedemption[]; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const u = untyped(admin);
+  if (!codeId) return { redemptions: [], error: 'code id required' };
+
+  const { data, error } = await u
+    .from('comp_code_redemptions')
+    .select('user_id, redeemed_at, granted_months, new_expires_at')
+    .eq('code_id', codeId)
+    .order('redeemed_at', { ascending: false });
+  if (error) return { redemptions: [], error: error.message };
+
+  const rows = (data as { user_id: string; redeemed_at: string; granted_months: number; new_expires_at: string }[]) || [];
+  const ids = rows.map((r) => r.user_id);
+
+  // Names/slugs from public.users (typed table).
+  const nameMap: Record<string, { name: string | null; slug: string | null }> = {};
+  if (ids.length) {
+    const { data: profs } = await admin.from('users').select('id, name, slug').in('id', ids);
+    for (const p of (profs as { id: string; name: string | null; slug: string | null }[] | null) || []) {
+      nameMap[p.id] = { name: p.name, slug: p.slug };
+    }
+  }
+
+  // Emails from auth.users, one lookup each (redemption counts are small).
+  const emailMap: Record<string, string> = {};
+  for (const id of ids) {
+    try {
+      const { data: au } = await admin.auth.admin.getUserById(id);
+      if (au?.user) emailMap[id] = au.user.email || '';
+    } catch { /* skip */ }
+  }
+
+  return {
+    redemptions: rows.map((r) => ({
+      user_id: r.user_id,
+      name: nameMap[r.user_id]?.name ?? null,
+      slug: nameMap[r.user_id]?.slug ?? null,
+      email: emailMap[r.user_id] ?? null,
+      redeemed_at: r.redeemed_at,
+      granted_months: r.granted_months,
+      new_expires_at: r.new_expires_at,
+    })),
+  };
+}
+
 export async function deactivateCompCodeAction(
   id: string,
   active: boolean,
