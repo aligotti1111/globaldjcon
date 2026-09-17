@@ -1,4 +1,3 @@
-
 'use server';
 
 // Admin server actions. Each action calls requireAdmin() first, so an
@@ -20,6 +19,14 @@ import { requireAdmin } from '@/lib/supabase/admin-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// The generated Supabase types don't include the new comp_codes tables yet, so
+// for those calls we use an untyped client (same pattern as the redeem route).
+// Cast at the call sites via this alias.
+function untyped(c: ReturnType<typeof createAdminClient>): SupabaseClient {
+  return c as unknown as SupabaseClient;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Whitelist of fields the admin can change on a public.users row.
@@ -658,7 +665,7 @@ export interface CompCodeRow {
 
 export async function listCompCodesAction(): Promise<{ codes: CompCodeRow[]; error?: string }> {
   await requireAdmin();
-  const admin = createAdminClient();
+  const admin = untyped(createAdminClient());
   const { data, error } = await admin
     .from('comp_codes')
     .select('*')
@@ -676,7 +683,7 @@ export async function createCompCodeAction(input: {
   note?: string | null;
 }): Promise<{ success: boolean; code?: CompCodeRow; error?: string }> {
   await requireAdmin();
-  const admin = createAdminClient();
+  const admin = untyped(createAdminClient());
 
   const code = (input.code || '').trim().toUpperCase();
   if (!code) return { success: false, error: 'Code is required.' };
@@ -734,7 +741,7 @@ export async function deactivateCompCodeAction(
   active: boolean,
 ): Promise<{ success: boolean; error?: string }> {
   await requireAdmin();
-  const admin = createAdminClient();
+  const admin = untyped(createAdminClient());
   if (!id) return { success: false, error: 'id required' };
   const { error } = await admin
     .from('comp_codes')
