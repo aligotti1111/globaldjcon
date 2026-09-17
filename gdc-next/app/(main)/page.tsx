@@ -1298,7 +1298,10 @@ export default function HomePage() {
     if (!grid || !grid.parentElement) return;
     const host = document.createElement('div');
     host.className = 'gdc-redeem-host';
-    // Above the plan cards.
+    // Full width above the plan cards — span every grid column so the expanded
+    // input+button row isn't squished into one card's width.
+    host.style.width = '100%';
+    host.style.gridColumn = '1 / -1';
     grid.parentElement.insertBefore(host, grid);
     setRedeemHost(host);
     return () => { host.remove(); };
