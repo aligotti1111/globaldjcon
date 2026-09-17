@@ -142,6 +142,20 @@ export default async function AdminPage() {
     console.warn('Admin: comp_codes fetch skipped (table may not exist yet)', e);
   }
 
+  // Discount codes (Promotions tab). Same guard — a pre-migration missing table
+  // just yields an empty list.
+  let discountCodes: import('./actions').DiscountCodeRow[] = [];
+  try {
+    const untypedAdmin = admin as unknown as import('@supabase/supabase-js').SupabaseClient;
+    const { data } = await untypedAdmin
+      .from('discount_codes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    discountCodes = (data as import('./actions').DiscountCodeRow[]) || [];
+  } catch (e) {
+    console.warn('Admin: discount_codes fetch skipped (table may not exist yet)', e);
+  }
+
   return (
     <AdminClient
       initialDjs={djs}
@@ -152,6 +166,7 @@ export default async function AdminPage() {
       initialLastLoginMap={lastLoginMap}
       initialDisabledMap={disabledMap}
       initialCompCodes={compCodes}
+      initialDiscountCodes={discountCodes}
     />
   );
 }
