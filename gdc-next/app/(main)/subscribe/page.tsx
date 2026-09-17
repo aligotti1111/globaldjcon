@@ -31,6 +31,10 @@ export default async function SubscribePage() {
   // Whether a paid subscriber is billed monthly or yearly — so the plan picker
   // can offer "switch to yearly/monthly" on the tier they're already on.
   let currentInterval: 'monthly' | 'yearly' | null = null;
+  // Whether the subscription is set to cancel at period end — so the banner
+  // reads "Active until <date>" persistently (survives a reload), not just in
+  // the session where they clicked cancel.
+  let cancelScheduled = false;
 
   if (user) {
     const { data } = await supabase
@@ -69,6 +73,7 @@ export default async function SubscribePage() {
           const recurring = sub.items?.data?.[0]?.price?.recurring?.interval;
           if (recurring === 'year') currentInterval = 'yearly';
           else if (recurring === 'month') currentInterval = 'monthly';
+          cancelScheduled = !!sub.cancel_at_period_end;
         } catch {
           currentInterval = null;
         }
@@ -86,6 +91,7 @@ export default async function SubscribePage() {
       compUntil={compUntil}
       djType={djType}
       currentInterval={currentInterval}
+      cancelScheduled={cancelScheduled}
     />
   );
 }
