@@ -187,7 +187,7 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
       // this date). The tier is their current plan (the locked dropdown).
       const trimmedDate = grantDate.trim();
       const hadComp = !!user.comp_expires_at;
-      let compRes: { success: boolean; error?: string } = { success: true };
+      let compRes: { success: boolean; error?: string; expires_at?: string } = { success: true };
       if (trimmedDate) {
         compRes = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: trimmedDate });
       } else if (hadComp) {
@@ -198,11 +198,25 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
         return;
       }
 
+      // updateUserAction returned the row BEFORE the comp was written (comp is a
+      // separate query), so merge the new comp fields in — otherwise the parent
+      // keeps a stale row and the date appears to "not save" on reopen.
+      const savedRow = { ...((result.user || user) as AdminUserRow) };
+      if (trimmedDate) {
+        savedRow.comp_tier = grantTier;
+        savedRow.comp_expires_at = compRes.expires_at || savedRow.comp_expires_at || null;
+        savedRow.comp_source = 'admin';
+      } else if (hadComp) {
+        savedRow.comp_tier = null;
+        savedRow.comp_expires_at = null;
+        savedRow.comp_source = null;
+      }
+
       setFeedback({ msg: '✓ Saved', type: 'ok' });
       // Brief delay so the user sees the success state before modal closes
       setTimeout(() => {
         onSaved(
-          (result.user || user) as AdminUserRow,
+          savedRow,
           result.email_updated ? (result.email || null) : null
         );
       }, 700);
