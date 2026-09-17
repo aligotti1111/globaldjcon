@@ -899,12 +899,15 @@ export async function createDiscountCodeAction(input: {
       name: `${percent}% off${duration === 'once' ? ' (first payment)' : ''}`,
     });
     // 2. Promotion code = the customer-facing code the DJ types at checkout.
-    const promo = await stripe.promotionCodes.create({
+    // Cast the params: this Stripe SDK version's PromotionCodeCreateParams type
+    // omits `coupon`, but the field is required by the API at runtime.
+    const promoParams = {
       coupon: coupon.id,
       code,
       ...(maxRedemptions != null ? { max_redemptions: maxRedemptions } : {}),
       ...(expiresAtUnix ? { expires_at: expiresAtUnix } : {}),
-    });
+    } as unknown as Parameters<typeof stripe.promotionCodes.create>[0];
+    const promo = await stripe.promotionCodes.create(promoParams);
 
     const { data, error } = await admin
       .from('discount_codes')
