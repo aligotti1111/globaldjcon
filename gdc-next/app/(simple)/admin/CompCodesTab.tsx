@@ -7,7 +7,13 @@
 
 import { useState } from 'react';
 import styles from './admin.module.css';
-import { createCompCodeAction, deactivateCompCodeAction, type CompCodeRow } from './actions';
+import {
+  createCompCodeAction,
+  deactivateCompCodeAction,
+  listCompCodeRedemptionsAction,
+  type CompCodeRow,
+  type CompRedemption,
+} from './actions';
 import { TIER_LABELS } from '@/lib/access';
 
 const TIER_OPTIONS = [1, 2, 3, 4] as const;
@@ -22,6 +28,28 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [fb, setFb] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  // Which code row is expanded to show its redemptions, plus a per-code cache of
+  // who redeemed it (loaded on first open).
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [reds, setReds] = useState<Record<string, CompRedemption[]>>({});
+
+  async function toggleRow(id: string) {
+    if (openId === id) { setOpenId(null); return; }
+    setOpenId(id);
+    if (!reds[id]) {
+      setLoadingId(id);
+      try {
+        const res = await listCompCodeRedemptionsAction(id);
+        setReds((prev) => ({ ...prev, [id]: res.redemptions || [] }));
+      } catch {
+        setReds((prev) => ({ ...prev, [id]: [] }));
+      } finally {
+        setLoadingId(null);
+      }
+    }
+  }
 
   async function create() {
     setFb(null);
@@ -172,9 +200,21 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
               );
             })()}
           </div>
-          {codes.map((c) => (
-            <div key={c.id} className={styles.adminRow}>
+          {codes.map((c) => {
+            const isOpen = openId === c.id;
+            const rowReds = reds[c.id];
+            return (
+            <div key={c.id}>
+            <div
+              className={styles.adminRow}
+              onClick={() => toggleRow(c.id)}
+              style={{ cursor: 'pointer' }}
+              title="Click to see who redeemed this code"
+            >
               <div className={styles.arName}>
+                <span style={{ display: 'inline-block', width: '.8rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+                  {isOpen ? '▾' : '▸'}
+                </span>
                 {c.code}
                 {!c.active && (
                   <span style={{ marginLeft: '.4rem', fontSize: '.55rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#ff8b8b', border: '1px solid #ff8b8b', borderRadius: 4, padding: '1px 5px' }}>
@@ -195,7 +235,7 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
               <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 120px', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => toggle(c)}
+                  onClick={(e) => { e.stopPropagation(); toggle(c); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                   style={c.active ? { borderColor: '#ff8b8b', color: '#ff8b8b' } : { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }}
                 >
@@ -203,7 +243,48 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
                 </button>
               </div>
             </div>
-          ))}
+
+            {isOpen && (
+              <div style={{ padding: '.5rem 1rem .9rem 2rem', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                {loadingId === c.id || rowReds === undefined ? (
+                  <div style={{ color: 'var(--muted)', fontSize: '.8rem', padding: '.3rem 0' }}>Loading…</div>
+                ) : rowReds.length === 0 ? (
+                  <div style={{ color: 'var(--muted)', fontSize: '.8rem', padding: '.3rem 0' }}>No one has redeemed this code yet.</div>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.35rem' }}>
+                      {rowReds.length} {rowReds.length === 1 ? 'account' : 'accounts'} redeemed
+                    </div>
+                    {rowReds.map((r) => (
+                      <div
+                        key={r.user_id}
+                        style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', padding: '.28rem 0', borderTop: '1px solid rgba(255,255,255,.04)', fontSize: '.82rem' }}
+                      >
+                        <div style={{ flex: 1.4, minWidth: 140, color: 'var(--white)' }}>
+                          {r.slug ? (
+                            <a href={`/${r.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--white)' }}>
+                              {r.name || 'Unnamed'}
+                            </a>
+                          ) : (
+                            r.name || 'Unnamed'
+                          )}
+                        </div>
+                        <div style={{ flex: 1.6, minWidth: 160, color: 'var(--muted)' }}>{r.email || '—'}</div>
+                        <div style={{ flex: 1, minWidth: 110, color: 'var(--muted)' }}>
+                          {(TIER_LABELS[r.granted_tier as 1 | 2 | 3 | 4] ?? `Tier ${r.granted_tier}`)} · {r.granted_months} mo
+                        </div>
+                        <div style={{ flex: '0 0 100px', textAlign: 'right', color: 'var(--muted)' }}>
+                          {new Date(r.redeemed_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+            </div>
+          );
+          })}
         </div>
       )}
     </div>
