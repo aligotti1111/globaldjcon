@@ -1298,7 +1298,8 @@ export default function HomePage() {
     if (!grid || !grid.parentElement) return;
     const host = document.createElement('div');
     host.className = 'gdc-redeem-host';
-    grid.parentElement.insertBefore(host, grid.nextSibling);
+    // Above the plan cards.
+    grid.parentElement.insertBefore(host, grid);
     setRedeemHost(host);
     return () => { host.remove(); };
   }, [canRedeem]);
