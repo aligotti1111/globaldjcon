@@ -28,6 +28,8 @@ const LANDING_CSS = String.raw`
 .gdc-landing.gdc-signedin .price .plan:first-child{display:none!important}
 /* Hosts don't subscribe — hide the whole pricing section for a signed-in host. */
 .gdc-landing.gdc-host #pricing{display:none!important}
+/* Team members act on the owner's account and don't subscribe → hide pricing. */
+.gdc-landing.gdc-teammate #pricing{display:none!important}
 /* Pricing heading swaps: logged-out invites you to create a free profile; a
    signed-in DJ already has one, so it reads as choosing a subscription. */
 .gdc-landing .pn-in{display:none}
@@ -1254,11 +1256,11 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 // every auth-object change or sibling modal toggle. The reveal script also
 // self-heals via a MutationObserver as a second line of defence.
 const LandingMarkup = memo(function LandingMarkup(
-  { signedIn, isHost, djType }: { signedIn: boolean; isHost: boolean; djType: 'mobile' | 'club' | null },
+  { signedIn, isHost, isTeammate, djType }: { signedIn: boolean; isHost: boolean; isTeammate: boolean; djType: 'mobile' | 'club' | null },
 ) {
   return (
     <div
-      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${isHost ? 'gdc-host' : ''} ${djType === 'mobile' ? 'gdc-mobile' : ''} ${djType === 'club' ? 'gdc-club' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
+      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${isHost ? 'gdc-host' : ''} ${isTeammate ? 'gdc-teammate' : ''} ${djType === 'mobile' ? 'gdc-mobile' : ''} ${djType === 'club' ? 'gdc-club' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
       dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
     />
   );
@@ -1273,6 +1275,9 @@ export default function HomePage() {
   const u = user as { role?: string; dj_type?: string | null; sub_tier?: number | null; comp_tier?: number | null } | null;
   // Hosts don't have subscriptions, so hide the pricing section for them.
   const isHost = u?.role === 'host';
+  // Team members act on the owner's account and don't subscribe — hide pricing
+  // from them too. isMember comes from /api/me/role (merged onto the user).
+  const isTeammate = signedIn && (!!(user as unknown as { isMember?: boolean })?.isMember || u?.role === 'teammate');
   // DJ type → filter feature rows to the account's own type on the pricing cards.
   const djType: 'mobile' | 'club' | null = u?.dj_type === 'mobile' || u?.dj_type === 'club' ? u.dj_type : null;
   // The tier this DJ is currently on (paid or comped). 0 = Free / none.
@@ -1342,7 +1347,7 @@ export default function HomePage() {
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <LandingMarkup signedIn={signedIn} isHost={isHost} djType={djType} />
+      <LandingMarkup signedIn={signedIn} isHost={isHost} isTeammate={isTeammate} djType={djType} />
     </>
   );
 }
