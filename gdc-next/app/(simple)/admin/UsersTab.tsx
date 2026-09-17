@@ -80,11 +80,6 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
     }
   }
 
-  function viewUser(slug: string | null) {
-    if (!slug) return;
-    window.open('/' + slug, '_blank');
-  }
-
   const heading = role === 'dj' ? 'DJ Accounts'
     : role === 'host' ? 'Party Host Accounts'
     : 'Venue Accounts';
@@ -138,6 +133,7 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Email</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Created</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Last Login</div>
+                  <div style={{ ...hStyle, flex: 1, minWidth: 90 }}>Plan</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Expiration Date</div>
                   <div style={{ ...hStyle, flex: '0 0 240px', textAlign: 'right' }}>Actions</div>
                 </>
@@ -157,6 +153,7 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
               ? new Date(lastLoginRaw).toLocaleDateString()
               : 'Never';
             const accessLabel = accessUntil(u);
+            const planName = planTypeLabel(u);
 
             return (
               <div key={u.id} className={styles.adminRow}>
@@ -164,19 +161,19 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
                   {isUnclaimed && (
                     <span className={styles.unclaimedBadge} style={{ marginRight: '.4rem' }}>Unclaimed</span>
                   )}
-                  {disabledMap[u.id] && (
-                    <span
-                      style={{
-                        marginRight: '.4rem', fontSize: '.55rem', fontWeight: 700,
-                        letterSpacing: '.06em', textTransform: 'uppercase',
-                        color: '#ff8b8b', border: '1px solid #ff8b8b',
-                        borderRadius: 4, padding: '1px 5px',
-                      }}
+                  {u.slug ? (
+                    <a
+                      href={`/${u.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                      title="Open profile in a new tab"
                     >
-                      Disabled
-                    </span>
+                      {name || 'Unnamed'}
+                    </a>
+                  ) : (
+                    name || 'Unnamed'
                   )}
-                  {name || 'Unnamed'}
                 </div>
                 <div
                   className={styles.arDetail}
@@ -192,6 +189,13 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
                   style={{ color: lastLoginRaw ? 'var(--white)' : '#6b6b88', fontStyle: lastLoginRaw ? 'normal' : 'italic' }}
                 >
                   {lastLoginLabel}
+                </div>
+                <div
+                  className={styles.arDetail}
+                  title="Current plan (subscription or free access)"
+                  style={{ color: planName === 'Free' ? '#6b6b88' : 'var(--white)' }}
+                >
+                  {planName}
                 </div>
                 <div
                   className={styles.arDetail}
@@ -221,13 +225,6 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
                 )}
                 <button
                   type="button"
-                  onClick={() => viewUser(u.slug)}
-                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
-                >
-                  View
-                </button>
-                <button
-                  type="button"
                   onClick={() => toggleDisabled(u)}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                   style={disabledMap[u.id]
@@ -244,6 +241,26 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
       )}
     </div>
   );
+}
+
+// Effective plan for a row: the higher of an active paid subscription tier and
+// an unexpired comp tier. Falls back to 'Free' when neither is active.
+function planTypeLabel(u: AdminUserRow): string {
+  const now = Date.now();
+  let tier = 0;
+  if ((u.sub_status === 'active' || u.sub_status === 'grace') && (u.sub_tier ?? 0) > 0) {
+    tier = Math.max(tier, u.sub_tier ?? 0);
+  }
+  if ((u.comp_tier ?? 0) > 0 && u.comp_expires_at && new Date(u.comp_expires_at).getTime() > now) {
+    tier = Math.max(tier, u.comp_tier ?? 0);
+  }
+  switch (tier) {
+    case 4: return 'Enterprise';
+    case 3: return 'Premium Pro';
+    case 2: return 'Pro';
+    case 1: return 'Starter';
+    default: return 'Free';
+  }
 }
 
 // Access-until date for a row: the later of an active subscription's period
