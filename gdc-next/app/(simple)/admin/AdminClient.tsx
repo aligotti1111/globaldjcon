@@ -29,6 +29,8 @@ interface Props {
   initialVenues: AdminUserRow[];
   initialClaims: AdminClaimRow[];
   initialEmailMap: Record<string, string>;
+  /** userId → last_sign_in_at ISO string (from auth.users). Empty = never. */
+  initialLastLoginMap: Record<string, string>;
 }
 
 export interface CredsModalData {
@@ -40,7 +42,7 @@ export interface CredsModalData {
 }
 
 export default function AdminClient({
-  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap,
+  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('djs');
@@ -213,6 +215,7 @@ export default function AdminClient({
             role="dj"
             users={djs}
             emailMap={emailMap}
+            lastLoginMap={initialLastLoginMap}
             onEdit={(id) => setEditUserId(id)}
             onDelete={removeUser}
             onUpdate={(u) => upsertUser(u)}
@@ -223,6 +226,7 @@ export default function AdminClient({
             role="host"
             users={hosts}
             emailMap={emailMap}
+            lastLoginMap={initialLastLoginMap}
             onEdit={(id) => setEditUserId(id)}
             onDelete={removeUser}
             onUpdate={(u) => upsertUser(u)}
@@ -233,6 +237,7 @@ export default function AdminClient({
             role="venue"
             users={venues}
             emailMap={emailMap}
+            lastLoginMap={initialLastLoginMap}
             onEdit={(id) => setEditUserId(id)}
             onDelete={removeUser}
             onUpdate={(u) => upsertUser(u)}
