@@ -6,7 +6,7 @@
 // reloads so their new access is reflected. Designed so the same box can later
 // also accept paid discount codes without changing where it lives.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import styles from './subscribe.module.css';
 
 export default function RedeemCodeBox() {
@@ -16,8 +16,12 @@ export default function RedeemCodeBox() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // Set the instant Redeem is clicked so a late blur→preview response can't
+  // overwrite the "Applied" message.
+  const redeemingRef = useRef(false);
 
   async function check() {
+    if (redeemingRef.current || done) return;
     setError(null);
     setPreview(null);
     const c = code.trim();
@@ -29,6 +33,7 @@ export default function RedeemCodeBox() {
         body: JSON.stringify({ code: c, preview: true }),
       });
       const data = await res.json();
+      if (redeemingRef.current || done) return; // a redeem started/finished meanwhile
       if (data.ok) {
         setPreview(
           data.alreadyRedeemed
@@ -44,9 +49,10 @@ export default function RedeemCodeBox() {
   }
 
   async function redeem() {
+    redeemingRef.current = true;
     setError(null);
     const c = code.trim();
-    if (!c) { setError('Enter a code.'); return; }
+    if (!c) { setError('Enter a code.'); redeemingRef.current = false; return; }
     setBusy(true);
     try {
       const res = await fetch('/api/comp-codes/redeem', {
@@ -62,9 +68,11 @@ export default function RedeemCodeBox() {
         setTimeout(() => window.location.reload(), 1400);
       } else {
         setError(data.error || 'Could not redeem that code.');
+        redeemingRef.current = false; // let them try again
       }
     } catch {
       setError('Something went wrong.');
+      redeemingRef.current = false;
     } finally {
       setBusy(false);
     }
