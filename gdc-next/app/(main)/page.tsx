@@ -4,9 +4,11 @@
 // layout so it inherits the real Header/MobileMenu/Footer. CSS scoped under
 // .gdc-landing. DJ directory is at /djs.
 
-import { useEffect, memo } from 'react';
+import { useEffect, useState, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { Bebas_Neue, DM_Sans, Space_Mono } from 'next/font/google';
 import { useAuth } from '@/components/AuthProvider';
+import RedeemCodeBox from './subscribe/RedeemCodeBox';
 
 // Self-host the marketing fonts via next/font instead of a runtime @import of
 // Google Fonts. The old @import lived INSIDE the injected <style> string, so the
@@ -1283,6 +1285,24 @@ export default function HomePage() {
   // The tier this DJ is currently on (paid or comped). 0 = Free / none.
   const currentTier = signedIn && u?.role === 'dj' ? Math.max(u?.sub_tier ?? 0, u?.comp_tier ?? 0) : 0;
 
+  // Only DJ owner accounts subscribe/redeem — hosts and team members can't. Show
+  // the "Apply Promo Code" box under the pricing cards for eligible DJs only.
+  const canRedeem = signedIn && u?.role === 'dj' && !isTeammate;
+  // The pricing cards live inside the static LANDING_BODY string (not React), so
+  // we portal the redeem box into a container appended right after the .price
+  // grid inside #pricing once the markup is committed.
+  const [redeemHost, setRedeemHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!canRedeem) { setRedeemHost(null); return; }
+    const grid = document.querySelector<HTMLElement>('#pricing .price');
+    if (!grid || !grid.parentElement) return;
+    const host = document.createElement('div');
+    host.className = 'gdc-redeem-host';
+    grid.parentElement.insertBefore(host, grid.nextSibling);
+    setRedeemHost(host);
+    return () => { host.remove(); };
+  }, [canRedeem]);
+
   // Relabel the pricing CTAs for a SUBSCRIBED DJ: their current plan reads
   // "Current Plan" (disabled), higher tiers "Upgrade", lower "Switch". An
   // unsubscribed (Free) DJ keeps "Choose X" — they're subscribing for the first
@@ -1348,6 +1368,7 @@ export default function HomePage() {
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
       <LandingMarkup signedIn={signedIn} isHost={isHost} isTeammate={isTeammate} djType={djType} />
+      {redeemHost && canRedeem && createPortal(<RedeemCodeBox variant="link" />, redeemHost)}
     </>
   );
 }
