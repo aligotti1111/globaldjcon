@@ -177,17 +177,17 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
 
       // Free access (comp) — applied as part of the save. A date present
       // grants/updates it; a cleared date removes it (only if there was one).
-      // Locked for active subscribers — their access is Stripe-managed, so we
-      // never write/clear a comp for them.
+      // A date present grants/updates the access comp; a cleared date removes it
+      // (only if there was one). For a subscriber this comp rides ON TOP of their
+      // paid plan, so it survives a later cancellation (they keep access through
+      // this date). The tier is their current plan (the locked dropdown).
       const trimmedDate = grantDate.trim();
       const hadComp = !!user.comp_expires_at;
       let compRes: { success: boolean; error?: string } = { success: true };
-      if (!isSubscribed) {
-        if (trimmedDate) {
-          compRes = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: trimmedDate });
-        } else if (hadComp) {
-          compRes = await clearCompAction({ user_id: user.id });
-        }
+      if (trimmedDate) {
+        compRes = await grantCompAction({ user_id: user.id, tier: grantTier, expires_at: trimmedDate });
+      } else if (hadComp) {
+        compRes = await clearCompAction({ user_id: user.id });
       }
       if (!compRes.success) {
         setFeedback({ msg: '✗ Profile saved, but access update failed: ' + (compRes.error || ''), type: 'err' });
@@ -435,8 +435,8 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
         ) : null}
         <p className={styles.formHint} style={{ marginBottom: '.6rem' }}>
           {isSubscribed
-            ? 'This account has an active paid subscription — its plan and renewal are managed through Stripe, so free-access controls are locked here.'
-            : 'Give this user free access at a plan, or move the date ahead to extend it. This is separate from any paid subscription — effective access is always the higher of the two. Clear the date to remove free access.'}
+            ? 'Plan is set by their paid subscription and locked here. You can still set an "Access until" date — that guarantees access at their plan through that date, so it survives a cancellation (they stay covered until then).'
+            : 'Give this user access at a plan, or move the date ahead to extend it. This is separate from any paid subscription — effective access is always the higher of the two. Clear the date to remove access.'}
         </p>
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
@@ -461,14 +461,10 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
               type="date"
               value={grantDate}
               onChange={(e) => setGrantDate(e.target.value)}
-              disabled={isSubscribed}
-              style={isSubscribed ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
             />
-            {!isSubscribed && (
-              <p className={styles.formHint}>
-                Set a date to give free access through it. Clear the date to remove access. Applied on Save.
-              </p>
-            )}
+            <p className={styles.formHint}>
+              Set a future date to grant/extend access through it. Clear the date to remove the grant. Applied on Save.
+            </p>
           </div>
         </div>
 
