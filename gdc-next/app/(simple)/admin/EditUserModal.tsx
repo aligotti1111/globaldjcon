@@ -440,7 +440,7 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
         </p>
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Free access plan</label>
+            <label className={styles.formLabel}>Access plan</label>
             <select
               className={styles.formSelect}
               value={grantTier}
@@ -455,7 +455,7 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
             </select>
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Free access until</label>
+            <label className={styles.formLabel}>Access until</label>
             <input
               className={styles.formInput}
               type="date"
