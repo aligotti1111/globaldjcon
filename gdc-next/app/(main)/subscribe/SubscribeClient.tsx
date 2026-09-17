@@ -26,6 +26,7 @@ import { STRIPE_PUBLISHABLE_KEY, priceIdFor } from '@/lib/stripe/config';
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 import type { AccessState, AccessSource, Tier } from '@/lib/access';
 import { TIERS, TIER_LABELS, type TierDef } from '@/lib/access';
+import RedeemCodeBox from './RedeemCodeBox';
 import styles from './subscribe.module.css';
 
 type Interval = 'monthly' | 'yearly';
@@ -422,6 +423,8 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           </div>
         )}
       </div>
+
+      {isLoggedIn && <RedeemCodeBox />}
 
       {isComp && !isPaid && accessUntilLabel && (
         <div className={styles.compBanner}>
