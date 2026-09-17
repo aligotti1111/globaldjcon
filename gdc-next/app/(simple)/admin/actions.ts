@@ -742,6 +742,7 @@ export interface CompRedemption {
   slug: string | null;
   email: string | null;
   redeemed_at: string;
+  granted_tier: number;
   granted_months: number;
   new_expires_at: string;
 }
@@ -757,12 +758,12 @@ export async function listCompCodeRedemptionsAction(
 
   const { data, error } = await u
     .from('comp_code_redemptions')
-    .select('user_id, redeemed_at, granted_months, new_expires_at')
+    .select('user_id, redeemed_at, granted_tier, granted_months, new_expires_at')
     .eq('code_id', codeId)
     .order('redeemed_at', { ascending: false });
   if (error) return { redemptions: [], error: error.message };
 
-  const rows = (data as { user_id: string; redeemed_at: string; granted_months: number; new_expires_at: string }[]) || [];
+  const rows = (data as { user_id: string; redeemed_at: string; granted_tier: number; granted_months: number; new_expires_at: string }[]) || [];
   const ids = rows.map((r) => r.user_id);
 
   // Names/slugs from public.users (typed table).
@@ -790,6 +791,7 @@ export async function listCompCodeRedemptionsAction(
       slug: nameMap[r.user_id]?.slug ?? null,
       email: emailMap[r.user_id] ?? null,
       redeemed_at: r.redeemed_at,
+      granted_tier: r.granted_tier,
       granted_months: r.granted_months,
       new_expires_at: r.new_expires_at,
     })),
