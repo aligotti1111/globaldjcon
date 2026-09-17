@@ -34,7 +34,7 @@ import styles from './login.module.css';
 // Hardcoded admin credentials match vanilla login.html exactly.
 // NOTE: matched 1:1 with the vanilla site as agreed. The maintenance dev
 // should migrate this to Supabase Auth (with admin role) post-launch.
-const ADMIN_EMAIL = 'admin@globaldjconnect.com';
+const ADMIN_EMAIL = 'info@globaldjconnect.com';
 
 /** Which screen the form is showing. */
 type Step = 'identify' | 'password' | 'code';
@@ -130,7 +130,7 @@ function LoginForm() {
     const isEmailVerified = searchParams.get('emailverified') === '1';
     if (user && !hasAccessToken && !isConfirmed && !isEmailVerified) {
       const isAdminDest = destination === '/admin' || destination.startsWith('/admin?') || destination.startsWith('/admin/');
-      const userIsAdmin = (user.email || '').toLowerCase() === 'admin@globaldjconnect.com';
+      const userIsAdmin = (user.email || '').toLowerCase() === ADMIN_EMAIL;
       const safeDest = (isAdminDest && !userIsAdmin) ? '/' : destination;
       window.location.replace(safeDest);
     }
