@@ -17,8 +17,17 @@
 
 import { requireAdmin } from '@/lib/supabase/admin-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getStripe } from '@/lib/stripe/server';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// The generated Supabase types don't include the new comp_codes tables yet, so
+// for those calls we use an untyped client (same pattern as the redeem route).
+// Cast at the call sites via this alias.
+function untyped(c: ReturnType<typeof createAdminClient>): SupabaseClient {
+  return c as unknown as SupabaseClient;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Whitelist of fields the admin can change on a public.users row.
@@ -322,6 +331,32 @@ export async function deleteUserAction(userId: string): Promise<{ success: boole
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// DISABLE / ENABLE USER — non-destructive alternative to delete.
+// Disabling bans the auth user (they can't sign in) but keeps ALL their data;
+// enabling lifts the ban. Uses Supabase's ban_duration under the hood.
+// ─────────────────────────────────────────────────────────────────────────
+export async function setUserDisabledAction(
+  userId: string,
+  disabled: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+
+  if (!userId) return { success: false, error: 'user_id required' };
+
+  // ban_duration accepts a Go-style duration ('876000h' ≈ 100 years) to ban,
+  // or the literal 'none' to lift a ban. Not in the generated TS type, so cast.
+  const { error } = await admin.auth.admin.updateUserById(
+    userId,
+    { ban_duration: disabled ? '876000h' : 'none' } as unknown as { ban_duration: string },
+  );
+  if (error) return { success: false, error: 'Update failed: ' + error.message };
+
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // LIST EMAILS — admin-list-emails.js
 // Returns an array of { id, email } for all auth users, used to display
 // emails alongside the user list in the admin panel.
@@ -549,7 +584,8 @@ export async function grantCompAction(input: {
   const admin = createAdminClient();
 
   if (!input.user_id) return { success: false, error: 'user_id required' };
-  const tier = input.tier === 2 ? 2 : 1;
+  // Comp tier can be any real paid tier (1=Starter … 4=Enterprise).
+  const tier = [1, 2, 3, 4].includes(input.tier) ? input.tier : 1;
 
   // Parse + validate the chosen date. Accept a YYYY-MM-DD (from a date input)
   // or a full ISO string. Store end-of-day so "expires Aug 15" means access
@@ -604,6 +640,323 @@ export async function clearCompAction(input: {
 
   if (error) return { success: false, error: error.message };
 
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// COMP CODES — platform "Subscription Promotions" v1 (comp codes only).
+// A code grants free access (tier for N months) when a DJ redeems it; no card,
+// no Stripe. Redemption itself happens in /api/comp-codes/redeem — these
+// actions are the ADMIN side: create / list / deactivate.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface CompCodeRow {
+  id: string;
+  code: string;
+  grant_tier: number;
+  months: number;
+  expires_at: string | null;
+  max_uses: number | null;
+  uses_count: number;
+  active: boolean;
+  note: string | null;
+  created_at: string;
+}
+
+export async function listCompCodesAction(): Promise<{ codes: CompCodeRow[]; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  const { data, error } = await admin
+    .from('comp_codes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return { codes: [], error: error.message };
+  return { codes: (data as CompCodeRow[]) || [] };
+}
+
+export async function createCompCodeAction(input: {
+  code: string;
+  grant_tier: number;
+  months: number;
+  max_uses?: number | null;
+  expires_at?: string | null; // YYYY-MM-DD or ISO; end-of-day is stored
+  note?: string | null;
+}): Promise<{ success: boolean; code?: CompCodeRow; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+
+  const code = (input.code || '').trim().toUpperCase();
+  if (!code) return { success: false, error: 'Code is required.' };
+  if (!/^[A-Z0-9_-]{6,40}$/.test(code)) {
+    return { success: false, error: 'Code must be 6–40 chars: letters, numbers, dashes/underscores.' };
+  }
+  const tier = Math.trunc(Number(input.grant_tier));
+  if (![1, 2, 3, 4].includes(tier)) return { success: false, error: 'Pick a valid plan tier.' };
+  const months = Math.trunc(Number(input.months));
+  if (!(months >= 1 && months <= 60)) return { success: false, error: 'Months must be 1–60.' };
+
+  let maxUses: number | null = null;
+  if (input.max_uses != null && `${input.max_uses}` !== '') {
+    const m = Math.trunc(Number(input.max_uses));
+    if (!(m > 0)) return { success: false, error: 'Max uses must be a positive number (or blank for unlimited).' };
+    maxUses = m;
+  }
+
+  let expiresAt: string | null = null;
+  if (input.expires_at) {
+    const raw = input.expires_at;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59`) : new Date(raw);
+    if (isNaN(d.getTime())) return { success: false, error: 'Invalid expiry date.' };
+    if (d.getTime() <= Date.now()) return { success: false, error: 'Expiry must be a future date.' };
+    expiresAt = d.toISOString();
+  }
+
+  // Uniqueness pre-check (the DB unique constraint is the real guard).
+  const { data: existing } = await admin.from('comp_codes').select('id').eq('code', code).limit(1);
+  if (((existing || []) as Array<{ id: string }>).length > 0) {
+    return { success: false, error: 'That code already exists.' };
+  }
+
+  const { data, error } = await admin
+    .from('comp_codes')
+    .insert({
+      code,
+      grant_tier: tier,
+      months,
+      max_uses: maxUses,
+      expires_at: expiresAt,
+      note: input.note?.trim() || null,
+    } as unknown as never)
+    .select('*')
+    .single();
+
+  if (error) return { success: false, error: 'Create failed: ' + error.message };
+
+  revalidatePath('/admin');
+  return { success: true, code: data as CompCodeRow };
+}
+
+export interface CompRedemption {
+  user_id: string;
+  name: string | null;
+  slug: string | null;
+  email: string | null;
+  redeemed_at: string;
+  granted_tier: number;
+  granted_months: number;
+  new_expires_at: string;
+}
+
+// Who redeemed a given comp code — name/email + when + what it granted.
+export async function listCompCodeRedemptionsAction(
+  codeId: string,
+): Promise<{ redemptions: CompRedemption[]; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const u = untyped(admin);
+  if (!codeId) return { redemptions: [], error: 'code id required' };
+
+  const { data, error } = await u
+    .from('comp_code_redemptions')
+    .select('user_id, redeemed_at, granted_tier, granted_months, new_expires_at')
+    .eq('code_id', codeId)
+    .order('redeemed_at', { ascending: false });
+  if (error) return { redemptions: [], error: error.message };
+
+  const rows = (data as { user_id: string; redeemed_at: string; granted_tier: number; granted_months: number; new_expires_at: string }[]) || [];
+  const ids = rows.map((r) => r.user_id);
+
+  // Names/slugs from public.users (typed table).
+  const nameMap: Record<string, { name: string | null; slug: string | null }> = {};
+  if (ids.length) {
+    const { data: profs } = await admin.from('users').select('id, name, slug').in('id', ids);
+    for (const p of (profs as { id: string; name: string | null; slug: string | null }[] | null) || []) {
+      nameMap[p.id] = { name: p.name, slug: p.slug };
+    }
+  }
+
+  // Emails from auth.users, one lookup each (redemption counts are small).
+  const emailMap: Record<string, string> = {};
+  for (const id of ids) {
+    try {
+      const { data: au } = await admin.auth.admin.getUserById(id);
+      if (au?.user) emailMap[id] = au.user.email || '';
+    } catch { /* skip */ }
+  }
+
+  return {
+    redemptions: rows.map((r) => ({
+      user_id: r.user_id,
+      name: nameMap[r.user_id]?.name ?? null,
+      slug: nameMap[r.user_id]?.slug ?? null,
+      email: emailMap[r.user_id] ?? null,
+      redeemed_at: r.redeemed_at,
+      granted_tier: r.granted_tier,
+      granted_months: r.granted_months,
+      new_expires_at: r.new_expires_at,
+    })),
+  };
+}
+
+export async function deactivateCompCodeAction(
+  id: string,
+  active: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+  const { error } = await admin
+    .from('comp_codes')
+    .update({ active } as unknown as never)
+    .eq('id', id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DISCOUNT CODES — paid % off, Stripe-backed (coupon + promotion code).
+// The Stripe objects are the source of truth; public.discount_codes mirrors
+// them for listing. Not in the generated types → untyped() for the table.
+// ─────────────────────────────────────────────────────────────────────────
+export interface DiscountCodeRow {
+  id: string;
+  code: string;
+  stripe_coupon_id: string;
+  stripe_promo_id: string;
+  percent_off: number;
+  duration: 'once' | 'forever';
+  max_redemptions: number | null;
+  expires_at: string | null;
+  active: boolean;
+  note: string | null;
+  created_at: string;
+}
+
+export async function listDiscountCodesAction(): Promise<{ codes: DiscountCodeRow[]; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  const { data, error } = await admin
+    .from('discount_codes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return { codes: [], error: error.message };
+  return { codes: (data as DiscountCodeRow[]) || [] };
+}
+
+export async function createDiscountCodeAction(input: {
+  code: string;
+  percent_off: number;
+  duration: 'once' | 'forever'; // 'once' = first payment only
+  max_redemptions?: number | null;
+  expires_at?: string | null; // YYYY-MM-DD or ISO; end-of-day stored
+  note?: string | null;
+}): Promise<{ success: boolean; code?: DiscountCodeRow; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+
+  const code = (input.code || '').trim().toUpperCase();
+  // Stripe promotion codes are alphanumeric — no dashes/underscores.
+  if (!/^[A-Z0-9]{4,40}$/.test(code)) {
+    return { success: false, error: 'Code must be 4–40 letters/numbers (no spaces or symbols).' };
+  }
+  const percent = Math.trunc(Number(input.percent_off));
+  if (!(percent >= 1 && percent <= 100)) return { success: false, error: 'Percent off must be 1–100.' };
+  const duration = input.duration === 'forever' ? 'forever' : 'once';
+
+  let maxRedemptions: number | null = null;
+  if (input.max_redemptions != null && `${input.max_redemptions}` !== '') {
+    const m = Math.trunc(Number(input.max_redemptions));
+    if (!(m > 0)) return { success: false, error: 'Max uses must be a positive number (or blank for unlimited).' };
+    maxRedemptions = m;
+  }
+
+  let expiresAtIso: string | null = null;
+  let expiresAtUnix: number | undefined;
+  if (input.expires_at) {
+    const raw = input.expires_at;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59`) : new Date(raw);
+    if (isNaN(d.getTime())) return { success: false, error: 'Invalid expiry date.' };
+    if (d.getTime() <= Date.now()) return { success: false, error: 'Expiry must be a future date.' };
+    expiresAtIso = d.toISOString();
+    expiresAtUnix = Math.floor(d.getTime() / 1000);
+  }
+
+  // Uniqueness pre-check (DB unique + Stripe both enforce it too).
+  const { data: existing } = await admin.from('discount_codes').select('id').eq('code', code).limit(1);
+  if (((existing || []) as Array<{ id: string }>).length > 0) {
+    return { success: false, error: 'That code already exists.' };
+  }
+
+  try {
+    const stripe = getStripe();
+    // 1. Coupon = the discount definition. duration 'once' hits only the first
+    //    invoice; 'forever' recurs every period.
+    const coupon = await stripe.coupons.create({
+      percent_off: percent,
+      duration,
+      name: `${percent}% off${duration === 'once' ? ' (first payment)' : ''}`,
+    });
+    // 2. Promotion code = the customer-facing code the DJ types at checkout.
+    const promo = await stripe.promotionCodes.create({
+      coupon: coupon.id,
+      code,
+      ...(maxRedemptions != null ? { max_redemptions: maxRedemptions } : {}),
+      ...(expiresAtUnix ? { expires_at: expiresAtUnix } : {}),
+    });
+
+    const { data, error } = await admin
+      .from('discount_codes')
+      .insert({
+        code,
+        stripe_coupon_id: coupon.id,
+        stripe_promo_id: promo.id,
+        percent_off: percent,
+        duration,
+        max_redemptions: maxRedemptions,
+        expires_at: expiresAtIso,
+        note: input.note?.trim() || null,
+      } as unknown as never)
+      .select('*')
+      .single();
+    if (error) return { success: false, error: 'Saved to Stripe but local record failed: ' + error.message };
+
+    revalidatePath('/admin');
+    return { success: true, code: data as DiscountCodeRow };
+  } catch (e) {
+    return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not create code') };
+  }
+}
+
+export async function deactivateDiscountCodeAction(
+  id: string,
+  active: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+
+  const { data: row } = await admin
+    .from('discount_codes')
+    .select('stripe_promo_id')
+    .eq('id', id)
+    .maybeSingle();
+  const promoId = (row as { stripe_promo_id?: string } | null)?.stripe_promo_id;
+  if (promoId) {
+    try {
+      // Toggle the Stripe promotion code so it stops (or resumes) working at
+      // checkout. The coupon stays; only the code's usability flips.
+      await getStripe().promotionCodes.update(promoId, { active });
+    } catch (e) {
+      return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not update code') };
+    }
+  }
+  const { error } = await admin
+    .from('discount_codes')
+    .update({ active } as unknown as never)
+    .eq('id', id);
+  if (error) return { success: false, error: error.message };
   revalidatePath('/admin');
   return { success: true };
 }
