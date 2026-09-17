@@ -322,6 +322,32 @@ export async function deleteUserAction(userId: string): Promise<{ success: boole
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// DISABLE / ENABLE USER — non-destructive alternative to delete.
+// Disabling bans the auth user (they can't sign in) but keeps ALL their data;
+// enabling lifts the ban. Uses Supabase's ban_duration under the hood.
+// ─────────────────────────────────────────────────────────────────────────
+export async function setUserDisabledAction(
+  userId: string,
+  disabled: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+
+  if (!userId) return { success: false, error: 'user_id required' };
+
+  // ban_duration accepts a Go-style duration ('876000h' ≈ 100 years) to ban,
+  // or the literal 'none' to lift a ban. Not in the generated TS type, so cast.
+  const { error } = await admin.auth.admin.updateUserById(
+    userId,
+    { ban_duration: disabled ? '876000h' : 'none' } as unknown as { ban_duration: string },
+  );
+  if (error) return { success: false, error: 'Update failed: ' + error.message };
+
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // LIST EMAILS — admin-list-emails.js
 // Returns an array of { id, email } for all auth users, used to display
 // emails alongside the user list in the admin panel.
