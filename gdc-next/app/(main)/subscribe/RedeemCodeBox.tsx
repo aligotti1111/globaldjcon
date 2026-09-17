@@ -83,7 +83,7 @@ export default function RedeemCodeBox({ variant = 'pill' }: { variant?: 'pill' |
   if (!open) {
     if (variant === 'link') {
       return (
-        <div style={{ textAlign: 'center', margin: '1rem auto 0' }}>
+        <div style={{ textAlign: 'center', margin: '0 auto 1.5rem' }}>
           <button
             type="button"
             onClick={() => setOpen(true)}
