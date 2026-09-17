@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react';
 import styles from './admin.module.css';
-import { deleteUserAction, updateUserAction } from './actions';
+import { setUserDisabledAction, updateUserAction } from './actions';
 import type { AdminUserRow } from './page';
 
 interface Props {
@@ -16,12 +16,17 @@ interface Props {
   emailMap: Record<string, string>;
   /** userId → last_sign_in_at ISO string (from auth.users). Empty = never. */
   lastLoginMap: Record<string, string>;
+  /** userId → true when the account is currently disabled (banned). */
+  disabledMap: Record<string, boolean>;
+  /** Flip a row's disabled state in the parent after a successful toggle. */
+  onToggleDisabled: (id: string, disabled: boolean) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  /** Kept for compatibility; deletion was replaced by disable/enable. */
+  onDelete?: (id: string) => void;
   onUpdate: (user: AdminUserRow) => void;
 }
 
-export default function UsersTab({ role, users, emailMap, lastLoginMap, onEdit, onDelete, onUpdate }: Props) {
+export default function UsersTab({ role, users, emailMap, lastLoginMap, disabledMap, onToggleDisabled, onEdit, onUpdate }: Props) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -55,15 +60,20 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, onEdit, 
     }
   }
 
-  async function deleteUser(u: AdminUserRow) {
+  async function toggleDisabled(u: AdminUserRow) {
     const displayName = u.name || 'this user';
-    if (!window.confirm(`Permanently delete ${displayName}? This cannot be undone.`)) return;
+    const currentlyDisabled = !!disabledMap[u.id];
+    const next = !currentlyDisabled;
+    const msg = next
+      ? `Disable ${displayName}? They will not be able to sign in. Their data is kept and you can re-enable anytime.`
+      : `Enable ${displayName}? They will be able to sign in again.`;
+    if (!window.confirm(msg)) return;
     try {
-      const result = await deleteUserAction(u.id);
+      const result = await setUserDisabledAction(u.id, next);
       if (result.success) {
-        onDelete(u.id);
+        onToggleDisabled(u.id, next);
       } else {
-        alert('✗ ' + (result.error || 'Delete failed'));
+        alert('✗ ' + (result.error || 'Update failed'));
       }
     } catch (e) {
       alert('✗ ' + (e as Error).message);
@@ -154,6 +164,18 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, onEdit, 
                   {isUnclaimed && (
                     <span className={styles.unclaimedBadge} style={{ marginRight: '.4rem' }}>Unclaimed</span>
                   )}
+                  {disabledMap[u.id] && (
+                    <span
+                      style={{
+                        marginRight: '.4rem', fontSize: '.55rem', fontWeight: 700,
+                        letterSpacing: '.06em', textTransform: 'uppercase',
+                        color: '#ff8b8b', border: '1px solid #ff8b8b',
+                        borderRadius: 4, padding: '1px 5px',
+                      }}
+                    >
+                      Disabled
+                    </span>
+                  )}
                   {name || 'Unnamed'}
                 </div>
                 <div
@@ -206,10 +228,13 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, onEdit, 
                 </button>
                 <button
                   type="button"
-                  onClick={() => deleteUser(u)}
-                  className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`}
+                  onClick={() => toggleDisabled(u)}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                  style={disabledMap[u.id]
+                    ? { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }
+                    : { borderColor: '#ff8b8b', color: '#ff8b8b' }}
                 >
-                  Delete
+                  {disabledMap[u.id] ? 'Enable' : 'Disable'}
                 </button>
                 </div>
               </div>
