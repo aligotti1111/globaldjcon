@@ -188,6 +188,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelInfo, setCancelInfo] = useState<{ scheduled: boolean; date: string | null } | null>(null);
   const [previewingTier, setPreviewingTier] = useState<PaidTier | null>(null);
+  // A paid discount code the DJ entered in the promo box before picking a plan.
+  // Carried into Stripe checkout so the % comes off automatically.
+  const [pendingPromo, setPendingPromo] = useState<{ code: string; description: string } | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<
     { tier: PaidTier; label: string; forward: string; amountDue: number | null; currency: string; interval: Interval } | null
   >(null);
@@ -202,7 +205,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, interval, embedded: true }),
+        body: JSON.stringify({ tier, interval, embedded: true, promoCode: pendingPromo?.code || undefined }),
       });
       const data = (await res.json().catch(() => ({}))) as { clientSecret?: string; error?: string };
       if (res.status === 401) {
@@ -424,7 +427,17 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         )}
       </div>
 
-      {isLoggedIn && <RedeemCodeBox variant="link" />}
+      {isLoggedIn && (
+        <RedeemCodeBox
+          variant="link"
+          onDiscount={(code, description) => setPendingPromo({ code, description })}
+        />
+      )}
+      {pendingPromo && (
+        <div className={styles.success} style={{ textAlign: 'center', maxWidth: 480, margin: '0 auto 1.25rem' }}>
+          ✓ {pendingPromo.description} — applied at checkout when you pick a plan.
+        </div>
+      )}
 
       {isComp && !isPaid && accessUntilLabel && (
         <div className={styles.compBanner}>
