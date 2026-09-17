@@ -74,7 +74,21 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
   // it (and the plan) then hitting Save Changes grants/updates the comp;
   // clearing the date and saving removes it. No separate button — it's part
   // of the normal account save.
-  const initialGrantTier = user?.comp_tier === 2 ? 2 : 1;
+  // Default the Plan dropdown to the account's actual effective tier — the
+  // higher of an active paid subscription and an unexpired comp — so it mirrors
+  // what they're really on (e.g. a Premium Pro subscriber shows Premium Pro),
+  // not always Starter. Falls back to Starter for a free/none account.
+  const initialGrantTier = (() => {
+    const now = Date.now();
+    let t = 0;
+    if ((user?.sub_status === 'active' || user?.sub_status === 'grace') && (user?.sub_tier ?? 0) > 0) {
+      t = Math.max(t, user?.sub_tier ?? 0);
+    }
+    if ((user?.comp_tier ?? 0) > 0 && user?.comp_expires_at && new Date(user.comp_expires_at).getTime() > now) {
+      t = Math.max(t, user?.comp_tier ?? 0);
+    }
+    return t >= 1 && t <= 4 ? t : 1;
+  })();
   const initialGrantDate = (() => {
     if (!user?.comp_expires_at) return '';
     const d = new Date(user.comp_expires_at);
