@@ -9,7 +9,9 @@
 import { useRef, useState } from 'react';
 import styles from './subscribe.module.css';
 
-export default function RedeemCodeBox() {
+// variant 'pill' = the neon pill button (subscribe page). 'link' = a quiet
+// underlined text link (homepage pricing) that expands into the same field.
+export default function RedeemCodeBox({ variant = 'pill' }: { variant?: 'pill' | 'link' }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
@@ -79,6 +81,23 @@ export default function RedeemCodeBox() {
   }
 
   if (!open) {
+    if (variant === 'link') {
+      return (
+        <div style={{ textAlign: 'center', margin: '1rem auto 0' }}>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--neon,#00e0a4)', fontSize: '.9rem', fontWeight: 700,
+              textDecoration: 'underline', textUnderlineOffset: 3, padding: 0,
+            }}
+          >
+            Apply Promo Code
+          </button>
+        </div>
+      );
+    }
     return (
       <div style={{ textAlign: 'center', margin: '0 auto 1.5rem' }}>
         <button
