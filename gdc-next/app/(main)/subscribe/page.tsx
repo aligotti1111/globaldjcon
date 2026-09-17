@@ -23,6 +23,10 @@ export default async function SubscribePage() {
   let currentState: AccessState = 'none';
   let source: AccessSource = null;
   let accessUntil: string | null = null;
+  // Admin/code comp expiry, surfaced separately so a paid subscriber who ALSO
+  // has a comp beyond their billing period shows "active until <comp date>" if
+  // they cancel.
+  let compUntil: string | null = null;
   let djType: 'mobile' | 'club' | null = null;
   // Whether a paid subscriber is billed monthly or yearly — so the plan picker
   // can offer "switch to yearly/monthly" on the tier they're already on.
@@ -41,6 +45,7 @@ export default async function SubscribePage() {
       stripe_subscription_id?: string | null;
     }) | null;
     if (fields?.dj_type === 'club' || fields?.dj_type === 'mobile') djType = fields.dj_type;
+    if (fields?.comp_expires_at) compUntil = fields.comp_expires_at;
     if (fields) {
       const access = getAccess(fields);
       currentTier = access.tier;
@@ -78,6 +83,7 @@ export default async function SubscribePage() {
       currentState={currentState}
       source={source}
       accessUntil={accessUntil}
+      compUntil={compUntil}
       djType={djType}
       currentInterval={currentInterval}
     />
