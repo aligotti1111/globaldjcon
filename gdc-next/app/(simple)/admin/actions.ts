@@ -575,7 +575,8 @@ export async function grantCompAction(input: {
   const admin = createAdminClient();
 
   if (!input.user_id) return { success: false, error: 'user_id required' };
-  const tier = input.tier === 2 ? 2 : 1;
+  // Comp tier can be any real paid tier (1=Starter … 4=Enterprise).
+  const tier = [1, 2, 3, 4].includes(input.tier) ? input.tier : 1;
 
   // Parse + validate the chosen date. Accept a YYYY-MM-DD (from a date input)
   // or a full ISO string. Store end-of-day so "expires Aug 15" means access
