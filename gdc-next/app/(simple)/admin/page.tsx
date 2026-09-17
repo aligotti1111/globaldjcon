@@ -126,6 +126,19 @@ export default async function AdminPage() {
     console.error('Admin: email map fetch error', e);
   }
 
+  // Comp codes (Promotions tab). Wrapped so a pre-migration missing table just
+  // yields an empty list instead of crashing the whole admin page.
+  let compCodes: import('./actions').CompCodeRow[] = [];
+  try {
+    const { data } = await admin
+      .from('comp_codes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    compCodes = (data as import('./actions').CompCodeRow[]) || [];
+  } catch (e) {
+    console.warn('Admin: comp_codes fetch skipped (table may not exist yet)', e);
+  }
+
   return (
     <AdminClient
       initialDjs={djs}
@@ -135,6 +148,7 @@ export default async function AdminPage() {
       initialEmailMap={emailMap}
       initialLastLoginMap={lastLoginMap}
       initialDisabledMap={disabledMap}
+      initialCompCodes={compCodes}
     />
   );
 }
