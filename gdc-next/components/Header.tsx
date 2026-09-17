@@ -92,7 +92,11 @@ export default function Header() {
   // We swap the entire right-side toolbar for admin so they don't see the
   // host/DJ-oriented Booking + Inbox + Settings buttons that don't apply
   // to the platform owner.
-  const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
+  const isAdmin = user?.email?.toLowerCase() === 'info@globaldjconnect.com';
+  // An admin account that ALSO has a DJ/host/teammate role keeps its normal
+  // avatar dropdown (with an added "Admin Panel" item); only an admin with no
+  // such role falls back to the standalone Admin Panel button.
+  const pureAdmin = isAdmin && !isDj && !isTeammate && !isHost;
   // When the DJ is already on their own profile page, hide the "View My
   // Profile" button — it would just link to where they already are.
   const onOwnProfile = isDj && user?.slug && pathname === `/${user.slug}`;
@@ -121,7 +125,7 @@ export default function Header() {
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
           {loading ? null : user ? (
             <>
-              {isAdmin ? (
+              {pureAdmin ? (
                 /* Admin toolbar: just one button to jump back to the panel.
                    Hidden when already on /admin to match the same pattern
                    used for View My Profile / Update Profile. Admin can still
@@ -158,6 +162,7 @@ export default function Header() {
                       isTeammate={isTeammate}
                       canAddBookings={canBookings}
                       canMakeDiscounts={canMakeDiscounts}
+                      isAdmin={isAdmin}
                     />
                   )}
 
@@ -165,7 +170,7 @@ export default function Header() {
                       destinations (Upcoming Events, Account Settings) + Sign Out,
                       instead of a lone Log Out button. */}
                   {isHost && (
-                    <HeaderHostMenu name={user.name} avatarUrl={user.avatar_url} />
+                    <HeaderHostMenu name={user.name} avatarUrl={user.avatar_url} isAdmin={isAdmin} />
                   )}
 
                   {/* Shared by all logged-in non-admin users: Bookings + Inbox icons */}
@@ -209,7 +214,7 @@ export default function Header() {
               {/* Log Out — shown for everyone EXCEPT non-admin DJ accounts,
                   who reach Sign Out via the avatar dropdown above. Admins
                   keep the standalone button regardless of their stored role. */}
-              {((!isDj && !isTeammate && !isHost) || isAdmin) && (
+              {((!isDj && !isTeammate && !isHost) || pureAdmin) && (
                 <button onClick={handleSignOut} className="btn btn-outline" type="button">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
