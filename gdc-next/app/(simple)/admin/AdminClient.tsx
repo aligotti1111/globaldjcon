@@ -31,6 +31,8 @@ interface Props {
   initialEmailMap: Record<string, string>;
   /** userId → last_sign_in_at ISO string (from auth.users). Empty = never. */
   initialLastLoginMap: Record<string, string>;
+  /** userId → true when the account is currently disabled (banned). */
+  initialDisabledMap: Record<string, boolean>;
 }
 
 export interface CredsModalData {
@@ -42,7 +44,7 @@ export interface CredsModalData {
 }
 
 export default function AdminClient({
-  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap,
+  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap, initialDisabledMap,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('djs');
@@ -53,6 +55,9 @@ export default function AdminClient({
   const [venues, setVenues] = useState<AdminUserRow[]>(initialVenues);
   const [claims, setClaims] = useState<AdminClaimRow[]>(initialClaims);
   const [emailMap, setEmailMap] = useState<Record<string, string>>(initialEmailMap);
+  const [disabledMap, setDisabledMap] = useState<Record<string, boolean>>(initialDisabledMap);
+  const setDisabled = (userId: string, disabled: boolean) =>
+    setDisabledMap((prev) => ({ ...prev, [userId]: disabled }));
 
   // Modal state — managed at the top level so any tab can open them
   const [editUserId, setEditUserId] = useState<string | null>(null);
@@ -216,6 +221,8 @@ export default function AdminClient({
             users={djs}
             emailMap={emailMap}
             lastLoginMap={initialLastLoginMap}
+            disabledMap={disabledMap}
+            onToggleDisabled={setDisabled}
             onEdit={(id) => setEditUserId(id)}
             onDelete={removeUser}
             onUpdate={(u) => upsertUser(u)}
@@ -227,6 +234,8 @@ export default function AdminClient({
             users={hosts}
             emailMap={emailMap}
             lastLoginMap={initialLastLoginMap}
+            disabledMap={disabledMap}
+            onToggleDisabled={setDisabled}
             onEdit={(id) => setEditUserId(id)}
             onDelete={removeUser}
             onUpdate={(u) => upsertUser(u)}
@@ -238,6 +247,8 @@ export default function AdminClient({
             users={venues}
             emailMap={emailMap}
             lastLoginMap={initialLastLoginMap}
+            disabledMap={disabledMap}
+            onToggleDisabled={setDisabled}
             onEdit={(id) => setEditUserId(id)}
             onDelete={removeUser}
             onUpdate={(u) => upsertUser(u)}
