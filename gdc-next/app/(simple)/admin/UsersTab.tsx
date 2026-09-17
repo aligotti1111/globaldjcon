@@ -14,12 +14,14 @@ interface Props {
   role: 'dj' | 'host' | 'venue';
   users: AdminUserRow[];
   emailMap: Record<string, string>;
+  /** userId → last_sign_in_at ISO string (from auth.users). Empty = never. */
+  lastLoginMap: Record<string, string>;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (user: AdminUserRow) => void;
 }
 
-export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUpdate }: Props) {
+export default function UsersTab({ role, users, emailMap, lastLoginMap, onEdit, onDelete, onUpdate }: Props) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -125,6 +127,7 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
                   <div style={{ ...hStyle, flex: 1.2, minWidth: 130 }}>Name</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Email</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Created</div>
+                  <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Last Login</div>
                   <div style={{ ...hStyle, flex: 1, minWidth: 100 }}>Expiration Date</div>
                   <div style={{ ...hStyle, flex: '0 0 240px', textAlign: 'right' }}>Actions</div>
                 </>
@@ -139,6 +142,10 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
             const createdLabel = u.created_at
               ? new Date(u.created_at).toLocaleDateString()
               : '—';
+            const lastLoginRaw = lastLoginMap[u.id];
+            const lastLoginLabel = lastLoginRaw
+              ? new Date(lastLoginRaw).toLocaleDateString()
+              : 'Never';
             const accessLabel = accessUntil(u);
 
             return (
@@ -157,6 +164,13 @@ export default function UsersTab({ role, users, emailMap, onEdit, onDelete, onUp
                   {email || 'no email'}
                 </div>
                 <div className={styles.arDetail} title="Account created">{createdLabel}</div>
+                <div
+                  className={styles.arDetail}
+                  title="Last sign-in"
+                  style={{ color: lastLoginRaw ? 'var(--white)' : '#6b6b88', fontStyle: lastLoginRaw ? 'normal' : 'italic' }}
+                >
+                  {lastLoginLabel}
+                </div>
                 <div
                   className={styles.arDetail}
                   title="Expiration date (subscription or free access)"
