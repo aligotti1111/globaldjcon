@@ -11,7 +11,7 @@ import { createClient } from './server';
 
 // The single admin email. Anything else hitting /admin or admin actions
 // gets bounced to /login.
-export const ADMIN_EMAIL = 'admin@globaldjconnect.com';
+export const ADMIN_EMAIL = 'info@globaldjconnect.com';
 
 /** Server-only — returns true if the current request is from the admin. */
 export async function isAdminUser(): Promise<boolean> {
