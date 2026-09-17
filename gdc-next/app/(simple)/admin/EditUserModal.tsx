@@ -7,6 +7,15 @@ import { useEffect, useState } from 'react';
 import styles from './admin.module.css';
 import { updateUserAction, getUserEmailAction, grantCompAction, clearCompAction } from './actions';
 import type { AdminUserRow } from './page';
+import { COUNTRIES, US_STATES, TRAVEL_DISTANCES } from '../../(main)/update-dj-profile/constants';
+
+// Build select options that always include the row's current value, so a saved
+// value not in the preset list (e.g. an old free-text entry) isn't silently
+// dropped when the field becomes a dropdown.
+function withCurrent(opts: { val: string; label: string }[], current: string): { val: string; label: string }[] {
+  if (!current || opts.some((o) => o.val === current)) return opts;
+  return [...opts, { val: current, label: current }];
+}
 
 interface Props {
   user: AdminUserRow | null;
@@ -28,8 +37,10 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
   const [name, setName] = useState(user?.name || '');
   const [venueName, setVenueName] = useState(user?.venue_name || '');
   const [slug, setSlug] = useState(user?.slug || '');
-  const [role, setRole] = useState(user?.role || 'dj');
-  const [djType, setDjType] = useState(user?.dj_type || '');
+  // Role / DJ type are no longer editable in this modal, but we keep their
+  // values so they're saved unchanged and still drive conditional fields below.
+  const [role] = useState(user?.role || 'dj');
+  const [djType] = useState(user?.dj_type || '');
 
   // Location
   const [country, setCountry] = useState(user?.country || '');
@@ -257,32 +268,8 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
               globaldjconnect.com/<span>{slugPreview}</span>
             </p>
           </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Role</label>
-            <select
-              className={styles.formSelect}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <option value="dj">DJ</option>
-              <option value="host">Host</option>
-              <option value="venue">Venue</option>
-            </select>
-          </div>
-          {role === 'dj' && (
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>DJ Type</label>
-              <select
-                className={styles.formSelect}
-                value={djType}
-                onChange={(e) => setDjType(e.target.value)}
-              >
-                <option value="">— Not set —</option>
-                <option value="mobile">Mobile / Event</option>
-                <option value="club">Club / Bar</option>
-              </select>
-            </div>
-          )}
+          {/* Role and DJ Type are managed elsewhere and intentionally not
+              editable here — they're preserved on save unchanged. */}
         </div>
 
         {/* Location */}
@@ -291,11 +278,19 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Country</label>
-            <input className={styles.formInput} value={country} onChange={(e) => setCountry(e.target.value)} />
+            <select className={styles.formSelect} value={country} onChange={(e) => setCountry(e.target.value)}>
+              {withCurrent(COUNTRIES, country).map((o) => (
+                <option key={o.val} value={o.val}>{o.label}</option>
+              ))}
+            </select>
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>State / Province</label>
-            <input className={styles.formInput} value={state} onChange={(e) => setState(e.target.value)} />
+            <select className={styles.formSelect} value={state} onChange={(e) => setState(e.target.value)}>
+              {withCurrent(US_STATES, state).map((o) => (
+                <option key={o.val} value={o.val}>{o.label}</option>
+              ))}
+            </select>
           </div>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>City</label>
@@ -314,12 +309,15 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
           {role === 'dj' && (
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Travel Distance (mi)</label>
-              <input
-                className={styles.formInput}
-                type="number"
+              <select
+                className={styles.formSelect}
                 value={travelDistance}
                 onChange={(e) => setTravelDistance(e.target.value)}
-              />
+              >
+                {withCurrent(TRAVEL_DISTANCES, travelDistance).map((o) => (
+                  <option key={o.val} value={o.val}>{o.label}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>
