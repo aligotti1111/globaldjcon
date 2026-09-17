@@ -80,9 +80,18 @@ export default function RedeemCodeBox() {
 
   if (!open) {
     return (
-      <div style={{ textAlign: 'center', margin: '0 auto 1.25rem' }}>
-        <button type="button" className={styles.switchLink} onClick={() => setOpen(true)}>
-          Have a code? Redeem it
+      <div style={{ textAlign: 'center', margin: '0 auto 1.5rem' }}>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '.5rem',
+            background: 'rgba(0,224,164,.08)', border: '1px solid var(--neon,#00e0a4)',
+            color: 'var(--neon,#00e0a4)', borderRadius: 999, padding: '.7rem 1.4rem',
+            fontSize: '.9rem', fontWeight: 700, letterSpacing: '.02em', cursor: 'pointer',
+          }}
+        >
+          🏷 Apply Promo Code
         </button>
       </div>
     );
@@ -105,7 +114,7 @@ export default function RedeemCodeBox() {
           }}
         />
         <button type="button" className={styles.subscribeBtn} style={{ width: 'auto' }} onClick={redeem} disabled={busy || done}>
-          {busy ? 'Applying…' : 'Redeem'}
+          {busy ? 'Applying…' : 'Apply'}
         </button>
       </div>
       {preview && <div className={styles.success} style={{ marginTop: '.6rem' }}>{preview}</div>}
