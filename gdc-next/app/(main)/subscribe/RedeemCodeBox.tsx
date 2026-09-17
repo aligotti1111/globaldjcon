@@ -117,8 +117,8 @@ export default function RedeemCodeBox({ variant = 'pill' }: { variant?: 'pill' |
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto 1.5rem', textAlign: 'center' }}>
-      <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center' }}>
+    <div style={{ maxWidth: 480, width: '100%', margin: '0 auto 1.5rem', padding: '0 1rem', textAlign: 'center' }}>
+      <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <input
           value={code}
           onChange={(e) => { setCode(e.target.value.toUpperCase()); setPreview(null); setError(null); }}
@@ -132,7 +132,7 @@ export default function RedeemCodeBox({ variant = 'pill' }: { variant?: 'pill' |
             letterSpacing: '.04em',
           }}
         />
-        <button type="button" className={styles.subscribeBtn} style={{ width: 'auto' }} onClick={redeem} disabled={busy || done}>
+        <button type="button" className={styles.subscribeBtn} style={{ width: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap', padding: '.7rem 1.4rem' }} onClick={redeem} disabled={busy || done}>
           {busy ? 'Applying…' : 'Apply'}
         </button>
       </div>
