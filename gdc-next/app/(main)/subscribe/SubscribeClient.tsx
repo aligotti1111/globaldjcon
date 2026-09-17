@@ -424,7 +424,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         )}
       </div>
 
-      {isLoggedIn && <RedeemCodeBox />}
+      {isLoggedIn && <RedeemCodeBox variant="link" />}
 
       {isComp && !isPaid && accessUntilLabel && (
         <div className={styles.compBanner}>
