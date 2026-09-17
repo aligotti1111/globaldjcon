@@ -17,11 +17,13 @@ import styles from './admin.module.css';
 import CreateAccountTab from './CreateAccountTab';
 import ClaimsTab from './ClaimsTab';
 import UsersTab from './UsersTab';
+import CompCodesTab from './CompCodesTab';
 import EditUserModal from './EditUserModal';
 import CredsModal from './CredsModal';
 import type { AdminUserRow, AdminClaimRow } from './page';
+import type { CompCodeRow } from './actions';
 
-type TabKey = 'create' | 'claims' | 'djs' | 'hosts' | 'venues';
+type TabKey = 'create' | 'claims' | 'djs' | 'hosts' | 'venues' | 'promos';
 
 interface Props {
   initialDjs: AdminUserRow[];
@@ -33,6 +35,8 @@ interface Props {
   initialLastLoginMap: Record<string, string>;
   /** userId → true when the account is currently disabled (banned). */
   initialDisabledMap: Record<string, boolean>;
+  /** Platform comp codes (Promotions tab). */
+  initialCompCodes: CompCodeRow[];
 }
 
 export interface CredsModalData {
@@ -44,7 +48,7 @@ export interface CredsModalData {
 }
 
 export default function AdminClient({
-  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap, initialDisabledMap,
+  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap, initialDisabledMap, initialCompCodes,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('djs');
@@ -202,6 +206,9 @@ export default function AdminClient({
               📋 Pending Claims
               {stats.claims > 0 && <span className={styles.pill}>{stats.claims}</span>}
             </TabBtn>
+            <TabBtn active={activeTab === 'promos'} onClick={() => setActiveTab('promos')}>
+              🏷 Promotions
+            </TabBtn>
           </div>
         </div>
 
@@ -214,6 +221,9 @@ export default function AdminClient({
         )}
         {activeTab === 'claims' && (
           <ClaimsTab claims={claims} onUpdated={refreshClaims} />
+        )}
+        {activeTab === 'promos' && (
+          <CompCodesTab initialCodes={initialCompCodes} />
         )}
         {activeTab === 'djs' && (
           <UsersTab
