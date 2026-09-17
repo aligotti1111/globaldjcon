@@ -40,6 +40,9 @@ interface HeaderDjMenuProps {
    *  the "Add Discount / Promo Code" shortcut even for teammates who otherwise
    *  can't reach Booking Settings. */
   canMakeDiscounts?: boolean;
+  /** Platform admin (single-admin, by email) — shows an "Admin Panel" link at
+   *  the top of the dropdown. Only ever true for the one admin account. */
+  isAdmin?: boolean;
 }
 
 function initialsFrom(name: string): string {
@@ -67,7 +70,7 @@ const sectionLabelStyle: React.CSSProperties = {
   color: 'var(--muted, #8a8aa0)',
 };
 
-export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false, canAddBookings = true, canMakeDiscounts = false }: HeaderDjMenuProps) {
+export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, isTeammate = false, canAddBookings = true, canMakeDiscounts = false, isAdmin = false }: HeaderDjMenuProps) {
   const router = useRouter();
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -183,6 +186,17 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           role="menu"
           style={{ top: popPos.top, right: popPos.right }}
         >
+          {/* Admin Panel — only ever shown for the single platform-admin
+              account (gated by email in the Header). Sits at the very top. */}
+          {isAdmin && (
+            <>
+              <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+                Admin Panel
+              </Link>
+              <div className="hdr-dj-menu-sep" />
+            </>
+          )}
+
           {/* Profile first, on its own. It's the only item that leaves the
               app for the DJ's public page — the thing they show people — so it
               doesn't belong under a heading with settings. */}
