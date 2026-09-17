@@ -104,6 +104,8 @@ export default async function AdminPage() {
   // gathered here in the same pass and passed to the client for its own column.
   const emailMap: Record<string, string> = {};
   const lastLoginMap: Record<string, string> = {};
+  const disabledMap: Record<string, boolean> = {};
+  const nowMs = Date.now();
   try {
     let page = 1;
     while (page <= 5) {
@@ -113,6 +115,9 @@ export default async function AdminPage() {
       for (const u of data.users) {
         emailMap[u.id] = u.email || '';
         lastLoginMap[u.id] = u.last_sign_in_at || '';
+        // banned_until is a future ISO timestamp while the account is disabled.
+        const bannedUntil = (u as unknown as { banned_until?: string | null }).banned_until;
+        disabledMap[u.id] = !!(bannedUntil && new Date(bannedUntil).getTime() > nowMs);
       }
       if (data.users.length < 1000) break;
       page++;
@@ -129,6 +134,7 @@ export default async function AdminPage() {
       initialClaims={claims}
       initialEmailMap={emailMap}
       initialLastLoginMap={lastLoginMap}
+      initialDisabledMap={disabledMap}
     />
   );
 }
