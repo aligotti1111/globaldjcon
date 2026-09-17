@@ -99,15 +99,21 @@ export default async function AdminPage() {
   const venues = (venueRes.data as AdminUserRow[]) || [];
   const claims = (claimsRes.data as AdminClaimRow[]) || [];
 
-  // Build the email map. listUsers paginates; we pull up to 5 pages.
+  // Build the email + last-login maps. listUsers paginates; we pull up to 5
+  // pages. last_sign_in_at lives on auth.users (not public.users), so it's
+  // gathered here in the same pass and passed to the client for its own column.
   const emailMap: Record<string, string> = {};
+  const lastLoginMap: Record<string, string> = {};
   try {
     let page = 1;
     while (page <= 5) {
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
       if (error) break;
       if (!data.users.length) break;
-      for (const u of data.users) emailMap[u.id] = u.email || '';
+      for (const u of data.users) {
+        emailMap[u.id] = u.email || '';
+        lastLoginMap[u.id] = u.last_sign_in_at || '';
+      }
       if (data.users.length < 1000) break;
       page++;
     }
@@ -122,6 +128,7 @@ export default async function AdminPage() {
       initialVenues={venues}
       initialClaims={claims}
       initialEmailMap={emailMap}
+      initialLastLoginMap={lastLoginMap}
     />
   );
 }
