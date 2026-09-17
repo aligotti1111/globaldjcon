@@ -76,13 +76,27 @@ export async function POST(req: Request) {
   // Only DJ owner accounts subscribe, so only they can redeem a comp code.
   const { data: selfProfile } = await admin
     .from('users')
-    .select('role')
+    .select('role, sub_tier, sub_status')
     .eq('id', user.id)
-    .maybeSingle<{ role: string | null }>();
+    .maybeSingle<{ role: string | null; sub_tier: number | null; sub_status: string | null }>();
   if (selfProfile?.role !== 'dj') {
     return NextResponse.json(
       { ok: false, error: 'Only DJ accounts can redeem a code.' },
       { status: 403 },
+    );
+  }
+
+  // A comp doesn't pause an active PAID Stripe subscription — they'd keep being
+  // billed and the free months would be wasted. Block redemption while a paid
+  // subscription is live (active / trialing / past_due) and tell them to cancel
+  // first; the comp then covers them once the paid plan lapses.
+  const activePaid =
+    (selfProfile?.sub_tier ?? 0) >= 1 &&
+    ['active', 'trialing', 'past_due'].includes(selfProfile?.sub_status ?? '');
+  if (activePaid) {
+    return NextResponse.json(
+      { ok: false, error: 'You already have an active subscription. Cancel it first (you keep access until it ends), then redeem your code.' },
+      { status: 409 },
     );
   }
 
