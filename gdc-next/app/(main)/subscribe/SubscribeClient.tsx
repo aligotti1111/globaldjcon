@@ -65,6 +65,10 @@ interface Props {
   // switch to the other interval on the tier they're already on. null = unknown
   // (comp, logged-out, or Stripe read failed) → falls back to tier-only current.
   currentInterval?: Interval | null;
+  // Set to cancel at period end (read from Stripe on the server), so the banner
+  // shows "Active until <date>" even after a reload — not only in the session
+  // where they clicked cancel.
+  cancelScheduled?: boolean;
 }
 
 function fmtPrice(n: number): string {
@@ -145,7 +149,7 @@ const X_SVG = (
   </svg>
 );
 
-function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, compUntil, djType, currentInterval }: Props) {
+function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, compUntil, djType, currentInterval, cancelScheduled = false }: Props) {
   const searchParams = useSearchParams();
   const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
 
@@ -380,7 +384,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           )}
           {isPaid && accessUntilLabel && currentState === 'active' && (
             <span className={styles.graceNote}>
-              {' '}{cancelInfo?.scheduled ? `Active until ${cancelEndLabel}.` : `Renews ${accessUntilLabel}.`}
+              {' '}{(cancelInfo?.scheduled ?? cancelScheduled) ? `Active until ${cancelEndLabel}.` : `Renews ${accessUntilLabel}.`}
             </span>
           )}
           {currentState === 'grace' && (
