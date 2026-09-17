@@ -190,8 +190,9 @@ export default function MobileMenu() {
     }
   };
 
-  const isAdmin = user?.email?.toLowerCase() === 'admin@globaldjconnect.com';
+  const isAdmin = user?.email?.toLowerCase() === 'info@globaldjconnect.com';
   const isDj = user?.role === 'dj';
+  const isHost = user?.role === 'host';
   // Gates the booking-only DJ items (Upcoming Bookings, Add Booking Manually).
   // Gated on booking access (subscription/comp) — replaces the removed
   // booking_enabled toggle. Auth user carries sub/comp via select('*').
@@ -200,6 +201,10 @@ export default function MobileMenu() {
   // booking items — not the host "events" view. Their own subscription is empty,
   // so we do NOT gate on bookingEnabled (the owner's plan is what grants access).
   const isStaff = (user?.role as string | undefined) === 'teammate';
+  // An admin who also has a DJ/host/teammate role keeps their normal menu (with
+  // an added Admin Panel link); only an admin with no role gets the bare
+  // admin-only menu.
+  const pureAdmin = isAdmin && !isDj && !isStaff && !isHost;
   // Public profile the burger links to: the DJ's own slug, or — for a staff
   // login — the owner account they manage (so teammates can open + edit it).
   const profileSlug = isStaff
@@ -247,7 +252,7 @@ export default function MobileMenu() {
           </>
         )}
 
-        {user && isAdmin && (
+        {user && pureAdmin && (
           <>
             <div className="mobile-menu-group">Navigate</div>
             <Link href="/" onClick={close} className="mobile-menu-item">
@@ -264,12 +269,18 @@ export default function MobileMenu() {
           </>
         )}
 
-        {user && !isAdmin && (
+        {user && !pureAdmin && (
           <>
             <div className="mobile-menu-group">Navigate</div>
             <Link href="/" onClick={close} className="mobile-menu-item">
               <IconHome />Home
             </Link>
+            {/* Admin Panel — only for the single platform-admin account. */}
+            {isAdmin && (
+              <Link href="/admin" onClick={close} className="mobile-menu-item primary">
+                <IconAdmin />Admin Panel
+              </Link>
+            )}
             {profileSlug && (
               <Link href={`/${profileSlug}`} onClick={close} className="mobile-menu-item primary">
                 <IconUser />{isStaff ? 'View Profile' : 'My Profile'}
