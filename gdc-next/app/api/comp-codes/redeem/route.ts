@@ -108,7 +108,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'You’ve already redeemed this code.' }, { status: 409 });
   }
 
-  // Compute the new comp — never shorten existing access.
+  // Compute the new comp. STACK from the current end date so a second code adds
+  // real time instead of being swallowed: base = the later of "now" and their
+  // existing comp end, then + N calendar months. Tier never downgrades.
   const { data: profile } = await admin
     .from('users')
     .select('comp_tier, comp_expires_at')
@@ -117,11 +119,29 @@ export async function POST(req: Request) {
 
   const existingExpMs = profile?.comp_expires_at ? new Date(profile.comp_expires_at).getTime() : 0;
   const existingActive = existingExpMs > now;
-  const grantExpMs = now + codeData.months * 30 * 24 * 60 * 60 * 1000; // months ≈ 30d
-  const newExpMs = Math.max(existingActive ? existingExpMs : 0, grantExpMs);
+  const base = new Date(existingActive ? existingExpMs : now);
+  base.setUTCMonth(base.getUTCMonth() + codeData.months); // true calendar months
+  const newExpiresAt = base.toISOString();
   const newTier = Math.max(existingActive ? (profile?.comp_tier ?? 0) : 0, tier);
-  const newExpiresAt = new Date(newExpMs).toISOString();
 
+  // Ledger FIRST — the UNIQUE(code_id, user_id) constraint is the real guard
+  // against two requests racing past the alreadyRedeemed check above.
+  const { error: ledgerErr } = await admin.from('comp_code_redemptions').insert({
+    code_id: codeData.id,
+    user_id: user.id,
+    granted_tier: tier,
+    granted_months: codeData.months,
+    new_expires_at: newExpiresAt,
+  } as unknown as never);
+  if (ledgerErr) {
+    const pgCode = (ledgerErr as { code?: string }).code;
+    if (pgCode === '23505') {
+      return NextResponse.json({ ok: false, error: 'You’ve already redeemed this code.' }, { status: 409 });
+    }
+    return NextResponse.json({ ok: false, error: 'Could not apply the code. Please try again.' }, { status: 500 });
+  }
+
+  // Grant the comp.
   const { error: updErr } = await admin
     .from('users')
     .update({
@@ -131,17 +151,12 @@ export async function POST(req: Request) {
     } as unknown as never)
     .eq('id', user.id);
   if (updErr) {
+    // Roll the ledger row back so they can retry cleanly.
+    await admin.from('comp_code_redemptions').delete().eq('code_id', codeData.id).eq('user_id', user.id);
     return NextResponse.json({ ok: false, error: 'Could not apply the code. Please try again.' }, { status: 500 });
   }
 
-  // Ledger + usage count (best-effort; the unique constraint is the real guard).
-  await admin.from('comp_code_redemptions').insert({
-    code_id: codeData.id,
-    user_id: user.id,
-    granted_tier: tier,
-    granted_months: codeData.months,
-    new_expires_at: newExpiresAt,
-  } as unknown as never);
+  // Usage count (best-effort; the ledger row is the real guard).
   await admin
     .from('comp_codes')
     .update({ uses_count: codeData.uses_count + 1 } as unknown as never)
