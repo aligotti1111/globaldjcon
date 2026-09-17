@@ -107,7 +107,27 @@ export async function POST(req: Request) {
     .eq('code', code)
     .maybeSingle<CompCodeRow>();
 
+  // Not a comp code? It might be a paid DISCOUNT code (a % off applied at
+  // Stripe checkout). Those aren't "redeemed" here — we just confirm the code
+  // and tell the box to carry it into checkout when they pick a plan.
   if (!codeData || !codeData.active) {
+    const { data: disc } = await admin
+      .from('discount_codes')
+      .select('percent_off, duration, expires_at, active')
+      .eq('code', code)
+      .maybeSingle<{ percent_off: number; duration: 'once' | 'forever'; expires_at: string | null; active: boolean }>();
+    if (disc && disc.active && !(disc.expires_at && new Date(disc.expires_at).getTime() <= Date.now())) {
+      const desc = `${disc.percent_off}% off${disc.duration === 'once' ? ' your first payment' : ', every month'}`;
+      return NextResponse.json({
+        ok: true,
+        type: 'discount',
+        code,
+        percentOff: disc.percent_off,
+        duration: disc.duration,
+        applyAtCheckout: true,
+        description: desc,
+      });
+    }
     return NextResponse.json({ ok: false, error: 'That code isn’t valid.' }, { status: 404 });
   }
   const now = Date.now();
@@ -135,6 +155,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       preview: true,
+      type: 'comp',
       tier,
       tierLabel,
       months: codeData.months,
@@ -203,6 +224,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    type: 'comp',
     tier: newTier,
     tierLabel: TIER_LABELS[newTier as Tier] ?? tierLabel,
     expiresAt: newExpiresAt,
