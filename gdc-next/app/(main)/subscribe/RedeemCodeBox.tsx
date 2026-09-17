@@ -11,7 +11,16 @@ import styles from './subscribe.module.css';
 
 // variant 'pill' = the neon pill button (subscribe page). 'link' = a quiet
 // underlined text link (homepage pricing) that expands into the same field.
-export default function RedeemCodeBox({ variant = 'pill' }: { variant?: 'pill' | 'link' }) {
+// onDiscount fires when the code is a paid DISCOUNT code (not a comp): the
+// parent (SubscribeClient) stashes it and passes it into Stripe checkout when a
+// plan is chosen. Comp codes still apply + reload here.
+export default function RedeemCodeBox({
+  variant = 'pill',
+  onDiscount,
+}: {
+  variant?: 'pill' | 'link';
+  onDiscount?: (code: string, description: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
@@ -64,6 +73,15 @@ export default function RedeemCodeBox({ variant = 'pill' }: { variant?: 'pill' |
       });
       const data = await res.json();
       if (res.status === 401) { window.location.href = '/login?redirect=/subscribe'; return; }
+      if (data.ok && data.type === 'discount') {
+        // A paid discount code — nothing to "apply" here. Hand it up so it's
+        // attached at checkout, and lock the field with a confirming message.
+        setDone(true);
+        setPreview(`✓ ${data.description} — pick a plan below to use it.`);
+        onDiscount?.(c.toUpperCase(), data.description);
+        redeemingRef.current = false;
+        return;
+      }
       if (data.ok) {
         setDone(true);
         setPreview(`✓ Applied — ${data.description}. Refreshing…`);
