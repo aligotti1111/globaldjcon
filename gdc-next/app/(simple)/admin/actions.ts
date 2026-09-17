@@ -687,8 +687,8 @@ export async function createCompCodeAction(input: {
 
   const code = (input.code || '').trim().toUpperCase();
   if (!code) return { success: false, error: 'Code is required.' };
-  if (!/^[A-Z0-9_-]{3,40}$/.test(code)) {
-    return { success: false, error: 'Code must be 3–40 chars: letters, numbers, dashes/underscores.' };
+  if (!/^[A-Z0-9_-]{6,40}$/.test(code)) {
+    return { success: false, error: 'Code must be 6–40 chars: letters, numbers, dashes/underscores.' };
   }
   const tier = Math.trunc(Number(input.grant_tier));
   if (![1, 2, 3, 4].includes(tier)) return { success: false, error: 'Pick a valid plan tier.' };
