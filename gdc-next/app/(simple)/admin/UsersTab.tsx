@@ -158,9 +158,6 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
             return (
               <div key={u.id} className={styles.adminRow}>
                 <div className={styles.arName}>
-                  {isUnclaimed && (
-                    <span className={styles.unclaimedBadge} style={{ marginRight: '.4rem' }}>Unclaimed</span>
-                  )}
                   {u.slug ? (
                     <a
                       href={`/${u.slug}`}
@@ -173,6 +170,9 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
                     </a>
                   ) : (
                     name || 'Unnamed'
+                  )}
+                  {isUnclaimed && (
+                    <span className={styles.unclaimedBadge} style={{ marginLeft: '.4rem' }}>Unclaimed</span>
                   )}
                 </div>
                 <div
