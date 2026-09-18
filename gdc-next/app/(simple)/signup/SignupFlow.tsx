@@ -182,7 +182,14 @@ export function SignupFlow({
   onDone?: () => void;
   onScreenChange?: (screen: Screen) => void;
 }) {
-  const [screen, setScreen] = useState<Screen>('type-select');
+  // Start with NO screen resolved. The mount effect below reads the URL and
+  // picks the screen synchronously on first mount. Rendering nothing until then
+  // means a deep link (e.g. a homepage pricing card → ?type=dj) opens straight
+  // on the DJ form, instead of flashing the DJ/Host chooser for a frame while
+  // the effect runs. The chooser only ever shows when it's the real
+  // destination. On the server this renders empty too, so the prerendered HTML
+  // never contains the chooser.
+  const [screen, setScreen] = useState<Screen | null>(null);
   const [success, setSuccess] = useState<SuccessInfo | null>(null);
   // URL-param state (read once on mount; SSR-safe because we're in 'use client').
   const [prefillEmail, setPrefillEmail] = useState<string>('');
@@ -194,8 +201,9 @@ export function SignupFlow({
   const [initialPlan, setInitialPlan] = useState<number>(0);
   const [initialBilling, setInitialBilling] = useState<'monthly' | 'yearly'>('monthly');
 
-  // Mirror the screen up so the page can hide/show its chrome.
-  useEffect(() => { onScreenChange?.(screen); }, [screen, onScreenChange]);
+  // Mirror the screen up so the page can hide/show its chrome. Skip the initial
+  // null (nothing resolved yet) so the page doesn't react to a non-screen.
+  useEffect(() => { if (screen) onScreenChange?.(screen); }, [screen, onScreenChange]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -239,6 +247,9 @@ export function SignupFlow({
       const intent = parseBookingIntent();
       if (intent.bookingDjSlug && intent.bookingDate) {
         setScreen('host');
+      } else {
+        // No deep link — the normal signup: show the account-type chooser.
+        setScreen('type-select');
       }
     }
   }, []);
