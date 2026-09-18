@@ -192,7 +192,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   // Carried into Stripe checkout so the % comes off automatically, and used to
   // show discounted prices on the cards.
   const [pendingPromo, setPendingPromo] = useState<
-    { code: string; description: string; percentOff: number; duration: 'once' | 'forever' } | null
+    { code: string; description: string; percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' } | null
   >(null);
   const [pendingSwitch, setPendingSwitch] = useState<
     { tier: PaidTier; label: string; forward: string; amountDue: number | null; currency: string; interval: Interval } | null
@@ -433,7 +433,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {isLoggedIn && (
         <RedeemCodeBox
           variant="link"
-          onDiscount={(code, description, percentOff, duration) => setPendingPromo({ code, description, percentOff, duration })}
+          onDiscount={(code, description, percentOff, appliesTo) => setPendingPromo({ code, description, percentOff, appliesTo })}
         />
       )}
 
@@ -477,12 +477,16 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           const priceNum = interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice;
           const amtStr = priceNum.toFixed(2);
           const perLabel = interval === 'monthly' ? '/ month' : '/ year';
-          // Applied discount code → show the discounted price on the card. 'once'
-          // discounts only the first period; 'forever' every period.
+          // Applied discount code → show the discounted price on the card, but
+          // only on the interval the code is scoped to: 'monthly' = first month
+          // on monthly plans, 'yearly' = first year on yearly plans, 'both' =
+          // every payment on either.
           const discPct = pendingPromo?.percentOff ?? 0;
-          const discAmt = discPct > 0 ? priceNum * (1 - discPct / 100) : priceNum;
+          const scope = pendingPromo?.appliesTo ?? 'both';
+          const scopeMatches = scope === 'both' || scope === interval;
+          const showDisc = discPct > 0 && scopeMatches;
+          const discAmt = showDisc ? priceNum * (1 - discPct / 100) : priceNum;
           const discStr = discAmt.toFixed(2);
-          const showDisc = discPct > 0;
           const altLine = interval === 'monthly'
             ? `or ${fmtPrice(def.yearlyPrice)} / yr`
             : `or ${fmtPrice(def.monthlyPrice)} / mo`;
@@ -505,9 +509,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                 {showDisc ? (
                   <div className={styles.yr}>
                     <span style={{ textDecoration: 'line-through', opacity: 0.6, marginRight: 6 }}>${amtStr}</span>
-                    {pendingPromo?.duration === 'once'
-                      ? `${discPct}% off first ${interval === 'monthly' ? 'month' : 'year'}, then $${amtStr}`
-                      : `${discPct}% off — ${altLine.replace('or ', '')}`}
+                    {scope === 'both'
+                      ? `${discPct}% off every ${interval === 'monthly' ? 'month' : 'year'}`
+                      : `${discPct}% off first ${interval === 'monthly' ? 'month' : 'year'}, then $${amtStr}`}
                   </div>
                 ) : (
                   <div className={styles.yr}>{altLine}</div>
