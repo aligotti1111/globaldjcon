@@ -717,6 +717,12 @@ export async function createCompCodeAction(input: {
   if (((existing || []) as Array<{ id: string }>).length > 0) {
     return { success: false, error: 'That code already exists.' };
   }
+  // Cross-check: the same name can't also be a discount code, or the redeem box
+  // (which checks comp codes first) would make one of them unreachable.
+  const { data: dupDisc } = await admin.from('discount_codes').select('id').eq('code', code).limit(1);
+  if (((dupDisc || []) as Array<{ id: string }>).length > 0) {
+    return { success: false, error: 'That code already exists as a discount code. Pick a different name.' };
+  }
 
   const { data, error } = await admin
     .from('comp_codes')
@@ -887,6 +893,12 @@ export async function createDiscountCodeAction(input: {
   const { data: existing } = await admin.from('discount_codes').select('id').eq('code', code).limit(1);
   if (((existing || []) as Array<{ id: string }>).length > 0) {
     return { success: false, error: 'That code already exists.' };
+  }
+  // Cross-check: the same name can't also be a comp code (the redeem box checks
+  // comp codes first, which would shadow this discount).
+  const { data: dupComp } = await admin.from('comp_codes').select('id').eq('code', code).limit(1);
+  if (((dupComp || []) as Array<{ id: string }>).length > 0) {
+    return { success: false, error: 'That code already exists as a comp code. Pick a different name.' };
   }
 
   try {
