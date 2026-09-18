@@ -821,7 +821,7 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
-        <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Starter</a>
+        <a class="btn btn-ghost" href="#" onclick="return gdcChoosePlan(1);">Choose Starter</a>
         </div>
       </div>
       <div class="plan pro reveal">
@@ -848,7 +848,7 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
-        <a class="btn btn-neon" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Pro</a>
+        <a class="btn btn-neon" href="#" onclick="return gdcChoosePlan(2);">Choose Pro</a>
         </div>
       </div>
       <div class="plan premium reveal">
@@ -874,7 +874,7 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
-        <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Premium Pro</a>
+        <a class="btn btn-ghost" href="#" onclick="return gdcChoosePlan(3);">Choose Premium Pro</a>
         </div>
       </div>
       <div class="plan enterprise reveal">
@@ -900,7 +900,7 @@ const LANDING_BODY = String.raw`
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
-        <a class="btn btn-ghost" href="#" onclick="if(window.__gdcAuthed){location.href='/subscribe';}else{window.dispatchEvent(new CustomEvent('gdc:open-auth',{detail:{mode:'signup'}}));}return false;">Choose Enterprise</a>
+        <a class="btn btn-ghost" href="#" onclick="return gdcChoosePlan(4);">Choose Enterprise</a>
         </div>
       </div>
     </div>
@@ -1124,6 +1124,17 @@ window.gdcBill=function(mode,el){
   var p=document.querySelector('#pricing .price'); if(!p) return;
   p.classList.remove('bill-mo','bill-yr'); p.classList.add(mode==='yr'?'bill-yr':'bill-mo');
   if(el&&el.parentNode){el.parentNode.querySelectorAll('.billopt').forEach(function(b){b.classList.remove('on');}); el.classList.add('on');}
+};
+// Clicking a paid plan card sends a logged-OUT visitor to DJ signup with that
+// plan (and the interval they're viewing) preselected — the signup form reads
+// ?plan / ?interval. A signed-in DJ goes to /subscribe to set it up. Plan
+// numbers match the access tiers: 1 Starter, 2 Pro, 3 Premium Pro, 4 Enterprise.
+window.gdcChoosePlan=function(n){
+  var p=document.querySelector('#pricing .price');
+  var interval=(p&&p.classList.contains('bill-yr'))?'yearly':'monthly';
+  if(window.__gdcAuthed){location.href='/subscribe?plan='+n+'&interval='+interval;}
+  else{location.href='/signup?type=dj&plan='+n+'&interval='+interval;}
+  return false;
 };
 function openLB(id){var e=document.getElementById(id);if(e){e.classList.add('open');document.body.style.overflow='hidden';}}
 function closeLB(id){var e=document.getElementById(id);if(e){e.classList.remove('open');document.body.style.overflow='';}}
