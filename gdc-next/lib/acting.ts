@@ -5,6 +5,7 @@
 // `djId`, not the raw auth user id. Owners resolve to themselves, so existing
 // behavior is unchanged.
 
+import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -17,7 +18,12 @@ export interface ActingContext {
   isMember: boolean;
 }
 
-export async function getActingContext(authUserId: string): Promise<ActingContext> {
+// Wrapped in React cache(): getActingContext is called from ~157 sites, often
+// several times while rendering one page/handler. cache() memoizes the result
+// per REQUEST (keyed by authUserId), so those collapse to a single team_members
+// query instead of one per call. It never caches across requests, so role
+// changes are always fresh on the next navigation.
+export const getActingContext = cache(async (authUserId: string): Promise<ActingContext> => {
   const admin = createAdminClient() as unknown as SupabaseClient;
   // limit(1) rather than maybeSingle: a user could (in theory) hold more than one
   // active membership; maybeSingle would ERROR and silently fall back to owner.
@@ -45,7 +51,7 @@ export async function getActingContext(authUserId: string): Promise<ActingContex
     return { authUserId, djId: row.owner_id, role, isMember: true };
   }
   return { authUserId, djId: authUserId, role: 'owner', isMember: false };
-}
+});
 
 // Role → permission helpers (used by UI + server gates in the next phase).
 // ── Capability helpers (owner always allowed) ──────────────────────────────
