@@ -9,6 +9,7 @@ import { useState } from 'react';
 import styles from './admin.module.css';
 import {
   createCompCodeAction,
+  editCompCodeAction,
   deactivateCompCodeAction,
   listCompCodeRedemptionsAction,
   type CompCodeRow,
@@ -28,6 +29,23 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [fb, setFb] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function resetForm() {
+    setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setMonths(1); setTier(2);
+    setEditingId(null);
+  }
+
+  function startEdit(c: CompCodeRow) {
+    setFb(null);
+    setEditingId(c.id);
+    setCode(c.code);
+    setTier(c.grant_tier);
+    setMonths(c.months);
+    setMaxUses(c.max_uses != null ? String(c.max_uses) : '');
+    setExpiresAt(c.expires_at ? c.expires_at.slice(0, 10) : '');
+    setNote(c.note || '');
+  }
 
   // Which code row is expanded to show its redemptions, plus a per-code cache of
   // who redeemed it (loaded on first open).
@@ -51,24 +69,41 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
     }
   }
 
-  async function create() {
+  async function submit() {
     setFb(null);
     setBusy(true);
     try {
-      const res = await createCompCodeAction({
-        code,
-        grant_tier: tier,
-        months,
-        max_uses: maxUses === '' ? null : Number(maxUses),
-        expires_at: expiresAt || null,
-        note: note || null,
-      });
-      if (res.success && res.code) {
-        setCodes((prev) => [res.code as CompCodeRow, ...prev]);
-        setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setMonths(1); setTier(2);
-        setFb({ msg: '✓ Code created', ok: true });
+      if (editingId) {
+        const res = await editCompCodeAction(editingId, {
+          grant_tier: tier,
+          months,
+          max_uses: maxUses === '' ? null : Number(maxUses),
+          expires_at: expiresAt || null,
+          note: note || null,
+        });
+        if (res.success && res.code) {
+          setCodes((prev) => prev.map((x) => (x.id === editingId ? (res.code as CompCodeRow) : x)));
+          resetForm();
+          setFb({ msg: '✓ Code updated', ok: true });
+        } else {
+          setFb({ msg: '✗ ' + (res.error || 'Update failed'), ok: false });
+        }
       } else {
-        setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+        const res = await createCompCodeAction({
+          code,
+          grant_tier: tier,
+          months,
+          max_uses: maxUses === '' ? null : Number(maxUses),
+          expires_at: expiresAt || null,
+          note: note || null,
+        });
+        if (res.success && res.code) {
+          setCodes((prev) => [res.code as CompCodeRow, ...prev]);
+          resetForm();
+          setFb({ msg: '✓ Code created', ok: true });
+        } else {
+          setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+        }
       }
     } catch (e) {
       setFb({ msg: '✗ ' + (e as Error).message, ok: false });
@@ -93,7 +128,7 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
 
   return (
     <div>
-      <div className={styles.formSectionLabel}>Create Comp Code</div>
+      <div className={styles.formSectionLabel}>{editingId ? 'Edit Comp Code' : 'Create Comp Code'}</div>
       <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.7rem' }}>
         A comp code grants free access — a plan for a number of months — when a DJ redeems it. No card, no billing.
         They drop to Free when it ends (unless they add a card to continue).
@@ -101,13 +136,14 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
 
       <div className={styles.formGrid}>
         <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Code</label>
+          <label className={styles.formLabel}>Code{editingId ? ' (can’t be changed)' : ''}</label>
           <input
             className={styles.formInput}
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="SUMMER3"
-            style={{ textTransform: 'uppercase' }}
+            style={{ textTransform: 'uppercase', opacity: editingId ? 0.6 : 1 }}
+            disabled={!!editingId}
           />
         </div>
         <div className={styles.formGroup}>
@@ -163,12 +199,17 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
       <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.6rem' }}>
         <button
           type="button"
-          onClick={create}
+          onClick={submit}
           disabled={busy}
           className={`${styles.btn} ${styles.btnAdmin}`}
         >
-          {busy ? 'Creating…' : 'Create Code'}
+          {busy ? 'Saving…' : editingId ? 'Save Changes' : 'Create Code'}
         </button>
+        {editingId && (
+          <button type="button" onClick={resetForm} disabled={busy} className={`${styles.btn} ${styles.btnOutline}`}>
+            Cancel
+          </button>
+        )}
         {fb && (
           <span className={`${styles.formFb} ${fb.ok ? styles.formFbOk : styles.formFbErr}`}>{fb.msg}</span>
         )}
@@ -232,7 +273,14 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
               <div className={styles.arDetail} style={{ color: c.expires_at ? 'var(--white)' : '#6b6b88' }}>
                 {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}
               </div>
-              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 120px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 170px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); startEdit(c); }}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                >
+                  Edit
+                </button>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggle(c); }}
