@@ -867,9 +867,6 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
             </button>
           </div>
         )}
-        <p style={{ fontSize: '.8rem', color: '#8a8a9e', margin: '.35rem 0 0' }}>
-          Start free and upgrade any time. Pick a paid plan to set it up right after signup.
-        </p>
       </div>
 
       {!promoOpen ? (
