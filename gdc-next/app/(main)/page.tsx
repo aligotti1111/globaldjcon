@@ -511,8 +511,18 @@ const LANDING_CSS = String.raw`
 .gdc-landing .billopt.on .save{color:#000}
 .gdc-landing .plan .yr{font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
 .gdc-landing .plan ul{list-style:none;margin:0 0 18px;flex:1}
-.gdc-landing .plan li{padding:.4rem 0;color:var(--ink);font-size:.8rem;line-height:1.35;display:flex;gap:.5rem;align-items:flex-start;text-transform:capitalize}
-.gdc-landing .plan li svg{width:15px;height:15px;stroke:var(--neon);flex-shrink:0;margin-top:2px;fill:none}
+/* Block layout with the check absolutely positioned at the left, so the label
+   text AND its "(Mobile DJs)" / "(Club/Bar DJs)" qualifier flow as ordinary
+   wrapping text. (The old flexbox made the qualifier a separate flex item that
+   wrapped into a broken second column.) When the qualifier doesn't fit it drops
+   to the next line, hugging under the label. */
+.gdc-landing .plan li{padding:.4rem 0 .4rem 22px;position:relative;color:var(--ink);font-size:.8rem;line-height:1.35;text-transform:capitalize}
+.gdc-landing .plan li svg{position:absolute;left:0;top:calc(.4rem + 3px);width:15px;height:15px;stroke:var(--neon);fill:none}
+/* Qualifier tag: smaller, kept on one line (wraps as a whole under the label),
+   colour-coded — green for Mobile-DJ features, amber for Club/Bar-DJ features. */
+.gdc-landing .plan li .tq{font-size:.7rem;font-weight:600;white-space:nowrap}
+.gdc-landing .plan li.mob-only .tq{color:var(--neon)}
+.gdc-landing .plan li.club-only .tq{color:var(--amber)}
 /* New / increased for this tier — bold + neon green. Regular rows stay white. */
 .gdc-landing .plan li.hot{color:var(--neon);font-weight:700}
 .gdc-landing .plan li.hot svg{stroke:var(--neon)}
@@ -1390,10 +1400,13 @@ export default function HomePage() {
             card.style.position = 'relative';
             const clip = document.createElement('div');
             clip.className = 'gdc-free-ribbon';
-            clip.style.cssText = 'position:absolute;top:0;right:0;width:116px;height:116px;overflow:hidden;pointer-events:none;border-top-right-radius:12px;z-index:2;';
+            clip.style.cssText = 'position:absolute;top:0;right:0;width:150px;height:150px;overflow:hidden;pointer-events:none;border-top-right-radius:12px;z-index:2;';
             const rib = document.createElement('div');
             rib.textContent = m === 1 ? 'FIRST MONTH FREE' : `${m} MONTHS FREE`;
-            rib.style.cssText = 'position:absolute;top:17px;right:-36px;transform:rotate(45deg);background:var(--neon,#00e0a4);color:#062b22;font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 42px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);';
+            // Sized so the longer "FIRST MONTH FREE" fits on one line without the
+            // corner clip cropping the words; generous padding keeps both diagonal
+            // tails tucked under the card edges.
+            rib.style.cssText = 'position:absolute;top:27px;right:-42px;transform:rotate(45deg);white-space:nowrap;background:var(--neon,#00e0a4);color:#062b22;font-size:9px;font-weight:700;letter-spacing:.05em;padding:3px 46px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);';
             clip.appendChild(rib);
             card.appendChild(clip);
           }
