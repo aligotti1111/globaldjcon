@@ -773,22 +773,16 @@ export async function listCompCodeRedemptionsAction(
   const rows = (data as { user_id: string; redeemed_at: string; granted_tier: number; granted_months: number; new_expires_at: string }[]) || [];
   const ids = rows.map((r) => r.user_id);
 
-  // Names/slugs from public.users (typed table).
+  // Names/slugs + emails from public.users in ONE query (email is the mirrored,
+  // indexed column — no per-user Auth admin calls). See scaling-email-mirror.sql.
   const nameMap: Record<string, { name: string | null; slug: string | null }> = {};
-  if (ids.length) {
-    const { data: profs } = await admin.from('users').select('id, name, slug').in('id', ids);
-    for (const p of (profs as { id: string; name: string | null; slug: string | null }[] | null) || []) {
-      nameMap[p.id] = { name: p.name, slug: p.slug };
-    }
-  }
-
-  // Emails from auth.users, one lookup each (redemption counts are small).
   const emailMap: Record<string, string> = {};
-  for (const id of ids) {
-    try {
-      const { data: au } = await admin.auth.admin.getUserById(id);
-      if (au?.user) emailMap[id] = au.user.email || '';
-    } catch { /* skip */ }
+  if (ids.length) {
+    const { data: profs } = await admin.from('users').select('id, name, slug, email').in('id', ids);
+    for (const p of (profs as { id: string; name: string | null; slug: string | null; email: string | null }[] | null) || []) {
+      nameMap[p.id] = { name: p.name, slug: p.slug };
+      emailMap[p.id] = p.email || '';
+    }
   }
 
   return {
