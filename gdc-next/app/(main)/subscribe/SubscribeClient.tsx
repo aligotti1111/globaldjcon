@@ -433,7 +433,13 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {isLoggedIn && (
         <RedeemCodeBox
           variant="link"
-          onDiscount={(code, description, percentOff, appliesTo) => setPendingPromo({ code, description, percentOff, appliesTo })}
+          onDiscount={(code, description, percentOff, appliesTo) => {
+            setPendingPromo({ code, description, percentOff, appliesTo });
+            // Flip the toggle to the interval the code is for, so its discount
+            // is what the DJ sees (a yearly code → show yearly prices).
+            if (appliesTo === 'yearly') setBillingInterval('yearly');
+            else if (appliesTo === 'monthly') setBillingInterval('monthly');
+          }}
         />
       )}
 
