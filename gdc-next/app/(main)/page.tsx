@@ -1167,8 +1167,19 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
   // childList only (not attributes), so our own .in class additions don't
   // retrigger it — no loop.
   if('MutationObserver' in window){
-    var mo=new MutationObserver(function(){ if(document.querySelector('.reveal:not(.in)')){ initReveal(); } });
-    mo.observe(document.body,{childList:true,subtree:true});
+    // Watch ONLY the landing container, not the whole <body>. The recovery is
+    // for React re-applying the landing innerHTML; scoping here means unrelated
+    // DOM churn elsewhere — the sign-up modal opening/closing, header dropdowns —
+    // no longer triggers a full-page reveal re-scan (that churn was making the
+    // modal take seconds to close). Debounced to one pass per frame so a burst
+    // of mutations can't stack up repeated whole-DOM scans.
+    var landingRoot=document.querySelector('.gdc-landing')||document.body;
+    var moPending=false;
+    var mo=new MutationObserver(function(){
+      if(moPending) return; moPending=true;
+      requestAnimationFrame(function(){ moPending=false; if(document.querySelector('.reveal:not(.in)')){ initReveal(); } });
+    });
+    mo.observe(landingRoot,{childList:true,subtree:true});
   }
   document.addEventListener('visibilitychange',function(){ if(!document.hidden){ initReveal(); } });
   window.addEventListener('pageshow',initReveal);
