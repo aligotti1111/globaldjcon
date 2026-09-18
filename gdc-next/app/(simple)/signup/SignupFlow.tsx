@@ -32,6 +32,7 @@ import {
   type AccountType,
   type DjType,
 } from './helpers';
+import { TIERS } from '@/lib/access';
 import { SlugInput, type SlugStatus } from './SlugInput';
 import { ZipLookup } from './ZipLookup';
 import HostCodeSignup from './HostCodeSignup';
@@ -43,14 +44,16 @@ const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
 
 // Plan options for the DJ signup form. Everyone starts on Free; picking a paid
 // tier (or entering a promo code) routes them to /subscribe after signup to set
-// it up. Values match the access tiers (0 Free … 4 Enterprise).
-const PLAN_OPTIONS = [
-  { v: 0, label: 'Free' },
-  { v: 1, label: 'Starter' },
-  { v: 2, label: 'Pro' },
-  { v: 3, label: 'Premium Pro' },
-  { v: 4, label: 'Enterprise' },
-];
+// it up. Values match the access tiers (0 Free … 4 Enterprise); labels show the
+// live price for the chosen billing interval, pulled from the TIERS table.
+const PLAN_VALUES = [0, 1, 2, 3, 4] as const;
+function planOptionLabel(v: number, billing: 'monthly' | 'yearly'): string {
+  const d = TIERS[v as 0 | 1 | 2 | 3 | 4];
+  if (v === 0) return 'Free — start here';
+  const price = billing === 'monthly' ? d.monthlyPrice : d.yearlyPrice;
+  const per = billing === 'monthly' ? '/mo' : '/yr';
+  return `${d.label} — $${price.toFixed(2)}${per}`;
+}
 
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
 
@@ -525,8 +528,9 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
   const [city, setCity] = useState('');
   const [stateRegion, setStateRegion] = useState('');
   const [travel, setTravel] = useState('');
-  // Plan choice (default Free) + optional promo code entered at signup.
+  // Plan choice (default Free), billing interval, + optional promo code.
   const [plan, setPlan] = useState(0);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   // Must accept the Terms & Privacy Policy before an account can be created.
@@ -687,7 +691,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
       const codeVal = promoCode.trim().toUpperCase();
       if (plan > 0 || codeVal) {
         const q = new URLSearchParams();
-        if (plan > 0) q.set('plan', String(plan));
+        if (plan > 0) { q.set('plan', String(plan)); q.set('interval', billing); }
         if (codeVal) q.set('code', codeVal);
         window.location.href = `/subscribe?${q.toString()}`;
         return;
@@ -837,10 +841,34 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
       <div className={styles.formGroup}>
         <label htmlFor="dj-plan">Plan</label>
         <select id="dj-plan" value={plan} onChange={(e) => setPlan(Number(e.target.value))}>
-          {PLAN_OPTIONS.map(p => (
-            <option key={p.v} value={p.v}>{p.label}{p.v === 0 ? ' — start here' : ''}</option>
+          {PLAN_VALUES.map(v => (
+            <option key={v} value={v}>{planOptionLabel(v, billing)}</option>
           ))}
         </select>
+        {plan > 0 && (
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setBilling('monthly')}
+              style={{ flex: 1, padding: '.55rem', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: '.85rem',
+                border: billing === 'monthly' ? '1px solid var(--neon,#00e0a4)' : '1px solid rgba(255,255,255,.16)',
+                background: billing === 'monthly' ? 'rgba(0,224,164,.1)' : 'transparent',
+                color: billing === 'monthly' ? 'var(--neon,#00e0a4)' : '#c4c4d4' }}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setBilling('yearly')}
+              style={{ flex: 1, padding: '.55rem', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: '.85rem',
+                border: billing === 'yearly' ? '1px solid var(--neon,#00e0a4)' : '1px solid rgba(255,255,255,.16)',
+                background: billing === 'yearly' ? 'rgba(0,224,164,.1)' : 'transparent',
+                color: billing === 'yearly' ? 'var(--neon,#00e0a4)' : '#c4c4d4' }}
+            >
+              Yearly · 2 months free
+            </button>
+          </div>
+        )}
         <p style={{ fontSize: '.8rem', color: '#8a8a9e', margin: '.35rem 0 0' }}>
           Start free and upgrade any time. Pick a paid plan to set it up right after signup.
         </p>
