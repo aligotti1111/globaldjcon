@@ -48,7 +48,9 @@ const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
 // live price for the chosen billing interval, pulled from the TIERS table.
 const PLAN_VALUES = [0, 1, 2, 3, 4] as const;
 function planOptionLabel(v: number): string {
-  return v === 0 ? 'Free' : TIERS[v as 1 | 2 | 3 | 4].label;
+  if (v === 0) return 'Free';
+  const t = TIERS[v as 1 | 2 | 3 | 4];
+  return `${t.label} — $${t.monthlyPrice.toFixed(2)}/mo or $${t.yearlyPrice.toFixed(2)}/yr`;
 }
 
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
