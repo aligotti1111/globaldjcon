@@ -1398,6 +1398,11 @@ export default function HomePage() {
           const card = cards[data.freeSale.tier];
           if (card && !card.querySelector('.gdc-free-ribbon')) {
             card.style.position = 'relative';
+            // The ribbon lands in the same top-right corner as the "Most
+            // popular" badge and would overlap it. Hide that card's badge while
+            // the ribbon is up so only one corner label shows.
+            const best = card.querySelector<HTMLElement>('.best');
+            if (best) best.style.display = 'none';
             const clip = document.createElement('div');
             clip.className = 'gdc-free-ribbon';
             clip.style.cssText = 'position:absolute;top:0;right:0;width:150px;height:150px;overflow:hidden;pointer-events:none;border-top-right-radius:12px;z-index:2;';
