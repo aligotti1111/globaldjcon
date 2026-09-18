@@ -1355,20 +1355,25 @@ export default function HomePage() {
         const percentSales = data?.percentSales || [];
         for (const s of percentSales) applyLandingDiscount(s.percentOff, s.appliesTo);
 
-        // Badge the actual granted plan card (index === tier: Free=0, Starter=1,
-        // …), so the free offer sits on the plan it applies to — not just the
-        // top banner. Only for logged-out visitors (the free sale's audience).
+        // Corner ribbon on the actual granted plan card (index === tier: Free=0,
+        // Starter=1, …), so the free offer sits on the plan it applies to — not
+        // just the top banner. Only for logged-out visitors (the sale's audience).
+        // A clip wrapper (overflow hidden, matching corner radius) crops the
+        // diagonal ribbon cleanly without touching the rest of the card.
         if (!signedIn && data?.freeSale) {
           const m = data.freeSale.months;
           const cards = document.querySelectorAll<HTMLElement>('#pricing .plan');
           const card = cards[data.freeSale.tier];
-          const hero = card?.querySelector('.hero');
-          if (hero && !hero.querySelector('.gdc-free-badge')) {
-            const badge = document.createElement('div');
-            badge.className = 'gdc-free-badge';
-            badge.textContent = `🎉 Free for ${m} month${m === 1 ? '' : 's'} · new signups`;
-            badge.style.cssText = 'display:inline-block;background:var(--neon,#00e0a4);color:#062b22;font-weight:700;font-size:.62rem;letter-spacing:.03em;padding:4px 10px;border-radius:999px;margin-top:8px;';
-            hero.appendChild(badge);
+          if (card && !card.querySelector('.gdc-free-ribbon')) {
+            card.style.position = 'relative';
+            const clip = document.createElement('div');
+            clip.className = 'gdc-free-ribbon';
+            clip.style.cssText = 'position:absolute;top:0;right:0;width:116px;height:116px;overflow:hidden;pointer-events:none;border-top-right-radius:12px;z-index:2;';
+            const rib = document.createElement('div');
+            rib.textContent = `${m} MONTH${m === 1 ? '' : 'S'} FREE`;
+            rib.style.cssText = 'position:absolute;top:17px;right:-36px;transform:rotate(45deg);background:var(--neon,#00e0a4);color:#062b22;font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 42px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);';
+            clip.appendChild(rib);
+            card.appendChild(clip);
           }
         }
 
