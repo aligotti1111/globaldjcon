@@ -1307,6 +1307,33 @@ export default function HomePage() {
     return () => { host.remove(); };
   }, [canRedeem]);
 
+  // When a % discount code is applied on the homepage, adjust the static price
+  // cards in place: rewrite each plan's amount (monthly + yearly) to the
+  // discounted value and prepend a struck-through original. Guarded so a repeat
+  // apply doesn't compound (original stashed in data-orig once).
+  function applyLandingDiscount(pct: number) {
+    if (!pct || pct <= 0) return;
+    document.querySelectorAll<HTMLElement>('#pricing .plan:not(.free) .amt').forEach((amt) => {
+      amt.querySelectorAll<HTMLElement>('.p-mo, .p-yr').forEach((span) => {
+        const cur = span.querySelector('.cur');
+        if (!cur) return;
+        const numNode = cur.nextSibling;
+        if (!numNode || numNode.nodeType !== 3) return;
+        if (!span.dataset.orig) span.dataset.orig = (numNode.textContent || '').trim();
+        const base = parseFloat(span.dataset.orig || '');
+        if (!base) return;
+        numNode.textContent = (base * (1 - pct / 100)).toFixed(2);
+        if (!span.querySelector('.was')) {
+          const was = document.createElement('span');
+          was.className = 'was';
+          was.textContent = '$' + base.toFixed(2);
+          was.style.cssText = 'text-decoration:line-through;opacity:.5;font-size:.5em;margin-right:6px;font-weight:400;';
+          span.insertBefore(was, cur);
+        }
+      });
+    });
+  }
+
   // Relabel the pricing CTAs for a SUBSCRIBED DJ: their current plan reads
   // "Current Plan" (disabled), higher tiers "Upgrade", lower "Switch". An
   // unsubscribed (Free) DJ keeps "Choose X" — they're subscribing for the first
@@ -1372,7 +1399,10 @@ export default function HomePage() {
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
       <LandingMarkup signedIn={signedIn} isHost={isHost} isTeammate={isTeammate} djType={djType} />
-      {redeemHost && canRedeem && createPortal(<RedeemCodeBox variant="link" />, redeemHost)}
+      {redeemHost && canRedeem && createPortal(
+        <RedeemCodeBox variant="link" onDiscount={(_c, _d, pct) => applyLandingDiscount(pct)} />,
+        redeemHost,
+      )}
     </>
   );
 }
