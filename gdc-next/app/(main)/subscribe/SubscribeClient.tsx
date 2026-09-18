@@ -436,11 +436,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           onDiscount={(code, description, percentOff, duration) => setPendingPromo({ code, description, percentOff, duration })}
         />
       )}
-      {pendingPromo && (
-        <div className={styles.success} style={{ textAlign: 'center', maxWidth: 480, margin: '0 auto 1.25rem' }}>
-          ✓ {pendingPromo.description} — applied at checkout when you pick a plan.
-        </div>
-      )}
 
       {isComp && !isPaid && accessUntilLabel && (
         <div className={styles.compBanner}>
