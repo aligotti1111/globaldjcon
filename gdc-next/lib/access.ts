@@ -107,7 +107,8 @@ export const CONTRACT_QUOTA: Record<Tier, number> =
 // ───────────────────────────────────────────────────────────────────
 
 export type AccessState = 'active' | 'grace' | 'lapsed' | 'none';
-export type AccessSource = 'stripe' | 'admin' | 'code' | null;
+// 'sale' = a comp granted by a site-wide free sale (behaves like admin/code).
+export type AccessSource = 'stripe' | 'admin' | 'code' | 'sale' | null;
 
 // The subset of public.users columns this module reads.
 export interface AccessFields {
@@ -175,7 +176,7 @@ export function getAccess(f: AccessFields, now: Date = new Date()): Access {
   return {
     tier,
     state: 'active',
-    source: (f.comp_source === 'admin' || f.comp_source === 'code') ? f.comp_source : 'admin',
+    source: (f.comp_source === 'admin' || f.comp_source === 'code' || f.comp_source === 'sale') ? f.comp_source : 'admin',
   };
 }
 
