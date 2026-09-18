@@ -1381,7 +1381,7 @@ export default function HomePage() {
             clip.className = 'gdc-free-ribbon';
             clip.style.cssText = 'position:absolute;top:0;right:0;width:116px;height:116px;overflow:hidden;pointer-events:none;border-top-right-radius:12px;z-index:2;';
             const rib = document.createElement('div');
-            rib.textContent = `${m} MONTH${m === 1 ? '' : 'S'} FREE`;
+            rib.textContent = m === 1 ? 'FIRST MONTH FREE' : `${m} MONTHS FREE`;
             rib.style.cssText = 'position:absolute;top:17px;right:-36px;transform:rotate(45deg);background:var(--neon,#00e0a4);color:#062b22;font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 42px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);';
             clip.appendChild(rib);
             card.appendChild(clip);
