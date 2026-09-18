@@ -1350,10 +1350,27 @@ export default function HomePage() {
     let cancelled = false;
     fetch('/api/site-sale')
       .then((r) => r.json())
-      .then((data: { percentSales?: { percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[]; freeSale?: { tierLabel: string; months: number } | null }) => {
+      .then((data: { percentSales?: { percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[]; freeSale?: { tier: number; tierLabel: string; months: number } | null }) => {
         if (cancelled) return;
         const percentSales = data?.percentSales || [];
         for (const s of percentSales) applyLandingDiscount(s.percentOff, s.appliesTo);
+
+        // Badge the actual granted plan card (index === tier: Free=0, Starter=1,
+        // …), so the free offer sits on the plan it applies to — not just the
+        // top banner. Only for logged-out visitors (the free sale's audience).
+        if (!signedIn && data?.freeSale) {
+          const m = data.freeSale.months;
+          const cards = document.querySelectorAll<HTMLElement>('#pricing .plan');
+          const card = cards[data.freeSale.tier];
+          const hero = card?.querySelector('.hero');
+          if (hero && !hero.querySelector('.gdc-free-badge')) {
+            const badge = document.createElement('div');
+            badge.className = 'gdc-free-badge';
+            badge.textContent = `🎉 Free for ${m} month${m === 1 ? '' : 's'} · new signups`;
+            badge.style.cssText = 'display:inline-block;background:var(--neon,#00e0a4);color:#062b22;font-weight:700;font-size:.62rem;letter-spacing:.03em;padding:4px 10px;border-radius:999px;margin-top:8px;';
+            hero.appendChild(badge);
+          }
+        }
 
         const grid = document.querySelector<HTMLElement>('#pricing .price');
         if (!grid || !grid.parentElement || document.querySelector('.gdc-sale-banner')) return;
