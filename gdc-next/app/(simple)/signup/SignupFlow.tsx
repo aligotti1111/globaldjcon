@@ -47,12 +47,10 @@ const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
 // it up. Values match the access tiers (0 Free … 4 Enterprise); labels show the
 // live price for the chosen billing interval, pulled from the TIERS table.
 const PLAN_VALUES = [0, 1, 2, 3, 4] as const;
-function planOptionLabel(v: number, billing: 'monthly' | 'yearly'): string {
+function planOptionLabel(v: number): string {
   const d = TIERS[v as 0 | 1 | 2 | 3 | 4];
   if (v === 0) return 'Free — start here';
-  const price = billing === 'monthly' ? d.monthlyPrice : d.yearlyPrice;
-  const per = billing === 'monthly' ? '/mo' : '/yr';
-  return `${d.label} — $${price.toFixed(2)}${per}`;
+  return `${d.label} — $${d.monthlyPrice.toFixed(2)}/mo · $${d.yearlyPrice.toFixed(2)}/yr`;
 }
 
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
@@ -842,7 +840,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
         <label htmlFor="dj-plan">Plan</label>
         <select id="dj-plan" value={plan} onChange={(e) => setPlan(Number(e.target.value))}>
           {PLAN_VALUES.map(v => (
-            <option key={v} value={v}>{planOptionLabel(v, billing)}</option>
+            <option key={v} value={v}>{planOptionLabel(v)}</option>
           ))}
         </select>
         {plan > 0 && (
@@ -865,7 +863,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
                 background: billing === 'yearly' ? 'rgba(0,224,164,.1)' : 'transparent',
                 color: billing === 'yearly' ? 'var(--neon,#00e0a4)' : '#c4c4d4' }}
             >
-              Yearly · 2 months free
+              Yearly
             </button>
           </div>
         )}
