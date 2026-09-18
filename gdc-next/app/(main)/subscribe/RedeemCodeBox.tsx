@@ -151,7 +151,7 @@ export default function RedeemCodeBox({
         <input
           value={code}
           onChange={(e) => { setCode(e.target.value.toUpperCase()); setPreview(null); setError(null); }}
-          onBlur={check}
+          onBlur={() => check()}
           placeholder="Enter code"
           disabled={done}
           style={{
