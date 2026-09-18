@@ -537,6 +537,7 @@ export type Database = {
           created_at: string | null
           dj_start_year: number | null
           dj_type: string | null
+          email: string | null
           email_notify_booking_request: boolean
           email_notify_booking_status: boolean
           email_notify_inbox_message: boolean
@@ -617,6 +618,7 @@ export type Database = {
           created_at?: string | null
           dj_start_year?: number | null
           dj_type?: string | null
+          email?: string | null
           email_notify_booking_request?: boolean
           email_notify_booking_status?: boolean
           email_notify_inbox_message?: boolean
@@ -697,6 +699,7 @@ export type Database = {
           created_at?: string | null
           dj_start_year?: number | null
           dj_type?: string | null
+          email?: string | null
           email_notify_booking_request?: boolean
           email_notify_booking_status?: boolean
           email_notify_inbox_message?: boolean
@@ -761,6 +764,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auth_user_id_by_email: {
+        Args: { p_email: string }
+        Returns: string | null
+      }
       clear_email_confirmation: {
         Args: { target_user_id: string }
         Returns: undefined
