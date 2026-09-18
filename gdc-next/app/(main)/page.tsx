@@ -1343,6 +1343,38 @@ export default function HomePage() {
     });
   }
 
+  // Live site-wide sale (everyone, no code): fetch it, discount the cards for
+  // any live PERCENT sale, and drop a banner above the plans. A FREE (comp) sale
+  // shows a "sign up free" banner to logged-out visitors.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/site-sale')
+      .then((r) => r.json())
+      .then((data: { percentSales?: { percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[]; freeSale?: { tierLabel: string; months: number } | null }) => {
+        if (cancelled) return;
+        const percentSales = data?.percentSales || [];
+        for (const s of percentSales) applyLandingDiscount(s.percentOff, s.appliesTo);
+
+        const grid = document.querySelector<HTMLElement>('#pricing .price');
+        if (!grid || !grid.parentElement || document.querySelector('.gdc-sale-banner')) return;
+        const parts: string[] = [];
+        const topPct = percentSales.reduce((m, s) => Math.max(m, s.percentOff), 0);
+        if (topPct > 0) parts.push(`🔥 Limited-time sale — up to ${topPct}% off`);
+        if (!signedIn && data?.freeSale) {
+          const m = data.freeSale.months;
+          parts.push(`🎉 Sign up now: ${data.freeSale.tierLabel} free for ${m} month${m === 1 ? '' : 's'}`);
+        }
+        if (!parts.length) return;
+        const b = document.createElement('div');
+        b.className = 'gdc-sale-banner';
+        b.textContent = parts.join('   ·   ');
+        b.style.cssText = 'grid-column:1/-1;width:100%;text-align:center;color:var(--neon,#00e0a4);font-weight:700;margin:0 0 1rem;font-size:.95rem;';
+        grid.parentElement.insertBefore(b, grid);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [signedIn]);
+
   // Relabel the pricing CTAs for a SUBSCRIBED DJ: their current plan reads
   // "Current Plan" (disabled), higher tiers "Upgrade", lower "Switch". An
   // unsubscribed (Free) DJ keeps "Choose X" — they're subscribing for the first
