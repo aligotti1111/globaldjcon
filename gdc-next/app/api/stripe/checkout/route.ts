@@ -103,21 +103,21 @@ export async function POST(req: Request) {
       ? `No charge today — your plan begins ${new Date(compExpMs).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, when your complimentary access ends.`
       : null;
 
-    // Resolve a discount code → its Stripe promotion code id. When present we
-    // PRE-APPLY it via `discounts` and must NOT also set allow_promotion_codes
-    // (Stripe rejects both on the same session). An unknown/inactive code is
-    // ignored (checkout proceeds at full price with the manual code field on).
-    let promotionCodeId: string | null = null;
+    // Resolve a discount code → its Stripe COUPON id. When present we PRE-APPLY
+    // it via `discounts` and must NOT also set allow_promotion_codes (Stripe
+    // rejects both on the same session). An unknown/inactive code is ignored
+    // (checkout proceeds at full price with the manual code field on).
+    let couponId: string | null = null;
     if (promoCode) {
       const { data: dc } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
         .from('discount_codes')
-        .select('stripe_promo_id, active')
+        .select('stripe_coupon_id, active')
         .eq('code', promoCode)
-        .maybeSingle<{ stripe_promo_id: string; active: boolean }>();
-      if (dc && dc.active) promotionCodeId = dc.stripe_promo_id;
+        .maybeSingle<{ stripe_coupon_id: string; active: boolean }>();
+      if (dc && dc.active) couponId = dc.stripe_coupon_id;
     }
-    const discountFields = promotionCodeId
-      ? { discounts: [{ promotion_code: promotionCodeId }] }
+    const discountFields = couponId
+      ? { discounts: [{ coupon: couponId }] }
       : { allow_promotion_codes: true as const };
 
     // 4. Create the Checkout Session.
