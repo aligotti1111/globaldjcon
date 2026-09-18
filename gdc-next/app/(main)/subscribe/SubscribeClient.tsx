@@ -458,6 +458,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {isLoggedIn && (
         <RedeemCodeBox
           variant="link"
+          initialCode={searchParams.get('code') || undefined}
           onDiscount={(code, description, percentOff, appliesTo) => {
             setPendingPromo({ code, description, percentOff, appliesTo });
             // Flip the toggle to the interval the code is for, so its discount
