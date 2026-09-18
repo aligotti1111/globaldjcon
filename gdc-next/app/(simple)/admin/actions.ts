@@ -805,6 +805,46 @@ export async function listCompCodeRedemptionsAction(
   };
 }
 
+// Edit an existing comp code. The code string itself is NOT changed (it's the
+// key DJs type / that the ledger references) — only its grant + limits.
+export async function editCompCodeAction(
+  id: string,
+  input: { grant_tier: number; months: number; max_uses?: number | null; expires_at?: string | null; note?: string | null },
+): Promise<{ success: boolean; code?: CompCodeRow; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+
+  const tier = Math.trunc(Number(input.grant_tier));
+  if (![1, 2, 3, 4].includes(tier)) return { success: false, error: 'Pick a valid plan tier.' };
+  const months = Math.trunc(Number(input.months));
+  if (!(months >= 1 && months <= 60)) return { success: false, error: 'Months must be 1–60.' };
+
+  let maxUses: number | null = null;
+  if (input.max_uses != null && `${input.max_uses}` !== '') {
+    const m = Math.trunc(Number(input.max_uses));
+    if (!(m > 0)) return { success: false, error: 'Max uses must be a positive number (or blank for unlimited).' };
+    maxUses = m;
+  }
+  let expiresAt: string | null = null;
+  if (input.expires_at) {
+    const raw = input.expires_at;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59`) : new Date(raw);
+    if (isNaN(d.getTime())) return { success: false, error: 'Invalid expiry date.' };
+    expiresAt = d.toISOString();
+  }
+
+  const { data, error } = await admin
+    .from('comp_codes')
+    .update({ grant_tier: tier, months, max_uses: maxUses, expires_at: expiresAt, note: input.note?.trim() || null } as unknown as never)
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) return { success: false, error: 'Update failed: ' + error.message };
+  revalidatePath('/admin');
+  return { success: true, code: data as CompCodeRow };
+}
+
 export async function deactivateCompCodeAction(
   id: string,
   active: boolean,
@@ -951,6 +991,88 @@ export async function createDiscountCodeAction(input: {
     return { success: true, code: data as DiscountCodeRow };
   } catch (e) {
     return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not create code') };
+  }
+}
+
+// Edit a discount code. Stripe coupons are IMMUTABLE (percent/duration can't be
+// changed), so we mint a NEW coupon with the new values, point the row at it,
+// then delete the old coupon. The code string stays the same.
+export async function editDiscountCodeAction(
+  id: string,
+  input: {
+    percent_off: number;
+    applies_to: 'monthly' | 'yearly' | 'both';
+    max_redemptions?: number | null;
+    expires_at?: string | null;
+    note?: string | null;
+  },
+): Promise<{ success: boolean; code?: DiscountCodeRow; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+
+  const percent = Math.trunc(Number(input.percent_off));
+  if (!(percent >= 1 && percent <= 99)) return { success: false, error: 'Percent off must be 1–99.' };
+  const appliesTo: 'monthly' | 'yearly' | 'both' =
+    input.applies_to === 'monthly' || input.applies_to === 'yearly' ? input.applies_to : 'both';
+  const duration: 'once' | 'forever' = appliesTo === 'both' ? 'forever' : 'once';
+
+  let maxRedemptions: number | null = null;
+  if (input.max_redemptions != null && `${input.max_redemptions}` !== '') {
+    const m = Math.trunc(Number(input.max_redemptions));
+    if (!(m > 0)) return { success: false, error: 'Max uses must be a positive number (or blank for unlimited).' };
+    maxRedemptions = m;
+  }
+  let expiresAtIso: string | null = null;
+  let expiresAtUnix: number | undefined;
+  if (input.expires_at) {
+    const raw = input.expires_at;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59`) : new Date(raw);
+    if (isNaN(d.getTime())) return { success: false, error: 'Invalid expiry date.' };
+    expiresAtIso = d.toISOString();
+    expiresAtUnix = Math.floor(d.getTime() / 1000);
+  }
+
+  const { data: rowData } = await admin.from('discount_codes').select('code, stripe_coupon_id').eq('id', id).maybeSingle();
+  const row = rowData as { code?: string; stripe_coupon_id?: string } | null;
+  if (!row?.code) return { success: false, error: 'Code not found.' };
+  const oldCoupon = row.stripe_coupon_id;
+
+  try {
+    const stripe = getStripe();
+    const scopeLabel = appliesTo === 'monthly' ? 'first month' : appliesTo === 'yearly' ? 'first year' : 'forever';
+    const coupon = await stripe.coupons.create({
+      percent_off: percent,
+      duration,
+      name: `${row.code} — ${percent}% off (${scopeLabel})`,
+      ...(maxRedemptions != null ? { max_redemptions: maxRedemptions } : {}),
+      ...(expiresAtUnix ? { redeem_by: expiresAtUnix } : {}),
+    });
+
+    const { data, error } = await admin
+      .from('discount_codes')
+      .update({
+        stripe_coupon_id: coupon.id,
+        stripe_promo_id: coupon.id,
+        percent_off: percent,
+        duration,
+        applies_to: appliesTo,
+        max_redemptions: maxRedemptions,
+        expires_at: expiresAtIso,
+        note: input.note?.trim() || null,
+      } as unknown as never)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) return { success: false, error: 'Update failed: ' + error.message };
+
+    // Retire the old coupon (best effort; existing subscriptions keep theirs).
+    if (oldCoupon) { try { await stripe.coupons.del(oldCoupon); } catch { /* ignore */ } }
+
+    revalidatePath('/admin');
+    return { success: true, code: data as DiscountCodeRow };
+  } catch (e) {
+    return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not update code') };
   }
 }
 
