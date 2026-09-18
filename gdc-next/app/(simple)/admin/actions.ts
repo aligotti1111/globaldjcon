@@ -1091,6 +1091,131 @@ export async function deactivateDiscountCodeAction(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// SITE-WIDE SALES — auto-applied in a date window (see site-sales.sql).
+//   'percent' → a Stripe-coupon % off at checkout.
+//   'free'    → a comp granted to new DJ signups (no Stripe).
+// ─────────────────────────────────────────────────────────────────────────
+export interface SiteSaleRow {
+  id: string;
+  kind: 'percent' | 'free';
+  percent_off: number | null;
+  applies_to: 'monthly' | 'yearly' | 'both' | null;
+  stripe_coupon_id: string | null;
+  grant_tier: number | null;
+  grant_months: number | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  active: boolean;
+  note: string | null;
+  created_at: string;
+}
+
+export async function listSiteSalesAction(): Promise<{ sales: SiteSaleRow[]; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  const { data, error } = await admin.from('site_sales').select('*').order('created_at', { ascending: false });
+  if (error) return { sales: [], error: error.message };
+  return { sales: (data as SiteSaleRow[]) || [] };
+}
+
+export async function createSiteSaleAction(input: {
+  kind: 'percent' | 'free';
+  percent_off?: number | null;
+  applies_to?: 'monthly' | 'yearly' | 'both' | null;
+  grant_tier?: number | null;
+  grant_months?: number | null;
+  starts_at?: string | null; // YYYY-MM-DD or ISO
+  ends_at?: string | null;
+  note?: string | null;
+}): Promise<{ success: boolean; sale?: SiteSaleRow; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  const kind = input.kind === 'free' ? 'free' : 'percent';
+
+  const parseStart = (raw?: string | null): string | null => {
+    if (!raw) return null;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const parseEnd = (raw?: string | null): string | null => {
+    if (!raw) return null;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59`) : new Date(raw);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const startsAt = parseStart(input.starts_at);
+  const endsAt = parseEnd(input.ends_at);
+  if (input.starts_at && !startsAt) return { success: false, error: 'Invalid start date.' };
+  if (input.ends_at && !endsAt) return { success: false, error: 'Invalid end date.' };
+  if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    return { success: false, error: 'End must be after start.' };
+  }
+
+  let percent: number | null = null;
+  let appliesTo: 'monthly' | 'yearly' | 'both' | null = null;
+  let couponId: string | null = null;
+  let grantTier: number | null = null;
+  let grantMonths: number | null = null;
+
+  if (kind === 'percent') {
+    percent = Math.trunc(Number(input.percent_off));
+    if (!(percent >= 1 && percent <= 99)) return { success: false, error: 'Percent off must be 1–99.' };
+    appliesTo = input.applies_to === 'monthly' || input.applies_to === 'yearly' ? input.applies_to : 'both';
+    const duration: 'once' | 'forever' = appliesTo === 'both' ? 'forever' : 'once';
+    try {
+      const stripe = getStripe();
+      const scopeLabel = appliesTo === 'monthly' ? 'first month' : appliesTo === 'yearly' ? 'first year' : 'forever';
+      const coupon = await stripe.coupons.create({
+        percent_off: percent,
+        duration,
+        name: `Site sale — ${percent}% off (${scopeLabel})`,
+        ...(endsAt ? { redeem_by: Math.floor(new Date(endsAt).getTime() / 1000) } : {}),
+      });
+      couponId = coupon.id;
+    } catch (e) {
+      return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not create coupon') };
+    }
+  } else {
+    grantTier = Math.trunc(Number(input.grant_tier));
+    if (![1, 2, 3, 4].includes(grantTier)) return { success: false, error: 'Pick a valid plan tier.' };
+    grantMonths = Math.trunc(Number(input.grant_months));
+    if (!(grantMonths >= 1 && grantMonths <= 60)) return { success: false, error: 'Months must be 1–60.' };
+  }
+
+  const { data, error } = await admin
+    .from('site_sales')
+    .insert({
+      kind,
+      percent_off: percent,
+      applies_to: appliesTo,
+      stripe_coupon_id: couponId,
+      grant_tier: grantTier,
+      grant_months: grantMonths,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      note: input.note?.trim() || null,
+    } as unknown as never)
+    .select('*')
+    .single();
+  if (error) return { success: false, error: 'Create failed: ' + error.message };
+
+  revalidatePath('/admin');
+  return { success: true, sale: data as SiteSaleRow };
+}
+
+export async function deactivateSiteSaleAction(
+  id: string,
+  active: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+  const { error } = await admin.from('site_sales').update({ active } as unknown as never).eq('id', id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────
 function generateRandomPassword(len: number): string {
