@@ -48,9 +48,7 @@ const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
 // live price for the chosen billing interval, pulled from the TIERS table.
 const PLAN_VALUES = [0, 1, 2, 3, 4] as const;
 function planOptionLabel(v: number): string {
-  const d = TIERS[v as 0 | 1 | 2 | 3 | 4];
-  if (v === 0) return 'Free — start here';
-  return `${d.label} — $${d.monthlyPrice.toFixed(2)}/mo or $${d.yearlyPrice.toFixed(2)}/yr`;
+  return v === 0 ? 'Free' : TIERS[v as 1 | 2 | 3 | 4].label;
 }
 
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
@@ -533,7 +531,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
   const [promoCode, setPromoCode] = useState('');
   // Live preview of an entered code (comp or discount) so the price updates.
   const [promoInfo, setPromoInfo] = useState<
-    { type: 'comp' | 'discount'; percentOff?: number; appliesTo?: 'monthly' | 'yearly' | 'both'; months?: number; tierLabel?: string; description?: string } | null
+    { type: 'comp' | 'discount'; percentOff?: number; appliesTo?: 'monthly' | 'yearly' | 'both'; months?: number; tier?: number; tierLabel?: string; description?: string } | null
   >(null);
   async function previewPromo() {
     const c = promoCode.trim().toUpperCase();
@@ -890,10 +888,12 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
           const strike: React.CSSProperties = { textDecoration: 'line-through', opacity: .5, marginRight: 6, fontWeight: 400 };
           let node: React.ReactNode;
           if (promoInfo?.type === 'comp') {
+            const cd = TIERS[(promoInfo.tier ?? plan) as 1 | 2 | 3 | 4];
+            const cbase = billing === 'monthly' ? cd.monthlyPrice : cd.yearlyPrice;
             node = (
               <span style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
-                🎉 {promoInfo.tierLabel} free for {promoInfo.months} month{promoInfo.months === 1 ? '' : 's'}
-                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>then ${base.toFixed(2)}{per}</span>
+                {promoInfo.months} month{promoInfo.months === 1 ? '' : 's'} of {promoInfo.tierLabel} plan FREE
+                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>then ${cbase.toFixed(2)}{per}</span>
               </span>
             );
           } else if (promoInfo?.type === 'discount' && promoInfo.percentOff && (promoInfo.appliesTo === 'both' || promoInfo.appliesTo === billing)) {
@@ -908,7 +908,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
           } else {
             node = <span style={{ fontWeight: 700 }}>${base.toFixed(2)}{per}</span>;
           }
-          return <div style={{ margin: '.6rem 0 0', fontSize: '1rem' }}>{node}</div>;
+          return <div style={{ margin: '.6rem 0 0', fontSize: '1rem', textAlign: 'right' }}>{node}</div>;
         })()}
       </div>
 
