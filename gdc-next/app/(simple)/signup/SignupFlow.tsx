@@ -189,6 +189,10 @@ export function SignupFlow({
   const [lockedEmail, setLockedEmail] = useState<boolean>(false);
   // DJ type preselected from a landing deep link (?type=dj&dj=mobile|club).
   const [initialDjType, setInitialDjType] = useState<DjType | null>(null);
+  // Plan + billing interval preselected from a homepage pricing card
+  // (?type=dj&plan=1..4&interval=monthly|yearly).
+  const [initialPlan, setInitialPlan] = useState<number>(0);
+  const [initialBilling, setInitialBilling] = useState<'monthly' | 'yearly'>('monthly');
 
   // Mirror the screen up so the page can hide/show its chrome.
   useEffect(() => { onScreenChange?.(screen); }, [screen, onScreenChange]);
@@ -220,6 +224,12 @@ export function SignupFlow({
       // Deep link from the marketing homepage's flow cards: skip the type
       // chooser, land on the DJ form, and preselect the DJ type when given.
       if (djPre === 'mobile' || djPre === 'club') setInitialDjType(djPre);
+      // A pricing card also carries the plan + interval it was clicked on so
+      // the DJ form opens with that plan (and toggle) already chosen.
+      const planNum = parseInt(params.get('plan') || '', 10);
+      if (planNum >= 1 && planNum <= 4) setInitialPlan(planNum);
+      const intv = params.get('interval');
+      if (intv === 'monthly' || intv === 'yearly') setInitialBilling(intv);
       setScreen('dj');
     } else {
       // Booking-flow signup: when the user arrived from BookingLoginGate
@@ -242,6 +252,8 @@ export function SignupFlow({
           onSwitchType={(t) => setScreen(t)}
           onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
           initialDjType={initialDjType}
+          initialPlan={initialPlan}
+          initialBilling={initialBilling}
         />
       )}
       {/* Host signup ends signed in. On the page it navigates; in the modal
@@ -503,12 +515,15 @@ async function triggerSignupVerification(
 // DJ FORM
 // ──────────────────────────────────────────────────────────────────────────
 
-function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
+function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 0, initialBilling = 'monthly' }: {
   onBack: () => void;
   onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
   onSuccess: (info: SuccessInfo) => void;
   // Preselected DJ type from a landing deep link; null when arriving normally.
   initialDjType?: DjType | null;
+  // Preselected plan + billing interval from a homepage pricing card.
+  initialPlan?: number;
+  initialBilling?: 'monthly' | 'yearly';
 }) {
   const supabase = createClient();
   const [email, setEmail] = useState('');
@@ -526,9 +541,10 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
   const [city, setCity] = useState('');
   const [stateRegion, setStateRegion] = useState('');
   const [travel, setTravel] = useState('');
-  // Plan choice (default Free), billing interval, + optional promo code.
-  const [plan, setPlan] = useState(0);
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  // Plan choice (default Free, or the plan clicked on a homepage pricing card),
+  // billing interval, + optional promo code.
+  const [plan, setPlan] = useState(initialPlan);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>(initialBilling);
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   // Live preview of an entered code (comp or discount) so the price updates.
