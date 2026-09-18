@@ -19,7 +19,7 @@ export default function RedeemCodeBox({
   onDiscount,
 }: {
   variant?: 'pill' | 'link';
-  onDiscount?: (code: string, description: string, percentOff: number, duration: 'once' | 'forever') => void;
+  onDiscount?: (code: string, description: string, percentOff: number, appliesTo: 'monthly' | 'yearly' | 'both') => void;
 }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -78,7 +78,7 @@ export default function RedeemCodeBox({
         // attached at checkout, and lock the field with a confirming message.
         setDone(true);
         setPreview(`✓ ${data.description} — pick a plan below to use it.`);
-        onDiscount?.(c.toUpperCase(), data.description, Number(data.percentOff) || 0, data.duration === 'forever' ? 'forever' : 'once');
+        onDiscount?.(c.toUpperCase(), data.description, Number(data.percentOff) || 0, (data.appliesTo === 'monthly' || data.appliesTo === 'yearly') ? data.appliesTo : 'both');
         redeemingRef.current = false;
         return;
       }
