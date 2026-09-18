@@ -18,6 +18,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { priceIdFor } from '@/lib/stripe/config';
 import { getActingContext, canBilling } from '@/lib/acting';
+import { pickBestCoupon } from '@/lib/siteSale';
 
 export const runtime = 'nodejs';
 
@@ -103,23 +104,13 @@ export async function POST(req: Request) {
       ? `No charge today — your plan begins ${new Date(compExpMs).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, when your complimentary access ends.`
       : null;
 
-    // Resolve a discount code → its Stripe COUPON id. When present we PRE-APPLY
-    // it via `discounts` and must NOT also set allow_promotion_codes (Stripe
-    // rejects both on the same session). An unknown/inactive code is ignored
-    // (checkout proceeds at full price with the manual code field on).
-    let couponId: string | null = null;
-    if (promoCode) {
-      const { data: dc } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
-        .from('discount_codes')
-        .select('stripe_coupon_id, active, applies_to')
-        .eq('code', promoCode)
-        .maybeSingle<{ stripe_coupon_id: string; active: boolean; applies_to: 'monthly' | 'yearly' | 'both' }>();
-      // Only apply when the code's scope matches the chosen interval — a
-      // first-month code must NOT discount a yearly plan (its first invoice is a
-      // whole year), and vice-versa. 'both' applies to either.
-      const scopeOk = dc && (dc.applies_to === 'both' || dc.applies_to === interval);
-      if (dc && dc.active && scopeOk) couponId = dc.stripe_coupon_id;
-    }
+    // Resolve the winning discount COUPON for this plan: the bigger of any live
+    // site-wide sale for this interval and the DJ's personal code (scope-matched
+    // in pickBestCoupon). When present we PRE-APPLY it via `discounts` and must
+    // NOT also set allow_promotion_codes (Stripe rejects both). Nothing → full
+    // price with the manual code field left on.
+    const best = await pickBestCoupon(admin, interval, promoCode);
+    const couponId = best?.couponId ?? null;
     const discountFields = couponId
       ? { discounts: [{ coupon: couponId }] }
       : { allow_promotion_codes: true as const };
