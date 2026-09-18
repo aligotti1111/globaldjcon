@@ -50,7 +50,7 @@ const PLAN_VALUES = [0, 1, 2, 3, 4] as const;
 function planOptionLabel(v: number): string {
   const d = TIERS[v as 0 | 1 | 2 | 3 | 4];
   if (v === 0) return 'Free — start here';
-  return `${d.label} — $${d.monthlyPrice.toFixed(2)}/mo · $${d.yearlyPrice.toFixed(2)}/yr`;
+  return `${d.label} — $${d.monthlyPrice.toFixed(2)}/mo or $${d.yearlyPrice.toFixed(2)}/yr`;
 }
 
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
@@ -531,6 +531,21 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoCode, setPromoCode] = useState('');
+  // Live preview of an entered code (comp or discount) so the price updates.
+  const [promoInfo, setPromoInfo] = useState<
+    { type: 'comp' | 'discount'; percentOff?: number; appliesTo?: 'monthly' | 'yearly' | 'both'; months?: number; tierLabel?: string; description?: string } | null
+  >(null);
+  async function previewPromo() {
+    const c = promoCode.trim().toUpperCase();
+    if (!c) { setPromoInfo(null); return; }
+    try {
+      const res = await fetch('/api/promo-preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: c }),
+      });
+      const d = await res.json();
+      setPromoInfo(d.ok ? d : null);
+    } catch { setPromoInfo(null); }
+  }
   // Must accept the Terms & Privacy Policy before an account can be created.
   const [agreed, setAgreed] = useState(false);
   // Consent notice shown UNDER the checkbox at the bottom, not in the top error slot.
@@ -867,6 +882,33 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
             </button>
           </div>
         )}
+        {plan > 0 && (() => {
+          const dsel = TIERS[plan as 1 | 2 | 3 | 4];
+          const base = billing === 'monthly' ? dsel.monthlyPrice : dsel.yearlyPrice;
+          const per = billing === 'monthly' ? '/mo' : '/yr';
+          const strike: React.CSSProperties = { textDecoration: 'line-through', opacity: .5, marginRight: 6, fontWeight: 400 };
+          let node: React.ReactNode;
+          if (promoInfo?.type === 'comp') {
+            node = (
+              <span style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
+                🎉 {promoInfo.tierLabel} free for {promoInfo.months} month{promoInfo.months === 1 ? '' : 's'}
+                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>then ${base.toFixed(2)}{per}</span>
+              </span>
+            );
+          } else if (promoInfo?.type === 'discount' && promoInfo.percentOff && (promoInfo.appliesTo === 'both' || promoInfo.appliesTo === billing)) {
+            const disc = base * (1 - promoInfo.percentOff / 100);
+            node = (
+              <span style={{ fontWeight: 700 }}>
+                <span style={strike}>${base.toFixed(2)}</span>
+                <span style={{ color: 'var(--neon,#00e0a4)' }}>${disc.toFixed(2)}{per}</span>
+                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>({promoInfo.percentOff}% off)</span>
+              </span>
+            );
+          } else {
+            node = <span style={{ fontWeight: 700 }}>${base.toFixed(2)}{per}</span>;
+          }
+          return <div style={{ margin: '.6rem 0 0', fontSize: '1rem' }}>{node}</div>;
+        })()}
       </div>
 
       {!promoOpen ? (
@@ -883,12 +925,17 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
           <input
             id="dj-promo"
             value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoInfo(null); }}
+            onBlur={previewPromo}
             placeholder="Enter code"
             style={{ textTransform: 'uppercase' }}
           />
-          <p style={{ fontSize: '.8rem', color: '#8a8a9e', margin: '.35rem 0 0' }}>
-            We&apos;ll apply it right after you create your account.
+          <p style={{ fontSize: '.8rem', color: promoInfo ? 'var(--neon,#00e0a4)' : '#8a8a9e', margin: '.35rem 0 0' }}>
+            {promoInfo?.type === 'comp'
+              ? `✓ ${promoInfo.description ?? 'Free access'} — applied after signup.`
+              : promoInfo?.type === 'discount'
+                ? `✓ ${promoInfo.percentOff}% off — the price above updates for the plans it covers.`
+                : 'We’ll apply it right after you create your account.'}
           </p>
         </div>
       )}
