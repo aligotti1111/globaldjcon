@@ -10,9 +10,12 @@ import { useState } from 'react';
 import styles from './admin.module.css';
 import {
   createDiscountCodeAction,
+  editDiscountCodeAction,
   deactivateDiscountCodeAction,
   type DiscountCodeRow,
 } from './actions';
+
+const PERCENTS = Array.from({ length: 99 }, (_, i) => i + 1); // 1–99
 
 export default function DiscountCodesTab({ initialCodes }: { initialCodes: DiscountCodeRow[] }) {
   const [codes, setCodes] = useState<DiscountCodeRow[]>(initialCodes);
@@ -24,25 +27,60 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [fb, setFb] = useState<{ msg: string; ok: boolean } | null>(null);
+  // When set, the form is editing an existing code instead of creating one.
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  async function create() {
+  function resetForm() {
+    setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setPercent(20); setAppliesTo('monthly');
+    setEditingId(null);
+  }
+
+  function startEdit(c: DiscountCodeRow) {
+    setFb(null);
+    setEditingId(c.id);
+    setCode(c.code);
+    setPercent(c.percent_off);
+    setAppliesTo(c.applies_to);
+    setMaxUses(c.max_redemptions != null ? String(c.max_redemptions) : '');
+    setExpiresAt(c.expires_at ? c.expires_at.slice(0, 10) : '');
+    setNote(c.note || '');
+  }
+
+  async function submit() {
     setFb(null);
     setBusy(true);
     try {
-      const res = await createDiscountCodeAction({
-        code,
-        percent_off: percent,
-        applies_to: appliesTo,
-        max_redemptions: maxUses === '' ? null : Number(maxUses),
-        expires_at: expiresAt || null,
-        note: note || null,
-      });
-      if (res.success && res.code) {
-        setCodes((prev) => [res.code as DiscountCodeRow, ...prev]);
-        setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setPercent(20); setAppliesTo('monthly');
-        setFb({ msg: '✓ Discount code created', ok: true });
+      if (editingId) {
+        const res = await editDiscountCodeAction(editingId, {
+          percent_off: percent,
+          applies_to: appliesTo,
+          max_redemptions: maxUses === '' ? null : Number(maxUses),
+          expires_at: expiresAt || null,
+          note: note || null,
+        });
+        if (res.success && res.code) {
+          setCodes((prev) => prev.map((x) => (x.id === editingId ? (res.code as DiscountCodeRow) : x)));
+          resetForm();
+          setFb({ msg: '✓ Discount code updated', ok: true });
+        } else {
+          setFb({ msg: '✗ ' + (res.error || 'Update failed'), ok: false });
+        }
       } else {
-        setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+        const res = await createDiscountCodeAction({
+          code,
+          percent_off: percent,
+          applies_to: appliesTo,
+          max_redemptions: maxUses === '' ? null : Number(maxUses),
+          expires_at: expiresAt || null,
+          note: note || null,
+        });
+        if (res.success && res.code) {
+          setCodes((prev) => [res.code as DiscountCodeRow, ...prev]);
+          resetForm();
+          setFb({ msg: '✓ Discount code created', ok: true });
+        } else {
+          setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+        }
       }
     } catch (e) {
       setFb({ msg: '✗ ' + (e as Error).message, ok: false });
@@ -67,7 +105,7 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
 
   return (
     <div>
-      <div className={styles.formSectionLabel}>Create Discount Code</div>
+      <div className={styles.formSectionLabel}>{editingId ? 'Edit Discount Code' : 'Create Discount Code'}</div>
       <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.7rem' }}>
         A discount code takes a percentage off a paid subscription at checkout. It creates a real Stripe coupon —
         DJs enter it in the same “Apply Promo Code” box and the discount applies when they pick a plan.
@@ -75,25 +113,23 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
 
       <div className={styles.formGrid}>
         <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Code</label>
+          <label className={styles.formLabel}>Code{editingId ? ' (can’t be changed)' : ''}</label>
           <input
             className={styles.formInput}
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="LAUNCH20"
-            style={{ textTransform: 'uppercase' }}
+            style={{ textTransform: 'uppercase', opacity: editingId ? 0.6 : 1 }}
+            disabled={!!editingId}
           />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Percent off</label>
-          <input
-            className={styles.formInput}
-            type="number"
-            min={1}
-            max={100}
-            value={percent}
-            onChange={(e) => setPercent(Number(e.target.value))}
-          />
+          <select className={styles.formSelect} value={percent} onChange={(e) => setPercent(Number(e.target.value))}>
+            {PERCENTS.map((p) => (
+              <option key={p} value={p}>{p}% off</option>
+            ))}
+          </select>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Applies to</label>
@@ -137,12 +173,17 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
       <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.6rem' }}>
         <button
           type="button"
-          onClick={create}
+          onClick={submit}
           disabled={busy}
           className={`${styles.btn} ${styles.btnAdmin}`}
         >
-          {busy ? 'Creating…' : 'Create Discount Code'}
+          {busy ? 'Saving…' : editingId ? 'Save Changes' : 'Create Discount Code'}
         </button>
+        {editingId && (
+          <button type="button" onClick={resetForm} disabled={busy} className={`${styles.btn} ${styles.btnOutline}`}>
+            Cancel
+          </button>
+        )}
         {fb && (
           <span className={`${styles.formFb} ${fb.ok ? styles.formFbOk : styles.formFbErr}`}>{fb.msg}</span>
         )}
@@ -190,7 +231,14 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
               <div className={styles.arDetail} style={{ color: c.expires_at ? 'var(--white)' : '#6b6b88' }}>
                 {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}
               </div>
-              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 120px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 170px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => startEdit(c)}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                >
+                  Edit
+                </button>
                 <button
                   type="button"
                   onClick={() => toggle(c)}
