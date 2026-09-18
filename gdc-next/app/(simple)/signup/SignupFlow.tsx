@@ -573,6 +573,21 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
       setPromoInfo(d.ok ? d : null);
     } catch { setPromoInfo(null); }
   }
+  // Live site-wide sales (no code needed). The price line below folds these in
+  // so a running sale — e.g. "first month free" — shows on signup exactly like
+  // it does on the homepage and /subscribe. percentSales discount the price;
+  // a free sale gives the granted plan its first month(s) free.
+  const [salePercents, setSalePercents] = useState<{ percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[]>([]);
+  const [saleFree, setSaleFree] = useState<{ tier: number; tierLabel: string; months: number } | null>(null);
+  useEffect(() => {
+    fetch('/api/site-sale')
+      .then((r) => r.json())
+      .then((d) => {
+        setSalePercents(Array.isArray(d.percentSales) ? d.percentSales : []);
+        setSaleFree(d.freeSale ?? null);
+      })
+      .catch(() => {});
+  }, []);
   // Must accept the Terms & Privacy Policy before an account can be created.
   const [agreed, setAgreed] = useState(false);
   // Consent notice shown UNDER the checkbox at the bottom, not in the top error slot.
@@ -915,23 +930,49 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
           const base = billing === 'monthly' ? dsel.monthlyPrice : dsel.yearlyPrice;
           const per = billing === 'monthly' ? '/mo' : '/yr';
           const strike: React.CSSProperties = { textDecoration: 'line-through', opacity: .5, marginRight: 6, fontWeight: 400 };
-          let node: React.ReactNode;
+
+          // Free-months offer: a typed comp code, OR a live site-wide FREE sale
+          // whose granted plan is the one selected. A typed code wins if present.
+          let freeTier: number | null = null;
+          let freeLabel = '';
+          let freeMonths = 0;
           if (promoInfo?.type === 'comp') {
-            const cd = TIERS[(promoInfo.tier ?? plan) as 1 | 2 | 3 | 4];
+            freeTier = promoInfo.tier ?? plan;
+            freeLabel = promoInfo.tierLabel ?? TIERS[freeTier as 1 | 2 | 3 | 4].label;
+            freeMonths = promoInfo.months ?? 0;
+          } else if (saleFree && saleFree.tier === plan) {
+            freeTier = saleFree.tier;
+            freeLabel = saleFree.tierLabel;
+            freeMonths = saleFree.months;
+          }
+
+          // Percent-off: the bigger of a typed discount code (matching interval)
+          // and any live percent sale (matching interval).
+          let pct = 0;
+          if (promoInfo?.type === 'discount' && promoInfo.percentOff && (promoInfo.appliesTo === 'both' || promoInfo.appliesTo === billing)) {
+            pct = promoInfo.percentOff;
+          }
+          for (const s of salePercents) {
+            if ((s.appliesTo === 'both' || s.appliesTo === billing) && s.percentOff > pct) pct = s.percentOff;
+          }
+
+          let node: React.ReactNode;
+          if (freeTier != null && freeMonths > 0) {
+            const cd = TIERS[freeTier as 1 | 2 | 3 | 4];
             const cbase = billing === 'monthly' ? cd.monthlyPrice : cd.yearlyPrice;
             node = (
               <span style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
-                {promoInfo.months} month{promoInfo.months === 1 ? '' : 's'} of {promoInfo.tierLabel} plan FREE
+                {freeMonths} month{freeMonths === 1 ? '' : 's'} of {freeLabel} plan FREE
                 <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>then ${cbase.toFixed(2)}{per}</span>
               </span>
             );
-          } else if (promoInfo?.type === 'discount' && promoInfo.percentOff && (promoInfo.appliesTo === 'both' || promoInfo.appliesTo === billing)) {
-            const disc = base * (1 - promoInfo.percentOff / 100);
+          } else if (pct > 0) {
+            const disc = base * (1 - pct / 100);
             node = (
               <span style={{ fontWeight: 700 }}>
                 <span style={strike}>${base.toFixed(2)}</span>
                 <span style={{ color: 'var(--neon,#00e0a4)' }}>${disc.toFixed(2)}{per}</span>
-                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>({promoInfo.percentOff}% off)</span>
+                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>({pct}% off)</span>
               </span>
             );
           } else {
