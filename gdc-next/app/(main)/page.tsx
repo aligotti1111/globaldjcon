@@ -1313,6 +1313,12 @@ export default function HomePage() {
   // apply doesn't compound (original stashed in data-orig once).
   function applyLandingDiscount(pct: number, appliesTo: 'monthly' | 'yearly' | 'both') {
     if (!pct || pct <= 0) return;
+    // Flip the Monthly/Annual toggle to the interval the code is for so its
+    // discount is visible (a yearly code → show yearly prices). The static
+    // toggle buttons run gdcBill() on click; [0]=Monthly, [1]=Annual.
+    const billBtns = document.querySelectorAll<HTMLElement>('#pricing .billtoggle .billopt');
+    if (appliesTo === 'yearly' && billBtns[1]) billBtns[1].click();
+    else if (appliesTo === 'monthly' && billBtns[0]) billBtns[0].click();
     // Discount only the price for the interval the code targets: monthly → the
     // .p-mo price, yearly → the .p-yr price, both → both.
     const sels = appliesTo === 'monthly' ? ['.p-mo'] : appliesTo === 'yearly' ? ['.p-yr'] : ['.p-mo', '.p-yr'];
