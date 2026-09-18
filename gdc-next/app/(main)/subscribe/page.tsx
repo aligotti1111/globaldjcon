@@ -9,8 +9,10 @@
 // Logged-out visitors still see the plans (Subscribe bounces them to login).
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getAccess, type AccessFields, type AccessState, type AccessSource, type Tier } from '@/lib/access';
 import { getStripe } from '@/lib/stripe/server';
+import { getLiveSales } from '@/lib/siteSale';
 import SubscribeClient from './SubscribeClient';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +38,15 @@ export default async function SubscribePage() {
   // the session where they clicked cancel.
   let cancelScheduled = false;
 
+  // Live site-wide PERCENT sales → the client shows discounted prices + a banner.
+  let liveSales: { percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[] = [];
+  try {
+    const sales = await getLiveSales(createAdminClient());
+    liveSales = sales
+      .filter((s) => s.kind === 'percent' && s.percent_off && s.applies_to)
+      .map((s) => ({ percentOff: s.percent_off as number, appliesTo: s.applies_to as 'monthly' | 'yearly' | 'both' }));
+  } catch { /* no sale */ }
+
   if (user) {
     const { data } = await supabase
       .from('users')
@@ -59,7 +70,7 @@ export default async function SubscribePage() {
       accessUntil =
         access.source === 'stripe'
           ? fields.sub_period_end ?? null
-          : access.source === 'admin' || access.source === 'code'
+          : access.source === 'admin' || access.source === 'code' || access.source === 'sale'
           ? fields.comp_expires_at ?? null
           : null;
 
@@ -92,6 +103,7 @@ export default async function SubscribePage() {
       djType={djType}
       currentInterval={currentInterval}
       cancelScheduled={cancelScheduled}
+      liveSales={liveSales}
     />
   );
 }
