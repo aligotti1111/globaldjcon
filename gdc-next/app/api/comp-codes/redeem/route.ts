@@ -113,17 +113,23 @@ export async function POST(req: Request) {
   if (!codeData || !codeData.active) {
     const { data: disc } = await admin
       .from('discount_codes')
-      .select('percent_off, duration, expires_at, active')
+      .select('percent_off, duration, applies_to, expires_at, active')
       .eq('code', code)
-      .maybeSingle<{ percent_off: number; duration: 'once' | 'forever'; expires_at: string | null; active: boolean }>();
+      .maybeSingle<{ percent_off: number; duration: 'once' | 'forever'; applies_to: 'monthly' | 'yearly' | 'both'; expires_at: string | null; active: boolean }>();
     if (disc && disc.active && !(disc.expires_at && new Date(disc.expires_at).getTime() <= Date.now())) {
-      const desc = `${disc.percent_off}% off${disc.duration === 'once' ? ' your first payment' : ', every month'}`;
+      const appliesTo = disc.applies_to || 'both';
+      const scopeDesc =
+        appliesTo === 'monthly' ? ' your first month'
+        : appliesTo === 'yearly' ? ' your first year'
+        : ', every payment';
+      const desc = `${disc.percent_off}% off${scopeDesc}`;
       return NextResponse.json({
         ok: true,
         type: 'discount',
         code,
         percentOff: disc.percent_off,
         duration: disc.duration,
+        appliesTo,
         applyAtCheckout: true,
         description: desc,
       });
