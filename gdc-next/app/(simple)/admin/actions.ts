@@ -833,6 +833,9 @@ export interface DiscountCodeRow {
   stripe_promo_id: string;
   percent_off: number;
   duration: 'once' | 'forever';
+  // Which plan interval the code applies to. 'monthly' = first month on a
+  // monthly plan; 'yearly' = first year on a yearly plan; 'both' = forever.
+  applies_to: 'monthly' | 'yearly' | 'both';
   max_redemptions: number | null;
   expires_at: string | null;
   active: boolean;
@@ -854,7 +857,9 @@ export async function listDiscountCodesAction(): Promise<{ codes: DiscountCodeRo
 export async function createDiscountCodeAction(input: {
   code: string;
   percent_off: number;
-  duration: 'once' | 'forever'; // 'once' = first payment only
+  // Which interval the code targets. 'monthly'/'yearly' = first payment only on
+  // that plan; 'both' = every payment forever.
+  applies_to: 'monthly' | 'yearly' | 'both';
   max_redemptions?: number | null;
   expires_at?: string | null; // YYYY-MM-DD or ISO; end-of-day stored
   note?: string | null;
@@ -869,7 +874,11 @@ export async function createDiscountCodeAction(input: {
   }
   const percent = Math.trunc(Number(input.percent_off));
   if (!(percent >= 1 && percent <= 100)) return { success: false, error: 'Percent off must be 1–100.' };
-  const duration = input.duration === 'forever' ? 'forever' : 'once';
+  const appliesTo: 'monthly' | 'yearly' | 'both' =
+    input.applies_to === 'monthly' || input.applies_to === 'yearly' ? input.applies_to : 'both';
+  // 'both' recurs on every invoice → Stripe duration 'forever'. A first-payment
+  // scope (monthly or yearly) → 'once' (the first invoice of that plan).
+  const duration: 'once' | 'forever' = appliesTo === 'both' ? 'forever' : 'once';
 
   let maxRedemptions: number | null = null;
   if (input.max_redemptions != null && `${input.max_redemptions}` !== '') {
@@ -910,10 +919,11 @@ export async function createDiscountCodeAction(input: {
     // discount_codes and applies the coupon to checkout via
     // `discounts: [{ coupon }]`. duration 'once' hits only the first invoice;
     // 'forever' recurs every period.
+    const scopeLabel = appliesTo === 'monthly' ? 'first month' : appliesTo === 'yearly' ? 'first year' : 'forever';
     const coupon = await stripe.coupons.create({
       percent_off: percent,
       duration,
-      name: `${code} — ${percent}% off${duration === 'once' ? ' (first payment)' : ''}`,
+      name: `${code} — ${percent}% off (${scopeLabel})`,
       ...(maxRedemptions != null ? { max_redemptions: maxRedemptions } : {}),
       ...(expiresAtUnix ? { redeem_by: expiresAtUnix } : {}),
     });
@@ -928,6 +938,7 @@ export async function createDiscountCodeAction(input: {
         stripe_promo_id: coupon.id,
         percent_off: percent,
         duration,
+        applies_to: appliesTo,
         max_redemptions: maxRedemptions,
         expires_at: expiresAtIso,
         note: input.note?.trim() || null,
