@@ -18,7 +18,7 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
   const [codes, setCodes] = useState<DiscountCodeRow[]>(initialCodes);
   const [code, setCode] = useState('');
   const [percent, setPercent] = useState(20);
-  const [duration, setDuration] = useState<'once' | 'forever'>('once');
+  const [appliesTo, setAppliesTo] = useState<'monthly' | 'yearly' | 'both'>('monthly');
   const [maxUses, setMaxUses] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [note, setNote] = useState('');
@@ -32,14 +32,14 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
       const res = await createDiscountCodeAction({
         code,
         percent_off: percent,
-        duration,
+        applies_to: appliesTo,
         max_redemptions: maxUses === '' ? null : Number(maxUses),
         expires_at: expiresAt || null,
         note: note || null,
       });
       if (res.success && res.code) {
         setCodes((prev) => [res.code as DiscountCodeRow, ...prev]);
-        setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setPercent(20); setDuration('once');
+        setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setPercent(20); setAppliesTo('monthly');
         setFb({ msg: '✓ Discount code created', ok: true });
       } else {
         setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
@@ -97,9 +97,10 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
         </div>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Applies to</label>
-          <select className={styles.formSelect} value={duration} onChange={(e) => setDuration(e.target.value as 'once' | 'forever')}>
-            <option value="once">First month only</option>
-            <option value="forever">Every month (forever)</option>
+          <select className={styles.formSelect} value={appliesTo} onChange={(e) => setAppliesTo(e.target.value as 'monthly' | 'yearly' | 'both')}>
+            <option value="monthly">First month (monthly plans)</option>
+            <option value="yearly">First year (yearly plans)</option>
+            <option value="both">Every payment (forever)</option>
           </select>
         </div>
         <div className={styles.formGroup}>
@@ -185,7 +186,7 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
                 {c.note && <span style={{ marginLeft: '.4rem', color: 'var(--muted)', fontSize: '.75rem' }}>· {c.note}</span>}
               </div>
               <div className={styles.arDetail}>{c.percent_off}% off</div>
-              <div className={styles.arDetail}>{c.duration === 'once' ? 'First month' : 'Every month'}</div>
+              <div className={styles.arDetail}>{c.applies_to === 'monthly' ? 'First month' : c.applies_to === 'yearly' ? 'First year' : 'Every payment'}</div>
               <div className={styles.arDetail} style={{ color: c.expires_at ? 'var(--white)' : '#6b6b88' }}>
                 {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}
               </div>
