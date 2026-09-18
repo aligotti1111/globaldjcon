@@ -36,17 +36,23 @@ export async function resolveUserEmail(userId: string): Promise<string | null> {
   if (!userId) return null;
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin.auth.admin.getUserById(userId);
-    if (!error && data?.user?.email) return data.user.email;
-
-    // No auth email — try the delivery address on their profile.
+    // Fast path: read the mirrored, indexed email off the profile row (a single
+    // by-id lookup) instead of hitting the Auth admin API. See
+    // scaling-email-mirror.sql — public.users.email is kept in sync with
+    // auth.users.email by triggers.
     const { data: profile } = await admin
       .from('users')
-      .select('contact_email')
+      .select('email, contact_email')
       .eq('id', userId)
-      .maybeSingle<{ contact_email: string | null }>();
-    const fallback = profile?.contact_email?.trim();
-    return fallback || null;
+      .maybeSingle<{ email: string | null; contact_email: string | null }>();
+    const mirrored = profile?.email?.trim();
+    if (mirrored) return mirrored;
+
+    // Fallback for rows the mirror hasn't populated yet (pre-backfill / edge):
+    // ask Auth directly, then fall back to the profile's delivery address.
+    const { data, error } = await admin.auth.admin.getUserById(userId);
+    if (!error && data?.user?.email) return data.user.email;
+    return profile?.contact_email?.trim() || null;
   } catch (e) {
     console.error('[resolveUserEmail] error', e);
     return null;
@@ -57,10 +63,10 @@ export async function resolveUserEmail(userId: string): Promise<string | null> {
 // with that email exists. Used by the booking-invite email flow to decide
 // whether to send a "Create Account" or "Add to My Account" CTA.
 //
-// Implementation: paginate auth.admin.listUsers and match locally. Supabase
-// JS SDK doesn't expose a filter param on listUsers (as of v2.x), so we
-// fetch pages of 1000 and bail as soon as we find the match. For a typical
-// site this completes in 1-2 page fetches.
+// Implementation: an indexed equality lookup on public.users.email (the
+// lowercase mirror of auth.users.email kept in sync by triggers — see
+// scaling-email-mirror.sql), NOT a scan of the Auth admin API. This is a single
+// by-index query regardless of how many users exist.
 //
 // Also checks users.contact_email, so an address a phone-signup host gave at
 // booking still resolves to their account — otherwise the same person could
@@ -84,23 +90,20 @@ export async function resolveUserIdByEmail(
 
   const run = async (): Promise<string | null> => {
     const admin = createAdminClient();
-    const perPage = 1000;
-    // Cap at a few pages so a misconfigured account can't spiral into a
-    // long-running request. 5 pages = 5000 users, well past typical scale.
-    for (let page = 1; page <= 5; page++) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-      if (error) {
-        console.error('[resolveUserIdByEmail] listUsers error', error);
-        if (strict) throw error; // fail closed — don't pretend "not found"
-        break;
-      }
-      const users = data?.users || [];
-      const match = users.find((u) => (u.email || '').toLowerCase() === target);
-      if (match) return match.id;
-      if (users.length < perPage) break; // last page
+    // Authoritative lookup: a security-definer RPC that reads auth.users
+    // DIRECTLY by its unique email index (O(1)). This does NOT trust the
+    // client-writable users.email mirror, so it can't be forged and can't
+    // fail-open on a mirror sync gap. See scaling-email-mirror.sql.
+    const { data: authId, error: rpcErr } = await admin
+      .rpc('auth_user_id_by_email', { p_email: target });
+    if (rpcErr) {
+      console.error('[resolveUserIdByEmail] auth_user_id_by_email error', rpcErr);
+      if (strict) throw rpcErr; // fail closed — don't pretend "not found"
     }
+    if (typeof authId === 'string' && authId) return authId;
 
-    // Not an auth email — check profile delivery addresses.
+    // Not their account email — check the profile delivery address they may
+    // have given at booking (phone-signup hosts).
     const { data: profile, error: profileErr } = await admin
       .from('users')
       .select('id')
