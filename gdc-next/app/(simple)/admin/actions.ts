@@ -903,30 +903,29 @@ export async function createDiscountCodeAction(input: {
 
   try {
     const stripe = getStripe();
-    // 1. Coupon = the discount definition. duration 'once' hits only the first
-    //    invoice; 'forever' recurs every period.
+    // Create a Stripe COUPON directly, with the usage cap + expiry ON the
+    // coupon. We deliberately DON'T create a Stripe promotion code — this
+    // account's API rejects `coupon` on promotionCodes.create, and we don't
+    // need it: our own "Apply Promo Code" box looks the code up in
+    // discount_codes and applies the coupon to checkout via
+    // `discounts: [{ coupon }]`. duration 'once' hits only the first invoice;
+    // 'forever' recurs every period.
     const coupon = await stripe.coupons.create({
       percent_off: percent,
       duration,
-      name: `${percent}% off${duration === 'once' ? ' (first payment)' : ''}`,
-    });
-    // 2. Promotion code = the customer-facing code the DJ types at checkout.
-    // Cast the params: this Stripe SDK version's PromotionCodeCreateParams type
-    // omits `coupon`, but the field is required by the API at runtime.
-    const promoParams = {
-      coupon: coupon.id,
-      code,
+      name: `${code} — ${percent}% off${duration === 'once' ? ' (first payment)' : ''}`,
       ...(maxRedemptions != null ? { max_redemptions: maxRedemptions } : {}),
-      ...(expiresAtUnix ? { expires_at: expiresAtUnix } : {}),
-    } as unknown as Parameters<typeof stripe.promotionCodes.create>[0];
-    const promo = await stripe.promotionCodes.create(promoParams);
+      ...(expiresAtUnix ? { redeem_by: expiresAtUnix } : {}),
+    });
 
     const { data, error } = await admin
       .from('discount_codes')
       .insert({
         code,
         stripe_coupon_id: coupon.id,
-        stripe_promo_id: promo.id,
+        // No promotion code any more; the column is NOT NULL so mirror the
+        // coupon id. Checkout looks up stripe_coupon_id, not this.
+        stripe_promo_id: coupon.id,
         percent_off: percent,
         duration,
         max_redemptions: maxRedemptions,
@@ -952,21 +951,9 @@ export async function deactivateDiscountCodeAction(
   const admin = untyped(createAdminClient());
   if (!id) return { success: false, error: 'id required' };
 
-  const { data: row } = await admin
-    .from('discount_codes')
-    .select('stripe_promo_id')
-    .eq('id', id)
-    .maybeSingle();
-  const promoId = (row as { stripe_promo_id?: string } | null)?.stripe_promo_id;
-  if (promoId) {
-    try {
-      // Toggle the Stripe promotion code so it stops (or resumes) working at
-      // checkout. The coupon stays; only the code's usability flips.
-      await getStripe().promotionCodes.update(promoId, { active });
-    } catch (e) {
-      return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not update code') };
-    }
-  }
+  // Flip the local active flag. Checkout only applies a code whose row is
+  // active, so an inactive code can't be used even though the Stripe coupon
+  // still exists (kept so it can be reactivated).
   const { error } = await admin
     .from('discount_codes')
     .update({ active } as unknown as never)
