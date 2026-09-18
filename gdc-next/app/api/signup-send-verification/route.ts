@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { randomBytes } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getLiveFreeSale } from '@/lib/siteSale';
 
 const TOKEN_TTL_HOURS = 24;
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
@@ -57,6 +58,10 @@ export async function POST(request: Request) {
 
   const { email, role } = body;
   let { user_id } = body;
+  // A user_id in the body means this is a FRESH signup (the browser just created
+  // the account); the resend case omits it. Only a fresh DJ signup is eligible
+  // for a site-wide FREE sale comp.
+  const freshSignup = !!body.user_id;
   if (!email) {
     return NextResponse.json({ error: 'email is required' }, { status: 400 });
   }
@@ -139,6 +144,46 @@ export async function POST(request: Request) {
       { error: 'Could not create verification token' },
       { status: 502 }
     );
+  }
+
+  // SITE-WIDE FREE SALE: if a free (comp) sale is live and this is a fresh DJ
+  // signup with no comp yet, grant the free access here (server-side — the
+  // client can't be trusted to set comp_tier). Best-effort; a failure never
+  // blocks the verification email.
+  if (freshSignup && role === 'dj' && user_id) {
+    try {
+      const free = await getLiveFreeSale(admin);
+      if (free && free.grant_tier && free.grant_months) {
+        const { data: prof } = await admin
+          .from('users')
+          .select('role, created_at, comp_source, comp_expires_at')
+          .eq('id', user_id)
+          .maybeSingle<{ role: string | null; created_at: string | null; comp_source: string | null; comp_expires_at: string | null }>();
+        // Gate on the DATABASE, not the request body: this route is
+        // unauthenticated and the "resend verification" button also sends a
+        // user_id, so a body flag alone would let an existing DJ (or an attacker
+        // POSTing any DJ's id) claim/renew the comp. Only a genuinely brand-new
+        // account (created seconds ago) that has NEVER been sale-comped qualifies.
+        const createdMs = prof?.created_at ? new Date(prof.created_at).getTime() : 0;
+        const isBrandNew = createdMs > 0 && Date.now() - createdMs < 15 * 60 * 1000; // 15 min
+        const neverSaleComped = prof?.comp_source !== 'sale';
+        const hasComp = !!prof?.comp_expires_at && new Date(prof.comp_expires_at).getTime() > Date.now();
+        if (prof?.role === 'dj' && isBrandNew && neverSaleComped && !hasComp) {
+          const end = new Date();
+          end.setUTCMonth(end.getUTCMonth() + free.grant_months);
+          await admin
+            .from('users')
+            .update({
+              comp_tier: free.grant_tier,
+              comp_expires_at: end.toISOString(),
+              comp_source: 'sale',
+            } as unknown as never)
+            .eq('id', user_id);
+        }
+      }
+    } catch (e) {
+      console.error('[signup-send-verification] free-sale grant failed', e);
+    }
   }
 
   // Build the verify URL using the same origin we received the request on,
