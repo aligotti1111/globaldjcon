@@ -70,6 +70,9 @@ interface Props {
   // shows "Active until <date>" even after a reload — not only in the session
   // where they clicked cancel.
   cancelScheduled?: boolean;
+  // Live site-wide PERCENT sales (from the server). The cards show the bigger of
+  // any matching sale and the DJ's applied code.
+  liveSales?: { percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[];
 }
 
 function fmtPrice(n: number): string {
@@ -150,14 +153,14 @@ const X_SVG = (
   </svg>
 );
 
-function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, compUntil, djType, currentInterval, cancelScheduled = false }: Props) {
+function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessUntil, compUntil, djType, currentInterval, cancelScheduled = false, liveSales = [] }: Props) {
   const searchParams = useSearchParams();
   const subResult = searchParams.get('sub'); // 'success' | 'cancelled' | null
 
   const isSubscribed = currentTier >= 1;
   // Complimentary (admin/code) access has no Stripe subscription, so we hide
   // all the billing controls (manage/switch/cancel) and label it as comp.
-  const isComp = source === 'admin' || source === 'code';
+  const isComp = source === 'admin' || source === 'code' || source === 'sale';
   const isPaid = source === 'stripe';
   const accessUntilLabel = accessUntil
     ? new Date(accessUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -332,6 +335,20 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     }
   }
 
+  // The best discount that applies to the CURRENT interval — the bigger of the
+  // DJ's entered code and any live site-wide sale that covers this interval.
+  // Drives the discounted prices on every card (they all share the interval).
+  const bestDiscount = (() => {
+    const matches = (a: string) => a === 'both' || a === interval;
+    const cands: { pct: number; appliesTo: 'monthly' | 'yearly' | 'both' }[] = [];
+    if (pendingPromo && matches(pendingPromo.appliesTo)) cands.push({ pct: pendingPromo.percentOff, appliesTo: pendingPromo.appliesTo });
+    for (const s of liveSales) if (matches(s.appliesTo)) cands.push({ pct: s.percentOff, appliesTo: s.appliesTo });
+    if (!cands.length) return null;
+    return cands.reduce((a, b) => (b.pct > a.pct ? b : a));
+  })();
+  // Headline for the sale banner (the biggest live sale %, any interval).
+  const topSalePct = liveSales.reduce((m, s) => Math.max(m, s.percentOff), 0);
+
   // Which tiers to render: the current one when subscribed, else all paid tiers.
   // Everyone sees every tier: new visitors + comps to pick a plan, paid
   // subscribers to switch. (A comp can subscribe mid-comp — billing starts when
@@ -430,6 +447,14 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         )}
       </div>
 
+      {topSalePct > 0 && (
+        <div
+          className={styles.success}
+          style={{ textAlign: 'center', maxWidth: 520, margin: '0 auto 1.25rem', fontWeight: 700 }}
+        >
+          🔥 Limited-time sale — up to {topSalePct}% off, applied automatically.
+        </div>
+      )}
       {isLoggedIn && (
         <RedeemCodeBox
           variant="link"
@@ -483,14 +508,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           const priceNum = interval === 'monthly' ? def.monthlyPrice : def.yearlyPrice;
           const amtStr = priceNum.toFixed(2);
           const perLabel = interval === 'monthly' ? '/ month' : '/ year';
-          // Applied discount code → show the discounted price on the card, but
-          // only on the interval the code is scoped to: 'monthly' = first month
-          // on monthly plans, 'yearly' = first year on yearly plans, 'both' =
-          // every payment on either.
-          const discPct = pendingPromo?.percentOff ?? 0;
-          const scope = pendingPromo?.appliesTo ?? 'both';
-          const scopeMatches = scope === 'both' || scope === interval;
-          const showDisc = discPct > 0 && scopeMatches;
+          // Discounted price on the card = the best discount for this interval
+          // (a code or a live site-wide sale, bigger wins; computed once above).
+          const discPct = bestDiscount?.pct ?? 0;
+          const scope = bestDiscount?.appliesTo ?? 'both';
+          const showDisc = discPct > 0;
           const discAmt = showDisc ? priceNum * (1 - discPct / 100) : priceNum;
           const discStr = discAmt.toFixed(2);
           const altLine = interval === 'monthly'
