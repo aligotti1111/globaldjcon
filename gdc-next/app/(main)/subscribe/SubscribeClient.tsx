@@ -177,9 +177,14 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     ? fmtDate(compUntil)
     : accessUntilLabel;
 
-  // Open on the interval the DJ is already billed at, so their current plan
-  // reads as current and the OTHER interval is one toggle away.
-  const [interval, setBillingInterval] = useState<Interval>(currentInterval ?? 'monthly');
+  // Open on the interval requested via ?interval (carried from signup), else the
+  // one the DJ is already billed at, so their current plan reads as current and
+  // the OTHER interval is one toggle away.
+  const intervalParam = searchParams.get('interval');
+  const initialInterval: Interval = intervalParam === 'yearly' || intervalParam === 'monthly'
+    ? intervalParam
+    : (currentInterval ?? 'monthly');
+  const [interval, setBillingInterval] = useState<Interval>(initialInterval);
   const [loadingTier, setLoadingTier] = useState<PaidTier | null>(null);
   // When set, the embedded Stripe Checkout renders in an on-site modal.
   const [clientSecret, setClientSecret] = useState<string | null>(null);
