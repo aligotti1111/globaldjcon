@@ -41,6 +41,17 @@ import styles from './signup.module.css';
 // new account verifies + logs in. Must match the key AuthProvider reads.
 const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
 
+// Plan options for the DJ signup form. Everyone starts on Free; picking a paid
+// tier (or entering a promo code) routes them to /subscribe after signup to set
+// it up. Values match the access tiers (0 Free … 4 Enterprise).
+const PLAN_OPTIONS = [
+  { v: 0, label: 'Free' },
+  { v: 1, label: 'Starter' },
+  { v: 2, label: 'Pro' },
+  { v: 3, label: 'Premium Pro' },
+  { v: 4, label: 'Enterprise' },
+];
+
 type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
 
 interface SuccessInfo {
@@ -514,6 +525,10 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
   const [city, setCity] = useState('');
   const [stateRegion, setStateRegion] = useState('');
   const [travel, setTravel] = useState('');
+  // Plan choice (default Free) + optional promo code entered at signup.
+  const [plan, setPlan] = useState(0);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
   // Must accept the Terms & Privacy Policy before an account can be created.
   const [agreed, setAgreed] = useState(false);
   // Consent notice shown UNDER the checkbox at the bottom, not in the top error slot.
@@ -665,6 +680,19 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
         triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug);
       }
 
+      // Picked a paid plan or entered a promo code → send them to /subscribe to
+      // finish (the promo box there auto-opens with the code). Free + no code →
+      // the normal "check your email" success screen. Either way the
+      // verification email already fired above.
+      const codeVal = promoCode.trim().toUpperCase();
+      if (plan > 0 || codeVal) {
+        const q = new URLSearchParams();
+        if (plan > 0) q.set('plan', String(plan));
+        if (codeVal) q.set('code', codeVal);
+        window.location.href = `/subscribe?${q.toString()}`;
+        return;
+      }
+
       onSuccess({ email: emailLower, role: 'dj', slug, userId: signUpData?.user?.id ?? null });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Signup failed';
@@ -805,6 +833,42 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
           {TRAVEL_DISTANCES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="dj-plan">Plan</label>
+        <select id="dj-plan" value={plan} onChange={(e) => setPlan(Number(e.target.value))}>
+          {PLAN_OPTIONS.map(p => (
+            <option key={p.v} value={p.v}>{p.label}{p.v === 0 ? ' — start here' : ''}</option>
+          ))}
+        </select>
+        <p style={{ fontSize: '.8rem', color: '#8a8a9e', margin: '.35rem 0 0' }}>
+          Start free and upgrade any time. Pick a paid plan to set it up right after signup.
+        </p>
+      </div>
+
+      {!promoOpen ? (
+        <button
+          type="button"
+          onClick={() => setPromoOpen(true)}
+          style={{ background: 'none', border: 'none', color: 'var(--neon, #00e0a4)', cursor: 'pointer', fontSize: '.9rem', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, margin: '0 0 1rem' }}
+        >
+          + Have a promo code?
+        </button>
+      ) : (
+        <div className={styles.formGroup}>
+          <label htmlFor="dj-promo">Promo code</label>
+          <input
+            id="dj-promo"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            placeholder="Enter code"
+            style={{ textTransform: 'uppercase' }}
+          />
+          <p style={{ fontSize: '.8rem', color: '#8a8a9e', margin: '.35rem 0 0' }}>
+            We&apos;ll apply it right after you create your account.
+          </p>
+        </div>
+      )}
 
       <ConsentCheckbox
         id="dj-agree"
