@@ -106,14 +106,16 @@ export async function POST(req: Request) {
 
     // Resolve the winning discount COUPON for this plan: the bigger of any live
     // site-wide sale for this interval and the DJ's personal code (scope-matched
-    // in pickBestCoupon). When present we PRE-APPLY it via `discounts` and must
-    // NOT also set allow_promotion_codes (Stripe rejects both). Nothing → full
-    // price with the manual code field left on.
+    // in pickBestCoupon). When present we PRE-APPLY it via `discounts`. We do NOT
+    // turn on Stripe's own "Add code" field: our "Apply Promo Code" box already
+    // takes codes before checkout and pre-applies them here, so the Stripe field
+    // is a redundant, confusing second place to enter a code. Leaving
+    // allow_promotion_codes unset hides it.
     const best = await pickBestCoupon(admin, interval, promoCode);
     const couponId = best?.couponId ?? null;
     const discountFields = couponId
       ? { discounts: [{ coupon: couponId }] }
-      : { allow_promotion_codes: true as const };
+      : {};
 
     // 4. Create the Checkout Session.
     const origin =
