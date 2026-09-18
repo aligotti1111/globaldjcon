@@ -1311,10 +1311,13 @@ export default function HomePage() {
   // cards in place: rewrite each plan's amount (monthly + yearly) to the
   // discounted value and prepend a struck-through original. Guarded so a repeat
   // apply doesn't compound (original stashed in data-orig once).
-  function applyLandingDiscount(pct: number) {
+  function applyLandingDiscount(pct: number, appliesTo: 'monthly' | 'yearly' | 'both') {
     if (!pct || pct <= 0) return;
+    // Discount only the price for the interval the code targets: monthly → the
+    // .p-mo price, yearly → the .p-yr price, both → both.
+    const sels = appliesTo === 'monthly' ? ['.p-mo'] : appliesTo === 'yearly' ? ['.p-yr'] : ['.p-mo', '.p-yr'];
     document.querySelectorAll<HTMLElement>('#pricing .plan:not(.free) .amt').forEach((amt) => {
-      amt.querySelectorAll<HTMLElement>('.p-mo, .p-yr').forEach((span) => {
+      amt.querySelectorAll<HTMLElement>(sels.join(', ')).forEach((span) => {
         const cur = span.querySelector('.cur');
         if (!cur) return;
         const numNode = cur.nextSibling;
@@ -1400,7 +1403,7 @@ export default function HomePage() {
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
       <LandingMarkup signedIn={signedIn} isHost={isHost} isTeammate={isTeammate} djType={djType} />
       {redeemHost && canRedeem && createPortal(
-        <RedeemCodeBox variant="link" onDiscount={(_c, _d, pct) => applyLandingDiscount(pct)} />,
+        <RedeemCodeBox variant="link" onDiscount={(_c, _d, pct, appliesTo) => applyLandingDiscount(pct, appliesTo)} />,
         redeemHost,
       )}
     </>
