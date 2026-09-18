@@ -156,6 +156,19 @@ export default async function AdminPage() {
     console.warn('Admin: discount_codes fetch skipped (table may not exist yet)', e);
   }
 
+  // Site-wide sales (Promotions tab). Same guard for a pre-migration table.
+  let siteSales: import('./actions').SiteSaleRow[] = [];
+  try {
+    const untypedAdmin = admin as unknown as import('@supabase/supabase-js').SupabaseClient;
+    const { data } = await untypedAdmin
+      .from('site_sales')
+      .select('*')
+      .order('created_at', { ascending: false });
+    siteSales = (data as import('./actions').SiteSaleRow[]) || [];
+  } catch (e) {
+    console.warn('Admin: site_sales fetch skipped (table may not exist yet)', e);
+  }
+
   return (
     <AdminClient
       initialDjs={djs}
@@ -167,6 +180,7 @@ export default async function AdminPage() {
       initialDisabledMap={disabledMap}
       initialCompCodes={compCodes}
       initialDiscountCodes={discountCodes}
+      initialSiteSales={siteSales}
     />
   );
 }
