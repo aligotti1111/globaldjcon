@@ -6,7 +6,7 @@
 // reloads so their new access is reflected. Designed so the same box can later
 // also accept paid discount codes without changing where it lives.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './subscribe.module.css';
 
 // variant 'pill' = the neon pill button (subscribe page). 'link' = a quiet
@@ -17,9 +17,13 @@ import styles from './subscribe.module.css';
 export default function RedeemCodeBox({
   variant = 'pill',
   onDiscount,
+  initialCode,
 }: {
   variant?: 'pill' | 'link';
   onDiscount?: (code: string, description: string, percentOff: number, appliesTo: 'monthly' | 'yearly' | 'both') => void;
+  // When set (e.g. a code carried from signup via ?code=), the box opens and
+  // previews it automatically so the new DJ just clicks Apply.
+  initialCode?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -31,11 +35,18 @@ export default function RedeemCodeBox({
   // overwrite the "Applied" message.
   const redeemingRef = useRef(false);
 
-  async function check() {
+  // Auto-open + preview a code handed in from signup.
+  useEffect(() => {
+    const c = (initialCode || '').trim().toUpperCase();
+    if (c) { setOpen(true); setCode(c); check(c); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function check(codeArg?: string) {
     if (redeemingRef.current || done) return;
     setError(null);
     setPreview(null);
-    const c = code.trim();
+    const c = (codeArg ?? code).trim();
     if (!c) return;
     try {
       const res = await fetch('/api/comp-codes/redeem', {
