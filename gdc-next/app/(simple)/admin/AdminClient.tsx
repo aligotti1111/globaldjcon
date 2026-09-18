@@ -19,10 +19,11 @@ import ClaimsTab from './ClaimsTab';
 import UsersTab from './UsersTab';
 import CompCodesTab from './CompCodesTab';
 import DiscountCodesTab from './DiscountCodesTab';
+import SiteSalesTab from './SiteSalesTab';
 import EditUserModal from './EditUserModal';
 import CredsModal from './CredsModal';
 import type { AdminUserRow, AdminClaimRow } from './page';
-import type { CompCodeRow, DiscountCodeRow } from './actions';
+import type { CompCodeRow, DiscountCodeRow, SiteSaleRow } from './actions';
 
 type TabKey = 'create' | 'claims' | 'djs' | 'hosts' | 'venues' | 'promos';
 
@@ -40,6 +41,8 @@ interface Props {
   initialCompCodes: CompCodeRow[];
   /** Paid discount codes (Promotions tab). */
   initialDiscountCodes: DiscountCodeRow[];
+  /** Site-wide sales (Promotions tab). */
+  initialSiteSales: SiteSaleRow[];
 }
 
 export interface CredsModalData {
@@ -51,7 +54,7 @@ export interface CredsModalData {
 }
 
 export default function AdminClient({
-  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap, initialDisabledMap, initialCompCodes, initialDiscountCodes,
+  initialDjs, initialHosts, initialVenues, initialClaims, initialEmailMap, initialLastLoginMap, initialDisabledMap, initialCompCodes, initialDiscountCodes, initialSiteSales,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('djs');
@@ -230,6 +233,8 @@ export default function AdminClient({
             <CompCodesTab initialCodes={initialCompCodes} />
             <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '2rem 0' }} />
             <DiscountCodesTab initialCodes={initialDiscountCodes} />
+            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '2rem 0' }} />
+            <SiteSalesTab initialSales={initialSiteSales} />
           </>
         )}
         {activeTab === 'djs' && (
