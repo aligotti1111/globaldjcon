@@ -111,10 +111,14 @@ export async function POST(req: Request) {
     if (promoCode) {
       const { data: dc } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
         .from('discount_codes')
-        .select('stripe_coupon_id, active')
+        .select('stripe_coupon_id, active, applies_to')
         .eq('code', promoCode)
-        .maybeSingle<{ stripe_coupon_id: string; active: boolean }>();
-      if (dc && dc.active) couponId = dc.stripe_coupon_id;
+        .maybeSingle<{ stripe_coupon_id: string; active: boolean; applies_to: 'monthly' | 'yearly' | 'both' }>();
+      // Only apply when the code's scope matches the chosen interval — a
+      // first-month code must NOT discount a yearly plan (its first invoice is a
+      // whole year), and vice-versa. 'both' applies to either.
+      const scopeOk = dc && (dc.applies_to === 'both' || dc.applies_to === interval);
+      if (dc && dc.active && scopeOk) couponId = dc.stripe_coupon_id;
     }
     const discountFields = couponId
       ? { discounts: [{ coupon: couponId }] }
