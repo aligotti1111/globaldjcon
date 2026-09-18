@@ -802,16 +802,17 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
           onChange={(e) => handleNameChange(e.target.value)}
           required
         />
-        {/* SlugInput is now always rendered so it's obvious when the
-            field is empty (was: gated on `slug` truthy, which hid the
-            field entirely if derivation produced an empty result). */}
-        <SlugInput
-          value={slug}
-          onChange={handleSlugChange}
-          onStatusChange={setSlugStatus}
-          generateAlternatives={generateDjAlternatives}
-          placeholder="your-url"
-        />
+        {/* Profile URL only appears once they've started typing a name — no
+            point showing a URL builder before there's anything to slugify. */}
+        {name.trim() !== '' && (
+          <SlugInput
+            value={slug}
+            onChange={handleSlugChange}
+            onStatusChange={setSlugStatus}
+            generateAlternatives={generateDjAlternatives}
+            placeholder="your-url"
+          />
+        )}
       </div>
 
       <div className={styles.formGroup}>
@@ -922,14 +923,24 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType }: {
       ) : (
         <div className={styles.formGroup}>
           <label htmlFor="dj-promo">Promo code</label>
-          <input
-            id="dj-promo"
-            value={promoCode}
-            onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoInfo(null); }}
-            onBlur={previewPromo}
-            placeholder="Enter code"
-            style={{ textTransform: 'uppercase' }}
-          />
+          <div style={{ display: 'flex', gap: '.5rem' }}>
+            <input
+              id="dj-promo"
+              value={promoCode}
+              onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoInfo(null); }}
+              onBlur={previewPromo}
+              placeholder="Enter code"
+              style={{ textTransform: 'uppercase', flex: 1, minWidth: 0 }}
+            />
+            <button
+              type="button"
+              onClick={previewPromo}
+              style={{ flex: '0 0 auto', padding: '0 1.2rem', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
+                border: '1px solid var(--neon,#00e0a4)', background: 'rgba(0,224,164,.1)', color: 'var(--neon,#00e0a4)' }}
+            >
+              Apply
+            </button>
+          </div>
           <p style={{ fontSize: '.8rem', color: promoInfo ? 'var(--neon,#00e0a4)' : '#8a8a9e', margin: '.35rem 0 0' }}>
             {promoInfo?.type === 'comp'
               ? `✓ ${promoInfo.description ?? 'Free access'} — applied after signup.`
