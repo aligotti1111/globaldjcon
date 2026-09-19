@@ -855,6 +855,23 @@ export async function deactivateCompCodeAction(
   return { success: true };
 }
 
+// Permanently delete a comp code. Redemption history rows (comp_redemptions)
+// reference it; remove those first so the delete isn't blocked by the FK, then
+// drop the code. Access ALREADY granted to DJs who redeemed it is untouched —
+// that lives on their own user row, not here.
+export async function deleteCompCodeAction(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+  await admin.from('comp_code_redemptions').delete().eq('code_id', id);
+  const { error } = await admin.from('comp_codes').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/admin');
+  return { success: true };
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // DISCOUNT CODES — paid % off, Stripe-backed (coupon + promotion code).
 // The Stripe objects are the source of truth; public.discount_codes mirrors
@@ -1090,6 +1107,23 @@ export async function deactivateDiscountCodeAction(
   return { success: true };
 }
 
+// Permanently delete a discount code: drop our row and retire its Stripe coupon
+// (best-effort — subscriptions that already applied it keep their discount).
+export async function deleteDiscountCodeAction(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+  const { data: rowData } = await admin.from('discount_codes').select('stripe_coupon_id').eq('id', id).maybeSingle();
+  const couponId = (rowData as { stripe_coupon_id?: string } | null)?.stripe_coupon_id;
+  const { error } = await admin.from('discount_codes').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  if (couponId) { try { await getStripe().coupons.del(couponId); } catch { /* ignore */ } }
+  revalidatePath('/admin');
+  return { success: true };
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // SITE-WIDE SALES — auto-applied in a date window (see site-sales.sql).
 //   'percent' → a Stripe-coupon % off at checkout.
@@ -1211,6 +1245,103 @@ export async function deactivateSiteSaleAction(
   if (!id) return { success: false, error: 'id required' };
   const { error } = await admin.from('site_sales').update({ active } as unknown as never).eq('id', id);
   if (error) return { success: false, error: error.message };
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// Edit a site-wide sale. Like discount codes, a percent sale's Stripe coupon is
+// immutable — so for percent we mint a fresh coupon with the new values, point
+// the row at it, and retire the old one. A free sale just updates its tier /
+// months. The sale KIND can't change (that's effectively a different sale).
+export async function editSiteSaleAction(
+  id: string,
+  input: {
+    percent_off?: number | null;
+    applies_to?: 'monthly' | 'yearly' | 'both' | null;
+    grant_tier?: number | null;
+    grant_months?: number | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
+  },
+): Promise<{ success: boolean; sale?: SiteSaleRow; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+
+  const { data: rowData } = await admin.from('site_sales').select('kind, stripe_coupon_id').eq('id', id).maybeSingle();
+  const existing = rowData as { kind?: 'percent' | 'free'; stripe_coupon_id?: string | null } | null;
+  if (!existing?.kind) return { success: false, error: 'Sale not found.' };
+
+  const parseStart = (raw?: string | null): string | null => {
+    if (!raw) return null;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const parseEnd = (raw?: string | null): string | null => {
+    if (!raw) return null;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59`) : new Date(raw);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const startsAt = parseStart(input.starts_at);
+  const endsAt = parseEnd(input.ends_at);
+  if (input.starts_at && !startsAt) return { success: false, error: 'Invalid start date.' };
+  if (input.ends_at && !endsAt) return { success: false, error: 'Invalid end date.' };
+  if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    return { success: false, error: 'End must be after start.' };
+  }
+
+  const patch: Record<string, unknown> = { starts_at: startsAt, ends_at: endsAt };
+
+  try {
+    if (existing.kind === 'percent') {
+      const percent = Math.trunc(Number(input.percent_off));
+      if (!(percent >= 1 && percent <= 99)) return { success: false, error: 'Percent off must be 1–99.' };
+      const appliesTo: 'monthly' | 'yearly' | 'both' =
+        input.applies_to === 'monthly' || input.applies_to === 'yearly' ? input.applies_to : 'both';
+      const duration: 'once' | 'forever' = appliesTo === 'both' ? 'forever' : 'once';
+      const stripe = getStripe();
+      const scopeLabel = appliesTo === 'monthly' ? 'first month' : appliesTo === 'yearly' ? 'first year' : 'forever';
+      const coupon = await stripe.coupons.create({
+        percent_off: percent,
+        duration,
+        name: `Site sale — ${percent}% off (${scopeLabel})`,
+        ...(endsAt ? { redeem_by: Math.floor(new Date(endsAt).getTime() / 1000) } : {}),
+      });
+      patch.percent_off = percent;
+      patch.applies_to = appliesTo;
+      patch.stripe_coupon_id = coupon.id;
+      if (existing.stripe_coupon_id) { try { await stripe.coupons.del(existing.stripe_coupon_id); } catch { /* ignore */ } }
+    } else {
+      const grantTier = Math.trunc(Number(input.grant_tier));
+      if (![1, 2, 3, 4].includes(grantTier)) return { success: false, error: 'Pick a valid plan tier.' };
+      const grantMonths = Math.trunc(Number(input.grant_months));
+      if (!(grantMonths >= 1 && grantMonths <= 60)) return { success: false, error: 'Months must be 1–60.' };
+      patch.grant_tier = grantTier;
+      patch.grant_months = grantMonths;
+    }
+
+    const { data, error } = await admin.from('site_sales').update(patch as unknown as never).eq('id', id).select('*').single();
+    if (error) return { success: false, error: 'Update failed: ' + error.message };
+    revalidatePath('/admin');
+    return { success: true, sale: data as SiteSaleRow };
+  } catch (e) {
+    return { success: false, error: 'Stripe error: ' + ((e as Error).message || 'could not update sale') };
+  }
+}
+
+// Permanently delete a site-wide sale: drop our row and retire its Stripe coupon
+// (percent sales only; best-effort).
+export async function deleteSiteSaleAction(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = untyped(createAdminClient());
+  if (!id) return { success: false, error: 'id required' };
+  const { data: rowData } = await admin.from('site_sales').select('stripe_coupon_id').eq('id', id).maybeSingle();
+  const couponId = (rowData as { stripe_coupon_id?: string | null } | null)?.stripe_coupon_id;
+  const { error } = await admin.from('site_sales').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  if (couponId) { try { await getStripe().coupons.del(couponId); } catch { /* ignore */ } }
   revalidatePath('/admin');
   return { success: true };
 }
