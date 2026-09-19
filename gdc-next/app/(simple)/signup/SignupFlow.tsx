@@ -426,19 +426,24 @@ function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
 // markup on every signup form so the agreement reads identically wherever the
 // account is made. Links open in a new tab so a half-filled form isn't lost.
 export function ConsentCheckbox({
-  id, checked, onChange,
+  id, checked, onChange, error = false,
 }: {
   id: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  // When true (submitted without accepting), highlight the whole consent line
+  // in red so it's obvious what's blocking, not just the banner up top.
+  error?: boolean;
 }) {
+  const showError = error && !checked;
   return (
     <label
       htmlFor={id}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: '.55rem',
-        margin: '0 0 1rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem',
+        margin: '0 0 1rem', color: showError ? 'var(--error,#ff6b6b)' : 'var(--muted,#8a8aa0)', fontSize: '.78rem',
         lineHeight: 1.5, cursor: 'pointer',
+        ...(showError ? { border: '1px solid var(--error,#ff6b6b)', borderRadius: 8, padding: '.6rem .7rem' } : {}),
       }}
     >
       <input
@@ -446,13 +451,13 @@ export function ConsentCheckbox({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        style={{ marginTop: '.15rem', flex: '0 0 auto', cursor: 'pointer' }}
+        style={{ marginTop: '.15rem', flex: '0 0 auto', cursor: 'pointer', accentColor: showError ? 'var(--error,#ff6b6b)' : undefined }}
       />
       <span>
         I agree to the{' '}
-        <Link href="/terms" target="_blank" style={{ color: 'var(--neon,#00e0a4)' }}>Terms &amp; Conditions</Link>
+        <Link href="/terms" target="_blank" style={{ color: showError ? 'var(--error,#ff6b6b)' : 'var(--neon,#00e0a4)', textDecoration: 'underline' }}>Terms &amp; Conditions</Link>
         {' '}and{' '}
-        <Link href="/privacy" target="_blank" style={{ color: 'var(--neon,#00e0a4)' }}>Privacy Policy</Link>.
+        <Link href="/privacy" target="_blank" style={{ color: showError ? 'var(--error,#ff6b6b)' : 'var(--neon,#00e0a4)', textDecoration: 'underline' }}>Privacy Policy</Link>.
       </span>
     </label>
   );
@@ -1053,6 +1058,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
         id="dj-agree"
         checked={agreed}
         onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
+        error={consentError}
       />
 
       <button type="submit" className={styles.submitBtn} disabled={submitting}>
@@ -1204,6 +1210,7 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
         agreed={agreed}
         onAgreedChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
         onConsentError={() => setConsentError(true)}
+        consentError={consentError}
         prefillEmail={prefillEmail}
         lockedEmail={lockedEmail}
         destination={destination}
