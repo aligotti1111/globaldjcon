@@ -127,6 +127,29 @@ async function applySubscription(admin: Admin, subscriptionId: string) {
       stripe_subscription_id: sub.id,
     } as unknown as never)
     .eq('id', userId);
+
+  // Record a discount-code / site-sale redemption if this subscription carried
+  // one (stamped into metadata at checkout — see the checkout route). Idempotent
+  // via the table's unique (code_type, code_id, user_id), so replayed or later
+  // subscription events can't double-count. Best-effort — never fail the sub
+  // sync over a redemption row.
+  const dkind = sub.metadata?.discount_kind;
+  const did = sub.metadata?.discount_id;
+  if ((dkind === 'discount' || dkind === 'sale') && did) {
+    try {
+      const { error: redErr } = await (admin as unknown as { from: (t: string) => { upsert: (v: unknown, o: unknown) => Promise<{ error: { message?: string } | null }> } })
+        .from('code_redemptions')
+        .upsert(
+          { code_type: dkind, code_id: did, user_id: userId },
+          { onConflict: 'code_type,code_id,user_id', ignoreDuplicates: true },
+        );
+      // supabase-js resolves with { error } rather than throwing, so this is the
+      // real failure signal (e.g. migration not applied yet, bad uuid).
+      if (redErr) console.warn('[stripe/webhook] redemption record failed', redErr.message);
+    } catch (e) {
+      console.warn('[stripe/webhook] redemption record skipped', e);
+    }
+  }
 }
 
 /**
