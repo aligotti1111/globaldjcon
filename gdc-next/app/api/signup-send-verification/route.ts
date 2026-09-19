@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         if (prof?.role === 'dj' && isBrandNew && neverSaleComped && !hasComp) {
           const end = new Date();
           end.setUTCMonth(end.getUTCMonth() + free.grant_months);
-          await admin
+          const { error: grantErr } = await admin
             .from('users')
             .update({
               comp_tier: free.grant_tier,
@@ -179,6 +179,22 @@ export async function POST(request: Request) {
               comp_source: 'sale',
             } as unknown as never)
             .eq('id', user_id);
+          // Only record the redemption if the grant actually landed — otherwise
+          // we'd log a "used" row for access the DJ never got. Recording lets the
+          // admin "who used this sale" list work for FREE sales too (these grant
+          // here, not via Stripe checkout). Idempotent via the table's unique
+          // (code_type, code_id, user_id).
+          if (!grantErr) {
+            try {
+              const { error: redErr } = await (admin as unknown as { from: (t: string) => { upsert: (v: unknown, o: unknown) => Promise<{ error: { message?: string } | null }> } })
+                .from('code_redemptions')
+                .upsert(
+                  { code_type: 'sale', code_id: free.id, user_id },
+                  { onConflict: 'code_type,code_id,user_id', ignoreDuplicates: true },
+                );
+              if (redErr) console.warn('[signup-send-verification] redemption record failed', redErr.message);
+            } catch { /* best-effort; never block signup */ }
+          }
         }
       }
     } catch (e) {
