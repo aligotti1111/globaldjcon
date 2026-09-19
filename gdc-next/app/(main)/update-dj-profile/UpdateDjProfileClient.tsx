@@ -157,6 +157,9 @@ interface Props {
   // Optional so the page can be deployed/updated independently — when it's
   // absent the Notifications tab simply doesn't render (no build break).
   notifyInit?: NotifyInit;
+  // Whether this DJ has paid (or comped) access. Gates premium-only sections
+  // such as the Profile QR code. Defaults to false (free) if not passed.
+  isPaid?: boolean;
 }
 
 // The section tab bar now includes a Notifications tab. AccountTab (from
@@ -164,7 +167,7 @@ interface Props {
 // separately below (like Team / Timezone), so we widen the local tab type.
 type SecTab = AccountTab | 'notifications';
 
-export default function UpdateDjProfileClient({ initialProfile, authEmail, notifyInit }: Props) {
+export default function UpdateDjProfileClient({ initialProfile, authEmail, notifyInit, isPaid = false }: Props) {
 
   const [general, setGeneral] = useState<GeneralFormState>(() => {
     // Vanilla default: a Mobile DJ with no event_types saved yet (new account)
@@ -737,6 +740,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
             onContactSaved={handleContactSaved}
             onBasicsSaved={handleBasicsSaved}
             onGenresSaved={handleGenresSaved}
+            isPaid={isPaid}
           />
 
           {/* The single bottom "Save Changes" button is gone: every section on
