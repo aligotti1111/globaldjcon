@@ -11,6 +11,7 @@ import {
   createCompCodeAction,
   editCompCodeAction,
   deactivateCompCodeAction,
+  deleteCompCodeAction,
   listCompCodeRedemptionsAction,
   type CompCodeRow,
   type CompRedemption,
@@ -112,6 +113,21 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
     }
   }
 
+  async function remove(c: CompCodeRow) {
+    if (!confirm(`Delete comp code ${c.code}? This can't be undone. (Access already redeemed by DJs is not removed.)`)) return;
+    try {
+      const res = await deleteCompCodeAction(c.id);
+      if (res.success) {
+        setCodes((prev) => prev.filter((x) => x.id !== c.id));
+        if (editingId === c.id) resetForm();
+      } else {
+        alert('✗ ' + (res.error || 'Delete failed'));
+      }
+    } catch (e) {
+      alert('✗ ' + (e as Error).message);
+    }
+  }
+
   async function toggle(c: CompCodeRow) {
     const next = !c.active;
     try {
@@ -134,8 +150,8 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
         They drop to Free when it ends (unless they add a card to continue).
       </p>
 
-      {/* All fields on a single row, each column narrow (half-ish width). */}
-      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+      {/* Narrow columns: fits all on one row on desktop, wraps on mobile. */}
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Code{editingId ? ' (can’t be changed)' : ''}</label>
           <input
@@ -265,7 +281,7 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
               <div className={styles.arDetail} style={{ color: c.expires_at ? 'var(--white)' : '#6b6b88' }}>
                 {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}
               </div>
-              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 170px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', flex: '0 0 auto', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); startEdit(c); }}
@@ -280,6 +296,14 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
                   style={c.active ? { borderColor: '#ff8b8b', color: '#ff8b8b' } : { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }}
                 >
                   {c.active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); remove(c); }}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                  style={{ borderColor: '#ff6b6b', color: '#ff6b6b' }}
+                >
+                  Delete
                 </button>
               </div>
             </div>
