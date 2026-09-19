@@ -134,7 +134,8 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
         They drop to Free when it ends (unless they add a card to continue).
       </p>
 
-      <div className={styles.formGrid}>
+      {/* All fields on a single row, each column narrow (half-ish width). */}
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Code{editingId ? ' (can’t be changed)' : ''}</label>
           <input
@@ -183,15 +184,6 @@ export default function CompCodesTab({ initialCodes }: { initialCodes: CompCodeR
             type="date"
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Note (admin only)</label>
-          <input
-            className={styles.formInput}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Summer promo"
           />
         </div>
       </div>
