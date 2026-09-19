@@ -799,6 +799,59 @@ export async function listCompCodeRedemptionsAction(
   };
 }
 
+// A DJ who redeemed a DISCOUNT code or SITE SALE (recorded by the Stripe
+// webhook — see code-redemptions.sql). Shape mirrors CompRedemption (minus the
+// grant fields) so the admin UI can render both the same way.
+export interface CodeRedemption {
+  user_id: string;
+  name: string | null;
+  slug: string | null;
+  email: string | null;
+  redeemed_at: string;
+}
+
+// Who used a given discount code (code_type 'discount') or site sale
+// (code_type 'sale'). Usage is tracked from when code-redemptions.sql was
+// applied onward — earlier Stripe redemptions aren't back-filled.
+export async function listCodeRedemptionsAction(
+  codeType: 'discount' | 'sale',
+  codeId: string,
+): Promise<{ redemptions: CodeRedemption[]; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const u = untyped(admin);
+  if (!codeId) return { redemptions: [], error: 'code id required' };
+
+  const { data, error } = await u
+    .from('code_redemptions')
+    .select('user_id, redeemed_at')
+    .eq('code_type', codeType)
+    .eq('code_id', codeId)
+    .order('redeemed_at', { ascending: false });
+  if (error) return { redemptions: [], error: error.message };
+
+  const rows = (data as { user_id: string; redeemed_at: string }[]) || [];
+  const ids = [...new Set(rows.map((r) => r.user_id))];
+
+  const nameMap: Record<string, { name: string | null; slug: string | null; email: string | null }> = {};
+  if (ids.length) {
+    const { data: profs } = await admin.from('users').select('id, name, slug, email').in('id', ids);
+    for (const p of (profs as { id: string; name: string | null; slug: string | null; email: string | null }[] | null) || []) {
+      nameMap[p.id] = { name: p.name, slug: p.slug, email: p.email };
+    }
+  }
+
+  return {
+    redemptions: rows.map((r) => ({
+      user_id: r.user_id,
+      name: nameMap[r.user_id]?.name ?? null,
+      slug: nameMap[r.user_id]?.slug ?? null,
+      email: nameMap[r.user_id]?.email ?? null,
+      redeemed_at: r.redeemed_at,
+    })),
+  };
+}
+
 // Edit an existing comp code. The code string itself is NOT changed (it's the
 // key DJs type / that the ledger references) — only its grant + limits.
 export async function editCompCodeAction(
@@ -1117,6 +1170,9 @@ export async function deleteDiscountCodeAction(
   if (!id) return { success: false, error: 'id required' };
   const { data: rowData } = await admin.from('discount_codes').select('stripe_coupon_id').eq('id', id).maybeSingle();
   const couponId = (rowData as { stripe_coupon_id?: string } | null)?.stripe_coupon_id;
+  // Drop its redemption rows too (no FK — code_id is polymorphic) so they don't
+  // linger as dead weight.
+  await admin.from('code_redemptions').delete().eq('code_type', 'discount').eq('code_id', id);
   const { error } = await admin.from('discount_codes').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
   if (couponId) { try { await getStripe().coupons.del(couponId); } catch { /* ignore */ } }
@@ -1386,6 +1442,8 @@ export async function deleteSiteSaleAction(
   if (!id) return { success: false, error: 'id required' };
   const { data: rowData } = await admin.from('site_sales').select('stripe_coupon_id').eq('id', id).maybeSingle();
   const couponId = (rowData as { stripe_coupon_id?: string | null } | null)?.stripe_coupon_id;
+  // Drop its redemption rows too (no FK — code_id is polymorphic).
+  await admin.from('code_redemptions').delete().eq('code_type', 'sale').eq('code_id', id);
   const { error } = await admin.from('site_sales').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
   if (couponId) { try { await getStripe().coupons.del(couponId); } catch { /* ignore */ } }
