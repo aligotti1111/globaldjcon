@@ -89,7 +89,7 @@ const LANDING_CSS = String.raw`
 }
 .gdc-landing /* HERO with image */
   .hero{position:relative;padding:98px 0 64px;overflow:hidden}
-.gdc-landing .hero-bg{position:absolute;inset:0;z-index:0;background:url('https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_060736_6ca7550a-4c9d-4b3f-9589-1fdafe3da0a1.png') center right/cover}
+.gdc-landing .hero-bg{position:absolute;inset:0;z-index:0;background:url('/images/hero.webp') center right/cover}
 .gdc-landing .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#000 0%,#000 33%,rgba(0,0,0,.72) 60%,rgba(0,0,0,.32) 100%),linear-gradient(0deg,#000 2%,transparent 32%,transparent 78%,rgba(0,0,0,.6) 100%)}
 .gdc-landing .herogrid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
 @media(max-width:920px){
@@ -1489,15 +1489,17 @@ export default function HomePage() {
   }, []);
   return (
     <>
-      {/* Warm up the image CDN and fetch the hero background FIRST. It's a CSS
-          background, so the browser only discovers it after parsing the injected
-          <style> — by which point it was landing dead last in the waterfall and
-          the hero sat black. Preloading it as an image hoists it to the top. */}
+      {/* Fetch the hero background FIRST. It's a CSS background, so the browser
+          only discovers it after parsing the injected <style> — by which point
+          it was landing dead last in the waterfall and the hero sat black.
+          Preloading it as an image hoists it to the top. Now a ~108KB local WebP
+          (was an 8MB CDN PNG), served from /public so it needs no CDN warm-up.
+          The preconnect stays for the feature-row thumbnails still on the CDN. */}
       <link rel="preconnect" href="https://d8j0ntlcm91z4.cloudfront.net" crossOrigin="" />
       <link
         rel="preload"
         as="image"
-        href="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_060736_6ca7550a-4c9d-4b3f-9589-1fdafe3da0a1.png"
+        href="/images/hero.webp"
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
