@@ -500,7 +500,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
 
       {isComp && !isPaid && accessUntilLabel && (
         <div className={styles.compBanner}>
-          You&apos;re complimentary through {accessUntilLabel} &mdash; subscribe now and billing starts then, with no charge until.
+          The complimentary access will expire on {accessUntilLabel}. Select a package and add your billing information to begin your subscription immediately after the promotion ends.
         </div>
       )}
       {error && <div className={styles.error}>{error}</div>}
