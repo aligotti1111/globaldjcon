@@ -508,15 +508,21 @@ async function triggerSignupVerification(
   slug: string | null
 ) {
   const { bookingDjSlug, bookingDate } = parseBookingIntent();
+  const payload = JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate });
   try {
+    // Prefer sendBeacon: the browser dispatches it IMMEDIATELY and guarantees
+    // delivery even if the page navigates right after (a paid-plan signup jumps
+    // to /subscribe for checkout). A plain fetch gets aborted by that navigation,
+    // which is why the email was only arriving later. Same-origin JSON, so no
+    // CORS preflight. Falls back to a keepalive fetch where sendBeacon is absent.
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([payload], { type: 'application/json' });
+      if (navigator.sendBeacon('/api/signup-send-verification', blob)) return;
+    }
     const res = await fetch('/api/signup-send-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate }),
-      // keepalive lets this request finish even if the page navigates away
-      // immediately after (e.g. a paid-plan signup that jumps to /subscribe for
-      // checkout). Without it the browser aborts the in-flight request and the
-      // verification email never sends until something later re-triggers it.
+      body: payload,
       keepalive: true,
     });
     if (!res.ok) {
@@ -739,8 +745,9 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
             : null,
         } as unknown as never, { onConflict: 'id' });
 
-        // Fire-and-forget the verification email — we don't block the
-        // success screen on this so the user gets immediate feedback.
+        // Fire-and-forget the verification email — we don't block on it so the
+        // user gets immediate feedback. The request uses keepalive so it still
+        // completes even if a paid-plan signup hard-navigates to checkout next.
         triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug);
       }
 
@@ -752,7 +759,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
 
       // Otherwise: a paid plan or a promo code → /subscribe to finish (the promo
       // box there auto-opens with the code). Free plan + no code → the normal
-      // "check your email" success screen. The verification email already fired.
+      // "check your email" success screen.
       const codeVal = promoCode.trim().toUpperCase();
       if (!freeCovers && (plan > 0 || codeVal)) {
         const q = new URLSearchParams();
