@@ -642,10 +642,25 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               })()}
 
               {isSubscribed && isCurrent && isComp && (
-                <div className={styles.compNote}>
-                  Complimentary access
-                  {accessUntilLabel ? ` through ${accessUntilLabel}` : ''} — no billing.
-                </div>
+                <>
+                  {/* A comp is temporary access, NOT a paid plan — so still offer
+                      Subscribe here so they can keep this plan past the free
+                      period. Checkout starts a Stripe trial ending at the comp's
+                      expiry, so there's no charge until then (see the checkout
+                      route's trial_end). */}
+                  <button
+                    type="button"
+                    className={styles.subscribeBtn}
+                    onClick={() => subscribe(tier)}
+                    disabled={loadingTier !== null || !purchasable}
+                    title={!purchasable ? 'Not available yet' : undefined}
+                  >
+                    {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Subscribe'}
+                  </button>
+                  <div className={styles.compNote}>
+                    Complimentary{accessUntilLabel ? ` through ${accessUntilLabel}` : ''} — subscribe now and billing starts then, no charge until.
+                  </div>
+                </>
               )}
               </div>
             </div>
