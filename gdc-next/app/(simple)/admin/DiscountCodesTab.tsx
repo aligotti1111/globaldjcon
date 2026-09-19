@@ -111,7 +111,7 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
         DJs enter it in the same “Apply Promo Code” box and the discount applies when they pick a plan.
       </p>
 
-      <div className={styles.formGrid}>
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Code{editingId ? ' (can’t be changed)' : ''}</label>
           <input
@@ -157,15 +157,6 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
             type="date"
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Note (admin only)</label>
-          <input
-            className={styles.formInput}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Launch promo"
           />
         </div>
       </div>
