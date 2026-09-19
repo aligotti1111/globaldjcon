@@ -1152,6 +1152,25 @@ export async function listSiteSalesAction(): Promise<{ sales: SiteSaleRow[]; err
   return { sales: (data as SiteSaleRow[]) || [] };
 }
 
+// One ACTIVE sale per plan. Two sales for DIFFERENT plans can run at once
+// (e.g. "Pro free" + "Premium Pro free", or a monthly + a yearly % sale), but
+// not two live sales for the SAME plan. "Plan" = the granted tier for a free
+// sale, or the interval (applies_to) for a percent sale. Returns true if
+// activating this would collide with an already-active sale.
+async function siteSalePlanConflict(
+  admin: SupabaseClient,
+  sale: { kind: 'percent' | 'free'; applies_to?: 'monthly' | 'yearly' | 'both' | null; grant_tier?: number | null },
+  excludeId?: string,
+): Promise<boolean> {
+  let q = admin.from('site_sales').select('id').eq('active', true).eq('kind', sale.kind);
+  if (sale.kind === 'percent') q = q.eq('applies_to', sale.applies_to ?? 'both');
+  else q = q.eq('grant_tier', sale.grant_tier ?? 0);
+  const { data } = await q;
+  return ((data as Array<{ id: string }>) || []).some((r) => r.id !== excludeId);
+}
+
+const SALE_CONFLICT_MSG = 'A live sale for that plan is already active. Deactivate it first — you can only run one active sale per plan.';
+
 export async function createSiteSaleAction(input: {
   kind: 'percent' | 'free';
   percent_off?: number | null;
@@ -1194,6 +1213,11 @@ export async function createSiteSaleAction(input: {
     percent = Math.trunc(Number(input.percent_off));
     if (!(percent >= 1 && percent <= 99)) return { success: false, error: 'Percent off must be 1–99.' };
     appliesTo = input.applies_to === 'monthly' || input.applies_to === 'yearly' ? input.applies_to : 'both';
+    // Block a duplicate live sale for the same interval (checked before creating
+    // the Stripe coupon so a rejected create leaves no orphan coupon).
+    if (await siteSalePlanConflict(admin, { kind, applies_to: appliesTo })) {
+      return { success: false, error: SALE_CONFLICT_MSG };
+    }
     const duration: 'once' | 'forever' = appliesTo === 'both' ? 'forever' : 'once';
     try {
       const stripe = getStripe();
@@ -1213,6 +1237,10 @@ export async function createSiteSaleAction(input: {
     if (![1, 2, 3, 4].includes(grantTier)) return { success: false, error: 'Pick a valid plan tier.' };
     grantMonths = Math.trunc(Number(input.grant_months));
     if (!(grantMonths >= 1 && grantMonths <= 60)) return { success: false, error: 'Months must be 1–60.' };
+    // Block a duplicate live free sale for the same granted plan.
+    if (await siteSalePlanConflict(admin, { kind, grant_tier: grantTier })) {
+      return { success: false, error: SALE_CONFLICT_MSG };
+    }
   }
 
   const { data, error } = await admin
@@ -1243,6 +1271,15 @@ export async function deactivateSiteSaleAction(
   await requireAdmin();
   const admin = untyped(createAdminClient());
   if (!id) return { success: false, error: 'id required' };
+  // Turning a sale back ON must not collide with another already-active sale
+  // for the same plan.
+  if (active) {
+    const { data: rowData } = await admin.from('site_sales').select('kind, applies_to, grant_tier').eq('id', id).maybeSingle();
+    const row = rowData as { kind?: 'percent' | 'free'; applies_to?: 'monthly' | 'yearly' | 'both' | null; grant_tier?: number | null } | null;
+    if (row?.kind && await siteSalePlanConflict(admin, { kind: row.kind, applies_to: row.applies_to, grant_tier: row.grant_tier }, id)) {
+      return { success: false, error: SALE_CONFLICT_MSG };
+    }
+  }
   const { error } = await admin.from('site_sales').update({ active } as unknown as never).eq('id', id);
   if (error) return { success: false, error: error.message };
   revalidatePath('/admin');
@@ -1268,8 +1305,8 @@ export async function editSiteSaleAction(
   const admin = untyped(createAdminClient());
   if (!id) return { success: false, error: 'id required' };
 
-  const { data: rowData } = await admin.from('site_sales').select('kind, stripe_coupon_id').eq('id', id).maybeSingle();
-  const existing = rowData as { kind?: 'percent' | 'free'; stripe_coupon_id?: string | null } | null;
+  const { data: rowData } = await admin.from('site_sales').select('kind, stripe_coupon_id, active').eq('id', id).maybeSingle();
+  const existing = rowData as { kind?: 'percent' | 'free'; stripe_coupon_id?: string | null; active?: boolean } | null;
   if (!existing?.kind) return { success: false, error: 'Sale not found.' };
 
   const parseStart = (raw?: string | null): string | null => {
@@ -1298,6 +1335,11 @@ export async function editSiteSaleAction(
       if (!(percent >= 1 && percent <= 99)) return { success: false, error: 'Percent off must be 1–99.' };
       const appliesTo: 'monthly' | 'yearly' | 'both' =
         input.applies_to === 'monthly' || input.applies_to === 'yearly' ? input.applies_to : 'both';
+      // If this sale is live, its new interval mustn't collide with another
+      // active percent sale (checked before minting the replacement coupon).
+      if (existing.active && await siteSalePlanConflict(admin, { kind: 'percent', applies_to: appliesTo }, id)) {
+        return { success: false, error: SALE_CONFLICT_MSG };
+      }
       const duration: 'once' | 'forever' = appliesTo === 'both' ? 'forever' : 'once';
       const stripe = getStripe();
       const scopeLabel = appliesTo === 'monthly' ? 'first month' : appliesTo === 'yearly' ? 'first year' : 'forever';
@@ -1316,6 +1358,11 @@ export async function editSiteSaleAction(
       if (![1, 2, 3, 4].includes(grantTier)) return { success: false, error: 'Pick a valid plan tier.' };
       const grantMonths = Math.trunc(Number(input.grant_months));
       if (!(grantMonths >= 1 && grantMonths <= 60)) return { success: false, error: 'Months must be 1–60.' };
+      // If this sale is live, its new granted plan mustn't collide with another
+      // active free sale for the same tier.
+      if (existing.active && await siteSalePlanConflict(admin, { kind: 'free', grant_tier: grantTier }, id)) {
+        return { success: false, error: SALE_CONFLICT_MSG };
+      }
       patch.grant_tier = grantTier;
       patch.grant_months = grantMonths;
     }
