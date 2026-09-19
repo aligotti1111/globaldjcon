@@ -164,8 +164,17 @@ export function AuthProvider({
            * one written would get it wrong again.
            *
            * The DB column stays honest; the admin panel reads that directly.
+           *
+           * ALSO treat Supabase's own confirmation as verified: signUp's
+           * emailRedirectTo makes Supabase send its own confirm email, and
+           * clicking THAT sets auth `email_confirmed_at` without touching our
+           * `email_verified` column — which left the "please confirm" banner
+           * showing forever after a real confirmation. Whichever link they
+           * click (ours or Supabase's), a confirmed auth email counts.
            */
-          email_verified: authUser.email ? profile.email_verified : true,
+          email_verified: authUser.email
+            ? (profile.email_verified || !!(authUser as { email_confirmed_at?: string | null }).email_confirmed_at)
+            : true,
         });
         // Resolve the acting role (teammate permissions) and merge it in —
         // non-blocking, so nav renders immediately and tightens once known.
