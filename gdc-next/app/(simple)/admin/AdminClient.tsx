@@ -231,9 +231,9 @@ export default function AdminClient({
         {activeTab === 'promos' && (
           <>
             <CompCodesTab initialCodes={initialCompCodes} />
-            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '2rem 0' }} />
+            <div style={{ height: 2, background: 'rgba(255,255,255,.22)', borderRadius: 2, margin: '2.5rem 0' }} />
             <DiscountCodesTab initialCodes={initialDiscountCodes} />
-            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '2rem 0' }} />
+            <div style={{ height: 2, background: 'rgba(255,255,255,.22)', borderRadius: 2, margin: '2.5rem 0' }} />
             <SiteSalesTab initialSales={initialSiteSales} />
           </>
         )}
