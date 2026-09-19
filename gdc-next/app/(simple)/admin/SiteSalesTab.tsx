@@ -14,7 +14,9 @@ import {
   editSiteSaleAction,
   deactivateSiteSaleAction,
   deleteSiteSaleAction,
+  listCodeRedemptionsAction,
   type SiteSaleRow,
+  type CodeRedemption,
 } from './actions';
 import { TIER_LABELS } from '@/lib/access';
 
@@ -36,6 +38,26 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
   // When set, the form edits an existing sale instead of creating one. The
   // sale KIND is fixed while editing (a different kind is a different sale).
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Expanded row + per-sale cache of who redeemed it (loaded on first open).
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [reds, setReds] = useState<Record<string, CodeRedemption[]>>({});
+
+  async function toggleRow(id: string) {
+    if (openId === id) { setOpenId(null); return; }
+    setOpenId(id);
+    if (!reds[id]) {
+      setLoadingId(id);
+      try {
+        const res = await listCodeRedemptionsAction('sale', id);
+        setReds((prev) => ({ ...prev, [id]: res.redemptions || [] }));
+      } catch {
+        setReds((prev) => ({ ...prev, [id]: [] }));
+      } finally {
+        setLoadingId(null);
+      }
+    }
+  }
 
   function resetForm() {
     setStartsAt(''); setEndsAt(''); setNote(''); setPercent(20); setAppliesTo('monthly'); setTier(2); setMonths(1);
@@ -227,9 +249,21 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
               );
             })()}
           </div>
-          {sales.map((s) => (
-            <div key={s.id} className={styles.adminRow}>
+          {sales.map((s) => {
+            const isOpen = openId === s.id;
+            const rowReds = reds[s.id];
+            return (
+            <div key={s.id}>
+            <div
+              className={styles.adminRow}
+              onClick={() => toggleRow(s.id)}
+              style={{ cursor: 'pointer' }}
+              title="Click to see who used this sale"
+            >
               <div className={styles.arName}>
+                <span style={{ display: 'inline-block', width: '.8rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+                  {isOpen ? '▾' : '▸'}
+                </span>
                 {s.kind === 'percent'
                   ? `${s.percent_off}% off`
                   : `${TIER_LABELS[s.grant_tier as 1 | 2 | 3 | 4] ?? `Tier ${s.grant_tier}`} free · ${s.grant_months} mo`}
@@ -251,14 +285,14 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
               <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', flex: '0 0 auto', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => startEdit(s)}
+                  onClick={(e) => { e.stopPropagation(); startEdit(s); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => toggle(s)}
+                  onClick={(e) => { e.stopPropagation(); toggle(s); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                   style={s.active ? { borderColor: '#ff8b8b', color: '#ff8b8b' } : { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }}
                 >
@@ -266,7 +300,7 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(s)}
+                  onClick={(e) => { e.stopPropagation(); remove(s); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                   style={{ borderColor: '#ff6b6b', color: '#ff6b6b' }}
                 >
@@ -274,7 +308,45 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
                 </button>
               </div>
             </div>
-          ))}
+
+            {isOpen && (
+              <div style={{ padding: '.5rem 1rem .9rem 2rem', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                {loadingId === s.id || rowReds === undefined ? (
+                  <div style={{ color: 'var(--muted)', fontSize: '.8rem', padding: '.3rem 0' }}>Loading…</div>
+                ) : rowReds.length === 0 ? (
+                  <div style={{ color: 'var(--muted)', fontSize: '.8rem', padding: '.3rem 0' }}>No one has used this sale yet.</div>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.35rem' }}>
+                      {rowReds.length} {rowReds.length === 1 ? 'account' : 'accounts'} used it
+                    </div>
+                    {rowReds.map((r) => (
+                      <div
+                        key={r.user_id}
+                        style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', padding: '.28rem 0', borderTop: '1px solid rgba(255,255,255,.04)', fontSize: '.82rem' }}
+                      >
+                        <div style={{ flex: 1.4, minWidth: 140, color: 'var(--white)' }}>
+                          {r.slug ? (
+                            <a href={`/${r.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--white)' }}>
+                              {r.name || 'Unnamed'}
+                            </a>
+                          ) : (
+                            r.name || 'Unnamed'
+                          )}
+                        </div>
+                        <div style={{ flex: 1.6, minWidth: 160, color: 'var(--muted)' }}>{r.email || '—'}</div>
+                        <div style={{ flex: '0 0 100px', textAlign: 'right', color: 'var(--muted)' }}>
+                          {new Date(r.redeemed_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+            </div>
+          );
+          })}
         </div>
       )}
     </div>
