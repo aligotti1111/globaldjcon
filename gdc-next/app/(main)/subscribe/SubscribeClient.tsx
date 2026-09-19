@@ -16,7 +16,7 @@
 // tier+interval; tiers without an ID yet render as "Coming soon" and turn on
 // automatically once their IDs are added.
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
@@ -209,14 +209,14 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const money = (cents: number, cur: string) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: (cur || 'usd').toUpperCase() }).format(cents / 100);
 
-  async function subscribe(tier: PaidTier) {
+  async function subscribe(tier: PaidTier, promoOverride?: string) {
     setError(null);
     setLoadingTier(tier);
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, interval, embedded: true, promoCode: pendingPromo?.code || undefined }),
+        body: JSON.stringify({ tier, interval, embedded: true, promoCode: (promoOverride ?? pendingPromo?.code) || undefined }),
       });
       const data = (await res.json().catch(() => ({}))) as { clientSecret?: string; error?: string };
       if (res.status === 401) {
@@ -233,6 +233,25 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       setLoadingTier(null);
     }
   }
+
+  // Auto-start checkout when the DJ arrives having ALREADY picked a paid plan on
+  // the signup page (?plan=N&interval=…&code=…). They chose the plan once — don't
+  // make them pick it again here; open the embedded Stripe checkout straight
+  // away. Only for a purchasable paid tier and a not-yet-paid account; a free
+  // plan or a comp never reaches here (signup sends those to the success screen).
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    const t = Number(searchParams.get('plan'));
+    if (!(t >= 1 && t <= 4)) return;
+    if (isPaid) return;
+    if (!priceIdFor(t as PaidTier, interval)) return;
+    autoStartedRef.current = true;
+    // Pass any signup code straight through so its discount rides along without
+    // waiting for the promo box's async preview.
+    subscribe(t as PaidTier, searchParams.get('code') || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update the card ON-SITE: fetch an embedded setup session and mount it in the
   // same modal the subscription checkout uses — no redirect to Stripe's portal.
