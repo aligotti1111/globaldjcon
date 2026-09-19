@@ -81,7 +81,7 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
         discounts paid plans at checkout; a <b>free</b> sale gives new DJ signups free access (no card) that drops to Free when it ends.
       </p>
 
-      <div className={styles.formGrid}>
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Sale type</label>
           <select className={styles.formSelect} value={kind} onChange={(e) => setKind(e.target.value as 'percent' | 'free')}>
@@ -129,10 +129,6 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>Ends (blank = no end)</label>
           <input className={styles.formInput} type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Note (admin only)</label>
-          <input className={styles.formInput} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Black Friday" />
         </div>
       </div>
 
