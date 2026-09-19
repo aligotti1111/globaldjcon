@@ -751,8 +751,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {isSubscribed && isPaid && cancelIsScheduled && (
         <div className={styles.manageRow} style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', marginTop: '1rem' }}>
           <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
-            Your subscription is set to cancel
-            {cancelEndDate ? ` on ${new Date(cancelEndDate).toLocaleDateString()}` : ''}. You keep access until then.
+            Your subscription is cancelled. If you would like to reactivate it, click Resume below.
           </span>
           <button type="button" className={styles.manageBtn} onClick={() => cancelSub('resume')} disabled={cancelBusy}>
             {cancelBusy ? 'Working…' : 'Resume subscription'}
