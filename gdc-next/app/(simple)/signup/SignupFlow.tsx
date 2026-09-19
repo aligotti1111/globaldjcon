@@ -505,10 +505,16 @@ async function triggerSignupVerification(
   userId: string,
   email: string,
   role: AccountType,
-  slug: string | null
+  slug: string | null,
+  // When the signup is heading straight to a PAID checkout, don't auto-grant
+  // the live free-month sale comp — the DJ is paying for a plan, so a free
+  // trial shouldn't stack on top (and a Pro-tier free sale must not leak a free
+  // month onto a Premium Pro purchase). Server only ever uses this to SKIP the
+  // grant, never to enable one, so it's safe to take from the client.
+  skipFreeGrant = false,
 ) {
   const { bookingDjSlug, bookingDate } = parseBookingIntent();
-  const payload = JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate });
+  const payload = JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate, skipFreeGrant });
   try {
     // Prefer sendBeacon: the browser dispatches it IMMEDIATELY and guarantees
     // delivery even if the page navigates right after (a paid-plan signup jumps
@@ -744,24 +750,29 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
             ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,quinceanera,mitzvah,reunion,holiday,school,community,other'
             : null,
         } as unknown as never, { onConflict: 'id' });
-
-        // Fire-and-forget the verification email — we don't block on it so the
-        // user gets immediate feedback. The request uses keepalive so it still
-        // completes even if a paid-plan signup hard-navigates to checkout next.
-        triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug);
       }
 
-      // If a live FREE site sale covers the plan they picked (its granted tier
-      // is that plan or better), their first month is already free with NO card
-      // — the server grants the comp at signup (see signup-send-verification).
-      // Don't send them to the paid checkout; go straight to the success screen.
+      // Decide the post-signup route FIRST so we can tell the verification/grant
+      // endpoint whether this is a paid checkout.
+      // freeCovers: a live FREE sale covers the plan they picked (its granted
+      // tier is that plan or better) → their first month is free, no card, and
+      // they land on the success screen (the server grants the comp).
       const freeCovers = !!saleFree && plan > 0 && saleFree.tier >= plan;
-
-      // Otherwise: a paid plan or a promo code → /subscribe to finish (the promo
-      // box there auto-opens with the code). Free plan + no code → the normal
-      // "check your email" success screen.
       const codeVal = promoCode.trim().toUpperCase();
-      if (!freeCovers && (plan > 0 || codeVal)) {
+      // goingToPaidCheckout: a paid plan (not free-covered) or a discount code →
+      // they head to /subscribe to pay. In that case DON'T grant the free-month
+      // comp (no stacking; a Pro-tier free sale must not free-month a Premium
+      // Pro purchase).
+      const goingToPaidCheckout = !freeCovers && (plan > 0 || !!codeVal);
+
+      if (signUpData?.user?.id) {
+        // Fire-and-forget the verification email (sendBeacon → immediate, and
+        // it also carries skipFreeGrant so a paid signup doesn't get the free
+        // comp). We don't block on it so the user gets instant feedback.
+        triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug, goingToPaidCheckout);
+      }
+
+      if (goingToPaidCheckout) {
         const q = new URLSearchParams();
         if (plan > 0) { q.set('plan', String(plan)); q.set('interval', billing); }
         if (codeVal) q.set('code', codeVal);
