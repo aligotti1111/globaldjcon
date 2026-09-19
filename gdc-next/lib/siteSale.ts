@@ -51,22 +51,36 @@ export async function getLiveSales(admin: Admin): Promise<LiveSale[]> {
 // The best % discount for a given billing interval, considering every live
 // percent sale PLUS an optional personal discount code — "bigger wins".
 // Returns the Stripe coupon id to apply (or null for full price).
+export interface BestCoupon {
+  couponId: string;
+  percent: number;
+  // Where the winning coupon came from, so the checkout can stamp it into the
+  // subscription metadata and the webhook can record who redeemed it.
+  source: 'discount' | 'sale';
+  sourceId: string; // discount_codes.id or site_sales.id
+}
+
 export async function pickBestCoupon(
   admin: Admin,
   interval: string,
   promoCode?: string,
-): Promise<{ couponId: string; percent: number } | null> {
-  let best: { couponId: string; percent: number } | null = null;
-  const consider = (couponId: string | null | undefined, percent: number | null | undefined) => {
-    if (!couponId || !percent) return;
-    if (!best || percent > best.percent) best = { couponId, percent };
+): Promise<BestCoupon | null> {
+  let best: BestCoupon | null = null;
+  const consider = (
+    couponId: string | null | undefined,
+    percent: number | null | undefined,
+    source: 'discount' | 'sale',
+    sourceId: string | null | undefined,
+  ) => {
+    if (!couponId || !percent || !sourceId) return;
+    if (!best || percent > best.percent) best = { couponId, percent, source, sourceId };
   };
 
   // Live site-wide percent sales that cover this interval.
   const live = await getLiveSales(admin);
   for (const s of live) {
     if (s.kind === 'percent' && scopeMatches(s.applies_to, interval)) {
-      consider(s.stripe_coupon_id, s.percent_off);
+      consider(s.stripe_coupon_id, s.percent_off, 'sale', s.id);
     }
   }
 
@@ -75,14 +89,14 @@ export async function pickBestCoupon(
   if (code) {
     const { data: dc } = await untyped(admin)
       .from('discount_codes')
-      .select('stripe_coupon_id, active, applies_to, percent_off, expires_at')
+      .select('id, stripe_coupon_id, active, applies_to, percent_off, expires_at')
       .eq('code', code)
-      .maybeSingle<{ stripe_coupon_id: string; active: boolean; applies_to: string; percent_off: number; expires_at: string | null }>();
+      .maybeSingle<{ id: string; stripe_coupon_id: string; active: boolean; applies_to: string; percent_off: number; expires_at: string | null }>();
     // Ignore an expired code so we never hand Stripe a coupon it will reject
     // (which would 500 the whole checkout instead of just skipping the code).
     const notExpired = !dc?.expires_at || new Date(dc.expires_at).getTime() > Date.now();
     if (dc && dc.active && notExpired && scopeMatches(dc.applies_to, interval)) {
-      consider(dc.stripe_coupon_id, dc.percent_off);
+      consider(dc.stripe_coupon_id, dc.percent_off, 'discount', dc.id);
     }
   }
 
