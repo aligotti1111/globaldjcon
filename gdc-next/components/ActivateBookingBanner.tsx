@@ -20,7 +20,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './AuthProvider';
 import { createClient } from '@/lib/supabase/client';
-import { canBook, type AccessFields } from '@/lib/access';
+import { canBook, TIER_LABELS, type AccessFields, type Tier } from '@/lib/access';
 import {
   parseBookingSettings,
   packageTiers,
@@ -149,9 +149,18 @@ export default function ActivateBookingBanner() {
         return;
       }
 
-      // The rest ("add a package / pick equipment") is what the setup checklist
-      // already spells out step by step, so the banner just confirms the state.
-      setView({ msg: "You're subscribed!" });
+      // Message reflects HOW they have access. A comp (free promo / admin grant)
+      // isn't a paid subscription, so don't call it one — say it's free access
+      // and when it ends. Only a live paid Stripe plan reads "You're subscribed!".
+      const subActive = (row.sub_tier ?? 0) > 0 && (row.sub_status === 'active' || row.sub_status === 'grace');
+      const compActive = (row.comp_tier ?? 0) > 0 && !!row.comp_expires_at && new Date(row.comp_expires_at).getTime() > Date.now();
+      let msg = "You're subscribed!";
+      if (!subActive && compActive) {
+        const label = TIER_LABELS[row.comp_tier as Tier] ?? 'Pro';
+        const end = new Date(row.comp_expires_at as string).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        msg = `Free ${label} access active until ${end}.`;
+      }
+      setView({ msg });
     })();
 
     return () => {
