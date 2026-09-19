@@ -13,7 +13,9 @@ import {
   editDiscountCodeAction,
   deactivateDiscountCodeAction,
   deleteDiscountCodeAction,
+  listCodeRedemptionsAction,
   type DiscountCodeRow,
+  type CodeRedemption,
 } from './actions';
 
 const PERCENTS = Array.from({ length: 99 }, (_, i) => i + 1); // 1–99
@@ -30,6 +32,26 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
   const [fb, setFb] = useState<{ msg: string; ok: boolean } | null>(null);
   // When set, the form is editing an existing code instead of creating one.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Expanded row + per-code cache of who redeemed it (loaded on first open).
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [reds, setReds] = useState<Record<string, CodeRedemption[]>>({});
+
+  async function toggleRow(id: string) {
+    if (openId === id) { setOpenId(null); return; }
+    setOpenId(id);
+    if (!reds[id]) {
+      setLoadingId(id);
+      try {
+        const res = await listCodeRedemptionsAction('discount', id);
+        setReds((prev) => ({ ...prev, [id]: res.redemptions || [] }));
+      } catch {
+        setReds((prev) => ({ ...prev, [id]: [] }));
+      } finally {
+        setLoadingId(null);
+      }
+    }
+  }
 
   function resetForm() {
     setCode(''); setMaxUses(''); setExpiresAt(''); setNote(''); setPercent(20); setAppliesTo('monthly');
@@ -222,9 +244,21 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
               );
             })()}
           </div>
-          {codes.map((c) => (
-            <div key={c.id} className={styles.adminRow}>
+          {codes.map((c) => {
+            const isOpen = openId === c.id;
+            const rowReds = reds[c.id];
+            return (
+            <div key={c.id}>
+            <div
+              className={styles.adminRow}
+              onClick={() => toggleRow(c.id)}
+              style={{ cursor: 'pointer' }}
+              title="Click to see who used this code"
+            >
               <div className={styles.arName}>
+                <span style={{ display: 'inline-block', width: '.8rem', color: 'var(--muted)', fontSize: '.7rem' }}>
+                  {isOpen ? '▾' : '▸'}
+                </span>
                 {c.code}
                 {!c.active && (
                   <span style={{ marginLeft: '.4rem', fontSize: '.55rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#ff8b8b', border: '1px solid #ff8b8b', borderRadius: 4, padding: '1px 5px' }}>
@@ -241,14 +275,14 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
               <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', flex: '0 0 auto', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => startEdit(c)}
+                  onClick={(e) => { e.stopPropagation(); startEdit(c); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => toggle(c)}
+                  onClick={(e) => { e.stopPropagation(); toggle(c); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                   style={c.active ? { borderColor: '#ff8b8b', color: '#ff8b8b' } : { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }}
                 >
@@ -256,7 +290,7 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(c)}
+                  onClick={(e) => { e.stopPropagation(); remove(c); }}
                   className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
                   style={{ borderColor: '#ff6b6b', color: '#ff6b6b' }}
                 >
@@ -264,7 +298,45 @@ export default function DiscountCodesTab({ initialCodes }: { initialCodes: Disco
                 </button>
               </div>
             </div>
-          ))}
+
+            {isOpen && (
+              <div style={{ padding: '.5rem 1rem .9rem 2rem', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                {loadingId === c.id || rowReds === undefined ? (
+                  <div style={{ color: 'var(--muted)', fontSize: '.8rem', padding: '.3rem 0' }}>Loading…</div>
+                ) : rowReds.length === 0 ? (
+                  <div style={{ color: 'var(--muted)', fontSize: '.8rem', padding: '.3rem 0' }}>No one has used this code yet.</div>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.35rem' }}>
+                      {rowReds.length} {rowReds.length === 1 ? 'account' : 'accounts'} used it
+                    </div>
+                    {rowReds.map((r) => (
+                      <div
+                        key={r.user_id}
+                        style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', padding: '.28rem 0', borderTop: '1px solid rgba(255,255,255,.04)', fontSize: '.82rem' }}
+                      >
+                        <div style={{ flex: 1.4, minWidth: 140, color: 'var(--white)' }}>
+                          {r.slug ? (
+                            <a href={`/${r.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--white)' }}>
+                              {r.name || 'Unnamed'}
+                            </a>
+                          ) : (
+                            r.name || 'Unnamed'
+                          )}
+                        </div>
+                        <div style={{ flex: 1.6, minWidth: 160, color: 'var(--muted)' }}>{r.email || '—'}</div>
+                        <div style={{ flex: '0 0 100px', textAlign: 'right', color: 'var(--muted)' }}>
+                          {new Date(r.redeemed_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+            </div>
+          );
+          })}
         </div>
       )}
     </div>
