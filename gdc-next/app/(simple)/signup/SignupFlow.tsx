@@ -513,6 +513,11 @@ async function triggerSignupVerification(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate }),
+      // keepalive lets this request finish even if the page navigates away
+      // immediately after (e.g. a paid-plan signup that jumps to /subscribe for
+      // checkout). Without it the browser aborts the in-flight request and the
+      // verification email never sends until something later re-triggers it.
+      keepalive: true,
     });
     if (!res.ok) {
       console.warn('[signup] verification email request failed:', res.status);
