@@ -739,12 +739,17 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
         triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug);
       }
 
-      // Picked a paid plan or entered a promo code → send them to /subscribe to
-      // finish (the promo box there auto-opens with the code). Free + no code →
-      // the normal "check your email" success screen. Either way the
-      // verification email already fired above.
+      // If a live FREE site sale covers the plan they picked (its granted tier
+      // is that plan or better), their first month is already free with NO card
+      // — the server grants the comp at signup (see signup-send-verification).
+      // Don't send them to the paid checkout; go straight to the success screen.
+      const freeCovers = !!saleFree && plan > 0 && saleFree.tier >= plan;
+
+      // Otherwise: a paid plan or a promo code → /subscribe to finish (the promo
+      // box there auto-opens with the code). Free plan + no code → the normal
+      // "check your email" success screen. The verification email already fired.
       const codeVal = promoCode.trim().toUpperCase();
-      if (plan > 0 || codeVal) {
+      if (!freeCovers && (plan > 0 || codeVal)) {
         const q = new URLSearchParams();
         if (plan > 0) { q.set('plan', String(plan)); q.set('interval', billing); }
         if (codeVal) q.set('code', codeVal);
