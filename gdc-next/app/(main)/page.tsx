@@ -1422,10 +1422,9 @@ export default function HomePage() {
         const parts: string[] = [];
         const topPct = percentSales.reduce((m, s) => Math.max(m, s.percentOff), 0);
         if (topPct > 0) parts.push(`🔥 Limited-time sale — up to ${topPct}% off`);
-        if (!signedIn && data?.freeSale) {
-          const m = data.freeSale.months;
-          parts.push(`🎉 Sign up now: ${data.freeSale.tierLabel} free for ${m} month${m === 1 ? '' : 's'}`);
-        }
+        // The free-sale banner line was removed — the "FIRST MONTH FREE" corner
+        // ribbon on the plan card already says it, so the top banner was
+        // redundant. (The percent-sale banner above is kept.)
         if (!parts.length) return;
         const b = document.createElement('div');
         b.className = 'gdc-sale-banner';
