@@ -51,6 +51,8 @@ interface Props {
   agreed?: boolean;
   onAgreedChange?: (v: boolean) => void;
   onConsentError?: () => void;
+  /** When true (submitted without accepting), highlight the consent in red. */
+  consentError?: boolean;
   /** Prefilled + locked when they arrived from a claim_booking invite. */
   prefillEmail?: string;
   lockedEmail?: boolean;
@@ -86,7 +88,7 @@ interface Props {
 }
 
 export default function HostCodeSignup({
-  method, name, country, agreed, onAgreedChange, onConsentError, prefillEmail, lockedEmail, destination, onNameError,
+  method, name, country, agreed, onAgreedChange, onConsentError, consentError, prefillEmail, lockedEmail, destination, onNameError,
   canSwitchMethod, onSwitchMethod, onDone,
 }: Props) {
   const supabase = createClient();
@@ -471,7 +473,7 @@ export default function HostCodeSignup({
       )}
 
       {onAgreedChange && (
-        <ConsentCheckbox id="host-agree" checked={!!agreed} onChange={onAgreedChange} />
+        <ConsentCheckbox id="host-agree" checked={!!agreed} onChange={onAgreedChange} error={!!consentError} />
       )}
 
       <button
