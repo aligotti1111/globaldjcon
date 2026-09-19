@@ -11,7 +11,9 @@ import { useState } from 'react';
 import styles from './admin.module.css';
 import {
   createSiteSaleAction,
+  editSiteSaleAction,
   deactivateSiteSaleAction,
+  deleteSiteSaleAction,
   type SiteSaleRow,
 } from './actions';
 import { TIER_LABELS } from '@/lib/access';
@@ -31,32 +33,88 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [fb, setFb] = useState<{ msg: string; ok: boolean } | null>(null);
+  // When set, the form edits an existing sale instead of creating one. The
+  // sale KIND is fixed while editing (a different kind is a different sale).
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  async function create() {
+  function resetForm() {
+    setStartsAt(''); setEndsAt(''); setNote(''); setPercent(20); setAppliesTo('monthly'); setTier(2); setMonths(1);
+    setKind('percent'); setEditingId(null);
+  }
+
+  function startEdit(s: SiteSaleRow) {
+    setFb(null);
+    setEditingId(s.id);
+    setKind(s.kind);
+    if (s.kind === 'percent') {
+      setPercent(s.percent_off ?? 20);
+      setAppliesTo((s.applies_to as 'monthly' | 'yearly' | 'both') ?? 'monthly');
+    } else {
+      setTier(s.grant_tier ?? 2);
+      setMonths(s.grant_months ?? 1);
+    }
+    setStartsAt(s.starts_at ? s.starts_at.slice(0, 10) : '');
+    setEndsAt(s.ends_at ? s.ends_at.slice(0, 10) : '');
+  }
+
+  async function submit() {
     setFb(null);
     setBusy(true);
     try {
-      const res = await createSiteSaleAction({
-        kind,
-        percent_off: kind === 'percent' ? percent : null,
-        applies_to: kind === 'percent' ? appliesTo : null,
-        grant_tier: kind === 'free' ? tier : null,
-        grant_months: kind === 'free' ? months : null,
-        starts_at: startsAt || null,
-        ends_at: endsAt || null,
-        note: note || null,
-      });
-      if (res.success && res.sale) {
-        setSales((prev) => [res.sale as SiteSaleRow, ...prev]);
-        setStartsAt(''); setEndsAt(''); setNote(''); setPercent(20); setAppliesTo('monthly'); setTier(2); setMonths(1);
-        setFb({ msg: '✓ Sale created', ok: true });
+      if (editingId) {
+        const res = await editSiteSaleAction(editingId, {
+          percent_off: kind === 'percent' ? percent : null,
+          applies_to: kind === 'percent' ? appliesTo : null,
+          grant_tier: kind === 'free' ? tier : null,
+          grant_months: kind === 'free' ? months : null,
+          starts_at: startsAt || null,
+          ends_at: endsAt || null,
+        });
+        if (res.success && res.sale) {
+          setSales((prev) => prev.map((x) => (x.id === editingId ? (res.sale as SiteSaleRow) : x)));
+          resetForm();
+          setFb({ msg: '✓ Sale updated', ok: true });
+        } else {
+          setFb({ msg: '✗ ' + (res.error || 'Update failed'), ok: false });
+        }
       } else {
-        setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+        const res = await createSiteSaleAction({
+          kind,
+          percent_off: kind === 'percent' ? percent : null,
+          applies_to: kind === 'percent' ? appliesTo : null,
+          grant_tier: kind === 'free' ? tier : null,
+          grant_months: kind === 'free' ? months : null,
+          starts_at: startsAt || null,
+          ends_at: endsAt || null,
+          note: note || null,
+        });
+        if (res.success && res.sale) {
+          setSales((prev) => [res.sale as SiteSaleRow, ...prev]);
+          resetForm();
+          setFb({ msg: '✓ Sale created', ok: true });
+        } else {
+          setFb({ msg: '✗ ' + (res.error || 'Create failed'), ok: false });
+        }
       }
     } catch (e) {
       setFb({ msg: '✗ ' + (e as Error).message, ok: false });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function remove(s: SiteSaleRow) {
+    if (!confirm('Delete this site-wide sale? This removes it (and its Stripe coupon) and can’t be undone.')) return;
+    try {
+      const res = await deleteSiteSaleAction(s.id);
+      if (res.success) {
+        setSales((prev) => prev.filter((x) => x.id !== s.id));
+        if (editingId === s.id) resetForm();
+      } else {
+        alert('✗ ' + (res.error || 'Delete failed'));
+      }
+    } catch (e) {
+      alert('✗ ' + (e as Error).message);
     }
   }
 
@@ -75,16 +133,16 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
 
   return (
     <div>
-      <div className={styles.formSectionLabel}>Create Site-Wide Sale</div>
+      <div className={styles.formSectionLabel}>{editingId ? 'Edit Site-Wide Sale' : 'Create Site-Wide Sale'}</div>
       <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.7rem' }}>
         A site-wide sale applies automatically to everyone during its date window — no code needed. A <b>% off</b> sale
         discounts paid plans at checkout; a <b>free</b> sale gives new DJ signups free access (no card) that drops to Free when it ends.
       </p>
 
-      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
         <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Sale type</label>
-          <select className={styles.formSelect} value={kind} onChange={(e) => setKind(e.target.value as 'percent' | 'free')}>
+          <label className={styles.formLabel}>Sale type{editingId ? ' (can’t be changed)' : ''}</label>
+          <select className={styles.formSelect} value={kind} disabled={!!editingId} onChange={(e) => setKind(e.target.value as 'percent' | 'free')} style={{ opacity: editingId ? 0.6 : 1 }}>
             <option value="percent">% off paid plans</option>
             <option value="free">Free for new signups (no card)</option>
           </select>
@@ -133,9 +191,14 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.6rem' }}>
-        <button type="button" onClick={create} disabled={busy} className={`${styles.btn} ${styles.btnAdmin}`}>
-          {busy ? 'Creating…' : 'Create Sale'}
+        <button type="button" onClick={submit} disabled={busy} className={`${styles.btn} ${styles.btnAdmin}`}>
+          {busy ? 'Saving…' : editingId ? 'Save Changes' : 'Create Sale'}
         </button>
+        {editingId && (
+          <button type="button" onClick={resetForm} disabled={busy} className={`${styles.btn} ${styles.btnOutline}`}>
+            Cancel
+          </button>
+        )}
         {fb && <span className={`${styles.formFb} ${fb.ok ? styles.formFbOk : styles.formFbErr}`}>{fb.msg}</span>}
       </div>
 
@@ -185,7 +248,14 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
                   : 'Every payment'}
               </div>
               <div className={styles.arDetail}>{fmtDate(s.starts_at)} → {fmtDate(s.ends_at)}</div>
-              <div style={{ display: 'flex', gap: '.4rem', flex: '0 0 120px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', flex: '0 0 auto', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => startEdit(s)}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                >
+                  Edit
+                </button>
                 <button
                   type="button"
                   onClick={() => toggle(s)}
@@ -193,6 +263,14 @@ export default function SiteSalesTab({ initialSales }: { initialSales: SiteSaleR
                   style={s.active ? { borderColor: '#ff8b8b', color: '#ff8b8b' } : { borderColor: 'var(--neon, #00e0a4)', color: 'var(--neon, #00e0a4)' }}
                 >
                   {s.active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(s)}
+                  className={`${styles.btn} ${styles.btnOutline} ${styles.btnSmall}`}
+                  style={{ borderColor: '#ff6b6b', color: '#ff6b6b' }}
+                >
+                  Delete
                 </button>
               </div>
             </div>
