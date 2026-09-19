@@ -1,1528 +1,289 @@
-'use client';
-
-// Signup page.
-// Mirrors vanilla signup.html flow:
-//   1. Account type selector (DJ / Host / Venue)
-//   2. Type-specific form with:
-//      - Real-time slug availability check + alternative suggestions (DJ + Venue)
-//      - ZIP-code → city/state autofill via Nominatim (DJ + Venue)
-//   3. Success screen ("Check your email") with token-based verification email
+// API route: POST /api/signup-send-verification
+// Ports /netlify/functions/signup-send-verification.js to a Next.js route.
 //
-// HOSTS HAVE NO PASSWORD. The host form offers phone or email, and either
-// way it's a 6-digit code — see HostCodeSignup.tsx. DJ and Venue signup are
-// untouched: they still use email + password, because they're in the app
-// daily and their browser remembers it.
+// Generates a one-time email-verification token, stores it in
+// public.email_verification_tokens, and sends the user a verification link
+// via Resend. The link points at /api/verify-email?token=... which flips
+// public.users.email_verified = true.
 //
-// QUERY PARAMS (booking-claim flow):
-//   ?email=<addr>            — prefill the email field
-//   ?claim_booking=<bookId>  — auto-route to Host signup, lock email, and stash
-//                              the booking id in localStorage so AuthProvider
-//                              can link the booking to the user once verified.
+// Auth note: this is intentionally NOT behind auth — it's called immediately
+// after signUp from the browser (when the user has a session but maybe not
+// a usable one yet) AND from the resend button on the success screen (where
+// there's no session). We rely on the token system being self-validating.
+//
+// Body: { user_id?, email, role, slug? }
+//   user_id is optional. When omitted (resend case), we look it up by email
+//   via the admin auth API.
 
-import { useEffect, useRef, useState } from 'react';
-import type React from 'react';
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
-import {
-  COUNTRIES,
-  TRAVEL_DISTANCES,
-  generateDjAlternatives,
-  generateVenueAlternatives,
-  makeSlug,
-  type AccountType,
-  type DjType,
-} from './helpers';
-import { TIERS } from '@/lib/access';
-import { SlugInput, type SlugStatus } from './SlugInput';
-import { ZipLookup } from './ZipLookup';
-import HostCodeSignup from './HostCodeSignup';
-import styles from './signup.module.css';
+import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import { randomBytes } from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getLiveFreeSale } from '@/lib/siteSale';
 
-// localStorage key used by AuthProvider to claim the booking after the
-// new account verifies + logs in. Must match the key AuthProvider reads.
-const PENDING_BOOKING_CLAIM_KEY = 'gdc_pending_booking_claim';
+const TOKEN_TTL_HOURS = 24;
+const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
+const REPLY_TO = 'info@globaldjconnect.com';
+const LOGO_URL = 'https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/gdj-logo-email.png';
 
-// Plan options for the DJ signup form. Everyone starts on Free; picking a paid
-// tier (or entering a promo code) routes them to /subscribe after signup to set
-// it up. Values match the access tiers (0 Free … 4 Enterprise); labels show the
-// live price for the chosen billing interval, pulled from the TIERS table.
-const PLAN_VALUES = [0, 1, 2, 3, 4] as const;
-function planOptionLabel(v: number): string {
-  if (v === 0) return 'Free';
-  const t = TIERS[v as 1 | 2 | 3 | 4];
-  return `${t.label} — $${t.monthlyPrice.toFixed(2)}/mo or $${t.yearlyPrice.toFixed(2)}/yr`;
-}
-
-type Screen = 'type-select' | 'dj' | 'host' | 'venue' | 'success';
-
-interface SuccessInfo {
+interface SendVerificationBody {
+  user_id?: string;
   email: string;
-  role: AccountType;
-  slug: string | null;
-  userId: string | null;
+  role: 'dj' | 'host' | 'venue';
+  slug?: string | null;
+  // Optional booking intent — set when the signup originated from a
+  // "Sign in to book" gate (embed or profile calendar). When both are
+  // present, the confirmation email includes a "Continue booking" link.
+  bookingDjSlug?: string | null;
+  bookingDate?: string | null;
+  // When true, this signup is heading straight to a PAID checkout, so DON'T
+  // grant the live free-month sale comp — the DJ is buying a plan and a free
+  // trial shouldn't stack (nor should a Pro-tier free sale free-month a Premium
+  // Pro purchase). Only ever SKIPS a grant, so it's safe to take from the client.
+  skipFreeGrant?: boolean;
 }
 
-// Account-type badge that doubles as a subtle dropdown for switching to a
-// different account type within signup. Shows the current type with a small
-// down-arrow; clicking reveals the other two types in a tiny menu. Used
-// inside each role-specific form so the user can hop between DJ / Host /
-// Venue signups without going back to the choice screen.
-function TypeBadge({
-  current,
-  onSwitch,
-}: {
-  current: 'dj' | 'host' | 'venue';
-  onSwitch: (next: 'dj' | 'host' | 'venue') => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+export async function POST(request: Request) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      { error: 'SUPABASE_SERVICE_ROLE_KEY not set' },
+      { status: 500 }
+    );
+  }
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ error: 'RESEND_API_KEY not set' }, { status: 500 });
+  }
 
-  const labels: Record<'dj' | 'host' | 'venue', string> = {
-    dj: 'DJ Account',
-    host: 'Party / Event Host Account',
-    venue: 'Venue Account',
-  };
-  const icons: Record<'dj' | 'host' | 'venue', React.ReactNode> = {
-    dj: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M9 18V5l12-2v13" />
-        <circle cx="6" cy="18" r="3" />
-        <circle cx="18" cy="16" r="3" />
-      </svg>
-    ),
-    host: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-      </svg>
-    ),
-    venue: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M3 21h18M5 21V7l8-4 8 4v14M9 9v.01M13 9v.01M17 9v.01M9 13v.01M13 13v.01M17 13v.01M9 17v.01M13 17v.01M17 17v.01" />
-      </svg>
-    ),
-  };
-  const variantClass =
-    current === 'host' ? styles.formTypeLabelHost
-    : current === 'venue' ? styles.formTypeLabelVenue
-    : '';
-  // Venue accounts are hidden at launch — not offered in the switcher. To
-  // bring them back, drop 'venue' from HIDDEN_TYPES below (and re-add the Venue
-  // button in TypeSelect). Everything else for venue signup is still wired up.
-  const HIDDEN_TYPES: ReadonlyArray<'dj' | 'host' | 'venue'> = ['venue'];
-  const others = (['dj', 'host', 'venue'] as const).filter(
-    (t) => t !== current && !HIDDEN_TYPES.includes(t),
-  );
-
-  return (
-    <div ref={wrapRef} className={styles.typeBadgeWrap}>
-      <button
-        type="button"
-        className={`${styles.formTypeLabel} ${variantClass} ${styles.typeBadgeBtn}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        {icons[current]}
-        {labels[current]}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={styles.typeBadgeChev} aria-hidden="true">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      {open && (
-        <div className={styles.typeBadgeMenu} role="listbox">
-          {others.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={styles.typeBadgeOption}
-              onClick={() => { setOpen(false); onSwitch(t); }}
-            >
-              {icons[t]}
-              <span>{labels[t]}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// The signup flow WITHOUT the page's own chrome — just the account-type
-// chooser and the three role forms. Extracted so the header's AuthModal can
-// show the EXACT same signup, chooser and all, in a popup, rather than a
-// second copy that drifts. The /signup page renders this inside its logo /
-// tabs / links; the modal renders it bare.
-//
-// onDone — modal only. The host path ends signed in; with onDone set,
-// HostCodeSignup closes the popup instead of navigating. DJ and Venue still
-// finish on the inline "check your email" success screen, page or modal alike.
-//
-// onScreenChange — lets the page hide its tabs and divider on the success
-// screen, which it did back when it owned this state.
-export function SignupFlow({
-  onDone,
-  onScreenChange,
-}: {
-  onDone?: () => void;
-  onScreenChange?: (screen: Screen) => void;
-}) {
-  // Start with NO screen resolved. The mount effect below reads the URL and
-  // picks the screen synchronously on first mount. Rendering nothing until then
-  // means a deep link (e.g. a homepage pricing card → ?type=dj) opens straight
-  // on the DJ form, instead of flashing the DJ/Host chooser for a frame while
-  // the effect runs. The chooser only ever shows when it's the real
-  // destination. On the server this renders empty too, so the prerendered HTML
-  // never contains the chooser.
-  const [screen, setScreen] = useState<Screen | null>(null);
-  const [success, setSuccess] = useState<SuccessInfo | null>(null);
-  // URL-param state (read once on mount; SSR-safe because we're in 'use client').
-  const [prefillEmail, setPrefillEmail] = useState<string>('');
-  const [lockedEmail, setLockedEmail] = useState<boolean>(false);
-  // DJ type preselected from a landing deep link (?type=dj&dj=mobile|club).
-  const [initialDjType, setInitialDjType] = useState<DjType | null>(null);
-  // Plan + billing interval preselected from a homepage pricing card
-  // (?type=dj&plan=1..4&interval=monthly|yearly).
-  const [initialPlan, setInitialPlan] = useState<number>(0);
-  const [initialBilling, setInitialBilling] = useState<'monthly' | 'yearly'>('monthly');
-
-  // Mirror the screen up so the page can hide/show its chrome. Skip the initial
-  // null (nothing resolved yet) so the page doesn't react to a non-screen.
-  useEffect(() => { if (screen) onScreenChange?.(screen); }, [screen, onScreenChange]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const email = params.get('email') || '';
-    const claimBookingId = params.get('claim_booking') || '';
-    // Landing "Sign up as a Mobile/Club DJ" deep links.
-    const acctType = params.get('type') || '';
-    const djPre = params.get('dj') || '';
-    if (email) setPrefillEmail(email);
-    // If we have a claim_booking, this is the host-invite flow:
-    //   - Auto-route to the host form (skip the type chooser).
-    //   - Lock the email field so the host can't accidentally use a
-    //     different address than the one the booking is keyed against.
-    //   - Stash the booking id so the post-verify hook can claim it.
-    if (claimBookingId) {
-      setLockedEmail(true);
-      setScreen('host');
-      try {
-        window.localStorage.setItem(PENDING_BOOKING_CLAIM_KEY, claimBookingId);
-      } catch {
-        // localStorage unavailable (private mode etc.) — fall back to losing
-        // the claim. The DJ can resend the email if needed.
-      }
-    } else if (acctType === 'dj') {
-      // Deep link from the marketing homepage's flow cards: skip the type
-      // chooser, land on the DJ form, and preselect the DJ type when given.
-      if (djPre === 'mobile' || djPre === 'club') setInitialDjType(djPre);
-      // A pricing card also carries the plan + interval it was clicked on so
-      // the DJ form opens with that plan (and toggle) already chosen.
-      const planNum = parseInt(params.get('plan') || '', 10);
-      if (planNum >= 1 && planNum <= 4) setInitialPlan(planNum);
-      const intv = params.get('interval');
-      if (intv === 'monthly' || intv === 'yearly') setInitialBilling(intv);
-      setScreen('dj');
-    } else {
-      // Booking-flow signup: when the user arrived from BookingLoginGate
-      // (?redirect=/<slug>?date=YYYY-MM-DD&book=1), the intent is obvious —
-      // they're trying to book a DJ, so they're a host. Skip the choice
-      // screen and drop them straight on the host form.
-      const intent = parseBookingIntent();
-      if (intent.bookingDjSlug && intent.bookingDate) {
-        setScreen('host');
-      } else {
-        // No deep link — the normal signup: show the account-type chooser.
-        setScreen('type-select');
-      }
-    }
-  }, []);
-
-  return (
-    <>
-      {screen === 'type-select' && <TypeSelect onSelect={setScreen} />}
-      {screen === 'dj' && (
-        <DjForm
-          onBack={() => setScreen('type-select')}
-          onSwitchType={(t) => setScreen(t)}
-          onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
-          initialDjType={initialDjType}
-          initialPlan={initialPlan}
-          initialBilling={initialBilling}
-        />
-      )}
-      {/* Host signup ends signed in. On the page it navigates; in the modal
-          onDone closes the popup instead (threaded down to HostCodeSignup). */}
-      {screen === 'host' && (
-        <HostForm
-          onBack={() => setScreen('type-select')}
-          onSwitchType={(t) => setScreen(t)}
-          prefillEmail={prefillEmail}
-          lockedEmail={lockedEmail}
-          onDone={onDone}
-        />
-      )}
-      {screen === 'venue' && (
-        <VenueForm
-          onBack={() => setScreen('type-select')}
-          onSwitchType={(t) => setScreen(t)}
-          onSuccess={(info) => { setSuccess(info); setScreen('success'); }}
-        />
-      )}
-      {screen === 'success' && success && <SuccessScreen info={success} />}
-    </>
-  );
-}
-
-// The full signup page body — logo, tabs, the flow, and the footer links.
-// This lives here (a normal module, not page.tsx) so it can sit beside
-// SignupFlow, which the header modal also imports. page.tsx is now a one-line
-// wrapper that renders this. It could NOT stay in page.tsx: Next.js 15 rejects
-// any named export from a page file except its own reserved config fields, and
-// SignupFlow had to be a named export for the modal to reach it.
-export function SignupPageBody() {
-  // A mirror of SignupFlow's screen, used ONLY to hide the tabs and divider on
-  // the success screen — exactly what this component did when it owned the
-  // state. SignupFlow is authoritative; this just follows it.
-  const [screen, setScreen] = useState<Screen>('type-select');
-
-  return (
-    <div className={styles.body}>
-      <div className={styles.container}>
-        <div className={styles.closeRow}>
-          <Link href="/" className={styles.closeX} aria-label="Close and return home">✕</Link>
-        </div>
-        <div className={styles.logo}>
-          <Link href="/">
-            <h1>GLOBAL DJ CONNECT</h1>
-          </Link>
-          <p className={styles.tagline}>Directory &amp; Booking</p>
-        </div>
-
-        {screen !== 'success' && (
-          <div className={styles.tabs}>
-            <Link href="/login" className={styles.tab}>Login</Link>
-            <button className={`${styles.tab} ${styles.active}`} type="button">Sign Up</button>
-          </div>
-        )}
-
-        <SignupFlow onScreenChange={setScreen} />
-
-        {screen !== 'success' && (
-          <>
-            <div className={styles.divider}>
-              Already have an account? <Link href="/login">Log in</Link>
-            </div>
-            <div className={styles.contactLink}>
-              <Link href="/contact">Contact Us</Link>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// TYPE SELECT SCREEN
-// ──────────────────────────────────────────────────────────────────────────
-
-function TypeSelect({ onSelect }: { onSelect: (s: Screen) => void }) {
-  return (
-    <>
-      <div className={styles.acctTypeQuestion}>What kind of account?</div>
-      <div className={styles.acctTypeList}>
-        <button
-          type="button"
-          className={styles.acctTypeBtn}
-          onClick={() => onSelect('dj')}
-        >
-          <div className={styles.acctTypeIcon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18V5l12-2v13" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="18" cy="16" r="3" />
-            </svg>
-          </div>
-          <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>DJ <span className={styles.acctTypeFree}>FREE</span></div>
-            <div className={styles.acctTypeDesc}>Get listed in the directory &amp; accept bookings</div>
-          </div>
-          <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          className={styles.acctTypeBtn}
-          onClick={() => onSelect('host')}
-        >
-          <div className={styles.acctTypeIcon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </div>
-          <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>Party / Event Host <span className={styles.acctTypeFree}>FREE</span></div>
-            <div className={styles.acctTypeDesc}>Find &amp; book DJs for your events</div>
-          </div>
-          <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </button>
-
-        {/* Venue account — HIDDEN AT LAUNCH. Venues aren't onboarding yet, so
-            the option is removed from the chooser (and from the TypeBadge
-            switcher above). The VenueForm and 'venue' routing below are left
-            intact; restore this button and drop 'venue' from HIDDEN_TYPES to
-            turn it back on.
-
-        <button
-          type="button"
-          className={styles.acctTypeBtn}
-          onClick={() => onSelect('venue')}
-        >
-          <div className={styles.acctTypeIcon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-          </div>
-          <div className={styles.acctTypeInfo}>
-            <div className={styles.acctTypeName}>Venue <span className={styles.acctTypeFree}>FREE</span></div>
-            <div className={styles.acctTypeDesc}>Add your venue, list opening spots, &amp; book DJs</div>
-          </div>
-          <svg className={styles.acctTypeArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </button>
-        */}
-      </div>
-    </>
-  );
-}
-
-// The terms/privacy consent, required before any account is created. Same
-// markup on every signup form so the agreement reads identically wherever the
-// account is made. Links open in a new tab so a half-filled form isn't lost.
-export function ConsentCheckbox({
-  id, checked, onChange,
-}: {
-  id: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      style={{
-        display: 'flex', alignItems: 'flex-start', gap: '.55rem',
-        margin: '0 0 1rem', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem',
-        lineHeight: 1.5, cursor: 'pointer',
-      }}
-    >
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{ marginTop: '.15rem', flex: '0 0 auto', cursor: 'pointer' }}
-      />
-      <span>
-        I agree to the{' '}
-        <Link href="/terms" target="_blank" style={{ color: 'var(--neon,#00e0a4)' }}>Terms &amp; Conditions</Link>
-        {' '}and{' '}
-        <Link href="/privacy" target="_blank" style={{ color: 'var(--neon,#00e0a4)' }}>Privacy Policy</Link>.
-      </span>
-    </label>
-  );
-}
-
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button type="button" className={styles.formBack} onClick={onClick}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M19 12H5M12 19l-7-7 7-7" />
-      </svg>
-      Back
-    </button>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Helper: trigger token-based verification email after a successful signUp.
-// Calls our /api/signup-send-verification route which generates a token,
-// stores it in email_verification_tokens, and emails the user a link.
-// ──────────────────────────────────────────────────────────────────────────
-// Parses a booking intent out of the ?redirect= param, if present.
-// BookingLoginGate sends users to signup with
-//   ?redirect=/<slug>?date=YYYY-MM-DD&book=1
-// We pull the slug + date so the confirmation email can include a
-// "Continue your booking" link. Returns nulls when there's no booking
-// redirect (normal signups).
-function parseBookingIntent(): { bookingDjSlug: string | null; bookingDate: string | null } {
-  if (typeof window === 'undefined') return { bookingDjSlug: null, bookingDate: null };
+  let body: SendVerificationBody;
   try {
-    const redirect = new URLSearchParams(window.location.search).get('redirect');
-    if (!redirect) return { bookingDjSlug: null, bookingDate: null };
-    // redirect looks like "/<slug>?date=YYYY-MM-DD&book=1" (possibly encoded)
-    const decoded = decodeURIComponent(redirect);
-    const qIndex = decoded.indexOf('?');
-    if (qIndex === -1) return { bookingDjSlug: null, bookingDate: null };
-    const path = decoded.slice(0, qIndex);
-    const query = new URLSearchParams(decoded.slice(qIndex + 1));
-    const date = query.get('date');
-    const slug = path.replace(/^\//, '').split('/')[0] || null;
-    const validDate = !!date && /^\d{4}-\d{2}-\d{2}$/.test(date);
-    if (!slug || !validDate) return { bookingDjSlug: null, bookingDate: null };
-    return { bookingDjSlug: slug, bookingDate: date };
+    body = await request.json();
   } catch {
-    return { bookingDjSlug: null, bookingDate: null };
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
-}
 
-async function triggerSignupVerification(
-  userId: string,
-  email: string,
-  role: AccountType,
-  slug: string | null,
-  // When the signup is heading straight to a PAID checkout, don't auto-grant
-  // the live free-month sale comp — the DJ is paying for a plan, so a free
-  // trial shouldn't stack on top (and a Pro-tier free sale must not leak a free
-  // month onto a Premium Pro purchase). Server only ever uses this to SKIP the
-  // grant, never to enable one, so it's safe to take from the client.
-  skipFreeGrant = false,
-) {
-  const { bookingDjSlug, bookingDate } = parseBookingIntent();
-  const payload = JSON.stringify({ user_id: userId, email, role, slug, bookingDjSlug, bookingDate, skipFreeGrant });
+  const { email, role } = body;
+  let { user_id } = body;
+  // A user_id in the body means this is a FRESH signup (the browser just created
+  // the account); the resend case omits it. Only a fresh DJ signup is eligible
+  // for a site-wide FREE sale comp.
+  const freshSignup = !!body.user_id;
+  // A paid-checkout signup opts out of the free-month sale comp (see body doc).
+  const skipFreeGrant = body.skipFreeGrant === true;
+  if (!email) {
+    return NextResponse.json({ error: 'email is required' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  // If user_id wasn't provided (resend case), look it up by email
+  if (!user_id) {
+    try {
+      // Supabase admin.listUsers can paginate; we use email filter via the
+      // dedicated method when available, otherwise fall back to a small list.
+      const { data, error } = await admin.auth.admin.listUsers({
+        page: 1,
+        perPage: 200,
+      });
+      if (error) throw error;
+      const match = data?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (!match) {
+        return NextResponse.json(
+          { error: 'No account found for that email' },
+          { status: 404 }
+        );
+      }
+      user_id = match.id;
+    } catch (e) {
+      console.error('[signup-send-verification] user lookup failed', e);
+      return NextResponse.json(
+        { error: 'Could not look up the user. Please try again.' },
+        { status: 500 }
+      );
+    }
+  }
+
+  // Generate token + insert into email_verification_tokens
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + TOKEN_TTL_HOURS * 60 * 60 * 1000).toISOString();
+
+  // Booking intent (slug + valid date) → a relative redirect path stored
+  // on the token row. The verify route reads it after a successful confirm
+  // to send the dedicated "continue your booking" follow-up email.
+  // SECURITY: validate the date format AND that the slug maps to a real DJ
+  // before storing it, so a crafted signup can't get a link to a junk or
+  // arbitrary slug placed inside an email sent from our domain. The slug is
+  // also URL-encoded so it can't break out of the same-origin path.
+  const { bookingDjSlug, bookingDate } = body;
+  const validDate = !!bookingDate && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate);
+  const validSlug = !!bookingDjSlug && /^[a-zA-Z0-9_-]{1,64}$/.test(bookingDjSlug);
+  let slugExists = false;
+  if (validSlug && validDate) {
+    try {
+      const { data: djRow } = await admin
+        .from('users')
+        .select('id')
+        .eq('slug', bookingDjSlug)
+        .eq('role', 'dj')
+        .maybeSingle<{ id: string }>();
+      slugExists = !!djRow;
+    } catch {
+      slugExists = false;
+    }
+  }
+  const bookingRedirectPath = (slugExists && validSlug && validDate)
+    ? `/${encodeURIComponent(bookingDjSlug!)}?date=${encodeURIComponent(bookingDate!)}&book=1`
+    : null;
+
   try {
-    // Prefer sendBeacon: the browser dispatches it IMMEDIATELY and guarantees
-    // delivery even if the page navigates right after (a paid-plan signup jumps
-    // to /subscribe for checkout). A plain fetch gets aborted by that navigation,
-    // which is why the email was only arriving later. Same-origin JSON, so no
-    // CORS preflight. Falls back to a keepalive fetch where sendBeacon is absent.
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([payload], { type: 'application/json' });
-      if (navigator.sendBeacon('/api/signup-send-verification', blob)) return;
-    }
-    const res = await fetch('/api/signup-send-verification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-      keepalive: true,
-    });
-    if (!res.ok) {
-      console.warn('[signup] verification email request failed:', res.status);
-    }
+    const { error } = await admin
+      .from('email_verification_tokens')
+      .insert({
+        token,
+        user_id,
+        email,
+        expires_at: expiresAt,
+        booking_redirect: bookingRedirectPath,
+      } as unknown as never);
+    if (error) throw error;
   } catch (e) {
-    console.warn('[signup] verification email exception:', e);
+    console.error('[signup-send-verification] token insert failed', e);
+    return NextResponse.json(
+      { error: 'Could not create verification token' },
+      { status: 502 }
+    );
   }
-}
 
-// ──────────────────────────────────────────────────────────────────────────
-// DJ FORM
-// ──────────────────────────────────────────────────────────────────────────
-
-function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 0, initialBilling = 'monthly' }: {
-  onBack: () => void;
-  onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
-  onSuccess: (info: SuccessInfo) => void;
-  // Preselected DJ type from a landing deep link; null when arriving normally.
-  initialDjType?: DjType | null;
-  // Preselected plan + billing interval from a homepage pricing card.
-  initialPlan?: number;
-  initialBilling?: 'monthly' | 'yearly';
-}) {
-  const supabase = createClient();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [djType, setDjType] = useState<DjType | null>(initialDjType ?? null);
-  const [name, setName] = useState('');
-  // The slug shown in the URL input. Auto-derived from `name` until the user
-  // either edits it directly or picks an alternative.
-  const [slug, setSlug] = useState('');
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
-  const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle');
-
-  const [country, setCountry] = useState('United States');
-  const [zip, setZip] = useState('');
-  const [city, setCity] = useState('');
-  const [stateRegion, setStateRegion] = useState('');
-  const [travel, setTravel] = useState('');
-  // Plan choice (default Free, or the plan clicked on a homepage pricing card),
-  // billing interval, + optional promo code.
-  const [plan, setPlan] = useState(initialPlan);
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>(initialBilling);
-  const [promoOpen, setPromoOpen] = useState(false);
-  const [promoCode, setPromoCode] = useState('');
-  // Live preview of an entered code (comp or discount) so the price updates.
-  const [promoInfo, setPromoInfo] = useState<
-    { type: 'comp' | 'discount'; percentOff?: number; appliesTo?: 'monthly' | 'yearly' | 'both'; months?: number; tier?: number; tierLabel?: string; description?: string } | null
-  >(null);
-  async function previewPromo() {
-    const c = promoCode.trim().toUpperCase();
-    if (!c) { setPromoInfo(null); return; }
+  // SITE-WIDE FREE SALE: if a free (comp) sale is live and this is a fresh DJ
+  // signup with no comp yet, grant the free access here (server-side — the
+  // client can't be trusted to set comp_tier). Best-effort; a failure never
+  // blocks the verification email.
+  if (freshSignup && role === 'dj' && user_id && !skipFreeGrant) {
     try {
-      const res = await fetch('/api/promo-preview', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: c }),
-      });
-      const d = await res.json();
-      setPromoInfo(d.ok ? d : null);
-    } catch { setPromoInfo(null); }
+      const free = await getLiveFreeSale(admin);
+      if (free && free.grant_tier && free.grant_months) {
+        const { data: prof } = await admin
+          .from('users')
+          .select('role, created_at, comp_source, comp_expires_at')
+          .eq('id', user_id)
+          .maybeSingle<{ role: string | null; created_at: string | null; comp_source: string | null; comp_expires_at: string | null }>();
+        // Gate on the DATABASE, not the request body: this route is
+        // unauthenticated and the "resend verification" button also sends a
+        // user_id, so a body flag alone would let an existing DJ (or an attacker
+        // POSTing any DJ's id) claim/renew the comp. Only a genuinely brand-new
+        // account (created seconds ago) that has NEVER been sale-comped qualifies.
+        const createdMs = prof?.created_at ? new Date(prof.created_at).getTime() : 0;
+        const isBrandNew = createdMs > 0 && Date.now() - createdMs < 15 * 60 * 1000; // 15 min
+        const neverSaleComped = prof?.comp_source !== 'sale';
+        const hasComp = !!prof?.comp_expires_at && new Date(prof.comp_expires_at).getTime() > Date.now();
+        if (prof?.role === 'dj' && isBrandNew && neverSaleComped && !hasComp) {
+          const end = new Date();
+          end.setUTCMonth(end.getUTCMonth() + free.grant_months);
+          const { error: grantErr } = await admin
+            .from('users')
+            .update({
+              comp_tier: free.grant_tier,
+              comp_expires_at: end.toISOString(),
+              comp_source: 'sale',
+            } as unknown as never)
+            .eq('id', user_id);
+          // Only record the redemption if the grant actually landed — otherwise
+          // we'd log a "used" row for access the DJ never got. Recording lets the
+          // admin "who used this sale" list work for FREE sales too (these grant
+          // here, not via Stripe checkout). Idempotent via the table's unique
+          // (code_type, code_id, user_id).
+          if (!grantErr) {
+            try {
+              const { error: redErr } = await (admin as unknown as { from: (t: string) => { upsert: (v: unknown, o: unknown) => Promise<{ error: { message?: string } | null }> } })
+                .from('code_redemptions')
+                .upsert(
+                  { code_type: 'sale', code_id: free.id, user_id },
+                  { onConflict: 'code_type,code_id,user_id', ignoreDuplicates: true },
+                );
+              if (redErr) console.warn('[signup-send-verification] redemption record failed', redErr.message);
+            } catch { /* best-effort; never block signup */ }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[signup-send-verification] free-sale grant failed', e);
+    }
   }
-  // Live site-wide sales (no code needed). The price line below folds these in
-  // so a running sale — e.g. "first month free" — shows on signup exactly like
-  // it does on the homepage and /subscribe. percentSales discount the price;
-  // a free sale gives the granted plan its first month(s) free.
-  const [salePercents, setSalePercents] = useState<{ percentOff: number; appliesTo: 'monthly' | 'yearly' | 'both' }[]>([]);
-  const [saleFree, setSaleFree] = useState<{ tier: number; tierLabel: string; months: number } | null>(null);
-  useEffect(() => {
-    fetch('/api/site-sale')
-      .then((r) => r.json())
-      .then((d) => {
-        setSalePercents(Array.isArray(d.percentSales) ? d.percentSales : []);
-        setSaleFree(d.freeSale ?? null);
+
+  // Build the verify URL using the same origin we received the request on,
+  // so verification works on staging (gdc-next-staging.netlify.app) AND
+  // production (globaldjconnect.com) without env-var juggling.
+  const requestUrl = new URL(request.url);
+  const requestOrigin = requestUrl.origin;
+  // Verify URL MUST use the request origin so the token lookup happens on
+  // the same deployment that issued it (a token from staging won't exist
+  // in prod's DB and vice versa).
+  const verifyUrl = `${requestOrigin}/api/verify-email?token=${encodeURIComponent(token)}`;
+  // Outbound user-facing links (e.g. "Continue booking" in the email) use
+  // the canonical site origin when configured, so production emails never
+  // leak a staging hostname into the inbox. Falls back to request origin
+  // when NEXT_PUBLIC_SITE_URL isn't set (e.g. local dev).
+  const publicOrigin = (process.env.NEXT_PUBLIC_SITE_URL || requestOrigin).replace(/\/$/, '');
+  const roleDisplay = role === 'dj' ? 'DJ' : (role === 'venue' ? 'Venue' : 'Host');
+
+  // Full "Continue booking" URL for the confirmation email (Stage 1).
+  // Built from the same booking intent stored on the token above; this
+  // is a SEPARATE link from Verify — it doesn't change the Verify button.
+  const bookingUrl = bookingRedirectPath ? `${publicOrigin}${bookingRedirectPath}` : null;
+  const niceDate = validDate
+    ? new Date(`${bookingDate}T12:00:00`).toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
       })
-      .catch(() => {});
-  }, []);
-  // Must accept the Terms & Privacy Policy before an account can be created.
-  const [agreed, setAgreed] = useState(false);
-  // Consent notice shown UNDER the checkbox at the bottom, not in the top error slot.
-  const [consentError, setConsentError] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+    : '';
+  // Step labels only make sense when there are TWO steps to walk through
+  // (verify + then continue booking). For a normal signup with no booking
+  // intent, the email has just one button — no "Step 1" label needed.
+  const verifyStepLabel = bookingUrl ? '<span class="step">Step 1</span>' : '';
+  const bookingBlock = bookingUrl
+    ? `<p style="margin-top:28px;">Once your email is verified, continue the booking you started:</p>
+       <p style="text-align:center;"><span class="step">Step 2</span><a href="${bookingUrl}" class="btn btn2" style="color:#000000;">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
+    : '';
 
-  // Sync slug from name unless the user has manually edited it
-  function handleNameChange(newName: string) {
-    setName(newName);
-    if (!slugManuallyEdited) {
-      const derived = makeSlug(newName);
-      setSlug(derived);
-    }
-  }
-  function handleSlugChange(newSlug: string) {
-    setSlugManuallyEdited(true);
-    setSlug(newSlug);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!djType) {
-      setError('Please select your DJ type');
-      return;
-    }
-    if (!travel) {
-      setError("Please select how far you're willing to travel");
-      return;
-    }
-    if (!name.trim() || !email.trim() || !password) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (!zip.trim()) {
-      setError('Please enter your ZIP / postal code.');
-      return;
-    }
-    if (!slug) {
-      setError('Please enter a name so we can create your profile URL.');
-      return;
-    }
-    if (slugStatus === 'taken') {
-      setError('That URL is taken. Please pick an available alternative.');
-      return;
-    }
-    if (slugStatus === 'checking') {
-      setError('Still checking URL availability — please wait a moment.');
-      return;
-    }
-    if (!agreed) {
-      setConsentError(true);
-      return;
-    }
-    setConsentError(false);
-
-    setSubmitting(true);
-    try {
-      const emailLower = email.toLowerCase().trim();
-      const travelVal = travel === 'worldwide' ? 'worldwide' : (parseInt(travel, 10) || null);
-
-      // Cross-account guard. A host who signed up by PHONE has no email identity
-      // in Supabase auth, so auth.signUp below won't see a conflict — but their
-      // email lives on their profile (contact_email). Without this check they'd
-      // get a SECOND account on an email that already belongs to someone. The
-      // lookup-identifier route checks auth AND the profile email, so it catches
-      // exactly that case. Network/route failure falls through to signUp, which
-      // still runs Supabase's own duplicate check.
-      try {
-        const chk = await fetch('/api/auth/lookup-identifier', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: emailLower }),
-        });
-        if (chk.ok) {
-          const info = (await chk.json().catch(() => ({}))) as { found?: boolean };
-          if (info?.found) {
-            throw new Error('An account with this email already exists. Please log in instead.');
-          }
-        }
-      } catch (dupe) {
-        if (dupe instanceof Error && /already exists/i.test(dupe.message)) throw dupe;
-      }
-
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: emailLower,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/account-settings?emailverified=1`,
-          data: {
-            role: 'dj',
-            name,
-            slug,
-            dj_type: djType,
-            country,
-            city,
-            state: stateRegion,
-            travel_distance: travel,
-            zip,
-          },
-        },
-      });
-
-      if (signUpError) {
-        if (/already registered|already been registered|User already/i.test(signUpError.message)) {
-          throw new Error('An account with this email already exists. Please log in instead.');
-        }
-        if (/duplicate key.*slug/i.test(signUpError.message)) {
-          throw new Error('That URL was just taken. Please pick another.');
-        }
-        throw signUpError;
-      }
-      if (signUpData?.user?.identities && signUpData.user.identities.length === 0) {
-        throw new Error('An account with this email already exists. Please log in instead.');
-      }
-
-      if (signUpData?.user?.id) {
-        await supabase.from('users').upsert({
-          id: signUpData.user.id,
-          role: 'dj',
-          name,
-          slug,
-          dj_type: djType,
-          country,
-          city,
-          state: stateRegion,
-          travel_distance: travelVal,
-          zip,
-          email_verified: false,
-          signup_method: 'email',
-          // Mobile DJs default to ALL 12 party types selected so they're
-          // bookable for every event type out of the gate. Persisted to the
-          // DB (not just a UI default) so the public booking form's event-type
-          // dropdown is populated immediately. Club DJs get none (genres are
-          // opt-in). Order matches the editor default in UpdateDjProfileClient.
-          event_types: djType === 'mobile'
-            ? 'weddings,corporate,birthday,anniversary,graduation,sweet16,quinceanera,mitzvah,reunion,holiday,school,community,other'
-            : null,
-        } as unknown as never, { onConflict: 'id' });
-      }
-
-      // Decide the post-signup route FIRST so we can tell the verification/grant
-      // endpoint whether this is a paid checkout.
-      // freeCovers: a live FREE sale covers the plan they picked (its granted
-      // tier is that plan or better) → their first month is free, no card, and
-      // they land on the success screen (the server grants the comp).
-      const freeCovers = !!saleFree && plan > 0 && saleFree.tier >= plan;
-      const codeVal = promoCode.trim().toUpperCase();
-      // goingToPaidCheckout: a paid plan (not free-covered) or a discount code →
-      // they head to /subscribe to pay. In that case DON'T grant the free-month
-      // comp (no stacking; a Pro-tier free sale must not free-month a Premium
-      // Pro purchase).
-      const goingToPaidCheckout = !freeCovers && (plan > 0 || !!codeVal);
-
-      if (signUpData?.user?.id) {
-        // Fire-and-forget the verification email (sendBeacon → immediate, and
-        // it also carries skipFreeGrant so a paid signup doesn't get the free
-        // comp). We don't block on it so the user gets instant feedback.
-        triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug, goingToPaidCheckout);
-      }
-
-      if (goingToPaidCheckout) {
-        const q = new URLSearchParams();
-        if (plan > 0) { q.set('plan', String(plan)); q.set('interval', billing); }
-        if (codeVal) q.set('code', codeVal);
-        window.location.href = `/subscribe?${q.toString()}`;
-        return;
-      }
-
-      onSuccess({ email: emailLower, role: 'dj', slug, userId: signUpData?.user?.id ?? null });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Signup failed';
-      setError(msg);
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <BackButton onClick={onBack} />
-      <TypeBadge current="dj" onSwitch={onSwitchType} />
-
-      {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
-      {consentError && !agreed && (
-        <div className={`${styles.alert} ${styles.alertError}`}>
-          Please accept the Terms &amp; Conditions and Privacy Policy to continue.
-        </div>
-      )}
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-email">Email Address</label>
-        <input
-          id="dj-email"
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-        />
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{margin:0;padding:0;background:#050507;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f0f0f8;}
+    .wrap{max-width:560px;margin:0 auto;padding:40px 24px;}
+    .card{background:#13131e;border:1px solid #1e1e30;border-radius:12px;padding:40px 32px;}
+    h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.05em;color:#00f5c4;margin:0 0 16px;}
+    p{font-size:15px;line-height:1.6;color:#c4c4d4;margin:0 0 16px;}
+    .btn{display:inline-block;background:#00f5c4;color:#000000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
+    .btn2{background:#ffffff;color:#000000;border:1px solid #ffffff;}
+    .step{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#ffffff;text-transform:uppercase;margin:18px 0 6px;text-align:left;}
+    .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
+    .logo{text-align:center;margin-bottom:24px;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;}
+  </style></head><body>
+    <div class="wrap">
+      <div class="logo">GLOBAL DJ CONNECT</div>
+      <div class="card">
+        <h1>Confirm Your Email</h1>
+        <p>Welcome to Global DJ Connect! You've been signed up as a ${roleDisplay}.</p>
+        <p>Click the button below to verify your email and unlock messaging, booking, and all features:</p>
+        <p style="text-align:center;">${verifyStepLabel}<a href="${verifyUrl}" class="btn" style="color:#000000;">Verify Email</a></p>
+        <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${verifyUrl}</span></p>
+        ${bookingBlock}
+        <p style="font-size:13px;color:#8a8a9e;margin-top:24px;">This link expires in ${TOKEN_TTL_HOURS} hours. If you didn't sign up, you can safely ignore this email.</p>
       </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-password">Password</label>
-        <input
-          id="dj-password"
-          type="password"
-          placeholder="Minimum 8 characters"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="new-password"
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label>Type</label>
-        <div className={styles.typeBtnGroup}>
-          <button
-            type="button"
-            className={`${styles.typeBtn} ${djType === 'mobile' ? styles.typeBtnSelected : ''}`}
-            onClick={() => setDjType('mobile')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18V5l12-2v13" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="18" cy="16" r="3" />
-            </svg>
-            Mobile DJ
-          </button>
-          <button
-            type="button"
-            className={`${styles.typeBtn} ${djType === 'club' ? styles.typeBtnSelected : ''}`}
-            onClick={() => setDjType('club')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-            Club / Bar DJ
-          </button>
-        </div>
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-name">
-          {djType === 'mobile' ? 'Company Name' : djType === 'club' ? 'DJ Name' : 'DJ / Company Name'}
-        </label>
-        <input
-          id="dj-name"
-          type="text"
-          placeholder={
-            djType === 'mobile' ? 'Premier Events LLC' :
-            djType === 'club' ? 'DJ Nova' :
-            'DJ Nova or Premier Events LLC'
-          }
-          value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          required
-        />
-        {/* Profile URL only appears once they've started typing a name — no
-            point showing a URL builder before there's anything to slugify. */}
-        {name.trim() !== '' && (
-          <SlugInput
-            value={slug}
-            onChange={handleSlugChange}
-            onStatusChange={setSlugStatus}
-            generateAlternatives={generateDjAlternatives}
-            placeholder="your-url"
-          />
-        )}
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-country">Country</label>
-        <select
-          id="dj-country"
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          required
-        >
-          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-        </select>
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-zip">Zip / Postal Code</label>
-        <ZipLookup
-          inputId="dj-zip"
-          zip={zip}
-          country={country}
-          onZipChange={setZip}
-          onLocationResolved={(c, s) => { setCity(c); setStateRegion(s); }}
-          required
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-travel">Distance Willing to Travel</label>
-        <select
-          id="dj-travel"
-          value={travel}
-          onChange={(e) => setTravel(e.target.value)}
-          required
-        >
-          <option value="">Select distance...</option>
-          {TRAVEL_DISTANCES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="dj-plan">Plan</label>
-        <select id="dj-plan" value={plan} onChange={(e) => setPlan(Number(e.target.value))}>
-          {PLAN_VALUES.map(v => (
-            <option key={v} value={v}>{planOptionLabel(v)}</option>
-          ))}
-        </select>
-        {plan > 0 && (
-          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
-            <button
-              type="button"
-              onClick={() => setBilling('monthly')}
-              style={{ flex: 1, padding: '.55rem', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: '.85rem',
-                border: billing === 'monthly' ? '1px solid var(--neon,#00e0a4)' : '1px solid rgba(255,255,255,.16)',
-                background: billing === 'monthly' ? 'rgba(0,224,164,.1)' : 'transparent',
-                color: billing === 'monthly' ? 'var(--neon,#00e0a4)' : '#c4c4d4' }}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setBilling('yearly')}
-              style={{ flex: 1, padding: '.55rem', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: '.85rem',
-                border: billing === 'yearly' ? '1px solid var(--neon,#00e0a4)' : '1px solid rgba(255,255,255,.16)',
-                background: billing === 'yearly' ? 'rgba(0,224,164,.1)' : 'transparent',
-                color: billing === 'yearly' ? 'var(--neon,#00e0a4)' : '#c4c4d4' }}
-            >
-              Yearly
-            </button>
-          </div>
-        )}
-        {plan > 0 && (() => {
-          const dsel = TIERS[plan as 1 | 2 | 3 | 4];
-          const base = billing === 'monthly' ? dsel.monthlyPrice : dsel.yearlyPrice;
-          const per = billing === 'monthly' ? '/mo' : '/yr';
-          const strike: React.CSSProperties = { textDecoration: 'line-through', opacity: .5, marginRight: 6, fontWeight: 400 };
-
-          // Free-months offer: a typed comp code, OR a live site-wide FREE sale
-          // whose granted plan is the one selected. A typed code wins if present.
-          let freeTier: number | null = null;
-          let freeLabel = '';
-          let freeMonths = 0;
-          if (promoInfo?.type === 'comp') {
-            freeTier = promoInfo.tier ?? plan;
-            freeLabel = promoInfo.tierLabel ?? TIERS[freeTier as 1 | 2 | 3 | 4].label;
-            freeMonths = promoInfo.months ?? 0;
-          } else if (saleFree && saleFree.tier === plan) {
-            freeTier = saleFree.tier;
-            freeLabel = saleFree.tierLabel;
-            freeMonths = saleFree.months;
-          }
-
-          // Percent-off: the bigger of a typed discount code (matching interval)
-          // and any live percent sale (matching interval).
-          let pct = 0;
-          if (promoInfo?.type === 'discount' && promoInfo.percentOff && (promoInfo.appliesTo === 'both' || promoInfo.appliesTo === billing)) {
-            pct = promoInfo.percentOff;
-          }
-          for (const s of salePercents) {
-            if ((s.appliesTo === 'both' || s.appliesTo === billing) && s.percentOff > pct) pct = s.percentOff;
-          }
-
-          let node: React.ReactNode;
-          if (freeTier != null && freeMonths > 0) {
-            // A comp — free access, no card, and it does NOT auto-bill after.
-            // So don't show a "then $X" price; that would imply billing kicks in.
-            node = (
-              <span style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
-                {freeMonths} month{freeMonths === 1 ? '' : 's'} of {freeLabel} plan FREE
-                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>no card required</span>
-              </span>
-            );
-          } else if (pct > 0) {
-            const disc = base * (1 - pct / 100);
-            node = (
-              <span style={{ fontWeight: 700 }}>
-                <span style={strike}>${base.toFixed(2)}</span>
-                <span style={{ color: 'var(--neon,#00e0a4)' }}>${disc.toFixed(2)}{per}</span>
-                <span style={{ color: '#8a8a9e', fontWeight: 400, marginLeft: 6 }}>({pct}% off)</span>
-              </span>
-            );
-          } else {
-            node = <span style={{ fontWeight: 700 }}>${base.toFixed(2)}{per}</span>;
-          }
-          return <div style={{ margin: '.6rem 0 0', fontSize: '1rem', textAlign: 'right' }}>{node}</div>;
-        })()}
-      </div>
-
-      {!promoOpen ? (
-        <button
-          type="button"
-          onClick={() => setPromoOpen(true)}
-          style={{ background: 'none', border: 'none', color: 'var(--neon, #00e0a4)', cursor: 'pointer', fontSize: '.9rem', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, margin: '0 0 1rem' }}
-        >
-          + Have a promo code?
-        </button>
-      ) : (
-        <div className={styles.formGroup}>
-          <label htmlFor="dj-promo">Promo code</label>
-          <div style={{ display: 'flex', gap: '.5rem' }}>
-            <input
-              id="dj-promo"
-              value={promoCode}
-              onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoInfo(null); }}
-              onBlur={previewPromo}
-              placeholder="Enter code"
-              style={{ textTransform: 'uppercase', flex: 1, minWidth: 0 }}
-            />
-            <button
-              type="button"
-              onClick={previewPromo}
-              style={{ flex: '0 0 auto', padding: '0 1.2rem', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
-                border: '1px solid var(--neon,#00e0a4)', background: 'rgba(0,224,164,.1)', color: 'var(--neon,#00e0a4)' }}
-            >
-              Apply
-            </button>
-          </div>
-          <p style={{ fontSize: '.8rem', color: promoInfo ? 'var(--neon,#00e0a4)' : '#8a8a9e', margin: '.35rem 0 0' }}>
-            {promoInfo?.type === 'comp'
-              ? `✓ ${promoInfo.description ?? 'Free access'} — applied after signup.`
-              : promoInfo?.type === 'discount'
-                ? `✓ ${promoInfo.percentOff}% off — the price above updates for the plans it covers.`
-                : 'We’ll apply it right after you create your account.'}
-          </p>
-        </div>
-      )}
-
-      <ConsentCheckbox
-        id="dj-agree"
-        checked={agreed}
-        onChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
-      />
-
-      <button type="submit" className={styles.submitBtn} disabled={submitting}>
-        {submitting ? 'Creating Account...' : 'Create DJ Account'}
-      </button>
-    </form>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// HOST FORM
-//
-// The only form with two ways in. Name and Country are shared; below them the
-// host picks Phone (a texted code, no password) or Email (what already
-// Both halves are HostCodeSignup — kept separate so this component doesn't
-// end up with two unrelated submit paths tangled together.
-// ──────────────────────────────────────────────────────────────────────────
-
-function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
-  onBack: () => void;
-  onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
-  // Email prefilled from URL (booking-invite flow). When `lockedEmail` is
-  // true the email field is readOnly — used when the user arrived via a
-  // claim_booking link so we don't pair the booking with a different email.
-  prefillEmail?: string;
-  lockedEmail?: boolean;
-  // Modal use only. When set, HostCodeSignup calls this after the account
-  // exists and the session is live, instead of navigating — so the popup can
-  // close and leave the person on the page they were on. On the /signup page
-  // it's undefined and the host path navigates as before.
-  onDone?: () => void;
-}) {
-  const [name, setName] = useState('');
-  /**
-   * A problem with the NAME specifically, raised by HostCodeSignup below.
-   *
-   * It lives up here rather than down there because the field does. An error
-   * rendered inside HostCodeSignup lands underneath the email box — below the
-   * input it's complaining about — so the reader has to scan past the field,
-   * read the message, then track back up to fix it. Here it sits directly
-   * above the box and turns the border red, which is where the eye already is.
-   */
-  const [nameError, setNameError] = useState<string | null>(null);
-
-  // Not asked any more (see sharedFields). Written as null rather than
-  // defaulted to 'United States' — a made-up country is worse than an absent
-  // one, because later code can't tell the difference between a guess and a
-  // fact. If something ever genuinely needs a host's country, it should ask
-  // at the point it needs it.
-  const country: string | null = null;
-
-  // PHONE is the default. Hosts reach signup overwhelmingly from a phone, and
-  // the OS autofills the SMS code — the easier tap. Email gets collected at
-  // the first booking regardless, so defaulting to phone costs nothing
-  // downstream, and the "Switch to email" link covers anyone on a desktop who
-  // would rather type an address.
-  //
-  // EXCEPT a locked-email (claim_booking) invite, which is pinned to one
-  // address — a phone signup there couldn't attach to the invitation. So that
-  // case still starts on email, and canChooseMethod below hides the switch.
-  const [method, setMethod] = useState<'email' | 'phone'>(lockedEmail ? 'email' : 'phone');
-  // A claim_booking invite is pinned to one address. Offering phone there
-  // would let someone create an account the invitation can't attach to.
-  const canChooseMethod = !lockedEmail;
-  // Terms/Privacy consent — required before the code (which creates the
-  // account) can be sent. Rendered at the top of the form; the error surfaces
-  // there too when HostCodeSignup rejects a send for missing consent.
-  const [agreed, setAgreed] = useState(false);
-  const [consentError, setConsentError] = useState(false);
-
-  // Both paths finish signed in — there's no "check your inbox" screen in
-  // between any more — so the form needs somewhere to send them.
-  const destination = (() => {
-    if (typeof window === 'undefined') return '/';
-    const r = new URLSearchParams(window.location.search).get('redirect');
-    if (!r || !r.startsWith('/') || r.startsWith('//')) return '/';
-    return r;
-  })();
-
-  // NO PASSWORD, EITHER WAY. Hosts sign in rarely — they book, then come back
-  // weeks later for the planner — and a password invented once and never used
-  // is a password they've forgotten. Both paths are now identifier → code,
-  // handled by HostCodeSignup. DJ and Venue signup below keep email+password:
-  // they're in the app daily and their browser remembers it.
-  //
-  // This also retires /api/signup-send-verification for hosts. Typing a code
-  // mailed to an address proves the same thing the link was proving, without
-  // leaving the page.
-
-  // Asked once, used by both paths — so it sits above the method choice
-  // rather than being duplicated inside each branch.
-  //
-  // COUNTRY WAS HERE AND IS GONE. The reason given for asking was to scope the
-  // venue-address autocomplete on the booking form — but that form hardcodes
-  // its own country to 'us' and never reads this value, and it has its own
-  // country picker sitting next to the address field. So it was a required
-  // dropdown between a host and their account, collected for a job it wasn't
-  // doing. (Defaulting that picker from the DJ's country is the real fix; the
-  // DJ is who the event is for. That's a separate change.)
-  const sharedFields = (
-    <div className={styles.formGroup}>
-      {nameError && (
-        <div className={`${styles.alert} ${styles.alertError}`}>{nameError}</div>
-      )}
-      <label htmlFor="host-name">Your Name</label>
-      <input
-        id="host-name"
-        type="text"
-        placeholder="Jane Smith"
-        value={name}
-        // Clear on the first keystroke. Leaving a red box under someone who is
-        // actively fixing the thing it's complaining about is just nagging.
-        onChange={(e) => { setName(e.target.value); setNameError(null); }}
-        required
-        // Matches .urlPreviewInputTaken, the form's existing convention for a
-        // field that's wrong — same colour, so it reads as the same language.
-        style={nameError ? { borderColor: 'var(--error)' } : undefined}
-      />
-      <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-        First and last name.
-      </small>
+      <div class="footer">Global DJ Connect · globaldjconnect.com</div>
     </div>
-  );
+  </body></html>`;
 
-  // THE TWO-BUTTON TOGGLE IS GONE. It sat above the form asking people to
-  // pick a channel before they'd been told what the form wanted, which is a
-  // decision presented before the context needed to make it. Email is now
-  // simply the default — it's what every later step (offer, contract, planner,
-  // cancellation) actually runs on — and switching moved to a quiet link at
-  // the bottom, where an alternative belongs. See HostCodeSignup.
-
-  // Both paths are the same shape now, so there's one return rather than a
-  // branch per method — the only thing that differs is which identifier
-  // HostCodeSignup asks for.
-  return (
-    <div>
-      <BackButton onClick={onBack} />
-      <TypeBadge current="host" onSwitch={onSwitchType} />
-      {consentError && !agreed && (
-        <div className={`${styles.alert} ${styles.alertError}`}>
-          Please accept the Terms &amp; Conditions and Privacy Policy to continue.
-        </div>
-      )}
-      {sharedFields}
-      <HostCodeSignup
-        method={method}
-        name={name}
-        country={country}
-        agreed={agreed}
-        onAgreedChange={(v) => { setAgreed(v); if (v) setConsentError(false); }}
-        onConsentError={() => setConsentError(true)}
-        prefillEmail={prefillEmail}
-        lockedEmail={lockedEmail}
-        destination={destination}
-        onNameError={setNameError}
-        // Hidden on a claim_booking invite: that flow is pinned to one address,
-        // and a phone signup couldn't be attached to the invitation.
-        canSwitchMethod={canChooseMethod}
-        onSwitchMethod={() => setMethod((m) => (m === 'email' ? 'phone' : 'email'))}
-        onDone={onDone}
-      />
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// VENUE FORM
-// ──────────────────────────────────────────────────────────────────────────
-
-function VenueForm({ onBack, onSwitchType, onSuccess }: {
-  onBack: () => void;
-  onSwitchType: (t: 'dj' | 'host' | 'venue') => void;
-  onSuccess: (info: SuccessInfo) => void;
-}) {
-  const supabase = createClient();
-  const [venueName, setVenueName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
-  const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle');
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [country, setCountry] = useState('United States');
-  const [zip, setZip] = useState('');
-  const [city, setCity] = useState('');
-  const [stateRegion, setStateRegion] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  function handleVenueNameChange(newName: string) {
-    setVenueName(newName);
-    if (!slugManuallyEdited) {
-      setSlug(makeSlug(newName));
-    }
-  }
-  function handleSlugChange(newSlug: string) {
-    setSlugManuallyEdited(true);
-    setSlug(newSlug);
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: [email],
+      replyTo: REPLY_TO,
+      subject: 'Confirm Your Email — Global DJ Connect',
+      html,
+    });
+    if (error) throw error;
+  } catch (e) {
+    console.error('[signup-send-verification] Resend failed', e);
+    return NextResponse.json({ error: 'Email send failed' }, { status: 502 });
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!venueName.trim() || !email.trim() || !password || !country || !zip.trim()) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (!slug) {
-      setError('Please enter a venue name so we can create your profile URL.');
-      return;
-    }
-    if (slugStatus === 'taken') {
-      setError('That URL is taken. Please pick an available alternative.');
-      return;
-    }
-    if (slugStatus === 'checking') {
-      setError('Still checking URL availability — please wait a moment.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const emailLower = email.toLowerCase().trim();
-      // Same cross-account guard as the DJ path: block a second account on an
-      // email that already belongs to someone (e.g. a phone-signup host whose
-      // email is on their profile but not in Supabase auth).
-      try {
-        const chk = await fetch('/api/auth/lookup-identifier', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: emailLower }),
-        });
-        if (chk.ok) {
-          const info = (await chk.json().catch(() => ({}))) as { found?: boolean };
-          if (info?.found) {
-            throw new Error('An account with this email already exists. Please log in instead.');
-          }
-        }
-      } catch (dupe) {
-        if (dupe instanceof Error && /already exists/i.test(dupe.message)) throw dupe;
-      }
-
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: emailLower,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/account-settings?emailverified=1`,
-          data: {
-            role: 'venue',
-            name: venueName,
-            venue_name: venueName,
-            slug,
-            country,
-            city,
-            state: stateRegion,
-            zip,
-          },
-        },
-      });
-      if (signUpError) {
-        if (/already registered|already been registered|User already/i.test(signUpError.message)) {
-          throw new Error('An account with this email already exists. Please log in instead.');
-        }
-        if (/duplicate key.*slug/i.test(signUpError.message)) {
-          throw new Error('That URL was just taken. Please try again.');
-        }
-        throw signUpError;
-      }
-      if (signUpData?.user?.identities && signUpData.user.identities.length === 0) {
-        throw new Error('An account with this email already exists. Please log in instead.');
-      }
-
-      if (signUpData?.user?.id) {
-        await supabase.from('users').upsert({
-          id: signUpData.user.id,
-          role: 'venue',
-          name: venueName,
-          venue_name: venueName,
-          slug,
-          country,
-          city,
-          state: stateRegion,
-          zip,
-          email_verified: false,
-          signup_method: 'email',
-        } as unknown as never, { onConflict: 'id' });
-
-        triggerSignupVerification(signUpData.user.id, emailLower, 'venue', slug);
-      }
-
-      onSuccess({ email: emailLower, role: 'venue', slug, userId: signUpData?.user?.id ?? null });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Signup failed';
-      setError(msg);
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <BackButton onClick={onBack} />
-      <TypeBadge current="venue" onSwitch={onSwitchType} />
-
-      {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
-
-      <div className={styles.formGroup}>
-        <label htmlFor="venue-name">Venue Name</label>
-        <input
-          id="venue-name"
-          type="text"
-          placeholder="The Grand Ballroom"
-          value={venueName}
-          onChange={(e) => handleVenueNameChange(e.target.value)}
-          required
-        />
-        {slug && (
-          <SlugInput
-            value={slug}
-            onChange={handleSlugChange}
-            onStatusChange={setSlugStatus}
-            generateAlternatives={generateVenueAlternatives}
-            placeholder="your-venue-url"
-          />
-        )}
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="venue-email">Email Address</label>
-        <input
-          id="venue-email"
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-        />
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="venue-password">Password</label>
-        <input
-          id="venue-password"
-          type="password"
-          placeholder="Minimum 8 characters"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="new-password"
-        />
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="venue-country">Country</label>
-        <select
-          id="venue-country"
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          required
-        >
-          {COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-        </select>
-      </div>
-      <div className={styles.formGroup}>
-        <label htmlFor="venue-zip">Zip Code</label>
-        <ZipLookup
-          inputId="venue-zip"
-          zip={zip}
-          country={country}
-          onZipChange={setZip}
-          onLocationResolved={(c, s) => { setCity(c); setStateRegion(s); }}
-          required
-        />
-      </div>
-
-      <button type="submit" className={styles.submitBtn} disabled={submitting}>
-        {submitting ? 'Creating Account...' : 'Create Venue Account'}
-      </button>
-    </form>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// SUCCESS SCREEN — "Check Your Email"
-// ──────────────────────────────────────────────────────────────────────────
-
-function SuccessScreen({ info }: { info: SuccessInfo }) {
-  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [resendMsg, setResendMsg] = useState('');
-
-  async function handleResend() {
-    setResendStatus('sending');
-    try {
-      // Hit our own endpoint. We pass user_id when we have it (always do
-      // here since the success screen comes right after a successful signUp);
-      // the API route also supports lookup-by-email as a fallback.
-      const { bookingDjSlug, bookingDate } = parseBookingIntent();
-      const res = await fetch('/api/signup-send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: info.userId,
-          email: info.email,
-          role: info.role,
-          slug: info.slug,
-          bookingDjSlug,
-          bookingDate,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Failed to resend');
-      }
-      setResendStatus('sent');
-      setResendMsg('✓ Sent — check your inbox');
-      setTimeout(() => { setResendStatus('idle'); setResendMsg(''); }, 5000);
-    } catch (err) {
-      setResendStatus('error');
-      setResendMsg('✗ ' + (err instanceof Error ? err.message : 'Failed to resend'));
-      setTimeout(() => { setResendStatus('idle'); setResendMsg(''); }, 4000);
-    }
-  }
-
-  return (
-    <div className={styles.successWrap}>
-      <div className={styles.successIconCircle}>
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--neon)" strokeWidth="2">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-          <polyline points="22,6 12,13 2,6" />
-        </svg>
-      </div>
-      <h2 className={styles.successTitle}>Check Your Email</h2>
-      <p className={styles.successSubLine}>We sent a confirmation link to</p>
-      <p className={styles.successEmail}>{info.email}</p>
-      <p className={styles.successHint}>
-        Click the link in that email to activate your account. The link expires in 24 hours.
-      </p>
-      <p className={styles.resendLine}>
-        Didn&apos;t get it? Check your spam folder, or{' '}
-        {resendStatus === 'idle' || resendStatus === 'sending' ? (
-          <button
-            type="button"
-            className={styles.resendLink}
-            onClick={handleResend}
-            disabled={resendStatus === 'sending'}
-          >
-            {resendStatus === 'sending' ? 'Sending...' : 'resend the email'}
-          </button>
-        ) : (
-          <span style={{ color: resendStatus === 'sent' ? '#3ddc84' : 'var(--error)' }}>
-            {resendMsg}
-          </span>
-        )}
-        .
-      </p>
-
-      {info.role === 'dj' && (
-        <div className={styles.djBuildBlock}>
-          <p className={styles.djBuildTitle}>Begin Building Your Profile</p>
-          <p className={styles.djBuildDesc}>
-            Add your mixes, photos, equipment, rates, and availability now — you can still edit anytime.
-          </p>
-          <Link href="/update-dj-profile" className={styles.djBuildBtn}>
-            Edit My Profile →
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+  return NextResponse.json({ ok: true });
 }
