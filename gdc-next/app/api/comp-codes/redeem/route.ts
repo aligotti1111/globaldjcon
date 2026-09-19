@@ -113,10 +113,41 @@ export async function POST(req: Request) {
   if (!codeData || !codeData.active) {
     const { data: disc } = await admin
       .from('discount_codes')
-      .select('percent_off, duration, applies_to, expires_at, active')
+      .select('id, percent_off, duration, applies_to, expires_at, active, max_redemptions')
       .eq('code', code)
-      .maybeSingle<{ percent_off: number; duration: 'once' | 'forever'; applies_to: 'monthly' | 'yearly' | 'both'; expires_at: string | null; active: boolean }>();
+      .maybeSingle<{ id: string; percent_off: number; duration: 'once' | 'forever'; applies_to: 'monthly' | 'yearly' | 'both'; expires_at: string | null; active: boolean; max_redemptions: number | null }>();
     if (disc && disc.active && !(disc.expires_at && new Date(disc.expires_at).getTime() <= Date.now())) {
+      // One discount code per account: if this DJ already redeemed it (recorded
+      // by the Stripe webhook once a coupon-bearing subscription was created),
+      // don't let them apply it again. Checkout enforces this too; this just
+      // surfaces it in the box before they pick a plan.
+      const { data: prior } = await admin
+        .from('code_redemptions')
+        .select('id')
+        .eq('code_type', 'discount')
+        .eq('code_id', disc.id)
+        .eq('user_id', user.id)
+        .maybeSingle<{ id: string }>();
+      if (prior) {
+        return NextResponse.json(
+          { ok: false, error: 'You’ve already used this code. Discount codes can only be used once per account.' },
+          { status: 409 },
+        );
+      }
+      // Overall cap reached across all accounts?
+      if (disc.max_redemptions != null) {
+        const { count } = await admin
+          .from('code_redemptions')
+          .select('id', { count: 'exact', head: true })
+          .eq('code_type', 'discount')
+          .eq('code_id', disc.id);
+        if ((count ?? 0) >= disc.max_redemptions) {
+          return NextResponse.json(
+            { ok: false, error: 'That code has been fully redeemed.' },
+            { status: 409 },
+          );
+        }
+      }
       const appliesTo = disc.applies_to || 'both';
       const scopeDesc =
         appliesTo === 'monthly' ? ' your first month'
