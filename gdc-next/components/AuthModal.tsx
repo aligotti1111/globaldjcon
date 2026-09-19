@@ -38,6 +38,11 @@ export default function AuthModal({
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
+  // The signup flow reports its screen up so we can hide the Sign In / Create
+  // Account tabs once it reaches the "check your email" success screen — the
+  // person is done signing up; those tabs would just be confusing there.
+  const [signupScreen, setSignupScreen] = useState<string | null>(null);
+  const onSuccessScreen = mode === 'signup' && signupScreen === 'success';
 
   // Success from either side. Close, then refresh so server-rendered parts of
   // the current page re-run with the new auth state WITHOUT a navigation —
@@ -97,7 +102,10 @@ export default function AuthModal({
         </div>
 
         {/* Tab switch. Two buttons rather than a link so nobody leaves the
-            page to get to the other mode. */}
+            page to get to the other mode. Hidden on the signup success screen —
+            the account is created, so offering "Sign In / Create Account" there
+            is confusing. */}
+        {!onSuccessScreen && (
         <div style={{ display: 'flex', gap: '.4rem', marginBottom: '1.25rem' }}>
           {(['login', 'signup'] as const).map((m) => (
             <button
@@ -120,6 +128,7 @@ export default function AuthModal({
             </button>
           ))}
         </div>
+        )}
 
         {mode === 'login' ? (
           <InlineLoginForm onDone={finish} />
@@ -127,8 +136,9 @@ export default function AuthModal({
           // The real signup flow — account-type chooser (DJ / Host / Venue)
           // and the matching form, identical to /signup. A host finishes and
           // onDone closes the popup; a DJ or venue lands on the inline "check
-          // your email" screen, same as the page.
-          <SignupFlow onDone={finish} />
+          // your email" screen, same as the page. onScreenChange lets us hide
+          // the tabs above once it reaches the success screen.
+          <SignupFlow onDone={finish} onScreenChange={setSignupScreen} />
         )}
       </div>
     </div>
