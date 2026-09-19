@@ -236,9 +236,12 @@ interface Props {
   // after club genres save, so the parent clears the dirty flag for them.
   onBasicsSaved?: (name: string, profilePrivate: boolean) => void;
   onGenresSaved?: (clubGenres: string[]) => void;
+  // Paid/comped access. The Profile QR code is a premium feature, so it only
+  // renders when this is true. Defaults to false (free account) if not passed.
+  isPaid?: boolean;
 }
 
-export default function GeneralTab({ state, onChange, activeTab, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved, onBasicsSaved, onGenresSaved }: Props) {
+export default function GeneralTab({ state, onChange, activeTab, djType, email, slug, siteUrl, userId, onSlugSaved, onEventTypesSaved, onContactSaved, onBasicsSaved, onGenresSaved, isPaid = false }: Props) {
   const slugDisplay = slug || 'your-url';
   const { confirm, confirmDialog } = useConfirm();
 
@@ -640,8 +643,11 @@ export default function GeneralTab({ state, onChange, activeTab, djType, email, 
 
           {/* Premium: downloadable QR code for the public profile, sitting
               right under the URL it points at. Encodes the permanent profile
-              ID (never breaks on a slug change); shows the live slug as caption. */}
-          <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
+              ID (never breaks on a slug change); shows the live slug as caption.
+              Paid feature — hidden entirely for free accounts. */}
+          {isPaid && (
+            <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
+          )}
         </div>
       </div>
       </div>{/* end ACCOUNT tab */}
