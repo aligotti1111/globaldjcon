@@ -13,6 +13,7 @@
 // map the subscription back to the right account.
 
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
@@ -103,6 +104,58 @@ export async function POST(req: Request) {
     const trialMsg = trialEnd
       ? `No charge today — your plan begins ${new Date(compExpMs).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, when your complimentary access ends.`
       : null;
+
+    // ONE DISCOUNT CODE PER ACCOUNT. A discount code applies as a Stripe coupon
+    // at checkout; the webhook records each use in code_redemptions with a
+    // UNIQUE(code_type, code_id, user_id) constraint. But nothing stopped the
+    // SAME account from re-entering the same code on a later checkout (e.g.
+    // cancel then re-subscribe) and getting the discount again. Guard it here:
+    // if the entered code exists and this account already redeemed it — or the
+    // code has hit its overall max_redemptions — reject before we build the
+    // session. (Site-wide sales are applied automatically and are not gated
+    // per-account; only the explicitly-entered code is.)
+    if (promoCode) {
+      // These promo tables aren't in the generated Supabase types, so query them
+      // through an untyped view of the same admin client (pattern used across
+      // the codebase).
+      const db = admin as unknown as SupabaseClient;
+      const { data: dcRow } = await db
+        .from('discount_codes')
+        .select('id, active, max_redemptions')
+        .eq('code', promoCode)
+        .maybeSingle();
+      const dc = dcRow as unknown as { id: string; active: boolean; max_redemptions: number | null } | null;
+      if (dc && dc.active) {
+        // Already used by THIS account?
+        const { data: mine } = await db
+          .from('code_redemptions')
+          .select('id')
+          .eq('code_type', 'discount')
+          .eq('code_id', dc.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (mine) {
+          return NextResponse.json(
+            { error: 'You’ve already used this code. Discount codes can only be used once per account.' },
+            { status: 409 },
+          );
+        }
+        // Overall cap reached across all accounts?
+        if (dc.max_redemptions != null) {
+          const { count } = await db
+            .from('code_redemptions')
+            .select('id', { count: 'exact', head: true })
+            .eq('code_type', 'discount')
+            .eq('code_id', dc.id);
+          if ((count ?? 0) >= dc.max_redemptions) {
+            return NextResponse.json(
+              { error: 'This code has been fully redeemed.' },
+              { status: 409 },
+            );
+          }
+        }
+      }
+    }
 
     // Resolve the winning discount COUPON for this plan: the bigger of any live
     // site-wide sale for this interval and the DJ's personal code (scope-matched
