@@ -644,10 +644,8 @@ export default function GeneralTab({ state, onChange, activeTab, djType, email, 
           {/* Premium: downloadable QR code for the public profile, sitting
               right under the URL it points at. Encodes the permanent profile
               ID (never breaks on a slug change); shows the live slug as caption.
-              Paid feature — hidden entirely for free accounts. */}
-          {isPaid && (
-            <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} />
-          )}
+              Free accounts still SEE it, but locked (blurred + upgrade CTA). */}
+          <ProfileQrCode slug={state.slug} djName={state.name} profileId={userId} locked={!isPaid} />
         </div>
       </div>
       </div>{/* end ACCOUNT tab */}
