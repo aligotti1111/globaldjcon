@@ -657,9 +657,8 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                   >
                     {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Subscribe'}
                   </button>
-                  <div className={styles.compNote}>
-                    Complimentary{accessUntilLabel ? ` through ${accessUntilLabel}` : ''} — subscribe now and billing starts then, no charge until.
-                  </div>
+                  {/* No per-card note — the complimentary/billing message already
+                      shows in the banner above the plans. */}
                 </>
               )}
               </div>
