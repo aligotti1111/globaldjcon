@@ -116,6 +116,12 @@ export async function POST(req: Request) {
     const discountFields = couponId
       ? { discounts: [{ coupon: couponId }] }
       : {};
+    // If a code/sale coupon is applied, remember WHICH one on the subscription
+    // so the webhook can record the redemption (who used it) once payment
+    // completes. Stripe metadata values must be strings.
+    const redemptionMeta: Record<string, string> = best?.sourceId
+      ? { discount_kind: best.source, discount_id: best.sourceId }
+      : {};
 
     // 4. Create the Checkout Session.
     const origin =
@@ -138,7 +144,7 @@ export async function POST(req: Request) {
           return_url: `${origin}/subscribe/complete?session_id={CHECKOUT_SESSION_ID}`,
           client_reference_id: user.id,
           subscription_data: {
-            metadata: { user_id: user.id, tier: String(tier) },
+            metadata: { user_id: user.id, tier: String(tier), ...redemptionMeta },
             ...(trialEnd ? { trial_end: trialEnd } : {}),
           },
           ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
@@ -152,7 +158,7 @@ export async function POST(req: Request) {
           cancel_url: `${origin}/subscribe?sub=cancelled`,
           client_reference_id: user.id,
           subscription_data: {
-            metadata: { user_id: user.id, tier: String(tier) },
+            metadata: { user_id: user.id, tier: String(tier), ...redemptionMeta },
             ...(trialEnd ? { trial_end: trialEnd } : {}),
           },
           ...(trialMsg ? { custom_text: { submit: { message: trialMsg } } } : {}),
