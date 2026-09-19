@@ -88,6 +88,7 @@ export default function ProfileQrCode({
   slug,
   djName,
   profileId,
+  locked = false,
 }: {
   slug: string;
   djName?: string;
@@ -96,6 +97,10 @@ export default function ProfileQrCode({
    *  profile even after the DJ renames their slug. The pretty slug is still
    *  shown as the caption and used for the shareable "Copy Link" URL. */
   profileId?: string;
+  /** Free (non-subscribed) accounts still SEE this premium tool, but it's
+   *  locked: the preview is blurred and the actions are replaced with an
+   *  upgrade prompt. Paid/comped accounts pass locked=false for full use. */
+  locked?: boolean;
 }) {
   const [style, setStyle] = useState<QrStyle>('classic');
   const [copied, setCopied] = useState(false);
@@ -198,6 +203,49 @@ export default function ProfileQrCode({
     background: done ? 'var(--success)' : primary ? 'var(--neon)' : 'transparent',
     color: done || primary ? 'var(--black)' : 'var(--white)',
   });
+
+  // Locked (free account): still show the whole card so DJs know the tool
+  // exists, but the preview is blurred and the actions become an upgrade CTA.
+  if (locked) {
+    return (
+      <div style={box}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.7rem' }}>
+          <span style={capLabel}>
+            Profile QR Code<span style={pill}>Premium</span>
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Blurred, non-interactive placeholder so the feature reads as real */}
+          <div
+            aria-hidden
+            style={{
+              position: 'relative',
+              width: 108,
+              height: 108,
+              borderRadius: 6,
+              flexShrink: 0,
+              background:
+                'repeating-conic-gradient(var(--muted) 0% 25%, transparent 0% 50%) 0 0 / 14px 14px',
+              filter: 'blur(3px)',
+              opacity: 0.35,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <p style={{ ...capLabel, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', margin: '0 0 .6rem', lineHeight: 1.4 }}>
+              🔒 Generate a scannable QR code for your public profile — print it
+              on flyers or cards to drive bookings. Available on paid plans.
+            </p>
+            <a
+              href="/subscribe"
+              style={{ ...act(true), display: 'inline-block', textDecoration: 'none' }}
+            >
+              Upgrade to unlock
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={box}>
