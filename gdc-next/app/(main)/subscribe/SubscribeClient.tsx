@@ -195,6 +195,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [cancelBusy, setCancelBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelInfo, setCancelInfo] = useState<{ scheduled: boolean; date: string | null } | null>(null);
+  // Effective scheduled-cancel state: the client value once they click cancel/
+  // resume this session, otherwise the server value read from Stripe — so a
+  // reload still shows "set to cancel / Resume" instead of Cancel again.
+  const cancelIsScheduled = cancelInfo?.scheduled ?? cancelScheduled;
+  const cancelEndDate = cancelInfo?.date ?? accessUntil ?? null;
   const [previewingTier, setPreviewingTier] = useState<PaidTier | null>(null);
   // A paid discount code the DJ entered in the promo box before picking a plan.
   // Carried into Stripe checkout so the % comes off automatically, and used to
@@ -711,7 +716,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           Update payment method + Cancel subscription, side by side. */}
       {isSubscribed && (
         <div className={styles.manageRow} style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', justifyContent: 'center', alignItems: 'center' }}>
-          {isPaid && !cancelInfo?.scheduled && !confirmCancel && (
+          {isPaid && !cancelIsScheduled && !confirmCancel && (
             <>
               <button
                 type="button"
@@ -743,11 +748,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       )}
 
       {/* Scheduled-cancel notice — inline status once a cancel is queued. */}
-      {isSubscribed && isPaid && cancelInfo?.scheduled && (
+      {isSubscribed && isPaid && cancelIsScheduled && (
         <div className={styles.manageRow} style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', marginTop: '1rem' }}>
           <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
             Your subscription is set to cancel
-            {cancelInfo.date ? ` on ${new Date(cancelInfo.date).toLocaleDateString()}` : ''}. You keep access until then.
+            {cancelEndDate ? ` on ${new Date(cancelEndDate).toLocaleDateString()}` : ''}. You keep access until then.
           </span>
           <button type="button" className={styles.manageBtn} onClick={() => cancelSub('resume')} disabled={cancelBusy}>
             {cancelBusy ? 'Working…' : 'Resume subscription'}
@@ -756,7 +761,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       )}
 
       {/* Cancel confirmation — styled modal popup (matches the switch dialog). */}
-      {isSubscribed && isPaid && confirmCancel && !cancelInfo?.scheduled && (
+      {isSubscribed && isPaid && confirmCancel && !cancelIsScheduled && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
           onClick={(e) => { if (e.target === e.currentTarget && !cancelBusy) setConfirmCancel(false); }}
