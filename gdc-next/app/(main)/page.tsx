@@ -89,7 +89,7 @@ const LANDING_CSS = String.raw`
 }
 .gdc-landing /* HERO with image */
   .hero{position:relative;padding:98px 0 64px;overflow:hidden}
-.gdc-landing .hero-bg{position:absolute;inset:0;z-index:0;background:url('/images/hero.webp') center right/cover}
+.gdc-landing .hero-bg{position:absolute;inset:0;z-index:0;background:url('/hero.webp') center right/cover}
 .gdc-landing .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#000 0%,#000 33%,rgba(0,0,0,.72) 60%,rgba(0,0,0,.32) 100%),linear-gradient(0deg,#000 2%,transparent 32%,transparent 78%,rgba(0,0,0,.6) 100%)}
 .gdc-landing .herogrid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
 @media(max-width:920px){
@@ -1499,7 +1499,7 @@ export default function HomePage() {
       <link
         rel="preload"
         as="image"
-        href="/images/hero.webp"
+        href="/hero.webp"
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
