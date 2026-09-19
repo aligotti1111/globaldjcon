@@ -30,6 +30,7 @@ import AccountSettingsClient from './AccountSettingsClient';
 import UpdateDjProfileClient from '@/app/(main)/update-dj-profile/UpdateDjProfileClient';
 import type { UserProfile } from '@/types/db';
 import { getActingContext, canManageTeam } from '@/lib/acting';
+import { effectiveTier, type AccessFields } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,8 +114,13 @@ export default async function AccountSettingsPage() {
     // The Notifications tab reads the same sms_* / email_notify_* columns the
     // standalone /notifications page did — they're already on this row.
     const notifyInit = buildNotifyInit(djProfile as unknown as Record<string, unknown>);
+    // Paid access gate for premium-only sections (e.g. the Profile QR code).
+    // Uses the same access resolver the rest of the app does, so comped and
+    // grace-period DJs count as paid too.
+    const isPaid = effectiveTier(djProfile as unknown as AccessFields) > 0;
     return (
       <UpdateDjProfileClient
+        isPaid={isPaid}
         initialProfile={djProfile as UserProfile & {
           bio?: string | null;
           phone?: string | null;
