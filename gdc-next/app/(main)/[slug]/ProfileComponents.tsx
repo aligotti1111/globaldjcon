@@ -1884,6 +1884,123 @@ export function PhotoManagerModal({
 // capability — it only adds; managing/removing photos lives in the photo
 // manager. Uploaded photos also land in the main gallery (source of truth).
 // ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// AddPhotosModal — the lightweight "+ Add" flow. Just a Choose-photos button
+// and a Save button: pick files (they preview), then Save uploads them and
+// appends to the gallery. No delete/album/select clutter — that all lives in
+// the full Manage Photos manager.
+// ─────────────────────────────────────────────────────────────────────────
+export function AddPhotosModal({
+  userId,
+  currentCount,
+  cap,
+  onClose,
+}: {
+  userId: string;
+  currentCount: number;
+  cap: number;
+  onClose: () => void;
+}) {
+  const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const room = cap - currentCount - staged.length;
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    setError(null);
+    const avail = cap - currentCount - staged.length;
+    if (avail <= 0) { setError(`Photo limit reached (${cap}).`); return; }
+    const toAdd = files.slice(0, avail).map((file) => ({ file, url: URL.createObjectURL(file) }));
+    if (files.length > avail) setError(`Only ${avail} more photo${avail === 1 ? '' : 's'} allowed — extras were skipped.`);
+    setStaged((prev) => [...prev, ...toAdd]);
+  }
+
+  function removeStaged(idx: number) {
+    setStaged((prev) => {
+      const removed = prev[idx];
+      if (removed) URL.revokeObjectURL(removed.url);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
+  async function save() {
+    if (!staged.length) { onClose(); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const uploaded: string[] = [];
+      for (const { file } of staged) {
+        const valErr = await validateImageFile(file);
+        if (valErr) { setError(valErr); continue; }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+        const id = rand.replace(/[^a-z0-9]/gi, '');
+        const path = `${profileUploadFolder(userId)}/gallery_${id}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+        if (upErr) { setError(upErr.message); continue; }
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        uploaded.push(`${data.publicUrl}?t=${Date.now()}`);
+      }
+      if (!uploaded.length) { setBusy(false); return; }
+      // Append to the gallery (source of truth). Re-read first so we don't
+      // clobber photos added elsewhere; the owner passes the full next array.
+      const { data: row } = await supabase.from('users').select('gallery_photos').eq('id', userId).single();
+      const rowPhotos = (row as unknown as { gallery_photos?: string[] } | null)?.gallery_photos;
+      const existing: string[] = Array.isArray(rowPhotos) ? rowPhotos : [];
+      await saveProfile(userId, { gallery_photos: [...existing, ...uploaded] });
+      staged.forEach((s) => URL.revokeObjectURL(s.url));
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-card, #14141b)', border: '1px solid var(--border, rgba(255,255,255,0.12))', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 480 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: 'var(--white, #fff)', letterSpacing: '.04em' }}>Add photos</div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" style={{ background: 'transparent', border: 'none', color: 'var(--muted, #888)', fontSize: '1.4rem', cursor: 'pointer', padding: '.25rem .5rem' }}>✕</button>
+        </div>
+
+        <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onPick} />
+        <button type="button" disabled={busy || room <= 0} onClick={() => inputRef.current?.click()} style={{ width: '100%', padding: '.7rem 1rem', borderRadius: 8, border: '1.5px dashed var(--neon)', background: 'rgba(0,245,196,.06)', color: 'var(--neon)', fontWeight: 700, fontSize: '.85rem', cursor: room <= 0 ? 'not-allowed' : 'pointer', opacity: room <= 0 ? 0.5 : 1 }}>
+          {staged.length ? 'Choose more photos' : 'Choose photos'}
+        </button>
+        <div style={{ fontSize: '.7rem', color: 'var(--muted,#888)', marginTop: '.4rem', textAlign: 'center' }}>{currentCount + staged.length} of {cap} used</div>
+
+        {staged.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.5rem', marginTop: '1rem' }}>
+            {staged.map((s, i) => (
+              <div key={i} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border,rgba(255,255,255,.15))' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={s.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {!busy && (
+                  <button type="button" onClick={() => removeStaged(i)} aria-label="Remove" style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.6)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: 0 }}>✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem', marginTop: '.75rem' }}>{error}</div>}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1.25rem' }}>
+          <button type="button" onClick={onClose} disabled={busy} style={{ padding: '.6rem 1.2rem', background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.78rem', cursor: 'pointer' }}>Cancel</button>
+          <button type="button" onClick={save} disabled={busy || staged.length === 0} style={{ padding: '.6rem 1.4rem', background: 'var(--neon)', border: 'none', borderRadius: 6, color: '#04121a', fontWeight: 700, fontSize: '.78rem', letterSpacing: '.04em', textTransform: 'uppercase', cursor: busy || !staged.length ? 'not-allowed' : 'pointer', opacity: busy || !staged.length ? 0.6 : 1 }}>{busy ? 'Saving…' : `Save${staged.length ? ` (${staged.length})` : ''}`}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CreateAlbumModal({
   userId,
   photos,
