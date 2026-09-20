@@ -644,7 +644,7 @@ const LANDING_BODY = String.raw`
         </select>
       </label>
     </form>
-    <button class="searchbtn" type="button" aria-label="Use my location" onclick="if(navigator.geolocation){this.style.opacity='.5';navigator.geolocation.getCurrentPosition(function(p){location.href='/djs?lat='+p.coords.latitude+'&lng='+p.coords.longitude;},function(){location.href='/djs?near=1';});}else{location.href='/djs?near=1';}">
+    <button class="searchbtn" type="button" aria-label="Use my location" title="Use my location" onclick="var b=this;if(!navigator.geolocation){alert('Your browser does not support location.');return;}b.style.opacity='.5';navigator.geolocation.getCurrentPosition(function(p){location.href='/djs?lat='+p.coords.latitude+'&lng='+p.coords.longitude;},function(err){b.style.opacity='1';if(err&&err.code===1){alert('Location is blocked for this site. Enable it in your browser: click the lock icon in the address bar → Site settings → Location → Allow, then tap the pin again.');}else{location.href='/djs?near=1';}},{enableHighAccuracy:true,timeout:10000});">
       📍
     </button>
     <!-- Owner setup stepper portals in here so it shares the search row. -->
