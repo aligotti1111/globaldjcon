@@ -228,7 +228,7 @@ export default function SetupChecklist() {
                 style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', textDecoration: 'none', gap: 4, whiteSpace: 'nowrap', cursor: 'pointer', padding: '2px 4px', borderRadius: 8 }}
               >
                 {/* label OVER the bubble */}
-                <span style={{ fontFamily: 'var(--body)', fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>{s.label}</span>
+                <span style={{ fontFamily: 'var(--body)', fontSize: '.66rem', lineHeight: 1, color: labelColor, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', textDecoration: 'underline', textUnderlineOffset: '3px' }}>{s.label}</span>
                 <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: CIRCLE, height: CIRCLE, borderRadius: '50%', flexShrink: 0, fontFamily: 'var(--body)', fontSize: '.64rem', fontWeight: 800, ...circleStyle }}>
                   {s.done ? '✓' : i + 1}
                 </span>
