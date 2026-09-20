@@ -37,7 +37,7 @@ export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
   BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
-  VideoMetaEditor, ExpandableDesc, PhotoManagerModal, EmbedCalendarModal,
+  VideoMetaEditor, ExpandableDesc, PhotoManagerModal, CreateAlbumModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
 } from './ProfileComponents';
@@ -322,6 +322,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const PHOTO_PAGE = 24;
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [photoLimit, setPhotoLimit] = useState<number>(PHOTO_PAGE);
+  const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
   // Embed-calendar modal — owner-only shortcut on the profile so the DJ
   // can grab their iframe embed snippet without leaving for update-dj-profile.
   // Triggered by the "Embed Calendar" button above the calendar in the
@@ -1622,7 +1623,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     {canEdit && (
                       <button
                         type="button"
-                        onClick={() => setPhotoManagerOpen(true)}
+                        onClick={() => setCreateAlbumOpen(true)}
                         title="New album"
                         style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                       >
@@ -2008,6 +2009,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           onClose={() => {
             // Reload on close so any changes the DJ made show in the
             // hero/photos tab. Cheaper than wiring up live state.
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Create Album — owner-only. Name it, add photos from device or pick
+          existing; no photo-deleting here. Reloads on close to show it. */}
+      {createAlbumOpen && canEdit && (
+        <CreateAlbumModal
+          userId={data.id}
+          photos={galleryPhotos}
+          albums={albums}
+          cap={photoCap}
+          onClose={() => {
             const url = new URL(window.location.href);
             url.searchParams.set('tab', 'images');
             window.location.href = url.toString();
