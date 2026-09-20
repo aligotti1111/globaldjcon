@@ -1795,19 +1795,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </button>
                 )}
 
-                {/* Open-album header — a small hero banner: the album cover as a
-                    dimmed background with the album name over it. */}
+                {/* Open-album header — centered text only, name and count on
+                    separate lines. */}
                 {activeAlbum && (
-                  <div style={{ position: 'relative', height: 120, borderRadius: 10, overflow: 'hidden', marginBottom: '1rem', display: 'flex', alignItems: 'flex-end', border: '1px solid var(--border,rgba(255,255,255,.12))' }}>
-                    {activeAlbum.cover && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={optimizedImageUrl(activeAlbum.cover, 900)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    )}
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.25))' }} />
-                    <div style={{ position: 'relative', padding: '0 1rem 0.85rem' }}>
-                      <div style={{ fontFamily: 'var(--disp, "Bebas Neue", sans-serif)', fontSize: '2rem', lineHeight: 1, color: '#fff', letterSpacing: '.02em' }}>{activeAlbum.name}</div>
-                      <div style={{ fontSize: '.72rem', color: 'rgba(255,255,255,.8)', marginTop: 4 }}>{activeAlbum.photos.length} photos</div>
-                    </div>
+                  <div style={{ textAlign: 'center', margin: '.5rem 0 1.25rem' }}>
+                    <div style={{ fontFamily: 'var(--disp, "Bebas Neue", sans-serif)', fontSize: '2rem', lineHeight: 1.05, color: '#fff', letterSpacing: '.02em' }}>{activeAlbum.name}</div>
+                    <div style={{ fontSize: '.72rem', color: 'var(--muted,#888)', marginTop: 6 }}>{activeAlbum.photos.length} photos</div>
                   </div>
                 )}
 
