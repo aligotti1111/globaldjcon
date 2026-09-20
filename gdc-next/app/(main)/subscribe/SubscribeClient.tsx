@@ -557,7 +557,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               style={{ ['--accent' as string]: TIER_ACCENTS[tier] } as React.CSSProperties}
             >
               <div className={styles.hero}>
-                {featured && <span className={styles.popularBadge}>Most Popular</span>}
+                {/* "Most Popular" always marks the marketing pick (Pro), no
+                    matter what the viewer is currently subscribed to. The
+                    current-plan card gets its own neon-border treatment via
+                    `featured`; the badge text is reserved for Pro. */}
+                {tier === FEATURED_TIER && <span className={styles.popularBadge}>Most Popular</span>}
                 <div className={styles.planName}>{def.label}</div>
                 <div className={styles.price}>
                   <span className={styles.cur}>$</span>
