@@ -1599,6 +1599,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )}
 
+                {/* Albums section — a text header, then the horizontal row of
+                    album covers. */}
+                {(albums.length > 0 || canEdit) && (
+                  <div style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600, color: 'var(--white,#fff)', marginBottom: '.6rem' }}>
+                    Albums{albums.length > 0 && <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {albums.length}</span>}
+                  </div>
+                )}
+
                 {/* Albums row — one horizontal strip that scrolls sideways when
                     there are more albums than fit. Clicking an album filters the
                     grid below to its photos. Cover thumbnails match the photo
