@@ -423,6 +423,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [captionFor, setCaptionFor] = useState<string | null>(null);
   const [captionDraft, setCaptionDraft] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
+  // Live overrides so setting a cover / editing a caption updates in place
+  // (no full page reload). null = fall back to the values from the server.
+  const [captionOverride, setCaptionOverride] = useState<Record<string, string> | null>(null);
+  const [coverOverride, setCoverOverride] = useState<Record<string, string>>({});
 
   // ── Hero name/location color ────────────────────────────────────────
   // Owner-chosen color applied to BOTH the hero name and the location line.
@@ -613,7 +617,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // the ones that still exist. Newest-first everywhere in the gallery.
   const albums: Album[] = parseAlbums((data as { gallery_albums?: unknown[] }).gallery_albums)
     .map((a) => ({ ...a, photos: a.photos.filter((u) => galleryPhotos.includes(u)) }))
-    .filter((a) => a.photos.length > 0);
+    .filter((a) => a.photos.length > 0)
+    // Live cover override (set-as-cover without a reload).
+    .map((a) => (coverOverride[a.id] ? { ...a, cover: coverOverride[a.id] } : a));
   const galleryNewest = [...galleryPhotos].reverse();
   const activeAlbum = selectedAlbumId ? albums.find((a) => a.id === selectedAlbumId) || null : null;
   // What the grid shows: an album's photos (newest first) if one is selected,
@@ -637,8 +643,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       return j >= 0 && j < listL.length ? listL[j] : cur;
     });
   };
-  // Per-photo captions (url → text). Shown as a band in the lightbox.
-  const captions: Record<string, string> = (() => {
+  // Per-photo captions (url → text). Shown as a band in the lightbox. A live
+  // override (captionOverride) wins so edits show without a page reload.
+  const captions: Record<string, string> = captionOverride ?? (() => {
     const raw = (data as { gallery_captions?: unknown }).gallery_captions;
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
     const out: Record<string, string> = {};
@@ -707,8 +714,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     try {
       const nextAlbums = albums.map((a) => (a.id === albumId ? { ...a, cover: url } : a));
       await saveProfile(data.id, { gallery_albums: nextAlbums }, actingAsMember);
+      // Update in place — no reload.
+      setCoverOverride((prev) => ({ ...prev, [albumId]: url }));
       setPhotoMenuFor(null);
-      reloadToPhotos();
+      setPhotoBusy(false);
     } catch {
       setPhotoBusy(false);
       alert('Could not set the album cover.');
@@ -722,9 +731,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       if (t) nextCaptions[url] = t;
       else delete nextCaptions[url];
       await saveProfile(data.id, { gallery_captions: nextCaptions }, actingAsMember);
+      // Update in place — no reload.
+      setCaptionOverride(nextCaptions);
       setCaptionFor(null);
       setPhotoMenuFor(null);
-      reloadToPhotos();
+      setPhotoBusy(false);
     } catch {
       setPhotoBusy(false);
       alert('Could not save the caption.');
