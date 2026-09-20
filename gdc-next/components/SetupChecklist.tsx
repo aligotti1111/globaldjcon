@@ -230,15 +230,10 @@ export default function SetupChecklist() {
           return (
             <Fragment key={s.id}>
               {i > 0 && (
-                isMobile ? (
-                  /* Mobile: tight arrow connector. */
-                  <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
-                    <svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
-                  </span>
-                ) : (
-                  /* Desktop: original plain line connector. */
-                  <div aria-hidden style={{ height: 1, width: 18, flex: '0 0 auto', marginBottom: CIRCLE / 2, background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
-                )
+                /* Arrow connector (line + head) on both; mobile is tighter. */
+                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
+                  <svg width={isMobile ? 16 : 22} height={isMobile ? 13 : 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isMobile ? 2.4 : 2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
+                </span>
               )}
               <Link
                 href={`/booking-settings?section=${s.id}`}
