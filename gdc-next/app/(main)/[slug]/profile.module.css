@@ -1380,18 +1380,16 @@
 /* ── IMAGES TAB ───────────────────────────────────────── */
 .imageGrid {
   display: grid;
-  /* Cap the max cell size so removing a photo doesn't make the
-     remaining ones grow to fill the row. minmax(200px, 280px) keeps
-     each tile between those bounds; the grid wraps to the next row
-     once cells can't fit at min size. */
-  grid-template-columns: repeat(auto-fill, minmax(200px, 280px));
-  gap: .75rem;
+  /* Facebook-style tight grid of small square thumbnails. Cells pack
+     ~6 per row on a wide profile and wrap down as width shrinks. */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px;
 }
 .imageGrid img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid var(--border);
   cursor: pointer;
   transition: opacity .2s;
