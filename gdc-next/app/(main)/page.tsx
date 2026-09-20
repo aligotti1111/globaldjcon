@@ -575,7 +575,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.2,.8,.2,1)}
 .gdc-landing .reveal.in{opacity:1;transform:none}
 .gdc-landing .searchbar{border-bottom:1px solid var(--line);background:#000}
-.gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:10px;padding-top:16px;padding-bottom:16px;max-width:none;margin:0;padding-left:4rem;padding-right:4rem;position:relative}
+.gdc-landing .searchbar .wrap{display:flex;align-items:center;gap:4px;padding-top:16px;padding-bottom:16px;max-width:none;margin:0;padding-left:4rem;padding-right:4rem;position:relative}
 /* Owner setup stepper. Default: in the flow, right of the search box. */
 .gdc-landing #gdc-setup-slot{justify-content:flex-end}
 /* WIDE screens only: there's room for the search box AND a page-centered
