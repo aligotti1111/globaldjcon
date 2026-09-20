@@ -595,7 +595,7 @@ const LANDING_CSS = String.raw`
 @media(max-width:900px){
 .gdc-landing .searchbar .wrap{padding-left:1.2rem;padding-right:1.2rem}
 }
-.gdc-landing .searchfield{width:340px;max-width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:#0c0c11;border:1px solid rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s}
+.gdc-landing .searchfield{width:300px;max-width:100%;display:flex;align-items:center;gap:.6rem;padding:.5rem .9rem;background:#0c0c11;border:1px solid rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s}
 .gdc-landing .searchfield:focus-within{border-color:var(--neon);box-shadow:0 0 0 4px rgba(0,245,196,.1)}
 .gdc-landing .searchfield svg{width:18px;height:18px;stroke:var(--faint);fill:none;flex-shrink:0}
 .gdc-landing .searchfield input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-family:var(--body);font-size:.95rem;min-width:0}
@@ -606,7 +606,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .searchfield .flagcaret{width:10px;height:7px;color:var(--faint);flex-shrink:0}
 .gdc-landing .searchfield .flagsel{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;-webkit-appearance:none;appearance:none}
 .gdc-landing .searchfield .flagsel option{background:#0c0c11;color:var(--ink);font-size:1rem}
-.gdc-landing .searchbtn{flex-shrink:0;width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:#0c0c11;border:1px solid var(--neon);border-radius:12px;cursor:pointer}
+.gdc-landing .searchbtn{flex-shrink:0;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:0;cursor:pointer;font-size:20px;line-height:1;padding:0}
 .gdc-landing .searchbtn svg{width:18px;height:18px;stroke:var(--neon);fill:none}`;
 
 const LANDING_BODY = String.raw`
@@ -645,7 +645,7 @@ const LANDING_BODY = String.raw`
       </label>
     </form>
     <button class="searchbtn" type="button" aria-label="Use my location" onclick="if(navigator.geolocation){this.style.opacity='.5';navigator.geolocation.getCurrentPosition(function(p){location.href='/djs?lat='+p.coords.latitude+'&lng='+p.coords.longitude;},function(){location.href='/djs?near=1';});}else{location.href='/djs?near=1';}">
-      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      📍
     </button>
     <!-- Owner setup stepper portals in here so it shares the search row. -->
     <div id="gdc-setup-slot" style="flex:1;min-width:0;display:flex;overflow-x:auto"></div>
