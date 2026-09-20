@@ -1609,7 +1609,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                           <span style={{ fontSize: '.58rem', letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--muted,#aaa)' }}>Back</span>
                         </span>
                       ) : (
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 100, height: 100, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: '1px solid var(--neon)', color: 'var(--neon)', fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', textAlign: 'center', padding: '0 6px' }}>All photos</span>
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, width: 100, height: 100, color: 'var(--neon)' }}>
+                          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                          <span style={{ fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>All photos</span>
+                        </span>
                       )}
                       <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{galleryPhotos.length} total</span>
                     </button>
