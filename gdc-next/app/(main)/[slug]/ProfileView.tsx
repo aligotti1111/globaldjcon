@@ -702,6 +702,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       window.open(url, '_blank', 'noopener');
     }
   }
+  async function setAlbumCover(albumId: string, url: string) {
+    setPhotoBusy(true);
+    try {
+      const nextAlbums = albums.map((a) => (a.id === albumId ? { ...a, cover: url } : a));
+      await saveProfile(data.id, { gallery_albums: nextAlbums }, actingAsMember);
+      setPhotoMenuFor(null);
+      reloadToPhotos();
+    } catch {
+      setPhotoBusy(false);
+      alert('Could not set the album cover.');
+    }
+  }
   async function saveCaption(url: string, text: string) {
     setPhotoBusy(true);
     try {
@@ -1840,6 +1852,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                                 <button type="button" onClick={() => { setCaptionDraft(captions[url] || ''); setCaptionFor(url); setPhotoMenuFor(null); }} style={photoMenuItem}>
                                   {captions[url] ? 'Edit caption' : 'Add caption'}
                                 </button>
+                                {activeAlbum && activeAlbum.photos.includes(url) && (
+                                  <button type="button" disabled={photoBusy || activeAlbum.cover === url} onClick={() => setAlbumCover(activeAlbum.id, url)} style={{ ...photoMenuItem, opacity: activeAlbum.cover === url ? 0.5 : 1 }}>
+                                    {activeAlbum.cover === url ? 'Album cover ✓' : 'Set as album cover'}
+                                  </button>
+                                )}
                                 <button type="button" onClick={() => downloadPhoto(url)} style={photoMenuItem}>Download</button>
                                 <button type="button" disabled={photoBusy} onClick={() => deletePhoto(url)} style={{ ...photoMenuItem, color: '#ff6b6b' }}>Delete</button>
                               </div>
