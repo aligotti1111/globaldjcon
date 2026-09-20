@@ -15,7 +15,7 @@ import {
   FacebookIcon, TwitchIcon, CalendarIcon, MailIcon,
 } from './icons';
 import type { DjProfileData, Testimonial, Faq, AboutStats } from './profileTypes';
-import { thumbUrl, validateImageFile } from './profilePhotoUtils';
+import { thumbUrl, validateImageFile, MAX_IMAGE_BYTES } from './profilePhotoUtils';
 import { saveProfile, profileUploadFolder } from './profileSave';
 import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/lib/albums';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
@@ -1974,7 +1974,7 @@ export function AddPhotosModal({
         <button type="button" disabled={busy || room <= 0} onClick={() => inputRef.current?.click()} style={{ width: '100%', padding: '.7rem 1rem', borderRadius: 8, border: '1.5px solid var(--neon)', background: 'rgba(0,245,196,.06)', color: 'var(--neon)', fontWeight: 700, fontSize: '.85rem', cursor: room <= 0 ? 'not-allowed' : 'pointer', opacity: room <= 0 ? 0.5 : 1 }}>
           {staged.length ? 'Choose more photos' : 'Choose photos'}
         </button>
-        <div style={{ fontSize: '.7rem', color: 'var(--muted,#888)', marginTop: '.4rem', textAlign: 'center' }}>{currentCount + staged.length} of {cap} used</div>
+        <div style={{ fontSize: '.7rem', color: 'var(--muted,#888)', marginTop: '.4rem', textAlign: 'center' }}>{currentCount + staged.length} of {cap} used · max {Math.round(MAX_IMAGE_BYTES / 1024 / 1024)} MB per photo</div>
 
         {staged.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.5rem', marginTop: '1rem' }}>
