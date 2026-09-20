@@ -1898,14 +1898,18 @@ export function CreateAlbumModal({
 }) {
   const [name, setName] = useState('');
   const [gallery, setGallery] = useState<string[]>(photos); // grows on upload
+  const [added, setAdded] = useState<string[]>([]); // uploaded THIS session
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Newest first for the picker.
-  const pickable = gallery.slice().reverse();
+  // Split the picker: photos uploaded from the device this session vs. the
+  // DJ's pre-existing gallery. Newest first in each group.
+  const justAdded = added.slice().reverse();
+  const addedSet = new Set(added);
+  const existing = photos.filter((u) => !addedSet.has(u)).slice().reverse();
 
   function toggle(url: string) {
     setChosen((prev) => {
@@ -1944,6 +1948,7 @@ export function CreateAlbumModal({
         // Persist the grown gallery immediately (uploads belong to it).
         await saveProfile(userId, { gallery_photos: nextGallery });
         setGallery(nextGallery);
+        setAdded((prev) => [...prev, ...uploaded]);
         // Newly uploaded photos are auto-selected for the album.
         setChosen((prev) => { const s = new Set(prev); uploaded.forEach((u) => s.add(u)); return s; });
       }
@@ -1989,25 +1994,41 @@ export function CreateAlbumModal({
         </div>
         <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onFiles} />
 
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted,#888)', marginBottom: '.6rem' }}>
-          Or choose from your photos
-        </div>
-        {pickable.length === 0 ? (
-          <div style={{ fontSize: '.78rem', color: 'var(--muted,#888)', marginBottom: '1rem' }}>No photos yet — upload some above.</div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.5rem', marginBottom: '1rem' }}>
-            {pickable.map((url, idx) => {
-              const isSel = chosen.has(url);
-              return (
-                <div key={`${url}-${idx}`} onClick={() => toggle(url)} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', border: `2px solid ${isSel ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, cursor: 'pointer' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={thumbUrl(url, 300)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isSel ? 1 : 0.7 }} />
-                  <span style={{ position: 'absolute', top: 3, left: 3, width: 18, height: 18, borderRadius: '50%', background: isSel ? 'var(--neon)' : 'rgba(0,0,0,.55)', color: '#04121a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{isSel ? '✓' : ''}</span>
+        {(() => {
+          const tile = (url: string, idx: number) => {
+            const isSel = chosen.has(url);
+            return (
+              <div key={`${url}-${idx}`} onClick={() => toggle(url)} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', border: `2px solid ${isSel ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, cursor: 'pointer' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={thumbUrl(url, 300)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isSel ? 1 : 0.7 }} />
+                <span style={{ position: 'absolute', top: 3, left: 3, width: 18, height: 18, borderRadius: '50%', background: isSel ? 'var(--neon)' : 'rgba(0,0,0,.55)', color: '#04121a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{isSel ? '✓' : ''}</span>
+              </div>
+            );
+          };
+          const heading = (t: string) => (
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted,#888)', margin: '0 0 .6rem' }}>{t}</div>
+          );
+          return (
+            <>
+              {justAdded.length > 0 && (
+                <>
+                  {heading(`Just added · ${justAdded.length}`)}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.5rem', marginBottom: '1rem' }}>
+                    {justAdded.map((u, i) => tile(u, i))}
+                  </div>
+                </>
+              )}
+              {heading('Or choose from your photos')}
+              {existing.length === 0 ? (
+                <div style={{ fontSize: '.78rem', color: 'var(--muted,#888)', marginBottom: '1rem' }}>{justAdded.length ? 'That’s all your existing photos.' : 'No photos yet — upload some above.'}</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.5rem', marginBottom: '1rem' }}>
+                  {existing.map((u, i) => tile(u, i))}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
+            </>
+          );
+        })()}
 
         {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem', marginBottom: '.75rem' }}>{error}</div>}
 
