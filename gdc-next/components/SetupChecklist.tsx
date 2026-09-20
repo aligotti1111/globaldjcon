@@ -220,7 +220,9 @@ export default function SetupChecklist() {
           return (
             <Fragment key={s.id}>
               {i > 0 && (
-                <div aria-hidden style={{ height: 1, width: 18, flex: '0 0 auto', marginBottom: CIRCLE / 2, background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
+                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+                </span>
               )}
               <Link
                 href={`/booking-settings?section=${s.id}`}
