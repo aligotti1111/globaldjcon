@@ -1599,28 +1599,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )}
 
-                {/* All photos — text only, on its own line. Inside an album it
-                    reads as a back link to the full feed. */}
-                {(albums.length > 0 || canEdit) && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAlbumId(null)}
-                    title={activeAlbum ? 'Back to all photos' : 'All photos'}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, marginBottom: '.85rem', cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
-                  >
-                    {activeAlbum && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-                    )}
-                    <span>All photos</span>
-                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
-                  </button>
-                )}
-
                 {/* Albums row — one horizontal strip that scrolls sideways when
                     there are more albums than fit. Clicking an album filters the
                     grid below to its photos. Cover thumbnails match the photo
                     grid tile size. Shows when the DJ has albums, or for the
-                    owner (so the "New album" button is always reachable). */}
+                    owner (so the "New album" button is always reachable).
+                    Sits ABOVE the "All photos" header. */}
                 {(albums.length > 0 || canEdit) && (
                   <div style={{ display: 'flex', gap: '.6rem', overflowX: 'auto', paddingBottom: '.5rem', marginBottom: '1rem' }}>
                     {albums.map((a) => (
@@ -1671,6 +1655,24 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       </button>
                     )}
                   </div>
+                )}
+
+                {/* All photos — text only, on its own line, UNDER the albums
+                    row and directly above the grid. Inside an album it reads as
+                    a back link to the full feed. */}
+                {(albums.length > 0 || canEdit) && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbumId(null)}
+                    title={activeAlbum ? 'Back to all photos' : 'All photos'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, marginBottom: '.85rem', cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
+                  >
+                    {activeAlbum && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                    )}
+                    <span>All photos</span>
+                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
+                  </button>
                 )}
 
                 {activeAlbum && (
