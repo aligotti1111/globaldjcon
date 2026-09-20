@@ -1601,35 +1601,49 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       aria-label={activeAlbum ? 'Back to all photos' : 'All photos'}
                       style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                     >
-                      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, width: 100, height: 100, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: `1px solid ${!activeAlbum ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, color: 'var(--neon)', textAlign: 'center', padding: '0 6px' }}>
-                        {activeAlbum ? (
-                          <>
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
-                            <span style={{ fontSize: '.56rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>All photos</span>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>All photos</span>
-                        )}
-                      </span>
+                      {activeAlbum ? (
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, width: 100, height: 100 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                          </span>
+                          <span style={{ fontSize: '.58rem', letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--muted,#aaa)' }}>Back</span>
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 100, height: 100, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: '1px solid var(--neon)', color: 'var(--neon)', fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', textAlign: 'center', padding: '0 6px' }}>All photos</span>
+                      )}
                       <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{galleryPhotos.length} total</span>
                     </button>
                     {albums.map((a) => (
-                      <button
+                      <div
                         key={a.id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedAlbumId(a.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedAlbumId(a.id); }}
                         title={a.name}
-                        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }}
                       >
                         <span style={{ position: 'relative', display: 'block', width: 100, height: 100, borderRadius: 10, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
                           {a.cover && (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img src={optimizedImageUrl(a.cover, 240)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           )}
+                          {/* Owner-only edit pencil, on the cover itself. */}
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setEditAlbumTarget(a); }}
+                              title="Edit album"
+                              aria-label="Edit album"
+                              style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                            </button>
+                          )}
                           <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 8px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,.78))', color: '#fff', fontSize: '.7rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
                         </span>
                         <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{a.photos.length} photos</span>
-                      </button>
+                      </div>
                     ))}
                     {/* Owner-only: create/manage albums (opens Manage Photos). */}
                     {canEdit && (
@@ -1650,21 +1664,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 )}
 
                 {activeAlbum && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '.6rem' }}>
-                    <span style={{ fontSize: '.8rem', color: 'var(--muted,#888)' }}>
-                      {activeAlbum.name} · {activeAlbum.photos.length} photos
-                    </span>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => setEditAlbumTarget(activeAlbum)}
-                        title="Edit album"
-                        aria-label="Edit album"
-                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, cursor: 'pointer', padding: 0 }}
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
-                      </button>
-                    )}
+                  <div style={{ fontSize: '.8rem', color: 'var(--muted,#888)', marginBottom: '.6rem' }}>
+                    {activeAlbum.name} · {activeAlbum.photos.length} photos
                   </div>
                 )}
 
@@ -1679,7 +1680,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                         onClick={() => setPhotoManagerOpen(true)}
                         title="Add photos"
                         aria-label="Add photos"
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: '58%', aspectRatio: '1 / 1', background: 'rgba(0,245,196,.06)', border: '1.5px dashed var(--neon)', borderRadius: 10, color: 'var(--neon)', cursor: 'pointer', padding: 0 }}
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: '55%', maxWidth: 84, aspectRatio: '1 / 1', background: 'rgba(0,245,196,.06)', border: '1.5px dashed var(--neon)', borderRadius: 10, color: 'var(--neon)', cursor: 'pointer', padding: 0 }}
                       >
                         <span style={{ fontSize: '1.5rem', lineHeight: 1, fontWeight: 300 }}>+</span>
                         <span style={{ fontSize: '.52rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>Add</span>
