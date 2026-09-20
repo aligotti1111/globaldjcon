@@ -37,7 +37,7 @@ export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
   BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
-  VideoMetaEditor, ExpandableDesc, PhotoManagerModal, CreateAlbumModal, EmbedCalendarModal,
+  VideoMetaEditor, ExpandableDesc, PhotoManagerModal, AddPhotosModal, CreateAlbumModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
 } from './ProfileComponents';
@@ -316,6 +316,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
+  const [addPhotosOpen, setAddPhotosOpen] = useState(false);
   // Photos tab: which album is being viewed (null = All photos) and how many
   // of the all-photos feed are shown (paginated so a huge gallery never loads
   // at once). PHOTO_PAGE is the batch size for "Load more".
@@ -1821,7 +1822,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <button
                         type="button"
-                        onClick={() => setPhotoManagerOpen(true)}
+                        onClick={() => setAddPhotosOpen(true)}
                         title="Add photos"
                         aria-label="Add photos"
                         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: '55%', maxWidth: 84, aspectRatio: '1 / 1', background: 'rgba(0,245,196,.06)', border: '1.5px dashed var(--neon)', borderRadius: 10, color: 'var(--neon)', cursor: 'pointer', padding: 0 }}
@@ -2302,6 +2303,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           onClose={() => {
             // Reload on close so any changes the DJ made show in the
             // hero/photos tab. Cheaper than wiring up live state.
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Add photos — the simple "+ Add" flow: choose files, then Save. */}
+      {addPhotosOpen && canEdit && (
+        <AddPhotosModal
+          userId={data.id}
+          currentCount={galleryPhotos.length}
+          cap={photoCap}
+          onClose={() => {
             const url = new URL(window.location.href);
             url.searchParams.set('tab', 'images');
             window.location.href = url.toString();
