@@ -87,6 +87,16 @@ export default function SetupChecklist() {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [reviewedLocal, setReviewedLocal] = useState(false); // flips to pill immediately
   const markedRef = useRef(false);
+  // Connector style differs by viewport: tight arrows on mobile, the original
+  // plain line with wider spacing on desktop.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   const actingRole = (user as { actingRole?: string } | null)?.actingRole ?? 'owner';
   const isDjOwner = !!user && user.role === 'dj' && actingRole === 'owner';
@@ -208,7 +218,7 @@ export default function SetupChecklist() {
     content = (
       // margin:0 auto centers the whole thing; label sits BELOW the steps.
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 'min-content', margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: isMobile ? 2 : 6 }}>
         {model.steps.map((s, i) => {
           const isCurrent = i === currentIdx;
           const circleStyle: CSSProperties = s.done
@@ -220,9 +230,15 @@ export default function SetupChecklist() {
           return (
             <Fragment key={s.id}>
               {i > 0 && (
-                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
-                  <svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
-                </span>
+                isMobile ? (
+                  /* Mobile: tight arrow connector. */
+                  <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
+                    <svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
+                  </span>
+                ) : (
+                  /* Desktop: original plain line connector. */
+                  <div aria-hidden style={{ height: 1, width: 18, flex: '0 0 auto', marginBottom: CIRCLE / 2, background: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.15)' }} />
+                )
               )}
               <Link
                 href={`/booking-settings?section=${s.id}`}
