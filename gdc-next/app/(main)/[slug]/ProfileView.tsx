@@ -523,10 +523,25 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     return () => { document.body.style.overflow = ''; };
   }, [lightboxSrc]);
 
-  // ESC key closes lightbox (vanilla behavior)
+  // ESC closes the lightbox; ← / → step through the photos currently shown
+  // (the active album, or the visible feed). Uses a ref for the list + a
+  // functional state update so the handler never goes stale.
+  const lightboxListRef = useRef<string[]>([]);
   useEffect(() => {
+    function step(dir: 1 | -1) {
+      setLightboxSrc((cur) => {
+        const listL = lightboxListRef.current;
+        if (!cur || listL.length === 0) return cur;
+        const i = listL.indexOf(cur);
+        if (i < 0) return cur;
+        const j = i + dir;
+        return j >= 0 && j < listL.length ? listL[j] : cur;
+      });
+    }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setLightboxSrc(null);
+      else if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -595,6 +610,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     ? [...activeAlbum.photos].reverse()
     : galleryNewest.slice(0, photoLimit);
   const canLoadMore = !activeAlbum && photoLimit < galleryNewest.length;
+  // Keep the lightbox nav list in sync with what's on screen so ← / → walk
+  // exactly the photos the viewer is looking at.
+  lightboxListRef.current = shownPhotos;
   // DJ's effective tier — albums (create/assign) are Premium Pro (3) + up.
   const djTier = effectiveTier(data as unknown as AccessFields);
   // Videos — array model (video_urls: {url,title,desc}[]) with legacy fallback.
@@ -1570,15 +1588,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 {/* Albums row — one horizontal strip that scrolls sideways when
                     there are more albums than fit. Clicking an album filters the
                     grid below to its photos; "All photos" returns to the feed.
-                    Only shows when the DJ has albums (Premium Pro / Enterprise). */}
-                {albums.length > 0 && (
+                    Square cover thumbnails. Shows when the DJ has albums, or for
+                    the owner (so the "New album" button is always reachable). */}
+                {(albums.length > 0 || canEdit) && (
                   <div style={{ display: 'flex', gap: '.6rem', overflowX: 'auto', paddingBottom: '.5rem', marginBottom: '1rem' }}>
                     <button
                       type="button"
                       onClick={() => setSelectedAlbumId(null)}
                       style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                     >
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 120, height: 82, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: `1px solid ${!activeAlbum ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, color: 'var(--neon)', fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase' }}>All photos</span>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 100, height: 100, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: `1px solid ${!activeAlbum ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, color: 'var(--neon)', fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', textAlign: 'center', padding: '0 6px' }}>All photos</span>
                       <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{galleryPhotos.length} total</span>
                     </button>
                     {albums.map((a) => (
@@ -1589,16 +1608,31 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                         title={a.name}
                         style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                       >
-                        <span style={{ position: 'relative', display: 'block', width: 120, height: 82, borderRadius: 10, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
+                        <span style={{ position: 'relative', display: 'block', width: 100, height: 100, borderRadius: 10, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
                           {a.cover && (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img src={optimizedImageUrl(a.cover, 240)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           )}
-                          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '10px 8px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,.75))', color: '#fff', fontSize: '.72rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
+                          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 8px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,.78))', color: '#fff', fontSize: '.7rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
                         </span>
                         <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{a.photos.length} photos</span>
                       </button>
                     ))}
+                    {/* Owner-only: create/manage albums (opens Manage Photos). */}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setPhotoManagerOpen(true)}
+                        title="New album"
+                        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                      >
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, width: 100, height: 100, borderRadius: 10, border: '1px dashed var(--neon)', background: 'rgba(0,245,196,.05)', color: 'var(--neon)' }}>
+                          <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>+</span>
+                          <span style={{ fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>New album</span>
+                        </span>
+                        <span style={{ fontSize: '.62rem', color: 'transparent' }}>.</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1609,6 +1643,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 )}
 
                 <div className={styles.imageGrid}>
+                  {/* Owner-only: compact "add photo" tile in the FIRST slot.
+                      Smaller than a full photo tile so it reads as an action,
+                      not a photo. Opens the manager (bulk multi-select upload). */}
+                  {canEdit && !activeAlbum && galleryPhotos.length < photoCap && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setPhotoManagerOpen(true)}
+                        title="Add photos"
+                        aria-label="Add photos"
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: '58%', aspectRatio: '1 / 1', background: 'rgba(0,245,196,.06)', border: '1.5px dashed var(--neon)', borderRadius: 10, color: 'var(--neon)', cursor: 'pointer', padding: 0 }}
+                      >
+                        <span style={{ fontSize: '1.5rem', lineHeight: 1, fontWeight: 300 }}>+</span>
+                        <span style={{ fontSize: '.52rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>Add</span>
+                      </button>
+                    </div>
+                  )}
                   {shownPhotos.map((url, i) => (
                     <div key={`${url}-${i}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1620,35 +1671,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       />
                     </div>
                   ))}
-                  {/* Owner-only inline add — opens manage-photos modal
-                      when there's room for more photos. Hidden while viewing a
-                      single album (adding happens in the main feed / manager). */}
-                  {canEdit && !activeAlbum && galleryPhotos.length < photoCap && (
-                  <button
-                    type="button"
-                    onClick={() => setPhotoManagerOpen(true)}
-                    title="Add a photo"
-                    aria-label="Add a photo"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '100%',
-                      aspectRatio: '1 / 1',
-                      background: 'rgba(0, 245, 196, .05)',
-                      border: '2px dashed var(--neon)',
-                      borderRadius: 8,
-                      color: 'var(--neon)',
-                      cursor: 'pointer',
-                      fontSize: '2.5rem',
-                      lineHeight: 1,
-                      fontWeight: 300,
-                      padding: 0,
-                    }}
-                  >
-                    +
-                  </button>
-                )}
                 </div>
 
                 {/* Paginated feed: only ~24 load at first; "Load more" fetches
