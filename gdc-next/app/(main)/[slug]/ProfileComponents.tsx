@@ -1888,18 +1888,21 @@ export function CreateAlbumModal({
   photos,
   albums,
   cap,
+  editAlbum = null,
   onClose,
 }: {
   userId: string;
   photos: string[];
   albums: Album[];
   cap: number;
+  editAlbum?: Album | null; // when set, the modal edits this album
   onClose: () => void;
 }) {
-  const [name, setName] = useState('');
+  const isEdit = !!editAlbum;
+  const [name, setName] = useState(editAlbum?.name ?? '');
   const [gallery, setGallery] = useState<string[]>(photos); // grows on upload
   const [added, setAdded] = useState<string[]>([]); // uploaded THIS session
-  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [chosen, setChosen] = useState<Set<string>>(new Set(editAlbum?.photos ?? []));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -1959,20 +1962,42 @@ export function CreateAlbumModal({
     }
   }
 
-  async function create() {
+  async function save() {
     const nm = name.trim();
     if (!nm) { setError('Name your album.'); return; }
     if (chosen.size === 0) { setError('Add at least one photo.'); return; }
     // Members in gallery order (oldest→newest) so album order matches feed.
     const members = gallery.filter((u) => chosen.has(u));
-    const album: Album = { id: newAlbumId(), name: nm, cover: members[members.length - 1] || null, photos: members };
     setBusy(true);
     try {
-      await saveProfile(userId, { gallery_albums: [...albums, album] });
+      let nextAlbums: Album[];
+      if (isEdit && editAlbum) {
+        // Keep the existing cover if it's still a member; else fall back.
+        const cover = editAlbum.cover && chosen.has(editAlbum.cover) ? editAlbum.cover : members[members.length - 1] || null;
+        nextAlbums = albums.map((a) => (a.id === editAlbum.id ? { ...a, name: nm, photos: members, cover } : a));
+      } else {
+        const album: Album = { id: newAlbumId(), name: nm, cover: members[members.length - 1] || null, photos: members };
+        nextAlbums = [...albums, album];
+      }
+      await saveProfile(userId, { gallery_albums: nextAlbums });
       setSaved(true);
       onClose();
     } catch {
-      setError('Could not create the album.');
+      setError(isEdit ? 'Could not save the album.' : 'Could not create the album.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteAlbum() {
+    if (!editAlbum) return;
+    setBusy(true);
+    try {
+      await saveProfile(userId, { gallery_albums: albums.filter((a) => a.id !== editAlbum.id) });
+      setSaved(true);
+      onClose();
+    } catch {
+      setError('Could not delete the album.');
     } finally {
       setBusy(false);
     }
@@ -1982,7 +2007,7 @@ export function CreateAlbumModal({
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-card, #1a1a2e)', border: '1px solid var(--border, rgba(255,255,255,0.1))', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 620, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.9rem' }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: 'var(--white, #fff)', letterSpacing: '.04em' }}>New album</div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: 'var(--white, #fff)', letterSpacing: '.04em' }}>{isEdit ? 'Edit album' : 'New album'}</div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: 'var(--muted, #888)', fontSize: '1.4rem', cursor: 'pointer', padding: '.25rem .5rem' }}>✕</button>
         </div>
 
@@ -2032,9 +2057,12 @@ export function CreateAlbumModal({
 
         {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem', marginBottom: '.75rem' }}>{error}</div>}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '.6rem' }}>
+          {isEdit && (
+            <button type="button" disabled={busy} onClick={deleteAlbum} style={{ marginRight: 'auto', padding: '.6rem 1rem', background: 'transparent', border: '1px solid #ff5f5f', borderRadius: 6, color: '#ff5f5f', fontSize: '.75rem', cursor: 'pointer' }}>Delete album</button>
+          )}
           <button type="button" onClick={onClose} style={{ padding: '.6rem 1.2rem', background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.78rem', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" disabled={busy || saved} onClick={create} style={{ padding: '.6rem 1.4rem', background: 'var(--neon)', border: 'none', borderRadius: 6, color: '#04121a', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Create album'}</button>
+          <button type="button" disabled={busy || saved} onClick={save} style={{ padding: '.6rem 1.4rem', background: 'var(--neon)', border: 'none', borderRadius: 6, color: '#04121a', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : isEdit ? 'Save changes' : 'Create album'}</button>
         </div>
       </div>
     </div>
