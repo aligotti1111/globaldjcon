@@ -1600,10 +1600,15 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 )}
 
                 {/* Albums section — a text header, then the horizontal row of
-                    album covers. */}
+                    album covers. When an album is open, the header becomes that
+                    album's title. */}
                 {(albums.length > 0 || canEdit) && (
                   <div style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600, color: 'var(--white,#fff)', marginBottom: '.6rem' }}>
-                    Albums{albums.length > 0 && <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {albums.length}</span>}
+                    {activeAlbum ? (
+                      <>{activeAlbum.name}<span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {activeAlbum.photos.length} photos</span></>
+                    ) : (
+                      <>Albums{albums.length > 0 && <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {albums.length}</span>}</>
+                    )}
                   </div>
                 )}
 
@@ -1681,12 +1686,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <span>All photos</span>
                     <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
                   </button>
-                )}
-
-                {activeAlbum && (
-                  <div style={{ fontSize: '.8rem', color: 'var(--muted,#888)', marginBottom: '.6rem' }}>
-                    {activeAlbum.name} · {activeAlbum.photos.length} photos
-                  </div>
                 )}
 
                 <div className={styles.imageGrid}>
