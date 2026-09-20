@@ -213,8 +213,8 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     }
     const r2 = (n: number) => Number(n.toFixed(2));
     return [
-      { key: 'deposit', label: 'Deposit', value: r2(deposit), color: '#00f5c4' },
-      { key: 'balance', label: 'Balance', value: r2(balance), color: '#8AA0FF' },
+      { key: 'deposit', label: 'Deposit', value: r2(deposit), color: '#f5a3c7' },
+      { key: 'balance', label: 'Balance', value: r2(balance), color: '#38bdf8' },
     ];
   }, [filteredWindowed, basis]);
 
