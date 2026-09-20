@@ -1971,7 +1971,7 @@ export function AddPhotosModal({
         </div>
 
         <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onPick} />
-        <button type="button" disabled={busy || room <= 0} onClick={() => inputRef.current?.click()} style={{ width: '100%', padding: '.7rem 1rem', borderRadius: 8, border: '1.5px dashed var(--neon)', background: 'rgba(0,245,196,.06)', color: 'var(--neon)', fontWeight: 700, fontSize: '.85rem', cursor: room <= 0 ? 'not-allowed' : 'pointer', opacity: room <= 0 ? 0.5 : 1 }}>
+        <button type="button" disabled={busy || room <= 0} onClick={() => inputRef.current?.click()} style={{ width: '100%', padding: '.7rem 1rem', borderRadius: 8, border: '1.5px solid var(--neon)', background: 'rgba(0,245,196,.06)', color: 'var(--neon)', fontWeight: 700, fontSize: '.85rem', cursor: room <= 0 ? 'not-allowed' : 'pointer', opacity: room <= 0 ? 0.5 : 1 }}>
           {staged.length ? 'Choose more photos' : 'Choose photos'}
         </button>
         <div style={{ fontSize: '.7rem', color: 'var(--muted,#888)', marginTop: '.4rem', textAlign: 'center' }}>{currentCount + staged.length} of {cap} used</div>
