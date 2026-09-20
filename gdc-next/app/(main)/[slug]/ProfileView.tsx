@@ -1699,15 +1699,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 )}
 
                 {/* Albums section — a text header, then the horizontal row of
-                    album covers. When an album is open, the header becomes that
-                    album's title. */}
+                    album covers. */}
                 {(albums.length > 0 || canEdit) && (
                   <div style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600, color: 'var(--white,#fff)', marginBottom: '.6rem' }}>
-                    {activeAlbum ? (
-                      <>{activeAlbum.name}<span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {activeAlbum.photos.length} photos</span></>
-                    ) : (
-                      <>Albums{albums.length > 0 && <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {albums.length}</span>}</>
-                    )}
+                    Albums{albums.length > 0 && <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {albums.length}</span>}
                   </div>
                 )}
 
@@ -1785,6 +1780,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <span>All photos</span>
                     <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
                   </button>
+                )}
+
+                {/* Open-album title — sits directly over the album's photos. */}
+                {activeAlbum && (
+                  <div style={{ fontSize: '.95rem', fontWeight: 700, color: 'var(--white,#fff)', marginBottom: '.6rem' }}>
+                    {activeAlbum.name}
+                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, fontSize: '.8rem' }}> · {activeAlbum.photos.length} photos</span>
+                  </div>
                 )}
 
                 <div className={styles.imageGrid}>
