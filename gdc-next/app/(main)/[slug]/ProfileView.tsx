@@ -428,6 +428,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // (no full page reload). null = fall back to the values from the server.
   const [captionOverride, setCaptionOverride] = useState<Record<string, string> | null>(null);
   const [coverOverride, setCoverOverride] = useState<Record<string, string>>({});
+  // URLs deleted this session — filtered out of the gallery so a delete
+  // updates in place without a full page reload.
+  const [deletedUrls, setDeletedUrls] = useState<Set<string>>(new Set());
 
   // ── Hero name/location color ────────────────────────────────────────
   // Owner-chosen color applied to BOTH the hero name and the location line.
@@ -608,10 +611,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // 4 fixed slots so existing photos still show until re-saved.
   const legacyGallery = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
     .filter((u): u is string => !!u);
-  const galleryPhotos: string[] = (Array.isArray((data as { gallery_photos?: string[] }).gallery_photos)
+  const galleryPhotos: string[] = ((Array.isArray((data as { gallery_photos?: string[] }).gallery_photos)
     && (data as { gallery_photos?: string[] }).gallery_photos!.length > 0)
     ? (data as { gallery_photos?: string[] }).gallery_photos!.filter((u): u is string => !!u)
-    : legacyGallery;
+    : legacyGallery)
+    // Drop anything deleted this session so the grid updates without a reload.
+    .filter((u) => !deletedUrls.has(u));
   const photoCap = hasBookingAccess ? 50 : 4;
   // Albums (Premium Pro + Enterprise). Parsed from the gallery_albums jsonb.
   // An album references URLs that also live in gallery_photos, so we filter to
@@ -658,14 +663,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
   // ── Owner per-photo actions (pencil menu) ─────────────────────────────
   // Delete removes the URL from the gallery, prunes it from every album and
-  // its caption, then reloads to the Photos tab (same reload pattern the
-  // photo/album modals use). Download fetches the image and saves it. Caption
-  // opens the inline editor; saveCaption persists the map.
-  function reloadToPhotos() {
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'images');
-    window.location.href = url.toString();
-  }
+  // its caption, all in place (no reload). Download fetches the image and
+  // saves it. Caption opens the inline editor; saveCaption persists the map.
   async function deletePhoto(url: string) {
     const ok = await confirm({
       title: 'Delete this photo?',
@@ -685,8 +684,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         gallery_albums: nextAlbums,
         gallery_captions: nextCaptions,
       }, actingAsMember);
+      // Remove in place — no reload. If the open lightbox was this photo, close it.
+      setDeletedUrls((prev) => new Set(prev).add(url));
+      setCaptionOverride(nextCaptions);
+      setLightboxSrc((cur) => (cur === url ? null : cur));
       setPhotoMenuFor(null);
-      reloadToPhotos();
+      setPhotoBusy(false);
     } catch {
       setPhotoBusy(false);
       alert('Could not delete the photo.');
@@ -1776,28 +1779,35 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )}
 
-                {/* All photos — a back link on the left; when an album is open,
-                    the album name sits on the RIGHT of the same row. */}
+                {/* All photos — a back link to the full feed. */}
                 {(albums.length > 0 || canEdit) && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: '.85rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedAlbumId(null)}
-                      title={activeAlbum ? 'Back to all photos' : 'All photos'}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
-                    >
-                      {activeAlbum && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-                      )}
-                      <span>All photos</span>
-                      <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbumId(null)}
+                    title={activeAlbum ? 'Back to all photos' : 'All photos'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, marginBottom: '.85rem', cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
+                  >
                     {activeAlbum && (
-                      <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--white,#fff)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {activeAlbum.name}
-                        <span style={{ color: 'var(--muted,#888)', fontWeight: 400, fontSize: '.78rem' }}> · {activeAlbum.photos.length} photos</span>
-                      </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
                     )}
+                    <span>All photos</span>
+                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
+                  </button>
+                )}
+
+                {/* Open-album header — a small hero banner: the album cover as a
+                    dimmed background with the album name over it. */}
+                {activeAlbum && (
+                  <div style={{ position: 'relative', height: 120, borderRadius: 10, overflow: 'hidden', marginBottom: '1rem', display: 'flex', alignItems: 'flex-end', border: '1px solid var(--border,rgba(255,255,255,.12))' }}>
+                    {activeAlbum.cover && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={optimizedImageUrl(activeAlbum.cover, 900)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.25))' }} />
+                    <div style={{ position: 'relative', padding: '0 1rem 0.85rem' }}>
+                      <div style={{ fontFamily: 'var(--disp, "Bebas Neue", sans-serif)', fontSize: '2rem', lineHeight: 1, color: '#fff', letterSpacing: '.02em' }}>{activeAlbum.name}</div>
+                      <div style={{ fontSize: '.72rem', color: 'rgba(255,255,255,.8)', marginTop: 4 }}>{activeAlbum.photos.length} photos</div>
+                    </div>
                   </div>
                 )}
 
