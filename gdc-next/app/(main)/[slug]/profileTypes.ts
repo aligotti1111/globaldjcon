@@ -60,6 +60,9 @@ export interface DjProfileData {
   // Photo albums grouping a subset of gallery_photos. jsonb — parse with
   // parseAlbums() from lib/albums.ts. Premium Pro + Enterprise create these.
   gallery_albums?: unknown[] | null;
+  // Per-photo captions: a jsonb object mapping a gallery photo URL → caption
+  // text. Shown as a band at the bottom of the photo in the lightbox.
+  gallery_captions?: Record<string, string> | null;
   video_url_1: string | null;
   video_url_2: string | null;
   video_url_3: string | null;
