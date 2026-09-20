@@ -221,7 +221,7 @@ export default function SetupChecklist() {
             <Fragment key={s.id}>
               {i > 0 && (
                 <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+                  <svg width="22" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
                 </span>
               )}
               <Link
