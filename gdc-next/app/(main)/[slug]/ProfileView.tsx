@@ -22,6 +22,8 @@ import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
 import { optimizedImageUrl } from '@/lib/img';
+import { parseAlbums, type Album } from '@/lib/albums';
+import { effectiveTier, type AccessFields } from '@/lib/access';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
   LocationPinIcon, ClaimAlertIcon,
@@ -314,6 +316,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Photo manager modal — opens from the + button in the Photos tab.
   // Shows all 4 slots so DJ can upload to / remove from each independently.
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
+  // Photos tab: which album is being viewed (null = All photos) and how many
+  // of the all-photos feed are shown (paginated so a huge gallery never loads
+  // at once). PHOTO_PAGE is the batch size for "Load more".
+  const PHOTO_PAGE = 24;
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
+  const [photoLimit, setPhotoLimit] = useState<number>(PHOTO_PAGE);
   // Embed-calendar modal — owner-only shortcut on the profile so the DJ
   // can grab their iframe embed snippet without leaving for update-dj-profile.
   // Triggered by the "Embed Calendar" button above the calendar in the
@@ -573,6 +581,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     ? (data as { gallery_photos?: string[] }).gallery_photos!.filter((u): u is string => !!u)
     : legacyGallery;
   const photoCap = hasBookingAccess ? 50 : 4;
+  // Albums (Premium Pro + Enterprise). Parsed from the gallery_albums jsonb.
+  // An album references URLs that also live in gallery_photos, so we filter to
+  // the ones that still exist. Newest-first everywhere in the gallery.
+  const albums: Album[] = parseAlbums((data as { gallery_albums?: unknown[] }).gallery_albums)
+    .map((a) => ({ ...a, photos: a.photos.filter((u) => galleryPhotos.includes(u)) }))
+    .filter((a) => a.photos.length > 0);
+  const galleryNewest = [...galleryPhotos].reverse();
+  const activeAlbum = selectedAlbumId ? albums.find((a) => a.id === selectedAlbumId) || null : null;
+  // What the grid shows: an album's photos (newest first) if one is selected,
+  // otherwise the full feed capped to photoLimit for latency.
+  const shownPhotos = activeAlbum
+    ? [...activeAlbum.photos].reverse()
+    : galleryNewest.slice(0, photoLimit);
+  const canLoadMore = !activeAlbum && photoLimit < galleryNewest.length;
+  // DJ's effective tier — albums (create/assign) are Premium Pro (3) + up.
+  const djTier = effectiveTier(data as unknown as AccessFields);
   // Videos — array model (video_urls: {url,title,desc}[]) with legacy fallback.
   type VideoItem = { url: string; title: string | null; desc: string | null };
   const legacyVideos: VideoItem[] = [
@@ -1542,12 +1566,54 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </button>
                   </div>
                 )}
+
+                {/* Albums row — one horizontal strip that scrolls sideways when
+                    there are more albums than fit. Clicking an album filters the
+                    grid below to its photos; "All photos" returns to the feed.
+                    Only shows when the DJ has albums (Premium Pro / Enterprise). */}
+                {albums.length > 0 && (
+                  <div style={{ display: 'flex', gap: '.6rem', overflowX: 'auto', paddingBottom: '.5rem', marginBottom: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAlbumId(null)}
+                      style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 120, height: 82, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: `1px solid ${!activeAlbum ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, color: 'var(--neon)', fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase' }}>All photos</span>
+                      <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{galleryPhotos.length} total</span>
+                    </button>
+                    {albums.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setSelectedAlbumId(a.id)}
+                        title={a.name}
+                        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                      >
+                        <span style={{ position: 'relative', display: 'block', width: 120, height: 82, borderRadius: 10, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
+                          {a.cover && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={optimizedImageUrl(a.cover, 240)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          )}
+                          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '10px 8px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,.75))', color: '#fff', fontSize: '.72rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
+                        </span>
+                        <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{a.photos.length} photos</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {activeAlbum && (
+                  <div style={{ fontSize: '.8rem', color: 'var(--muted,#888)', marginBottom: '.6rem' }}>
+                    {activeAlbum.name} · {activeAlbum.photos.length} photos
+                  </div>
+                )}
+
                 <div className={styles.imageGrid}>
-                  {galleryPhotos.map((url, i) => (
-                    <div key={i}>
+                  {shownPhotos.map((url, i) => (
+                    <div key={`${url}-${i}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={url}
+                        src={optimizedImageUrl(url, 500)}
                         alt="Gallery photo"
                         loading="lazy"
                         onClick={() => setLightboxSrc(url)}
@@ -1555,8 +1621,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   ))}
                   {/* Owner-only inline add — opens manage-photos modal
-                      when there's room for more photos. */}
-                  {canEdit && galleryPhotos.length < photoCap && (
+                      when there's room for more photos. Hidden while viewing a
+                      single album (adding happens in the main feed / manager). */}
+                  {canEdit && !activeAlbum && galleryPhotos.length < photoCap && (
                   <button
                     type="button"
                     onClick={() => setPhotoManagerOpen(true)}
@@ -1583,6 +1650,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </button>
                 )}
                 </div>
+
+                {/* Paginated feed: only ~24 load at first; "Load more" fetches
+                    the next batch so a large gallery never loads all at once. */}
+                {canLoadMore && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoLimit((n) => n + PHOTO_PAGE)}
+                      style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.2))', color: 'var(--white,#fff)', borderRadius: 8, padding: '.6rem 1.4rem', fontSize: '.8rem', cursor: 'pointer' }}
+                    >
+                      Load more photos
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div className={styles.tabEmpty}>
@@ -1898,6 +1979,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         <PhotoManagerModal
           userId={data.id}
           photos={galleryPhotos}
+          albums={albums}
+          tier={djTier}
           cap={photoCap}
           isPaid={hasBookingAccess}
           onClose={() => {
