@@ -136,7 +136,7 @@
 /* Plan name — matches the homepage pricing cards: the Bebas Neue display font,
    accent-colored eyebrow. */
 .planName {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -152,9 +152,9 @@
   margin: 0.75rem 0 0.1rem;
   white-space: nowrap;
 }
-.cur { font-family: 'Bebas Neue', sans-serif; font-size: 1.35rem; font-weight: 600; color: #fff; }
+.cur { font-family: var(--font-bebas), 'Bebas Neue', sans-serif; font-size: 1.35rem; font-weight: 600; color: #fff; }
 .amt {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
   font-size: 2.5rem;
   font-weight: 600;
   letter-spacing: 0.01em;
