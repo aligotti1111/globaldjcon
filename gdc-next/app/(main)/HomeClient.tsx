@@ -456,7 +456,7 @@ export default function HomeClient({ initialDjs }: Props) {
             single line (no wrap) — the search box shrinks to make room. The
             location button is one tap; its status is conveyed via the icon
             color/state and the title/aria-label rather than inline text. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: 1, minWidth: 0, flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: 1, minWidth: 0, maxWidth: 560, flexWrap: 'nowrap' }}>
           <div className="search-wrap" style={{ flex: '1 1 0', minWidth: 0 }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
@@ -468,6 +468,7 @@ export default function HomeClient({ initialDjs }: Props) {
               placeholder="Search by zip or DJ name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ padding: '.55rem 4.5rem .55rem 2.8rem', fontSize: '.82rem' }}
             />
             <div
               className="country-indicator"
@@ -516,19 +517,19 @@ export default function HomeClient({ initialDjs }: Props) {
                 : 'Find DJs Near Me'
             }
             style={{
-              background: nearMeStatus === 'found' ? 'var(--neon-dim)' : 'transparent',
-              border: '1px solid var(--neon)',
+              background: 'transparent',
+              border: 'none',
               color: 'var(--neon)',
               cursor: (nearMeStatus === 'getting' || nearMeStatus === 'geocoding') ? 'wait' : 'pointer',
-              width: '42px',
-              height: '42px',
-              borderRadius: '8px',
+              width: '38px',
+              height: '38px',
               transition: 'all .2s',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
               padding: 0,
+              opacity: nearMeStatus === 'found' ? 1 : 0.9,
             }}
           >
             {(nearMeStatus === 'getting' || nearMeStatus === 'geocoding') ? (
@@ -536,10 +537,7 @@ export default function HomeClient({ initialDjs }: Props) {
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
               </svg>
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
+              <span style={{ fontSize: '20px', lineHeight: 1 }}>📍</span>
             )}
           </button>
         </div>
