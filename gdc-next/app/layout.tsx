@@ -142,7 +142,16 @@ async function getInitialUser(): Promise<CurrentUser | null> {
       // there is nothing to verify, so the verification gates (which block
       // booking) must not fire. Both places build this object, so both need
       // the rule or the first paint disagrees with everything after it.
-      email_verified: authUser.email ? profile.email_verified : true,
+      //
+      // Includes Supabase's own confirmation (`email_confirmed_at`): a user who
+      // clicked Supabase's confirm link is verified even if our own
+      // `email_verified` column was never flipped. AuthProvider already resolves
+      // it this way client-side; without the same rule HERE, the server's first
+      // paint showed the "please confirm" banner and the client then hid it —
+      // a banner flash on every reload for already-confirmed accounts.
+      email_verified: authUser.email
+        ? (profile.email_verified || !!(authUser as { email_confirmed_at?: string | null }).email_confirmed_at)
+        : true,
     };
   } catch {
     return null;
