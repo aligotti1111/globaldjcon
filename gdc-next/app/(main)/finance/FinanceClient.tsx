@@ -106,6 +106,10 @@ function nextMonth(ym: string): string {
 
 export default function FinanceClient({ events, eventItems, expectedItems, bookingMeta, primaryCurrency, djName, today }: Props) {
   const [preset, setPreset] = useState<Preset>('ytd');
+  // Which revenue series show in the chart. All on by default; each legend row
+  // is a checkbox that hides/shows its bars.
+  const [series, setSeries] = useState({ past: true, fut: true, expected: true });
+  const toggleSeries = (k: 'past' | 'fut' | 'expected') => setSeries((s) => ({ ...s, [k]: !s[k] }));
   // Amount basis is fixed to net (after tax) — the toggle was removed. Gross is
   // still surfaced as a sub-figure on the KPI cards.
   const basis: 'net' | 'gross' = 'net';
@@ -439,7 +443,11 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, basis, preset, start, end, isDaily, isYearly, expectedItems, dataBounds, today]);
-  const barMax = Math.max(1, ...bars.map((b) => Math.max(b.recPast, b.recFut, b.expected)));
+  const barMax = Math.max(1, ...bars.map((b) => Math.max(
+    series.past ? b.recPast : 0,
+    series.fut ? b.recFut : 0,
+    series.expected ? b.expected : 0,
+  )));
   // Always label the bars with their amount — every window, not just the ones
   // with few bars. (Empty $0 bars have no label because there's no bar to sit on.)
   const showBarVals = true;
@@ -567,19 +575,19 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
               <div key={b.key} className={styles.barCol} title={`${b.label}${b.sub ? ' ' + b.sub : ''}${b.recPast > 0 ? ` · received (past) ${money2.format(b.recPast)}` : ''}${b.recFut > 0 ? ` · received (future) ${money2.format(b.recFut)}` : ''}${b.expected > 0 ? ` · expected ${money2.format(b.expected)}` : ''}`}>
                 <div className={styles.barTrack}>
                   <div className={styles.barGroup}>
-                    {b.recPast > 0 && (
+                    {series.past && b.recPast > 0 && (
                       <div className={styles.barItem}>
                         {showBarVals && <span className={styles.barVal} style={{ color: REC_PAST }}>{money0.format(b.recPast)}</span>}
                         <div className={styles.barRec} style={{ height: `${(b.recPast / barMax) * 100}%`, background: REC_PAST }} />
                       </div>
                     )}
-                    {b.recFut > 0 && (
+                    {series.fut && b.recFut > 0 && (
                       <div className={styles.barItem}>
                         {showBarVals && <span className={styles.barVal} style={{ color: REC_FUTURE }}>{money0.format(b.recFut)}</span>}
                         <div className={styles.barRec} style={{ height: `${(b.recFut / barMax) * 100}%`, background: REC_FUTURE }} />
                       </div>
                     )}
-                    {b.expected > 0 && (
+                    {series.expected && b.expected > 0 && (
                       <div className={styles.barItem}>
                         {showBarVals && <span className={styles.barVal} style={{ color: EXP_COLOR }}>{money0.format(b.expected)}</span>}
                         <div className={styles.barExp2} style={{ height: `${(b.expected / barMax) * 100}%` }} />
@@ -592,12 +600,35 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
             ))}
           </div>
         )}
-        {/* Legend always shows so the two colours are explained even when the
-            current range happens to have no expected (unpaid) bookings. */}
+        {/* Legend doubles as series toggles — all on by default; click a row to
+            hide/show that series in the chart. */}
         <div className={styles.chartLegend}>
-          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: REC_PAST }} />Received - Past Events</span>
-          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: REC_FUTURE }} />Received - Future Events</span>
-          <span className={styles.legendRow}><span className={styles.swatch} style={{ background: EXP_COLOR }} />Expected - Confirmed Bookings with Unpaid Deposit/Balance</span>
+          {([
+            { k: 'past' as const, color: REC_PAST, label: 'Received - Past Events' },
+            { k: 'fut' as const, color: REC_FUTURE, label: 'Received - Future Events' },
+            { k: 'expected' as const, color: EXP_COLOR, label: 'Expected - Confirmed Bookings with Unpaid Deposit/Balance' },
+          ]).map(({ k, color, label }) => {
+            const on = series[k];
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => toggleSeries(k)}
+                aria-pressed={on}
+                className={styles.legendRow}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, opacity: on ? 1 : 0.4, color: 'inherit', font: 'inherit' }}
+              >
+                <span
+                  aria-hidden
+                  className={styles.swatch}
+                  style={{ background: on ? color : 'transparent', border: `1.5px solid ${color}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {on && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#04121a" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                </span>
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
