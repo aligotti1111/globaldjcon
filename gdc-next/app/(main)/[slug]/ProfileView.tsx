@@ -2114,7 +2114,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             {/* Caption band — transparent black strip along the bottom of the
                 photo, shown when this photo has a caption. */}
             {captions[lightboxSrc] && (
-              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '2rem 1rem .9rem', background: 'linear-gradient(transparent, rgba(0,0,0,.72))', color: '#fff', fontSize: '.9rem', lineHeight: 1.35, textAlign: 'center', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, pointerEvents: 'none' }}>
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '.7rem 1rem', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: '.9rem', lineHeight: 1.35, textAlign: 'center', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, pointerEvents: 'none' }}>
                 {captions[lightboxSrc]}
               </div>
             )}
