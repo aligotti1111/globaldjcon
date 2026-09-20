@@ -17,6 +17,7 @@ import {
 import type { DjProfileData, Testimonial, Faq, AboutStats } from './profileTypes';
 import { thumbUrl, validateImageFile } from './profilePhotoUtils';
 import { saveProfile, profileUploadFolder } from './profileSave';
+import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/lib/albums';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 
 export function BannerTypeEventsDropdown({ events, customTypes = [] }: { events: string[]; customTypes?: CustomEventType[] }) {
@@ -1560,12 +1561,16 @@ export function ExpandableDesc({ text }: { text: string }) {
 export function PhotoManagerModal({
   userId,
   photos,
+  albums = [],
+  tier = 0,
   cap,
   isPaid,
   onClose,
 }: {
   userId: string;
   photos: string[];
+  albums?: Album[];
+  tier?: number;
   cap: number;
   isPaid: boolean;
   onClose: () => void;
@@ -1578,8 +1583,86 @@ export function PhotoManagerModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const atCap = list.length >= cap;
 
+  // ── Albums (Premium Pro + Enterprise) ──────────────────────────────
+  const canAlbums = canCreateAlbums(tier);
+  const albumLimit = albumLimitForTier(tier);
+  const [albumList, setAlbumList] = useState<Album[]>(albums);
+  // Which album's photos the manager grid is filtered to (null = all).
+  const [viewAlbumId, setViewAlbumId] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+
+  const viewAlbum = viewAlbumId ? albumList.find((a) => a.id === viewAlbumId) || null : null;
+  // Photos shown in the grid, newest first. Filtered to the album when viewing.
+  const shown = (viewAlbum ? list.filter((u) => viewAlbum.photos.includes(u)) : list).slice().reverse();
+
   async function persist(next: string[]) {
     await saveProfile(userId, { gallery_photos: next });
+  }
+  async function persistAlbums(next: Album[]) {
+    setAlbumList(next);
+    await saveProfile(userId, { gallery_albums: next });
+  }
+
+  function toggleSelect(url: string) {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      if (s.has(url)) s.delete(url); else s.add(url);
+      return s;
+    });
+  }
+
+  async function createAlbum() {
+    const name = newName.trim();
+    if (!name) return;
+    if (albumList.length >= albumLimit) { setError(`You've reached your album limit (${albumLimit}).`); return; }
+    const members = Array.from(selected);
+    const album: Album = { id: newAlbumId(), name, cover: members[members.length - 1] || null, photos: members };
+    setBusy(true);
+    try {
+      await persistAlbums([...albumList, album]);
+      setNewName(''); setCreating(false); setSelected(new Set()); setSelectMode(false);
+    } catch { setError('Could not create album.'); } finally { setBusy(false); }
+  }
+
+  async function assignSelectedTo(albumId: string) {
+    const urls = Array.from(selected);
+    if (!urls.length) return;
+    setBusy(true);
+    try {
+      const next = albumList.map((a) => {
+        if (a.id !== albumId) return a;
+        const merged = [...a.photos, ...urls.filter((u) => !a.photos.includes(u))];
+        return { ...a, photos: merged, cover: a.cover || merged[merged.length - 1] || null };
+      });
+      await persistAlbums(next);
+      setSelected(new Set()); setSelectMode(false); setAssignOpen(false);
+    } catch { setError('Could not add to album.'); } finally { setBusy(false); }
+  }
+
+  async function removeSelectedFromAlbum(albumId: string) {
+    const urls = new Set(selected);
+    setBusy(true);
+    try {
+      const next = albumList.map((a) => {
+        if (a.id !== albumId) return a;
+        const photos = a.photos.filter((u) => !urls.has(u));
+        return { ...a, photos, cover: photos.includes(a.cover || '') ? a.cover : photos[photos.length - 1] || null };
+      });
+      await persistAlbums(next);
+      setSelected(new Set());
+    } catch { setError('Could not update album.'); } finally { setBusy(false); }
+  }
+
+  async function deleteAlbum(albumId: string) {
+    setBusy(true);
+    try {
+      await persistAlbums(albumList.filter((a) => a.id !== albumId));
+      if (viewAlbumId === albumId) setViewAlbumId(null);
+    } catch { setError('Could not delete album.'); } finally { setBusy(false); }
   }
 
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1614,6 +1697,16 @@ export function PhotoManagerModal({
         const next = [...list, ...uploaded];
         await persist(next);
         setList(next);
+        // Uploading while viewing an album drops the new photos into it too
+        // (bulk upload from device straight into the album).
+        if (viewAlbumId) {
+          const nextAlbums = albumList.map((a) =>
+            a.id === viewAlbumId
+              ? { ...a, photos: [...a.photos, ...uploaded], cover: a.cover || uploaded[uploaded.length - 1] }
+              : a,
+          );
+          await persistAlbums(nextAlbums);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.');
@@ -1622,14 +1715,23 @@ export function PhotoManagerModal({
     }
   }
 
-  async function removeAt(idx: number) {
+  async function removeUrl(url: string) {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const next = list.filter((_, i) => i !== idx);
+      const next = list.filter((u) => u !== url);
       await persist(next);
       setList(next);
+      // Removing a photo from the gallery also drops it from any album it was
+      // in (the gallery is the source of truth).
+      if (albumList.some((a) => a.photos.includes(url))) {
+        const nextAlbums = albumList.map((a) => {
+          const photos = a.photos.filter((u) => u !== url);
+          return { ...a, photos, cover: a.cover === url ? photos[photos.length - 1] || null : a.cover };
+        });
+        await persistAlbums(nextAlbums);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not remove.');
     } finally {
@@ -1656,21 +1758,81 @@ export function PhotoManagerModal({
           {list.length} of {cap} photos
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.6rem' }}>
-          {list.map((url, idx) => (
-            <div key={idx} style={{ position: 'relative', aspectRatio: '1 / 1', background: '#000', border: '1px solid var(--border, rgba(255,255,255,0.15))', borderRadius: 8, overflow: 'hidden' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={thumbUrl(url, 400)} alt={`Photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <button
-                type="button"
-                onClick={() => removeAt(idx)}
-                aria-label="Remove photo"
-                style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.65)', color: '#fff', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}
-              >✕</button>
+        {/* Album controls (Premium Pro + Enterprise). Chips filter the grid to
+            an album; Select turns on multi-select to add/remove photos in bulk.
+            Lower tiers see an upgrade line instead. */}
+        {canAlbums ? (
+          <div style={{ marginBottom: '.9rem' }}>
+            <div style={{ display: 'flex', gap: '.4rem', overflowX: 'auto', paddingBottom: '.4rem' }}>
+              <button type="button" onClick={() => { setViewAlbumId(null); setSelected(new Set()); }} style={{ flexShrink: 0, fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 100, border: `1px solid ${!viewAlbumId ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.2))'}`, background: !viewAlbumId ? 'var(--neon)' : 'transparent', color: !viewAlbumId ? '#04121a' : 'var(--muted,#aaa)', cursor: 'pointer', fontWeight: 600 }}>All photos</button>
+              {albumList.map((a) => (
+                <button key={a.id} type="button" onClick={() => { setViewAlbumId(a.id); setSelected(new Set()); }} style={{ flexShrink: 0, fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 100, border: `1px solid ${viewAlbumId === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.2))'}`, background: viewAlbumId === a.id ? 'var(--neon)' : 'transparent', color: viewAlbumId === a.id ? '#04121a' : 'var(--muted,#aaa)', cursor: 'pointer', fontWeight: 600 }}>{a.name} · {a.photos.length}</button>
+              ))}
             </div>
-          ))}
+            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '.5rem' }}>
+              <button type="button" onClick={() => { setSelectMode((m) => !m); setSelected(new Set()); setAssignOpen(false); }} style={{ fontSize: '.68rem', padding: '.35rem .8rem', borderRadius: 6, border: '1px solid var(--neon)', background: selectMode ? 'var(--neon)' : 'transparent', color: selectMode ? '#04121a' : 'var(--neon)', cursor: 'pointer' }}>{selectMode ? 'Cancel' : 'Select'}</button>
+              {selectMode && (
+                <>
+                  <span style={{ fontSize: '.7rem', color: 'var(--muted,#888)' }}>{selected.size} selected</span>
+                  <button type="button" disabled={!selected.size || busy} onClick={() => setAssignOpen((o) => !o)} style={{ fontSize: '.68rem', padding: '.35rem .8rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: 'transparent', color: 'var(--white,#fff)', cursor: selected.size ? 'pointer' : 'not-allowed', opacity: selected.size ? 1 : 0.5 }}>Add to album ▾</button>
+                  {viewAlbum && (
+                    <button type="button" disabled={!selected.size || busy} onClick={() => removeSelectedFromAlbum(viewAlbum.id)} style={{ fontSize: '.68rem', padding: '.35rem .8rem', borderRadius: 6, border: '1px solid #ff5f5f', background: 'transparent', color: '#ff5f5f', cursor: 'pointer', opacity: selected.size ? 1 : 0.5 }}>Remove from {viewAlbum.name}</button>
+                  )}
+                </>
+              )}
+              {selectMode && assignOpen && (
+                <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: '.4rem', padding: '.5rem', border: '1px solid var(--border,rgba(255,255,255,.15))', borderRadius: 8 }}>
+                  {albumList.map((a) => (
+                    <button key={a.id} type="button" disabled={busy} onClick={() => assignSelectedTo(a.id)} style={{ fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--white,#fff)', cursor: 'pointer' }}>{a.name}</button>
+                  ))}
+                  {albumList.length < albumLimit ? (
+                    creating ? (
+                      <span style={{ display: 'inline-flex', gap: 4 }}>
+                        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Album name" autoFocus style={{ fontSize: '.7rem', padding: '.3rem .5rem', borderRadius: 6, border: '1px solid var(--border,rgba(255,255,255,.25))', background: '#0c0c11', color: '#fff' }} />
+                        <button type="button" disabled={busy || !newName.trim()} onClick={createAlbum} style={{ fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 6, border: 'none', background: 'var(--neon)', color: '#04121a', cursor: 'pointer', fontWeight: 700 }}>Create</button>
+                      </span>
+                    ) : (
+                      <button type="button" onClick={() => setCreating(true)} style={{ fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 6, border: '1px dashed var(--neon)', background: 'transparent', color: 'var(--neon)', cursor: 'pointer' }}>+ New album</button>
+                    )
+                  ) : (
+                    <span style={{ fontSize: '.66rem', color: 'var(--muted,#888)' }}>Album limit reached ({albumLimit})</span>
+                  )}
+                </div>
+              )}
+              {!selectMode && viewAlbum && (
+                <button type="button" onClick={() => deleteAlbum(viewAlbum.id)} style={{ fontSize: '.66rem', padding: '.35rem .8rem', borderRadius: 6, border: '1px solid #ff5f5f', background: 'transparent', color: '#ff5f5f', cursor: 'pointer', marginLeft: 'auto' }}>Delete album</button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: '.9rem', padding: '.6rem .8rem', border: '1px solid var(--border,rgba(255,255,255,.15))', borderRadius: 8, fontSize: '.76rem', color: 'var(--muted,#aaa)' }}>
+            Organize photos into albums with <a href="/subscribe" style={{ color: 'var(--neon)', fontWeight: 700 }}>Premium Pro</a>.
+          </div>
+        )}
 
-          {!atCap && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.6rem' }}>
+          {shown.map((url, idx) => {
+            const isSel = selected.has(url);
+            return (
+            <div key={`${url}-${idx}`} onClick={() => { if (selectMode) toggleSelect(url); }} style={{ position: 'relative', aspectRatio: '1 / 1', background: '#000', border: `2px solid ${isSel ? 'var(--neon)' : 'var(--border, rgba(255,255,255,0.15))'}`, borderRadius: 8, overflow: 'hidden', cursor: selectMode ? 'pointer' : 'default' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={thumbUrl(url, 400)} alt={`Photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: selectMode && !isSel ? 0.65 : 1 }} />
+              {selectMode && (
+                <span style={{ position: 'absolute', top: 4, left: 4, width: 20, height: 20, borderRadius: '50%', background: isSel ? 'var(--neon)' : 'rgba(0,0,0,.55)', color: '#04121a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{isSel ? '✓' : ''}</span>
+              )}
+              {!selectMode && (
+                <button
+                  type="button"
+                  onClick={() => removeUrl(url)}
+                  aria-label="Remove photo"
+                  style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.65)', color: '#fff', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}
+                >✕</button>
+              )}
+            </div>
+            );
+          })}
+
+          {!atCap && !selectMode && (
             <div
               onClick={() => { if (!busy) inputRef.current?.click(); }}
               style={{ aspectRatio: '1 / 1', background: 'rgba(0,245,196,.05)', border: '2px dashed var(--neon)', borderRadius: 8, cursor: busy ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--neon)', opacity: busy ? 0.6 : 1 }}
