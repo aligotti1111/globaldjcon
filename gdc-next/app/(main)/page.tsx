@@ -492,15 +492,15 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan .hero::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 70%,transparent),transparent)}
 .gdc-landing .plan .body{display:flex;flex-direction:column;flex:1;padding:20px 22px 22px}
 /* Plan name — same font as the price (--disp), accent-colored eyebrow. */
-.gdc-landing .plan .pn{font-family:var(--body);font-weight:700;font-size:1.05rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);line-height:1}
-.gdc-landing .plan .amt{font-family:var(--body);font-weight:600;font-size:2.4rem;letter-spacing:-.03em;margin:.5rem 0 .1rem;color:#fff}
+.gdc-landing .plan .pn{font-family:var(--body);font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);line-height:1}
+.gdc-landing .plan .amt{font-family:var(--body);font-weight:600;font-size:2.5rem;letter-spacing:-.03em;margin:.5rem 0 .1rem;color:#fff}
 .gdc-landing .plan .amt span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
 /* Monthly / Annual billing toggle. The plan cards carry BOTH prices as .p-mo /
    .p-yr spans; a class on .price (bill-mo | bill-yr) swaps which shows, so the
    flip is pure CSS and every card updates at once. .amt wrappers must be re-sized
    to the big price font because the generic ".amt span" rule above would shrink
    them. */
-.gdc-landing .plan .amt .p-mo,.gdc-landing .plan .amt .p-yr{font-family:var(--body);font-weight:600;font-size:2.2rem;letter-spacing:-.03em;color:var(--ink)}
+.gdc-landing .plan .amt .p-mo,.gdc-landing .plan .amt .p-yr{font-family:var(--body);font-weight:600;font-size:2.5rem;letter-spacing:-.03em;color:#fff}
 .gdc-landing .price .p-yr{display:none}
 .gdc-landing .price.bill-yr .p-mo{display:none}
 .gdc-landing .price.bill-yr .p-yr{display:inline}
@@ -532,7 +532,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan li.no{color:var(--faint);font-style:italic;padding-left:22px;position:relative}
 .gdc-landing .plan li.no::before{content:"—";position:absolute;left:2px;color:var(--faint)}
 /* Raised $ on the price, matching /subscribe. */
-.gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--body);font-weight:600}
+.gdc-landing .plan .amt .cur{font-size:1.35rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--body);font-weight:600}
 .gdc-landing .plan .btn{width:100%;justify-content:center;margin-top:auto}
 .gdc-landing .best{position:absolute;top:16px;right:18px;z-index:2;font-family:var(--mono);font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);background:none;padding:0;border-radius:0}
 /* When a subscriber views the pricing, the neon-green featured treatment ALSO
