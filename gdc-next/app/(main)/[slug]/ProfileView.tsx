@@ -1710,18 +1710,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           <div className={paneClass('images')}>
             {galleryPhotos.length > 0 ? (
               <>
-                {canEdit && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.6rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setPhotoManagerOpen(true)}
-                      style={{ background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.4rem .9rem', fontSize: '.75rem', letterSpacing: '.04em', textTransform: 'uppercase', cursor: 'pointer' }}
-                    >
-                      Manage Photos
-                    </button>
-                  </div>
-                )}
-
                 {/* Albums section — a text header, then the horizontal row of
                     album covers. */}
                 {(albums.length > 0 || canEdit) && (
@@ -1788,29 +1776,28 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )}
 
-                {/* All photos — text only, on its own line, UNDER the albums
-                    row and directly above the grid. Inside an album it reads as
-                    a back link to the full feed. */}
+                {/* All photos — a back link on the left; when an album is open,
+                    the album name sits on the RIGHT of the same row. */}
                 {(albums.length > 0 || canEdit) && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAlbumId(null)}
-                    title={activeAlbum ? 'Back to all photos' : 'All photos'}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, marginBottom: '.85rem', cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
-                  >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: '.85rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAlbumId(null)}
+                      title={activeAlbum ? 'Back to all photos' : 'All photos'}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
+                    >
+                      {activeAlbum && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                      )}
+                      <span>All photos</span>
+                      <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
+                    </button>
                     {activeAlbum && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                      <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--white,#fff)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {activeAlbum.name}
+                        <span style={{ color: 'var(--muted,#888)', fontWeight: 400, fontSize: '.78rem' }}> · {activeAlbum.photos.length} photos</span>
+                      </div>
                     )}
-                    <span>All photos</span>
-                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
-                  </button>
-                )}
-
-                {/* Open-album title — sits directly over the album's photos. */}
-                {activeAlbum && (
-                  <div style={{ fontSize: '.95rem', fontWeight: 700, color: 'var(--white,#fff)', marginBottom: '.6rem' }}>
-                    {activeAlbum.name}
-                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, fontSize: '.8rem' }}> · {activeAlbum.photos.length} photos</span>
                   </div>
                 )}
 
