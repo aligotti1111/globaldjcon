@@ -1599,35 +1599,30 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )}
 
+                {/* All photos — text only, on its own line. Inside an album it
+                    reads as a back link to the full feed. */}
+                {(albums.length > 0 || canEdit) && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbumId(null)}
+                    title={activeAlbum ? 'Back to all photos' : 'All photos'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, marginBottom: '.85rem', cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
+                  >
+                    {activeAlbum && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                    )}
+                    <span>All photos</span>
+                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
+                  </button>
+                )}
+
                 {/* Albums row — one horizontal strip that scrolls sideways when
                     there are more albums than fit. Clicking an album filters the
-                    grid below to its photos; "All photos" returns to the feed.
-                    Square cover thumbnails. Shows when the DJ has albums, or for
-                    the owner (so the "New album" button is always reachable). */}
+                    grid below to its photos. Cover thumbnails match the photo
+                    grid tile size. Shows when the DJ has albums, or for the
+                    owner (so the "New album" button is always reachable). */}
                 {(albums.length > 0 || canEdit) && (
                   <div style={{ display: 'flex', gap: '.6rem', overflowX: 'auto', paddingBottom: '.5rem', marginBottom: '1rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedAlbumId(null)}
-                      title={activeAlbum ? 'Back to all photos' : 'All photos'}
-                      aria-label={activeAlbum ? 'Back to all photos' : 'All photos'}
-                      style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-                    >
-                      {activeAlbum ? (
-                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, width: 100, height: 100 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border,rgba(255,255,255,.25))', color: 'var(--white,#fff)' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-                          </span>
-                          <span style={{ fontSize: '.58rem', letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--muted,#aaa)' }}>Back</span>
-                        </span>
-                      ) : (
-                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, width: 100, height: 100, color: 'var(--neon)' }}>
-                          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
-                          <span style={{ fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>All photos</span>
-                        </span>
-                      )}
-                      <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{galleryPhotos.length} total</span>
-                    </button>
                     {albums.map((a) => (
                       <div
                         key={a.id}
@@ -1638,10 +1633,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                         title={a.name}
                         style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }}
                       >
-                        <span style={{ position: 'relative', display: 'block', width: 100, height: 100, borderRadius: 10, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
+                        <span style={{ position: 'relative', display: 'block', width: 150, height: 150, borderRadius: 4, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
                           {a.cover && (
                             /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={optimizedImageUrl(a.cover, 240)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={optimizedImageUrl(a.cover, 360)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           )}
                           {/* Owner-only edit pencil, on the cover itself. */}
                           {canEdit && (
@@ -1655,7 +1650,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
                             </button>
                           )}
-                          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 8px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,.78))', color: '#fff', fontSize: '.7rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
+                          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '14px 10px 8px', background: 'linear-gradient(transparent, rgba(0,0,0,.78))', color: '#fff', fontSize: '.78rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
                         </span>
                         <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{a.photos.length} photos</span>
                       </div>
@@ -1668,9 +1663,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                         title="New album"
                         style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                       >
-                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, width: 100, height: 100, borderRadius: 10, border: '1px dashed var(--neon)', background: 'rgba(0,245,196,.05)', color: 'var(--neon)' }}>
-                          <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>+</span>
-                          <span style={{ fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>New album</span>
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: 150, height: 150, borderRadius: 4, border: '1px dashed var(--neon)', background: 'rgba(0,245,196,.05)', color: 'var(--neon)' }}>
+                          <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>+</span>
+                          <span style={{ fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>New album</span>
                         </span>
                         <span style={{ fontSize: '.62rem', color: 'transparent' }}>.</span>
                       </button>
@@ -1948,29 +1943,33 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         >
           ×
         </button>
-        {lightboxSrc && lightboxListRef.current.length > 1 && (
-          <>
-            <button
-              type="button"
-              aria-label="Previous photo"
-              onClick={(e) => { e.stopPropagation(); stepLightbox(-1); }}
-              style={{ position: 'fixed', left: 16, top: '50%', transform: 'translateY(-50%)', width: 48, height: 48, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-            </button>
-            <button
-              type="button"
-              aria-label="Next photo"
-              onClick={(e) => { e.stopPropagation(); stepLightbox(1); }}
-              style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', width: 48, height: 48, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-            </button>
-          </>
-        )}
         {lightboxSrc && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={lightboxSrc} alt="" onClick={(e) => e.stopPropagation()} />
+          /* Wrap the image so the prev/next arrows can sit at the image's own
+             left/right edges (not the far screen edges). */
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+            {lightboxListRef.current.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous photo"
+                  onClick={(e) => { e.stopPropagation(); stepLightbox(-1); }}
+                  style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next photo"
+                  onClick={(e) => { e.stopPropagation(); stepLightbox(1); }}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                </button>
+              </>
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={lightboxSrc} alt="" />
+          </div>
         )}
       </div>
 
