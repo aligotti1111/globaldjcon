@@ -323,6 +323,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [photoLimit, setPhotoLimit] = useState<number>(PHOTO_PAGE);
   const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
+  const [editAlbumTarget, setEditAlbumTarget] = useState<Album | null>(null);
   // Embed-calendar modal — owner-only shortcut on the profile so the DJ
   // can grab their iframe embed snippet without leaving for update-dj-profile.
   // Triggered by the "Embed Calendar" button above the calendar in the
@@ -1638,8 +1639,19 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 )}
 
                 {activeAlbum && (
-                  <div style={{ fontSize: '.8rem', color: 'var(--muted,#888)', marginBottom: '.6rem' }}>
-                    {activeAlbum.name} · {activeAlbum.photos.length} photos
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginBottom: '.6rem' }}>
+                    <span style={{ fontSize: '.8rem', color: 'var(--muted,#888)' }}>
+                      {activeAlbum.name} · {activeAlbum.photos.length} photos
+                    </span>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setEditAlbumTarget(activeAlbum)}
+                        style={{ background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.25rem .7rem', fontSize: '.68rem', letterSpacing: '.04em', textTransform: 'uppercase', cursor: 'pointer' }}
+                      >
+                        Edit album
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -2024,6 +2036,23 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           photos={galleryPhotos}
           albums={albums}
           cap={photoCap}
+          onClose={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Edit an existing album — same modal in edit mode (rename, add/remove
+          photos, delete). */}
+      {editAlbumTarget && canEdit && (
+        <CreateAlbumModal
+          userId={data.id}
+          photos={galleryPhotos}
+          albums={albums}
+          cap={photoCap}
+          editAlbum={editAlbumTarget}
           onClose={() => {
             const url = new URL(window.location.href);
             url.searchParams.set('tab', 'images');
