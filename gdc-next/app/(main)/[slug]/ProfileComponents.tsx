@@ -1717,6 +1717,7 @@ export function PhotoManagerModal({
 
   async function removeUrl(url: string) {
     if (busy) return;
+    if (typeof window !== 'undefined' && !window.confirm('Delete this photo? This removes it from your gallery and any albums it’s in.')) return;
     setBusy(true);
     setError(null);
     try {
@@ -1991,6 +1992,7 @@ export function CreateAlbumModal({
 
   async function deleteAlbum() {
     if (!editAlbum) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Delete the album "${editAlbum.name}"? Your photos stay in the gallery — only the album is removed.`)) return;
     setBusy(true);
     try {
       await saveProfile(userId, { gallery_albums: albums.filter((a) => a.id !== editAlbum.id) });
