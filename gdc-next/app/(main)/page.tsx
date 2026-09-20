@@ -492,15 +492,15 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan .hero::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 70%,transparent),transparent)}
 .gdc-landing .plan .body{display:flex;flex-direction:column;flex:1;padding:20px 22px 22px}
 /* Plan name — same font as the price (--disp), accent-colored eyebrow. */
-.gdc-landing .plan .pn{font-family:var(--disp);font-weight:700;font-size:1.05rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);line-height:1}
-.gdc-landing .plan .amt{font-family:var(--disp);font-weight:600;font-size:2.4rem;letter-spacing:.01em;margin:.5rem 0 .1rem;color:#fff}
+.gdc-landing .plan .pn{font-family:var(--body);font-weight:700;font-size:1.05rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);line-height:1}
+.gdc-landing .plan .amt{font-family:var(--body);font-weight:600;font-size:2.4rem;letter-spacing:-.03em;margin:.5rem 0 .1rem;color:#fff}
 .gdc-landing .plan .amt span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
 /* Monthly / Annual billing toggle. The plan cards carry BOTH prices as .p-mo /
    .p-yr spans; a class on .price (bill-mo | bill-yr) swaps which shows, so the
    flip is pure CSS and every card updates at once. .amt wrappers must be re-sized
    to the big price font because the generic ".amt span" rule above would shrink
    them. */
-.gdc-landing .plan .amt .p-mo,.gdc-landing .plan .amt .p-yr{font-family:var(--disp);font-weight:600;font-size:2.2rem;letter-spacing:.01em;color:var(--ink)}
+.gdc-landing .plan .amt .p-mo,.gdc-landing .plan .amt .p-yr{font-family:var(--body);font-weight:600;font-size:2.2rem;letter-spacing:-.03em;color:var(--ink)}
 .gdc-landing .price .p-yr{display:none}
 .gdc-landing .price.bill-yr .p-mo{display:none}
 .gdc-landing .price.bill-yr .p-yr{display:inline}
@@ -532,12 +532,16 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan li.no{color:var(--faint);font-style:italic;padding-left:22px;position:relative}
 .gdc-landing .plan li.no::before{content:"—";position:absolute;left:2px;color:var(--faint)}
 /* Raised $ on the price, matching /subscribe. */
-.gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--disp);font-weight:600}
+.gdc-landing .plan .amt .cur{font-size:1.1rem;vertical-align:top;margin-right:1px;color:#fff;font-family:var(--body);font-weight:600}
 .gdc-landing .plan .btn{width:100%;justify-content:center;margin-top:auto}
 .gdc-landing .best{position:absolute;top:16px;right:18px;z-index:2;font-family:var(--mono);font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);background:none;padding:0;border-radius:0}
 /* When a subscriber views the pricing, the neon-green featured treatment ALSO
    marks the plan they manage (their current tier). "Most Popular" stays on Pro. */
-.gdc-landing .plan.is-current-plan{--accent:#00e0a4;border-color:color-mix(in srgb,#00e0a4 55%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,#00e0a4 25%,transparent),0 30px 60px -34px color-mix(in srgb,#00e0a4 45%,transparent)}
+/* Current-plan treatment matches the manage-subscription page: the card keeps
+   its OWN tier color (e.g. Premium Pro stays blue) and only picks up a neon
+   "current" border/glow — we do NOT override --accent here, which would recolor
+   the whole card green. */
+.gdc-landing .plan.is-current-plan{border-color:color-mix(in srgb,#00e0a4 55%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,#00e0a4 25%,transparent),0 30px 60px -34px color-mix(in srgb,#00e0a4 45%,transparent)}
 .gdc-landing .band{position:relative;overflow:hidden;border:1px solid var(--line-2);border-radius:22px;padding:66px 40px;text-align:center;background:radial-gradient(700px 300px at 50% 0,rgba(0,245,196,.1),transparent)}
 .gdc-landing .band h2{font-family:var(--disp);font-size:clamp(2.4rem,5vw,3.6rem);letter-spacing:.01em;margin-bottom:.6rem}
 .gdc-landing .band p{color:var(--muted);margin-bottom:1.6rem;font-size:1.04rem}
