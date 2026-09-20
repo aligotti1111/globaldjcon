@@ -1904,6 +1904,8 @@ export function CreateAlbumModal({
   const [gallery, setGallery] = useState<string[]>(photos); // grows on upload
   const [added, setAdded] = useState<string[]>([]); // uploaded THIS session
   const [chosen, setChosen] = useState<Set<string>>(new Set(editAlbum?.photos ?? []));
+  // Which selected photo is the album cover/thumbnail (edit mode).
+  const [coverSel, setCoverSel] = useState<string | null>(editAlbum?.cover ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -1973,8 +1975,11 @@ export function CreateAlbumModal({
     try {
       let nextAlbums: Album[];
       if (isEdit && editAlbum) {
-        // Keep the existing cover if it's still a member; else fall back.
-        const cover = editAlbum.cover && chosen.has(editAlbum.cover) ? editAlbum.cover : members[members.length - 1] || null;
+        // Use the owner-picked cover if it's still a member; otherwise keep the
+        // existing cover if valid, else fall back to the newest member.
+        const cover = coverSel && chosen.has(coverSel)
+          ? coverSel
+          : (editAlbum.cover && chosen.has(editAlbum.cover) ? editAlbum.cover : members[members.length - 1] || null);
         nextAlbums = albums.map((a) => (a.id === editAlbum.id ? { ...a, name: nm, photos: members, cover } : a));
       } else {
         const album: Album = { id: newAlbumId(), name: nm, cover: members[members.length - 1] || null, photos: members };
@@ -2024,11 +2029,27 @@ export function CreateAlbumModal({
         {(() => {
           const tile = (url: string, idx: number) => {
             const isSel = chosen.has(url);
+            const isCover = isEdit && coverSel === url;
             return (
-              <div key={`${url}-${idx}`} onClick={() => toggle(url)} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', border: `2px solid ${isSel ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, cursor: 'pointer' }}>
+              <div key={`${url}-${idx}`} onClick={() => toggle(url)} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', border: `2px solid ${isCover ? '#ffd24a' : isSel ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, cursor: 'pointer' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={thumbUrl(url, 300)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isSel ? 1 : 0.7 }} />
                 <span style={{ position: 'absolute', top: 3, left: 3, width: 18, height: 18, borderRadius: '50%', background: isSel ? 'var(--neon)' : 'rgba(0,0,0,.55)', color: '#04121a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{isSel ? '✓' : ''}</span>
+                {/* Edit mode: set as album cover. Only for selected photos. */}
+                {isEdit && isSel && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setCoverSel(url); }}
+                    title={isCover ? 'Album cover' : 'Set as cover'}
+                    aria-label={isCover ? 'Album cover' : 'Set as cover'}
+                    style={{ position: 'absolute', top: 3, right: 3, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.6)', color: isCover ? '#ffd24a' : '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill={isCover ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                  </button>
+                )}
+                {isCover && (
+                  <span style={{ position: 'absolute', bottom: 3, left: 3, right: 3, textAlign: 'center', fontSize: '.55rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#ffd24a', background: 'rgba(0,0,0,.55)', borderRadius: 4, padding: '1px 0' }}>Cover</span>
+                )}
               </div>
             );
           };
