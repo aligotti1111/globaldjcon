@@ -55,6 +55,11 @@ export interface DjProfileData {
   gallery_img_2: string | null;
   gallery_img_3: string | null;
   gallery_img_4: string | null;
+  // New array-based gallery: all photos (URLs, newest appended last).
+  gallery_photos?: string[] | null;
+  // Photo albums grouping a subset of gallery_photos. jsonb — parse with
+  // parseAlbums() from lib/albums.ts. Premium Pro + Enterprise create these.
+  gallery_albums?: unknown[] | null;
   video_url_1: string | null;
   video_url_2: string | null;
   video_url_3: string | null;
