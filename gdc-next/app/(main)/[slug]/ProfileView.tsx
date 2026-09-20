@@ -615,6 +615,18 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Keep the lightbox nav list in sync with what's on screen so ← / → walk
   // exactly the photos the viewer is looking at.
   lightboxListRef.current = shownPhotos;
+  // Step the lightbox to the prev/next photo (shared by the arrow buttons and
+  // the keyboard handler). Functional update + ref = never stale.
+  const stepLightbox = (dir: 1 | -1) => {
+    setLightboxSrc((cur) => {
+      const listL = lightboxListRef.current;
+      if (!cur || listL.length === 0) return cur;
+      const i = listL.indexOf(cur);
+      if (i < 0) return cur;
+      const j = i + dir;
+      return j >= 0 && j < listL.length ? listL[j] : cur;
+    });
+  };
   // DJ's effective tier — albums (create/assign) are Premium Pro (3) + up.
   const djTier = effectiveTier(data as unknown as AccessFields);
   // Videos — array model (video_urls: {url,title,desc}[]) with legacy fallback.
@@ -1936,6 +1948,26 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         >
           ×
         </button>
+        {lightboxSrc && lightboxListRef.current.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous photo"
+              onClick={(e) => { e.stopPropagation(); stepLightbox(-1); }}
+              style={{ position: 'fixed', left: 16, top: '50%', transform: 'translateY(-50%)', width: 48, height: 48, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={(e) => { e.stopPropagation(); stepLightbox(1); }}
+              style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', width: 48, height: 48, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+          </>
+        )}
         {lightboxSrc && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={lightboxSrc} alt="" onClick={(e) => e.stopPropagation()} />
