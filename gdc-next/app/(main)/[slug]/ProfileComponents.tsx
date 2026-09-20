@@ -1876,6 +1876,150 @@ export function PhotoManagerModal({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// CreateAlbumModal — the "New album" flow. Focused on CREATING one album:
+// name it, then fill it either by uploading from the device or picking from
+// the DJ's existing gallery photos. It intentionally has NO delete-photo
+// capability — it only adds; managing/removing photos lives in the photo
+// manager. Uploaded photos also land in the main gallery (source of truth).
+// ─────────────────────────────────────────────────────────────────────────
+export function CreateAlbumModal({
+  userId,
+  photos,
+  albums,
+  cap,
+  onClose,
+}: {
+  userId: string;
+  photos: string[];
+  albums: Album[];
+  cap: number;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [gallery, setGallery] = useState<string[]>(photos); // grows on upload
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Newest first for the picker.
+  const pickable = gallery.slice().reverse();
+
+  function toggle(url: string) {
+    setChosen((prev) => {
+      const s = new Set(prev);
+      if (s.has(url)) s.delete(url); else s.add(url);
+      return s;
+    });
+  }
+
+  async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    setError(null);
+    const room = cap - gallery.length;
+    if (room <= 0) { setError(`Photo limit reached (${cap}).`); return; }
+    const toAdd = files.slice(0, room);
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      const uploaded: string[] = [];
+      for (const file of toAdd) {
+        const valErr = await validateImageFile(file);
+        if (valErr) { setError(valErr); continue; }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+        const id = rand.replace(/[^a-z0-9]/gi, '');
+        const path = `${profileUploadFolder(userId)}/gallery_${id}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+        if (upErr) { setError(upErr.message); continue; }
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        uploaded.push(`${data.publicUrl}?t=${Date.now()}`);
+      }
+      if (uploaded.length) {
+        const nextGallery = [...gallery, ...uploaded];
+        // Persist the grown gallery immediately (uploads belong to it).
+        await saveProfile(userId, { gallery_photos: nextGallery });
+        setGallery(nextGallery);
+        // Newly uploaded photos are auto-selected for the album.
+        setChosen((prev) => { const s = new Set(prev); uploaded.forEach((u) => s.add(u)); return s; });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function create() {
+    const nm = name.trim();
+    if (!nm) { setError('Name your album.'); return; }
+    if (chosen.size === 0) { setError('Add at least one photo.'); return; }
+    // Members in gallery order (oldest→newest) so album order matches feed.
+    const members = gallery.filter((u) => chosen.has(u));
+    const album: Album = { id: newAlbumId(), name: nm, cover: members[members.length - 1] || null, photos: members };
+    setBusy(true);
+    try {
+      await saveProfile(userId, { gallery_albums: [...albums, album] });
+      setSaved(true);
+      onClose();
+    } catch {
+      setError('Could not create the album.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-card, #1a1a2e)', border: '1px solid var(--border, rgba(255,255,255,0.1))', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 620, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.9rem' }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: 'var(--white, #fff)', letterSpacing: '.04em' }}>New album</div>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: 'var(--muted, #888)', fontSize: '1.4rem', cursor: 'pointer', padding: '.25rem .5rem' }}>✕</button>
+        </div>
+
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Album name (e.g. Weddings)" autoFocus style={{ width: '100%', padding: '.6rem .8rem', borderRadius: 8, border: '1px solid var(--border,rgba(255,255,255,.25))', background: '#0c0c11', color: '#fff', fontSize: '.9rem', marginBottom: '1rem' }} />
+
+        <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} style={{ padding: '.55rem 1rem', borderRadius: 8, border: '1px solid var(--neon)', background: 'var(--neon)', color: '#04121a', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer' }}>Upload from device</button>
+          <span style={{ fontSize: '.72rem', color: 'var(--muted,#888)' }}>{chosen.size} selected</span>
+        </div>
+        <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onFiles} />
+
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted,#888)', marginBottom: '.6rem' }}>
+          Or choose from your photos
+        </div>
+        {pickable.length === 0 ? (
+          <div style={{ fontSize: '.78rem', color: 'var(--muted,#888)', marginBottom: '1rem' }}>No photos yet — upload some above.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.5rem', marginBottom: '1rem' }}>
+            {pickable.map((url, idx) => {
+              const isSel = chosen.has(url);
+              return (
+                <div key={`${url}-${idx}`} onClick={() => toggle(url)} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', border: `2px solid ${isSel ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, cursor: 'pointer' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={thumbUrl(url, 300)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isSel ? 1 : 0.7 }} />
+                  <span style={{ position: 'absolute', top: 3, left: 3, width: 18, height: 18, borderRadius: '50%', background: isSel ? 'var(--neon)' : 'rgba(0,0,0,.55)', color: '#04121a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{isSel ? '✓' : ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {error && <div style={{ color: '#ff5f5f', fontSize: '.78rem', marginBottom: '.75rem' }}>{error}</div>}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
+          <button type="button" onClick={onClose} style={{ padding: '.6rem 1.2rem', background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.25))', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.78rem', cursor: 'pointer' }}>Cancel</button>
+          <button type="button" disabled={busy || saved} onClick={create} style={{ padding: '.6rem 1.4rem', background: 'var(--neon)', border: 'none', borderRadius: 6, color: '#04121a', fontFamily: "'Space Mono', monospace", fontSize: '.75rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Create album'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 
 // ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─// ─
