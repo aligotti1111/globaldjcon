@@ -22,7 +22,7 @@ import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
 import { optimizedImageUrl } from '@/lib/img';
-import { parseAlbums, type Album } from '@/lib/albums';
+import { parseAlbums, pruneAlbums, type Album } from '@/lib/albums';
 import { effectiveTier, type AccessFields } from '@/lib/access';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
@@ -415,6 +415,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  // Lightbox zoom scale (1 = fit). Zoom in/out buttons step this.
+  const [lightboxZoom, setLightboxZoom] = useState(1);
+  // Per-photo owner menu (the pencil dropdown) — the URL whose menu is open.
+  const [photoMenuFor, setPhotoMenuFor] = useState<string | null>(null);
+  // Caption editor — the URL being captioned, plus the draft text.
+  const [captionFor, setCaptionFor] = useState<string | null>(null);
+  const [captionDraft, setCaptionDraft] = useState('');
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   // ── Hero name/location color ────────────────────────────────────────
   // Owner-chosen color applied to BOTH the hero name and the location line.
@@ -515,8 +523,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     }
   }, [data.name]);
 
-  // Lock body scroll while lightbox open (vanilla does this)
+  // Lock body scroll while lightbox open (vanilla does this). Also reset zoom
+  // to fit whenever the open photo changes or the lightbox closes.
   useEffect(() => {
+    setLightboxZoom(1);
     if (lightboxSrc) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -627,6 +637,95 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       return j >= 0 && j < listL.length ? listL[j] : cur;
     });
   };
+  // Per-photo captions (url → text). Shown as a band in the lightbox.
+  const captions: Record<string, string> = (() => {
+    const raw = (data as { gallery_captions?: unknown }).gallery_captions;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.trim()) out[k] = v;
+    }
+    return out;
+  })();
+
+  // ── Owner per-photo actions (pencil menu) ─────────────────────────────
+  // Delete removes the URL from the gallery, prunes it from every album and
+  // its caption, then reloads to the Photos tab (same reload pattern the
+  // photo/album modals use). Download fetches the image and saves it. Caption
+  // opens the inline editor; saveCaption persists the map.
+  function reloadToPhotos() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'images');
+    window.location.href = url.toString();
+  }
+  async function deletePhoto(url: string) {
+    const ok = await confirm({
+      title: 'Delete this photo?',
+      message: 'It will be removed from your gallery and any albums it is in. This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setPhotoBusy(true);
+    try {
+      const nextPhotos = galleryPhotos.filter((u) => u !== url);
+      const nextAlbums = pruneAlbums(albums, nextPhotos);
+      const nextCaptions = { ...captions };
+      delete nextCaptions[url];
+      await saveProfile(data.id, {
+        gallery_photos: nextPhotos,
+        gallery_albums: nextAlbums,
+        gallery_captions: nextCaptions,
+      }, actingAsMember);
+      setPhotoMenuFor(null);
+      reloadToPhotos();
+    } catch {
+      setPhotoBusy(false);
+      alert('Could not delete the photo.');
+    }
+  }
+  async function downloadPhoto(url: string) {
+    setPhotoMenuFor(null);
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = (url.split('/').pop() || 'photo').split('?')[0] || 'photo';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Fallback: open in a new tab so the viewer can save manually.
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+  async function saveCaption(url: string, text: string) {
+    setPhotoBusy(true);
+    try {
+      const nextCaptions = { ...captions };
+      const t = text.trim();
+      if (t) nextCaptions[url] = t;
+      else delete nextCaptions[url];
+      await saveProfile(data.id, { gallery_captions: nextCaptions }, actingAsMember);
+      setCaptionFor(null);
+      setPhotoMenuFor(null);
+      reloadToPhotos();
+    } catch {
+      setPhotoBusy(false);
+      alert('Could not save the caption.');
+    }
+  }
+
+  // Shared style for the per-photo dropdown menu items.
+  const photoMenuItem: React.CSSProperties = {
+    display: 'block', width: '100%', textAlign: 'left', background: 'transparent',
+    border: 'none', color: '#fff', padding: '.5rem .7rem', fontSize: '.8rem',
+    cursor: 'pointer', borderRadius: 6,
+  };
+
   // DJ's effective tier — albums (create/assign) are Premium Pro (3) + up.
   const djTier = effectiveTier(data as unknown as AccessFields);
   // Videos — array model (video_urls: {url,title,desc}[]) with legacy fallback.
@@ -1707,14 +1806,44 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     </div>
                   )}
                   {shownPhotos.map((url, i) => (
-                    <div key={`${url}-${i}`}>
+                    <div key={`${url}-${i}`} style={{ position: 'relative' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={optimizedImageUrl(url, 500)}
-                        alt="Gallery photo"
+                        alt={captions[url] || 'Gallery photo'}
                         loading="lazy"
                         onClick={() => setLightboxSrc(url)}
                       />
+                      {/* Owner pencil → dropdown (delete / download / caption). */}
+                      {canEdit && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPhotoMenuFor((cur) => (cur === url ? null : url)); }}
+                            title="Edit photo"
+                            aria-label="Edit photo"
+                            style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, zIndex: 2 }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                          </button>
+                          {photoMenuFor === url && (
+                            <>
+                              {/* Click-away backdrop to close the menu. */}
+                              <div onClick={(e) => { e.stopPropagation(); setPhotoMenuFor(null); }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ position: 'absolute', top: 36, right: 6, zIndex: 41, minWidth: 150, background: '#14141b', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, boxShadow: '0 12px 30px rgba(0,0,0,.55)', overflow: 'hidden', padding: '.25rem' }}
+                              >
+                                <button type="button" onClick={() => { setCaptionDraft(captions[url] || ''); setCaptionFor(url); setPhotoMenuFor(null); }} style={photoMenuItem}>
+                                  {captions[url] ? 'Edit caption' : 'Add caption'}
+                                </button>
+                                <button type="button" onClick={() => downloadPhoto(url)} style={photoMenuItem}>Download</button>
+                                <button type="button" disabled={photoBusy} onClick={() => deletePhoto(url)} style={{ ...photoMenuItem, color: '#ff6b6b' }}>Delete</button>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1977,10 +2106,74 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               </>
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightboxSrc} alt="" />
+            <img
+              src={lightboxSrc}
+              alt={captions[lightboxSrc] || ''}
+              style={{ transform: `scale(${lightboxZoom})`, transition: 'transform .15s ease', transformOrigin: 'center center' }}
+            />
+            {/* Caption band — transparent black strip along the bottom of the
+                photo, shown when this photo has a caption. */}
+            {captions[lightboxSrc] && (
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '2rem 1rem .9rem', background: 'linear-gradient(transparent, rgba(0,0,0,.72))', color: '#fff', fontSize: '.9rem', lineHeight: 1.35, textAlign: 'center', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, pointerEvents: 'none' }}>
+                {captions[lightboxSrc]}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Zoom controls — bottom center. Zoom out disabled at fit (1x). */}
+        {lightboxSrc && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ position: 'fixed', left: '50%', bottom: 20, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', borderRadius: 999, padding: '.3rem .4rem', zIndex: 3 }}
+          >
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={lightboxZoom <= 1}
+              onClick={(e) => { e.stopPropagation(); setLightboxZoom((z) => Math.max(1, Math.round((z - 0.5) * 10) / 10)); }}
+              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', cursor: lightboxZoom <= 1 ? 'default' : 'pointer', opacity: lightboxZoom <= 1 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+            </button>
+            <span style={{ color: '#fff', fontSize: '.78rem', minWidth: 38, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{Math.round(lightboxZoom * 100)}%</span>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={lightboxZoom >= 4}
+              onClick={(e) => { e.stopPropagation(); setLightboxZoom((z) => Math.min(4, Math.round((z + 0.5) * 10) / 10)); }}
+              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', cursor: lightboxZoom >= 4 ? 'default' : 'pointer', opacity: lightboxZoom >= 4 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Caption editor — owner-only. Small modal to write/edit the caption
+          shown at the bottom of the photo in the lightbox. */}
+      {captionFor && canEdit && (
+        <div onClick={() => setCaptionFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100, padding: '1rem' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#14141b', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.25rem', width: '100%', maxWidth: 420 }}>
+            <div style={{ fontSize: '.95rem', fontWeight: 600, color: '#fff', marginBottom: '.75rem' }}>Photo caption</div>
+            <textarea
+              value={captionDraft}
+              onChange={(e) => setCaptionDraft(e.target.value)}
+              maxLength={200}
+              rows={3}
+              autoFocus
+              placeholder="Write a caption…"
+              style={{ width: '100%', padding: '.6rem .8rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: '#0c0c11', color: '#fff', fontSize: '.9rem', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.4rem' }}>
+              <span style={{ fontSize: '.7rem', color: 'var(--muted,#888)' }}>{captionDraft.length}/200</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', marginTop: '.9rem' }}>
+              <button type="button" onClick={() => setCaptionFor(null)} style={{ padding: '.5rem 1rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: 'transparent', color: '#fff', fontSize: '.8rem', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={photoBusy} onClick={() => saveCaption(captionFor, captionDraft)} style={{ padding: '.5rem 1.1rem', borderRadius: 8, border: 'none', background: 'var(--neon)', color: '#04121a', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', opacity: photoBusy ? 0.6 : 1 }}>{photoBusy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm modal — for owner delete-video. Renders only when an
           active confirm is pending. */}
