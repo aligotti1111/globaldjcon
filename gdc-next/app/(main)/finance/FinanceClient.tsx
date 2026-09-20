@@ -616,7 +616,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
                 onClick={() => toggleSeries(k)}
                 aria-pressed={on}
                 className={styles.legendRow}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, opacity: on ? 1 : 0.4, color: 'inherit', font: 'inherit' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, opacity: on ? 1 : 0.4, color: 'inherit', fontSize: '.68rem' }}
               >
                 <span
                   aria-hidden
