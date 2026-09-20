@@ -1597,9 +1597,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <button
                       type="button"
                       onClick={() => setSelectedAlbumId(null)}
+                      title={activeAlbum ? 'Back to all photos' : 'All photos'}
+                      aria-label={activeAlbum ? 'Back to all photos' : 'All photos'}
                       style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                     >
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 100, height: 100, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: `1px solid ${!activeAlbum ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, color: 'var(--neon)', fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase', textAlign: 'center', padding: '0 6px' }}>All photos</span>
+                      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, width: 100, height: 100, borderRadius: 10, background: 'rgba(0,245,196,.08)', border: `1px solid ${!activeAlbum ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}`, color: 'var(--neon)', textAlign: 'center', padding: '0 6px' }}>
+                        {activeAlbum ? (
+                          <>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+                            <span style={{ fontSize: '.56rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>All photos</span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '.66rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>All photos</span>
+                        )}
+                      </span>
                       <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{galleryPhotos.length} total</span>
                     </button>
                     {albums.map((a) => (
@@ -1647,9 +1658,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       <button
                         type="button"
                         onClick={() => setEditAlbumTarget(activeAlbum)}
-                        style={{ background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.25rem .7rem', fontSize: '.68rem', letterSpacing: '.04em', textTransform: 'uppercase', cursor: 'pointer' }}
+                        title="Edit album"
+                        aria-label="Edit album"
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, cursor: 'pointer', padding: 0 }}
                       >
-                        Edit album
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
                       </button>
                     )}
                   </div>
