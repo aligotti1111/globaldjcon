@@ -208,7 +208,7 @@ export default function SetupChecklist() {
     content = (
       // margin:0 auto centers the whole thing; label sits BELOW the steps.
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 'min-content', margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: 'min-content', gap: 2 }}>
         {model.steps.map((s, i) => {
           const isCurrent = i === currentIdx;
           const circleStyle: CSSProperties = s.done
@@ -221,7 +221,7 @@ export default function SetupChecklist() {
             <Fragment key={s.id}>
               {i > 0 && (
                 <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', marginBottom: CIRCLE / 2, color: model.steps[i - 1].done ? NEON : 'rgba(255,255,255,.3)' }}>
-                  <svg width="22" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
+                  <svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
                 </span>
               )}
               <Link
