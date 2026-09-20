@@ -1768,6 +1768,18 @@ export function PhotoManagerModal({
               {albumList.map((a) => (
                 <button key={a.id} type="button" onClick={() => { setViewAlbumId(a.id); setSelected(new Set()); }} style={{ flexShrink: 0, fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 100, border: `1px solid ${viewAlbumId === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.2))'}`, background: viewAlbumId === a.id ? 'var(--neon)' : 'transparent', color: viewAlbumId === a.id ? '#04121a' : 'var(--muted,#aaa)', cursor: 'pointer', fontWeight: 600 }}>{a.name} · {a.photos.length}</button>
               ))}
+              {/* Always-visible create-album entry point (no Select needed). */}
+              {albumList.length < albumLimit && (
+                creating ? (
+                  <span style={{ flexShrink: 0, display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                    <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Album name" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') createAlbum(); }} style={{ fontSize: '.7rem', padding: '.3rem .5rem', borderRadius: 100, border: '1px solid var(--neon)', background: '#0c0c11', color: '#fff', width: 120 }} />
+                    <button type="button" disabled={busy || !newName.trim()} onClick={createAlbum} style={{ fontSize: '.66rem', padding: '.3rem .6rem', borderRadius: 100, border: 'none', background: 'var(--neon)', color: '#04121a', cursor: 'pointer', fontWeight: 700 }}>Add</button>
+                    <button type="button" onClick={() => { setCreating(false); setNewName(''); }} style={{ fontSize: '.66rem', padding: '.3rem .5rem', borderRadius: 100, border: '1px solid var(--border,rgba(255,255,255,.2))', background: 'transparent', color: 'var(--muted,#aaa)', cursor: 'pointer' }}>✕</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setCreating(true)} style={{ flexShrink: 0, fontSize: '.68rem', padding: '.3rem .7rem', borderRadius: 100, border: '1px dashed var(--neon)', background: 'transparent', color: 'var(--neon)', cursor: 'pointer', fontWeight: 600 }}>+ New album</button>
+                )
+              )}
             </div>
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '.5rem' }}>
               <button type="button" onClick={() => { setSelectMode((m) => !m); setSelected(new Set()); setAssignOpen(false); }} style={{ fontSize: '.68rem', padding: '.35rem .8rem', borderRadius: 6, border: '1px solid var(--neon)', background: selectMode ? 'var(--neon)' : 'transparent', color: selectMode ? '#04121a' : 'var(--neon)', cursor: 'pointer' }}>{selectMode ? 'Cancel' : 'Select'}</button>
