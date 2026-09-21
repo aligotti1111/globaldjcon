@@ -149,6 +149,8 @@ export interface NotifyInit {
   email_notify_booking_request: boolean;
   email_notify_booking_status: boolean;
   email_notify_inbox_message: boolean;
+  email_notify_weekly_digest: boolean;
+  email_notify_monthly_digest: boolean;
 }
 
 interface Props {
