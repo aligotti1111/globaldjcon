@@ -95,9 +95,8 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
     { key: 'finance', text: 'Finance & earnings reports', included: d.proFeatures },
     { key: 'inbox', text: 'Inbox messaging', included: true },
     { key: 'qr', text: 'QR code to your profile', included: d.qrCode },
-    { key: 'photos', text: `${d.photos} profile photos`, included: d.photos > 0, emphasis: true },
-    // Photo albums — group gallery photos into named albums. Premium Pro + up.
-    { key: 'albums', text: 'Photo albums', included: d.tier >= 3, emphasis: d.tier >= 3 },
+    // Photos — with named albums to group them on Premium Pro + up.
+    { key: 'photos', text: d.tier >= 3 ? `${d.photos} photos + albums` : `${d.photos} photos`, included: d.photos > 0, emphasis: true },
     // Paid tiers get unlimited embedded videos/mixes; Free keeps its small count.
     { key: 'videos', text: d.tier > 0 ? 'Unlimited videos' : `${d.videos} videos`, included: d.videos > 0, emphasis: true },
     { key: 'mixes', text: d.tier > 0 ? 'Unlimited mixes' : `${d.mixes} mixes`, included: d.mixes > 0, emphasis: true },
