@@ -639,8 +639,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           rows={[
             { label: 'Past Events', value: receivedSplit.pastNet, color: REC_PAST },
             { label: 'Future Events', value: receivedSplit.futNet, color: REC_FUTURE },
-            { label: 'Expected', value: expectedTotals.net, color: EXP_COLOR },
           ]}
+          subtotal={{ label: 'Total', value: receivedSplit.pastNet + receivedSplit.futNet }}
+          tailRows={[{ label: 'Expected', value: expectedTotals.net, color: EXP_COLOR }]}
           total={receivedSplit.pastNet + receivedSplit.futNet + expectedTotals.net}
           totalColor="var(--neon, #00f5c4)"
           fmt={(n) => money0.format(n)}
@@ -651,8 +652,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
           rows={[
             { label: 'Past Events', value: receivedSplit.pastTax, color: REC_PAST },
             { label: 'Future Events', value: receivedSplit.futTax, color: REC_FUTURE },
-            { label: 'Expected', value: Number((expectedTotals.gross - expectedTotals.net).toFixed(2)), color: EXP_COLOR },
           ]}
+          subtotal={{ label: 'Total', value: receivedSplit.pastTax + receivedSplit.futTax }}
+          tailRows={[{ label: 'Expected', value: Number((expectedTotals.gross - expectedTotals.net).toFixed(2)), color: EXP_COLOR }]}
           total={receivedSplit.pastTax + receivedSplit.futTax + (expectedTotals.gross - expectedTotals.net)}
           totalColor="#fff"
           fmt={(n) => money0.format(n)}
@@ -953,30 +955,41 @@ function rangeLabel(p: Preset): string {
 
 // ── KpiBreakdown: a KPI card that lists Past / Future / Expected sub-amounts and
 // a bold Total, colour-matched to the chart series. Used for Revenue and Tax. ──
-function KpiBreakdown({ label, rows, total, totalColor, fmt }: {
+function KpiBreakdown({ label, rows, total, totalColor, fmt, subtotal, tailRows }: {
   label: string;
   rows: { label: string; value: number; color: string }[];
   total: number;
   totalColor: string;
   fmt: (n: number) => string;
+  // Optional: a received-only subtotal shown after `rows`, then `tailRows`
+  // (e.g. Expected), then the grand total. Used so the card shows a "Total"
+  // without expected, the expected line, then a second total with it.
+  subtotal?: { label: string; value: number };
+  tailRows?: { label: string; value: number; color: string }[];
 }) {
+  const row = (r: { label: string; value: number; color: string }) => (
+    <div key={r.label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, fontSize: '.82rem' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--muted,#8a8aa0)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} />
+        {r.label}
+      </span>
+      <span style={{ color: '#fff', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.value)}</span>
+    </div>
+  );
+  const totalLine = (t: { label: string; value: number }, color: string, big: boolean) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 }}>
+      <span style={{ fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#9a9ab0)', fontWeight: 700 }}>{t.label}</span>
+      <span style={{ color, fontWeight: 800, fontSize: big ? '1.15rem' : '.95rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(t.value)}</span>
+    </div>
+  );
   return (
     <div className={styles.kpi}>
       <div className={styles.kpiLabel}>{label}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
-        {rows.map((r) => (
-          <div key={r.label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, fontSize: '.82rem' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--muted,#8a8aa0)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} />
-              {r.label}
-            </span>
-            <span style={{ color: '#fff', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.value)}</span>
-          </div>
-        ))}
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 }}>
-          <span style={{ fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#9a9ab0)', fontWeight: 700 }}>Total</span>
-          <span style={{ color: totalColor, fontWeight: 800, fontSize: '1.15rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</span>
-        </div>
+        {rows.map(row)}
+        {subtotal && totalLine(subtotal, '#fff', false)}
+        {tailRows && tailRows.map(row)}
+        {totalLine({ label: subtotal ? 'Total with expected' : 'Total', value: total }, totalColor, true)}
       </div>
     </div>
   );
