@@ -486,7 +486,7 @@ export default function PlannerBuilder({
               </div>
 
               <div className={styles.body}>
-                <div className={`${styles.labelRow} ${styles.questionBanner}`}>
+                <div className={`${styles.labelRow} ${styles.questionBanner} ${f.id === DO_NOT_PLAY_FIELD_ID ? styles.questionBannerNo : ''}`}>
                   <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', minWidth: 0 }}>
                   {(editing === f.id || !f.label.trim()) ? (
