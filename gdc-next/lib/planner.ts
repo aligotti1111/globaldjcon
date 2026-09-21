@@ -378,12 +378,25 @@ export function pickTemplateById(
 ): { base: PlannerTemplate | null; override: PlannerTemplate | null } | null {
   const chosen = all.find((t) => t.id === templateId);
   if (!chosen) return null;
-  if (chosen.event_type == null) return { base: chosen, override: null };
+  if (chosen.event_type == null) {
+    // A base was chosen — prefer the DJ's own saved base if it exists, so their
+    // edits show on reopen (saves go to their copy, not the stock row).
+    const mineBase = all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type == null);
+    return { base: mineBase ?? chosen, override: null };
+  }
   const base =
     all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type == null) ??
     all.find((t) => t.is_standard && t.event_type == null) ??
     null;
-  return { base, override: chosen };
+  // CRITICAL: a DJ has ONE saved planner per event type (the PUT keys on
+  // dj_id+event_type). So if the chosen row is a STOCK template, the DJ's edits
+  // live in their own copy for that same event type — resolve to THAT, or the
+  // save appears not to stick on reopen. Only fall back to the stock row when
+  // they haven't customised this event type yet.
+  const override = chosen.is_standard
+    ? (all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type === chosen.event_type) ?? chosen)
+    : chosen;
+  return { base, override };
 }
 
 /**
