@@ -799,7 +799,7 @@ const LANDING_BODY = String.raw`
     <div class="price bill-mo">
       <div class="plan free reveal">
         <div class="hero">
-        <div class="pn">Free</div><div class="amt"><span class="cur">$</span>0<span class="per"> / month</span></div>
+        <div class="pn">Profile</div><div class="amt">Free</div>
         <div class="yr">&nbsp;</div>
         </div>
         <div class="body">
