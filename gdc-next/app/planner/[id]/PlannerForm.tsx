@@ -641,13 +641,22 @@ function Control({
       // A candle ceremony is an ordered, fixed-count list: number the rows and
       // seed one per candle (16 candles + the guest of honor = 17).
       const isCandle = /candle/i.test(field.label);
+      // An ORDERED people list — an entrance/court line-up, a processional — is
+      // read top to bottom, so number the rows as words (First, Second, Third)
+      // to make the running order unmistakable. Triggered off the question's own
+      // wording, so a DJ naming a custom field "…in entrance order" gets it too.
+      const isOrdered = !isCandle
+        && /entrance|order|processional|recessional|line[- ]?up|court|walk[- ]?in/i.test(
+          `${field.label} ${field.help || ''}`,
+        );
       return (
         <PeopleList
           value={(value as Person[]) || []}
           onChange={onChange}
           // Candle rows are Name + Song (the song stored in the second field).
           showRole={!isCandle && field.id !== HONOREE_FIELD_ID}
-          numbered={isCandle}
+          numbered={isCandle || isOrdered}
+          ordinal={isOrdered}
           seed={isCandle ? 17 : 1}
           songMode={isCandle}
         />
@@ -975,8 +984,21 @@ function TextList({
 // `pronunciation` is why this type exists at all.
 // ─────────────────────────────────────────────────────────────────────────
 
+// "First", "Second", … for an ordered list (entrance order, court line-up).
+// Words up to twentieth, then falls back to "21st", "22nd", …
+const ORDINAL_WORDS = [
+  'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth',
+  'Ninth', 'Tenth', 'Eleventh', 'Twelfth', 'Thirteenth', 'Fourteenth',
+  'Fifteenth', 'Sixteenth', 'Seventeenth', 'Eighteenth', 'Nineteenth', 'Twentieth',
+];
+function ordinalWord(n: number): string {
+  if (n >= 1 && n <= ORDINAL_WORDS.length) return ORDINAL_WORDS[n - 1];
+  const s = ['th', 'st', 'nd', 'rd'][((n % 100) - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th';
+  return `${n}${s}`;
+}
+
 function PeopleList({
-  value, onChange, showRole = true, numbered = false, seed = 1, songMode = false,
+  value, onChange, showRole = true, numbered = false, seed = 1, songMode = false, ordinal = false,
 }: {
   value: Person[];
   onChange: (v: Person[]) => void;
@@ -984,7 +1006,11 @@ function PeopleList({
   numbered?: boolean;
   seed?: number;
   songMode?: boolean;
+  // Number the rows as words (First, Second, Third) instead of "1., 2., 3.".
+  ordinal?: boolean;
 }) {
+  // Ordinal words need a wider gutter than a bare number.
+  const gutterW = ordinal ? 66 : 22;
   const [rows, setRows] = useState<Person[]>(() => {
     const want = Math.max(1, seed);
     const base = value.length ? value : [];
@@ -1013,7 +1039,7 @@ function PeopleList({
   return (
     <div className={styles.list}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {numbered && <span style={{ width: 22, flexShrink: 0 }} aria-hidden="true" />}
+        {numbered && <span style={{ width: gutterW, flexShrink: 0 }} aria-hidden="true" />}
         <div className={`${styles.peopleHead}${showRole ? '' : ` ${styles.noRole}`}`} style={{ flex: 1 }}>
           <span>Name</span>{showRole && <span>Role</span>}<span>{songMode ? 'Song' : 'Say it like'}</span><span />
         </div>
@@ -1021,7 +1047,9 @@ function PeopleList({
       {rows.map((p, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {numbered && (
-            <span style={{ width: 22, flexShrink: 0, textAlign: 'right', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', fontVariantNumeric: 'tabular-nums' }}>{i + 1}.</span>
+            <span style={{ width: gutterW, flexShrink: 0, textAlign: ordinal ? 'left' : 'right', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', fontVariantNumeric: 'tabular-nums' }}>
+              {ordinal ? ordinalWord(i + 1) : `${i + 1}.`}
+            </span>
           )}
           <div className={`${styles.peopleRow}${showRole ? '' : ` ${styles.noRole}`}`} style={{ flex: 1 }}>
           <input className={styles.input} placeholder="Name"
