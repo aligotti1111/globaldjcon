@@ -90,6 +90,10 @@ export default function PlannerBuilder({
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoMsg, setLogoMsg] = useState<string | null>(null);
   const [showRemove, setShowRemove] = useState(false);
+  // Themed confirm dialog (replaces the native window.confirm so it matches the
+  // app instead of the OS's white sheet).
+  const [confirmState, setConfirmState] = useState<{ message: string; resolve: (v: boolean) => void } | null>(null);
+  const askConfirm = (message: string) => new Promise<boolean>((resolve) => setConfirmState({ message, resolve }));
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -549,8 +553,9 @@ export default function PlannerBuilder({
                       type="button"
                       className={styles.toggle}
                       title="Remove — take this off the page"
-                      onClick={() => {
-                        if (typeof window !== 'undefined' && !window.confirm(`Remove "${titleCaseLabel(f.label) || 'this question'}" from the template? Your client won't see it. You can restore it from "Removed questions" below.`)) return;
+                      onClick={async () => {
+                        const ok = await askConfirm(`Remove "${titleCaseLabel(f.label) || 'this question'}" from the template? Your client won't see it. You can restore it from "Removed questions" below.`);
+                        if (!ok) return;
                         onPatch(f.id, { hidden: true });
                       }}
                     >Remove</button>
@@ -622,6 +627,25 @@ export default function PlannerBuilder({
         Saves to <strong>your {eventType || 'default'} planner</strong> — every {eventType || 'booking'} after
         this uses it, with no clicks. Turned-off questions are kept, not deleted.
       </p>
+
+      {/* Themed confirm dialog — matches the app instead of the OS's white sheet. */}
+      {confirmState && (
+        <div
+          onClick={() => { confirmState.resolve(false); setConfirmState(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '1rem' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#14141b', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.25rem', width: '100%', maxWidth: 420, boxShadow: '0 24px 60px rgba(0,0,0,.6)' }}
+          >
+            <div style={{ color: '#f2f2f7', fontSize: '.95rem', lineHeight: 1.5, marginBottom: '1.1rem' }}>{confirmState.message}</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
+              <button type="button" onClick={() => { confirmState.resolve(false); setConfirmState(null); }} style={{ padding: '.55rem 1.1rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: 'transparent', color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { confirmState.resolve(true); setConfirmState(null); }} style={{ padding: '.55rem 1.2rem', borderRadius: 8, border: 'none', background: 'var(--neon,#00e0a4)', color: '#04121a', fontWeight: 700, fontSize: '.82rem', cursor: 'pointer' }}>Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
