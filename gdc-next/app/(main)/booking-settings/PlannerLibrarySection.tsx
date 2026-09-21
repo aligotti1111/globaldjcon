@@ -283,7 +283,7 @@ export default function PlannerLibrarySection() {
         background: 'rgba(255,255,255,.02)',
       }}>
         <label htmlFor="planner-lead" style={{ fontSize: '.85rem', color: 'var(--white,#fff)' }}>
-          Ask clients to submit their Planner &amp; Playlist
+          Ask clients to submit their Planner &amp; Playlist at least
         </label>
         <select
           id="planner-lead"
