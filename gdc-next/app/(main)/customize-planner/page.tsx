@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import PlannerBuilder from '@/app/(main)/upcoming-bookings/PlannerBuilder';
-import type { PlannerField, PlannerFieldType } from '@/lib/planner';
+import { isCustomEventType, type PlannerField, type PlannerFieldType } from '@/lib/planner';
 import styles from '@/app/(main)/upcoming-bookings/plannerSend.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +78,19 @@ export default function CustomizePlannerPage() {
         const j = await res.json().catch(() => ({}));
         if (!res.ok) { setErr(j?.error || 'Could not open the planner.'); setLoaded(true); return; }
         setFields(j.fields || []);
+        // CRITICAL: save must target the SAME template this GET resolved. When a
+        // template is opened by templateId (or by booking) the URL carries no
+        // eventType, so without this the Save would write to the base planner and
+        // the edit would appear not to stick. editEventType is exactly the row a
+        // Save must write to (null = the base planner).
+        if (j.editEventType !== undefined) setEventType(j.editEventType);
+        const resolvedType: string | null = j.resolved?.eventType ?? j.editEventType ?? null;
+        if (resolvedType && isCustomEventType(resolvedType)) {
+          // A custom template keeps its own name; flag it so Save doesn't rename
+          // it to "My … planner".
+          setIsCustom(true);
+          if (typeof j.resolved?.name === 'string' && j.resolved.name) setName(j.resolved.name);
+        }
         setLoaded(true);
       } catch {
         setErr('Could not open the planner.');
