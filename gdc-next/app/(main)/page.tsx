@@ -479,7 +479,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .plan{--accent:var(--muted);position:relative;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 24px 48px -32px rgba(0,0,0,.9);transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s}
 .gdc-landing .plan:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.14)}
 /* Per-tier accent colors. */
-.gdc-landing .plan.free{--accent:#cfd6d4;background:#171a20}
+.gdc-landing .plan.free{--accent:#cfd6d4;background:linear-gradient(180deg,#171a20 0%,#171a20 45%,#0c0c11 80%)}
 .gdc-landing .plan.starter{--accent:#9aa3a0}
 .gdc-landing .plan.pro{--accent:#00e0a4}
 .gdc-landing .plan.premium{--accent:#31d0ff}
