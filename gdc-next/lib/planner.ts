@@ -31,8 +31,11 @@ export type PlannerFieldType =
                   // counted, never prefilled. e.g. a "Reception" break on the
                   // wedding-with-ceremony planner between the ceremony questions
                   // and the reception ones. `label` is the heading text.
-  | 'divider';    // NOT a question — a plain horizontal rule between questions.
+  | 'divider'     // NOT a question — a plain horizontal rule between questions.
                   // No label, no answer, never counted. Purely visual spacing.
+  | 'space';      // NOT a question — blank vertical space between questions.
+                  // Like a divider but with no line: just breathing room. No
+                  // label, no answer, never counted.
 
 /**
  * PrefillKey — something we already know from the booking.
@@ -282,8 +285,10 @@ export function dropFieldsAnsweredByBooking(
 export const isSection = (f: PlannerField): boolean => f.type === 'section';
 /** A plain horizontal rule between questions — structural, not a question. */
 export const isDivider = (f: PlannerField): boolean => f.type === 'divider';
+/** Blank vertical space — structural, not a question. */
+export const isSpace = (f: PlannerField): boolean => f.type === 'space';
 /** Section headings AND dividers: laid out in the form but never questions. */
-export const isStructural = (f: PlannerField): boolean => isSection(f) || isDivider(f);
+export const isStructural = (f: PlannerField): boolean => isSection(f) || isDivider(f) || isSpace(f);
 
 /**
  * Drop any section heading with no real field beneath it — i.e. a `section`
