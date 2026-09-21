@@ -135,8 +135,9 @@ export default function CustomizePlannerPage() {
     // and didn't fill anything in shouldn't be blocked from saving. Dividers
     // never carry a label, so they're always kept; only the DJ's own labelled
     // additions (is_custom) are droppable when blank; a stock field never blanks.
-    const cleaned = fields.filter((f) => f.type === 'divider' || f.label.trim() !== '' || !f.is_custom);
-    const blank = cleaned.find((f) => f.type !== 'divider' && !f.label.trim());
+    const structural = (t: string) => t === 'divider' || t === 'space' || t === 'section';
+    const cleaned = fields.filter((f) => structural(f.type) || f.label.trim() !== '' || !f.is_custom);
+    const blank = cleaned.find((f) => !structural(f.type) && !f.label.trim());
     if (blank) { setErr('Every question needs a label.'); return; }
     if (cleaned.length !== fields.length) setFields(cleaned);
     setSaving(true);
