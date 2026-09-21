@@ -1,2581 +1,2367 @@
-/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
-   CSS Module → class names auto-hashed, descendant element selectors preserved.
+'use client';
 
-   Excluded from port (handled elsewhere or not relevant for Session 1):
-   - body / body::before reset (already in app/styles/index.css)
-   - header / nav-* (handled by our Header component)
-   - mobile-menu (handled by our MobileMenu component)
-   - hamburger-btn (handled by Header component)
-   - #day-editor-modal (owner-only feature, future session)
-   - #ib-root (booking form, future session)
-   - .lightbox (added simply — JS interaction in Session 3)
-   - inline-edit-popover, avatar-edit-overlay, tab-add-cta (owner-mode, future session)
-   - gate-modal, contact-modal, ib-msg-modal (modals, future session)
-   - .cal-* (calendar, Session 4)
-   - .mpf-* (mobile package form, future session)
-*/
+// ProfileView — Client Component for the interactive parts of a DJ profile:
+//   - Tab switching (About / Mixes / Photos / Video / Testimonials)
+//   - Lightbox open/close for gallery images and avatar
+// Server Component (page.tsx) does the data fetch and passes everything in.
 
-/* ── LOADING / ERROR — when slug not found ───────────────── */
-.statusWrap {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-}
-.statusBox {
-  text-align: center;
-}
-.statusBox h2 {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.5rem;
-  color: var(--muted);
-  margin-bottom: .5rem;
-}
-.statusBox p {
-  color: var(--muted);
-  font-size: .9rem;
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import styles from './profile.module.css';
+import { useAuth } from '@/components/AuthProvider';
+import { EVENT_TYPE_LABELS, GENRE_LABELS, initials } from './constants';
+import { buildMixEmbed, buildVideoEmbed } from './embeds';
+import { parseBookingSettings, packageTiers, isSaleActive } from './bookingSettings';
+import PublicCalendar from './PublicCalendar';
+import MobilePublicCalendar from './MobilePublicCalendar';
+import { parseCustomEventTypes } from '@/lib/constants';
+import ClubBookingForm from './ClubBookingForm';
+import BookingLoginGate from './BookingLoginGate';
+import ComposeMessageModal from '@/components/ComposeMessageModal';
+import { useConfirm } from '@/components/ConfirmModal';
+import { createClient } from '@/lib/supabase/client';
+import { optimizedImageUrl } from '@/lib/img';
+import { parseAlbums, pruneAlbums, type Album } from '@/lib/albums';
+import { effectiveTier, TIERS, type AccessFields } from '@/lib/access';
+import AvatarCrop from '../update-dj-profile/AvatarCrop';
+import {
+  LocationPinIcon, ClaimAlertIcon,
+} from './icons';
+
+
+// Shared profile types now live in ./profileTypes. Re-export DjProfileData
+// so existing importers (e.g. page.tsx) keep working unchanged.
+import type { DjProfileData, Testimonial, Faq, AboutStats, TabKey } from './profileTypes';
+export type { DjProfileData };
+// Extracted sub-components (banner pills, hero actions, owner editors, modals).
+import {
+  BannerTypeEventsDropdown, OwnerEditableBio, MixAddButton, VideoAddButton,
+  VideoMetaEditor, ExpandableDesc, PhotoManagerModal, AddPhotosModal, CreateAlbumModal, EmbedCalendarModal,
+  BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
+  AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
+} from './ProfileComponents';
+import { validateImageFile } from './profilePhotoUtils';
+import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
+
+// Parse booking settings ONCE, outside the component (it's pure data) —
+// but we need profile.dj_type and booking_settings, so it has to live inside.
+// Done inline via parseBookingSettings near the top of the component below.
+
+interface Props {
+  data: DjProfileData;
+  effectiveSlug: string;
+  isLoggedIn: boolean;
+  isOwnProfile: boolean;
+  // True when the viewer is a team member with a profile-editing seat (not the
+  // owner). Grants editing of every tab EXCEPT Booking.
+  canEditProfile?: boolean;
+  // Paywall: true when the DJ has an active subscription/comp (Tier 1+).
+  // ANDed with the existing enabled + completeness checks below.
+  hasBookingAccess: boolean;
 }
 
-/* ── CLAIM BAR ─────────────────────────────────────────── */
-.claimBar {
-  position: relative;
-  z-index: 2;
-  background: rgba(255, 179, 71, .06);
-  border-bottom: 1px solid rgba(255, 179, 71, .2);
-  padding: .65rem 4rem;
-  display: flex;
-  align-items: center;
-  gap: .75rem;
+// Owner-only "⋯" menu shown next to the hero name and the location. One button
+// opens a small popover where the text colour and the semi-transparent colour
+// band are set separately (band can also be removed). One instance per element.
+function HeroColorMenu({ which, textColor, onText, band, onBand }: {
+  which: 'name' | 'location';
+  textColor: string;
+  onText: (hex: string) => void;
+  band: string | null;
+  onBand: (hex: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const noun = which === 'name' ? 'Name' : 'Location';
+  const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '7px 4px' };
+  const labelStyle: React.CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#fff', textTransform: 'uppercase', letterSpacing: '.05em' };
+  const swatchInput: React.CSSProperties = { width: 30, height: 22, padding: 0, border: '1px solid rgba(255,255,255,.4)', borderRadius: 5, background: 'transparent', cursor: 'pointer' };
+  // Live preview band behind the "Color band" label: the chosen band colour at
+  // ~50% opacity, or a subtle neutral tint when no band is set yet.
+  const bandLabelBg = (() => {
+    const m = band ? /^#?([0-9a-fA-F]{6})$/.exec(band) : null;
+    if (!m) return 'rgba(255,255,255,.14)';
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, .5)`;
+  })();
+
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', marginLeft: 10, transform: 'translateY(-2px)', verticalAlign: 'middle', flexShrink: 0, zIndex: open ? 3000 : undefined }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={`Style the ${noun.toLowerCase()}`}
+        aria-label={`Style the ${noun.toLowerCase()}`}
+        aria-expanded={open}
+        style={{ height: 26, width: 16, padding: 0, borderRadius: 5, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 0 }}
+      >
+        <svg width="4" height="14" viewBox="0 0 4 14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+          <circle cx="2" cy="2" r="1.7" />
+          <circle cx="2" cy="7" r="1.7" />
+          <circle cx="2" cy="12" r="1.7" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          style={{ position: 'absolute', top: 30, right: 0, zIndex: 3000, minWidth: 214, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.55)', padding: '6px 10px 8px', textAlign: 'left' }}
+        >
+          <div style={{ ...labelStyle, fontSize: 9.5, color: 'var(--neon)', padding: '4px 4px 2px' }}>{noun} style</div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Text color</span>
+            <input type="color" value={textColor} onChange={(e) => onText(e.target.value)} style={swatchInput} aria-label={`${noun} text color`} />
+          </div>
+          <div style={{ height: 1, background: 'rgba(255,255,255,.1)' }} />
+          <div style={rowStyle}>
+            <span style={{ ...labelStyle, background: bandLabelBg, padding: '.12em .4em', borderRadius: 4 }}>Color band</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {band && (
+                <button type="button" onClick={() => onBand(null)} style={{ background: 'none', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              )}
+              <input
+                type="color"
+                value={band || textColor}
+                onChange={(e) => onBand(e.target.value)}
+                style={swatchInput}
+                title={band ? 'Change band color' : 'Add a color band'}
+                aria-label={`${noun} color band`}
+              />
+            </span>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--muted,#8a8aa0)', lineHeight: 1.4, padding: '2px 4px 0' }}>
+            The band is a semi-transparent strip behind the {noun.toLowerCase()}.
+          </div>
+        </div>
+      )}
+    </span>
+  );
 }
-.claimBar svg {
-  color: #ffb347;
-  flex-shrink: 0;
-}
-.claimBar p {
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .04em;
-  color: rgba(255, 179, 71, .85);
-  margin: 0;
-}
-.claimBar a {
-  color: #ffb347;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  white-space: nowrap;
-}
-.claimBar a:hover {
-  opacity: .75;
-}
-@media (max-width: 900px) {
-  .claimBar {
-    padding: .65rem 1.5rem;
+
+export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess }: Props) {
+  // Who may edit the public profile (all tabs except Booking): the owner, or a
+  // permitted team member. `actingAsMember` is true only for the member case —
+  // their writes route through /api/profile/update instead of a direct write.
+  // Whoever may edit (owner or permitted teammate). `previewPublic` lets them
+  // temporarily see the page exactly as a visitor would — all edit chrome
+  // hidden — without leaving the page. It's session state only: a reload always
+  // returns them to owner view.
+  const baseCanEdit = isOwnProfile || canEditProfile;
+  const [previewPublic, setPreviewPublic] = useState(false);
+  const canEdit = baseCanEdit && !previewPublic;
+  const actingAsMember = canEditProfile && !isOwnProfile;
+  // ── Booking settings parsing & "show booking tab" decision ──────────
+  // Vanilla shows a booking tab (and makes it the default) when the DJ has
+  // booking_enabled — but the WIDGET inside that tab differs by DJ type:
+  //   - Club DJ → Availability calendar (PublicCalendar) showing event dates
+  //   - Mobile DJ → Booking calendar (MobilePublicCalendar) for direct booking
+  // Tab labels also differ: "Availability" for club, "Booking" for mobile,
+  // matching vanilla bookingTabBtn.textContent flips at line 707 of dj-profile.html.
+  const bookingSettings = parseBookingSettings(data.booking_settings);
+  // Site-wide sale badge — shown on the public profile when the DJ has an
+  // active sale (and booking is live for them).
+  const saleActive = hasBookingAccess && isSaleActive(bookingSettings?.sale);
+  const salePercent = bookingSettings?.sale?.percent;
+  const isClubDJ = data.dj_type === 'club';
+  const isMobileDJBooking = data.dj_type === 'mobile';
+  // Club DJ booking goes live publicly only when:
+  //   1. booking_enabled is true (the toggle is on), AND
+  //   2. an equipment option (full / decks / none) has been picked.
+  // The DJ-side ClubBookingTab shows a banner when (1) is true but (2)
+  // isn't, reminding them to complete activation. Until both are true,
+  // the public profile hides the Book button / Availability tab entirely.
+  const clubEquipPicked = !!(
+    bookingSettings &&
+    (bookingSettings.equip_full || bookingSettings.equip_decks || bookingSettings.equip_none)
+  );
+  // Mobile completeness: at least one package that's actually bookable —
+  // has a title and either valid price tiers or "price on request" (reqAll).
+  const mobileSetupComplete = !!(
+    bookingSettings &&
+    bookingSettings.mob_packages &&
+    Object.values(bookingSettings.mob_packages).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (pkg) =>
+            !!pkg &&
+            !!(pkg.title && String(pkg.title).trim()) &&
+            (pkg.reqAll === true || packageTiers(pkg).length > 0)
+        )
+    )
+  );
+  const clubBookingLive = hasBookingAccess && clubEquipPicked;
+  const mobileBookingLive = hasBookingAccess && mobileSetupComplete;
+  const bookingEnabled = isClubDJ ? clubBookingLive : mobileBookingLive;
+  const { user: currentUser } = useAuth();
+  // A staff login (active team member) may NOT book a DJ — booking is for
+  // owners and hosts only. Staff still SEE the availability calendar, but
+  // read-only: no date-tap booking, no owner availability editing.
+  const viewerIsStaff = !!currentUser?.isMember;
+  // Route inline profile writes through the owner's row directly (owner) or the
+  // role-gated API (team member). Keep this in sync as auth resolves.
+  useEffect(() => {
+    setProfileEditContext({ actingAsMember, uploaderId: currentUser?.id ?? null });
+  }, [actingAsMember, currentUser?.id]);
+  // Staff DO see the availability tab now — just read-only (see below).
+  const showClubAvailabilityTab = isClubDJ && bookingEnabled;
+  const showMobileBookingTab = isMobileDJBooking && bookingEnabled;
+  const showBookingTab = showClubAvailabilityTab || showMobileBookingTab;
+
+  // If the URL has ?date=YYYY-MM-DD (visitor came from the embed
+  // calendar) AND we have a booking tab, force-default to it so the
+  // auto-select logic in MobilePublicCalendar finds the right context.
+  const searchParams = useSearchParams();
+  const hasDateParam = !!searchParams.get('date');
+
+  // Active tab — defaults to booking (if visible) else about. Can be
+  // deep-linked via ?tab= so a reload (e.g. after adding a mix or video
+  // inline) lands back on the same tab. Validates against TabKey list.
+  const tabFromUrl = (() => {
+    const t = searchParams.get('tab') || '';
+    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials', 'faq'];
+    return (valid as string[]).includes(t) ? (t as TabKey) : null;
+  })();
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    tabFromUrl || (showBookingTab ? 'booking' : 'about')
+  );
+  // Club-booking flow — selectedDate drives the form, loginGateForDate
+  // shows the login gate for unauthenticated visitors. Mirror of the
+  // pattern in MobilePublicCalendar (which holds these internally).
+  // Gate for actions that require a verified email (booking, messaging).
+  // Returns true if the action may proceed. Logged-out users are sent to
+  // login; logged-in-but-unverified users are blocked with a prompt that
+  // points them at the persistent verify banner (which has Resend).
+  // `redirectAfterLogin` is the path to return to after logging in.
+  function requireVerified(redirectAfterLogin: string): boolean {
+    if (!isLoggedIn || !currentUser) {
+      window.location.href = `/login?redirect=${encodeURIComponent(redirectAfterLogin)}`;
+      return false;
+    }
+    if (!currentUser.email_verified) {
+      alert(
+        'Please verify your email to continue. Use the "Resend Email" link in the banner at the top of the page, then click the link we send you.'
+      );
+      return false;
+    }
+    return true;
   }
-}
+  const [clubSelectedDate, setClubSelectedDate] = useState<string | null>(null);
+  const [clubLoginGateDate, setClubLoginGateDate] = useState<string | null>(null);
+  // ── Pending bookings for the logged-in viewer with THIS DJ.
+  // We show "Pending" on the calendar (instead of "Book") for dates the
+  // current viewer already has a pending request on — only they see this;
+  // the date stays available for everyone else. Refetched whenever the
+  // viewer submits a new request via clubPendingRefreshKey. ───────────
+  const [clubPendingDates, setClubPendingDates] = useState<Set<string>>(new Set());
+  const [clubPendingRefreshKey, setClubPendingRefreshKey] = useState(0);
+  useEffect(() => {
+    if (!currentUser?.id || !data.id) {
+      setClubPendingDates(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: rows } = await supabase
+        .from('bookings')
+        .select('event_date')
+        .eq('dj_id', data.id)
+        .eq('requester_id', currentUser.id)
+        .eq('status', 'pending');
+      if (cancelled) return;
+      const set = new Set<string>();
+      (rows as { event_date: string | null }[] | null)?.forEach((r) => {
+        if (r.event_date) set.add(r.event_date);
+      });
+      setClubPendingDates(set);
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, data.id, clubPendingRefreshKey]);
+  // Compose-message modal — opened by the "Message" button in HeroActions.
+  // For logged-out visitors we route them to /login first.
+  const [composeOpen, setComposeOpen] = useState(false);
+  // Avatar upload — owner-only. fileInputRef triggers the native file
+  // picker; pickedAvatarFile holds the chosen File until AvatarCrop's
+  // crop modal commits or cancels. On crop success we write the new
+  // public URL to users.avatar_url and reload to refresh the hero.
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const [pickedAvatarFile, setPickedAvatarFile] = useState<File | null>(null);
+  // Banner edit — owner-only. Opens a dedicated modal where the DJ
+  // can upload/replace the banner image and reposition it vertically.
+  // All upload + position logic lives inside BannerEditModal.
+  const [bannerModalOpen, setBannerModalOpen] = useState(false);
+  // Edit-tabs — owner-only modal to toggle which tabs are visible to
+  // the public. Booking tab is NOT toggled here (use booking settings).
+  const [tabsModalOpen, setTabsModalOpen] = useState(false);
+  // Share-calendar — visible to all visitors. Opens a modal with two
+  // preview cards (month view + 12-month view), each with a copyable URL.
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  // Counter that bumps to force the PublicCalendar/MobilePublicCalendar
+  // into 12-month rolling mode (used by the Book Now banner button).
+  // Book Now (which used to bump this) was removed from the banner; the value
+  // is still passed to the calendar's force12mo prop but no longer changes.
+  const [forceCalendar12mo] = useState(0);
+  // Photo manager modal — opens from the + button in the Photos tab.
+  // Shows all 4 slots so DJ can upload to / remove from each independently.
+  const [photoManagerOpen, setPhotoManagerOpen] = useState(false);
+  const [addPhotosOpen, setAddPhotosOpen] = useState(false);
+  // Photos tab: which album is being viewed (null = All photos) and how many
+  // of the all-photos feed are shown (paginated so a huge gallery never loads
+  // at once). PHOTO_PAGE is the batch size for "Load more".
+  const PHOTO_PAGE = 24;
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
+  const [photoLimit, setPhotoLimit] = useState<number>(PHOTO_PAGE);
+  const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
+  const [editAlbumTarget, setEditAlbumTarget] = useState<Album | null>(null);
+  // Embed-calendar modal — owner-only shortcut on the profile so the DJ
+  // can grab their iframe embed snippet without leaving for update-dj-profile.
+  // Triggered by the "Embed Calendar" button above the calendar in the
+  // Booking/Availability tab.
+  const [embedModalOpen, setEmbedModalOpen] = useState(false);
 
-/* ── BANNER ───────────────────────────────────────────── */
-/* Sits as an absolute layer behind the hero content (avatar, name,
-   social icons all render on top). For owners-only, a single corner
-   button opens the BannerEditModal where upload + reposition happen.
-   A dark gradient overlay keeps hero text readable on busy photos. */
-.banner {
-  position: absolute;
-  inset: 0;
-  /* No numeric z-index here, on purpose. A numeric z-index (was 0) made
-     .banner its own stacking context, which TRAPPED its interactive
-     children — the owner "Edit/Add Banner" button and the name badge —
-     below the hero content (.hero > * gets z-index:1). The hero info block
-     then overlapped the button and swallowed its clicks, leaving only the
-     sliver in the right padding clickable. With z-index:auto the banner
-     still paints behind the content (content is positioned at z-index:1,
-     this stays auto), but the button's own z-index can now rise above it. */
-  background-color: transparent;
-  background-size: cover;
-  background-position: var(--banner-pos, 50% 50%);
-  background-repeat: no-repeat;
-  pointer-events: none;
-}
-/* Re-enable pointer events on interactive children of .banner (top-left
-   badge dropdown, edit-banner button) — they're explicitly clickable. */
-.banner > * {
-  pointer-events: auto;
-}
-.bannerCtaRow {
-  position: absolute;
-  top: 50%;
-  right: 10%;
-  transform: translateY(-50%);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-}
-.bannerBookNowBtn {
-  padding: .75rem 1.5rem;
-  background: var(--neon);
-  border: 1px solid #000;
-  border-radius: 100px;
-  color: #050507;
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0, 245, 196, .4);
-  transition: all .15s;
-}
-.bannerBookNowBtn:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 4px 20px rgba(0, 245, 196, .6);
-}
-.bannerMessageUsBtn {
-  padding: .75rem 1.5rem;
-  background: #fff;
-  border: 1px solid #000;
-  border-radius: 100px;
-  color: #050507;
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(255, 255, 255, .2);
-  transition: all .15s;
-}
-.bannerMessageUsBtn:hover {
-  background: var(--neon);
-  border-color: #000;
-  color: #050507;
-}
-@media (max-width: 700px) {
-  .bannerCtaRow {
-    /* On mobile, drop below the location pill — center horizontally
-       and sit lower in the banner area. */
-    top: auto;
-    bottom: 1.25rem;
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    gap: .5rem;
-  }
-  .bannerBookNowBtn,
-  .bannerMessageUsBtn {
-    padding: .6rem 1.15rem;
-    font-size: .68rem;
-    letter-spacing: .07em;
-  }
-}
-@media (max-width: 700px) {
-  .banner {
-    background-position: var(--banner-pos-mobile, var(--banner-pos, 50% 50%));
-  }
-}
-/* Top-left DJ/company name overlay on the banner — only rendered when
-   data.banner_url is set. Anchored flush against the top-left corner
-   of the banner, stemming outward from that edge for emphasis. */
-/* Top-left DJ type overlay on the banner — only rendered when
-   data.banner_url is set. Anchored flush against the top-left corner
-   of the banner, stemming outward from that edge for emphasis. */
-.bannerNameBadge {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-  padding: .35rem 1.1rem .4rem;
-  background: rgba(5, 5, 7, .85);
-  border-right: 1px solid rgba(255, 255, 255, .15);
-  border-bottom: 1px solid rgba(255, 255, 255, .15);
-  border-bottom-right-radius: 12px;
-  color: #fff;
-  font-family: var(--font-archivo), 'Archivo', sans-serif;
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  line-height: 1.1;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
-  max-width: calc(100% - 200px);
-  white-space: nowrap;
-}
-@media (max-width: 700px) {
-  .bannerNameBadge {
-    padding: .3rem .8rem .35rem;
-    font-size: .9rem;
-    max-width: calc(100% - 32px);
-  }
-}
-/* DJ type color variants — match the .typeBadge brand colors. */
-.bannerNameBadgeMobile {
-  color: var(--neon);
-  border-right-color: rgba(0, 245, 196, .35);
-  border-bottom-color: rgba(0, 245, 196, .35);
-}
-.bannerNameBadgeClub {
-  color: var(--pink);
-  border-right-color: rgba(245, 230, 66, .35);
-  border-bottom-color: rgba(245, 230, 66, .35);
-}
-/* Dropdown popup for the top-left mobile-DJ events-serviced badge. */
-.bannerTypeDropdown {
-  z-index: 9999;
-  min-width: 220px;
-  background: #050507;
-  border: 1px solid rgba(255, 255, 255, .15);
-  border-radius: 8px;
-  padding: .5rem 0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .8);
-}
-.bannerTypeDropdownItem {
-  padding: .45rem 1rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, .85);
-  white-space: nowrap;
-}
-.bannerTypeDropdownItem:hover {
-  color: var(--neon);
-}
-.bannerEditBtn {
-  position: absolute;
-  top: 54px;
-  right: 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .5rem .8rem;
-  background: rgba(0, 0, 0, .65);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-  transition: background .15s, border-color .15s;
-  pointer-events: auto;
-  /* Above the hero content (z-index:1) and the banner CTA row (z-index:100)
-     so the whole button is clickable, not just the sliver that used to poke
-     out past the hero-info block. Requires .banner to NOT be a stacking
-     context (see .banner above) for this to escape upward. */
-  z-index: 101;
-}
-.bannerEditBtn:hover {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #050507;
-}
-@media (max-width: 700px) {
-  .bannerEditBtn {
-    top: 48px;
-    right: 16px;
-    padding: .4rem .6rem;
-    font-size: .55rem;
-  }
-}
+  // Confirm modal — used for owner delete-video confirmation. Returns
+  // a confirm() promise + a confirmDialog JSX element to render once.
+  const { confirm, confirmDialog } = useConfirm();
 
-/* ── BANNER EDIT MODAL ────────────────────────────────────────── */
-.bannerModalBackdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-.bannerModal {
-  background: #0a0a0e;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  width: 100%;
-  max-width: 720px;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-.bannerModalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-}
-.bannerModalTitle {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.5rem;
-  letter-spacing: .05em;
-  margin: 0;
-  color: var(--white);
-}
-.bannerModalClose {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  width: 28px;
-  height: 28px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.bannerModalClose:hover {
-  color: var(--white);
-  border-color: var(--white);
-}
-.bannerModalBody {
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.bannerPreviewsRow {
-  display: grid;
-  grid-template-columns: 2.5fr 1fr;
-  gap: .9rem;
-  align-items: start;
-}
-@media (max-width: 600px) {
-  .bannerPreviewsRow {
-    grid-template-columns: 1fr;
+  // Delete a video — removes it from the video_urls array by index.
+  async function deleteVideo(index: number) {
+    const ok = await confirm({
+      title: 'Delete this video?',
+      message: 'This removes the video from your profile. You can add it back any time.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const next = videoList.filter((_, i) => i !== index);
+      await saveProfile(data.id, { video_urls: next }, actingAsMember);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'video');
+      window.location.href = url.toString();
+    } catch {
+      // Best-effort; user can retry.
+    }
   }
-}
-.bannerPreviewBlock {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-  min-width: 0;
-}
-.bannerPreviewLabel {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: .5rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--white);
-}
-.bannerPreviewRatio {
-  color: var(--muted);
-  font-size: .55rem;
-  letter-spacing: .04em;
-  text-transform: none;
-}
-.bannerModalPreview {
-  width: 100%;
-  background-color: rgba(255, 255, 255, .02);
-  background-size: cover;
-  background-repeat: no-repeat;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  position: relative;
-  touch-action: none;
-  user-select: none;
-}
-.bannerModalPreviewDesktop {
-  aspect-ratio: 4 / 1;
-}
-.bannerModalPreviewMobile {
-  /* Approximates the live mobile hero crop shape — narrower frame. */
-  aspect-ratio: 1.6 / 1;
-}
-.bannerModalPreviewEmpty {
-  cursor: pointer;
-  transition: background-color .15s, border-color .15s;
-}
-.bannerModalPreviewEmpty:hover {
-  background-color: rgba(0, 245, 196, .06);
-  border-color: var(--neon);
-}
-.bannerModalPreviewEmpty:hover .bannerModalEmpty {
-  color: var(--neon);
-}
-.bannerModalPreview:active {
-  cursor: grabbing !important;
-}
-.bannerModalEmpty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  color: var(--muted);
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-.bannerModalDragHint {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: .3rem .6rem;
-  background: rgba(0, 0, 0, .65);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  backdrop-filter: blur(4px);
-  pointer-events: none;
-}
-.bannerModalHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  color: var(--muted);
-  letter-spacing: .03em;
-}
-.bannerModalHint strong {
-  color: var(--white);
-  font-weight: 700;
-}
-.bannerModalNote {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  color: var(--muted);
-  letter-spacing: .03em;
-  font-style: italic;
-  opacity: .85;
-  margin-top: -.5rem;
-}
-.bannerModalError {
-  padding: .6rem .8rem;
-  background: rgba(255, 95, 95, .12);
-  border: 1px solid #ff5f5f;
-  border-radius: 6px;
-  color: #ff5f5f;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-}
-.bannerModalActions {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex-wrap: wrap;
-  padding-top: .5rem;
-  border-top: 1px solid var(--border);
-}
-.bannerModalBtn {
-  padding: .55rem .9rem;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background .15s, border-color .15s, color .15s;
-}
-.bannerModalBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, .08);
-  border-color: var(--white);
-}
-.bannerModalBtn:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
-.bannerModalBtnPrimary {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #050507;
-}
-.bannerModalBtnPrimary:hover:not(:disabled) {
-  background: var(--neon);
-  border-color: var(--neon);
-  filter: brightness(1.1);
-}
-.bannerModalBtnDanger {
-  color: #ff5f5f;
-  border-color: rgba(255, 95, 95, .4);
-}
-.bannerModalBtnDanger:hover:not(:disabled) {
-  background: rgba(255, 95, 95, .12);
-  border-color: #ff5f5f;
-  color: #ff5f5f;
-}
 
-/* ── HERO ─────────────────────────────────────────────── */
-.hero {
-  position: relative;
-  z-index: 50;
-  padding: 3rem 4rem 2rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 2.5rem;
-  border-bottom: 1px solid var(--border);
-}
-/* Desktop hero (and therefore the banner, which fills it) gets a taller
-   minimum so the banner image reads bigger on wide screens. Mobile keeps
-   its own compact height via the max-width:700px overrides below. */
-@media (min-width: 701px) {
-  .hero {
-    min-height: 390px;
+  // (Photo deletion now happens inside PhotoManagerModal, which edits the
+  // gallery_photos array directly.)
+
+  // Delete a mix — removes it from the mix_urls array by index.
+  async function deleteMix(index: number) {
+    const ok = await confirm({
+      title: 'Delete this mix?',
+      message: 'This removes the mix from your profile. You can add it back any time.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const next = mixList.filter((_, i) => i !== index);
+      await saveProfile(data.id, { mix_urls: next }, actingAsMember);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'mixes');
+      window.location.href = url.toString();
+    } catch {
+      // Best-effort
+    }
   }
-}
-/* The .banner uses position: absolute inset: 0 and its background-image
-   paints within its own bounds — no overflow needed on .hero, which lets
-   popups (Events Serviced, tooltips) escape the hero box. */
-/* Direct children of .hero (avatar, info, etc.) stack above the
-   absolutely-positioned .banner layer. The .banner is exempted so its
-   own position: absolute isn't overridden. */
-.hero > *:not(.banner):not(.bannerCtaRow) {
-  position: relative;
-  z-index: 1;
-}
-.heroAvatar {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 3.8rem;
-  letter-spacing: .04em;
-  flex-shrink: 0;
-  border: 2px solid;
-  overflow: hidden;
-  position: relative;
-}
-.heroAvatarMobile {
-  background: var(--neon-dim);
-  color: var(--neon);
-  border-color: rgba(0, 245, 196, .3);
-}
-.heroAvatarClub {
-  background: var(--pink-dim);
-  color: var(--pink);
-  border-color: rgba(245, 230, 66, .3);
-}
-.heroAvatarNone {
-  background: rgba(255, 255, 255, .05);
-  color: var(--white);
-  border-color: var(--border);
-}
-.heroAvatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 50%;
-  position: absolute;
-  inset: 0;
-}
-.heroInfo {
-  flex: 1;
-  min-width: 0;
-}
-.heroName {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 3.15rem;
-  letter-spacing: .03em;
-  line-height: 1;
-  margin-bottom: .5rem;
-  /* Oversized-type concept: bare white condensed name (no pill), with a
-     dark "halo" text-shadow so it stays legible over any banner. */
-  color: #fff;
-  text-shadow:
-    0 0 3px rgba(0, 0, 0, .9),
-    0 2px 12px rgba(0, 0, 0, .8);
-}
-/* Neon underline bar sitting directly under the name. Rendered as a
-   pseudo-element so no extra markup is needed; keeps its neon glow on
-   every banner (its glow is intentional, unlike the name's dark halo). */
-.heroName::after {
-  content: '';
-  display: block;
-  width: 150px;
-  max-width: 100%;
-  height: 3px;
-  margin-top: .5rem;
-  border-radius: 2px;
-  background: var(--neon);
-  box-shadow: 0 0 10px var(--neon);
-}
-.heroBadges {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex-wrap: wrap;
-  margin-bottom: .6rem;
-}
-.typeBadge {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: .25rem .7rem;
-  border-radius: 100px;
-  border: 1px solid;
-}
-.typeBadgeIcon {
-  /* Emojis render dim on dark backgrounds — bump brightness + a touch of
-     drop-shadow so the icon glows alongside the brand-colored label. */
-  filter: brightness(1.25) saturate(1.4);
-  display: inline-block;
-}
-.typeBadgeMobile {
-  background: var(--neon-dim);
-  color: var(--neon);
-  border-color: rgba(0, 245, 196, .3);
-}
-.typeBadgeClub {
-  background: var(--pink-dim);
-  color: var(--pink);
-  border-color: rgba(245, 230, 66, .3);
-}
+  // If the URL has ?date= AND this is a club DJ profile AND visitor is
+  // logged in, auto-open the booking form for that date. Mirrors the
+  // MobilePublicCalendar behavior so embed-calendar links land on the
+  // form regardless of DJ type.
+  // When the visitor arrives with ?date= (typically from the embed
+  // calendar), pre-select that date on the calendar. We do this for
+  // EVERYONE (logged-in or out) so the calendar navigates to the right
+  // month and the day is highlighted. The booking form itself still
+  // requires being logged-in + verified, gated below at render time;
+  // a logged-out visitor sees the highlighted day and clicks BOOK on
+  // it to trigger the login gate.
+  useEffect(() => {
+    const dateParam = searchParams.get('date');
+    if (!dateParam) return;
+    if (!showClubAvailabilityTab) return;
+    setClubSelectedDate(dateParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, showClubAvailabilityTab]);
+  // Logged-OUT visitor arriving from the embed with ?date= used to have
+  // the login gate auto-open here. That's been removed by design — we now
+  // want them to land on the DJ's profile and see the calendar first; the
+  // gate fires only when they click BOOK on the day themselves. The date
+  // param is still honored: PublicCalendar reads `selectedDate` and jumps
+  // the visible month to it (see the month-jump effect there).
+  // If the visitor lands with ?date=, also scroll the tab area into view
+  // so they don't have to hunt for the booking calendar. Only fires once
+  // on mount.
+  useEffect(() => {
+    if (hasDateParam && showBookingTab) {
+      // Allow the tabs/calendar to render first, then scroll
+      const t = setTimeout(() => {
+        const el = document.querySelector(`[data-booking-anchor]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  // Lightbox zoom scale (1 = fit). Zoom in/out buttons step this.
+  const [lightboxZoom, setLightboxZoom] = useState(1);
+  // Per-photo owner menu (the pencil dropdown) — the URL whose menu is open.
+  const [photoMenuFor, setPhotoMenuFor] = useState<string | null>(null);
+  // Caption editor — the URL being captioned, plus the draft text.
+  const [captionFor, setCaptionFor] = useState<string | null>(null);
+  const [captionDraft, setCaptionDraft] = useState('');
+  const [photoBusy, setPhotoBusy] = useState(false);
+  // Live overrides so setting a cover / editing a caption updates in place
+  // (no full page reload). null = fall back to the values from the server.
+  const [captionOverride, setCaptionOverride] = useState<Record<string, string> | null>(null);
+  const [coverOverride, setCoverOverride] = useState<Record<string, string>>({});
+  // URLs deleted this session — filtered out of the gallery so a delete
+  // updates in place without a full page reload.
+  const [deletedUrls, setDeletedUrls] = useState<Set<string>>(new Set());
 
-.heroLocation {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  /* Oversized-type concept: bare mono uppercase location (no pill),
-     near-white with a dark halo so it reads over any banner. */
-  color: rgba(255, 255, 255, .92);
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  text-shadow: 0 0 4px rgba(0, 0, 0, .9);
-  margin-top: .5rem;
-  margin-bottom: .35rem;
-  width: fit-content;
-  max-width: 100%;
-}
-.heroLocation svg { width: 11px; height: 11px; }
-.heroYears {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: .35rem;
-  margin-top: .3rem;
-  margin-bottom: .6rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: rgba(240, 240, 248, .45);
-  border: 1px solid rgba(240, 240, 248, .1);
-  background: rgba(240, 240, 248, .04);
-  padding: .2rem .6rem;
-  border-radius: 100px;
-}
-.heroTags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-  margin-top: .5rem;
-  margin-bottom: .8rem;
-}
+  // ── Hero name/location color ────────────────────────────────────────
+  // Owner-chosen color applied to BOTH the hero name and the location line.
+  // Default is white when unset so nothing changes for existing profiles.
+  // Held in local state so the owner's color-picker recolors LIVE, then
+  // persisted via /api/dj/profile-color.
+  const [nameColor, setNameColor] = useState<string>(data.profile_name_color || '#ffffff');
+  // Location now has its OWN text colour (falls back to the name colour if the
+  // owner never set one, so existing profiles look unchanged). Plus an optional
+  // semi-transparent band behind each of the name and the location, stored as a
+  // hex colour (null = no band). All four are independently editable.
+  const [locationColor, setLocationColor] = useState<string>(
+    data.profile_location_color || data.profile_name_color || '#ffffff',
+  );
+  const [nameBg, setNameBg] = useState<string | null>(data.profile_name_bg || null);
+  const [locationBg, setLocationBg] = useState<string | null>(data.profile_location_bg || null);
 
-/* Tag pill styles */
-.tag {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  padding: .3rem .75rem;
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  color: var(--muted);
-  background: var(--deep);
-}
-.tagNeon {
-  border-color: rgba(0, 245, 196, .25);
-  color: var(--neon);
-  background: var(--neon-dim);
-}
-.tagPink {
-  border-color: rgba(245, 230, 66, .25);
-  color: var(--pink);
-  background: var(--pink-dim);
-}
-/* Smaller hero variants for the badges INSIDE hero-tags row */
-.tagSmall {
-  font-size: .55rem;
-  padding: .2rem .6rem;
-}
-.tagSmallNeon {
-  border-color: rgba(0, 245, 196, .2);
-  color: rgba(0, 245, 196, .7);
-  background: rgba(0, 245, 196, .06);
-}
-.tagSmallPink {
-  border-color: rgba(245, 230, 66, .2);
-  color: rgba(245, 230, 66, .7);
-  background: rgba(245, 230, 66, .06);
-}
-
-/* Events Serviced badge — mobile DJs only.
-   Single clickable badge that opens a popup listing event types.
-   Vanilla dj-profile.html lines 577-582 (inline styles ported here). */
-.eventsBadge {
-  cursor: pointer;
-  position: relative;
-  user-select: none;
-}
-.eventsPopup {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .75rem 1rem;
-  min-width: 180px;
-  z-index: 100;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
-}
-.eventsPopupItem {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--neon);
-  padding: .2rem 0;
-  white-space: nowrap;
-}
-
-/* ── HERO ACTION BUTTONS (socials, contact, book now) ─── */
-.heroActions {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  margin-top: 1.2rem;
-  flex-wrap: wrap;
-}
-/* On mobile, push the Copy Link button (last .actionBtnGhost in the row)
-   to the opposite side of where other action buttons sit. */
-@media (max-width: 700px) {
-  .heroActions .actionBtnGhost {
-    margin-left: auto;
+  // Persist one field to the DJ's row. `value` null clears it (band off). The
+  // route validates and maps the field name → its column.
+  async function saveColorField(field: 'name' | 'location' | 'name_bg' | 'location_bg', value: string | null) {
+    try {
+      await fetch('/api/dj/profile-color', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, color: value }),
+      });
+    } catch {
+      // Best-effort; the live colour still applies until reload.
+    }
   }
-}
-.actionBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  padding: .58rem .8rem;
-  border-radius: 8px;
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all .2s;
-  border: 1px solid;
-  white-space: nowrap;
-  min-width: 41px;
-  min-height: 41px;
-  position: relative;
-}
-.actionBtn svg {
-  width: 16px;
-  height: 16px;
-}
-.actionBtnPrimary {
-  background: var(--neon-dim);
-  border-color: rgba(0, 245, 196, .4);
-  color: var(--neon);
-}
-.actionBtnPrimary:hover {
-  background: rgba(0, 245, 196, .22);
-}
-.actionBtnGhost {
-  background: rgba(255, 255, 255, .04);
-  border-color: rgba(255, 255, 255, .12);
-  color: var(--white);
-}
-.actionBtnGhost:hover {
-  background: rgba(255, 255, 255, .08);
-  border-color: rgba(255, 255, 255, .25);
-}
-.actionBtnPhone {
-  background: rgba(61, 220, 132, .1);
-  border-color: rgba(61, 220, 132, .35);
-  color: #3ddc84;
-}
-.actionBtnPhone:hover {
-  background: rgba(61, 220, 132, .18);
-}
-.actionBtnWebsite {
-  background: rgba(0, 245, 196, .2);
-  border-color: rgba(0, 245, 196, .35);
-  color: var(--neon);
-}
-.actionBtnWebsite:hover {
-  background: rgba(0, 245, 196, .18);
-}
-.actionBtnSoundcloud {
-  background: rgba(255, 85, 0, .12);
-  border-color: rgba(255, 85, 0, .4);
-  color: #ff5500;
-}
-.actionBtnSoundcloud:hover {
-  background: rgba(255, 85, 0, .2);
-}
-.actionBtnInstagram {
-  background: rgba(225, 48, 108, .12);
-  border-color: rgba(225, 48, 108, .4);
-  color: #e1306c;
-}
-.actionBtnInstagram:hover {
-  background: rgba(225, 48, 108, .2);
-}
-.actionBtnTiktok {
-  background: rgba(105, 201, 208, .12);
-  border-color: rgba(105, 201, 208, .4);
-  color: #69c9d0;
-}
-.actionBtnTiktok:hover {
-  background: rgba(105, 201, 208, .2);
-}
-.actionBtnFacebook {
-  background: rgba(24, 119, 242, .12);
-  border-color: rgba(24, 119, 242, .4);
-  color: #1877f2;
-}
-.actionBtnFacebook:hover {
-  background: rgba(24, 119, 242, .2);
-}
-.actionBtnTwitch {
-  background: rgba(145, 70, 255, .12);
-  border-color: rgba(145, 70, 255, .4);
-  color: #9146ff;
-}
-.actionBtnTwitch:hover {
-  background: rgba(145, 70, 255, .2);
-}
-.actionBtnRate {
-  background: rgba(255, 179, 71, .1);
-  border-color: rgba(255, 179, 71, .3);
-  color: var(--amber);
-  cursor: default;
-}
-.actionBtnMessage {
-  background: rgba(0, 245, 196, .08);
-  border-color: rgba(0, 245, 196, .4);
-  color: var(--neon);
-}
-.actionBtnMessage:hover {
-  background: var(--neon);
-  color: var(--black);
-}
-.actionBtnBookNow {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: var(--black);
-  font-weight: 700;
-}
+  function handleNameColorChange(color: string) { setNameColor(color); saveColorField('name', color); }
+  function handleLocationColorChange(color: string) { setLocationColor(color); saveColorField('location', color); }
+  function handleNameBgChange(color: string | null) { setNameBg(color); saveColorField('name_bg', color); }
+  function handleLocationBgChange(color: string | null) { setLocationBg(color); saveColorField('location_bg', color); }
 
-/* Empty/unset social slot — owner-only "+" badge variant. Default look
-   is faded with a dashed border to signal "add me". Banner-mode override
-   below upgrades it to solid styling so it stays legible. */
-.actionBtnEmpty {
-  opacity: 0.55;
-  border-style: dashed;
-  position: relative;
-}
-
-/* ── BANNER-MODE OVERRIDES ──────────────────────────────────────
-   When a banner is set, action buttons go solid (no transparency) so
-   they read cleanly against any image. Brand colors stay intact;
-   only the backgrounds become opaque dark fills. Hero text picks up a
-   dark text-shadow so name, location, and badges stay legible on any
-   banner color. */
-.heroHasBanner .heroYears,
-.heroHasBanner .heroBadges {
-  text-shadow:
-    0 1px 2px rgba(0, 0, 0, .9),
-    0 0 8px rgba(0, 0, 0, .7);
-}
-/* Oversized-type concept: no dark pill behind the name on banners — the
-   name keeps its own bare white + halo look (see base .heroName), and the
-   scrim below guarantees legibility over light or busy photos. Long names
-   may wrap over two lines rather than being forced onto one. */
-.heroHasBanner .heroName {
-  max-width: 100%;
-}
-/* Name-length size tiers — keeps the pill tight when the name is long.
-   Applied additively to .heroName via JS (nameSizeClass). */
-.heroNameLg { font-size: 2.6rem; }
-.heroNameMd { font-size: 2rem; }
-.heroNameSm { font-size: 1.5rem; }
-.heroNameXs { font-size: 1.15rem; letter-spacing: .02em; }
-/* On mobile, the hero name pill must fit within the narrow viewport.
-   Scale down each tier so long company names like "E-SQUARED PRODUCTIONS"
-   don't overflow the right edge of the screen. */
-@media (max-width: 700px) {
-  .heroName { font-size: 2rem; }
-  .heroNameLg { font-size: 1.7rem; }
-  .heroNameMd { font-size: 1.3rem; }
-  .heroNameSm { font-size: 1.05rem; }
-  .heroNameXs { font-size: .9rem; letter-spacing: .02em; }
-}
-.heroHasBanner .heroLocation {
-  color: #fff;
-  /* Universal legibility: a 1px dark outline in every direction keeps the
-     text readable over ANY banner — including bright or white areas where a
-     soft shadow alone disappears — plus a soft halo for depth. No backing
-     box, so it never clashes with a photo. */
-  text-shadow:
-    -1px -1px 0 rgba(0, 0, 0, .9),
-    1px -1px 0 rgba(0, 0, 0, .9),
-    -1px 1px 0 rgba(0, 0, 0, .9),
-    1px 1px 0 rgba(0, 0, 0, .9),
-    0 0 6px rgba(0, 0, 0, .95),
-    0 2px 10px rgba(0, 0, 0, .85);
-}
-.heroHasBanner .heroLocation svg {
-  filter:
-    drop-shadow(0 0 2px rgba(0, 0, 0, .95))
-    drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
-}
-.heroHasBanner .heroYears {
-  background: rgba(15, 15, 20, .95);
-  border-color: rgba(240, 240, 248, .35);
-  color: rgba(240, 240, 248, .85);
-}
-.heroHasBanner .actionBtn {
-  background: rgba(15, 15, 20, .95);
-}
-.heroHasBanner .actionBtnPrimary {
-  background: rgba(15, 15, 20, .95);
-  border-color: var(--neon);
-  color: var(--neon);
-}
-.heroHasBanner .actionBtnGhost {
-  background: rgba(15, 15, 20, .95);
-  border-color: rgba(255, 255, 255, .35);
-  color: var(--white);
-}
-.heroHasBanner .actionBtnPhone {
-  background: rgba(15, 15, 20, .95);
-  border-color: #3ddc84;
-  color: #3ddc84;
-}
-.heroHasBanner .actionBtnWebsite {
-  background: rgba(15, 15, 20, .95);
-  border-color: var(--neon);
-  color: var(--neon);
-}
-.heroHasBanner .actionBtnSoundcloud {
-  background: rgba(15, 15, 20, .95);
-  border-color: #ff5500;
-  color: #ff5500;
-}
-.heroHasBanner .actionBtnInstagram {
-  background: rgba(15, 15, 20, .95);
-  border-color: #e1306c;
-  color: #e1306c;
-}
-.heroHasBanner .actionBtnTiktok {
-  background: rgba(15, 15, 20, .95);
-  border-color: #69c9d0;
-  color: #69c9d0;
-}
-.heroHasBanner .actionBtnFacebook {
-  background: rgba(15, 15, 20, .95);
-  border-color: #1877f2;
-  color: #1877f2;
-}
-.heroHasBanner .actionBtnTwitch {
-  background: rgba(15, 15, 20, .95);
-  border-color: #9146ff;
-  color: #9146ff;
-}
-.heroHasBanner .actionBtnRate {
-  background: rgba(15, 15, 20, .95);
-  border-color: var(--amber);
-  color: var(--amber);
-}
-.heroHasBanner .actionBtnMessage {
-  background: rgba(15, 15, 20, .95);
-  border-color: var(--neon);
-  color: var(--neon);
-}
-/* Hover states under banner — slight lighten of the dark bg to give
-   feedback without losing the colored border. */
-.heroHasBanner .actionBtn:hover {
-  background: rgba(30, 30, 38, .95);
-}
-.heroHasBanner .actionBtnBookNow {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: var(--black);
-}
-.heroHasBanner .actionBtnBookNow:hover {
-  background: var(--neon);
-  filter: brightness(1.1);
-}
-/* Empty social slots under a banner — drop the fade so they match the
-   solid look of populated ones. Keep the dashed border so the "+" badge
-   still reads as an add affordance. */
-.heroHasBanner .actionBtnEmpty {
-  opacity: 1;
-  border-style: dashed;
-}
-/* Badges (dj-type pill + events-serviced pill) — switch to solid dark
-   backgrounds with full-strength brand colors so they read against any
-   banner. */
-.heroHasBanner .typeBadgeMobile {
-  background: rgba(15, 15, 20, .95);
-  color: var(--neon);
-  border-color: var(--neon);
-}
-.heroHasBanner .typeBadgeClub {
-  background: rgba(15, 15, 20, .95);
-  color: var(--pink);
-  border-color: var(--pink);
-}
-.heroHasBanner .tagSmallNeon {
-  background: rgba(15, 15, 20, .95);
-  color: var(--neon);
-  border-color: var(--neon);
-}
-.heroHasBanner .tagSmallPink {
-  background: rgba(15, 15, 20, .95);
-  color: var(--pink);
-  border-color: var(--pink);
-}
-
-/* Tooltip on action buttons (vanilla uses [title]:hover::after) */
-.actionBtn[title]:hover::after {
-  content: attr(title);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, .9);
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  padding: .3rem .6rem;
-  border-radius: 4px;
-  pointer-events: none;
-  z-index: 10;
-}
-
-/* ── BODY (page content area below hero) ──────────────── */
-.body {
-  position: relative;
-  z-index: 2;
-  padding: 2rem 4rem 4rem;
-}
-
-/* ── TABS ─────────────────────────────────────────────── */
-.tabsNav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 0;
-  margin: 0 auto 2rem;
-  width: fit-content;
-  max-width: 100%;
-}
-.tabBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'Space Mono', monospace;
-  font-size: .92rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: .9rem 1.5rem;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -1px;
-  border-radius: 0;
-  color: rgba(255, 255, 255, .5);
-  cursor: pointer;
-  transition: color .15s, border-color .15s;
-  flex: 0 1 auto;
-  text-align: center;
-}
-.tabBtn:hover {
-  background: transparent;
-  color: rgba(255, 255, 255, .85);
-}
-.tabBtnActive,
-.tabBtnActive:hover {
-  background: transparent;
-  color: #fff;
-  font-weight: 700;
-  border-bottom-color: var(--neon);
-  filter: none;
-}
-.tabBtnActive::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--neon);
-  box-shadow: 0 0 8px var(--neon);
-  flex-shrink: 0;
-}
-/* Owner-only marker — a tiny dot beside a tab label means it's hidden
-   from the public. The owner can still click into and view/edit it. */
-.tabBtnHiddenPublic {
-  opacity: .55;
-}
-.tabHiddenDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .35);
-  margin-left: .4rem;
-  vertical-align: middle;
-}
-/* Centered wrapper around Edit Tabs row + pill nav so they share the
-   same width as the nav (which shrinks to fit its content). This makes
-   the Edit Tabs button sit at the right edge of the pill bar instead of
-   the right edge of the body. */
-.tabsSection {
-  width: fit-content;
-  max-width: 100%;
-  margin: 0 auto 2rem;
-}
-.tabsSection .tabsNav {
-  margin: 0;
-}
-/* Wrapper that lets the right-edge scroll hint sit over the tab row. */
-.tabsNavWrap {
-  position: relative;
-  width: fit-content;
-  max-width: 100%;
-  margin: 0 auto;
-}
-/* Right-edge chevron shown only when the tab row overflows and there's
-   more to the right. Fades the last tab under it so it reads as "more →".
-   Tapping nudges the row along; the row also scrolls by touch/drag. */
-.tabsScrollHint {
-  position: absolute;
-  top: 0;
-  bottom: 3px;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  width: 44px;
-  padding-right: 3px;
-  border: none;
-  cursor: pointer;
-  color: var(--neon);
-  background: linear-gradient(to right, rgba(10, 10, 15, 0), rgba(10, 10, 15, .96) 62%);
-  animation: tabsHintPulse 1.6s ease-in-out infinite;
-}
-/* Left-edge variant — appears once the row has been scrolled right, so the
-   user knows they can go back. Mirror of the right hint. */
-.tabsScrollHintLeft {
-  right: auto;
-  left: 0;
-  justify-content: flex-start;
-  padding-right: 0;
-  padding-left: 3px;
-  background: linear-gradient(to left, rgba(10, 10, 15, 0), rgba(10, 10, 15, .96) 62%);
-}
-@keyframes tabsHintPulse {
-  0%, 100% { opacity: .7; }
-  50% { opacity: 1; }
-}
-/* Owner-only "Edit tabs" button — sits ABOVE the pill-segmented tabs
-   nav, aligned to the right edge of the nav. */
-.editTabsRow {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0 0 .25rem;
-}
-.editTabsBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  padding: .4rem .2rem;
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  transition: color .15s;
-}
-.editTabsBtn:hover {
-  color: var(--neon);
-}
-
-/* ── EDIT-TABS MODAL ────────────────────────────────────── */
-.tabsList {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.tabsRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: .85rem 1rem;
-  cursor: pointer;
-  background: rgba(255, 255, 255, .02);
-  border-bottom: 1px solid var(--border);
-  transition: background .15s;
-}
-.tabsRow:last-child {
-  border-bottom: none;
-}
-.tabsRow:hover {
-  background: rgba(255, 255, 255, .05);
-}
-.tabsRowText {
-  display: flex;
-  flex-direction: column;
-  gap: .15rem;
-}
-.tabsRowLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  letter-spacing: .04em;
-  color: var(--white);
-}
-.tabsRowHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  color: var(--muted);
-  letter-spacing: .03em;
-}
-.tabsCheckbox {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--neon);
-  cursor: pointer;
-}
-/* Drag-to-reorder handle + row states */
-.tabsRowText {
-  flex: 1;
-}
-.tabsDragHandle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 4px;
-  margin: -4px 2px -4px -2px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  cursor: grab;
-  border-radius: 6px;
-  transition: color .15s, background .15s;
-}
-.tabsDragHandle:hover {
-  color: var(--white);
-  background: rgba(255, 255, 255, .06);
-}
-.tabsDragHandle:active {
-  cursor: grabbing;
-}
-.tabsRowDragging {
-  background: rgba(0, 245, 196, .10);
-  box-shadow: inset 3px 0 0 var(--neon);
-}
-.tabsRowDragging .tabsDragHandle {
-  color: var(--neon);
-  cursor: grabbing;
-}
-
-.tabPane {
-  display: none;
-}
-.tabPaneActive {
-  display: block;
-}
-
-/* ── ABOUT TAB ────────────────────────────────────────── */
-.bioText {
-  color: var(--white);
-  line-height: 1.75;
-  font-size: .95rem;
-  white-space: pre-wrap;
-}
-.infoGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-.infoItem {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .85rem 1rem;
-}
-.infoItem label {
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  display: block;
-  margin-bottom: .3rem;
-}
-.infoItem span {
-  font-size: .92rem;
-  color: var(--white);
-}
-
-/* ── MIXES TAB ────────────────────────────────────────── */
-.mediaList {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-.mediaEmbedWrap {
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--card);
-  border: 1px solid var(--border);
-}
-.mediaEmbedWrap iframe {
-  display: block;
-}
-
-/* ── IMAGES TAB ───────────────────────────────────────── */
-.imageGrid {
-  display: grid;
-  /* Facebook-style tight grid of small square thumbnails. Cells pack
-     ~6 per row on a wide profile and wrap down as width shrinks. */
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 4px;
-}
-.imageGrid img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: opacity .2s;
-}
-.imageGrid img:hover {
-  opacity: .85;
-}
-
-/* ── VIDEO TAB ────────────────────────────────────────── */
-.videoList {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
-}
-@media (max-width: 900px) {
-  .videoList {
-    grid-template-columns: repeat(2, 1fr);
+  // Hex → rgba at a fixed opacity, for the semi-transparent band. Guards against
+  // a bad value by falling back to a neutral dark band.
+  function bandRgba(hex: string | null, alpha = 0.85): string | undefined {
+    if (!hex) return undefined;
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return undefined;
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
   }
-}
-@media (max-width: 600px) {
-  .videoList {
-    grid-template-columns: 1fr;
+  // Style for the colour band behind the hero name / location. Tuned per element:
+  //
+  //   name  — Bebas Neue, all-caps. An INLINE span's background is locked to the
+  //           font's line box, which reserves a big block of empty descender
+  //           space that gets painted no matter what padding/line-height you set —
+  //           that's why the band looked oversized and wouldn't tighten. Making it
+  //           `inline-block` lets the box follow line-height, so a tight
+  //           line-height (.78) + small padding wraps the band snugly around the
+  //           caps like a highlighter. (No box-decoration-break needed: the name
+  //           is single-line; the size tiers shrink long names to fit.)
+  //
+  //   location — Space Mono, small mixed-case with real descenders. Left inline
+  //           with clone so it can wrap, full line-height, and even generous
+  //           top/bottom padding so the strip reads as a solid band.
+  //
+  // Both verified on the live rendered hero.
+  function bandSpanStyle(hex: string | null, which: 'name' | 'location' = 'name'): React.CSSProperties {
+    const bg = bandRgba(hex);
+    if (!bg) return {};
+    if (which === 'location') {
+      return {
+        background: bg,
+        lineHeight: 1,
+        padding: '.34em .3em',
+        borderRadius: '.16em',
+        boxDecorationBreak: 'clone',
+        WebkitBoxDecorationBreak: 'clone',
+      };
+    }
+    return {
+      background: bg,
+      display: 'inline-block',
+      lineHeight: 0.78,
+      // More top than bottom: at line-height .78 the caps sit low in the box, so
+      // .17/.06 evens the gap above and below the letters. Verified on the hero.
+      padding: '.17em .16em .06em',
+      borderRadius: '.16em',
+    };
   }
-}
-/* Frame around each video — title at top, video in middle, description
-   at bottom. Card grows to fit longer descriptions; aspect-ratio on the
-   inner videoWrap holds the video at 16:9 regardless. */
-.videoCard {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.videoCardTitle {
-  padding: .75rem 1rem .5rem;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.4rem;
-  letter-spacing: .03em;
-  color: var(--white);
-  line-height: 1.2;
-  text-align: center;
-  /* Single line — overflow truncates with ellipsis. The card width is
-     constrained by the grid cell so longer titles get cut visually
-     instead of wrapping or breaking the card height. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.videoCardDesc {
-  padding: .5rem 1rem .85rem;
-  font-family: 'DM Sans', sans-serif;
-  font-size: .82rem;
-  color: var(--white);
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-.videoWrap {
-  position: relative;
-  background: #000;
-  /* 16:9 inside the card frame. aspect-ratio resolves against the
-     element's own width which is now constrained by the grid cell. */
-  aspect-ratio: 16 / 9;
-}
-@media (max-width: 768px) {
-  .videoWrap {
-    width: 100%;
-    flex: 1 1 100%;
-  }
-}
-.videoWrap iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-}
+  // One three-dot (⋯) button per element opens a small popover where the owner
+  // sets the text colour and the band colour separately. Rendered next to both
+  // the name and the location.
+  const nameColorControlEl = canEdit ? (
+    <HeroColorMenu which="name" textColor={nameColor} onText={handleNameColorChange} band={nameBg} onBand={handleNameBgChange} />
+  ) : null;
+  const locationColorControlEl = canEdit ? (
+    <HeroColorMenu which="location" textColor={locationColor} onText={handleLocationColorChange} band={locationBg} onBand={handleLocationBgChange} />
+  ) : null;
 
-/* ── TESTIMONIALS TAB (mobile DJs only) ───────────────── */
-.testimonialItem {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  position: relative;
-}
-/* Owner-only — small note at top of pane when no testimonials yet,
-   explaining the tab won't be visible to visitors until one is added.
-   Plain text, no frame. */
-.testimonialOwnerNote {
-  margin: 0 0 1.25rem;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  line-height: 1.5;
-  letter-spacing: .02em;
-}
-/* Owner delete X — top right of each testimonial card. */
-.testimonialDeleteBtn {
-  position: absolute;
-  top: .75rem;
-  right: .75rem;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .7rem;
-  line-height: 1;
-  transition: all .15s;
-}
-.testimonialDeleteBtn:hover {
-  background: rgba(255, 95, 95, .15);
-  border-color: #ff5f5f;
-  color: #ff5f5f;
-}
-/* Owner "+ Add testimonial" button — collapsed state. */
-.testimonialAddBtn {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  padding: .7rem 1.5rem;
-  background: var(--neon);
-  border: 1px solid var(--neon);
-  border-radius: 100px;
-  color: #06231b;
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
-  margin-top: .5rem;
-}
-.testimonialAddBtn:hover {
-  filter: brightness(1.08);
-}
-/* Inline add form — expanded state. */
-.testimonialAddForm {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-top: .5rem;
-  display: flex;
-  flex-direction: column;
-  gap: .75rem;
-}
-.testimonialAddFormLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .35rem;
-}
-.testimonialAddInput {
-  width: 100%;
-  background: rgba(0, 0, 0, .25);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .65rem .8rem;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  resize: vertical;
-}
-.testimonialAddInput:focus {
-  outline: none;
-  border-color: var(--neon);
-}
-.testimonialAddFormRow {
-  display: flex;
-  gap: .75rem;
-  flex-wrap: wrap;
-}
-.testimonialAddError {
-  background: rgba(255, 95, 95, .12);
-  border: 1px solid rgba(255, 95, 95, .4);
-  border-radius: 6px;
-  padding: .55rem .75rem;
-  color: #ff8080;
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-}
-.testimonialAddActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: .5rem;
-  margin-top: .25rem;
-}
-.testimonialAddCancel,
-.testimonialAddSave {
-  padding: .55rem 1.1rem;
-  border-radius: 100px;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  transition: all .15s;
-}
-.testimonialAddCancel {
-  background: transparent;
-  color: var(--muted);
-}
-.testimonialAddCancel:hover {
-  color: var(--white);
-}
-.testimonialAddCancel:disabled,
-.testimonialAddSave:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
-.testimonialAddSave {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #050507;
-  font-weight: 700;
-}
-.testimonialAddSave:hover {
-  filter: brightness(1.1);
-}
-.testimonialBlurb {
-  font-size: .9rem;
-  line-height: 1.7;
-  color: var(--white);
-  margin-top: 1rem;
-  font-style: italic;
-  opacity: .9;
-}
-.testimonialBlurb::before {
-  content: '"';
-  color: var(--neon);
-  font-size: 1.4rem;
-  line-height: 0;
-  vertical-align: -.4rem;
-  margin-right: .2rem;
-}
-.testimonialBlurb::after {
-  content: '"';
-  color: var(--neon);
-  font-size: 1.4rem;
-  line-height: 0;
-  vertical-align: -.4rem;
-  margin-left: .2rem;
-}
-.testimonialMeta {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-}
-.testimonialName {
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--neon);
-}
-.testimonialDate {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  color: var(--muted);
-  letter-spacing: .05em;
-}
+  // Set page title to the DJ's name (matches vanilla document.title)
+  useEffect(() => {
+    if (data.name) {
+      document.title = `${data.name} - Global DJ Connect`;
+    }
+  }, [data.name]);
 
-/* ── FAQ tab (mobile DJs only) ─────────────────────────── */
-.faqItem {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 1rem;
-  position: relative;
-  overflow: hidden;
-}
-/* Question sits in a dark-grey hero banner across the top of each card,
-   and is the clickable accordion header. */
-.faqQuestion {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  text-align: left;
-  border: none;
-  cursor: pointer;
-  font-family: 'Space Mono', monospace;
-  font-size: 1.05rem;
-  line-height: 1.4;
-  letter-spacing: .03em;
-  color: #e6e6ea;
-  font-weight: 700;
-  text-transform: uppercase;
-  background: #2a2a30;
-  padding: 1.1rem 3rem 1.1rem 1.5rem;
-  transition: background .15s;
-}
-.faqQuestion:hover {
-  background: #33333a;
-}
-.faqQuestionText {
-  flex: 1;
-}
-.faqChevron {
-  flex: none;
-  font-size: 1.7rem;
-  line-height: 1;
-  color: var(--neon);
-  font-weight: 700;
-}
-/* Answer opens into a light-grey panel with dark text for contrast. */
-.faqAnswer {
-  font-size: .9rem;
-  line-height: 1.7;
-  color: #000;
-  background: #b9b9c0;
-  padding: 1.15rem 1.5rem 1.25rem;
-  white-space: pre-wrap;
-}
-/* Owner delete ✕ — sits over the dark banner, top-right. */
-.faqDeleteBtn {
-  position: absolute;
-  top: .35rem;
-  right: .35rem;
-  z-index: 2;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, .35);
-  border: 1px solid rgba(255, 255, 255, .25);
-  border-radius: 50%;
-  color: #cfcfd4;
-  cursor: pointer;
-  font-size: .68rem;
-  line-height: 1;
-  transition: all .15s;
-}
-.faqDeleteBtn:hover {
-  background: rgba(255, 95, 95, .2);
-  border-color: #ff5f5f;
-  color: #ff5f5f;
-}
-/* Styled delete-confirm dialog (replaces the browser's native confirm). */
-.faqConfirmBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  background: rgba(0, 0, 0, .72);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.25rem;
-}
-.faqConfirmModal {
-  width: 100%;
-  max-width: 380px;
-  background: #14141b;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 14px;
-  padding: 1.5rem;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
-}
-.faqConfirmTitle {
-  font-family: 'Space Mono', monospace;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-  color: #fff;
-}
-.faqConfirmText {
-  margin-top: .6rem;
-  font-size: .85rem;
-  line-height: 1.6;
-  color: var(--muted);
-}
-.faqConfirmActions {
-  margin-top: 1.4rem;
-  display: flex;
-  gap: .6rem;
-  justify-content: flex-end;
-}
-.faqConfirmCancel,
-.faqConfirmDelete {
-  border-radius: 8px;
-  padding: .6rem 1.2rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .74rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
-}
-.faqConfirmCancel {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, .25);
-  color: #fff;
-}
-.faqConfirmCancel:hover {
-  background: rgba(255, 255, 255, .08);
-}
-.faqConfirmDelete {
-  background: #ff4d4d;
-  border: 1px solid #ff4d4d;
-  color: #fff;
-}
-.faqConfirmDelete:hover {
-  background: #ff3535;
-}
-.faqConfirmCancel:disabled,
-.faqConfirmDelete:disabled {
-  opacity: .55;
-  cursor: default;
-}
+  // Lock body scroll while lightbox open (vanilla does this). Also reset zoom
+  // to fit whenever the open photo changes or the lightbox closes.
+  useEffect(() => {
+    setLightboxZoom(1);
+    if (lightboxSrc) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [lightboxSrc]);
 
-/* ── About tab: bold-italic bio + highlight cards (mobile DJs) ── */
-.bioTextMobile {
-  font-size: 1.05rem;
-  font-weight: 700;
-  font-style: italic;
-  line-height: 1.6;
-  color: var(--white);
-}
-.aboutStatsWrap {
-  margin-bottom: 1.75rem;
-}
-.aboutStatsHeading {
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--neon);
-  margin-bottom: .75rem;
-}
-.aboutStatsGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.aboutStatCard {
-  flex: 0 0 auto;
-  min-width: 120px;
-  background: #13131b;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: .8rem 1rem;
-}
-.aboutStatValue {
-  font-family: 'Space Mono', monospace;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--neon);
-  line-height: 1.1;
-}
-.aboutStatLabel {
-  margin-top: .35rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.aboutStatsEditBtn {
-  margin-top: 1rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: .6rem 1.3rem;
-  background: var(--neon);
-  border: 1px solid var(--neon);
-  border-radius: 8px;
-  color: #06231b;
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
-}
-.aboutStatsEditBtn:hover {
-  filter: brightness(1.08);
-}
-.aboutStatsEditor {
-  margin-top: 1rem;
-  background: #0d0d14;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.1rem 1.25rem;
-  max-width: 460px;
-}
-.aboutStatsEditorHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-  line-height: 1.5;
-  letter-spacing: .02em;
-  color: var(--muted);
-  margin-bottom: 1rem;
-}
-.aboutStatsRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: .6rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.aboutStatsRowLabel {
-  font-size: .85rem;
-  color: var(--white);
-}
-.aboutStatsRowControl {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-}
-.aboutStatsAuto {
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  color: var(--muted);
-}
-.aboutStatsSelect,
-.aboutStatsInput {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--white);
-  padding: .35rem .5rem;
-  font-family: 'DM Sans', sans-serif;
-  font-size: .8rem;
-  max-width: 130px;
-}
-.aboutStatsSelect option {
-  background: #13131b;
-  color: #fff;
-}
-.aboutStatsActions {
-  display: flex;
-  gap: .5rem;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
-/* Suggested-questions block inside the owner add form. */
-.faqSuggestWrap {
-  margin: .6rem 0 1rem;
-}
-.faqSuggestLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .5rem;
-}
-.faqSuggestList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .45rem;
-}
-.faqSuggestChip {
-  display: inline-flex;
-  align-items: center;
-  padding: .4rem .7rem;
-  background: transparent;
-  border: 1px dashed rgba(0, 245, 196, .35);
-  border-radius: 999px;
-  color: var(--white);
-  font-size: .72rem;
-  line-height: 1.2;
-  cursor: pointer;
-  transition: all .15s;
-}
-.faqSuggestChip:hover {
-  background: rgba(0, 245, 196, .1);
-  border-color: var(--neon);
-  color: var(--neon);
-}
-.faqSuggestChip:disabled {
-  opacity: .5;
-  cursor: default;
-}
+  // ESC closes the lightbox; ← / → step through the photos currently shown
+  // (the active album, or the visible feed). Uses a ref for the list + a
+  // functional state update so the handler never goes stale.
+  const lightboxListRef = useRef<string[]>([]);
+  useEffect(() => {
+    function step(dir: 1 | -1) {
+      setLightboxSrc((cur) => {
+        const listL = lightboxListRef.current;
+        if (!cur || listL.length === 0) return cur;
+        const i = listL.indexOf(cur);
+        if (i < 0) return cur;
+        const j = i + dir;
+        return j >= 0 && j < listL.length ? listL[j] : cur;
+      });
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightboxSrc(null);
+      else if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
-/* Empty state for tabs */
-.tabEmpty {
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  color: var(--muted);
-  letter-spacing: .06em;
-  padding: 2rem 0;
-}
+  // ── Derive view state ─────────────────────────────────────────────────
+  const typeClass =
+    data.dj_type === 'club'   ? styles.heroAvatarClub :
+    data.dj_type === 'mobile' ? styles.heroAvatarMobile :
+                                styles.heroAvatarNone;
 
-/* ── LIGHTBOX ─────────────────────────────────────────── */
-.lightbox {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .92);
-  z-index: 2000;
-  align-items: center;
-  justify-content: center;
-}
-.lightboxActive {
-  display: flex;
-}
-.lightbox img {
-  max-width: 90vw;
-  max-height: 88vh;
-  border-radius: 8px;
-  object-fit: contain;
-}
-.lightboxClose {
-  position: absolute;
-  top: 1.2rem;
-  right: 1.5rem;
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 1.8rem;
-  cursor: pointer;
-  line-height: 1;
-}
-.lightboxClose:hover {
-  color: var(--white);
-}
+  const location = (() => {
+    const parts = [data.city, data.state, data.country].filter(Boolean) as string[];
+    // Abbreviate verbose country names for display.
+    const COUNTRY_ABBR: Record<string, string> = {
+      'United States': 'USA',
+      'United States of America': 'USA',
+      'United Kingdom': 'UK',
+    };
+    return parts
+      .map(p => COUNTRY_ABBR[p] || p)
+      .join(', ');
+  })();
+  // Years-of-experience pill removed — no longer shown on profiles.
 
-/* ── DESKTOP HERO LAYOUT (default) ────────────────────── */
-.heroTopRow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-}
-.heroNameCol {
-  display: none; /* mobile only — see media query below */
-}
-.heroMobileDivider {
-  display: none; /* mobile only — see media query below */
-}
+  // Hero tags — event types (mobile DJs only, as a popup) vs separate tags
+  const isMobileDJ = data.dj_type === 'mobile';
+  const eventTypes = data.event_types
+    ? data.event_types.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  const genres = data.club_genres
+    ? (Array.isArray(data.club_genres)
+        ? data.club_genres
+        : String(data.club_genres).split(',')
+      ).map(s => s.trim()).filter(Boolean)
+    : [];
 
-/* ── RESPONSIVE — MOBILE LAYOUT ───────────────────────── */
-@media (max-width: 900px) {
-  .hero,
-  .body {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-  .hero {
-    flex-direction: column;
-    gap: 0;
-    padding-top: 2.4rem;
-    padding-bottom: 2rem;
-    /* Content-driven height. Previously locked to 280px + centered so club
-       and mobile heroes matched, but with the phone and location pulled up
-       next to the name that left a large empty banner band below. A modest
-       min-height keeps very sparse profiles from looking cramped without
-       creating dead space on fuller ones — bumped a touch so the banner
-       reads a little taller on phones. */
-    min-height: 250px;
-    justify-content: flex-start;
-  }
-  .heroTopRow {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    margin-top: .25rem;
-  }
-  .heroAvatar {
-    width: 99px !important;
-    height: 99px !important;
-    font-size: 2.2rem;
-    flex-shrink: 0;
-  }
-  .heroNameCol {
-    display: block;
-    flex: 1;
-    min-width: 0;
-  }
-  /* On mobile, hide the name + badges that live inside heroInfo —
-     mobile shows them in heroNameCol next to the avatar instead.
-     Matches vanilla's: .hero-info .hero-name, .hero-info .hero-badges { display:none; } */
-  .heroInfo .heroName,
-  .heroInfo .heroBadges {
-    display: none;
-  }
-  /* Location moves under the name on mobile — it's rendered inside
-     heroNameCol there, so hide the desktop copy that lives in heroInfo. */
-  .heroInfo .heroLocation {
-    display: none;
-  }
-  /* Tighten the location pill under the name in the mobile name column. */
-  .heroNameCol .heroLocation {
-    margin-top: .5rem;
-  }
-  .heroInfo {
-    width: 100%;
-  }
-  /* Divider removed — the name/location and the under-banner row read fine
-     without a rule between them. */
-  .heroMobileDivider {
-    display: none;
-  }
-}
+  // Mixes — array model (mix_urls) with legacy 3-slot fallback.
+  const legacyMix = [data.mix_url_1, data.mix_url_2, data.mix_url_3].filter((u): u is string => !!u);
+  const mixList: string[] = (Array.isArray((data as { mix_urls?: string[] }).mix_urls)
+    && (data as { mix_urls?: string[] }).mix_urls!.length > 0)
+    ? (data as { mix_urls?: string[] }).mix_urls!.filter((u): u is string => !!u)
+    : legacyMix;
+  // Paying (or comped) accounts get UNLIMITED mixes; free accounts stay capped.
+  const mixCap = hasBookingAccess ? Infinity : 4;
+  // Gallery — new array model (gallery_photos) with fallback to the legacy
+  // 4 fixed slots so existing photos still show until re-saved.
+  const legacyGallery = [data.gallery_img_1, data.gallery_img_2, data.gallery_img_3, data.gallery_img_4]
+    .filter((u): u is string => !!u);
+  const galleryPhotos: string[] = ((Array.isArray((data as { gallery_photos?: string[] }).gallery_photos)
+    && (data as { gallery_photos?: string[] }).gallery_photos!.length > 0)
+    ? (data as { gallery_photos?: string[] }).gallery_photos!.filter((u): u is string => !!u)
+    : legacyGallery)
+    // Drop anything deleted this session so the grid updates without a reload.
+    .filter((u) => !deletedUrls.has(u));
+  // Photo cap follows the DJ's tier: Pro 100, Premium Pro 350, Enterprise 1000
+  // (Starter/Free lower). Reads straight off TIERS so the plans and the gallery
+  // can never disagree about the limit.
+  const photoCap = TIERS[effectiveTier(data as unknown as AccessFields)].photos;
+  // Albums (Premium Pro + Enterprise). Parsed from the gallery_albums jsonb.
+  // An album references URLs that also live in gallery_photos, so we filter to
+  // the ones that still exist. Newest-first everywhere in the gallery.
+  const albums: Album[] = parseAlbums((data as { gallery_albums?: unknown[] }).gallery_albums)
+    .map((a) => ({ ...a, photos: a.photos.filter((u) => galleryPhotos.includes(u)) }))
+    .filter((a) => a.photos.length > 0)
+    // Live cover override (set-as-cover without a reload).
+    .map((a) => (coverOverride[a.id] ? { ...a, cover: coverOverride[a.id] } : a));
+  const galleryNewest = [...galleryPhotos].reverse();
+  const activeAlbum = selectedAlbumId ? albums.find((a) => a.id === selectedAlbumId) || null : null;
+  // What the grid shows: an album's photos (newest first) if one is selected,
+  // otherwise the full feed capped to photoLimit for latency.
+  const shownPhotos = activeAlbum
+    ? [...activeAlbum.photos].reverse()
+    : galleryNewest.slice(0, photoLimit);
+  const canLoadMore = !activeAlbum && photoLimit < galleryNewest.length;
+  // Keep the lightbox nav list in sync with what's on screen so ← / → walk
+  // exactly the photos the viewer is looking at.
+  lightboxListRef.current = shownPhotos;
+  // Step the lightbox to the prev/next photo (shared by the arrow buttons and
+  // the keyboard handler). Functional update + ref = never stale.
+  const stepLightbox = (dir: 1 | -1) => {
+    setLightboxSrc((cur) => {
+      const listL = lightboxListRef.current;
+      if (!cur || listL.length === 0) return cur;
+      const i = listL.indexOf(cur);
+      if (i < 0) return cur;
+      const j = i + dir;
+      return j >= 0 && j < listL.length ? listL[j] : cur;
+    });
+  };
+  // Per-photo captions (url → text). Shown as a band in the lightbox. A live
+  // override (captionOverride) wins so edits show without a page reload.
+  const captions: Record<string, string> = captionOverride ?? (() => {
+    const raw = (data as { gallery_captions?: unknown }).gallery_captions;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.trim()) out[k] = v;
+    }
+    return out;
+  })();
 
-@media (max-width: 700px) {
-  .tabsNav {
-    overflow-x: auto;
-    padding: 0;
-    gap: 2px;
+  // ── Owner per-photo actions (pencil menu) ─────────────────────────────
+  // Delete removes the URL from the gallery, prunes it from every album and
+  // its caption, all in place (no reload). Download fetches the image and
+  // saves it. Caption opens the inline editor; saveCaption persists the map.
+  async function deletePhoto(url: string) {
+    const ok = await confirm({
+      title: 'Delete this photo?',
+      message: 'It will be removed from your gallery and any albums it is in. This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setPhotoBusy(true);
+    try {
+      const nextPhotos = galleryPhotos.filter((u) => u !== url);
+      const nextAlbums = pruneAlbums(albums, nextPhotos);
+      const nextCaptions = { ...captions };
+      delete nextCaptions[url];
+      await saveProfile(data.id, {
+        gallery_photos: nextPhotos,
+        gallery_albums: nextAlbums,
+        gallery_captions: nextCaptions,
+      }, actingAsMember);
+      // Remove in place — no reload. If the open lightbox was this photo, close it.
+      setDeletedUrls((prev) => new Set(prev).add(url));
+      setCaptionOverride(nextCaptions);
+      setLightboxSrc((cur) => (cur === url ? null : cur));
+      setPhotoMenuFor(null);
+      setPhotoBusy(false);
+    } catch {
+      setPhotoBusy(false);
+      alert('Could not delete the photo.');
+    }
   }
-  .tabBtn {
-    /* Compact on mobile: smaller text + tighter padding so more tabs fit
-       (the row scrolls sideways if they still overflow). */
-    font-size: .74rem;
-    letter-spacing: .08em;
-    padding: .5rem .55rem;
-    gap: 6px;
+  async function downloadPhoto(url: string) {
+    setPhotoMenuFor(null);
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = (url.split('/').pop() || 'photo').split('?')[0] || 'photo';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Fallback: open in a new tab so the viewer can save manually.
+      window.open(url, '_blank', 'noopener');
+    }
   }
-  .infoGrid {
-    grid-template-columns: 1fr;
+  async function setAlbumCover(albumId: string, url: string) {
+    setPhotoBusy(true);
+    try {
+      const nextAlbums = albums.map((a) => (a.id === albumId ? { ...a, cover: url } : a));
+      await saveProfile(data.id, { gallery_albums: nextAlbums }, actingAsMember);
+      // Update in place — no reload.
+      setCoverOverride((prev) => ({ ...prev, [albumId]: url }));
+      setPhotoMenuFor(null);
+      setPhotoBusy(false);
+    } catch {
+      setPhotoBusy(false);
+      alert('Could not set the album cover.');
+    }
   }
-  .imageGrid {
-    grid-template-columns: repeat(2, 1fr);
-    max-width: 100%;
+  async function saveCaption(url: string, text: string) {
+    setPhotoBusy(true);
+    try {
+      const nextCaptions = { ...captions };
+      const t = text.trim();
+      if (t) nextCaptions[url] = t;
+      else delete nextCaptions[url];
+      await saveProfile(data.id, { gallery_captions: nextCaptions }, actingAsMember);
+      // Update in place — no reload.
+      setCaptionOverride(nextCaptions);
+      setCaptionFor(null);
+      setPhotoMenuFor(null);
+      setPhotoBusy(false);
+    } catch {
+      setPhotoBusy(false);
+      alert('Could not save the caption.');
+    }
   }
-  .body {
-    padding-left: .75rem;
-    padding-right: .75rem;
-  }
-}
 
-/* ── SHARE CALENDAR MODAL ────────────────────────────────────────── */
-.shareModalBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, .65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-.shareModal {
-  background: #0a0a0c;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 12px;
-  padding: 1.25rem;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.shareModalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-.shareModalTitle {
-  margin: 0;
-  color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-size: .85rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-.shareModalClose {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, .15);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  color: rgba(255, 255, 255, .55);
-  cursor: pointer;
-  font-size: .75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.shareModalClose:hover {
-  background: rgba(255, 255, 255, .08);
-  color: #fff;
-}
-.shareCardsGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem;
-}
-@media (max-width: 580px) {
-  .shareCardsGrid { grid-template-columns: minmax(0, 1fr); gap: .65rem; }
-  /* On mobile, shrink the preview cards significantly so the whole
-     modal fits on screen without scrolling. */
-  .shareModal { padding: 1rem; max-height: 88vh; }
-  .shareCard { padding: .55rem; gap: .4rem; }
-  .sharePreviewSingle { aspect-ratio: 1.8 / 1; padding: 5px; }
-  .sharePreviewTwelve { aspect-ratio: 1.8 / 1; padding: 4px; gap: 2px; }
-  .sharePreviewSingleHead { font-size: 8px; }
-  .sharePreviewDays span { font-size: 4.5px; }
-  .sharePreviewCell,
-  .sharePreviewCellBooked,
-  .sharePreviewCellUnav,
-  .sharePreviewCellEmpty { font-size: 4px; }
-  .sharePreviewMiniLabel { font-size: 4px; }
-}
-.shareCard {
-  background: rgba(255, 255, 255, .02);
-  border: 1px solid rgba(0, 245, 196, .2);
-  border-radius: 8px;
-  padding: .85rem;
-  display: flex;
-  flex-direction: column;
-  gap: .65rem;
-  min-width: 0;
-}
-.shareCardsGrid > .shareCard {
-  min-width: 0;
-}
-.shareCardLabel {
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  text-align: center;
-}
-/* Single-month mini preview */
-.sharePreviewSingle {
-  background: #050507;
-  border: 1px solid rgba(255, 255, 255, .08);
-  border-radius: 4px;
-  padding: 8px;
-  aspect-ratio: 1.3 / 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.sharePreviewSingleHead {
-  color: var(--neon);
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 10px;
-  text-align: center;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-.sharePreviewDays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-}
-.sharePreviewDays span {
-  color: rgba(255, 255, 255, .4);
-  font-family: 'Space Mono', monospace;
-  font-size: 5.5px;
-  text-align: center;
-}
-.sharePreviewGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  flex: 1;
-}
-.sharePreviewCell,
-.sharePreviewCellBooked,
-.sharePreviewCellUnav,
-.sharePreviewCellEmpty {
-  background: rgba(255, 255, 255, .05);
-  border-radius: 1px;
-  font-family: 'Space Mono', monospace;
-  font-size: 5px;
-  color: rgba(255, 255, 255, .5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-}
-.sharePreviewCellEmpty {
-  background: transparent;
-}
-.sharePreviewCellBooked {
-  background: #ff5f5f;
-  color: #fff;
-}
-.sharePreviewCellUnav {
-  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .08) 1px, rgba(255, 255, 255, .08) 2px);
-}
-/* 12-month mini preview */
-.sharePreviewTwelve {
-  background: #050507;
-  border: 1px solid rgba(255, 255, 255, .08);
-  border-radius: 4px;
-  padding: 6px;
-  aspect-ratio: 1.3 / 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 3px;
-}
-.sharePreviewMini {
-  background: rgba(255, 255, 255, .02);
-  border-radius: 2px;
-  padding: 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.sharePreviewMiniLabel {
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: 4.5px;
-  text-align: center;
-  letter-spacing: .05em;
-  line-height: 1;
-}
-.sharePreviewMiniGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0.5px;
-  flex: 1;
-}
-.sharePreviewMiniCell,
-.sharePreviewMiniCellBooked,
-.sharePreviewMiniCellUnav {
-  background: rgba(255, 255, 255, .07);
-  border-radius: 0.5px;
-  min-width: 0;
-}
-.sharePreviewMiniCellBooked {
-  background: #ff5f5f;
-}
-.sharePreviewMiniCellUnav {
-  background: rgba(255, 255, 255, .02);
-}
-/* Link row */
-.shareLinkRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(0, 0, 0, .5);
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 6px;
-  padding: .35rem .55rem;
-}
-.shareLinkUrl {
-  flex: 1;
-  color: rgba(255, 255, 255, .7);
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.shareLinkCopy {
-  background: var(--neon);
-  border: none;
-  color: #050507;
-  font-family: 'Space Mono', monospace;
-  font-size: .5rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: .25rem .55rem;
-  border-radius: 4px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.shareLinkCopy:hover {
-  filter: brightness(1.1);
-}
+  // Shared style for the per-photo dropdown menu items.
+  const photoMenuItem: React.CSSProperties = {
+    display: 'block', width: '100%', textAlign: 'left', background: 'transparent',
+    border: 'none', color: '#fff', padding: '.5rem .7rem', fontSize: '.8rem',
+    cursor: 'pointer', borderRadius: 6,
+  };
 
+  // DJ's effective tier — albums (create/assign) are Premium Pro (3) + up.
+  const djTier = effectiveTier(data as unknown as AccessFields);
+  // Videos — array model (video_urls: {url,title,desc}[]) with legacy fallback.
+  type VideoItem = { url: string; title: string | null; desc: string | null };
+  const legacyVideos: VideoItem[] = [
+    { url: data.video_url_1, title: data.video_title_1, desc: data.video_desc_1 },
+    { url: data.video_url_2, title: data.video_title_2, desc: data.video_desc_2 },
+    { url: data.video_url_3, title: data.video_title_3, desc: data.video_desc_3 },
+  ].filter((v): v is VideoItem => !!v.url);
+  const rawVideoArr = (data as { video_urls?: VideoItem[] }).video_urls;
+  const videoList: VideoItem[] = (Array.isArray(rawVideoArr) && rawVideoArr.length > 0)
+    ? rawVideoArr.filter((v) => v && !!v.url)
+    : legacyVideos;
+  // Paying (or comped) accounts get UNLIMITED videos; free accounts stay capped.
+  const videoCap = hasBookingAccess ? Infinity : 3;
 
-/* ── UNDER-BANNER SOCIALS STRIP ───────────────────────────────────── */
-/* Snug horizontal strip of social icons immediately under the banner.
-   Centered on both desktop and mobile. */
-.underBannerSocials {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .55rem;
-  padding: .55rem 1rem;
-  background: rgba(5, 5, 7, .6);
-  border-top: 2px solid rgba(255, 255, 255, .35);
-  border-bottom: 2px solid rgba(255, 255, 255, .35);
-  flex-wrap: wrap;
-}
-.underBannerSocialBtn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid #fff;
-  background: transparent;
-  color: #fff;
-  transition: color .15s, background .15s, opacity .15s;
-}
-.underBannerSocialBtn svg {
-  width: 19px;
-  height: 19px;
-  display: block;
-}
-.underBannerSocialBtn:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.08);
-}
-/* Socials: white outlined circles, white glyph (monochrome). */
-.underBannerSocialSoundcloud,
-.underBannerSocialInstagram,
-.underBannerSocialFacebook,
-.underBannerSocialTiktok,
-.underBannerSocialTwitch,
-.underBannerSocialWebsite { background: transparent; color: #fff; }
-/* Contact cluster (phone + message) — sits between the socials and Share,
-   set apart by its own left divider (same treatment as the Share button). */
-.underBannerContact {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  margin-left: .65rem;
-  padding-left: .85rem;
-  border-left: 2px solid rgba(255, 255, 255, .4);
-}
-/* Contacts: solid-white rounded squares, dark glyph. */
-.underBannerPhone, .underBannerMail {
-  border-radius: 10px;
-  background: #fff;
-  color: #0a0a0f;
-  border: none;
-}
-/* Slightly smaller glyph so the handset/envelope keep clear padding
-   inside the filled square and never touch the edges. */
-.underBannerPhone svg, .underBannerMail svg { width: 16px; height: 16px; }
-.underBannerContact button:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
-@media (max-width: 700px) {
-  .underBannerContact { gap: .35rem; margin-left: .5rem; padding-left: .6rem; }
-}
-/* Share / Copy-Link button at the end of the row. Set apart from the
-   social icon cluster by a margin-left + a thin divider line, and styled
-   as a labelled pill (not a bare icon square) so it reads as the primary
-   "share this profile" action. Flips to a filled neon "Copied" state on
-   click so the feedback is visible on mobile. */
-.underBannerShareBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  margin-left: .65rem;
-  padding-left: .85rem;
-  border-left: 2px solid rgba(255, 255, 255, .4);
-  background: transparent;
-  border-top: none;
-  border-right: none;
-  border-bottom: none;
-  color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color .15s;
-}
-.underBannerShareBtn svg { display: block; }
-.underBannerShareBtn:hover { color: #fff; }
-.underBannerShareBtnCopied { color: var(--neon); }
-/* Desktop shows the "Share" label only; the 3-dots is mobile-only.
-   NOTE: `.underBannerShareBtn svg { display:block }` above outranks a bare
-   `.shareMobileDots`, so these hide rules are scoped to the button to win
-   on specificity. */
-.shareDesktop { display: none; }
-.underBannerShareBtn .shareMobileDots {
-  display: block;
-  box-sizing: content-box;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-}
-/* Share-options popover anchored to the Share button. */
-.underBannerShareWrap { position: relative; display: inline-flex; align-items: center; }
-.shareMenu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 60;
-  min-width: 168px;
-  background: #0d0d14;
-  border: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .5);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.shareMenuItem {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  color: #fff;
-  padding: .55rem .7rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .03em;
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.shareMenuItem:hover { background: rgba(255, 255, 255, .08); color: var(--neon); }
-@media (max-width: 700px) {
-  .underBannerShareBtn {
-    margin-left: .5rem;
-    padding-left: .6rem;
-    font-size: .55rem;
+  // Testimonials (JSON-stringified, mobile DJs only)
+  let testimonials: Testimonial[] = [];
+  if (isMobileDJ && data.testimonials) {
+    try {
+      const parsed = JSON.parse(data.testimonials) as Testimonial[];
+      if (Array.isArray(parsed)) testimonials = parsed;
+    } catch { /* invalid JSON — silently ignore, vanilla does the same */ }
   }
-  .underBannerShareBtn .shareMobileDots {
-    width: 22px;
-    height: 22px;
-    padding: 0;
+
+  // FAQ (JSON-stringified, mobile DJs only)
+  let faqs: Faq[] = [];
+  if (isMobileDJ && data.faqs) {
+    try {
+      const parsed = JSON.parse(data.faqs) as Faq[];
+      if (Array.isArray(parsed)) faqs = parsed;
+    } catch { /* invalid JSON — silently ignore */ }
   }
-}
-/* SocialAddButton inside the under-banner strip: shrink to match the
-   34px existing social icons, override actionBtnEmpty's dashed border
-   so add buttons visually match the populated ones. */
-.underBannerSocials .actionBtn,
-.underBannerContact .actionBtn {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  min-height: 36px !important;
-  max-width: 36px !important;
-  max-height: 36px !important;
-  padding: 0 !important;
-  position: relative;
-  border: 1px solid #fff !important;
-  border-radius: 50%;
-  background: transparent;
-  color: #fff;
-  gap: 0;
-  box-sizing: border-box;
-  flex: 0 0 36px;
-  line-height: 1;
-}
-.underBannerSocials .actionBtn svg,
-.underBannerContact .actionBtn svg {
-  width: 19px;
-  height: 19px;
-}
-@media (max-width: 700px) {
-  .underBannerSocials { gap: .35rem; padding: .45rem .7rem; }
-  .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
-  .underBannerSocialBtn svg { width: 16px; height: 16px; }
-  .underBannerSocials .actionBtn {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    min-height: 28px !important;
-    max-width: 28px !important;
-    max-height: 28px !important;
-    flex: 0 0 28px;
+
+  // About highlight cards (JSON-stringified, mobile DJs only)
+  let aboutStats: AboutStats = {};
+  if (isMobileDJ && data.about_stats) {
+    try {
+      const parsed = JSON.parse(data.about_stats) as AboutStats;
+      if (parsed && typeof parsed === 'object') aboutStats = parsed;
+    } catch { /* invalid JSON — silently ignore */ }
   }
-  .underBannerSocials .actionBtn svg { width: 16px; height: 16px; }
+
+  // ── Tab visibility ──────────────────────────────────────────────────
+  // Stored as JSONB on users.tab_visibility. Format:
+  //   { about: bool, mixes: bool, images: bool, video: bool, testimonials: bool }
+  // Booking tab is NOT controlled here — that's still driven by
+  // booking_settings.enabled. Defaults differ by DJ type:
+  //   - Club DJ: all default ON (testimonials column is irrelevant)
+  //   - Mobile DJ: all default ON except testimonials (default OFF)
+  // Owner can toggle via the "Edit tabs" modal.
+  const tabVisibility: {
+    about: boolean;
+    mixes: boolean;
+    images: boolean;
+    video: boolean;
+    testimonials: boolean;
+    faq: boolean;
+  } = (() => {
+    const defaults = {
+      about: true,
+      mixes: true,
+      images: true,
+      video: true,
+      // Mobile DJs default testimonials OFF; club DJs ignored entirely.
+      testimonials: !isMobileDJ,
+      // FAQ tab: mobile DJs only, default OFF (owner turns it on).
+      faq: false,
+    };
+    const raw = data.tab_visibility;
+    if (!raw) return defaults;
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') return defaults;
+      const out = { ...defaults };
+      for (const k of Object.keys(defaults) as Array<keyof typeof defaults>) {
+        if (typeof parsed[k] === 'boolean') out[k] = parsed[k];
+      }
+      return out;
+    } catch {
+      return defaults;
+    }
+  })();
+  // Testimonials: only relevant for mobile DJs. Visitors only see the tab
+  // when enabled AND there's at least one testimonial; owner sees it
+  // whenever enabled (even empty) so they can add some.
+  const showTestimonialsTab =
+    isMobileDJ && tabVisibility.testimonials && (canEdit || testimonials.length > 0);
+  // FAQ: same gating as testimonials. Owner sees it whenever enabled (even
+  // empty) so they can add entries; visitors only when there's ≥1 FAQ.
+  const showFaqTab =
+    isMobileDJ && tabVisibility.faq && (canEdit || faqs.length > 0);
+
+  // ── Tab order ───────────────────────────────────────────────────────
+  // The owner can drag tabs into any order in the Edit Tabs modal; that order
+  // is stored as a JSON array of keys on users.tab_order. Booking is always
+  // pinned first and never part of this list. Any tabs missing from a saved
+  // order (e.g. a newer tab) fall in at the end in their default order, so an
+  // old saved order never hides a tab.
+  const DEFAULT_TAB_ORDER: Array<Exclude<TabKey, 'booking'>> = [
+    'about', 'mixes', 'images', 'video', 'testimonials', 'faq',
+  ];
+  const tabOrder: Array<Exclude<TabKey, 'booking'>> = (() => {
+    const raw = data.tab_order;
+    let saved: string[] = [];
+    if (raw) {
+      try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed)) saved = parsed.filter((x): x is string => typeof x === 'string');
+      } catch { /* bad JSON — fall back to default */ }
+    }
+    const allowed = new Set<string>(DEFAULT_TAB_ORDER);
+    const seen = new Set<string>();
+    const out: Array<Exclude<TabKey, 'booking'>> = [];
+    for (const k of saved) {
+      if (allowed.has(k) && !seen.has(k)) { out.push(k as Exclude<TabKey, 'booking'>); seen.add(k); }
+    }
+    for (const k of DEFAULT_TAB_ORDER) {
+      if (!seen.has(k)) out.push(k);
+    }
+    return out;
+  })();
+  // Button descriptors, keyed for the ordered render below.
+  const tabDefs: Record<Exclude<TabKey, 'booking'>, { label: string; show: boolean }> = {
+    about: { label: 'About', show: tabVisibility.about },
+    mixes: { label: 'Mixes', show: tabVisibility.mixes },
+    images: { label: 'Photos', show: tabVisibility.images },
+    video: { label: 'Video', show: tabVisibility.video },
+    testimonials: { label: 'Testimonials', show: showTestimonialsTab },
+    faq: { label: 'FAQ', show: showFaqTab },
+  };
+
+  // Avatar URL with object-position support
+  const avatarPos = data.avatar_position || '50% 50%';
+
+  // ── Tab-strip overflow hint ──────────────────────────────────────────
+  // On narrow screens the tab row can hold more tabs than fit. It scrolls
+  // sideways, but that isn't obvious — so we show a right-edge chevron
+  // whenever there's more to the right, and hide it once scrolled to the
+  // end. Tapping it nudges the row along.
+  const tabsNavRef = useRef<HTMLElement | null>(null);
+  const [tabsMoreRight, setTabsMoreRight] = useState(false);
+  const [tabsMoreLeft, setTabsMoreLeft] = useState(false);
+  useEffect(() => {
+    const el = tabsNavRef.current;
+    if (!el) return;
+    const update = () => {
+      setTabsMoreRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+      setTabsMoreLeft(el.scrollLeft > 4);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [tabVisibility, showBookingTab, showTestimonialsTab, showFaqTab]);
+
+  function scrollTabsRight() {
+    tabsNavRef.current?.scrollBy({ left: 140, behavior: 'smooth' });
+  }
+  function scrollTabsLeft() {
+    tabsNavRef.current?.scrollBy({ left: -140, behavior: 'smooth' });
+  }
+
+  // ── Helper: tab button class ─────────────────────────────────────────
+  function tabClass(key: TabKey): string {
+    return `${styles.tabBtn} ${activeTab === key ? styles.tabBtnActive : ''}`;
+  }
+  function paneClass(key: TabKey): string {
+    return `${styles.tabPane} ${activeTab === key ? styles.tabPaneActive : ''}`;
+  }
+
+  // ── Render hero name + badges block (used in both desktop and mobile slots) ──
+  // The DJ type badge has been moved permanently to the top-left of the
+  // hero (BannerTypeEventsDropdown for mobile DJs, static badge for club),
+  // so mid-hero badges are no longer rendered. Kept as null for layout.
+  const heroBadgesEl = null;
+
+  // Auto-size the DJ name based on character length so the pill stays
+  // tight and fits on one line. Tiers tuned to keep most names single-line.
+  //   ≤ 10 chars → default size
+  //   11–16     → medium
+  //   17–22     → medium-small
+  //   23–30     → small
+  //   31+       → x-small
+  const nameLen = (data.name || 'Unknown DJ').length;
+  const nameSizeClass =
+    nameLen <= 10
+      ? ''
+      : nameLen <= 16
+        ? styles.heroNameLg
+        : nameLen <= 22
+          ? styles.heroNameMd
+          : nameLen <= 30
+            ? styles.heroNameSm
+            : styles.heroNameXs;
+
+  // Owner/editor view toggle — a compact pill that names the current mode and
+  // switches to a live "public view" preview (all edit chrome hidden).
+  // Session-only: a reload always returns to owner view. Rendered inline in the
+  // booking calendar's header, next to "Embed Calendar" (desktop only) rather
+  // than as a floating overlay — see where it's passed to the calendars below.
+  const ownerViewToggle = baseCanEdit ? (
+    // Two fixed segments — the highlight moves to the active one (the label text
+    // never changes). Click a segment to switch mode.
+    <div
+      role="tablist"
+      aria-label="Preview mode"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 2,
+        background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.14)',
+        borderRadius: 999, padding: 2,
+      }}
+    >
+      {([
+        { on: false, label: 'Owner view' },
+        { on: true, label: 'Public view' },
+      ] as const).map((seg) => {
+        const active = previewPublic === seg.on;
+        return (
+          <button
+            key={seg.label}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => setPreviewPublic(seg.on)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: active ? 'var(--neon,#00e0a4)' : 'transparent',
+              color: active ? '#06231b' : 'rgba(255,255,255,.7)',
+              border: 'none', borderRadius: 999, padding: '.28rem .7rem',
+              fontSize: '.62rem', fontWeight: 700, letterSpacing: '.03em',
+              textTransform: 'uppercase', cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap',
+              transition: 'background .12s, color .12s',
+            }}
+          >
+            {seg.on ? null : <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? '#06231b' : 'var(--neon,#00e0a4)' }} />}
+            {seg.label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
+  return (
+    <>
+      {/* Claim bar — only shown for unclaimed/imported profiles */}
+      {data.claimed === false && (
+        <div className={styles.claimBar}>
+          <ClaimAlertIcon />
+          <p>
+            Is this your business?{' '}
+            <Link
+              href={`/claim?name=${encodeURIComponent(data.name || '')}&slug=${encodeURIComponent(effectiveSlug)}`}
+            >
+              Claim this profile
+            </Link>{' '}
+            to manage your listing.
+          </p>
+        </div>
+      )}
+
+      <div>
+        {/* HERO */}
+        <div className={`${styles.hero} ${data.banner_url ? styles.heroHasBanner : ''}`} style={{ position: 'relative' }}>
+          {saleActive && (
+            <div
+              style={{
+                position: 'absolute', top: 0, right: 0, zIndex: 5,
+                background: 'var(--neon,#00e0a4)', color: '#06231b',
+                fontWeight: 800, fontSize: '.95rem', letterSpacing: '.04em',
+                textTransform: 'uppercase',
+                padding: '9px 18px', borderRadius: '0 0 0 14px',
+                boxShadow: '0 2px 10px rgba(0,0,0,.35)',
+              }}
+            >
+              {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
+            </div>
+          )}
+          {/* BANNER — sits behind the hero content as a background layer.
+              Read-only here; all edits happen inside the BannerEditModal
+              that opens from the corner button. Both desktop and mobile
+              positions are passed as CSS variables and a media query in
+              profile.module.css picks the right one per viewport. */}
+          {(data.banner_url || canEdit || data.dj_type) && (
+            <div
+              className={styles.banner}
+              style={
+                data.banner_url
+                  ? ({
+                      backgroundImage: `url(${optimizedImageUrl(data.banner_url)})`,
+                      ['--banner-pos' as string]: data.banner_position || '50% 50%',
+                      ['--banner-pos-mobile' as string]:
+                        data.banner_position_mobile || data.banner_position || '50% 50%',
+                    } as React.CSSProperties)
+                  : undefined
+              }
+            >
+              {/* Top-left DJ type badge — primary display. For mobile
+                  DJs, doubles as the Events Serviced dropdown (click to
+                  see event types). Shown always, banner or not. */}
+              {data.dj_type && (
+                isMobileDJ ? (
+                  <BannerTypeEventsDropdown events={eventTypes} customTypes={parseCustomEventTypes((data as { mob_custom_event_types?: unknown }).mob_custom_event_types)} />
+                ) : (
+                  <div
+                    className={`${styles.bannerNameBadge} ${styles.bannerNameBadgeClub}`}
+                  >
+                    Club / Bar DJ
+                  </div>
+                )
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setBannerModalOpen(true)}
+                  className={styles.bannerEditBtn}
+                  title="Edit banner"
+                  aria-label="Edit banner"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <span>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
+                </button>
+              )}
+            </div>
+          )}
+          {/* Book Now + Message Us removed from the banner. Message now lives
+              as a mail icon in the under-banner row (next to phone + Share);
+              booking happens via the Availability tab / calendar. */}
+          {/* Top row contains avatar; on mobile via media query, name+badges
+              get displayed alongside in heroNameCol */}
+          <div className={styles.heroTopRow}>
+            {/* Avatar wrapper — relative-positioned so the camera
+                badge can sit on top of the avatar circle without being
+                clipped by .heroAvatar's overflow:hidden.
+                When the owner has HIDDEN their picture, visitors see no
+                avatar at all; the owner still sees it (dimmed) so they can
+                toggle it back. Visitors also see NO circle by default until an
+                image is actually added — an empty initials circle is owner-only
+                (so they can tap the centred camera to add one). */}
+            {(canEdit || (data.avatar_url && !data.avatar_hidden)) && (
+            <div style={canEdit ? { position: 'relative', flexShrink: 0 } : undefined}>
+              <div
+                className={`${styles.heroAvatar} ${typeClass}`}
+                style={canEdit && data.avatar_hidden ? { opacity: 0.4 } : undefined}
+              >
+                {data.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={data.avatar_url}
+                    alt={data.name || 'DJ'}
+                    style={{ objectPosition: avatarPos, cursor: 'zoom-in' }}
+                    onClick={() => setLightboxSrc(data.avatar_url!)}
+                  />
+                ) : (
+                  // Owner with no photo: leave the circle empty (camera + hint
+                  // fill it). Visitors never see this empty circle. Initials
+                  // still show as the fallback for a hidden-but-set avatar.
+                  canEdit ? null : initials(data.name)
+                )}
+              </div>
+              {/* Owner-only "Hidden" badge so they know visitors can't see it.
+                  Only when a picture actually exists — with no image the centred
+                  camera owns the middle of the circle. */}
+              {canEdit && data.avatar_hidden && data.avatar_url && (
+                <span style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  background: 'rgba(0,0,0,.75)',
+                  color: '#fff',
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '.6rem',
+                  letterSpacing: '.08em',
+                  textTransform: 'uppercase',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  pointerEvents: 'none',
+                  zIndex: 3,
+                  whiteSpace: 'nowrap',
+                }}>Hidden</span>
+              )}
+              {/* Owner-only camera badge — always visible, signals
+                  that the avatar can be changed. Click opens the native
+                  file picker; the chosen file flows through AvatarCrop
+                  modal for crop+upload, then we write the URL to users
+                  and reload. Sits outside the avatar's overflow:hidden
+                  clip so it always shows fully. */}
+              {canEdit && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => avatarFileInputRef.current?.click()}
+                    title={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
+                    aria-label={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
+                    style={{
+                      position: 'absolute',
+                      // With an image the camera is a small badge in the corner;
+                      // with no image yet it sits dead-centre in the circle as the
+                      // clear "add a photo" affordance.
+                      ...(data.avatar_url
+                        ? { bottom: 6, right: 6 }
+                        : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      background: 'var(--neon)',
+                      border: '2px solid #000',
+                      color: '#000',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
+                      zIndex: 2,
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                  {/* No photo yet: tell the owner this circle is hidden from
+                      visitors until they add one (only THEY see this circle). */}
+                  {!data.avatar_url && (
+                    <span
+                      className={styles.avatarHint}
+                      style={{
+                        position: 'absolute',
+                        top: '68%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '82%',
+                        textAlign: 'center',
+                        color: 'rgba(255,255,255,.45)',
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: '.5rem',
+                        lineHeight: 1.35,
+                        letterSpacing: '.02em',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                      }}
+                    >
+                      This circle won&rsquo;t show to visitors until you add a photo.
+                    </span>
+                  )}
+                  {/* Remove profile picture — only when one is set. Clears
+                      users.avatar_url and reloads to show the initials fallback. */}
+                  {data.avatar_url && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm('Remove your profile picture?')) return;
+                        try {
+                          await saveProfile(data.id, { avatar_url: null }, actingAsMember);
+                          window.location.reload();
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Could not remove picture.');
+                        }
+                      }}
+                      title="Remove profile picture"
+                      aria-label="Remove profile picture"
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        background: '#ff5f5f',
+                        border: '2px solid #000',
+                        color: '#000',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
+                        zIndex: 2,
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                  {/* Hide / show toggle — hides the picture from visitors
+                      entirely (kept in the DB so it can be un-hidden). Only shown
+                      when a picture exists; an empty circle is already public-hidden. */}
+                  {data.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await saveProfile(data.id, { avatar_hidden: !data.avatar_hidden }, actingAsMember);
+                        window.location.reload();
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : 'Could not update.');
+                      }
+                    }}
+                    title={data.avatar_hidden ? 'Show profile picture on your profile' : 'Hide profile picture from your profile'}
+                    aria-label={data.avatar_hidden ? 'Show profile picture' : 'Hide profile picture'}
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      left: 6,
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      background: data.avatar_hidden ? 'var(--neon)' : 'rgba(0,0,0,.75)',
+                      border: '2px solid #000',
+                      color: data.avatar_hidden ? '#000' : '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
+                      zIndex: 3,
+                    }}
+                  >
+                    {data.avatar_hidden ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <path d="M1 1l22 22" />
+                      </svg>
+                    )}
+                  </button>
+                  )}
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      // Reset input so picking the same file again
+                      // re-triggers onChange (browsers skip identical
+                      // selections otherwise).
+                      e.target.value = '';
+                      if (!file) return;
+                      const err = await validateImageFile(file);
+                      if (err) {
+                        alert(err);
+                        return;
+                      }
+                      setPickedAvatarFile(file);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+            )}
+            {/* Mobile-only column: name + badges next to avatar. Location sits
+                directly under the name here (mobile); on desktop it lives in
+                heroInfo below and this whole column is display:none. */}
+            <div className={styles.heroNameCol}>
+              <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
+                <span style={bandSpanStyle(nameBg)}>{data.name || 'Unknown DJ'}</span>
+                {nameColorControlEl}
+              </div>
+              {heroBadgesEl}
+              {location && (
+                <div className={styles.heroLocation} style={{ color: locationColor }}>
+                  <span style={bandSpanStyle(locationBg, 'location')}><LocationPinIcon /> {location}</span>
+                  {locationColorControlEl}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Hero info — name and badges visible on desktop, hidden on mobile
+              via the descendant selector .heroInfo .heroName / .heroInfo .heroBadges
+              inside the @media (max-width:900px) block in profile.module.css */}
+          <div className={styles.heroInfo}>
+            <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
+              <span style={bandSpanStyle(nameBg)}>{data.name || 'Unknown DJ'}</span>
+              {nameColorControlEl}
+            </div>
+            {heroBadgesEl}
+            <div className={styles.heroMobileDivider} />
+
+            {location && (
+              <div className={styles.heroLocation} style={{ color: locationColor }}>
+                <span style={bandSpanStyle(locationBg, 'location')}><LocationPinIcon /> {location}</span>
+                {locationColorControlEl}
+              </div>
+            )}
+
+            {/* Event types + genres as hero tags. Mobile DJs now have
+                their Events Serviced list inside the type-badge dropdown
+                above (DjTypeEventsDropdown), so it's omitted here. Other
+                DJ types still get all event types as separate inline tags.
+                Genres always render as separate pink tags. */}
+            {((eventTypes.length > 0 && !isMobileDJ) || genres.length > 0) && (
+              <div className={styles.heroTags}>
+                {eventTypes.length > 0 && !isMobileDJ && (
+                  eventTypes.map(e => (
+                    <span
+                      key={`event-${e}`}
+                      className={`${styles.tag} ${styles.tagSmall} ${styles.tagSmallNeon}`}
+                    >
+                      {EVENT_TYPE_LABELS[e] || e}
+                    </span>
+                  ))
+                )}
+                {genres
+                  .filter(g => g !== 'open-format')
+                  .map(g => (
+                  <span
+                    key={`genre-${g}`}
+                    className={`${styles.tag} ${styles.tagSmall} ${styles.tagSmallPink}`}
+                  >
+                    {GENRE_LABELS[g] || g}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Phone + message moved out of the hero into the under-banner
+                row (next to Share). Nothing else lived here. */}
+          </div>
+        </div>
+        {/* Under-banner socials strip — full-width row sitting snug
+            against the bottom of the hero/banner. Centered. Hosts the
+            socials, then phone + message (mail), then Share. */}
+        <UnderBannerSocials
+          data={data}
+          effectiveSlug={effectiveSlug}
+          isOwnProfile={canEdit}
+          bookingEnabled={bookingEnabled}
+          onShareClick={() => setShareModalOpen(true)}
+          isLoggedIn={isLoggedIn}
+          onMessageClick={() => {
+            // Owner can't message themselves; logged-out visitors are sent to
+            // /login first, returning to the same profile.
+            if (isOwnProfile) return;
+            if (!requireVerified(`/${effectiveSlug}`)) return;
+            setComposeOpen(true);
+          }}
+        />
+
+        {/* BODY */}
+        <div className={styles.body}>
+          {/* Tabs section — Edit tabs button + pill-segmented nav share a
+              centered container so the button aligns to the right edge of
+              the pill bar (not the page). */}
+          <div className={styles.tabsSection}>
+            {canEdit && (
+              <div className={styles.editTabsRow}>
+                <button
+                  type="button"
+                  onClick={() => setTabsModalOpen(true)}
+                  className={styles.editTabsBtn}
+                  title="Choose which tabs are visible to the public"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Edit tabs
+                </button>
+              </div>
+            )}
+            <div className={styles.tabsNavWrap}>
+            <nav className={styles.tabsNav} ref={tabsNavRef}>
+            {showBookingTab && (
+              <button
+                className={tabClass('booking')}
+                onClick={() => setActiveTab('booking')}
+                type="button"
+              >
+                Booking
+              </button>
+            )}
+            {/* Non-booking tabs render in the owner's chosen order
+                (users.tab_order), each still gated by its own visibility. */}
+            {tabOrder.map((key) => {
+              const def = tabDefs[key];
+              if (!def.show) return null;
+              return (
+                <button
+                  key={key}
+                  className={tabClass(key)}
+                  onClick={() => setActiveTab(key)}
+                  type="button"
+                >
+                  {def.label}
+                </button>
+              );
+            })}
+          </nav>
+            {tabsMoreLeft && (
+              <button
+                type="button"
+                className={`${styles.tabsScrollHint} ${styles.tabsScrollHintLeft}`}
+                onClick={scrollTabsLeft}
+                aria-label="Scroll tabs left"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+            )}
+            {tabsMoreRight && (
+              <button
+                type="button"
+                className={styles.tabsScrollHint}
+                onClick={scrollTabsRight}
+                aria-label="Scroll tabs right"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            )}
+          </div>
+          </div>
+
+          {/* Booking tab — different component for club vs mobile DJs */}
+          {showClubAvailabilityTab && (
+            <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
+              {saleActive && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', textTransform: 'uppercase', padding: '7px 16px', borderRadius: 999 }}>
+                    {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
+                  </div>
+                </div>
+              )}
+              <PublicCalendar
+                bookingDays={bookingSettings!.booking_days || {}}
+                bookingWindowMonths={bookingSettings!.booking_window_months || 12}
+                bookingSettings={bookingSettings!}
+                djId={data.id}
+                djSlug={effectiveSlug}
+                djName={data.name || ''}
+                // isLoggedIn on its own is a SERVER value, fixed when the
+                // page was rendered. Someone who just made an account inside
+                // the booking gate is signed in, but that prop still says
+                // false — so the calendar would treat their next date tap as
+                // logged-out and put the signup box back in front of them,
+                // with no way through it. OR-ing in the live auth context
+                // fixes it here rather than in the calendar, which is only
+                // wrong because of what it's being told.
+                isLoggedIn={isLoggedIn || !!currentUser}
+                // In "View as public" preview mode the owner should see the
+                // calendar exactly as a visitor does — no ✓/✗/pencil owner
+                // controls — so drop isOwnProfile while previewing.
+                isOwnProfile={isOwnProfile && !previewPublic}
+                readOnly={viewerIsStaff}
+                selectedDate={clubSelectedDate}
+                onBookDate={(key) => {
+                  if (viewerIsStaff) return; // staff view the calendar, can't book
+                  if (!requireVerified(`/${effectiveSlug}?date=${key}&book=1`)) return;
+                  setClubSelectedDate(key);
+                }}
+                onLoggedOutBookAttempt={(key) => setClubLoginGateDate(key)}
+                onEmbedClick={isOwnProfile && !previewPublic ? () => setEmbedModalOpen(true) : undefined}
+                onShareClick={() => setShareModalOpen(true)}
+                ownerToggle={ownerViewToggle}
+                force12mo={forceCalendar12mo}
+                pendingDates={clubPendingDates}
+              />
+              {!isOwnProfile && !viewerIsStaff && clubSelectedDate && currentUser && currentUser.email_verified && (
+                <ClubBookingForm
+                  key={clubSelectedDate}
+                  dateKey={clubSelectedDate}
+                  dj={{
+                    id: data.id,
+                    name: data.name,
+                    slug: effectiveSlug,
+                  }}
+                  bookingSettings={bookingSettings!}
+                  currentUser={{
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    name: currentUser.name,
+                  }}
+                  onClose={() => {
+                    setClubSelectedDate(null);
+                    // Refresh pending dates — if the booker just submitted
+                    // a request, the new pending row should now show up
+                    // as "Pending" on the calendar instead of "Book".
+                    setClubPendingRefreshKey((k) => k + 1);
+                  }}
+                />
+              )}
+              {clubLoginGateDate !== null && (
+                <BookingLoginGate
+                  djName={data.name || ''}
+                  djSlug={effectiveSlug}
+                  dateKey={clubLoginGateDate}
+                  onClose={() => setClubLoginGateDate(null)}
+                  // Account is created inside the gate now, so we come out of
+                  // it signed in and still on this page. Close it and open the
+                  // booking form on the date they picked before signing up —
+                  // otherwise they're returned to the calendar to choose the
+                  // same date over again.
+                  onAuthed={(key) => {
+                    setClubLoginGateDate(null);
+                    setClubSelectedDate(key);
+                  }}
+                />
+              )}
+            </div>
+          )}
+          {showMobileBookingTab && (
+            <div id="booking-pane-anchor" className={paneClass('booking')} data-booking-anchor>
+              {saleActive && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+                  <div style={{ background: 'var(--neon,#00e0a4)', color: '#06231b', fontWeight: 800, fontSize: '.8rem', letterSpacing: '.04em', textTransform: 'uppercase', padding: '7px 16px', borderRadius: 999 }}>
+                    {salePercent ? `${salePercent}% off all bookings` : 'Sale on all bookings'}
+                  </div>
+                </div>
+              )}
+              <MobilePublicCalendar
+                djId={data.id}
+                djName={data.name || ''}
+                djSlug={effectiveSlug}
+                djEventTypes={data.event_types}
+                djCustomEventTypes={(data as { mob_custom_event_types?: unknown }).mob_custom_event_types}
+                djZip={data.zip}
+                djTravelDistance={data.travel_distance}
+                bookingSettings={bookingSettings!}
+                isLoggedIn={isLoggedIn}
+                // Same as the club calendar: preview mode renders as a visitor.
+                isOwnProfile={isOwnProfile && !previewPublic}
+                readOnly={viewerIsStaff}
+                onEmbedClick={isOwnProfile && !previewPublic ? () => setEmbedModalOpen(true) : undefined}
+                onShareClick={() => setShareModalOpen(true)}
+                ownerToggle={ownerViewToggle}
+                force12mo={forceCalendar12mo}
+                pendingDates={clubPendingDates}
+                onBookingSubmitted={() => setClubPendingRefreshKey((k) => k + 1)}
+              />
+            </div>
+          )}
+
+          {/* About tab */}
+          <div className={paneClass('about')}>
+            {/* Quick facts — mobile DJs only. Sits above the bio. Owner
+                activates each card and fills it in; visitors see only
+                activated ones. */}
+            {isMobileDJ && (
+              <AboutStatsRow
+                userId={data.id}
+                isOwnProfile={canEdit}
+                stats={aboutStats}
+                travelDistance={data.travel_distance}
+              />
+            )}
+            {canEdit ? (
+              <OwnerEditableBio userId={data.id} initialBio={data.bio} />
+            ) : data.bio ? (
+              <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
+            ) : (
+              <p className={styles.tabEmpty}>Coming Soon</p>
+            )}
+            {data.rate && (
+              <div className={styles.infoGrid}>
+                <div className={styles.infoItem}>
+                  <label>Rate</label>
+                  <span>{data.rate}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mixes tab */}
+          <div className={paneClass('mixes')}>
+            {mixList.length > 0 ? (
+              <div className={styles.mediaList}>
+                {mixList.map((mUrl, i) => {
+                  const embed = buildMixEmbed(mUrl);
+                  if (!embed) return null;
+                  return (
+                    <div
+                      key={i}
+                      className={styles.mediaEmbedWrap}
+                      style={canEdit ? { position: 'relative' } : undefined}
+                    >
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => deleteMix(i)}
+                          title="Delete this mix"
+                          aria-label="Delete this mix"
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            zIndex: 5,
+                            width: 26,
+                            height: 26,
+                            borderRadius: '50%',
+                            background: 'rgba(0, 0, 0, .8)',
+                            border: '1px solid rgba(255, 95, 95, .7)',
+                            color: '#ff5f5f',
+                            fontSize: '.8rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                      <iframe
+                        width="100%"
+                        height={embed.height}
+                        scrolling="no"
+                        frameBorder="0"
+                        allow="autoplay"
+                        src={embed.src}
+                      />
+                    </div>
+                  );
+                })}
+                {canEdit && (
+                  <MixAddButton
+                    userId={data.id}
+                    list={mixList}
+                    cap={mixCap}
+                    isPaid={hasBookingAccess}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className={styles.tabEmpty}>
+                {canEdit ? (
+                  <MixAddButton
+                    userId={data.id}
+                    list={mixList}
+                    cap={mixCap}
+                    isPaid={hasBookingAccess}
+                    big
+                  />
+                ) : 'Coming Soon'}
+              </div>
+            )}
+          </div>
+
+          {/* Photos tab */}
+          <div className={paneClass('images')}>
+            {galleryPhotos.length > 0 ? (
+              <>
+                {/* Albums section — a text header, then the horizontal row of
+                    album covers. */}
+                {(albums.length > 0 || canEdit) && (
+                  <div style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600, color: 'var(--white,#fff)', marginBottom: '.6rem' }}>
+                    Albums{albums.length > 0 && <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {albums.length}</span>}
+                  </div>
+                )}
+
+                {/* Albums row — one horizontal strip that scrolls sideways when
+                    there are more albums than fit. Clicking an album filters the
+                    grid below to its photos. Cover thumbnails match the photo
+                    grid tile size. Shows when the DJ has albums, or for the
+                    owner (so the "New album" button is always reachable).
+                    Sits ABOVE the "All photos" header. */}
+                {(albums.length > 0 || canEdit) && (
+                  <div style={{ display: 'flex', gap: '.6rem', overflowX: 'auto', paddingBottom: '.5rem', marginBottom: '1rem' }}>
+                    {albums.map((a) => (
+                      <div
+                        key={a.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedAlbumId(a.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedAlbumId(a.id); }}
+                        title={a.name}
+                        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }}
+                      >
+                        <span style={{ position: 'relative', display: 'block', width: 150, height: 150, borderRadius: 4, overflow: 'hidden', border: `1px solid ${activeAlbum?.id === a.id ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.15))'}` }}>
+                          {a.cover && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={optimizedImageUrl(a.cover, 360)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          )}
+                          {/* Owner-only edit pencil, on the cover itself. */}
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setEditAlbumTarget(a); }}
+                              title="Edit album"
+                              aria-label="Edit album"
+                              style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                            </button>
+                          )}
+                          <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '14px 10px 8px', background: 'linear-gradient(transparent, rgba(0,0,0,.78))', color: '#fff', fontSize: '.78rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
+                        </span>
+                        <span style={{ fontSize: '.62rem', color: 'var(--muted,#888)' }}>{a.photos.length} photos</span>
+                      </div>
+                    ))}
+                    {/* Owner-only: create/manage albums (opens Manage Photos). */}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setCreateAlbumOpen(true)}
+                        title="New album"
+                        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                      >
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: 150, height: 150, borderRadius: 4, border: '1px dashed var(--neon)', background: 'rgba(0,245,196,.05)', color: 'var(--neon)' }}>
+                          <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>+</span>
+                          <span style={{ fontSize: '.6rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>New album</span>
+                        </span>
+                        <span style={{ fontSize: '.62rem', color: 'transparent' }}>.</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* All photos — a back link to the full feed. */}
+                {(albums.length > 0 || canEdit) && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbumId(null)}
+                    title={activeAlbum ? 'Back to all photos' : 'All photos'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, marginBottom: '.85rem', cursor: 'pointer', color: activeAlbum ? 'var(--neon)' : 'var(--white,#fff)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 600 }}
+                  >
+                    {activeAlbum && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                    )}
+                    <span>All photos</span>
+                    <span style={{ color: 'var(--muted,#888)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {galleryPhotos.length} total</span>
+                  </button>
+                )}
+
+                {/* Open-album header — centered text only, name and count on
+                    separate lines. */}
+                {activeAlbum && (
+                  <div style={{ textAlign: 'center', margin: '.5rem 0 1.25rem' }}>
+                    <div style={{ fontFamily: 'var(--disp, "Bebas Neue", sans-serif)', fontSize: '2rem', lineHeight: 1.05, color: '#fff', letterSpacing: '.02em' }}>{activeAlbum.name}</div>
+                    <div style={{ fontSize: '.72rem', color: 'var(--muted,#888)', marginTop: 6 }}>{activeAlbum.photos.length} photos</div>
+                  </div>
+                )}
+
+                <div className={styles.imageGrid}>
+                  {/* Owner-only: compact "add photo" tile in the FIRST slot.
+                      Smaller than a full photo tile so it reads as an action,
+                      not a photo. Opens the manager (bulk multi-select upload). */}
+                  {canEdit && !activeAlbum && galleryPhotos.length < photoCap && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAddPhotosOpen(true)}
+                        title="Add photos"
+                        aria-label="Add photos"
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, width: '55%', maxWidth: 84, aspectRatio: '1 / 1', background: 'rgba(0,245,196,.06)', border: '1.5px dashed var(--neon)', borderRadius: 10, color: 'var(--neon)', cursor: 'pointer', padding: 0 }}
+                      >
+                        <span style={{ fontSize: '1.5rem', lineHeight: 1, fontWeight: 300 }}>+</span>
+                        <span style={{ fontSize: '.52rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>Add</span>
+                      </button>
+                    </div>
+                  )}
+                  {shownPhotos.map((url, i) => (
+                    <div key={`${url}-${i}`} style={{ position: 'relative' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={optimizedImageUrl(url, 500)}
+                        alt={captions[url] || 'Gallery photo'}
+                        loading="lazy"
+                        onClick={() => setLightboxSrc(url)}
+                      />
+                      {/* Owner pencil → dropdown (delete / download / caption). */}
+                      {canEdit && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPhotoMenuFor((cur) => (cur === url ? null : url)); }}
+                            title="Edit photo"
+                            aria-label="Edit photo"
+                            style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, zIndex: 2 }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                          </button>
+                          {photoMenuFor === url && (
+                            <>
+                              {/* Click-away backdrop to close the menu. */}
+                              <div onClick={(e) => { e.stopPropagation(); setPhotoMenuFor(null); }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ position: 'absolute', top: 36, right: 6, zIndex: 41, minWidth: 150, background: '#14141b', border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, boxShadow: '0 12px 30px rgba(0,0,0,.55)', overflow: 'hidden', padding: '.25rem' }}
+                              >
+                                <button type="button" onClick={() => { setCaptionDraft(captions[url] || ''); setCaptionFor(url); setPhotoMenuFor(null); }} style={photoMenuItem}>
+                                  {captions[url] ? 'Edit caption' : 'Add caption'}
+                                </button>
+                                {activeAlbum && activeAlbum.photos.includes(url) && (
+                                  <button type="button" disabled={photoBusy || activeAlbum.cover === url} onClick={() => setAlbumCover(activeAlbum.id, url)} style={{ ...photoMenuItem, opacity: activeAlbum.cover === url ? 0.5 : 1 }}>
+                                    {activeAlbum.cover === url ? 'Album cover ✓' : 'Set as album cover'}
+                                  </button>
+                                )}
+                                <button type="button" onClick={() => downloadPhoto(url)} style={photoMenuItem}>Download</button>
+                                <button type="button" disabled={photoBusy} onClick={() => deletePhoto(url)} style={{ ...photoMenuItem, color: '#ff6b6b' }}>Delete</button>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Paginated feed: only ~24 load at first; "Load more" fetches
+                    the next batch so a large gallery never loads all at once. */}
+                {canLoadMore && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoLimit((n) => n + PHOTO_PAGE)}
+                      style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.2))', color: 'var(--white,#fff)', borderRadius: 8, padding: '.6rem 1.4rem', fontSize: '.8rem', cursor: 'pointer' }}
+                    >
+                      Load more photos
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className={styles.tabEmpty}>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => setPhotoManagerOpen(true)}
+                    title="Add photos"
+                    aria-label="Add photos"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 96,
+                      height: 96,
+                      margin: '2.5rem auto',
+                      background: 'rgba(0, 245, 196, .08)',
+                      border: '2px solid var(--neon)',
+                      borderRadius: '50%',
+                      color: 'var(--neon)',
+                      cursor: 'pointer',
+                      fontSize: '3rem',
+                      lineHeight: 1,
+                      fontWeight: 300,
+                      padding: 0,
+                    }}
+                  >
+                    +
+                  </button>
+                ) : 'Coming Soon'}
+              </div>
+            )}
+          </div>
+
+          {/* Video tab */}
+          <div className={paneClass('video')}>
+            {videoList.length > 0 ? (
+              <div className={styles.videoList}>
+                {videoList.map((v, i) => {
+                  const embed = buildVideoEmbed(v.url);
+                  if (!embed) return null;
+                  return (
+                    <div key={i} className={styles.videoCard} style={isOwnProfile ? { position: 'relative' } : undefined}>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => deleteVideo(i)}
+                          title="Delete this video"
+                          aria-label="Delete this video"
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            zIndex: 5,
+                            width: 26,
+                            height: 26,
+                            borderRadius: '50%',
+                            background: 'rgba(0, 0, 0, .8)',
+                            border: '1px solid rgba(255, 95, 95, .7)',
+                            color: '#ff5f5f',
+                            fontSize: '.8rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {v.title && (
+                        <div className={styles.videoCardTitle}>{v.title}</div>
+                      )}
+                      <div className={styles.videoWrap}>
+                        <iframe
+                          src={embed.src}
+                          width="1280"
+                          height="720"
+                          frameBorder="0"
+                          loading="lazy"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                      {canEdit ? (
+                        <VideoMetaEditor
+                          userId={data.id}
+                          list={videoList}
+                          index={i}
+                          initialTitle={v.title}
+                          initialDesc={v.desc}
+                        />
+                      ) : v.desc ? (
+                        <div className={styles.videoCardDesc}>
+                          <ExpandableDesc text={v.desc} />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+                {canEdit && (
+                  <VideoAddButton
+                    userId={data.id}
+                    list={videoList}
+                    cap={videoCap}
+                    isPaid={hasBookingAccess}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className={styles.tabEmpty}>
+                {canEdit ? (
+                  <VideoAddButton
+                    userId={data.id}
+                    list={videoList}
+                    cap={videoCap}
+                    isPaid={hasBookingAccess}
+                    big
+                  />
+                ) : 'Coming Soon'}
+              </div>
+            )}
+          </div>
+
+          {/* Testimonials tab — mobile DJs only. Owner can add/edit/delete
+              from here; visitors see the list (read-only). If no
+              testimonials are saved yet, owner sees an explanatory
+              message and the add form; visitors don't see the tab at
+              all (see showTestimonialsTab logic above). */}
+          {showTestimonialsTab && (
+            <div className={paneClass('testimonials')}>
+              {canEdit && testimonials.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the Testimonials tab on your profile
+                  until at least one is added.
+                </div>
+              )}
+              {testimonials.map((t, i) => (
+                <div key={i} className={styles.testimonialItem}>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm('Delete this testimonial?')) return;
+                        try {
+                          const next = testimonials.filter((_, idx) => idx !== i);
+                          await saveProfile(data.id, { testimonials: JSON.stringify(next) }, actingAsMember);
+                          window.location.reload();
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Delete failed.');
+                        }
+                      }}
+                      className={styles.testimonialDeleteBtn}
+                      title="Delete testimonial"
+                      aria-label="Delete testimonial"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <div className={styles.testimonialMeta}>
+                    <span className={styles.testimonialName}>{t.name || ''}</span>
+                    {t.date && (
+                      <span className={styles.testimonialDate}>· {t.date}</span>
+                    )}
+                  </div>
+                  <div className={styles.testimonialBlurb}>{t.blurb || ''}</div>
+                </div>
+              ))}
+              {canEdit && (
+                <TestimonialAddForm
+                  userId={data.id}
+                  existing={testimonials}
+                />
+              )}
+            </div>
+          )}
+
+          {/* FAQ tab — mobile DJs only. Owner adds question/answer pairs
+              (one at a time, up to 10) with suggested questions; visitors
+              see them read-only. Gated by showFaqTab (enabled + owner, or
+              enabled + at least one FAQ for visitors). */}
+          {showFaqTab && (
+            <div className={paneClass('faq')}>
+              {canEdit && faqs.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the FAQ tab on your profile until at
+                  least one question is added.
+                </div>
+              )}
+              <FaqAccordion
+                faqs={faqs}
+                userId={data.id}
+                isOwnProfile={canEdit}
+              />
+              {canEdit && faqs.length < 10 && (
+                <FaqAddForm
+                  userId={data.id}
+                  existing={faqs}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Lightbox — full-screen image overlay */}
+      <div
+        className={`${styles.lightbox} ${lightboxSrc ? styles.lightboxActive : ''}`}
+        onClick={() => setLightboxSrc(null)}
+      >
+        <button
+          className={styles.lightboxClose}
+          onClick={(e) => { e.stopPropagation(); setLightboxSrc(null); }}
+          type="button"
+          aria-label="Close"
+        >
+          ×
+        </button>
+        {lightboxSrc && (
+          /* Wrap the image so the prev/next arrows can sit at the image's own
+             left/right edges (not the far screen edges). */
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+            {lightboxListRef.current.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous photo"
+                  onClick={(e) => { e.stopPropagation(); stepLightbox(-1); }}
+                  style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next photo"
+                  onClick={(e) => { e.stopPropagation(); stepLightbox(1); }}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                </button>
+              </>
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxSrc}
+              alt={captions[lightboxSrc] || ''}
+              style={{ transform: `scale(${lightboxZoom})`, transition: 'transform .15s ease', transformOrigin: 'center center' }}
+            />
+            {/* Caption band — transparent black strip along the bottom of the
+                photo, shown when this photo has a caption. */}
+            {captions[lightboxSrc] && (
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '.7rem 1rem', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: '.9rem', lineHeight: 1.35, textAlign: 'center', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, pointerEvents: 'none' }}>
+                {captions[lightboxSrc]}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Zoom controls — bottom center. Zoom out disabled at fit (1x). */}
+        {lightboxSrc && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ position: 'fixed', left: '50%', bottom: 20, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', borderRadius: 999, padding: '.3rem .4rem', zIndex: 3 }}
+          >
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={lightboxZoom <= 1}
+              onClick={(e) => { e.stopPropagation(); setLightboxZoom((z) => Math.max(1, Math.round((z - 0.5) * 10) / 10)); }}
+              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', cursor: lightboxZoom <= 1 ? 'default' : 'pointer', opacity: lightboxZoom <= 1 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+            </button>
+            <span style={{ color: '#fff', fontSize: '.78rem', minWidth: 38, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{Math.round(lightboxZoom * 100)}%</span>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={lightboxZoom >= 4}
+              onClick={(e) => { e.stopPropagation(); setLightboxZoom((z) => Math.min(4, Math.round((z + 0.5) * 10) / 10)); }}
+              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', cursor: lightboxZoom >= 4 ? 'default' : 'pointer', opacity: lightboxZoom >= 4 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Caption editor — owner-only. Small modal to write/edit the caption
+          shown at the bottom of the photo in the lightbox. */}
+      {captionFor && canEdit && (
+        <div onClick={() => setCaptionFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100, padding: '1rem' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#14141b', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.25rem', width: '100%', maxWidth: 420 }}>
+            <div style={{ fontSize: '.95rem', fontWeight: 600, color: '#fff', marginBottom: '.75rem' }}>Photo caption</div>
+            <textarea
+              value={captionDraft}
+              onChange={(e) => setCaptionDraft(e.target.value)}
+              maxLength={200}
+              rows={3}
+              autoFocus
+              placeholder="Write a caption…"
+              style={{ width: '100%', padding: '.6rem .8rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: '#0c0c11', color: '#fff', fontSize: '.9rem', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.4rem' }}>
+              <span style={{ fontSize: '.7rem', color: 'var(--muted,#888)' }}>{captionDraft.length}/200</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', marginTop: '.9rem' }}>
+              <button type="button" onClick={() => setCaptionFor(null)} style={{ padding: '.5rem 1rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: 'transparent', color: '#fff', fontSize: '.8rem', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={photoBusy} onClick={() => saveCaption(captionFor, captionDraft)} style={{ padding: '.5rem 1.1rem', borderRadius: 8, border: 'none', background: 'var(--neon)', color: '#04121a', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', opacity: photoBusy ? 0.6 : 1 }}>{photoBusy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm modal — for owner delete-video. Renders only when an
+          active confirm is pending. */}
+      {confirmDialog}
+
+      {/* Compose-message modal — opened by the Message button in HeroActions.
+          Only renders for logged-in non-owner visitors (see onClickMessage). */}
+      {composeOpen && currentUser && !isOwnProfile && (
+        <ComposeMessageModal
+          sender={{
+            id: currentUser.id,
+            name: currentUser.name || 'A user',
+            email: currentUser.email || null,
+          }}
+          recipientUserId={data.id}
+          recipientName={data.name || 'this DJ'}
+          onClose={() => setComposeOpen(false)}
+        />
+      )}
+
+      {/* Avatar upload + crop modal — owner-only. Opens once the user
+          has picked a file via the camera badge. AvatarCrop handles the
+          crop UI + Supabase Storage upload at ${userId}/avatar.png and
+          calls onSuccess with the public URL. We then write that URL
+          to users.avatar_url and reload so the hero shows the new pic. */}
+      {pickedAvatarFile && canEdit && (
+        <AvatarCrop
+          file={pickedAvatarFile}
+          userId={data.id}
+          uploadFolder={profileUploadFolder(data.id)}
+          onClose={() => {
+            setPickedAvatarFile(null);
+            // Reset the input so picking the same file again still fires
+            // onChange (browsers skip duplicate file selections).
+            if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+          }}
+          onSuccess={async (publicUrl) => {
+            try {
+              await saveProfile(data.id, { avatar_url: publicUrl }, actingAsMember);
+            } catch {
+              // Non-blocking; the upload succeeded even if the row update
+              // failed. User can retry.
+            }
+            setPickedAvatarFile(null);
+            if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* Banner edit modal — owner-only. Handles upload, replace, and
+          vertical reposition for desktop AND mobile views in one place. */}
+      {bannerModalOpen && canEdit && (
+        <BannerEditModal
+          userId={data.id}
+          initialUrl={data.banner_url}
+          initialPosition={data.banner_position}
+          initialPositionMobile={data.banner_position_mobile}
+          onClose={() => setBannerModalOpen(false)}
+        />
+      )}
+
+      {/* Edit tabs modal — owner-only. Toggles which tabs (about, mixes,
+          photos, video, testimonials) are visible to the public. */}
+      {tabsModalOpen && canEdit && (
+        <EditTabsModal
+          userId={data.id}
+          initial={tabVisibility}
+          initialOrder={tabOrder}
+          isMobileDJ={isMobileDJ}
+          onClose={() => setTabsModalOpen(false)}
+        />
+      )}
+
+      {/* Share calendar modal — visible to all visitors. Two preview
+          cards (month view + 12-month view) with copyable URLs. */}
+      {shareModalOpen && (
+        <ShareCalendarModal
+          djSlug={effectiveSlug}
+          onClose={() => setShareModalOpen(false)}
+        />
+      )}
+
+      {/* Photo manager modal — owner-only. Lets the DJ upload to /
+          remove from any of the 4 gallery slots independently. Opened
+          from the + button in the Photos tab. */}
+      {photoManagerOpen && canEdit && (
+        <PhotoManagerModal
+          userId={data.id}
+          photos={galleryPhotos}
+          albums={albums}
+          tier={djTier}
+          cap={photoCap}
+          isPaid={hasBookingAccess}
+          onClose={() => {
+            // Reload on close so any changes the DJ made show in the
+            // hero/photos tab. Cheaper than wiring up live state.
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Add photos — the simple "+ Add" flow: choose files, then Save. */}
+      {addPhotosOpen && canEdit && (
+        <AddPhotosModal
+          userId={data.id}
+          currentCount={galleryPhotos.length}
+          cap={photoCap}
+          onClose={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Create Album — owner-only. Name it, add photos from device or pick
+          existing; no photo-deleting here. Reloads on close to show it. */}
+      {createAlbumOpen && canEdit && (
+        <CreateAlbumModal
+          userId={data.id}
+          photos={galleryPhotos}
+          albums={albums}
+          cap={photoCap}
+          onClose={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Edit an existing album — same modal in edit mode (rename, add/remove
+          photos, delete). */}
+      {editAlbumTarget && canEdit && (
+        <CreateAlbumModal
+          userId={data.id}
+          photos={galleryPhotos}
+          albums={albums}
+          cap={photoCap}
+          editAlbum={editAlbumTarget}
+          onClose={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'images');
+            window.location.href = url.toString();
+          }}
+        />
+      )}
+
+      {/* Embed-calendar modal — owner-only. Lets the DJ generate / copy
+          their iframe embed snippet from the public profile without
+          having to go to update-dj-profile. Same generator UX as
+          EmbedCodeSection in update-dj-profile, ported inline to keep
+          this self-contained (no shared CSS module). */}
+      {embedModalOpen && isOwnProfile && (
+        <EmbedCalendarModal
+          slug={effectiveSlug}
+          onClose={() => setEmbedModalOpen(false)}
+        />
+      )}
+    </>
+  );
 }
