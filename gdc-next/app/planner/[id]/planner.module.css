@@ -274,15 +274,21 @@
 
 .fieldHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: .6rem;
-  margin-bottom: .3rem;
+  /* Hero-banner header — matches the DJ's planner editor: a subtle green
+     gradient strip with a thin border, so each question reads as its own bar. */
+  background: linear-gradient(90deg, rgba(0, 224, 164, .16), rgba(0, 224, 164, .02) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 8px;
+  padding: .5rem .7rem;
+  margin-bottom: .55rem;
 }
 
 .label {
   font-size: 1rem;
-  font-weight: 500;
-  color: #f2f2f7;
+  font-weight: 700;
+  color: #fff;
 }
 
 /* Deliberately quiet. It's on EVERY field — at any weight it would shout
@@ -770,6 +776,9 @@ select.input {
   /* A question and its answer never split across two sheets. */
   .field { break-inside: avoid; }
   .fields { gap: 1rem; }
+
+  /* Drop the on-screen banner when printing — a shaded box wastes ink. */
+  .fieldHead { background: none !important; border: none !important; padding: 0 !important; }
 
   @page { margin: 14mm; }
 }
