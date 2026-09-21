@@ -665,15 +665,27 @@ function FieldPreview({ field }: { field: PlannerField }) {
           <span className={styles.pvAdd}>+ Add another</span>
         </div>
       );
-    case 'people':
+    case 'people': {
+      // A candle ceremony is an ordered, fixed list — preview 17 numbered rows
+      // (16 candles + guest of honor), matching the client planner.
+      const isCandle = /candle/i.test(field.label);
+      const count = isCandle ? 17 : 1;
       return (
         <div className={styles.pvStack}>
-          <div className={styles.pvPeople}>
-            <span>Name</span><span>Role</span><span>Say it like</span>
-          </div>
+          {Array.from({ length: count }, (_, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isCandle && (
+                <span style={{ width: 22, flexShrink: 0, textAlign: 'right', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>{i + 1}.</span>
+              )}
+              <div className={styles.pvPeople} style={{ flex: 1 }}>
+                <span>Name</span><span>Role</span><span>Say it like</span>
+              </div>
+            </div>
+          ))}
           <span className={styles.pvAdd}>+ Add another</span>
         </div>
       );
+    }
     case 'timeline':
       return (
         <div className={styles.pvStack}>
