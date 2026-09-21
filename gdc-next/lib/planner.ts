@@ -197,6 +197,13 @@ export interface PlannerTemplate {
   event_type: string | null;
   is_standard: boolean;
   fields: PlannerField[];
+  // Which STOCK template this row is a copy of. Every stock template's key is
+  // its own id; a DJ's saved copy carries the id of the stock template it was
+  // forked from. This is what makes each template independent: two templates of
+  // the same event type (the two Wedding variants) fork to two separate rows
+  // instead of sharing one keyed on event_type. null on a from-scratch custom
+  // planner, which stands alone and is keyed by its own event_type marker.
+  template_key?: string | null;
 }
 
 export type BookingPlannerStatus = 'sent' | 'partial' | 'submitted';
@@ -367,23 +374,64 @@ export function pickTemplate(
  * tell them apart. The Preview and Edit buttons in the template list know the
  * exact row the DJ clicked, so they pass its id and resolve here instead.
  *
- * The chosen row is the override; the base is still the DJ's own base planner
- * (or the stock base) so the generic questions merge in. If the chosen row IS a
- * base (event_type null), it stands alone with no override.
+ * PER-TEMPLATE storage. Each stock template forks INDEPENDENTLY:
+ *
+ *   · Opening the DJ's OWN row (a fork or a from-scratch custom) → it's a full,
+ *     standalone snapshot. Return it as-is, no base composed underneath. Its
+ *     `template_key` (fork) or nothing (custom, keyed by its own event_type) is
+ *     where a Save writes back to.
+ *   · Opening a STOCK template → prefer the DJ's fork of THIS template
+ *     (template_key === the stock id) if they've saved one; again standalone.
+ *   · No fork yet → seed the editor from the stock defaults (base spine + this
+ *     template's questions), COMPOSED. A Save then stores the whole set as the
+ *     fork, so it starts life carrying the current defaults and varies on its
+ *     own from there.
+ *
+ * `standalone` tells the caller whether to compose (false) or use the fields
+ * verbatim (true). `templateKey` is the key a Save must write to.
  */
 export function pickTemplateById(
   all: PlannerTemplate[],
   djId: string,
   templateId: string,
-): { base: PlannerTemplate | null; override: PlannerTemplate | null } | null {
+): {
+  base: PlannerTemplate | null;
+  override: PlannerTemplate | null;
+  standalone: boolean;
+  templateKey: string | null;
+} | null {
   const chosen = all.find((t) => t.id === templateId);
   if (!chosen) return null;
-  if (chosen.event_type == null) return { base: chosen, override: null };
+
+  // The DJ's OWN row — a fork or a custom planner. Standalone by nature: it
+  // holds the full field list, so nothing is composed underneath it.
+  if (!chosen.is_standard && chosen.dj_id === djId) {
+    return {
+      base: null,
+      override: chosen,
+      standalone: true,
+      templateKey: chosen.template_key ?? null,
+    };
+  }
+
+  // A STOCK template. Its key is its own id; prefer the DJ's fork of it.
+  const key = chosen.id;
+  const fork = all.find(
+    (t) => !t.is_standard && t.dj_id === djId && t.template_key === key,
+  );
+  if (fork) {
+    return { base: null, override: fork, standalone: true, templateKey: key };
+  }
+
+  // No fork yet → seed from the stock defaults, composed onto the base spine.
+  if (chosen.event_type == null) {
+    return { base: chosen, override: null, standalone: false, templateKey: key };
+  }
   const base =
     all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type == null) ??
     all.find((t) => t.is_standard && t.event_type == null) ??
     null;
-  return { base, override: chosen };
+  return { base, override: chosen, standalone: false, templateKey: key };
 }
 
 /**
