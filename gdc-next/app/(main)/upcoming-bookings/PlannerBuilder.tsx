@@ -449,12 +449,15 @@ export default function PlannerBuilder({
             );
           }
 
+          // Removed questions come off the page — they live only in the
+          // "Removed questions" strip below, where they can be restored.
+          if (f.hidden) return null;
+
           return (
             <div
               key={f.id}
               className={[
                 styles.field,
-                f.hidden ? styles.hidden : '',
                 dragging ? styles.dragging : '',
                 over ? styles.over : '',
               ].join(' ')}
@@ -529,15 +532,15 @@ export default function PlannerBuilder({
                     {pinned ? (
                       <span className={styles.lock} title="Stays in place — locked position">🔒</span>
                     ) : null}
-                    {/* Enable / Disable — a text button, not an eye. A disabled
-                        question keeps its answers but collapses to just its
-                        title, so the page reads as the client will see it. */}
+                    {/* Remove — takes the question off the page. It's not
+                        deleted (answers are kept, and it can be restored from
+                        the "Removed questions" strip below), just hidden. */}
                     <button
                       type="button"
                       className={styles.toggle}
-                      title={f.hidden ? 'Turn on — your client will see this' : 'Turn off — hide from your client'}
-                      onClick={() => onPatch(f.id, { hidden: !f.hidden })}
-                    >{f.hidden ? 'Enable' : 'Disable'}</button>
+                      title="Remove — take this off the page"
+                      onClick={() => onPatch(f.id, { hidden: true })}
+                    >Remove</button>
                     {f.is_custom ? (
                       <button
                         type="button"
@@ -563,6 +566,21 @@ export default function PlannerBuilder({
           );
         })}
       </div>
+
+      {/* Removed questions — restore anything taken off the page. */}
+      {editable.some((f) => f.hidden && !isStructural(f)) && (
+        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <div style={{ fontSize: '.68rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#75758d', marginBottom: '.6rem' }}>Removed questions</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+            {editable.filter((f) => f.hidden && !isStructural(f)).map((f) => (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', padding: '.4rem .6rem', borderRadius: 8, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)' }}>
+                <span style={{ color: '#9a9ab0', fontSize: '.9rem', textDecoration: 'line-through' }}>{titleCaseLabel(f.label)}</span>
+                <button type="button" className={styles.toggle} title="Restore — put this back on the page" onClick={() => onPatch(f.id, { hidden: false })}>Restore</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Add a question — the same dashed "+ Add another" the client sees on a
           list field, so it reads as part of the page. */}
