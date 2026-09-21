@@ -654,7 +654,9 @@ function Control({
           value={(value as Person[]) || []}
           onChange={onChange}
           // Candle rows are Name + Song (the song stored in the second field).
-          showRole={!isCandle && field.id !== HONOREE_FIELD_ID}
+          // An ordered line-up (entrance order, court) is just Name + Say it like
+          // — the running order is the point, not a per-person role.
+          showRole={!isCandle && !isOrdered && field.id !== HONOREE_FIELD_ID}
           numbered={isCandle || isOrdered}
           ordinal={isOrdered}
           seed={isCandle ? 17 : 1}
