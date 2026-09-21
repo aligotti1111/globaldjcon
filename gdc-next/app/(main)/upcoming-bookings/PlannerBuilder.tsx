@@ -669,6 +669,8 @@ function FieldPreview({ field }: { field: PlannerField }) {
       // A candle ceremony is an ordered, fixed list — preview 17 numbered rows
       // (16 candles + guest of honor), matching the client planner.
       const isCandle = /candle/i.test(field.label);
+      // Guest of Honor is the honoree — no Role column. Candle = Name + Song.
+      const noRole = isCandle || field.id === HONOREE_FIELD_ID;
       const count = isCandle ? 17 : 1;
       return (
         <div className={styles.pvStack}>
@@ -677,8 +679,8 @@ function FieldPreview({ field }: { field: PlannerField }) {
               {isCandle && (
                 <span style={{ width: 22, flexShrink: 0, textAlign: 'right', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>{i + 1}.</span>
               )}
-              <div className={styles.pvPeople} style={{ flex: 1 }}>
-                <span>Name</span><span>Role</span><span>Say it like</span>
+              <div className={`${styles.pvPeople} ${noRole ? styles.noRole : ''}`} style={{ flex: 1 }}>
+                <span>Name</span>{!noRole && <span>Role</span>}<span>{isCandle ? 'Song' : 'Say it like'}</span>
               </div>
             </div>
           ))}
