@@ -57,9 +57,52 @@ const clamp = (s: unknown, n: number) => (typeof s === 'string' ? s.trim().slice
 async function loadTemplates(db: SupabaseClient, djId: string): Promise<PlannerTemplate[]> {
   const { data } = await db
     .from('planners')
-    .select('id, dj_id, name, event_type, is_standard, fields')
+    .select('id, dj_id, name, event_type, is_standard, fields, template_key')
     .or(`is_standard.eq.true,dj_id.eq.${djId}`);
   return (data as unknown as PlannerTemplate[] | null) || [];
+}
+
+// The template LIST the DJ sees — ONE row per stock template, plus their own
+// from-scratch customs. If the DJ has forked a stock template (a saved copy
+// keyed by template_key), that stock row shows the fork's name and question
+// count and reads as "theirs", but keeps the STOCK id as its row id so Edit and
+// Rename resolve through pickTemplateById → the fork. This is what stops the
+// two Wedding variants (and their forks) from stacking up as four rows.
+function listTemplates(templates: PlannerTemplate[], djId: string) {
+  const forkByKey = new Map<string, PlannerTemplate>();
+  for (const t of templates) {
+    if (!t.is_standard && t.dj_id === djId && t.template_key) {
+      forkByKey.set(t.template_key, t);
+    }
+  }
+  const stockRows = templates
+    .filter((t) => t.is_standard)
+    .map((s) => {
+      const fork = forkByKey.get(s.id);
+      return {
+        id: s.id,
+        name: fork ? fork.name : s.name,
+        eventType: s.event_type,
+        // Forked → it's the DJ's now; unforked → the shared standard.
+        isStandard: !fork,
+        isMine: !!fork,
+        count: fork
+          ? visibleFields(fork.fields || []).length
+          : composedCount(templates, djId, s),
+      };
+    });
+  // From-scratch custom planners are standalone rows (no template_key).
+  const customRows = templates
+    .filter((t) => !t.is_standard && t.dj_id === djId && !t.template_key)
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      eventType: t.event_type,
+      isStandard: false,
+      isMine: true,
+      count: visibleFields(t.fields || []).length,
+    }));
+  return [...stockRows, ...customRows];
 }
 
 // The number a DJ sees next to a template in the list must be the number of
@@ -143,23 +186,25 @@ export async function GET(req: Request) {
     if (!bookingId) {
       const templates = await loadTemplates(db, userId);
       const raw = url.searchParams.get('eventType');
-      const mapTemplates = () => templates.map((t) => ({
-        id: t.id, name: t.name, eventType: t.event_type,
-        isStandard: t.is_standard, isMine: !t.is_standard && t.dj_id === userId,
-        count: composedCount(templates, userId, t),
-      }));
       // A specific template id disambiguates types with more than one template
       // (weddings: with / without ceremony). When present it wins over eventType.
       const templateId = url.searchParams.get('templateId');
       if (raw === null && !templateId) {
-        return NextResponse.json({ templates: mapTemplates() });
+        return NextResponse.json({ templates: listTemplates(templates, userId) });
       }
       let base: ReturnType<typeof pickTemplate>['base'];
       let override: ReturnType<typeof pickTemplate>['override'];
+      // A standalone template (the DJ's own fork or custom planner) is used
+      // VERBATIM — no base spine composed underneath. editTemplateKey is the
+      // key a Save writes to: the stock template id for a fork, null for a
+      // custom (which keys on its own event_type marker).
+      let standalone = false;
+      let editTemplateKey: string | null = null;
       if (templateId) {
         const r = pickTemplateById(templates, userId, templateId);
         if (!r) return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
         base = r.base; override = r.override;
+        standalone = r.standalone; editTemplateKey = r.templateKey;
       } else {
         const wt = raw!.trim() || null;
         ({ base, override } = pickTemplate(templates, userId, wt));
@@ -177,13 +222,23 @@ export async function GET(req: Request) {
             if (byName) override = byName;
           }
         }
+        // A DJ's own row (fork or custom) resolved by event type is standalone
+        // too; a stock override seeds a fork keyed on its own id.
+        if (override && !override.is_standard && override.dj_id === userId) {
+          standalone = true;
+          editTemplateKey = override.template_key ?? null;
+        } else if (override && override.is_standard) {
+          editTemplateKey = override.id;
+        } else if (base) {
+          editTemplateKey = base.is_standard ? base.id : (base.template_key ?? null);
+        }
       }
       if (!base && !override) {
         return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
       }
-      // A custom planner is standalone: show ONLY its own questions, never the
-      // base spine composed underneath.
-      const fields = isCustomEventType(override?.event_type)
+      // Standalone (fork/custom) → its own questions verbatim; a stock seed →
+      // the base spine composed with this template's questions.
+      const fields = standalone
         ? (override?.fields || [])
         : composeFields(base?.fields || [], override?.fields || []);
       const resolved = override || base!;
@@ -194,6 +249,7 @@ export async function GET(req: Request) {
           isStandard: resolved.is_standard, isMine: !resolved.is_standard && resolved.dj_id === userId,
         },
         editEventType: wantType,
+        editTemplateKey,
         fields,
         prefillCount: 0,
         prefilledIds: [],
@@ -201,7 +257,7 @@ export async function GET(req: Request) {
         eventType: wantType,
         bookingType: null,
         event: { date: null, venue: null },
-        templates: mapTemplates(),
+        templates: listTemplates(templates, userId),
       });
     }
 
@@ -287,15 +343,9 @@ export async function GET(req: Request) {
         date: (b.event_date as string | null) || null,
         venue: (b.venue_name as string | null) || null,
       },
-      // For "use a different planner". Stock rows plus the DJ's own.
-      templates: templates.map((t) => ({
-        id: t.id,
-        name: t.name,
-        eventType: t.event_type,
-        isStandard: t.is_standard,
-        isMine: !t.is_standard && t.dj_id === userId,
-        count: composedCount(templates, userId, t),
-      })),
+      // For "use a different planner". One row per stock template (folding in
+      // the DJ's fork of it) plus their own from-scratch customs.
+      templates: listTemplates(templates, userId),
     });
   } catch {
     return NextResponse.json({ error: 'Could not load planners.' }, { status: 500 });
@@ -430,17 +480,18 @@ export async function PUT(req: Request) {
         return NextResponse.json({ id: target.id, saved: true });
       }
 
-      // A stock planner → make (or rename) the DJ's own copy for this event
-      // type, keeping the stock's questions. Same null-vs-value keying as below.
+      // A stock planner → make (or rename) the DJ's fork of THIS template,
+      // keyed by template_key (the stock id) so it stays independent of any
+      // other template of the same event type.
       const et = target.event_type ?? null;
-      const mineQ = db
+      const key = target.id;
+      const { data: existingMine } = await db
         .from('planners')
         .select('id')
         .eq('dj_id', userId)
-        .eq('is_standard', false);
-      const { data: existingMine } = await (
-        et === null ? mineQ.is('event_type', null) : mineQ.eq('event_type', et)
-      ).maybeSingle();
+        .eq('is_standard', false)
+        .eq('template_key', key)
+        .maybeSingle();
       const mineRow = existingMine as unknown as { id: string } | null;
 
       if (mineRow) {
@@ -460,6 +511,7 @@ export async function PUT(req: Request) {
           name: newName,
           event_type: et,
           is_standard: false,
+          template_key: key,
           fields: target.fields || [],
         } as unknown as never)
         .select('id')
@@ -474,6 +526,16 @@ export async function PUT(req: Request) {
     // haven't customised specifically. A real value scopes it to that type.
     const eventType = typeof body.eventType === 'string' && body.eventType.trim()
       ? body.eventType.trim().slice(0, 80)
+      : null;
+
+    // Which STOCK template this save is a fork of. The editor gets it from the
+    // GET (editTemplateKey) and hands it back here. Present → this is an
+    // independent per-template fork, keyed by (dj_id, template_key), so two
+    // templates of the same event type never share a row. Absent → a
+    // from-scratch custom planner (keyed by its own event_type marker) or the
+    // legacy base planner.
+    const templateKey = typeof body.templateKey === 'string' && body.templateKey.trim()
+      ? body.templateKey.trim().slice(0, 64)
       : null;
 
     const { fields, error: fErr } = sanitiseFields(body.fields);
@@ -493,21 +555,25 @@ export async function PUT(req: Request) {
       .select('id')
       .eq('dj_id', userId)
       .eq('is_standard', false);
-    // .is() for null, .eq() otherwise. `event_type = null` matches nothing in
-    // SQL — an .eq(null) would never find the DJ's base row, so every save
-    // would try to INSERT a second one and the unique index would start
-    // rejecting saves with a constraint error nobody could explain.
+    // Find the row this save updates. A fork is found by its template_key; a
+    // custom or legacy base by event_type (.is() for null, .eq() otherwise —
+    // `event_type = null` matches nothing in SQL, so an .eq(null) would never
+    // find the base row and every save would INSERT a duplicate).
     const { data: existing } = await (
-      eventType === null
-        ? mine.is('event_type', null)
-        : mine.eq('event_type', eventType)
+      templateKey !== null
+        ? mine.eq('template_key', templateKey)
+        : eventType === null
+          ? mine.is('event_type', null)
+          : mine.eq('event_type', eventType)
     ).maybeSingle();
     const row = existing as unknown as { id: string } | null;
 
     if (row) {
       const { error } = await db
         .from('planners')
-        .update({ name, fields } as unknown as never)
+        // template_key is set on update too, so a row created before this
+        // migration (or via the legacy path) gets keyed on first save.
+        .update({ name, fields, ...(templateKey !== null ? { template_key: templateKey } : {}) } as unknown as never)
         .eq('id', row.id);
       if (error) return NextResponse.json({ error: 'Could not save.' }, { status: 500 });
       return NextResponse.json({ id: row.id, saved: true });
@@ -520,6 +586,7 @@ export async function PUT(req: Request) {
         name,
         event_type: eventType,
         is_standard: false,
+        template_key: templateKey,
         fields,
       } as unknown as never)
       .select('id')
