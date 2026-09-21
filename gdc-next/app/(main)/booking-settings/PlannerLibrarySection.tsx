@@ -136,6 +136,20 @@ export default function PlannerLibrarySection() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [hidingId, setHidingId] = useState<string | null>(null);
 
+  // Themed confirm dialog (replaces the browser's native window.confirm, which
+  // renders a white iOS box that clashes with the app). Promise-based so callers
+  // just `await askConfirm(...)`.
+  const [confirmBox, setConfirmBox] = useState<
+    { message: string; confirmLabel: string; danger: boolean; resolve: (v: boolean) => void } | null
+  >(null);
+  function askConfirm(message: string, confirmLabel = 'Confirm', danger = false): Promise<boolean> {
+    return new Promise((resolve) => setConfirmBox({ message, confirmLabel, danger, resolve }));
+  }
+  function answerConfirm(v: boolean) {
+    confirmBox?.resolve(v);
+    setConfirmBox(null);
+  }
+
   // "Create custom planner" — a blank template the DJ builds from scratch. The
   // button reveals a name field; naming it opens the editor on an empty sheet.
   const [creating, setCreating] = useState(false);
@@ -221,7 +235,10 @@ export default function PlannerLibrarySection() {
   // hide; un-hide is instant.
   async function toggleHidden(t: TemplateLite) {
     const willHide = !t.hidden;
-    if (willHide && !window.confirm(`Hide "${t.name}"? It won't appear in the planner list when you send from a booking. You can un-hide it here anytime.`)) return;
+    if (willHide && !(await askConfirm(
+      `Hide "${t.name}"? It won't appear in the planner list when you send from a booking. You can un-hide it here anytime.`,
+      'Hide',
+    ))) return;
     setHidingId(t.id);
     try {
       const res = await fetch('/api/planners', {
@@ -242,7 +259,11 @@ export default function PlannerLibrarySection() {
   // Delete a custom planner (only ever offered on custom rows). Confirmed first
   // — it can't be undone — then removed and the list re-fetched.
   async function deleteCustom(t: TemplateLite) {
-    if (!window.confirm(`Delete "${t.name}"? This planner and its questions will be removed for good.`)) return;
+    if (!(await askConfirm(
+      `Delete "${t.name}"? This planner and its questions will be removed for good.`,
+      'Delete',
+      true,
+    ))) return;
     setDeletingId(t.id);
     try {
       const res = await fetch('/api/planners', {
@@ -453,6 +474,56 @@ export default function PlannerLibrarySection() {
           <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5, margin: '.6rem 0 0' }}>
             Starts blank — add your own questions to build it, then send it to any booking.
           </p>
+        </div>
+      )}
+
+      {/* Themed confirm dialog — dark, on-brand, in place of window.confirm. */}
+      {confirmBox && (
+        <div
+          onClick={() => answerConfirm(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 380, background: '#15151f',
+              border: '1px solid rgba(140,140,170,.25)', borderRadius: 14,
+              padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.5)',
+            }}
+          >
+            <p style={{ color: 'var(--white,#fff)', fontSize: '.9rem', lineHeight: 1.5, margin: '0 0 1.1rem' }}>
+              {confirmBox.message}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
+              <button
+                type="button"
+                onClick={() => answerConfirm(false)}
+                style={{
+                  background: 'transparent', border: '1px solid rgba(140,140,170,.35)',
+                  color: 'var(--white,#fff)', borderRadius: 8, padding: '.45rem 1rem',
+                  fontSize: '.82rem', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => answerConfirm(true)}
+                style={{
+                  background: confirmBox.danger ? '#ff5f5f' : 'var(--neon,#00e0a4)',
+                  border: 'none', color: confirmBox.danger ? '#fff' : '#04121a',
+                  borderRadius: 8, padding: '.45rem 1rem',
+                  fontSize: '.82rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                {confirmBox.confirmLabel}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
