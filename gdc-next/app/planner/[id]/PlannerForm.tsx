@@ -34,6 +34,7 @@ import {
   type Person,
   type TimelineRow,
   HONOREE_FIELD_ID,
+  DO_NOT_PLAY_FIELD_ID,
 } from '@/lib/planner';
 
 // Every 30 minutes, 24 hours. Same options the booking form uses — a client
@@ -891,12 +892,14 @@ function SongList({
               onChange={(v) => { const n = [...rows]; n[i] = v || undefined; push(n); }}
             />
           </div>
-          <button
-            type="button"
-            className={styles.rm}
-            aria-label="Remove"
-            onClick={() => push(rows.length === 1 ? [undefined] : rows.filter((_, j) => j !== i))}
-          >✕</button>
+          {rows.length > 1 && (
+            <button
+              type="button"
+              className={styles.rm}
+              aria-label="Remove"
+              onClick={() => push(rows.filter((_, j) => j !== i))}
+            >✕</button>
+          )}
         </div>
       ))}
       <button type="button" className={styles.add} onClick={() => push([...rows, undefined])}>
@@ -936,12 +939,14 @@ function TextList({
             value={r}
             onChange={(e) => { const n = [...rows]; n[i] = e.target.value; push(n); }}
           />
-          <button
-            type="button"
-            className={styles.rm}
-            aria-label="Remove"
-            onClick={() => push(rows.length === 1 ? [''] : rows.filter((_, j) => j !== i))}
-          >✕</button>
+          {rows.length > 1 && (
+            <button
+              type="button"
+              className={styles.rm}
+              aria-label="Remove"
+              onClick={() => push(rows.filter((_, j) => j !== i))}
+            >✕</button>
+          )}
         </div>
       ))}
       <button type="button" className={styles.add} onClick={() => push([...rows, ''])}>
@@ -997,14 +1002,18 @@ function PeopleList({
           )}
           <input className={styles.input} placeholder="optional"
             value={p.pronunciation || ''} onChange={(e) => set(i, { pronunciation: e.target.value })} />
-          <div className={styles.rowTools}>
-            <button type="button" className={styles.mv} aria-label="Move up"
-              onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
-            <button type="button" className={styles.mv} aria-label="Move down"
-              onClick={() => move(i, 1)} disabled={i === rows.length - 1}>↓</button>
-            <button type="button" className={styles.rm} aria-label="Remove"
-              onClick={() => push(rows.length === 1 ? [{ name: '' }] : rows.filter((_, j) => j !== i))}>✕</button>
-          </div>
+          {/* Reorder / remove tools only once there's more than one entry —
+              you can't reorder or remove the single answer. */}
+          {rows.length > 1 && (
+            <div className={styles.rowTools}>
+              <button type="button" className={styles.mv} aria-label="Move up"
+                onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
+              <button type="button" className={styles.mv} aria-label="Move down"
+                onClick={() => move(i, 1)} disabled={i === rows.length - 1}>↓</button>
+              <button type="button" className={styles.rm} aria-label="Remove"
+                onClick={() => push(rows.filter((_, j) => j !== i))}>✕</button>
+            </div>
+          )}
         </div>
       ))}
       <button type="button" className={styles.add} onClick={() => push([...rows, { name: '' }])}>
@@ -1051,14 +1060,16 @@ function Timeline({
           </select>
           <input className={styles.input} placeholder="What happens"
             value={r.label || ''} onChange={(e) => set(i, { label: e.target.value })} />
-          <div className={styles.rowTools}>
-            <button type="button" className={styles.mv} aria-label="Move up"
-              onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
-            <button type="button" className={styles.mv} aria-label="Move down"
-              onClick={() => move(i, 1)} disabled={i === rows.length - 1}>↓</button>
-            <button type="button" className={styles.rm} aria-label="Remove"
-              onClick={() => push(rows.length === 1 ? [{}] : rows.filter((_, j) => j !== i))}>✕</button>
-          </div>
+          {rows.length > 1 && (
+            <div className={styles.rowTools}>
+              <button type="button" className={styles.mv} aria-label="Move up"
+                onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
+              <button type="button" className={styles.mv} aria-label="Move down"
+                onClick={() => move(i, 1)} disabled={i === rows.length - 1}>↓</button>
+              <button type="button" className={styles.rm} aria-label="Remove"
+                onClick={() => push(rows.filter((_, j) => j !== i))}>✕</button>
+            </div>
+          )}
         </div>
       ))}
       <button type="button" className={styles.add} onClick={() => push([...rows, {}])}>
