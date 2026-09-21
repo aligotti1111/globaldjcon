@@ -296,11 +296,9 @@
 }
 .questionBanner .label { color: #fff; font-weight: 700; }
 
-/* Do NOT play — red banner so it can never be mistaken for a must-play. */
-.questionBannerNo {
-  background: linear-gradient(90deg, rgba(255, 95, 95, .18), rgba(255, 95, 95, .03) 60%, transparent);
-  border-color: rgba(255, 95, 95, .35);
-}
+/* Do NOT play — red TITLE text so it can never be mistaken for a must-play.
+   Banner stays the normal green. */
+.questionBannerNo .label { color: #ff5f5f; }
 
 /* The label is a button — click it to rename in place. Looks like the client's
    field label until you touch it. */
