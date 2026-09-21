@@ -988,7 +988,11 @@ function KpiBreakdown({ label, rows, total, totalColor, fmt, subtotal, tailRows 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
         {rows.map(row)}
         {subtotal && totalLine(subtotal, '#fff', false)}
-        {tailRows && tailRows.map(row)}
+        {tailRows && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 }}>
+            {tailRows.map(row)}
+          </div>
+        )}
         {totalLine({ label: subtotal ? 'Total with expected' : 'Total', value: total }, totalColor, true)}
       </div>
     </div>
