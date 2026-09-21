@@ -487,6 +487,8 @@ export default function PlannerBuilder({
 
               <div className={styles.body}>
                 <div className={`${styles.labelRow} ${styles.questionBanner}`}>
+                  <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', minWidth: 0 }}>
                   {(editing === f.id || !f.label.trim()) ? (
                     // Editing, OR a brand-new question with no title yet: show an
                     // input. An untitled one reads as a prompt (accent border +
@@ -527,8 +529,11 @@ export default function PlannerBuilder({
                       onClick={() => setEditing(f.id)}
                     ><PencilIcon /></button>
                   ) : null}
+                    </div>
+                    {f.help ? <div className={styles.help} style={{ margin: 0 }}>{f.help}</div> : null}
+                  </div>
 
-                  <div className={styles.acts} style={{ marginLeft: 'auto' }}>
+                  <div className={styles.acts} style={{ marginLeft: 'auto', flexShrink: 0 }}>
                     {pinned ? (
                       <span className={styles.lock} title="Stays in place — locked position">🔒</span>
                     ) : null}
@@ -559,8 +564,8 @@ export default function PlannerBuilder({
                     title above — so the DJ sees exactly what drops off the page. */}
                 {!f.hidden && (
                   <>
-                    {f.help ? <div className={styles.help}>{f.help}</div> : null}
-                    {/* The real control, empty and disabled — the whole point. */}
+                    {/* The real control, empty and disabled — the whole point.
+                        (Help text now lives inside the banner above.) */}
                     <FieldPreview field={f} />
                   </>
                 )}
