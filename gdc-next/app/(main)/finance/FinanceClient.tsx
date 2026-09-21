@@ -976,8 +976,8 @@ function KpiBreakdown({ label, rows, total, totalColor, fmt, subtotal, tailRows 
       <span style={{ color: '#fff', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.value)}</span>
     </div>
   );
-  const totalLine = (t: { label: string; value: number }, color: string, big: boolean) => (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 }}>
+  const totalLine = (t: { label: string; value: number }, color: string, big: boolean, divider = true) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, ...(divider ? { borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 } : {}) }}>
       <span style={{ fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#9a9ab0)', fontWeight: 700 }}>{t.label}</span>
       <span style={{ color, fontWeight: 800, fontSize: big ? '1.15rem' : '.95rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(t.value)}</span>
     </div>
@@ -987,7 +987,7 @@ function KpiBreakdown({ label, rows, total, totalColor, fmt, subtotal, tailRows 
       <div className={styles.kpiLabel}>{label}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
         {rows.map(row)}
-        {subtotal && totalLine(subtotal, '#fff', false)}
+        {subtotal && totalLine(subtotal, '#fff', false, false)}
         {tailRows && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: 3, paddingTop: 9 }}>
             {tailRows.map(row)}
