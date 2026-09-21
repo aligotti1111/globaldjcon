@@ -539,7 +539,10 @@ export default function PlannerBuilder({
                       type="button"
                       className={styles.toggle}
                       title="Remove — take this off the page"
-                      onClick={() => onPatch(f.id, { hidden: true })}
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && !window.confirm(`Remove "${titleCaseLabel(f.label) || 'this question'}" from the template? Your client won't see it. You can restore it from "Removed questions" below.`)) return;
+                        onPatch(f.id, { hidden: true });
+                      }}
                     >Remove</button>
                     {f.is_custom ? (
                       <button
