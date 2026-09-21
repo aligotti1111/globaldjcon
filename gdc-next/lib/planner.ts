@@ -378,25 +378,12 @@ export function pickTemplateById(
 ): { base: PlannerTemplate | null; override: PlannerTemplate | null } | null {
   const chosen = all.find((t) => t.id === templateId);
   if (!chosen) return null;
-  if (chosen.event_type == null) {
-    // A base was chosen — prefer the DJ's own saved base if it exists, so their
-    // edits show on reopen (saves go to their copy, not the stock row).
-    const mineBase = all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type == null);
-    return { base: mineBase ?? chosen, override: null };
-  }
+  if (chosen.event_type == null) return { base: chosen, override: null };
   const base =
     all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type == null) ??
     all.find((t) => t.is_standard && t.event_type == null) ??
     null;
-  // CRITICAL: a DJ has ONE saved planner per event type (the PUT keys on
-  // dj_id+event_type). So if the chosen row is a STOCK template, the DJ's edits
-  // live in their own copy for that same event type — resolve to THAT, or the
-  // save appears not to stick on reopen. Only fall back to the stock row when
-  // they haven't customised this event type yet.
-  const override = chosen.is_standard
-    ? (all.find((t) => t.dj_id === djId && !t.is_standard && t.event_type === chosen.event_type) ?? chosen)
-    : chosen;
-  return { base, override };
+  return { base, override: chosen };
 }
 
 /**
@@ -418,16 +405,7 @@ export function composeFields(
   override: PlannerField[],
 ): PlannerField[] {
   const pinnedIds = new Set([DO_NOT_PLAY_FIELD_ID, NOTES_FIELD_ID]);
-  // Prefer the OVERRIDE's copy of a pinned field so the DJ's edits to
-  // "Do NOT play" / "Anything else we should know" (label, help) actually stick
-  // — those two are re-pinned to the end, but their content is still the DJ's.
-  const overridePinned = new Map(override.filter((f) => pinnedIds.has(f.id)).map((f) => [f.id, f]));
-  const basePinnedIds = new Set(base.filter((f) => pinnedIds.has(f.id)).map((f) => f.id));
-  const pinned = [
-    ...base.filter((f) => pinnedIds.has(f.id)).map((f) => overridePinned.get(f.id) ?? f),
-    // Pinned fields that live only in the override (a fork stores them itself).
-    ...[...overridePinned.values()].filter((f) => !basePinnedIds.has(f.id)),
-  ];
+  const pinned = base.filter((f) => pinnedIds.has(f.id));
   const rest = base.filter((f) => !pinnedIds.has(f.id));
 
   // An override must not redefine a base id — the seed guarantees it, but a
