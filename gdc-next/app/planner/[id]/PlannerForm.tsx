@@ -498,29 +498,34 @@ function Field({
   return (
     <div className={`${styles.field} ${na ? styles.fieldNa : ''}`}>
       <div className={styles.fieldHead}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span
-            aria-hidden="true"
-            title={answered ? 'Done' : 'Still needs an answer'}
-            style={{
-              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, lineHeight: 1,
-              background: answered ? 'var(--neon,#00e0a4)' : 'transparent',
-              color: answered ? '#06231b' : 'transparent',
-              border: answered ? 'none' : '2px solid #d9a441',
-            }}
-          >
-            {answered ? '✓' : ''}
+        <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span
+              aria-hidden="true"
+              title={answered ? 'Done' : 'Still needs an answer'}
+              style={{
+                width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700, lineHeight: 1,
+                background: answered ? 'var(--neon,#00e0a4)' : 'transparent',
+                color: answered ? '#06231b' : 'transparent',
+                border: answered ? 'none' : '2px solid #d9a441',
+              }}
+            >
+              {answered ? '✓' : ''}
+            </span>
+            <label className={styles.label}>{titleCaseLabel(field.label)}</label>
           </span>
-          <label className={styles.label}>{titleCaseLabel(field.label)}</label>
-        </span>
+          {/* Sub-explanation lives inside the banner, under the title. */}
+          {field.help && <p className={styles.help} style={{ margin: 0 }}>{field.help}</p>}
+        </div>
         {/* Every field gets this. A client can't delete a question the DJ asked
             (spec §7) — but "doesn't apply to us" is a real answer and they need
             a way to give it. */}
         <button
           type="button"
           className={styles.naBtn}
+          style={{ flexShrink: 0 }}
           onClick={() => onNa(!na)}
         >
           {na ? 'undo' : 'Not applicable'}
@@ -530,10 +535,7 @@ function Field({
       {na ? (
         <div className={styles.naBox}>Not applicable</div>
       ) : (
-        <>
-          {field.help && <p className={styles.help}>{field.help}</p>}
-          <Control field={field} value={v} onChange={onValue} />
-        </>
+        <Control field={field} value={v} onChange={onValue} />
       )}
     </div>
   );
