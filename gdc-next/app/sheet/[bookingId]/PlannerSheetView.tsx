@@ -17,6 +17,7 @@ import {
   hasAnswer,
   isSection,
   isDivider,
+  isSpace,
   playLink,
   DO_NOT_PLAY_FIELD_ID,
   HONOREE_FIELD_ID,
@@ -145,7 +146,9 @@ export default function PlannerSheetView({
             write on. */}
         <div className={styles.grid}>
           {fields.map((f) => (
-            isDivider(f) ? (
+            isSpace(f) ? (
+              <div key={f.id} aria-hidden="true" style={{ height: '1.25rem' }} />
+            ) : isDivider(f) ? (
               <hr key={f.id} className={styles.dividerRule} />
             ) : isSection(f) ? (
               // A heading, not a question — spans the grid and starts a new
