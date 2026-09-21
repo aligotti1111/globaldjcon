@@ -23,7 +23,7 @@ import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
 import { optimizedImageUrl } from '@/lib/img';
 import { parseAlbums, pruneAlbums, type Album } from '@/lib/albums';
-import { effectiveTier, type AccessFields } from '@/lib/access';
+import { effectiveTier, TIERS, type AccessFields } from '@/lib/access';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import {
   LocationPinIcon, ClaimAlertIcon,
@@ -617,7 +617,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     : legacyGallery)
     // Drop anything deleted this session so the grid updates without a reload.
     .filter((u) => !deletedUrls.has(u));
-  const photoCap = hasBookingAccess ? 50 : 4;
+  // Photo cap follows the DJ's tier: Pro 100, Premium Pro 350, Enterprise 1000
+  // (Starter/Free lower). Reads straight off TIERS so the plans and the gallery
+  // can never disagree about the limit.
+  const photoCap = TIERS[effectiveTier(data as unknown as AccessFields)].photos;
   // Albums (Premium Pro + Enterprise). Parsed from the gallery_albums jsonb.
   // An album references URLs that also live in gallery_photos, so we filter to
   // the ones that still exist. Newest-first everywhere in the gallery.
