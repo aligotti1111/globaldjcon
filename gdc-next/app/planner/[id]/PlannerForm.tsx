@@ -645,9 +645,11 @@ function Control({
         <PeopleList
           value={(value as Person[]) || []}
           onChange={onChange}
-          showRole={field.id !== HONOREE_FIELD_ID}
+          // Candle rows are Name + Song (the song stored in the second field).
+          showRole={!isCandle && field.id !== HONOREE_FIELD_ID}
           numbered={isCandle}
           seed={isCandle ? 17 : 1}
+          songMode={isCandle}
         />
       );
     }
@@ -974,13 +976,14 @@ function TextList({
 // ─────────────────────────────────────────────────────────────────────────
 
 function PeopleList({
-  value, onChange, showRole = true, numbered = false, seed = 1,
+  value, onChange, showRole = true, numbered = false, seed = 1, songMode = false,
 }: {
   value: Person[];
   onChange: (v: Person[]) => void;
   showRole?: boolean;
   numbered?: boolean;
   seed?: number;
+  songMode?: boolean;
 }) {
   const [rows, setRows] = useState<Person[]>(() => {
     const want = Math.max(1, seed);
@@ -1012,7 +1015,7 @@ function PeopleList({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {numbered && <span style={{ width: 22, flexShrink: 0 }} aria-hidden="true" />}
         <div className={`${styles.peopleHead}${showRole ? '' : ` ${styles.noRole}`}`} style={{ flex: 1 }}>
-          <span>Name</span>{showRole && <span>Role</span>}<span>Say it like</span><span />
+          <span>Name</span>{showRole && <span>Role</span>}<span>{songMode ? 'Song' : 'Say it like'}</span><span />
         </div>
       </div>
       {rows.map((p, i) => (
@@ -1027,7 +1030,7 @@ function PeopleList({
             <input className={styles.input} placeholder="Role"
               value={p.role || ''} onChange={(e) => set(i, { role: e.target.value })} />
           )}
-          <input className={styles.input} placeholder="optional"
+          <input className={styles.input} placeholder={songMode ? 'Song' : 'optional'}
             value={p.pronunciation || ''} onChange={(e) => set(i, { pronunciation: e.target.value })} />
           {/* Reorder / remove tools only once there's more than one entry —
               you can't reorder or remove the single answer. */}
