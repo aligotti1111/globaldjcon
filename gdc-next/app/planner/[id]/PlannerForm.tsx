@@ -27,6 +27,7 @@ import {
   infoFields,
   isSection,
   isDivider,
+  isSpace,
   titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
@@ -414,7 +415,10 @@ export default function PlannerForm({
 
         <div className={`${styles.fields} ${locked ? styles.fieldsLocked : ''}`} aria-disabled={locked || undefined}>
           {layout.map((f) => (
-            isDivider(f) ? (
+            isSpace(f) ? (
+              // Blank vertical space between questions — a gap with no rule.
+              <div key={f.id} aria-hidden="true" style={{ height: '1.75rem' }} />
+            ) : isDivider(f) ? (
               // A plain rule between questions — purely visual spacing.
               <hr key={f.id} className={styles.divider} />
             ) : isSection(f) ? (
