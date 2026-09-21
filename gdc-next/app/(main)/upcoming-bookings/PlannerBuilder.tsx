@@ -362,7 +362,7 @@ export default function PlannerBuilder({
           onDragEnd={() => { setAddDrag(null); setOverI(null); }}
           title="Drag onto a spot in the list, or click to add at the top"
         >
-          ⠿ + Section title
+          ⠿ Add Section Title
         </button>
         <button
           type="button"
@@ -373,7 +373,7 @@ export default function PlannerBuilder({
           onDragEnd={() => { setAddDrag(null); setOverI(null); }}
           title="Drag onto a spot in the list, or click to add at the top"
         >
-          ⠿ + Divider
+          ⠿ Add Divider
         </button>
       </div>
 
