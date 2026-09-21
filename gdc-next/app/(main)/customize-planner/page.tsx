@@ -22,6 +22,11 @@ export const dynamic = 'force-dynamic';
 export default function CustomizePlannerPage() {
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [eventType, setEventType] = useState<string | null>(null);
+  // Which STOCK template this edit forks. Comes back from the API's GET
+  // (editTemplateKey) and is handed to the save so the DJ's copy is stored as
+  // an INDEPENDENT per-template fork — two templates of one event type (the two
+  // Wedding variants) never share a row. null for a from-scratch custom.
+  const [templateKey, setTemplateKey] = useState<string | null>(null);
   const [name, setName] = useState('your planner');
   // A brand-new custom planner (from Booking Settings' "Create custom"). It's
   // standalone and starts empty — the DJ builds it from scratch — so there's no
@@ -78,6 +83,10 @@ export default function CustomizePlannerPage() {
         const j = await res.json().catch(() => ({}));
         if (!res.ok) { setErr(j?.error || 'Could not open the planner.'); setLoaded(true); return; }
         setFields(j.fields || []);
+        // The key a save writes to — the stock template this edit forks. Kept
+        // so reopening the same template loads the DJ's own version, not the
+        // stock defaults again.
+        if (typeof j.editTemplateKey === 'string') setTemplateKey(j.editTemplateKey);
         setLoaded(true);
       } catch {
         setErr('Could not open the planner.');
@@ -137,6 +146,10 @@ export default function CustomizePlannerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventType,
+          // Forks the specific stock template (keeps the two Wedding variants
+          // independent). Absent on a from-scratch custom, which keys on its
+          // own event_type marker instead.
+          templateKey,
           // A custom planner keeps the name the DJ typed; the derived
           // "My … planner" is only for editing a stock event-type template.
           name: isCustom ? name : (eventType ? `My ${eventType} planner` : 'My planner'),
