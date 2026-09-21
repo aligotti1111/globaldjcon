@@ -601,3 +601,56 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: 'Could not save.' }, { status: 500 });
   }
 }
+
+// ── DELETE ──────────────────────────────────────────────────────────────────
+//
+// Remove a planner the DJ built from scratch. ONLY custom planners are
+// deletable: the stock event-type templates are shared defaults (a DJ's edits
+// are stored as forks, which they revert by editing, not deleting), so deleting
+// one would either fail on the shared row or orphan the defaults. A custom
+// planner is standalone and the DJ's own, so it's theirs to remove.
+export async function DELETE(req: Request) {
+  try {
+    const g = await gate();
+    if (!g.ok) return g.res;
+    const { userId, db } = g;
+    if (!canSettings(g.role)) {
+      return NextResponse.json({ error: 'Your role cannot edit planner templates.' }, { status: 403 });
+    }
+
+    let body: Record<string, unknown>;
+    try { body = await req.json(); } catch {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
+    const plannerId = typeof body.plannerId === 'string' ? body.plannerId.trim() : '';
+    if (!plannerId) {
+      return NextResponse.json({ error: 'Which planner?' }, { status: 400 });
+    }
+
+    // Load it and prove it's a custom planner this DJ owns before removing it.
+    const { data: tData } = await db
+      .from('planners')
+      .select('id, dj_id, is_standard, event_type')
+      .eq('id', plannerId)
+      .maybeSingle();
+    const t = tData as unknown as
+      { id: string; dj_id: string | null; is_standard: boolean; event_type: string | null } | null;
+    // 404, not 403 — don't confirm another DJ's private template id exists.
+    if (!t || t.dj_id !== userId || t.is_standard) {
+      return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
+    }
+    if (!isCustomEventType(t.event_type)) {
+      return NextResponse.json({ error: 'Only custom planners can be deleted.' }, { status: 400 });
+    }
+
+    const { error } = await db
+      .from('planners')
+      .delete()
+      .eq('id', t.id)
+      .eq('dj_id', userId);
+    if (error) return NextResponse.json({ error: 'Could not delete.' }, { status: 500 });
+    return NextResponse.json({ deleted: true });
+  } catch {
+    return NextResponse.json({ error: 'Could not delete.' }, { status: 500 });
+  }
+}
