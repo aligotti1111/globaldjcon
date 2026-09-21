@@ -483,7 +483,7 @@ export default function PlannerBuilder({
               </div>
 
               <div className={styles.body}>
-                <div className={styles.labelRow}>
+                <div className={`${styles.labelRow} ${styles.questionBanner}`}>
                   {(editing === f.id || !f.label.trim()) ? (
                     // Editing, OR a brand-new question with no title yet: show an
                     // input. An untitled one reads as a prompt (accent border +
