@@ -340,8 +340,8 @@ export default function PlannerLibrarySection() {
                     aria-label={`Rename ${t.name}`}
                   ><PencilIcon /></button>
                   <span style={actionsWrapStyle}>
-                    <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
-                    <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit</button>
+                    {/* Delete sits to the LEFT of Preview so Preview/Edit stay
+                        pinned right and line up across every row. */}
                     {isCustomTemplate(t) && (
                       <button
                         type="button"
@@ -352,6 +352,8 @@ export default function PlannerLibrarySection() {
                         {deletingId === t.id ? 'Deleting…' : 'Delete'}
                       </button>
                     )}
+                    <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
+                    <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit</button>
                   </span>
                 </>
               )}
