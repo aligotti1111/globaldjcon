@@ -49,17 +49,26 @@ const actionsWrapStyle: CSSProperties = {
 // A blank event type marks a from-scratch custom planner.
 const isCustomTemplate = (t: TemplateLite) =>
   typeof t.eventType === 'string' && t.eventType.startsWith('custom:');
-// One colour per event type, matched on the type key (falls back on the name).
+// The same palette the Finance page uses to colour event types (its
+// TYPE_COLORS), so a type reads the same colour on both pages.
+const FINANCE_TYPE_COLORS = [
+  '#00f5c4', '#635BFF', '#e6b455', '#ef6f9c', '#4cc2ff',
+  '#9b8cff', '#5fd08a', '#c98bff', '#ff9f6b', '#f45b69',
+  '#3ec6c0', '#b0c94a', '#ff8ac4', '#7aa5ff', '#d99a2b',
+];
+// Fixed slot per event type (matched on the type key, loosely, so a stray
+// 'sweet_16' vs 'sweet16' still lands right) → a stable colour from the palette.
+const EVENT_COLOR_SLOT: Array<[string, number]> = [
+  ['wedding', 0], ['birthday', 1], ['corporate', 2], ['anniversary', 3],
+  ['graduation', 4], ['sweet', 5], ['16', 5], ['quince', 6], ['mitzvah', 7],
+  ['reunion', 8], ['holiday', 9], ['school', 10], ['community', 11], ['other', 12],
+];
 function dotColor(t: TemplateLite): string {
   if (isCustomTemplate(t)) return '#00e0a4';
   const s = `${t.eventType || ''} ${t.name}`.toLowerCase();
-  if (s.includes('wedding')) return '#f0a3bf';
-  if (s.includes('sweet') || s.includes('16')) return '#b3aef0';
-  if (s.includes('quince')) return '#c9a3f0';
-  if (s.includes('mitzvah')) return '#5dcaa5';
-  if (s.includes('birthday')) return '#f0997b';
-  if (s.includes('anniversary')) return '#efac4d';
-  if (s.includes('graduation')) return '#85b7eb';
+  for (const [needle, slot] of EVENT_COLOR_SLOT) {
+    if (s.includes(needle)) return FINANCE_TYPE_COLORS[slot];
+  }
   return '#8a8aa0';
 }
 const nameStyle: CSSProperties = {
