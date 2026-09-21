@@ -177,6 +177,20 @@ export default function PlannerLibrarySection() {
   }
   useEffect(() => { void load(); }, []);
 
+  // The editor (and preview) open in their OWN tab, so a planner the DJ just
+  // created or renamed there won't show here until this list re-fetches. Reload
+  // it whenever the DJ comes back to this tab — closing the editor and clicking
+  // back lands a fresh list without a manual refresh.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void load(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
+
   function openEdit(t: TemplateLite) {
     const qs = new URLSearchParams({ name: t.name, templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
