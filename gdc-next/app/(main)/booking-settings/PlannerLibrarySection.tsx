@@ -24,6 +24,7 @@ type TemplateLite = {
   isStandard: boolean;
   isMine: boolean;
   count: number;
+  hidden?: boolean;
 };
 
 const rowStyle: CSSProperties = {
@@ -133,6 +134,7 @@ export default function PlannerLibrarySection() {
   const [renameDraft, setRenameDraft] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hidingId, setHidingId] = useState<string | null>(null);
 
   // "Create custom planner" — a blank template the DJ builds from scratch. The
   // button reveals a name field; naming it opens the editor on an empty sheet.
@@ -212,6 +214,29 @@ export default function PlannerLibrarySection() {
     const qs = new URLSearchParams({ name: t.name, templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
     window.open(`/planner-preview?${qs}`, '_blank');
+  }
+
+  // Hide / un-hide a planner. Hiding keeps it out of the Send list on the
+  // booking dashboard (it stays here so it can be brought back). Confirmed on
+  // hide; un-hide is instant.
+  async function toggleHidden(t: TemplateLite) {
+    const willHide = !t.hidden;
+    if (willHide && !window.confirm(`Hide "${t.name}"? It won't appear in the planner list when you send from a booking. You can un-hide it here anytime.`)) return;
+    setHidingId(t.id);
+    try {
+      const res = await fetch('/api/planners', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hidePlannerKey: t.id, hidden: willHide }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setErr(j?.error || 'Could not update.'); setHidingId(null); return; }
+      setHidingId(null);
+      void load();
+    } catch {
+      setErr('Could not update.');
+      setHidingId(null);
+    }
   }
 
   // Delete a custom planner (only ever offered on custom rows). Confirmed first
@@ -318,7 +343,11 @@ export default function PlannerLibrarySection() {
           {templates.map((t, i) => (
             <div
               key={t.id}
-              style={i === 0 ? { ...rowStyle, borderTop: 'none' } : rowStyle}
+              style={{
+                ...(i === 0 ? { ...rowStyle, borderTop: 'none' } : rowStyle),
+                // A hidden planner is dimmed so it's clearly out of the send list.
+                ...(t.hidden ? { opacity: 0.5 } : {}),
+              }}
             >
               {renameId === t.id ? (
                 <>
@@ -341,6 +370,9 @@ export default function PlannerLibrarySection() {
                   <span style={{ ...dotStyle, background: dotColor(t) }} aria-hidden="true" />
                   <span style={nameStyle} title={t.name}>{t.name}</span>
                   {isCustomTemplate(t) && <span style={customTagStyle}>Custom</span>}
+                  {t.hidden && (
+                    <span style={{ ...customTagStyle, color: '#8a8aa0', background: 'rgba(140,140,170,.14)' }}>Hidden</span>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
@@ -349,8 +381,18 @@ export default function PlannerLibrarySection() {
                     aria-label={`Rename ${t.name}`}
                   ><PencilIcon /></button>
                   <span style={actionsWrapStyle}>
-                    {/* Delete sits to the LEFT of Preview so Preview/Edit stay
-                        pinned right and line up across every row. */}
+                    {/* Hide/Delete sit to the LEFT of Preview so Preview/Edit
+                        stay pinned right and line up across every row. */}
+                    {!isCustomTemplate(t) && (
+                      <button
+                        type="button"
+                        onClick={() => void toggleHidden(t)}
+                        disabled={hidingId === t.id}
+                        style={{ ...linkBtnStyle, color: t.hidden ? 'var(--neon,#00e0a4)' : '#8a8aa0' }}
+                      >
+                        {hidingId === t.id ? '…' : t.hidden ? 'Unhide' : 'Hide'}
+                      </button>
+                    )}
                     {isCustomTemplate(t) && (
                       <button
                         type="button"
