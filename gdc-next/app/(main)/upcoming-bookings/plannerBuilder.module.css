@@ -529,6 +529,10 @@
   grid-template-columns: 1.6fr 1.2fr 1.2fr;
   gap: .4rem;
 }
+/* Two-column variant (e.g. candle ceremony: Name + Song). */
+.pvPeople.noRole {
+  grid-template-columns: 1.6fr 1.4fr;
+}
 .pvPeople span {
   background: #0a0a10;
   border: 1px solid #23233a;
