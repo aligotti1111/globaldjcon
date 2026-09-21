@@ -982,8 +982,14 @@ function PeopleList({
   numbered?: boolean;
   seed?: number;
 }) {
-  const [rows, setRows] = useState<Person[]>(() =>
-    value.length ? value : Array.from({ length: Math.max(1, seed) }, () => ({ name: '' })));
+  const [rows, setRows] = useState<Person[]>(() => {
+    const want = Math.max(1, seed);
+    const base = value.length ? value : [];
+    // Always show at least `want` rows (17 for a candle ceremony), keeping any
+    // answers already entered and padding the rest with blanks.
+    if (base.length >= want) return base;
+    return [...base, ...Array.from({ length: want - base.length }, () => ({ name: '' }))];
+  });
 
   const push = (next: Person[]) => {
     setRows(next);
