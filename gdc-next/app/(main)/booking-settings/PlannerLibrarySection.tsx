@@ -99,6 +99,11 @@ export default function PlannerLibrarySection() {
   const [renameDraft, setRenameDraft] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
 
+  // "Create custom planner" — a blank template the DJ builds from scratch. The
+  // button reveals a name field; naming it opens the editor on an empty sheet.
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+
   // How many days before the event the DJ wants the planner submitted. Saved on
   // users.planner_lead_days and shown on the client planner. Default 14.
   const [leadDays, setLeadDays] = useState(14);
@@ -151,6 +156,20 @@ export default function PlannerLibrarySection() {
     const qs = new URLSearchParams({ name: t.name, templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
     window.open(`/customize-planner?${qs}`, '_blank');
+  }
+
+  // Open the editor on a BLANK sheet. The `custom:` marker becomes the new
+  // planner's event_type, so it's saved as a standalone template (no base spine
+  // folded in) and never auto-resolves onto a booking — it's chosen by hand.
+  function openCreateCustom() {
+    const name = newName.trim();
+    if (!name) return;
+    const key = `custom:${crypto.randomUUID()}`;
+    const qs = new URLSearchParams({ name, custom: key });
+    window.open(`/customize-planner?${qs}`, '_blank');
+    setCreating(false);
+    setNewName('');
+    // The new planner won't show in the list until it's saved in the editor.
   }
 
   async function saveRename(t: TemplateLite) {
@@ -260,6 +279,49 @@ export default function PlannerLibrarySection() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Create a custom planner from scratch — a blank sheet the DJ builds by
+          adding their own questions. Sits below the list, set apart by a rule. */}
+      {templates && (
+        <div style={{
+          marginTop: '1rem', paddingTop: '1rem',
+          borderTop: '1px solid rgba(140,140,170,.28)', maxWidth: 720,
+        }}>
+          {creating ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'nowrap' }}>
+              {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+              <input
+                autoFocus
+                value={newName}
+                placeholder="Name your planner (e.g. Corporate Gala)"
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') openCreateCustom(); if (e.key === 'Escape') { setCreating(false); setNewName(''); } }}
+                style={inputStyle}
+              />
+              <button type="button" onClick={openCreateCustom} disabled={!newName.trim()} style={miniBtnStyle}>
+                Create
+              </button>
+              <button type="button" onClick={() => { setCreating(false); setNewName(''); }} style={iconBtnStyle} aria-label="Cancel">✕</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '.4rem',
+                background: 'transparent', border: '1px solid var(--neon,#00e0a4)',
+                color: 'var(--neon,#00e0a4)', borderRadius: 8, padding: '.5rem .9rem',
+                fontSize: '.82rem', fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: '1rem', lineHeight: 1 }}>＋</span> Create custom planner
+            </button>
+          )}
+          <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5, margin: '.6rem 0 0' }}>
+            Starts blank — add your own questions to build it, then send it to any booking.
+          </p>
         </div>
       )}
     </div>
