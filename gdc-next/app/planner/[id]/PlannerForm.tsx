@@ -515,7 +515,7 @@ function Field({
             >
               {answered ? '✓' : ''}
             </span>
-            <label className={styles.label}>{titleCaseLabel(field.label)}</label>
+            <label className={styles.label} style={field.id === DO_NOT_PLAY_FIELD_ID ? { color: '#ff5f5f' } : undefined}>{titleCaseLabel(field.label)}</label>
           </span>
           {/* Sub-explanation lives inside the banner, under the title. */}
           {field.help && <p className={styles.help} style={{ margin: 0 }}>{field.help}</p>}
