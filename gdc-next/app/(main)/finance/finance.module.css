@@ -305,9 +305,9 @@
   .chartLegend .swatch { margin-top: 3px; }
   /* Shrink the revenue chart on phones so the over-bar amounts and month labels
      fit the narrow bars instead of clipping / overlapping. */
-  .bars { height: 150px; gap: 3px; }
-  .barGroup { gap: 2px; }
-  .barItem { max-width: 20px; }
-  .barVal { font-size: .48rem; }
+  .bars { height: 150px; gap: 2px; }
+  .barGroup { gap: 1px; }
+  .barItem { max-width: 11px; }
+  .barVal { font-size: .42rem; }
   .barLabel { font-size: .5rem; }
 }
