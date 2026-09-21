@@ -123,6 +123,7 @@ export default function PlannerLibrarySection() {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // "Create custom planner" — a blank template the DJ builds from scratch. The
   // button reveals a name field; naming it opens the editor on an empty sheet.
@@ -202,6 +203,27 @@ export default function PlannerLibrarySection() {
     const qs = new URLSearchParams({ name: t.name, templateId: t.id });
     if (t.eventType) qs.set('eventType', t.eventType);
     window.open(`/planner-preview?${qs}`, '_blank');
+  }
+
+  // Delete a custom planner (only ever offered on custom rows). Confirmed first
+  // — it can't be undone — then removed and the list re-fetched.
+  async function deleteCustom(t: TemplateLite) {
+    if (!window.confirm(`Delete "${t.name}"? This planner and its questions will be removed for good.`)) return;
+    setDeletingId(t.id);
+    try {
+      const res = await fetch('/api/planners', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plannerId: t.id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setErr(j?.error || 'Could not delete.'); setDeletingId(null); return; }
+      setDeletingId(null);
+      void load();
+    } catch {
+      setErr('Could not delete.');
+      setDeletingId(null);
+    }
   }
 
   // Open the editor on a BLANK sheet. The `custom:` marker becomes the new
@@ -320,6 +342,16 @@ export default function PlannerLibrarySection() {
                   <span style={actionsWrapStyle}>
                     <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
                     <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit</button>
+                    {isCustomTemplate(t) && (
+                      <button
+                        type="button"
+                        onClick={() => void deleteCustom(t)}
+                        disabled={deletingId === t.id}
+                        style={{ ...linkBtnStyle, color: '#ff5f5f' }}
+                      >
+                        {deletingId === t.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    )}
                   </span>
                 </>
               )}
