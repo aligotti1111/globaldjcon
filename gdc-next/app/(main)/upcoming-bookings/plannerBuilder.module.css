@@ -288,9 +288,8 @@
    strip with a neon left rule, so questions are visually chunked. */
 .questionBanner {
   align-items: center;
-  background: linear-gradient(90deg, rgba(0, 224, 164, .16), rgba(0, 224, 164, .02) 60%, transparent);
-  border: 1px solid rgba(255, 255, 255, .08);
-  border-left: 3px solid var(--neon, #00e0a4);
+  background: linear-gradient(90deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 8px;
   padding: .5rem .7rem;
   margin-bottom: .55rem;
