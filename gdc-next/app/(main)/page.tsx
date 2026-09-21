@@ -821,7 +821,7 @@ const LANDING_BODY = String.raw`
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 5x e-signed contracts / month</li>
-          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 10 profile photos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 10 photos</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
@@ -848,7 +848,7 @@ const LANDING_BODY = String.raw`
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 30x e-signed contracts / month</li>
-          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100 profile photos</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100 photos</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 2 team logins</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
@@ -874,8 +874,7 @@ const LANDING_BODY = String.raw`
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 100x e-signed contracts / month</li>
-          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 350 profile photos</li>
-          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Photo albums</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 350 photos + albums</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 5 team logins</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Auto receipts</li>
@@ -901,8 +900,7 @@ const LANDING_BODY = String.raw`
         <ul>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Booking engine</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 250x e-signed contracts / month</li>
-          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 1000 profile photos</li>
-          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Photo albums</li>
+          <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 1000 photos + albums</li>
           <li class="hot"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> 15 team logins</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Collect deposits &amp; balances</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Auto receipts</li>
