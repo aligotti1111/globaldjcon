@@ -27,20 +27,45 @@ type TemplateLite = {
 };
 
 const rowStyle: CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: '.4rem',
-  flexWrap: 'nowrap', padding: '.4rem .5rem',
-  borderTop: '1px solid rgba(140,140,170,.12)', borderRadius: 7,
+  display: 'flex', alignItems: 'center', gap: '.55rem',
+  flexWrap: 'nowrap', padding: '.7rem .35rem',
+  borderTop: '1px solid rgba(140,140,170,.14)',
 };
-// Title + its pencil ride together on the left; this wrapper takes the slack so
-// the count and the buttons stay pinned right.
-const titleWrapStyle: CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: '.4rem',
-  flex: '1 1 auto', minWidth: 0,
+// A small colour dot per event type — a quiet way to tell the rows apart at a
+// glance without leaning on icons. Custom planners get the neon accent.
+const dotStyle: CSSProperties = {
+  width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto',
 };
+// The "Custom" tag — only on planners the DJ built from scratch.
+const customTagStyle: CSSProperties = {
+  flex: '0 0 auto', fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase',
+  color: 'var(--neon,#00e0a4)', background: 'rgba(0,224,164,.12)',
+  borderRadius: 5, padding: '2px 7px', fontWeight: 700,
+};
+// Right-hand actions cluster (Preview · Edit).
+const actionsWrapStyle: CSSProperties = {
+  flex: '0 0 auto', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem',
+};
+// A blank event type marks a from-scratch custom planner.
+const isCustomTemplate = (t: TemplateLite) =>
+  typeof t.eventType === 'string' && t.eventType.startsWith('custom:');
+// One colour per event type, matched on the type key (falls back on the name).
+function dotColor(t: TemplateLite): string {
+  if (isCustomTemplate(t)) return '#00e0a4';
+  const s = `${t.eventType || ''} ${t.name}`.toLowerCase();
+  if (s.includes('wedding')) return '#f0a3bf';
+  if (s.includes('sweet') || s.includes('16')) return '#b3aef0';
+  if (s.includes('quince')) return '#c9a3f0';
+  if (s.includes('mitzvah')) return '#5dcaa5';
+  if (s.includes('birthday')) return '#f0997b';
+  if (s.includes('anniversary')) return '#efac4d';
+  if (s.includes('graduation')) return '#85b7eb';
+  return '#8a8aa0';
+}
 const nameStyle: CSSProperties = {
   flex: '0 1 auto', minWidth: 0,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-  fontWeight: 600, fontSize: '.85rem', color: 'var(--white,#fff)',
+  fontWeight: 600, fontSize: '.88rem', color: 'var(--white,#fff)',
 };
 // The rename pencil — a clean line icon, muted until hovered.
 const pencilBtnStyle: CSSProperties = {
@@ -158,6 +183,13 @@ export default function PlannerLibrarySection() {
     window.open(`/customize-planner?${qs}`, '_blank');
   }
 
+  // Preview = the read-only client view of this exact template (no booking).
+  function openPreview(t: TemplateLite) {
+    const qs = new URLSearchParams({ name: t.name, templateId: t.id });
+    if (t.eventType) qs.set('eventType', t.eventType);
+    window.open(`/planner-preview?${qs}`, '_blank');
+  }
+
   // Open the editor on a BLANK sheet. The `custom:` marker becomes the new
   // planner's event_type, so it's saved as a standalone template (no base spine
   // folded in) and never auto-resolves onto a booking — it's chosen by hand.
@@ -241,10 +273,7 @@ export default function PlannerLibrarySection() {
           {templates.map((t, i) => (
             <div
               key={t.id}
-              style={i === 0
-                // Only the very first (standard) planner is set slightly apart.
-                ? { ...rowStyle, marginBottom: '.7rem', paddingBottom: '.7rem', borderBottom: '1px solid rgba(140,140,170,.28)' }
-                : rowStyle}
+              style={i === 0 ? { ...rowStyle, borderTop: 'none' } : rowStyle}
             >
               {renameId === t.id ? (
                 <>
@@ -264,17 +293,20 @@ export default function PlannerLibrarySection() {
                 </>
               ) : (
                 <>
-                  <span style={titleWrapStyle}>
-                    <span style={nameStyle} title={t.name}>{t.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
-                      style={pencilBtnStyle}
-                      title="Rename"
-                      aria-label={`Rename ${t.name}`}
-                    ><PencilIcon /></button>
+                  <span style={{ ...dotStyle, background: dotColor(t) }} aria-hidden="true" />
+                  <span style={nameStyle} title={t.name}>{t.name}</span>
+                  {isCustomTemplate(t) && <span style={customTagStyle}>Custom</span>}
+                  <button
+                    type="button"
+                    onClick={() => { setRenameId(t.id); setRenameDraft(t.name); }}
+                    style={pencilBtnStyle}
+                    title="Rename"
+                    aria-label={`Rename ${t.name}`}
+                  ><PencilIcon /></button>
+                  <span style={actionsWrapStyle}>
+                    <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
+                    <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit</button>
                   </span>
-                  <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Preview/Edit Template</button>
                 </>
               )}
             </div>
