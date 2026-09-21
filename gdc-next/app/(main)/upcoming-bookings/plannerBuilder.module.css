@@ -284,6 +284,19 @@
   gap: .5rem;
 }
 
+/* Each question's title reads as a small hero banner: a subtle accent gradient
+   strip with a neon left rule, so questions are visually chunked. */
+.questionBanner {
+  align-items: center;
+  background: linear-gradient(90deg, rgba(0, 224, 164, .16), rgba(0, 224, 164, .02) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-left: 3px solid var(--neon, #00e0a4);
+  border-radius: 8px;
+  padding: .5rem .7rem;
+  margin-bottom: .55rem;
+}
+.questionBanner .label { color: #fff; font-weight: 700; }
+
 /* The label is a button — click it to rename in place. Looks like the client's
    field label until you touch it. */
 .label {
