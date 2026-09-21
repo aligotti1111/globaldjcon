@@ -76,7 +76,9 @@ function listTemplates(templates: PlannerTemplate[], djId: string) {
     }
   }
   const stockRows = templates
-    .filter((t) => t.is_standard)
+    // Every DEFAULT event type gets its own row; the base spine (event_type
+    // null) is not a planner a DJ sends, so it never shows in the list.
+    .filter((t) => t.is_standard && t.event_type != null)
     .map((s) => {
       const fork = forkByKey.get(s.id);
       return {
