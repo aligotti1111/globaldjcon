@@ -133,6 +133,10 @@ export default function PlannerSendModal({
   const [renameDraft, setRenameDraft] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
 
+  // "View all" — collapsed by default to just this booking's planner(s). When
+  // expanded, every planner shows, with the matching one(s) still pinned on top.
+  const [showAll, setShowAll] = useState(false);
+
   async function load() {
     try {
       const res = await fetch(`/api/planners?bookingId=${bookingId}`);
@@ -231,7 +235,11 @@ export default function PlannerSendModal({
   // without ceremony music), so the DJ chooses. Event types with no template of
   // their own fall back to the base planner (eventType === null).
   // Resolved-first so the auto pick sits at the top and is pre-selected.
-  const rows: TemplateLite[] = (() => {
+  // The planner(s) that FIT this booking's event type, resolved-first so the
+  // auto pick sits at the top and is pre-selected. Most event types have one; a
+  // wedding has two. Event types with no template of their own fall back to the
+  // base planner (eventType === null).
+  const matchedRows: TemplateLite[] = (() => {
     if (!data) return [];
     const et = data.eventType;
     const forType = data.templates.filter((t) => t.eventType === et);
@@ -248,8 +256,96 @@ export default function PlannerSendModal({
     ];
   })();
 
+  // "View all" reveals every OTHER planner beneath the matched one(s).
+  const otherRows: TemplateLite[] = (() => {
+    if (!data) return [];
+    const matchedIds = new Set(matchedRows.map((t) => t.id));
+    return data.templates.filter((t) => !matchedIds.has(t.id));
+  })();
+
   function rowSelected(t: TemplateLite): boolean {
     return t.id === data?.resolved.id ? forcedId === null : forcedId === t.id;
+  }
+
+  // One planner row — used for both the matched list and the "view all" rest.
+  function renderRow(t: TemplateLite) {
+    if (!data) return null;
+    const selected = rowSelected(t);
+    const isAuto = t.id === data.resolved.id;
+    return (
+      <div
+        key={t.id}
+        role="radio"
+        aria-checked={selected}
+        tabIndex={0}
+        onClick={() => setForcedId(isAuto ? null : t.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setForcedId(isAuto ? null : t.id); } }}
+        aria-label={`Send ${t.name}`}
+        style={{ ...(selected ? { ...rowStyle, ...rowSelectedStyle } : rowStyle), cursor: 'pointer' }}
+      >
+        {renameId === t.id ? (
+          <>
+            {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+            <input
+              autoFocus
+              value={renameDraft}
+              disabled={renameBusy}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void saveRename(t);
+                if (e.key === 'Escape') setRenameId(null);
+              }}
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); void saveRename(t); }}
+              disabled={renameBusy}
+              style={{ ...miniBtnStyle }}
+            >
+              {renameBusy ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setRenameId(null); }}
+              disabled={renameBusy}
+              style={iconBtnStyle}
+              aria-label="Cancel rename"
+            >
+              ✕
+            </button>
+          </>
+        ) : (
+          <>
+            <span style={nameStyle} title={t.name}>{t.name}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); startRename(t); }}
+              style={iconBtnStyle}
+              title="Rename"
+              aria-label={`Rename ${t.name}`}
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType); }}
+              style={miniBtnStyle}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name); }}
+              style={miniBtnStyle}
+            >
+              Edit Template
+            </button>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -284,92 +380,51 @@ export default function PlannerSendModal({
               )}
             </div>
 
-            {/* One row per planner. Name, then its own Preview / Customize, with
-                a pencil to rename inline. The dot selects which one Send uses. */}
+            {/* The planner for THIS booking's event type, at the top. Name, its
+                own Preview / Edit, a pencil to rename. The row selects which one
+                Send uses. */}
             <div className={styles.altList}>
-              {rows.map((t) => {
-                const selected = rowSelected(t);
-                const isAuto = t.id === data.resolved.id;
-                return (
-                  <div
-                    key={t.id}
-                    role="radio"
-                    aria-checked={selected}
-                    tabIndex={0}
-                    onClick={() => setForcedId(isAuto ? null : t.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setForcedId(isAuto ? null : t.id); } }}
-                    aria-label={`Send ${t.name}`}
-                    style={{ ...(selected ? { ...rowStyle, ...rowSelectedStyle } : rowStyle), cursor: 'pointer' }}
-                  >
-                    {renameId === t.id ? (
-                      <>
-                        {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-                        <input
-                          autoFocus
-                          value={renameDraft}
-                          disabled={renameBusy}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => setRenameDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') void saveRename(t);
-                            if (e.key === 'Escape') setRenameId(null);
-                          }}
-                          style={inputStyle}
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); void saveRename(t); }}
-                          disabled={renameBusy}
-                          style={{ ...miniBtnStyle }}
-                        >
-                          {renameBusy ? 'Saving…' : 'Save'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setRenameId(null); }}
-                          disabled={renameBusy}
-                          style={iconBtnStyle}
-                          aria-label="Cancel rename"
-                        >
-                          ✕
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          style={nameStyle}
-                          title={t.name}
-                        >
-                          {t.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); startRename(t); }}
-                          style={iconBtnStyle}
-                          title="Rename"
-                          aria-label={`Rename ${t.name}`}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType); }}
-                          style={miniBtnStyle}
-                        >
-                          Preview
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name); }}
-                          style={miniBtnStyle}
-                        >
-                          Edit Template
-                        </button>
-                      </>
-                    )}
+              {matchedRows.map((t) => renderRow(t))}
+
+              {/* View all — reveal every other planner beneath, matched still on
+                  top. Hidden if there are no others to show. */}
+              {otherRows.length > 0 && !showAll && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  style={{
+                    ...miniBtnStyle, width: '100%', marginTop: '.4rem',
+                    textAlign: 'center', justifyContent: 'center',
+                    padding: '.35rem .5rem', color: 'var(--muted,#8a8aa0)',
+                  }}
+                >
+                  View all planners ({otherRows.length})
+                </button>
+              )}
+
+              {showAll && otherRows.length > 0 && (
+                <>
+                  <div style={{
+                    fontSize: '.58rem', fontWeight: 700, letterSpacing: '.08em',
+                    textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)',
+                    padding: '.6rem .5rem .25rem',
+                  }}>
+                    All planners
                   </div>
-                );
-              })}
+                  {otherRows.map((t) => renderRow(t))}
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(false)}
+                    style={{
+                      ...miniBtnStyle, width: '100%', marginTop: '.4rem',
+                      textAlign: 'center', justifyContent: 'center',
+                      padding: '.35rem .5rem', color: 'var(--muted,#8a8aa0)',
+                    }}
+                  >
+                    Show less
+                  </button>
+                </>
+              )}
             </div>
 
             <div className={styles.foot}>
