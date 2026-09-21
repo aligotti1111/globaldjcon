@@ -98,7 +98,7 @@ function SecHeader({ label, icon }: { label: string; icon: React.ReactNode }) {
       >
         {icon}
       </span>
-      <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '.01em', color: '#fff' }}>{label}</span>
+      <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff' }}>{label}</span>
     </div>
   );
 }
@@ -769,13 +769,14 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                       padding: '.7rem .9rem', cursor: clickable ? 'pointer' : 'default',
                     }}
                   >
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '1rem', color: 'var(--white,#fff)' }}>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '1rem', color: 'var(--white,#fff)', minWidth: 84, display: 'inline-block' }}>
                       {h.percent ?? 0}% off
                     </span>
                     <span
                       style={{
                         fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
                         padding: '2px 9px', borderRadius: 999, color: '#fff', background: '#d64545',
+                        flexShrink: 0, minWidth: 58, textAlign: 'center',
                       }}
                     >
                       Ended
