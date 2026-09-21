@@ -418,7 +418,16 @@ export function composeFields(
   override: PlannerField[],
 ): PlannerField[] {
   const pinnedIds = new Set([DO_NOT_PLAY_FIELD_ID, NOTES_FIELD_ID]);
-  const pinned = base.filter((f) => pinnedIds.has(f.id));
+  // Prefer the OVERRIDE's copy of a pinned field so the DJ's edits to
+  // "Do NOT play" / "Anything else we should know" (label, help) actually stick
+  // — those two are re-pinned to the end, but their content is still the DJ's.
+  const overridePinned = new Map(override.filter((f) => pinnedIds.has(f.id)).map((f) => [f.id, f]));
+  const basePinnedIds = new Set(base.filter((f) => pinnedIds.has(f.id)).map((f) => f.id));
+  const pinned = [
+    ...base.filter((f) => pinnedIds.has(f.id)).map((f) => overridePinned.get(f.id) ?? f),
+    // Pinned fields that live only in the override (a fork stores them itself).
+    ...[...overridePinned.values()].filter((f) => !basePinnedIds.has(f.id)),
+  ];
   const rest = base.filter((f) => !pinnedIds.has(f.id));
 
   // An override must not redefine a base id — the seed guarantees it, but a
