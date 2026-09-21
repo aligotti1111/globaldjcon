@@ -68,7 +68,7 @@ async function loadTemplates(db: SupabaseClient, djId: string): Promise<PlannerT
 // count and reads as "theirs", but keeps the STOCK id as its row id so Edit and
 // Rename resolve through pickTemplateById → the fork. This is what stops the
 // two Wedding variants (and their forks) from stacking up as four rows.
-function listTemplates(templates: PlannerTemplate[], djId: string) {
+function listTemplates(templates: PlannerTemplate[], djId: string, hidden: Set<string> = new Set()) {
   const forkByKey = new Map<string, PlannerTemplate>();
   for (const t of templates) {
     if (!t.is_standard && t.dj_id === djId && t.template_key) {
@@ -91,6 +91,8 @@ function listTemplates(templates: PlannerTemplate[], djId: string) {
         count: fork
           ? visibleFields(fork.fields || []).length
           : composedCount(templates, djId, s),
+        // Whether the DJ has hidden this planner from the send list.
+        hidden: hidden.has(s.id),
       };
     });
   // From-scratch custom planners are standalone rows (no template_key).
@@ -103,8 +105,20 @@ function listTemplates(templates: PlannerTemplate[], djId: string) {
       isStandard: false,
       isMine: true,
       count: visibleFields(t.fields || []).length,
+      hidden: hidden.has(t.id),
     }));
   return [...stockRows, ...customRows];
+}
+
+// The DJ's hidden-planner keys, read from their users row.
+async function loadHiddenKeys(db: SupabaseClient, djId: string): Promise<Set<string>> {
+  const { data } = await db
+    .from('users')
+    .select('hidden_planner_keys')
+    .eq('id', djId)
+    .maybeSingle();
+  const raw = (data as unknown as { hidden_planner_keys?: unknown } | null)?.hidden_planner_keys;
+  return new Set(Array.isArray(raw) ? raw.map(String) : []);
 }
 
 // The number a DJ sees next to a template in the list must be the number of
@@ -187,12 +201,15 @@ export async function GET(req: Request) {
     // booking data, so the preview shows the raw fields) for the editor/preview.
     if (!bookingId) {
       const templates = await loadTemplates(db, userId);
+      const hidden = await loadHiddenKeys(db, userId);
       const raw = url.searchParams.get('eventType');
       // A specific template id disambiguates types with more than one template
       // (weddings: with / without ceremony). When present it wins over eventType.
       const templateId = url.searchParams.get('templateId');
       if (raw === null && !templateId) {
-        return NextResponse.json({ templates: listTemplates(templates, userId) });
+        // The library shows every planner (hidden ones flagged, so they can be
+        // un-hidden) — hiding only affects the send list on the dashboard.
+        return NextResponse.json({ templates: listTemplates(templates, userId, hidden) });
       }
       let base: ReturnType<typeof pickTemplate>['base'];
       let override: ReturnType<typeof pickTemplate>['override'];
@@ -259,7 +276,7 @@ export async function GET(req: Request) {
         eventType: wantType,
         bookingType: null,
         event: { date: null, venue: null },
-        templates: listTemplates(templates, userId),
+        templates: listTemplates(templates, userId, hidden),
       });
     }
 
@@ -281,6 +298,7 @@ export async function GET(req: Request) {
     if (b.dj_id !== userId) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
 
     const templates = await loadTemplates(db, userId);
+    const hidden = await loadHiddenKeys(db, userId);
 
     // Which planner to compose? Normally the booking's own event type. But the
     // editor can ask for a SPECIFIC one via ?eventType= — that's how "customise"
@@ -346,8 +364,11 @@ export async function GET(req: Request) {
         venue: (b.venue_name as string | null) || null,
       },
       // For "use a different planner". One row per stock template (folding in
-      // the DJ's fork of it) plus their own from-scratch customs.
-      templates: listTemplates(templates, userId),
+      // the DJ's fork of it) plus their own from-scratch customs. Planners the
+      // DJ hid drop out here — except the one resolved for THIS booking, which
+      // stays so the auto pick always has something to send.
+      templates: listTemplates(templates, userId, hidden)
+        .filter((t) => !t.hidden || t.id === resolved.id),
     });
   } catch {
     return NextResponse.json({ error: 'Could not load planners.' }, { status: 500 });
@@ -442,6 +463,30 @@ export async function PUT(req: Request) {
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch {
       return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
+
+    // ── Hide / un-hide ────────────────────────────────────────────────────────
+    //
+    // Hiding a planner keeps it out of the Send list on the booking dashboard.
+    // It's a per-DJ preference (a list of planner keys on their users row), not a
+    // change to the template — nothing is deleted, and it un-hides the same way.
+    if (typeof body.hidePlannerKey === 'string' && body.hidePlannerKey) {
+      const key = body.hidePlannerKey.trim().slice(0, 64);
+      const hide = body.hidden !== false; // default true
+      const { data: uRow } = await db
+        .from('users')
+        .select('hidden_planner_keys')
+        .eq('id', userId)
+        .maybeSingle();
+      const cur = (uRow as unknown as { hidden_planner_keys?: unknown } | null)?.hidden_planner_keys;
+      const set = new Set(Array.isArray(cur) ? cur.map(String) : []);
+      if (hide) set.add(key); else set.delete(key);
+      const { error } = await db
+        .from('users')
+        .update({ hidden_planner_keys: [...set] } as unknown as never)
+        .eq('id', userId);
+      if (error) return NextResponse.json({ error: 'Could not update.' }, { status: 500 });
+      return NextResponse.json({ saved: true, hidden: hide });
     }
 
     // ── Rename ──────────────────────────────────────────────────────────────
