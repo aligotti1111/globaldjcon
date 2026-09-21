@@ -66,6 +66,8 @@ interface NotifyInit {
   email_notify_booking_request: boolean;
   email_notify_booking_status: boolean;
   email_notify_inbox_message: boolean;
+  email_notify_weekly_digest: boolean;
+  email_notify_monthly_digest: boolean;
 }
 
 // Build the notification-prefs init from a users row, defaulting every toggle
@@ -82,6 +84,9 @@ function buildNotifyInit(row: Record<string, unknown>): NotifyInit {
     email_notify_booking_request: b(row.email_notify_booking_request),
     email_notify_booking_status: b(row.email_notify_booking_status),
     email_notify_inbox_message: b(row.email_notify_inbox_message),
+    // Digests are opt-IN → default OFF (only on when explicitly true).
+    email_notify_weekly_digest: row.email_notify_weekly_digest === true,
+    email_notify_monthly_digest: row.email_notify_monthly_digest === true,
   };
 }
 
