@@ -272,6 +272,14 @@ const LANDING_CSS = String.raw`
 .gdc-landing .shead p{color:var(--muted);font-size:1.06rem}
 @media(min-width:1240px){
 .gdc-landing #features .shead h2{white-space:normal;overflow:visible}
+/* Desktop: keep "Everything needed from start to finish" on ONE line. The
+   centered .shead is normally capped at 720px, which forces the wrap — widen
+   it here and let the heading run nowrap (the paragraph re-centers under it). */
+@media(min-width:981px){
+.gdc-landing #features .shead{max-width:1040px}
+.gdc-landing #features .shead h2{white-space:nowrap;font-size:clamp(2.4rem,4.4vw,3.4rem)}
+.gdc-landing #features .shead p{max-width:720px;margin-left:auto;margin-right:auto}
+}
 }
 .gdc-landing /* TWO DJ TYPES + pipelines */
   /* 3 steps */
