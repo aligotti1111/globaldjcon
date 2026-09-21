@@ -30,7 +30,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
-import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isDivider, isStructural, titleCaseLabel } from '@/lib/planner';
+import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isDivider, isSpace, isStructural, titleCaseLabel } from '@/lib/planner';
 import { createClient } from '@/lib/supabase/client';
 import styles from './plannerBuilder.module.css';
 
@@ -80,7 +80,7 @@ export default function PlannerBuilder({
   const [addOpen, setAddOpen] = useState(false);
   // A NEW section/divider being dragged in from the top buttons (vs. an existing
   // row being reordered). Set on the button's dragstart; consumed on drop.
-  const [addDrag, setAddDrag] = useState<'section' | 'divider' | null>(null);
+  const [addDrag, setAddDrag] = useState<'section' | 'divider' | 'space' | null>(null);
 
   // ── The DJ's business logo ────────────────────────────────────────────────
   // Same shared field (users.contract_logo_url) and same upload path as the
@@ -239,7 +239,7 @@ export default function PlannerBuilder({
   // Drop a NEW section/divider at editable index toE (before that row; the list
   // end when toE >= length). Splices straight into the full array at the matching
   // absolute index so anchored (prefilled) fields keep their places.
-  function insertStructuralAt(toE: number, type: 'section' | 'divider') {
+  function insertStructuralAt(toE: number, type: 'section' | 'divider' | 'space') {
     let count = 0;
     let absIdx = fields.length;
     for (let a = 0; a < fields.length; a++) {
@@ -375,6 +375,17 @@ export default function PlannerBuilder({
         >
           ⠿ Add Divider
         </button>
+        <button
+          type="button"
+          className={`${styles.addBtnAlt} ${addDrag === 'space' ? styles.addBtnDragging : ''}`}
+          draggable
+          onClick={() => insertStructuralAt(0, 'space')}
+          onDragStart={() => setAddDrag('space')}
+          onDragEnd={() => { setAddDrag(null); setOverI(null); }}
+          title="Drag onto a spot in the list, or click to add at the top"
+        >
+          ⠿ Add Space
+        </button>
       </div>
 
       <div
@@ -399,6 +410,7 @@ export default function PlannerBuilder({
           // on the client page it renders clean (a heading, or a plain rule).
           if (isStructural(f)) {
             const div = isDivider(f);
+            const space = isSpace(f);
             return (
               <div
                 key={f.id}
@@ -423,7 +435,15 @@ export default function PlannerBuilder({
                 </div>
                 <div className={styles.body}>
                   <div className={styles.labelRow}>
-                    {div ? (
+                    {space ? (
+                      <span style={{
+                        flex: 1, height: 34, borderRadius: 8,
+                        border: '1px dashed rgba(140,140,170,.35)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase',
+                        color: 'var(--muted,#8a8aa0)',
+                      }}>Blank space</span>
+                    ) : div ? (
                       <span className={styles.dividerLine} />
                     ) : (editing === f.id || !f.label.trim()) ? (
                       <input
