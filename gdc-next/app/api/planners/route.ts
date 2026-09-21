@@ -407,11 +407,13 @@ function sanitiseFields(raw: unknown): { fields: PlannerField[]; error?: string 
     if (seen.has(id)) continue;          // collision — first one wins
     seen.add(id);
 
-    const type = TYPES.includes(o.type as PlannerFieldType)
-      ? (o.type as PlannerFieldType)
-      : 'text';
+    // Structural fields (section heading, divider, blank space) aren't
+    // questions and pass through by type — a divider/space carries no label.
+    const STRUCTURAL = new Set<PlannerFieldType>(['section', 'divider', 'space']);
+    const rawType = o.type as PlannerFieldType;
+    const type = (TYPES.includes(rawType) || STRUCTURAL.has(rawType)) ? rawType : 'text';
     const label = clamp(o.label, MAX_LABEL);
-    if (!label) continue;                 // a question with no question
+    if (!STRUCTURAL.has(type) && !label) continue; // a question with no question
 
     const f: PlannerField = { id, type, label };
     const help = clamp(o.help, MAX_HELP);
