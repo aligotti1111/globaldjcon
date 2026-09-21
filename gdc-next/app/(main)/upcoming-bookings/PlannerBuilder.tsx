@@ -428,6 +428,7 @@ export default function PlannerBuilder({
                         autoFocus={editing === f.id}
                         placeholder="Section title…"
                         value={f.label}
+                        onFocus={() => { if (editing !== f.id) setEditing(f.id); }}
                         onChange={(e) => onPatch(f.id, { label: e.target.value })}
                         onBlur={() => setEditing(null)}
                         onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
@@ -500,6 +501,10 @@ export default function PlannerBuilder({
                       autoFocus={editing === f.id}
                       value={f.label}
                       placeholder="Type your question here…"
+                      // Lock into edit mode on focus so the first keystroke (which
+                      // makes the label non-empty) doesn't flip the input back to
+                      // the read-only title and drop focus mid-typing.
+                      onFocus={() => { if (editing !== f.id) setEditing(f.id); }}
                       onChange={(e) => onPatch(f.id, { label: e.target.value })}
                       onBlur={() => setEditing(null)}
                       onKeyDown={(e) => { if (e.key === 'Enter') setEditing(null); }}
