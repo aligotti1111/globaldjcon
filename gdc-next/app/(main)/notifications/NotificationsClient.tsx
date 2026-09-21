@@ -41,6 +41,8 @@ interface PrefsInit {
   email_notify_booking_request: boolean;
   email_notify_booking_status: boolean;
   email_notify_inbox_message: boolean;
+  email_notify_weekly_digest: boolean;
+  email_notify_monthly_digest: boolean;
 }
 
 interface Props {
@@ -84,6 +86,10 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
     inbox_message: init.sms_notify_inbox_message,
   });
 
+  // ── Booking digests (DJ only, opt-in) ─────────────────────────────
+  const [weeklyDigest, setWeeklyDigest] = useState(init.email_notify_weekly_digest);
+  const [monthlyDigest, setMonthlyDigest] = useState(init.email_notify_monthly_digest);
+
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState<Alert>(null);
   const [brNote, setBrNote] = useState<string | null>(null);
@@ -104,6 +110,8 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
       booking_status: init.sms_notify_booking_status,
       inbox_message: init.sms_notify_inbox_message,
     } as Record<RowKey, boolean>,
+    weeklyDigest: init.email_notify_weekly_digest,
+    monthlyDigest: init.email_notify_monthly_digest,
   });
 
   const dirty =
@@ -114,7 +122,9 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
     email.inbox_message !== savedSnap.email.inbox_message ||
     text.booking_request !== savedSnap.text.booking_request ||
     text.booking_status !== savedSnap.text.booking_status ||
-    text.inbox_message !== savedSnap.text.inbox_message;
+    text.inbox_message !== savedSnap.text.inbox_message ||
+    weeklyDigest !== savedSnap.weeklyDigest ||
+    monthlyDigest !== savedSnap.monthlyDigest;
 
   // Report dirty upward without making onDirtyChange a hard dependency.
   const onDirtyRef = useRef(onDirtyChange);
@@ -205,6 +215,8 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
           email_notify_booking_request: email.booking_request,
           email_notify_booking_status: email.booking_status,
           email_notify_inbox_message: email.inbox_message,
+          email_notify_weekly_digest: weeklyDigest,
+          email_notify_monthly_digest: monthlyDigest,
         } as unknown as never)
         .eq('id', userId);
       if (error) throw error;
@@ -215,6 +227,8 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
         smsEnabled,
         email: { ...email },
         text: { ...text },
+        weeklyDigest,
+        monthlyDigest,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -336,6 +350,47 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
         )}
 
         {brNote && <p className={styles.reqNote}>{brNote}</p>}
+
+        {/* Booking digests — DJ-only email summaries of upcoming bookings. */}
+        {isDj && (
+          <>
+            <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.12))', margin: '1.4rem 0' }} />
+            <h2>Booking digests</h2>
+            <p className={styles.cardHint}>
+              A summary email of your upcoming bookings, in date order, with the total at the top.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.6rem', margin: '.6rem 0', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                className={styles.cb}
+                checked={weeklyDigest}
+                onChange={(e) => setWeeklyDigest(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                <span style={{ fontWeight: 600 }}>Weekly</span>
+                <span style={{ display: 'block', fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
+                  Every Monday morning — the coming week&rsquo;s bookings.
+                </span>
+              </span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.6rem', margin: '.6rem 0', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                className={styles.cb}
+                checked={monthlyDigest}
+                onChange={(e) => setMonthlyDigest(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                <span style={{ fontWeight: 600 }}>Monthly</span>
+                <span style={{ display: 'block', fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
+                  On the 1st of each month — that month&rsquo;s bookings.
+                </span>
+              </span>
+            </label>
+          </>
+        )}
 
         {alert && (
           <div
