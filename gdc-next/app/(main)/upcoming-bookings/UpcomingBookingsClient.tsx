@@ -184,11 +184,14 @@ export default function UpcomingBookingsClient({
         if (!row) return;
         const raw = row?.booking_settings;
         const bs = (typeof raw === 'string' ? JSON.parse(raw) : (raw || {})) as { club_deposit_pct?: number; tax_enabled?: boolean; tax_pct?: number; require_contract?: boolean; rider_enabled?: boolean; guestlist_enabled?: boolean };
-        const ss = row?.sub_status;
-        setIsPaid(ss === 'active' || ss === 'grace');
-        // Same helper the server gate uses, so the row and /api/planner/request
-        // can't come to different conclusions about the same DJ.
-        setCanPro(!!row && canUsePro(row));
+        // "Can create a booking" is the same access question as pro: active,
+        // grace, comp, or trial all qualify. Checking only sub_status
+        // active|grace missed comped and trialing DJs — for them the "Add
+        // Booking Manually" button was hidden and the header-dropdown open was
+        // silently dropped. canUsePro() is the one helper the server gate uses.
+        const paid = !!row && canUsePro(row);
+        setIsPaid(paid);
+        setCanPro(paid);
         setRequireContract(!!bs?.require_contract);
         setRiderEnabled(!!bs?.rider_enabled);
         setGuestlistEnabled(!!bs?.guestlist_enabled);
