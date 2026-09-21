@@ -634,11 +634,23 @@ function Control({
     case 'textlist':
       return <TextList value={(value as string[]) || []} onChange={onChange} />;
 
-    case 'people':
+    case 'people': {
       // The Guest of Honor is, by definition, the honoree — a Role column there
       // is redundant, so drop it for that field. Other people lists (couple,
       // bridal party, family) keep Role.
-      return <PeopleList value={(value as Person[]) || []} onChange={onChange} showRole={field.id !== HONOREE_FIELD_ID} />;
+      // A candle ceremony is an ordered, fixed-count list: number the rows and
+      // seed one per candle (16 candles + the guest of honor = 17).
+      const isCandle = /candle/i.test(field.label);
+      return (
+        <PeopleList
+          value={(value as Person[]) || []}
+          onChange={onChange}
+          showRole={field.id !== HONOREE_FIELD_ID}
+          numbered={isCandle}
+          seed={isCandle ? 17 : 1}
+        />
+      );
+    }
 
     case 'timeline':
       return <Timeline value={(value as TimelineRow[]) || []} onChange={onChange} />;
@@ -962,14 +974,16 @@ function TextList({
 // ─────────────────────────────────────────────────────────────────────────
 
 function PeopleList({
-  value, onChange, showRole = true,
+  value, onChange, showRole = true, numbered = false, seed = 1,
 }: {
   value: Person[];
   onChange: (v: Person[]) => void;
   showRole?: boolean;
+  numbered?: boolean;
+  seed?: number;
 }) {
   const [rows, setRows] = useState<Person[]>(() =>
-    value.length ? value : [{ name: '' }]);
+    value.length ? value : Array.from({ length: Math.max(1, seed) }, () => ({ name: '' })));
 
   const push = (next: Person[]) => {
     setRows(next);
@@ -989,11 +1003,18 @@ function PeopleList({
 
   return (
     <div className={styles.list}>
-      <div className={`${styles.peopleHead}${showRole ? '' : ` ${styles.noRole}`}`}>
-        <span>Name</span>{showRole && <span>Role</span>}<span>Say it like</span><span />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {numbered && <span style={{ width: 22, flexShrink: 0 }} aria-hidden="true" />}
+        <div className={`${styles.peopleHead}${showRole ? '' : ` ${styles.noRole}`}`} style={{ flex: 1 }}>
+          <span>Name</span>{showRole && <span>Role</span>}<span>Say it like</span><span />
+        </div>
       </div>
       {rows.map((p, i) => (
-        <div key={i} className={`${styles.peopleRow}${showRole ? '' : ` ${styles.noRole}`}`}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {numbered && (
+            <span style={{ width: 22, flexShrink: 0, textAlign: 'right', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', fontVariantNumeric: 'tabular-nums' }}>{i + 1}.</span>
+          )}
+          <div className={`${styles.peopleRow}${showRole ? '' : ` ${styles.noRole}`}`} style={{ flex: 1 }}>
           <input className={styles.input} placeholder="Name"
             value={p.name || ''} onChange={(e) => set(i, { name: e.target.value })} />
           {showRole && (
@@ -1014,6 +1035,7 @@ function PeopleList({
                 onClick={() => push(rows.filter((_, j) => j !== i))}>✕</button>
             </div>
           )}
+          </div>
         </div>
       ))}
       <button type="button" className={styles.add} onClick={() => push([...rows, { name: '' }])}>
