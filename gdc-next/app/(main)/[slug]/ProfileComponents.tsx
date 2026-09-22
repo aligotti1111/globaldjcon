@@ -3342,27 +3342,20 @@ export function AboutStatsRow({
     );
   }
 
-  // ── Owner view: the exact boxes, editable in place (list on mobile) ──
+  // ── Owner view: condensed one-line-per-fact list (checkbox + answer) ──
   if (isOwnProfile) {
     return (
       <div className={styles.aboutStatsWrap}>
         <div className={styles.aboutStatsHeading}>Quick Facts</div>
-        <div className={styles.aboutStatsGrid}>
+        <div className={styles.aboutStatsEditList}>
           {STAT_FIELDS.map(f => {
             const on = !!draft[f.key]?.on;
             return (
-              <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit} ${on ? '' : styles.aboutStatCardOff}`}>
-                <button
-                  type="button"
-                  className={`${styles.aboutStatOnBtn} ${on ? styles.aboutStatOnBtnOn : ''}`}
-                  onClick={() => toggle(f.key)}
-                  title={on ? 'Showing on profile — click to hide' : 'Hidden — click to show'}
-                >
-                  {on ? 'On' : 'Off'}
-                </button>
-                <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
-                <div className={styles.aboutStatLabel}>{f.label}</div>
-              </div>
+              <label key={f.key} className={styles.aboutStatEditLine}>
+                <input type="checkbox" className={styles.tabsCheckbox} checked={on} onChange={() => toggle(f.key)} />
+                <span className={styles.aboutStatEditName}>{f.label}</span>
+                <span className={styles.aboutStatEditCtl}>{renderStatControl(f.key, f.control)}</span>
+              </label>
             );
           })}
         </div>
