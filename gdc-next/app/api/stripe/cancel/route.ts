@@ -11,9 +11,10 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { getActingContext, canBilling } from '@/lib/acting';
+import { sendSubscriptionCanceledEmail } from '@/lib/email/subscriptionEmails';
 
 export const runtime = 'nodejs';
 
@@ -35,10 +36,11 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data: rowData } = await admin
     .from('users')
-    .select('stripe_subscription_id')
+    .select('stripe_subscription_id, sub_tier')
     .eq('id', user.id)
     .maybeSingle();
   const subId = (rowData as unknown as { stripe_subscription_id?: string | null } | null)?.stripe_subscription_id || null;
+  const subTier = (rowData as unknown as { sub_tier?: number | null } | null)?.sub_tier ?? 0;
   if (!subId) {
     return NextResponse.json({ error: 'No active subscription found.' }, { status: 400 });
   }
@@ -48,6 +50,18 @@ export async function POST(req: Request) {
     const sub = await stripe.subscriptions.update(subId, { cancel_at_period_end: !resume });
     const periodEndUnix = sub.items?.data?.[0]?.current_period_end;
     const periodEnd = periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null;
+
+    // On a cancel (not a resume), confirm it by email: which plan + when access
+    // ends. Best-effort — never fail the cancel over the email.
+    if (!resume) {
+      try {
+        const email = await resolveUserEmail(user.id);
+        if (email) await sendSubscriptionCanceledEmail(email, { tier: subTier, endIso: periodEnd });
+      } catch (e) {
+        console.warn('[stripe/cancel] cancel email failed', e);
+      }
+    }
+
     return NextResponse.json({ ok: true, cancelAtPeriodEnd: !resume, periodEnd });
   } catch (e) {
     console.error('[stripe/cancel] error', e);
