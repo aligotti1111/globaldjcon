@@ -3363,7 +3363,7 @@ export function AboutStatsRow({
                   title={on ? 'Showing to visitors — uncheck to hide' : 'Hidden — check to show'}
                 />
                 <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
-                <div className={styles.aboutStatLabel}>{f.label}</div>
+                <div className={styles.aboutStatLabel}>{f.label}?</div>
               </div>
             );
           })}
