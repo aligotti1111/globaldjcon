@@ -2492,7 +2492,7 @@
   justify-content: center;
   gap: .55rem;
   padding: .55rem 1rem;
-  background: rgba(5, 5, 7, .6);
+  background: var(--black);
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
@@ -2502,9 +2502,9 @@
   margin-right: auto;
 }
 .underBannerSocialBtn {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 29px;
+  height: 29px;
+  min-width: 29px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2515,8 +2515,8 @@
   transition: color .15s, background .15s, opacity .15s;
 }
 .underBannerSocialBtn svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
   display: block;
 }
 .underBannerSocialBtn:hover {
@@ -2650,12 +2650,12 @@
    so add buttons visually match the populated ones. */
 .underBannerSocials .actionBtn,
 .underBannerContact .actionBtn {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  max-width: 32px !important;
-  max-height: 32px !important;
+  width: 29px !important;
+  height: 29px !important;
+  min-width: 29px !important;
+  min-height: 29px !important;
+  max-width: 29px !important;
+  max-height: 29px !important;
   padding: 0 !important;
   position: relative;
   border: 1px solid #fff !important;
@@ -2664,13 +2664,13 @@
   color: #fff;
   gap: 0;
   box-sizing: border-box;
-  flex: 0 0 32px;
+  flex: 0 0 29px;
   line-height: 1;
 }
 .underBannerSocials .actionBtn svg,
 .underBannerContact .actionBtn svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
 }
 @media (max-width: 700px) {
   .underBannerSocials { gap: .35rem; padding: .45rem .7rem; width: 100%; margin-left: 0; margin-right: 0; }
