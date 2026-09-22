@@ -424,8 +424,8 @@ export default function PlannerLibrarySection() {
                         {deletingId === t.id ? 'Deleting…' : 'Delete'}
                       </button>
                     )}
+                    <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit planner</button>
                     <button type="button" onClick={() => openPreview(t)} style={linkBtnStyle}>Preview</button>
-                    <button type="button" onClick={() => openEdit(t)} style={linkBtnStyle}>Edit</button>
                   </span>
                 </>
               )}
