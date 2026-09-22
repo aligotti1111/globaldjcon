@@ -2124,6 +2124,10 @@
        reads a little taller on phones. */
     min-height: 203px;
     justify-content: flex-start;
+    /* Full-width banner on mobile (desktop keeps the 80% trim). */
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
   }
   .heroTopRow {
     display: flex;
@@ -2632,7 +2636,7 @@
   height: 19px;
 }
 @media (max-width: 700px) {
-  .underBannerSocials { gap: .35rem; padding: .45rem .7rem; }
+  .underBannerSocials { gap: .35rem; padding: .45rem .7rem; width: 100%; margin-left: 0; margin-right: 0; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
   .underBannerSocialBtn svg { width: 16px; height: 16px; }
   .underBannerSocials .actionBtn {
