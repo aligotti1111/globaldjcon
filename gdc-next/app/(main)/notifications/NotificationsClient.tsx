@@ -33,6 +33,10 @@ type RowKey = 'booking_request' | 'booking_status' | 'inbox_message';
 
 interface PrefsInit {
   role: string;
+  // Paid booking access (subscription/comp). Free DJ accounts don't get the
+  // booking feature, so they get no SMS/text notifications and no booking
+  // digests. Teammates act on the owner's paid account, so they pass true.
+  canBook: boolean;
   sms_phone: string;
   sms_enabled: boolean;
   sms_notify_booking_request: boolean;
@@ -69,6 +73,11 @@ function digitsOf(s: string): number {
 export default function NotificationsClient({ userId, init, onDirtyChange }: Props) {
   const isDj = init.role === 'dj';
   const isTeammate = init.role === 'teammate';
+  // SMS/text is a paid booking feature: hidden from teammates (owner-only) and
+  // from free DJ accounts. Hosts/venues keep it for their booking alerts.
+  const canSms = !isTeammate && (!isDj || init.canBook);
+  // Booking reminders are DJ-only AND require paid booking access.
+  const canReminders = isDj && init.canBook;
 
   // ── Text setup (master gate) ──────────────────────────────────────
   const [smsPhone, setSmsPhone] = useState(init.sms_phone);
@@ -133,8 +142,9 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
   // Clear the parent's dot on unmount so a hidden tab never keeps it lit.
   useEffect(() => () => onDirtyRef.current?.(false), []);
 
-  // Text column is only usable when there's a valid phone AND consent is on.
-  const smsReady = smsEnabled && digitsOf(smsPhone) >= 10;
+  // Text column is only usable when SMS is available for this account AND
+  // there's a valid phone AND consent is on.
+  const smsReady = canSms && smsEnabled && digitsOf(smsPhone) >= 10;
 
   // Teammates get email preferences for every alert type (booking request,
   // status change, inbox message) — but NO text/SMS (that stays owner-only, and
@@ -247,8 +257,9 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
         <SectionBanner icon="bell" title="Notifications" subtitle="Choose how you hear about activity on your account." />
         {/* Inner padding wrapper for the actual settings content. */}
         <div style={{ padding: '1.5rem' }}>
-        {/* Teammates don't get SMS/text notifications — only inbox-message email. */}
-        {!isTeammate && (
+        {/* SMS/text is a paid booking feature — hidden from teammates and from
+            free DJ accounts. */}
+        {canSms && (
           <>
             <h2>Text Setup</h2>
             <p className={styles.cardHint}>
@@ -296,10 +307,10 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
 
         <h2>What to notify me about</h2>
 
-        <div className={styles.matrix} style={isTeammate ? { gridTemplateColumns: '1fr 62px' } : undefined}>
+        <div className={styles.matrix} style={!canSms ? { gridTemplateColumns: '1fr 62px' } : undefined}>
           <div className={`${styles.matrixCorner} ${styles.matrixHeadRow}`} />
           <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Email</div>
-          {!isTeammate && <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Text</div>}
+          {canSms && <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Text</div>}
 
           {rows.map((r) => {
             const required = isDj && r.djOnly;
@@ -335,7 +346,7 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
           })}
         </div>
 
-        {!smsReady && !isTeammate && (
+        {!smsReady && canSms && (
           <p className={styles.matrixHelp}>
             Turn on text notifications and add a mobile number above to enable the
             Text column.
@@ -351,11 +362,12 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
 
         {brNote && <p className={styles.reqNote}>{brNote}</p>}
 
-        {/* Booking digests — DJ-only email summaries of upcoming bookings. */}
-        {isDj && (
+        {/* Booking reminders — DJ-only email summaries of upcoming bookings.
+            Paid booking feature, so free accounts don't see it. */}
+        {canReminders && (
           <>
             <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.12))', margin: '1.4rem 0' }} />
-            <h2>Booking digests</h2>
+            <h2>Booking reminders</h2>
             <p className={styles.cardHint}>
               A summary email of your upcoming bookings, in date order, with the total at the top.
             </p>
