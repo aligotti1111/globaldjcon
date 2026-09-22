@@ -1974,7 +1974,7 @@
   padding: .3rem 1.6rem .3rem .55rem;
   line-height: 1.1;
   cursor: pointer;
-  max-width: 100%;
+  width: 132px;
   /* Custom chevron so it clearly reads as a dropdown. */
   -webkit-appearance: none;
   appearance: none;
@@ -2035,7 +2035,7 @@
   }
   .aboutStatValueSelect {
     font-size: .9rem;
-    max-width: 130px;
+    width: 120px;
     padding: .28rem 1.5rem .28rem .5rem;
   }
 }
