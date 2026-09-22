@@ -20,6 +20,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { canBook, type AccessFields } from '@/lib/access';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 import { Resend } from 'resend';
 
@@ -173,11 +174,12 @@ async function runDigest(
   const djIds = Array.from(byDj.keys());
   const { data: prefs } = await db
     .from('users')
-    .select(`id, ${prefCol}`)
+    .select(`id, ${prefCol}, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at`)
     .in('id', djIds);
+  // Opted in AND still has booking access — free/lapsed DJs don't get reminders.
   const optedIn = new Set<string>();
   for (const u of (prefs as unknown as Array<Record<string, unknown>> | null) || []) {
-    if (u[prefCol] === true) optedIn.add(String(u.id));
+    if (u[prefCol] === true && canBook(u as unknown as AccessFields)) optedIn.add(String(u.id));
   }
 
   const label = kind === 'weekly' ? 'this week' : 'this month';
