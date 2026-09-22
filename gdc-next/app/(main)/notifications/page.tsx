@@ -15,11 +15,12 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { canBook, type AccessFields } from '@/lib/access';
 import NotificationsClient from './NotificationsClient';
 
 export const dynamic = 'force-dynamic';
 
-interface PrefsRow {
+interface PrefsRow extends AccessFields {
   id: string;
   role: string;
   sms_phone: string | null;
@@ -43,12 +44,16 @@ export default async function NotificationsPage() {
   const { data: row } = await supabase
     .from('users')
     .select(
-      'id, role, sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message, email_notify_booking_request, email_notify_booking_status, email_notify_inbox_message, email_notify_weekly_digest, email_notify_monthly_digest'
+      'id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message, email_notify_booking_request, email_notify_booking_status, email_notify_inbox_message, email_notify_weekly_digest, email_notify_monthly_digest'
     )
     .eq('id', user.id)
     .single<PrefsRow>();
 
   if (!row) redirect('/login?redirect=/notifications');
+
+  // Teammates act on the owner's paid account, so they pass the booking gate;
+  // otherwise it's real subscription/comp access.
+  const hasBooking = row.role === 'teammate' || canBook(row as AccessFields);
 
   // Default every toggle to ON unless explicitly stored false. New columns
   // default true at the DB level too, so this is belt-and-suspenders for any
@@ -58,6 +63,7 @@ export default async function NotificationsPage() {
       userId={row.id}
       init={{
         role: row.role,
+        canBook: hasBooking,
         sms_phone: row.sms_phone || '',
         sms_enabled: !!row.sms_enabled,
         sms_notify_booking_request: row.sms_notify_booking_request !== false,
