@@ -1944,98 +1944,109 @@
   justify-content: flex-end;
   margin-top: 1rem;
 }
-/* Editor cards — desktop shows each fact as its real public card (dimmed until
-   activated); mobile collapses to a condensed list (see media query below). */
-.aboutStatsEditGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: .25rem;
+/* Owner-editable Quick Facts boxes (desktop): On/Off toggle + inline answer
+   control inside each real box. Collapses to a list on phones (media query). */
+.aboutStatCardEdit {
+  position: relative;
 }
-.aboutStatEditCard {
-  flex: 1 1 150px;
-  min-width: 150px;
-  display: flex;
-  flex-direction: column;
-  gap: .65rem;
-  background: #13131b;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: .8rem .9rem;
+.aboutStatCardOff {
   opacity: .5;
-  transition: opacity .15s, border-color .15s;
 }
-.aboutStatEditCardOn {
-  opacity: 1;
-  border-color: var(--neon);
+.aboutStatCardEdit .aboutStatValue {
+  order: 1;
 }
-.aboutStatEditPreview {
-  min-height: 42px;
+.aboutStatCardEdit .aboutStatLabel {
+  order: 2;
 }
-.aboutStatEditControls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .5rem;
-}
-.aboutStatEditControls .aboutStatsSelect {
-  max-width: none;
-  flex: 1 1 auto;
-}
-.aboutStatEditToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
+.aboutStatOnBtn {
+  order: 0;
+  align-self: flex-end;
+  margin-bottom: .35rem;
+  min-width: 40px;
+  padding: .2rem .5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
+  font-size: .58rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--muted);
   cursor: pointer;
-  white-space: nowrap;
+  transition: all .15s;
 }
+.aboutStatOnBtnOn {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: #06231b;
+  font-weight: 700;
+}
+.aboutStatValueSelect {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--neon);
+  background: transparent;
+  border: none;
+  padding: 0;
+  line-height: 1.1;
+  cursor: pointer;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.aboutStatValueSelect option {
+  background: #13131b;
+  color: #fff;
+  font-size: .9rem;
+}
+/* Phones: the whole Quick Facts block collapses from boxes to a flat list. */
 @media (max-width: 640px) {
-  .aboutStatsEditGrid {
+  .aboutStatsGrid {
     flex-direction: column;
     gap: 0;
   }
-  .aboutStatEditCard {
+  .aboutStatCard {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
+    gap: 1rem;
     background: transparent;
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
-    padding: .6rem 0;
-    opacity: 1;
+    padding: .55rem 0;
+    min-width: 0;
   }
-  .aboutStatEditCardOn {
-    border-color: transparent;
-    border-bottom-color: var(--border);
-  }
-  .aboutStatEditPreview {
-    min-height: 0;
-  }
-  .aboutStatEditPreview .aboutStatValue {
-    display: none;
-  }
-  .aboutStatEditPreview .aboutStatLabel {
+  .aboutStatValue {
+    order: 2;
+    font-size: .95rem;
     margin-top: 0;
-    text-transform: none;
-    letter-spacing: normal;
-    font-family: 'DM Sans', sans-serif;
-    font-size: .85rem;
-    color: var(--white);
   }
-  .aboutStatEditControls {
+  .aboutStatLabel {
+    order: 1;
+    margin-top: 0;
+    flex: 1 1 auto;
+  }
+  .aboutStatCardEdit .aboutStatOnBtn {
+    order: 0;
+    align-self: center;
+    margin-bottom: 0;
+  }
+  .aboutStatCardEdit .aboutStatLabel {
+    order: 1;
+    flex: 1 1 auto;
+  }
+  .aboutStatCardEdit .aboutStatValue {
+    order: 2;
     flex: 0 0 auto;
-    justify-content: flex-end;
   }
-  .aboutStatEditControls .aboutStatsSelect {
+  .aboutStatValueSelect {
+    font-size: .9rem;
     max-width: 120px;
-    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .25rem .4rem;
   }
 }
 /* Suggested-questions block inside the owner add form. */
