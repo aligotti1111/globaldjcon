@@ -53,8 +53,9 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { planForPrice } from '@/lib/stripe/config';
+import { sendSubscribedEmail } from '@/lib/email/subscriptionEmails';
 
 export const runtime = 'nodejs';
 
@@ -108,6 +109,17 @@ async function applySubscription(admin: Admin, subscriptionId: string) {
   const tier = plan?.tier ?? 0;
   const status = mapStatus(sub.status);
 
+  // Read the CURRENT stored status + dj type before we overwrite, so we can
+  // tell a genuine new subscription (non-active → active) from a routine
+  // renewal/update (active → active) and only send the welcome email once.
+  const { data: prev } = await admin
+    .from('users')
+    .select('sub_status, dj_type')
+    .eq('id', userId)
+    .maybeSingle();
+  const prevStatus = (prev as unknown as { sub_status?: string | null } | null)?.sub_status ?? null;
+  const djType = (prev as unknown as { dj_type?: string | null } | null)?.dj_type ?? null;
+
   // Period bounds live on the subscription item in current Stripe API versions.
   // Both are stored: the [start, end) window is what the monthly contract quota
   // is counted against (see lib/contractQuota.ts).
@@ -127,6 +139,19 @@ async function applySubscription(admin: Admin, subscriptionId: string) {
       stripe_subscription_id: sub.id,
     } as unknown as never)
     .eq('id', userId);
+
+  // Welcome email — only on the transition INTO active from a non-active state
+  // (new subscription or a resume after a lapse), never on routine renewals.
+  if (status === 'active' && prevStatus !== 'active' && tier >= 1) {
+    try {
+      const email = await resolveUserEmail(userId);
+      if (email) {
+        await sendSubscribedEmail(email, { tier, interval: plan?.interval ?? null, renewIso: periodEnd, djType });
+      }
+    } catch (e) {
+      console.warn('[stripe/webhook] subscribed email failed', e);
+    }
+  }
 
   // Record a discount-code / site-sale redemption if this subscription carried
   // one (stamped into metadata at checkout — see the checkout route). Idempotent
