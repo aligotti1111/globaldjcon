@@ -1618,34 +1618,37 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             </div>
           )}
 
-          {/* About tab */}
+          {/* About tab — two-card framework: bio on the left, Quick Facts
+              (mobile DJs) on the right; stacks on mobile. */}
           <div className={paneClass('about')}>
-            {/* Quick facts — mobile DJs only. Sits above the bio. Owner
-                activates each card and fills it in; visitors see only
-                activated ones. */}
-            {isMobileDJ && (
-              <AboutStatsRow
-                userId={data.id}
-                isOwnProfile={canEdit}
-                stats={aboutStats}
-                travelDistance={data.travel_distance}
-              />
-            )}
-            {canEdit ? (
-              <OwnerEditableBio userId={data.id} initialBio={data.bio} />
-            ) : data.bio ? (
-              <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
-            ) : (
-              <p className={styles.tabEmpty}>Coming Soon</p>
-            )}
-            {data.rate && (
-              <div className={styles.infoGrid}>
-                <div className={styles.infoItem}>
-                  <label>Rate</label>
-                  <span>{data.rate}</span>
-                </div>
+            <div className={styles.aboutGrid}>
+              <div className={styles.aboutCard}>
+                <div className={styles.aboutCardHeading}>About</div>
+                {canEdit ? (
+                  <OwnerEditableBio userId={data.id} initialBio={data.bio} />
+                ) : data.bio ? (
+                  <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
+                ) : (
+                  <p className={styles.tabEmpty}>Coming Soon</p>
+                )}
+                {data.rate && (
+                  <div className={styles.infoGrid}>
+                    <div className={styles.infoItem}>
+                      <label>Rate</label>
+                      <span>{data.rate}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              {isMobileDJ && (
+                <AboutStatsRow
+                  userId={data.id}
+                  isOwnProfile={canEdit}
+                  stats={aboutStats}
+                  travelDistance={data.travel_distance}
+                />
+              )}
+            </div>
           </div>
 
           {/* Mixes tab */}
