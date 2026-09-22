@@ -26,6 +26,18 @@ const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
 const LOGO_URL = 'https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/gdj-logo-email.png';
 
+// Shared email shell — black header bar with the neon wordmark, white body
+// card, grey footer. Matches the other transactional emails (booking digest,
+// activate reminders) so every email looks the same.
+function shell(content: string): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+<tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<tr><td style="background:#000;padding:24px 32px;" align="center"><div style="font-family:'Bebas Neue',Impact,Arial,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;font-weight:700;">GLOBAL DJ CONNECT</div></td></tr>
+<tr><td style="padding:32px;">${content}</td></tr>
+<tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;"><p style="margin:0;color:#888;font-size:11px;">© ${new Date().getFullYear()} Global DJ Connect · globaldjconnect.com</p></td></tr>
+</table></td></tr></table>`;
+}
+
 interface SendVerificationBody {
   user_id?: string;
   email: string;
@@ -237,38 +249,22 @@ export async function POST(request: Request) {
   // Step labels only make sense when there are TWO steps to walk through
   // (verify + then continue booking). For a normal signup with no booking
   // intent, the email has just one button — no "Step 1" label needed.
-  const verifyStepLabel = bookingUrl ? '<span class="step">Step 1</span>' : '';
+  const STEP = "display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#999;text-transform:uppercase;margin:18px 0 6px;text-align:left;";
+  const verifyStepLabel = bookingUrl ? `<span style="${STEP}">Step 1</span>` : '';
   const bookingBlock = bookingUrl
-    ? `<p style="margin-top:28px;">Once your email is verified, continue the booking you started:</p>
-       <p style="text-align:center;"><span class="step">Step 2</span><a href="${bookingUrl}" class="btn btn2" style="color:#000000;">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
+    ? `<p style="margin:28px 0 0;color:#666;line-height:1.6;">Once your email is verified, continue the booking you started:</p>
+       <p style="text-align:center;margin:0;"><span style="${STEP}">Step 2</span><a href="${bookingUrl}" style="display:inline-block;background:#111;color:#fff;padding:12px 26px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;">Continue Your Booking${niceDate ? ` · ${niceDate}` : ''}</a></p>`
     : '';
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{margin:0;padding:0;background:#050507;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f0f0f8;}
-    .wrap{max-width:560px;margin:0 auto;padding:40px 24px;}
-    .card{background:#13131e;border:1px solid #1e1e30;border-radius:12px;padding:40px 32px;}
-    h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.05em;color:#00f5c4;margin:0 0 16px;}
-    p{font-size:15px;line-height:1.6;color:#c4c4d4;margin:0 0 16px;}
-    .btn{display:inline-block;background:#00f5c4;color:#000000;padding:14px 28px;border-radius:6px;font-weight:700;text-decoration:none;letter-spacing:.04em;font-size:14px;margin:20px 0;}
-    .btn2{background:#ffffff;color:#000000;border:1px solid #ffffff;}
-    .step{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;color:#ffffff;text-transform:uppercase;margin:18px 0 6px;text-align:left;}
-    .footer{font-size:12px;color:#6a6a80;text-align:center;margin-top:24px;}
-    .logo{text-align:center;margin-bottom:24px;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;}
-  </style></head><body>
-    <div class="wrap">
-      <div class="logo">GLOBAL DJ CONNECT</div>
-      <div class="card">
-        <h1>Confirm Your Email</h1>
-        <p>Welcome to Global DJ Connect! You've been signed up as a ${roleDisplay}.</p>
-        <p>Click the button below to verify your email and unlock messaging, booking, and all features:</p>
-        <p style="text-align:center;">${verifyStepLabel}<a href="${verifyUrl}" class="btn" style="color:#000000;">Verify Email</a></p>
-        <p style="font-size:13px;color:#8a8a9e;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#00f5c4;">${verifyUrl}</span></p>
-        ${bookingBlock}
-        <p style="font-size:13px;color:#8a8a9e;margin-top:24px;">This link expires in ${TOKEN_TTL_HOURS} hours. If you didn't sign up, you can safely ignore this email.</p>
-      </div>
-      <div class="footer">Global DJ Connect · globaldjconnect.com</div>
-    </div>
-  </body></html>`;
+  const content = `<h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin:0 0 12px;">Confirm Your Email</h2>
+<p style="color:#666;line-height:1.6;margin:0 0 14px;">Welcome to Global DJ Connect! You've been signed up as a ${roleDisplay}.</p>
+<p style="color:#666;line-height:1.6;margin:0 0 8px;">Click the button below to verify your email and unlock messaging, booking, and all features:</p>
+<p style="text-align:center;margin:16px 0;">${verifyStepLabel}<a href="${verifyUrl}" style="display:inline-block;background:#0a6f61;color:#fff;padding:12px 28px;border-radius:6px;font-weight:600;text-decoration:none;letter-spacing:.02em;font-size:14px;">Verify Email</a></p>
+<p style="font-size:13px;color:#999;line-height:1.6;margin:0;">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0a6f61;">${verifyUrl}</span></p>
+${bookingBlock}
+<p style="font-size:12px;color:#999;line-height:1.6;margin:24px 0 0;">This link expires in ${TOKEN_TTL_HOURS} hours. If you didn't sign up, you can safely ignore this email.</p>`;
+
+  const html = shell(content);
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
