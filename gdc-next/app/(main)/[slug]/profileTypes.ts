@@ -99,7 +99,7 @@ export interface AboutStats {
   destination?: { on?: boolean };
   backup?: { on?: boolean };
   eventsTotal?: { on?: boolean; count?: string };
-  depositRequired?: { on?: boolean };
+  depositRequired?: { on?: boolean; answer?: 'Yes' | 'No' };
 }
 
 export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq';
