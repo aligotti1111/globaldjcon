@@ -3346,7 +3346,10 @@ export function AboutStatsRow({
   if (isOwnProfile) {
     return (
       <div className={styles.aboutStatsWrap}>
-        <div className={styles.aboutStatsHeading}>Quick Facts</div>
+        <div className={styles.aboutStatsHeading}>
+          Quick Facts
+          <span className={styles.aboutStatsHint}>Only checked facts show on your profile</span>
+        </div>
         <div className={styles.aboutStatsGrid}>
           {STAT_FIELDS.map(f => {
             const on = !!draft[f.key]?.on;
