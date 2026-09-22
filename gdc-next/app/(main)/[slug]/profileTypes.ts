@@ -94,10 +94,10 @@ export interface AboutStats {
   travel?: { on?: boolean };
   established?: { on?: boolean; year?: number };
   events?: { on?: boolean; tier?: string };
-  insured?: { on?: boolean };
+  insured?: { on?: boolean; answer?: 'Yes' | 'No' };
   deposit?: { on?: boolean; value?: string };
-  destination?: { on?: boolean };
-  backup?: { on?: boolean };
+  destination?: { on?: boolean; answer?: 'Yes' | 'No' };
+  backup?: { on?: boolean; answer?: 'Yes' | 'No' };
   eventsTotal?: { on?: boolean; count?: string };
   depositRequired?: { on?: boolean; answer?: 'Yes' | 'No' };
 }
