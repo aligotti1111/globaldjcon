@@ -1092,7 +1092,17 @@
 .body {
   position: relative;
   z-index: 2;
-  padding: 2rem 4rem 4rem;
+  padding: 2rem 0 4rem;
+  /* Match the banner width so the tab bar and calendar line up with it. */
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 900px) {
+  .body {
+    width: 100%;
+    padding: 2rem 1rem 4rem;
+  }
 }
 
 /* ── TABS ─────────────────────────────────────────────── */
@@ -1101,8 +1111,8 @@
   align-items: center;
   gap: 4px;
   padding: .35rem;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, .06);
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 14px;
   margin: 0 auto 2rem;
   width: 100%;
@@ -1127,13 +1137,13 @@
   text-align: center;
 }
 .tabBtn:hover {
-  background: rgba(0, 0, 0, .04);
-  color: #14141c;
+  background: rgba(255, 255, 255, .06);
+  color: #fff;
 }
 .tabBtnActive,
 .tabBtnActive:hover {
-  background: #14141c;
-  color: #fff;
+  background: var(--neon);
+  color: #04231d;
   font-weight: 700;
   filter: none;
 }
@@ -2456,8 +2466,8 @@
   gap: .55rem;
   padding: .55rem 1rem;
   background: rgba(5, 5, 7, .6);
-  border-top: 2px solid rgba(255, 255, 255, .35);
-  border-bottom: 2px solid rgba(255, 255, 255, .35);
+  border-top: none;
+  border-bottom: none;
   flex-wrap: wrap;
   /* Match the banner: 80% width, centered, so the two align. */
   width: 80%;
