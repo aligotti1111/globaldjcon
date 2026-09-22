@@ -3362,27 +3362,29 @@ export function AboutStatsRow({
           Quick Facts
           <span className={styles.aboutStatsHint}>Only checked facts show on your profile</span>
         </div>
-        <div className={styles.aboutStatsGrid}>
-          {STAT_FIELDS.map(f => {
-            const on = !!draft[f.key]?.on;
-            return (
-              <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit} ${on ? '' : styles.aboutStatCardOff}`}>
-                <input
-                  type="checkbox"
-                  className={styles.aboutStatShowCheck}
-                  checked={on}
-                  onChange={() => toggle(f.key)}
-                  title={on ? 'Showing to visitors — uncheck to hide' : 'Hidden — check to show'}
-                />
-                <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
-                <div className={styles.aboutStatLabel}>{f.label}?</div>
-              </div>
-            );
-          })}
-        </div>
-        {error && <div className={styles.testimonialAddError}>{error}</div>}
-        <div className={styles.aboutStatsActions}>
-          <button type="button" className={styles.testimonialAddSave} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+        <div className={styles.aboutStatsEditCol}>
+          <div className={styles.aboutStatsGrid}>
+            {STAT_FIELDS.map(f => {
+              const on = !!draft[f.key]?.on;
+              return (
+                <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit} ${on ? '' : styles.aboutStatCardOff}`}>
+                  <input
+                    type="checkbox"
+                    className={styles.aboutStatShowCheck}
+                    checked={on}
+                    onChange={() => toggle(f.key)}
+                    title={on ? 'Showing to visitors — uncheck to hide' : 'Hidden — check to show'}
+                  />
+                  <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
+                  <div className={styles.aboutStatLabel}>{f.label}?</div>
+                </div>
+              );
+            })}
+          </div>
+          {error && <div className={styles.testimonialAddError}>{error}</div>}
+          <div className={styles.aboutStatsActions}>
+            <button type="button" className={styles.testimonialAddSave} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+          </div>
         </div>
       </div>
     );
