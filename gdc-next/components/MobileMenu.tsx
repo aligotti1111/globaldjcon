@@ -294,6 +294,11 @@ export default function MobileMenu() {
                 <IconUser />{isStaff ? 'View Profile' : 'My Profile'}
               </Link>
             )}
+            {(isDj || isStaff) && (
+              <Link href="/inbox" onClick={close} className="mobile-menu-item">
+                <IconInbox />Inbox
+              </Link>
+            )}
 
             {/* ── Bookings ── mirrors the desktop dropdown's Bookings group.
                 Booking Requests and Inbox live here in the burger (on desktop
@@ -341,11 +346,6 @@ export default function MobileMenu() {
                 <IconTag />Add Discount / Promo Code
               </Link>
             )}
-            {(isDj || isStaff) && (
-              <Link href="/inbox" onClick={close} className="mobile-menu-item">
-                <IconInbox />Inbox
-              </Link>
-            )}
 
             {/* ── Account ── mirrors the desktop dropdown's Account group. */}
             <div
@@ -357,6 +357,11 @@ export default function MobileMenu() {
             <Link href="/account-settings" onClick={close} className="mobile-menu-item">
               <IconSettings />Account Settings
             </Link>
+            {(isDj || isStaff) && (
+              <Link href="/inbox" onClick={close} className="mobile-menu-item">
+                <IconInbox />Inbox
+              </Link>
+            )}
             {/* Finance/Earnings — owner only + paid (matches the desktop menu). */}
             {isDj && !isStaff && bookingEnabled && (
               <Link href="/finance" onClick={close} className="mobile-menu-item">
