@@ -1844,6 +1844,12 @@
   text-transform: none;
   color: var(--muted);
 }
+/* Owner editor column — sized to the list so the Save button sits under the
+   right edge of the Quick Facts, not off at the far side of the page. */
+.aboutStatsEditCol {
+  width: fit-content;
+  max-width: 100%;
+}
 /* Quick Facts as a list on every screen, capped to ~1/3 of the page width. */
 .aboutStatsGrid {
   display: flex;
