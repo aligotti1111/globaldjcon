@@ -525,13 +525,18 @@
   align-items: flex-start;
   gap: 2.5rem;
   border-bottom: 1px solid var(--border);
+  /* Trim the banner 10% off each side (80% width, centered). */
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
 }
 /* Desktop hero (and therefore the banner, which fills it) gets a taller
    minimum so the banner image reads bigger on wide screens. Mobile keeps
    its own compact height via the max-width:700px overrides below. */
 @media (min-width: 701px) {
   .hero {
-    min-height: 390px;
+    /* 10% off the bottom to bring the page up (was 390px). */
+    min-height: 351px;
   }
 }
 /* The .banner uses position: absolute inset: 0 and its background-image
@@ -2130,7 +2135,7 @@
        min-height keeps very sparse profiles from looking cramped without
        creating dead space on fuller ones — bumped a touch so the banner
        reads a little taller on phones. */
-    min-height: 250px;
+    min-height: 225px;
     justify-content: flex-start;
   }
   .heroTopRow {
