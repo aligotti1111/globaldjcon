@@ -117,7 +117,6 @@ export default function Header() {
 
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div>
-            <div className="eyebrow">▪ Connecting Party Hosts &amp; Venues to Premium DJs</div>
             <div className="logo">Global DJ Connect</div>
           </div>
         </Link>
