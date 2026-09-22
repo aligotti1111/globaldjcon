@@ -1844,6 +1844,8 @@
 .aboutStatCard {
   flex: 0 0 auto;
   min-width: 120px;
+  display: flex;
+  flex-direction: column;
   background: #13131b;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1944,63 +1946,36 @@
   justify-content: flex-end;
   margin-top: 1rem;
 }
-/* Owner-editable Quick Facts boxes (desktop): On/Off toggle + inline answer
-   control inside each real box. Collapses to a list on phones (media query). */
-.aboutStatCardEdit {
-  position: relative;
+/* Owner editor — condensed, one line per fact: checkbox + label + answer. */
+.aboutStatsEditList {
+  display: flex;
+  flex-direction: column;
+  max-width: 440px;
 }
-.aboutStatCardOff {
-  opacity: .5;
-}
-.aboutStatCardEdit .aboutStatValue {
-  order: 1;
-}
-.aboutStatCardEdit .aboutStatLabel {
-  order: 2;
-}
-.aboutStatOnBtn {
-  order: 0;
-  align-self: flex-end;
-  margin-bottom: .35rem;
-  min-width: 40px;
-  padding: .2rem .5rem;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+.aboutStatEditLine {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: all .15s;
 }
-.aboutStatOnBtnOn {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #06231b;
-  font-weight: 700;
+.aboutStatEditName {
+  flex: 1 1 auto;
+  font-size: .82rem;
+  color: var(--white);
 }
-.aboutStatValueSelect {
-  font-family: 'Space Mono', monospace;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--neon);
-  background: transparent;
-  border: none;
-  padding: 0;
-  line-height: 1.1;
-  cursor: pointer;
-  max-width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
+.aboutStatEditCtl {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
 }
-.aboutStatValueSelect option {
-  background: #13131b;
-  color: #fff;
-  font-size: .9rem;
+.aboutStatEditCtl .aboutStatsSelect {
+  padding: .2rem .4rem;
+  font-size: .78rem;
+  max-width: 110px;
 }
-/* Phones: the whole Quick Facts block collapses from boxes to a flat list. */
+/* Phones: the visitor Quick Facts block collapses from boxes to a flat list. */
 @media (max-width: 640px) {
   .aboutStatsGrid {
     flex-direction: column;
