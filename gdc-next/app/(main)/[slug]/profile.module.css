@@ -2010,7 +2010,7 @@
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
-    padding: .55rem 0;
+    padding: .32rem 0;
     min-width: 0;
   }
   .aboutStatValue {
