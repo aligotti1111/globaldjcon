@@ -141,17 +141,15 @@ async function getInitialUser(): Promise<CurrentUser | null> {
       // Matches AuthProvider — see the long note there. No auth email means
       // there is nothing to verify, so the verification gates (which block
       // booking) must not fire. Both places build this object, so both need
-      // the rule or the first paint disagrees with everything after it.
+      // the same rule or the first paint disagrees with everything after it.
       //
-      // Includes Supabase's own confirmation (`email_confirmed_at`): a user who
-      // clicked Supabase's confirm link is verified even if our own
-      // `email_verified` column was never flipped. AuthProvider already resolves
-      // it this way client-side; without the same rule HERE, the server's first
-      // paint showed the "please confirm" banner and the client then hid it —
-      // a banner flash on every reload for already-confirmed accounts.
-      email_verified: authUser.email
-        ? (profile.email_verified || !!(authUser as { email_confirmed_at?: string | null }).email_confirmed_at)
-        : true,
+      // Our OWN verification column is the source of truth. We do NOT fall back
+      // to Supabase's `email_confirmed_at`: with Supabase's built-in "Confirm
+      // email" off (we run our own flow via /api/verify-email), that timestamp
+      // is set automatically at signup, which made every brand-new account look
+      // verified and hid the "please confirm" banner before the user clicked
+      // our link.
+      email_verified: authUser.email ? !!profile.email_verified : true,
     };
   } catch {
     return null;
