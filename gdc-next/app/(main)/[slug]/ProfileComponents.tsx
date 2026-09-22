@@ -3242,7 +3242,7 @@ export function AboutStatsRow({
   type Card = { key: string; label: string; value: string };
   const cards: Card[] = [];
   if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
-  if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Events', value: stats.events.tier });
+  if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Total events', value: stats.events.tier });
   if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: stats.insured.answer || 'Yes' });
   if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
   if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit %', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
@@ -3277,7 +3277,7 @@ export function AboutStatsRow({
   // owner sees exactly what a visitor sees as they fill each one in.
   const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' }[] = [
     { key: 'established', label: 'Established', control: 'year' },
-    { key: 'events', label: 'Events', control: 'tier' },
+    { key: 'events', label: 'Total events', control: 'tier' },
     { key: 'insured', label: 'Insured', control: 'yesno' },
     { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
     { key: 'deposit', label: 'Deposit %', control: 'pct' },
