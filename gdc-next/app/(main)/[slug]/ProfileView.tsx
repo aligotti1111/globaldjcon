@@ -33,6 +33,7 @@ import {
 // Shared profile types now live in ./profileTypes. Re-export DjProfileData
 // so existing importers (e.g. page.tsx) keep working unchanged.
 import type { DjProfileData, Testimonial, Faq, AboutStats, TabKey } from './profileTypes';
+import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
@@ -1627,7 +1628,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 {canEdit ? (
                   <OwnerEditableBio userId={data.id} initialBio={data.bio} />
                 ) : data.bio ? (
-                  <p className={isMobileDJ ? styles.bioTextMobile : styles.bioText}>{data.bio}</p>
+                  <div
+                    className={isMobileDJ ? styles.bioTextMobile : styles.bioText}
+                    dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(data.bio) }}
+                  />
                 ) : (
                   <p className={styles.tabEmpty}>Coming Soon</p>
                 )}
