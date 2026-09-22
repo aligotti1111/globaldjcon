@@ -1849,9 +1849,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  width: 33%;
-  min-width: 320px;
-  max-width: 400px;
+  width: fit-content;
+  max-width: 100%;
 }
 .aboutStatCard {
   display: flex;
