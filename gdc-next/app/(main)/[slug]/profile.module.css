@@ -294,7 +294,7 @@
   padding: 1rem;
 }
 .bannerModal {
-  background: #0a0a0e;
+  background: #000000;
   border: 1px solid var(--border);
   border-radius: 10px;
   width: 100%;
@@ -439,7 +439,7 @@
 .bannerModalHint {
   font-family: 'Space Mono', monospace;
   font-size: .65rem;
-  color: var(--muted);
+  color: var(--white);
   letter-spacing: .03em;
 }
 .bannerModalHint strong {
