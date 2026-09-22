@@ -2647,7 +2647,8 @@
 }
 
 /* The "this circle won't show to visitors" avatar hint is a desktop-only nudge;
-   on mobile it crowds the small avatar, so hide it there. */
-@media (max-width: 640px) {
+   on mobile it crowds the small avatar, so hide it there. The profile switches
+   to its mobile layout at 900px, so hide the hint at the same breakpoint. */
+@media (max-width: 900px) {
   .avatarHint { display: none !important; }
 }
