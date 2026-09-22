@@ -3248,7 +3248,6 @@ export function AboutStatsRow({
   if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
   if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: 'Yes' });
   if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: 'Yes' });
-  if (stats.eventsTotal?.on && stats.eventsTotal.count) cards.push({ key: 'eventsTotal', label: 'Events DJed', value: stats.eventsTotal.count });
   if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: 'Yes' });
 
   async function save() {
@@ -3273,6 +3272,7 @@ export function AboutStatsRow({
   const years: number[] = [];
   for (let y = currentYear; y >= 1970; y--) years.push(y);
   const eventTiers = ['50+', '100+', '200+', '500+', '1000+'];
+  const depositPcts = ['10%', '15%', '20%', '25%', '30%', '35%', '40%', '50%'];
 
   return (
     <div className={styles.aboutStatsWrap}>
@@ -3346,29 +3346,15 @@ export function AboutStatsRow({
           <label className={styles.aboutStatsRow}>
             <span className={styles.aboutStatsRowLabel}>Deposit to book (%)</span>
             <span className={styles.aboutStatsRowControl}>
-              <input
-                type="text"
-                className={styles.aboutStatsInput}
-                placeholder="e.g. 50%"
-                inputMode="numeric"
+              <select
+                className={styles.aboutStatsSelect}
                 value={draft.deposit?.value ?? ''}
                 onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
-              />
+              >
+                <option value="">Percent…</option>
+                {depositPcts.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
               <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.deposit?.on} onChange={() => toggle('deposit')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Events DJed (total)</span>
-            <span className={styles.aboutStatsRowControl}>
-              <input
-                type="text"
-                className={styles.aboutStatsInput}
-                placeholder="e.g. 350"
-                value={draft.eventsTotal?.count ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, eventsTotal: { ...(d.eventsTotal || {}), count: e.target.value || undefined } }))}
-              />
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.eventsTotal?.on} onChange={() => toggle('eventsTotal')} />
             </span>
           </label>
 
