@@ -1828,7 +1828,34 @@
   color: var(--white);
 }
 .aboutStatsWrap {
-  margin-bottom: 1.75rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.3rem 1.45rem;
+}
+/* Two-card About framework: bio on the left, Quick Facts on the right. */
+.aboutGrid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 1.1rem;
+  align-items: start;
+}
+.aboutCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.3rem 1.45rem;
+}
+.aboutCardHeading {
+  font-family: 'Space Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--neon);
+  margin-bottom: .75rem;
+}
+@media (max-width: 900px) {
+  .aboutGrid { grid-template-columns: 1fr; }
 }
 .aboutStatsHeading {
   font-family: 'Space Mono', monospace;
@@ -1857,7 +1884,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
 }
 .aboutStatCard {
