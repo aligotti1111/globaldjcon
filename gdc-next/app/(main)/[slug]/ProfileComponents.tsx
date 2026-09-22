@@ -3244,10 +3244,10 @@ export function AboutStatsRow({
   const cards: Card[] = [];
   if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
   if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Events', value: stats.events.tier });
-  if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: 'Yes' });
+  if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: stats.insured.answer || 'Yes' });
   if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
-  if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: 'Yes' });
-  if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: 'Yes' });
+  if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: stats.destination.answer || 'Yes' });
+  if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: stats.backup.answer || 'Yes' });
   if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
 
   async function save() {
@@ -3339,6 +3339,15 @@ export function AboutStatsRow({
           <label className={styles.aboutStatsRow}>
             <span className={styles.aboutStatsRowLabel}>Fully insured</span>
             <span className={styles.aboutStatsRowControl}>
+              <select
+                className={styles.aboutStatsSelect}
+                value={draft.insured?.answer ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, insured: { ...(d.insured || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
+              >
+                <option value="">Yes / No…</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
               <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.insured?.on} onChange={() => toggle('insured')} />
             </span>
           </label>
@@ -3361,6 +3370,15 @@ export function AboutStatsRow({
           <label className={styles.aboutStatsRow}>
             <span className={styles.aboutStatsRowLabel}>Destination weddings</span>
             <span className={styles.aboutStatsRowControl}>
+              <select
+                className={styles.aboutStatsSelect}
+                value={draft.destination?.answer ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, destination: { ...(d.destination || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
+              >
+                <option value="">Yes / No…</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
               <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.destination?.on} onChange={() => toggle('destination')} />
             </span>
           </label>
@@ -3368,6 +3386,15 @@ export function AboutStatsRow({
           <label className={styles.aboutStatsRow}>
             <span className={styles.aboutStatsRowLabel}>Backup equipment</span>
             <span className={styles.aboutStatsRowControl}>
+              <select
+                className={styles.aboutStatsSelect}
+                value={draft.backup?.answer ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, backup: { ...(d.backup || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
+              >
+                <option value="">Yes / No…</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
               <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.backup?.on} onChange={() => toggle('backup')} />
             </span>
           </label>
