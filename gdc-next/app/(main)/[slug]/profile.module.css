@@ -1946,36 +1946,43 @@
   justify-content: flex-end;
   margin-top: 1rem;
 }
-/* Owner editor — condensed, one line per fact: checkbox + label + answer. */
-.aboutStatsEditList {
-  display: flex;
-  flex-direction: column;
-  max-width: 440px;
+/* Owner editing — the exact public boxes, made editable: the value becomes an
+   inline dropdown styled like the teal value, plus a small show/hide checkbox
+   in the corner. Collapses to the same list as the public view on phones. */
+.aboutStatCardEdit {
+  position: relative;
+  padding-right: 1.9rem;
 }
-.aboutStatEditLine {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .3rem 0;
-  border-bottom: 1px solid var(--border);
+.aboutStatCardOff {
+  opacity: .5;
+}
+.aboutStatShowCheck {
+  position: absolute;
+  top: .55rem;
+  right: .55rem;
   cursor: pointer;
+  accent-color: var(--neon);
 }
-.aboutStatEditName {
-  flex: 1 1 auto;
-  font-size: .82rem;
-  color: var(--white);
+.aboutStatValueSelect {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--neon);
+  background: transparent;
+  border: none;
+  padding: 0;
+  line-height: 1.1;
+  cursor: pointer;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
 }
-.aboutStatEditCtl {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
+.aboutStatValueSelect option {
+  background: #13131b;
+  color: #fff;
+  font-size: .9rem;
 }
-.aboutStatEditCtl .aboutStatsSelect {
-  padding: .2rem .4rem;
-  font-size: .78rem;
-  max-width: 110px;
-}
-/* Phones: the visitor Quick Facts block collapses from boxes to a flat list. */
+/* Phones: the whole Quick Facts block collapses from boxes to a flat list. */
 @media (max-width: 640px) {
   .aboutStatsGrid {
     flex-direction: column;
@@ -2003,10 +2010,15 @@
     margin-top: 0;
     flex: 1 1 auto;
   }
-  .aboutStatCardEdit .aboutStatOnBtn {
+  /* Editable rows: checkbox first, then label, then the answer control. */
+  .aboutStatCardEdit {
+    position: static;
+    padding-right: 0;
+  }
+  .aboutStatShowCheck {
+    position: static;
     order: 0;
-    align-self: center;
-    margin-bottom: 0;
+    flex: 0 0 auto;
   }
   .aboutStatCardEdit .aboutStatLabel {
     order: 1;
