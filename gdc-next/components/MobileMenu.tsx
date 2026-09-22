@@ -153,6 +153,14 @@ function IconAdmin() {
     </svg>
   );
 }
+function IconChart() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
+      <path d="M3 3v18h18" />
+      <path d="M7 15v3M12 10v8M17 6v12" />
+    </svg>
+  );
+}
 
 export default function MobileMenu() {
   const { user, signOut } = useAuth();
@@ -286,22 +294,15 @@ export default function MobileMenu() {
                 <IconUser />{isStaff ? 'View Profile' : 'My Profile'}
               </Link>
             )}
-            {isDj && (
-              <Link href="/update-dj-profile" onClick={close} className="mobile-menu-item">
-                <IconEdit />Account Settings
-              </Link>
-            )}
-            {!isDj && (
-              <Link href="/account-settings" onClick={close} className="mobile-menu-item">
-                <IconSettings />Account Settings
-              </Link>
-            )}
 
+            {/* ── Bookings ── mirrors the desktop dropdown's Bookings group.
+                Booking Requests and Inbox live here in the burger (on desktop
+                they're standalone toolbar icons). */}
             <div
               className="mobile-menu-group"
               style={{ borderTop: '1px solid var(--border)', marginTop: '.35rem', paddingTop: '.5rem' }}
             >
-              Manage
+              Bookings
             </div>
             {showDjDashboard && (
               <Link href="/upcoming-bookings" onClick={close} className="mobile-menu-item">
@@ -343,6 +344,23 @@ export default function MobileMenu() {
             {(isDj || isStaff) && (
               <Link href="/inbox" onClick={close} className="mobile-menu-item">
                 <IconInbox />Inbox
+              </Link>
+            )}
+
+            {/* ── Account ── mirrors the desktop dropdown's Account group. */}
+            <div
+              className="mobile-menu-group"
+              style={{ borderTop: '1px solid var(--border)', marginTop: '.35rem', paddingTop: '.5rem' }}
+            >
+              Account
+            </div>
+            <Link href="/account-settings" onClick={close} className="mobile-menu-item">
+              <IconSettings />Account Settings
+            </Link>
+            {/* Finance/Earnings — owner only + paid (matches the desktop menu). */}
+            {isDj && !isStaff && bookingEnabled && (
+              <Link href="/finance" onClick={close} className="mobile-menu-item">
+                <IconChart />Finance/Earnings
               </Link>
             )}
             {isDj && (
