@@ -44,7 +44,7 @@
   /* ═══════════════════════════════
      PUBLIC VIEW
   ═══════════════════════════════ */
-  #view-public header { position:relative; padding:3rem 4rem 2.5rem; border-bottom:1px solid var(--border); overflow:hidden; }
+  #view-public header { position:relative; padding:1.6rem 4rem 1.4rem; border-bottom:1px solid var(--border); overflow:hidden; }
   #view-public header::after { content:''; position:absolute; bottom:-2px; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon),var(--pink),transparent); animation:scanline 4s ease-in-out infinite; }
   @keyframes scanline { 0%,100%{opacity:.4;transform:scaleX(.3)} 50%{opacity:1;transform:scaleX(1)} }
   .header-bg { position:absolute; inset:0; background:radial-gradient(ellipse at 20% 50%,rgba(0,245,196,.04) 0%,transparent 60%),radial-gradient(ellipse at 80% 30%,rgba(245,230,66,.05) 0%,transparent 50%); }
