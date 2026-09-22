@@ -1844,30 +1844,37 @@
   text-transform: none;
   color: var(--muted);
 }
+/* Quick Facts as a list on every screen, capped to ~1/3 of the page width. */
 .aboutStatsGrid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  gap: 0;
+  width: 33%;
+  min-width: 320px;
+  max-width: 400px;
 }
 .aboutStatCard {
-  flex: 0 0 auto;
-  min-width: 120px;
   display: flex;
-  flex-direction: column;
-  background: #13131b;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: .8rem 1rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  border-bottom: 1px solid var(--border);
+  padding: .38rem 0;
 }
 .aboutStatValue {
+  order: 2;
+  flex: 0 0 auto;
   font-family: 'Space Mono', monospace;
-  font-size: 1.35rem;
+  font-size: .95rem;
   font-weight: 700;
   color: var(--neon);
   line-height: 1.1;
 }
 .aboutStatLabel {
-  margin-top: .35rem;
+  order: 1;
+  flex: 1 1 auto;
   font-family: 'Space Mono', monospace;
   font-size: .65rem;
   letter-spacing: .08em;
@@ -1957,17 +1964,12 @@
 /* Owner editing — the exact public boxes, made editable: the value becomes an
    inline dropdown styled like the teal value, plus a small show/hide checkbox
    in the corner. Collapses to the same list as the public view on phones. */
-.aboutStatCardEdit {
-  position: relative;
-  padding-right: 1.9rem;
-}
 .aboutStatCardOff {
   opacity: .5;
 }
 .aboutStatShowCheck {
-  position: absolute;
-  top: .55rem;
-  right: .55rem;
+  order: 0;
+  flex: 0 0 auto;
   cursor: pointer;
   accent-color: var(--neon);
 }
@@ -1995,51 +1997,12 @@
   color: #fff;
   font-size: .9rem;
 }
-/* Phones: the whole Quick Facts block collapses from boxes to a flat list. */
+/* Phones: the list spans the full width instead of a third of the page. */
 @media (max-width: 640px) {
   .aboutStatsGrid {
-    flex-direction: column;
-    gap: 0;
-  }
-  .aboutStatCard {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    padding: .32rem 0;
+    width: 100%;
     min-width: 0;
-  }
-  .aboutStatValue {
-    order: 2;
-    font-size: .95rem;
-    margin-top: 0;
-  }
-  .aboutStatLabel {
-    order: 1;
-    margin-top: 0;
-    flex: 1 1 auto;
-  }
-  /* Editable rows: checkbox first, then label, then the answer control. */
-  .aboutStatCardEdit {
-    position: static;
-    padding-right: 0;
-  }
-  .aboutStatShowCheck {
-    position: static;
-    order: 0;
-    flex: 0 0 auto;
-  }
-  .aboutStatCardEdit .aboutStatLabel {
-    order: 1;
-    flex: 1 1 auto;
-  }
-  .aboutStatCardEdit .aboutStatValue {
-    order: 2;
-    flex: 0 0 auto;
+    max-width: none;
   }
   .aboutStatValueSelect {
     font-size: .9rem;
