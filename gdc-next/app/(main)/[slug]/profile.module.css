@@ -532,8 +532,8 @@
    its own compact height via the max-width:700px overrides below. */
 @media (min-width: 701px) {
   .hero {
-    /* Trimmed twice off the bottom to bring the page up (was 390px). */
-    min-height: 316px;
+    /* Trimmed off the bottom to bring the page up (was 390px). */
+    min-height: 300px;
   }
 }
 /* The .banner uses position: absolute inset: 0 and its background-image
@@ -2156,7 +2156,7 @@
        min-height keeps very sparse profiles from looking cramped without
        creating dead space on fuller ones — bumped a touch so the banner
        reads a little taller on phones. */
-    min-height: 203px;
+    min-height: 193px;
     justify-content: flex-start;
     /* Full-width banner on mobile (desktop keeps the 80% trim). */
     width: 100%;
