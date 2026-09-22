@@ -68,7 +68,7 @@ export default function EmailVerifiedBanner() {
         <polyline points="20 6 9 17 4 12" />
       </svg>
       <span>
-        <strong style={{ color: '#a0ffe6' }}>Email confirmed</strong> — all features are now enabled.
+        <strong style={{ color: '#a0ffe6' }}>Email successfully confirmed</strong>
       </span>
       <button
         type="button"
