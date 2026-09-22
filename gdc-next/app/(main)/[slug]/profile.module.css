@@ -535,8 +535,8 @@
    its own compact height via the max-width:700px overrides below. */
 @media (min-width: 701px) {
   .hero {
-    /* 10% off the bottom to bring the page up (was 390px). */
-    min-height: 351px;
+    /* Trimmed twice off the bottom to bring the page up (was 390px). */
+    min-height: 316px;
   }
 }
 /* The .banner uses position: absolute inset: 0 and its background-image
@@ -1099,14 +1099,13 @@
 .tabsNav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 0;
+  gap: 4px;
+  padding: .35rem;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, .06);
+  border-radius: 14px;
   margin: 0 auto 2rem;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
 }
 .tabBtn {
@@ -1114,41 +1113,29 @@
   align-items: center;
   gap: 8px;
   font-family: 'Space Mono', monospace;
-  font-size: .92rem;
+  font-size: .72rem;
   letter-spacing: .1em;
   text-transform: uppercase;
-  padding: .9rem 1.5rem;
+  padding: .6rem 1rem;
   background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -1px;
-  border-radius: 0;
-  color: rgba(255, 255, 255, .5);
+  border-radius: 10px;
+  color: #8b8b9e;
   cursor: pointer;
-  transition: color .15s, border-color .15s;
+  transition: color .15s, background .15s;
   flex: 0 1 auto;
   text-align: center;
 }
 .tabBtn:hover {
-  background: transparent;
-  color: rgba(255, 255, 255, .85);
+  background: rgba(0, 0, 0, .04);
+  color: #14141c;
 }
 .tabBtnActive,
 .tabBtnActive:hover {
-  background: transparent;
+  background: #14141c;
   color: #fff;
   font-weight: 700;
-  border-bottom-color: var(--neon);
   filter: none;
-}
-.tabBtnActive::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--neon);
-  box-shadow: 0 0 8px var(--neon);
-  flex-shrink: 0;
 }
 /* Owner-only marker — a tiny dot beside a tab label means it's hidden
    from the public. The owner can still click into and view/edit it. */
@@ -1169,7 +1156,7 @@
    the Edit Tabs button sit at the right edge of the pill bar instead of
    the right edge of the body. */
 .tabsSection {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 0 auto 2rem;
 }
@@ -1179,7 +1166,7 @@
 /* Wrapper that lets the right-edge scroll hint sit over the tab row. */
 .tabsNavWrap {
   position: relative;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   margin: 0 auto;
 }
@@ -2135,7 +2122,7 @@
        min-height keeps very sparse profiles from looking cramped without
        creating dead space on fuller ones — bumped a touch so the banner
        reads a little taller on phones. */
-    min-height: 225px;
+    min-height: 203px;
     justify-content: flex-start;
   }
   .heroTopRow {
@@ -2468,6 +2455,10 @@
   border-top: 2px solid rgba(255, 255, 255, .35);
   border-bottom: 2px solid rgba(255, 255, 255, .35);
   flex-wrap: wrap;
+  /* Match the banner: 80% width, centered, so the two align. */
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
 }
 .underBannerSocialBtn {
   width: 36px;
