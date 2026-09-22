@@ -30,7 +30,7 @@ import AccountSettingsClient from './AccountSettingsClient';
 import UpdateDjProfileClient from '@/app/(main)/update-dj-profile/UpdateDjProfileClient';
 import type { UserProfile } from '@/types/db';
 import { getActingContext, canManageTeam } from '@/lib/acting';
-import { effectiveTier, type AccessFields } from '@/lib/access';
+import { effectiveTier, canBook, type AccessFields } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +58,7 @@ interface ProfileRow {
 // already returns these columns), defaulted the same way /notifications does.
 interface NotifyInit {
   role: string;
+  canBook: boolean;
   sms_phone: string;
   sms_enabled: boolean;
   sms_notify_booking_request: boolean;
@@ -74,8 +75,11 @@ interface NotifyInit {
 // ON unless explicitly stored false (matches /notifications/page.tsx).
 function buildNotifyInit(row: Record<string, unknown>): NotifyInit {
   const b = (v: unknown) => v !== false; // default ON
+  const role = String(row.role || '');
   return {
-    role: String(row.role || ''),
+    role,
+    // Teammates ride the owner's paid account; otherwise real booking access.
+    canBook: role === 'teammate' || canBook(row as unknown as AccessFields),
     sms_phone: (row.sms_phone as string) || '',
     sms_enabled: !!row.sms_enabled,
     sms_notify_booking_request: b(row.sms_notify_booking_request),
