@@ -3250,6 +3250,18 @@ export function AboutStatsRow({
   if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: stats.backup.answer || 'Yes' });
 
   async function save() {
+    // Any fact that's turned on must have an answer before saving.
+    const missing = STAT_FIELDS.filter(f => {
+      if (!draft[f.key]?.on) return false;
+      if (f.control === 'year') return !draft.established?.year;
+      if (f.control === 'tier') return !draft.events?.tier;
+      if (f.control === 'pct') return !draft.deposit?.value;
+      return !(draft[f.key] as { answer?: string } | undefined)?.answer;
+    });
+    if (missing.length) {
+      setError(`Please answer (or turn off): ${missing.map(f => f.label).join(', ')}.`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
