@@ -1189,6 +1189,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                       visitors until they add one (only THEY see this circle). */}
                   {!data.avatar_url && (
                     <span
+                      className={styles.avatarHint}
                       style={{
                         position: 'absolute',
                         top: '68%',
