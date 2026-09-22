@@ -18,6 +18,7 @@ import type { DjProfileData, Testimonial, Faq, AboutStats } from './profileTypes
 import { thumbUrl, validateImageFile, MAX_IMAGE_BYTES } from './profilePhotoUtils';
 import { saveProfile, profileUploadFolder } from './profileSave';
 import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/lib/albums';
+import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 
 export function BannerTypeEventsDropdown({ events, customTypes = [] }: { events: string[]; customTypes?: CustomEventType[] }) {
@@ -585,6 +586,21 @@ export function SocialAddButton({
 // Save writes to public.users.bio and updates local state so the new
 // text shows immediately. No reload needed.
 // ─────────────────────────────────────────────────────────────────────────
+const BIO_FONTS = [
+  { label: 'Default', value: '' },
+  { label: 'DM Sans', value: "'DM Sans', sans-serif" },
+  { label: 'Bebas Neue', value: "'Bebas Neue', sans-serif" },
+  { label: 'Space Mono', value: "'Space Mono', monospace" },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+];
+const BIO_SIZES = [
+  { label: 'Small', value: '2' },
+  { label: 'Normal', value: '3' },
+  { label: 'Large', value: '5' },
+  { label: 'Huge', value: '7' },
+];
+
 export function OwnerEditableBio({ userId, initialBio }: { userId: string; initialBio: string | null }) {
   const [bio, setBio] = useState<string>(initialBio || '');
   // When the bio is empty by default, open straight into edit mode so
@@ -600,6 +616,26 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
   // pop the mobile keyboard and jerk the page on tab-switch (reads as a
   // "refresh"), so the auto-opened editor starts unfocused.
   const [autoFocusEdit, setAutoFocusEdit] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  // Load the draft HTML into the editor when edit mode opens.
+  useEffect(() => {
+    if (editing && editorRef.current) {
+      editorRef.current.innerHTML = draft || '';
+      if (autoFocusEdit) editorRef.current.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  // Apply a formatting command to the current selection, then sync draft.
+  function exec(cmd: string, value?: string) {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    try { document.execCommand('styleWithCSS', false, 'true'); } catch { /* older browsers */ }
+    document.execCommand(cmd, false, value);
+    setDraft(el.innerHTML);
+  }
 
   function startEdit() {
     setDraft(bio);
@@ -615,9 +651,12 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
     setError(null);
     setSaving(true);
     try {
-      const trimmed = draft.trim();
-      await saveProfile(userId, { bio: trimmed || null });
-      setBio(trimmed);
+      const clean = sanitizeBioHtml(draft).trim();
+      // Treat an editor that only holds empty markup (e.g. "<br>") as blank.
+      const isEmpty = clean.replace(/<br\s*\/?>/gi, '').replace(/<[^>]*>/g, '').trim() === '';
+      const toSave = isEmpty ? null : clean;
+      await saveProfile(userId, { bio: toSave });
+      setBio(toSave || '');
       setEditing(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not save.';
@@ -628,17 +667,50 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
   }
 
   if (editing) {
+    const tbBtn: React.CSSProperties = {
+      minWidth: 30, height: 30, padding: '0 .5rem',
+      background: 'rgba(255,255,255,.05)', border: '1px solid var(--border, rgba(255,255,255,.2))',
+      borderRadius: 6, color: 'var(--white, #fff)', cursor: 'pointer',
+      fontFamily: 'Georgia, serif', fontSize: '.9rem', lineHeight: 1,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    };
+    const tbSelect: React.CSSProperties = {
+      height: 30, background: 'rgba(255,255,255,.05)', border: '1px solid var(--border, rgba(255,255,255,.2))',
+      borderRadius: 6, color: 'var(--white, #fff)', fontSize: '.75rem', padding: '0 .35rem', cursor: 'pointer',
+    };
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-        <textarea
-          autoFocus={autoFocusEdit}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Tell people about yourself, your sound, your style…"
-          disabled={saving}
-          rows={6}
+        {/* Formatting toolbar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '.35rem' }}>
+          <button type="button" title="Bold" onMouseDown={(e) => { e.preventDefault(); exec('bold'); }} style={{ ...tbBtn, fontWeight: 700 }}>B</button>
+          <button type="button" title="Italic" onMouseDown={(e) => { e.preventDefault(); exec('italic'); }} style={{ ...tbBtn, fontStyle: 'italic' }}>I</button>
+          <button type="button" title="Underline" onMouseDown={(e) => { e.preventDefault(); exec('underline'); }} style={{ ...tbBtn, textDecoration: 'underline' }}>U</button>
+          <select title="Font" defaultValue="" onChange={(e) => { exec('fontName', e.target.value); e.target.selectedIndex = 0; }} style={tbSelect}>
+            {BIO_FONTS.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
+          </select>
+          <select title="Size" defaultValue="" onChange={(e) => { exec('fontSize', e.target.value); e.target.selectedIndex = 0; }} style={tbSelect}>
+            <option value="" disabled>Size</option>
+            {BIO_SIZES.map((s) => <option key={s.label} value={s.value}>{s.label}</option>)}
+          </select>
+          <label title="Text color" style={{ ...tbBtn, position: 'relative', overflow: 'hidden' }}>
+            A
+            <input
+              type="color"
+              onChange={(e) => exec('foreColor', e.target.value)}
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+            />
+          </label>
+        </div>
+        <div
+          ref={editorRef}
+          className={styles.bioEditor}
+          contentEditable={!saving}
+          suppressContentEditableWarning
+          data-placeholder="Tell people about yourself, your sound, your style…"
+          onInput={(e) => setDraft((e.target as HTMLDivElement).innerHTML)}
           style={{
             width: '100%',
+            minHeight: 140,
             padding: '.75rem',
             background: 'rgba(0,0,0,0.3)',
             border: '1px solid var(--neon)',
@@ -647,8 +719,9 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
             fontFamily: 'DM Sans, sans-serif',
             fontSize: '.95rem',
             lineHeight: 1.6,
-            resize: 'vertical',
             boxSizing: 'border-box',
+            outline: 'none',
+            overflowY: 'auto',
           }}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
@@ -723,16 +796,17 @@ export function OwnerEditableBio({ userId, initialBio }: { userId: string; initi
     >
       {bio ? (
         <>
-          <p style={{
-            margin: 0,
-            color: 'var(--white, #fff)',
-            fontFamily: 'DM Sans, sans-serif',
-            fontSize: '.95rem',
-            lineHeight: 1.6,
-            whiteSpace: 'pre-wrap',
-          }}>
-            {bio}
-          </p>
+          <div
+            style={{
+              margin: 0,
+              color: 'var(--white, #fff)',
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: '.95rem',
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+            }}
+            dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(bio) }}
+          />
           <div style={{
             marginTop: '.5rem',
             color: 'var(--neon)',
