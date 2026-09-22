@@ -204,6 +204,13 @@ export default function SetupChecklist() {
   const isReviewed = !!row?.setup_reviewed || reviewedLocal;
   const NEON = 'var(--neon,#00e0a4)';
 
+  // "Done" — dismiss the checklist for good, whatever step they're on. Persists
+  // the same setup_reviewed flag so it never comes back (survives resubscribe).
+  const dismiss = () => {
+    setReviewedLocal(true);
+    void fetch('/api/dj/setup-reviewed', { method: 'POST' }).catch(() => {});
+  };
+
   // Once setup is complete (or on any later resubscribe), show NOTHING. There is
   // no "Review booking settings" prompt — the checklist only ever appears while
   // the FIRST-TIME setup is still incomplete.
@@ -250,9 +257,19 @@ export default function SetupChecklist() {
           );
         })}
         </div>
-        <span style={{ fontFamily: 'var(--body)', fontSize: '.66rem', fontWeight: 700, color: 'var(--white,#fff)', whiteSpace: 'nowrap' }}>
-          Complete steps to activate booking engine
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+          <span style={{ fontFamily: 'var(--body)', fontSize: '.66rem', fontWeight: 700, color: 'var(--white,#fff)' }}>
+            Complete steps to activate booking engine
+          </span>
+          <button
+            type="button"
+            onClick={dismiss}
+            title="Dismiss this checklist"
+            style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', fontFamily: 'var(--body)', fontSize: '.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted,#8a8aa0)', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+          >
+            Done
+          </button>
+        </div>
       </div>
     );
   }
