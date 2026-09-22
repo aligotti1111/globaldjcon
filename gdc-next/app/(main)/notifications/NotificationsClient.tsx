@@ -329,7 +329,7 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
                     aria-label={`Email — ${r.label}`}
                   />
                 </div>
-                {!isTeammate && (
+                {canSms && (
                   <div className={styles.matrixCell}>
                     <input
                       type="checkbox"
