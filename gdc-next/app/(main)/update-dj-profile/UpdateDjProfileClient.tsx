@@ -141,6 +141,7 @@ interface InitialProfile {
 // shape NotificationsClient expects; loaded server-side off the users row.
 export interface NotifyInit {
   role: string;
+  canBook: boolean;
   sms_phone: string;
   sms_enabled: boolean;
   sms_notify_booking_request: boolean;
