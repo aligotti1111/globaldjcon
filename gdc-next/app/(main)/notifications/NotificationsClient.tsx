@@ -73,9 +73,15 @@ function digitsOf(s: string): number {
 export default function NotificationsClient({ userId, init, onDirtyChange }: Props) {
   const isDj = init.role === 'dj';
   const isTeammate = init.role === 'teammate';
-  // SMS/text is a paid booking feature: hidden from teammates (owner-only) and
-  // from free DJ accounts. Hosts/venues keep it for their booking alerts.
+  // SMS/text is a paid feature. `canSms` = actually USABLE (paid, non-teammate):
+  // it drives whether the text checkboxes work. The Text column is still SHOWN
+  // (disabled) for a free DJ so they can see it's a paid upgrade — only
+  // teammates hide it entirely (SMS is owner-only).
   const canSms = !isTeammate && (!isDj || init.canBook);
+  const showTextCol = !isTeammate;
+  // A free (unsubscribed) DJ can't get booked, so the two booking notification
+  // rows are moot — lock them. Inbox still works, so it stays toggleable.
+  const bookingLocked = isDj && !init.canBook;
   // Booking reminders are DJ-only AND require paid booking access.
   const canReminders = isDj && init.canBook;
 
@@ -205,8 +211,10 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
     }
 
     // DJ backstop: new booking request must have at least one live channel.
-    const textActiveAtSave = smsEnabled && digitsOf(trimmedPhone) >= 10 && text.booking_request;
-    if (isDj && !email.booking_request && !textActiveAtSave) {
+    // Skipped for a free DJ — their booking rows are locked (they can't be
+    // booked), so there's no channel to require.
+    const textActiveAtSave = canSms && smsEnabled && digitsOf(trimmedPhone) >= 10 && text.booking_request;
+    if (isDj && !bookingLocked && !email.booking_request && !textActiveAtSave) {
       setAlert({ type: 'error', msg: 'DJs must keep at least one alert on for new booking requests.' });
       return;
     }
@@ -307,34 +315,38 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
 
         <h2>What to notify me about</h2>
 
-        <div className={styles.matrix} style={!canSms ? { gridTemplateColumns: '1fr 62px' } : undefined}>
+        <div className={styles.matrix} style={!showTextCol ? { gridTemplateColumns: '1fr 62px' } : undefined}>
           <div className={`${styles.matrixCorner} ${styles.matrixHeadRow}`} />
           <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Email</div>
-          {canSms && <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Text</div>}
+          {showTextCol && <div className={`${styles.matrixHead} ${styles.matrixHeadRow}`}>Text</div>}
 
           {rows.map((r) => {
             const required = isDj && r.djOnly;
+            // Free DJs can't get booked, so their two booking rows are locked;
+            // inbox always works.
+            const emailLocked = bookingLocked && r.key !== 'inbox_message';
             return (
               <Fragment key={r.key}>
                 <div className={styles.matrixLabel}>
                   {r.label}
-                  {required && <span className={styles.req} title="Required for DJs"> *</span>}
+                  {required && !bookingLocked && <span className={styles.req} title="Required for DJs"> *</span>}
                 </div>
                 <div className={styles.matrixCell}>
                   <input
                     type="checkbox"
                     className={styles.cb}
-                    checked={email[r.key]}
+                    checked={email[r.key] && !emailLocked}
+                    disabled={emailLocked}
                     onChange={(e) => toggleEmail(r.key, e.target.checked)}
                     aria-label={`Email — ${r.label}`}
                   />
                 </div>
-                {canSms && (
+                {showTextCol && (
                   <div className={styles.matrixCell}>
                     <input
                       type="checkbox"
                       className={styles.cb}
-                      checked={text[r.key]}
+                      checked={text[r.key] && smsReady}
                       disabled={!smsReady}
                       onChange={(e) => toggleText(r.key, e.target.checked)}
                       aria-label={`Text — ${r.label}`}
@@ -353,7 +365,14 @@ export default function NotificationsClient({ userId, init, onDirtyChange }: Pro
           </p>
         )}
 
-        {isDj && (
+        {bookingLocked && (
+          <p className={styles.matrixHelp}>
+            Booking notifications and text alerts unlock when you subscribe and
+            switch on your booking engine.
+          </p>
+        )}
+
+        {isDj && !bookingLocked && (
           <p className={styles.matrixHelp}>
             <span className={styles.req}>*</span> Required — DJs must keep at least
             one alert on for new booking requests.
