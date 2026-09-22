@@ -6,7 +6,7 @@
 // Server Component (page.tsx) does the data fetch and passes everything in.
 
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './profile.module.css';
 import { useAuth } from '@/components/AuthProvider';
@@ -223,6 +223,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // calendar) AND we have a booking tab, force-default to it so the
   // auto-select logic in MobilePublicCalendar finds the right context.
   const searchParams = useSearchParams();
+  const router = useRouter();
   const hasDateParam = !!searchParams.get('date');
 
   // Active tab — defaults to booking (if visible) else about. Can be
@@ -236,6 +237,17 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [activeTab, setActiveTab] = useState<TabKey>(
     tabFromUrl || (showBookingTab ? 'booking' : 'about')
   );
+  // Keep the URL's ?tab= in sync with the active tab (without a navigation or
+  // scroll jump), so a refresh — including router.refresh() after adding a
+  // photo/album — restores the tab the DJ is actually on, not Photos.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') !== activeTab) {
+      url.searchParams.set('tab', activeTab);
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [activeTab]);
   // Club-booking flow — selectedDate drives the form, loginGateForDate
   // shows the login gate for unauthenticated visitors. Mirror of the
   // pattern in MobilePublicCalendar (which holds these internally).
@@ -2295,11 +2307,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           cap={photoCap}
           isPaid={hasBookingAccess}
           onClose={() => {
-            // Reload on close so any changes the DJ made show in the
-            // hero/photos tab. Cheaper than wiring up live state.
-            const url = new URL(window.location.href);
-            url.searchParams.set('tab', 'images');
-            window.location.href = url.toString();
+            // Close the modal and re-fetch server data in place (no full page
+            // reload, so the DJ stays on the Photos tab without a flash).
+            setPhotoManagerOpen(false);
+            router.refresh();
           }}
         />
       )}
@@ -2311,15 +2322,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           currentCount={galleryPhotos.length}
           cap={photoCap}
           onClose={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('tab', 'images');
-            window.location.href = url.toString();
+            setAddPhotosOpen(false);
+            router.refresh();
           }}
         />
       )}
 
       {/* Create Album — owner-only. Name it, add photos from device or pick
-          existing; no photo-deleting here. Reloads on close to show it. */}
+          existing; refreshes in place on close to show it. */}
       {createAlbumOpen && canEdit && (
         <CreateAlbumModal
           userId={data.id}
@@ -2327,9 +2337,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           albums={albums}
           cap={photoCap}
           onClose={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('tab', 'images');
-            window.location.href = url.toString();
+            setCreateAlbumOpen(false);
+            router.refresh();
           }}
         />
       )}
@@ -2344,9 +2353,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           cap={photoCap}
           editAlbum={editAlbumTarget}
           onClose={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('tab', 'images');
-            window.location.href = url.toString();
+            setEditAlbumTarget(null);
+            router.refresh();
           }}
         />
       )}
