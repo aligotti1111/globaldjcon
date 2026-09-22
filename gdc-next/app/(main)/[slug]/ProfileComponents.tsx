@@ -3244,10 +3244,10 @@ export function AboutStatsRow({
   if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
   if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Events', value: stats.events.tier });
   if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: stats.insured.answer || 'Yes' });
-  if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
+  if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
+  if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit %', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
   if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: stats.destination.answer || 'Yes' });
   if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: stats.backup.answer || 'Yes' });
-  if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
 
   async function save() {
     setBusy(true);
@@ -3271,7 +3271,7 @@ export function AboutStatsRow({
   const years: number[] = [];
   for (let y = currentYear; y >= 1970; y--) years.push(y);
   const eventTiers = ['50+', '100+', '200+', '500+', '1000+'];
-  const depositPcts = ['10%', '15%', '20%', '25%', '30%', '35%', '40%', '50%'];
+  const depositPcts = Array.from({ length: 99 }, (_, i) => `${i + 1}%`);
 
   // The editable facts, in display order. Labels match the public cards so the
   // owner sees exactly what a visitor sees as they fill each one in.
@@ -3279,10 +3279,10 @@ export function AboutStatsRow({
     { key: 'established', label: 'Established', control: 'year' },
     { key: 'events', label: 'Events', control: 'tier' },
     { key: 'insured', label: 'Insured', control: 'yesno' },
-    { key: 'deposit', label: 'Deposit', control: 'pct' },
+    { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
+    { key: 'deposit', label: 'Deposit %', control: 'pct' },
     { key: 'destination', label: 'Destination weddings', control: 'yesno' },
     { key: 'backup', label: 'Backup equipment', control: 'yesno' },
-    { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
   ];
 
   function setAnswer(key: keyof AboutStats, v: string) {
@@ -3342,20 +3342,26 @@ export function AboutStatsRow({
     );
   }
 
-  // ── Owner view: condensed one-line-per-fact list (checkbox + answer) ──
+  // ── Owner view: the exact public boxes, made editable (list on mobile) ──
   if (isOwnProfile) {
     return (
       <div className={styles.aboutStatsWrap}>
         <div className={styles.aboutStatsHeading}>Quick Facts</div>
-        <div className={styles.aboutStatsEditList}>
+        <div className={styles.aboutStatsGrid}>
           {STAT_FIELDS.map(f => {
             const on = !!draft[f.key]?.on;
             return (
-              <label key={f.key} className={styles.aboutStatEditLine}>
-                <input type="checkbox" className={styles.tabsCheckbox} checked={on} onChange={() => toggle(f.key)} />
-                <span className={styles.aboutStatEditName}>{f.label}</span>
-                <span className={styles.aboutStatEditCtl}>{renderStatControl(f.key, f.control)}</span>
-              </label>
+              <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit} ${on ? '' : styles.aboutStatCardOff}`}>
+                <input
+                  type="checkbox"
+                  className={styles.aboutStatShowCheck}
+                  checked={on}
+                  onChange={() => toggle(f.key)}
+                  title={on ? 'Showing to visitors — uncheck to hide' : 'Hidden — check to show'}
+                />
+                <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
+                <div className={styles.aboutStatLabel}>{f.label}</div>
+              </div>
             );
           })}
         </div>
