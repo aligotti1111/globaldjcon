@@ -14,7 +14,6 @@
 //   a success/error alert at the top of the card.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useUnsavedChanges } from '@/components/UnsavedChangesProvider';
 import { useAuth } from '@/components/AuthProvider';
@@ -632,15 +631,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
           duplicate — hide it (scoped to this page so Booking Settings, which
           shares the CSS module, is untouched). */}
       <style>{`.gdcAcctSettings [class*="sectionHeader"]{display:none;}`}</style>
-      <div className={styles.headerRow}>
-        <Link href="/" className={styles.backLink}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to Directory
-        </Link>
-      </div>
-
       <div className={styles.header}>
         <h1>Account Settings</h1>
         <p>Manage Your Profile</p>
