@@ -95,7 +95,6 @@
   background-size: cover;
   background-position: var(--banner-pos, 50% 50%);
   background-repeat: no-repeat;
-  border-radius: 16px;
   pointer-events: none;
 }
 /* Re-enable pointer events on interactive children of .banner (top-left
@@ -185,14 +184,13 @@
    of the banner, stemming outward from that edge for emphasis. */
 .bannerNameBadge {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 14px;
+  left: 14px;
   z-index: 2;
-  padding: .35rem 1.1rem .4rem;
-  background: rgba(5, 5, 7, .85);
-  border-right: 1px solid rgba(255, 255, 255, .15);
-  border-bottom: 1px solid rgba(255, 255, 255, .15);
-  border-bottom-right-radius: 12px;
+  padding: .42rem .9rem;
+  background: rgba(0, 0, 0, .5);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
   color: #fff;
   font-family: var(--font-archivo), 'Archivo', sans-serif;
   font-weight: 600;
@@ -216,13 +214,11 @@
 /* DJ type color variants — match the .typeBadge brand colors. */
 .bannerNameBadgeMobile {
   color: var(--neon);
-  border-right-color: rgba(0, 245, 196, .35);
-  border-bottom-color: rgba(0, 245, 196, .35);
+  border-color: rgba(0, 245, 196, .35);
 }
 .bannerNameBadgeClub {
   color: var(--pink);
-  border-right-color: rgba(245, 230, 66, .35);
-  border-bottom-color: rgba(245, 230, 66, .35);
+  border-color: rgba(245, 230, 66, .35);
 }
 /* Dropdown popup for the top-left mobile-DJ events-serviced badge. */
 .bannerTypeDropdown {
