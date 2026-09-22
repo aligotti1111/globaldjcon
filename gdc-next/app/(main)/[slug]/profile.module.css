@@ -1864,7 +1864,7 @@
   font-size: .65rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--white);
 }
 .aboutStatsEditBtn {
   margin-top: 1rem;
