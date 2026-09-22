@@ -24,7 +24,6 @@ import { getLiveFreeSale } from '@/lib/siteSale';
 const TOKEN_TTL_HOURS = 24;
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
-const LOGO_URL = 'https://hwqvzuusquruhwguqole.supabase.co/storage/v1/object/public/assets/gdj-logo-email.png';
 
 // Shared email shell — black header bar with the neon wordmark, white body
 // card, grey footer. Matches the other transactional emails (booking digest,
