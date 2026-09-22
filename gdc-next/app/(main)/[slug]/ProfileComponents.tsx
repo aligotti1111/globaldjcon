@@ -3234,7 +3234,6 @@ export function AboutStatsRow({
   // travelDistance is still passed by the caller but no longer surfaced here.
   travelDistance?: string | null;
 }) {
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<AboutStats>(stats);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3286,30 +3285,18 @@ export function AboutStatsRow({
     { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
   ];
 
-  function fmtDeposit(v: string) {
-    const t = v.trim();
-    return /%\s*$/.test(t) ? t : `${t.replace(/[^0-9.]/g, '')}%`;
-  }
-
-  // The value shown in a fact's preview card as the owner edits it.
-  function previewValue(key: keyof AboutStats): string {
-    switch (key) {
-      case 'established': return draft.established?.year ? String(draft.established.year) : '';
-      case 'events': return draft.events?.tier || '';
-      case 'deposit': return draft.deposit?.value ? fmtDeposit(draft.deposit.value) : '';
-      default: return (draft[key] as { answer?: string } | undefined)?.answer || '';
-    }
-  }
-
   function setAnswer(key: keyof AboutStats, v: string) {
     setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), answer: (v || undefined) as 'Yes' | 'No' | undefined } }));
   }
 
-  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno') {
+  // Renders the inline editor control that sits in place of a card's value, so
+  // the owner edits the exact public box. `big` styles it like the teal value.
+  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno', big?: boolean) {
+    const cls = big ? styles.aboutStatValueSelect : styles.aboutStatsSelect;
     if (control === 'year') {
       return (
         <select
-          className={styles.aboutStatsSelect}
+          className={cls}
           value={draft.established?.year ?? ''}
           onChange={(e) => setDraft(d => ({ ...d, established: { ...(d.established || {}), year: e.target.value ? parseInt(e.target.value, 10) : undefined } }))}
         >
@@ -3321,7 +3308,7 @@ export function AboutStatsRow({
     if (control === 'tier') {
       return (
         <select
-          className={styles.aboutStatsSelect}
+          className={cls}
           value={draft.events?.tier ?? ''}
           onChange={(e) => setDraft(d => ({ ...d, events: { ...(d.events || {}), tier: e.target.value || undefined } }))}
         >
@@ -3333,7 +3320,7 @@ export function AboutStatsRow({
     if (control === 'pct') {
       return (
         <select
-          className={styles.aboutStatsSelect}
+          className={cls}
           value={draft.deposit?.value ?? ''}
           onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
         >
@@ -3344,7 +3331,7 @@ export function AboutStatsRow({
     }
     return (
       <select
-        className={styles.aboutStatsSelect}
+        className={cls}
         value={(draft[key] as { answer?: string } | undefined)?.answer ?? ''}
         onChange={(e) => setAnswer(key, e.target.value)}
       >
@@ -3355,68 +3342,51 @@ export function AboutStatsRow({
     );
   }
 
+  // ── Owner view: the exact boxes, editable in place (list on mobile) ──
+  if (isOwnProfile) {
+    return (
+      <div className={styles.aboutStatsWrap}>
+        <div className={styles.aboutStatsHeading}>Quick Facts</div>
+        <div className={styles.aboutStatsGrid}>
+          {STAT_FIELDS.map(f => {
+            const on = !!draft[f.key]?.on;
+            return (
+              <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit} ${on ? '' : styles.aboutStatCardOff}`}>
+                <button
+                  type="button"
+                  className={`${styles.aboutStatOnBtn} ${on ? styles.aboutStatOnBtnOn : ''}`}
+                  onClick={() => toggle(f.key)}
+                  title={on ? 'Showing on profile — click to hide' : 'Hidden — click to show'}
+                >
+                  {on ? 'On' : 'Off'}
+                </button>
+                <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
+                <div className={styles.aboutStatLabel}>{f.label}</div>
+              </div>
+            );
+          })}
+        </div>
+        {error && <div className={styles.testimonialAddError}>{error}</div>}
+        <div className={styles.aboutStatsActions}>
+          <button type="button" className={styles.testimonialAddSave} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Visitor view: the activated facts as boxes (list on mobile) ──
+  if (cards.length === 0) return null;
   return (
     <div className={styles.aboutStatsWrap}>
-      {cards.length > 0 && (
-        <>
-          <div className={styles.aboutStatsHeading}>Quick Facts</div>
-          <div className={styles.aboutStatsGrid}>
-            {cards.map(c => (
-              <div key={c.key} className={styles.aboutStatCard}>
-                <div className={styles.aboutStatValue}>{c.value}</div>
-                <div className={styles.aboutStatLabel}>{c.label}</div>
-              </div>
-            ))}
+      <div className={styles.aboutStatsHeading}>Quick Facts</div>
+      <div className={styles.aboutStatsGrid}>
+        {cards.map(c => (
+          <div key={c.key} className={styles.aboutStatCard}>
+            <div className={styles.aboutStatValue}>{c.value}</div>
+            <div className={styles.aboutStatLabel}>{c.label}</div>
           </div>
-        </>
-      )}
-
-      {isOwnProfile && !editing && (
-        <button
-          type="button"
-          className={styles.aboutStatsEditBtn}
-          onClick={() => { setDraft(stats); setEditing(true); }}
-        >
-          {cards.length > 0 ? 'Edit Quick Facts' : '+ Add Quick Facts'}
-        </button>
-      )}
-
-      {isOwnProfile && editing && (
-        <div className={styles.aboutStatsEditor}>
-          <div className={styles.aboutStatsEditorHint}>
-            Turn on the highlights you want visitors to see, then fill them in.
-            Active cards show exactly how they&apos;ll appear on your profile.
-          </div>
-
-          <div className={styles.aboutStatsEditGrid}>
-            {STAT_FIELDS.map(f => {
-              const on = !!draft[f.key]?.on;
-              const val = previewValue(f.key);
-              return (
-                <div key={f.key} className={`${styles.aboutStatEditCard} ${on ? styles.aboutStatEditCardOn : ''}`}>
-                  <div className={styles.aboutStatEditPreview}>
-                    <div className={styles.aboutStatValue}>{val || '—'}</div>
-                    <div className={styles.aboutStatLabel}>{f.label}</div>
-                  </div>
-                  <div className={styles.aboutStatEditControls}>
-                    {renderStatControl(f.key, f.control)}
-                    <label className={styles.aboutStatEditToggle}>
-                      <input type="checkbox" className={styles.tabsCheckbox} checked={on} onChange={() => toggle(f.key)} />
-                      <span>Show</span>
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {error && <div className={styles.testimonialAddError}>{error}</div>}
-          <div className={styles.aboutStatsActions}>
-            <button type="button" className={styles.testimonialAddCancel} disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
-            <button type="button" className={styles.testimonialAddSave} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
