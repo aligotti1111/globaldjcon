@@ -3274,6 +3274,87 @@ export function AboutStatsRow({
   const eventTiers = ['50+', '100+', '200+', '500+', '1000+'];
   const depositPcts = ['10%', '15%', '20%', '25%', '30%', '35%', '40%', '50%'];
 
+  // The editable facts, in display order. Labels match the public cards so the
+  // owner sees exactly what a visitor sees as they fill each one in.
+  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' }[] = [
+    { key: 'established', label: 'Established', control: 'year' },
+    { key: 'events', label: 'Events', control: 'tier' },
+    { key: 'insured', label: 'Insured', control: 'yesno' },
+    { key: 'deposit', label: 'Deposit', control: 'pct' },
+    { key: 'destination', label: 'Destination weddings', control: 'yesno' },
+    { key: 'backup', label: 'Backup equipment', control: 'yesno' },
+    { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
+  ];
+
+  function fmtDeposit(v: string) {
+    const t = v.trim();
+    return /%\s*$/.test(t) ? t : `${t.replace(/[^0-9.]/g, '')}%`;
+  }
+
+  // The value shown in a fact's preview card as the owner edits it.
+  function previewValue(key: keyof AboutStats): string {
+    switch (key) {
+      case 'established': return draft.established?.year ? String(draft.established.year) : '';
+      case 'events': return draft.events?.tier || '';
+      case 'deposit': return draft.deposit?.value ? fmtDeposit(draft.deposit.value) : '';
+      default: return (draft[key] as { answer?: string } | undefined)?.answer || '';
+    }
+  }
+
+  function setAnswer(key: keyof AboutStats, v: string) {
+    setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), answer: (v || undefined) as 'Yes' | 'No' | undefined } }));
+  }
+
+  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno') {
+    if (control === 'year') {
+      return (
+        <select
+          className={styles.aboutStatsSelect}
+          value={draft.established?.year ?? ''}
+          onChange={(e) => setDraft(d => ({ ...d, established: { ...(d.established || {}), year: e.target.value ? parseInt(e.target.value, 10) : undefined } }))}
+        >
+          <option value="">Year…</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      );
+    }
+    if (control === 'tier') {
+      return (
+        <select
+          className={styles.aboutStatsSelect}
+          value={draft.events?.tier ?? ''}
+          onChange={(e) => setDraft(d => ({ ...d, events: { ...(d.events || {}), tier: e.target.value || undefined } }))}
+        >
+          <option value="">Amount…</option>
+          {eventTiers.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      );
+    }
+    if (control === 'pct') {
+      return (
+        <select
+          className={styles.aboutStatsSelect}
+          value={draft.deposit?.value ?? ''}
+          onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
+        >
+          <option value="">Percent…</option>
+          {depositPcts.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      );
+    }
+    return (
+      <select
+        className={styles.aboutStatsSelect}
+        value={(draft[key] as { answer?: string } | undefined)?.answer ?? ''}
+        onChange={(e) => setAnswer(key, e.target.value)}
+      >
+        <option value="">Yes / No…</option>
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    );
+  }
+
   return (
     <div className={styles.aboutStatsWrap}>
       {cards.length > 0 && (
@@ -3304,116 +3385,30 @@ export function AboutStatsRow({
         <div className={styles.aboutStatsEditor}>
           <div className={styles.aboutStatsEditorHint}>
             Turn on the highlights you want visitors to see, then fill them in.
+            Active cards show exactly how they&apos;ll appear on your profile.
           </div>
 
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Established</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.established?.year ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, established: { ...(d.established || {}), year: e.target.value ? parseInt(e.target.value, 10) : undefined } }))}
-              >
-                <option value="">Year…</option>
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.established?.on} onChange={() => toggle('established')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Events</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.events?.tier ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, events: { ...(d.events || {}), tier: e.target.value || undefined } }))}
-              >
-                <option value="">Amount…</option>
-                {eventTiers.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.events?.on} onChange={() => toggle('events')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Fully insured</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.insured?.answer ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, insured: { ...(d.insured || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
-              >
-                <option value="">Yes / No…</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.insured?.on} onChange={() => toggle('insured')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Deposit to book (%)</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.deposit?.value ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
-              >
-                <option value="">Percent…</option>
-                {depositPcts.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.deposit?.on} onChange={() => toggle('deposit')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Destination weddings</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.destination?.answer ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, destination: { ...(d.destination || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
-              >
-                <option value="">Yes / No…</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.destination?.on} onChange={() => toggle('destination')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Backup equipment</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.backup?.answer ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, backup: { ...(d.backup || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
-              >
-                <option value="">Yes / No…</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.backup?.on} onChange={() => toggle('backup')} />
-            </span>
-          </label>
-
-          <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Deposit required</span>
-            <span className={styles.aboutStatsRowControl}>
-              <select
-                className={styles.aboutStatsSelect}
-                value={draft.depositRequired?.answer ?? ''}
-                onChange={(e) => setDraft(d => ({ ...d, depositRequired: { ...(d.depositRequired || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
-              >
-                <option value="">Yes / No…</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-              <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.depositRequired?.on} onChange={() => toggle('depositRequired')} />
-            </span>
-          </label>
+          <div className={styles.aboutStatsEditGrid}>
+            {STAT_FIELDS.map(f => {
+              const on = !!draft[f.key]?.on;
+              const val = previewValue(f.key);
+              return (
+                <div key={f.key} className={`${styles.aboutStatEditCard} ${on ? styles.aboutStatEditCardOn : ''}`}>
+                  <div className={styles.aboutStatEditPreview}>
+                    <div className={styles.aboutStatValue}>{val || '—'}</div>
+                    <div className={styles.aboutStatLabel}>{f.label}</div>
+                  </div>
+                  <div className={styles.aboutStatEditControls}>
+                    {renderStatControl(f.key, f.control)}
+                    <label className={styles.aboutStatEditToggle}>
+                      <input type="checkbox" className={styles.tabsCheckbox} checked={on} onChange={() => toggle(f.key)} />
+                      <span>Show</span>
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           {error && <div className={styles.testimonialAddError}>{error}</div>}
           <div className={styles.aboutStatsActions}>
