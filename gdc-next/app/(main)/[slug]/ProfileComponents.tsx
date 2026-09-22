@@ -3248,7 +3248,7 @@ export function AboutStatsRow({
   if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
   if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: 'Yes' });
   if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: 'Yes' });
-  if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: 'Yes' });
+  if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
 
   async function save() {
     setBusy(true);
@@ -3322,7 +3322,7 @@ export function AboutStatsRow({
           </label>
 
           <label className={styles.aboutStatsRow}>
-            <span className={styles.aboutStatsRowLabel}>Events played</span>
+            <span className={styles.aboutStatsRowLabel}>Events</span>
             <span className={styles.aboutStatsRowControl}>
               <select
                 className={styles.aboutStatsSelect}
@@ -3375,6 +3375,15 @@ export function AboutStatsRow({
           <label className={styles.aboutStatsRow}>
             <span className={styles.aboutStatsRowLabel}>Deposit required</span>
             <span className={styles.aboutStatsRowControl}>
+              <select
+                className={styles.aboutStatsSelect}
+                value={draft.depositRequired?.answer ?? ''}
+                onChange={(e) => setDraft(d => ({ ...d, depositRequired: { ...(d.depositRequired || {}), answer: (e.target.value || undefined) as 'Yes' | 'No' | undefined } }))}
+              >
+                <option value="">Yes / No…</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
               <input type="checkbox" className={styles.tabsCheckbox} checked={!!draft.depositRequired?.on} onChange={() => toggle('depositRequired')} />
             </span>
           </label>
