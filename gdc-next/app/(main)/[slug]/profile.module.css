@@ -1836,6 +1836,14 @@
   color: var(--neon);
   margin-bottom: .75rem;
 }
+.aboutStatsHint {
+  margin-left: .6rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .68rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
+}
 .aboutStatsGrid {
   display: flex;
   flex-wrap: wrap;
