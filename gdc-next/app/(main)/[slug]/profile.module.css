@@ -1965,17 +1965,22 @@
 }
 .aboutStatValueSelect {
   font-family: 'Space Mono', monospace;
-  font-size: 1.35rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--neon);
-  background: transparent;
-  border: none;
-  padding: 0;
+  background: #0d0d14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .3rem 1.6rem .3rem .55rem;
   line-height: 1.1;
   cursor: pointer;
   max-width: 100%;
+  /* Custom chevron so it clearly reads as a dropdown. */
   -webkit-appearance: none;
   appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2300f5c4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
 }
 .aboutStatValueSelect option {
   background: #13131b;
@@ -2030,10 +2035,8 @@
   }
   .aboutStatValueSelect {
     font-size: .9rem;
-    max-width: 120px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: .25rem .4rem;
+    max-width: 130px;
+    padding: .28rem 1.5rem .28rem .5rem;
   }
 }
 /* Suggested-questions block inside the owner add form. */
