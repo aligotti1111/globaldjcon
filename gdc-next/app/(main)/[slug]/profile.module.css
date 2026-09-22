@@ -95,6 +95,7 @@
   background-size: cover;
   background-position: var(--banner-pos, 50% 50%);
   background-repeat: no-repeat;
+  border-radius: 16px;
   pointer-events: none;
 }
 /* Re-enable pointer events on interactive children of .banner (top-left
