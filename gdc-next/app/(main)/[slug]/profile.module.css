@@ -2699,21 +2699,17 @@
 
 /* ── Staff + Affiliates tabs (mobile DJs only) ─────────────────────────── */
 
-/* Owner edit + delete controls — a dedicated pill in the card's top-right so
-   the two buttons never crowd each other or the content. */
+/* Owner edit + delete controls — a dedicated footer row below the card content,
+   never overlapping the photo. Separated by a divider. */
 .entryCardActions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 6px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, .55);
-  border: 1px solid rgba(255, 255, 255, .12);
-  backdrop-filter: blur(4px);
-  z-index: 2;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: .85rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--border);
 }
 .entryEditBtn,
 .entryDeleteBtn {
@@ -2815,14 +2811,14 @@
 }
 .staffName {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.27rem;
+  font-size: 1.6rem;
   letter-spacing: .03em;
   color: var(--white);
   line-height: 1.1;
 }
 .staffPosition {
   font-family: 'Space Mono', monospace;
-  font-size: .75rem;
+  font-size: .9rem;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--neon);
@@ -2838,12 +2834,16 @@
 .affiliateCard {
   position: relative;
   display: flex;
-  gap: 1rem;
-  align-items: flex-start;
+  flex-direction: column;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem 1.1rem;
+}
+.affiliateMain {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
 }
 .affiliateBody {
   flex: 1;
