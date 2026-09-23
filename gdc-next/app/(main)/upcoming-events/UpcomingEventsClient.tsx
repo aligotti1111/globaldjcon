@@ -441,11 +441,6 @@ function EventRow({
               <>
                 <div className={styles.venue}>{venueLine}</div>
                 <div className={styles.meta}>{timeRange}</div>
-                {event.venue_address && (
-                  <div className={styles.meta}>
-                    {event.venue_address}
-                  </div>
-                )}
                 {event.dj_name && (
                   <div className={styles.metaDj}>
                     DJ:{' '}
