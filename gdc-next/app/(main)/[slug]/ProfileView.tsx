@@ -1622,7 +1622,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           {/* About tab — two-card framework: bio on the left, Quick Facts
               (mobile DJs) on the right; stacks on mobile. */}
           <div className={paneClass('about')}>
-            <div className={styles.aboutGrid}>
+            {/* Two columns when Quick Facts (mobile DJs) show; otherwise the
+                About card spans the full section width. */}
+            <div className={styles.aboutGrid} style={isMobileDJ ? undefined : { gridTemplateColumns: '1fr' }}>
               <div className={styles.aboutCard}>
                 <div className={styles.aboutCardHeading}>About</div>
                 {canEdit ? (
