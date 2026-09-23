@@ -11,6 +11,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import UpcomingEventsClient from './UpcomingEventsClient';
 import { buildHostPipeline, type HostStep } from '@/lib/hostPipeline';
 import type { Metadata } from 'next';
@@ -99,7 +100,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -153,7 +154,11 @@ export default async function UpcomingEventsPage() {
         select: (c: string) => { in: (col: string, v: string[]) => Promise<{ data: Record<string, unknown>[] | null }> };
       };
     };
-    const db = supabase as unknown as AnyFrom;
+    // Payments / planner / rider / guestlist rows are owned by the DJ, so the
+    // host's RLS-scoped client can't read them — but these are the host's OWN
+    // bookings (we already scoped events to requester_id === user.id), so it's
+    // safe to read them with the admin client here.
+    const db = createAdminClient() as unknown as AnyFrom;
 
     const { data: payRows } = await db.from('booking_payments').select('id, booking_id, kind, status').in('booking_id', eventIds);
     for (const p of (payRows || []) as { id: string; booking_id: string; kind: string; status: string }[]) {
