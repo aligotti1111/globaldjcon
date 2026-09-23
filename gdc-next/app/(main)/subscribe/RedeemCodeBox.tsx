@@ -56,12 +56,13 @@ export default function RedeemCodeBox({
       });
       const data = await res.json();
       if (redeemingRef.current || done) return; // a redeem started/finished meanwhile
-      if (data.ok) {
-        setPreview(
-          data.alreadyRedeemed
-            ? `You’ve already redeemed this code.`
-            : `✓ ${data.description}`,
-        );
+      if (data.ok && data.alreadyRedeemed) {
+        // Already redeemed is not a success — show it as an error (red), and
+        // clear any preview so we don't render the message twice.
+        setPreview(null);
+        setError('You’ve already redeemed this code.');
+      } else if (data.ok) {
+        setPreview(`✓ ${data.description}`);
       } else {
         setError(data.error || 'That code isn’t valid.');
       }
