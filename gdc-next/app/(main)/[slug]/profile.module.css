@@ -2699,11 +2699,17 @@
 
 /* ── Staff + Affiliates tabs (mobile DJs only) ─────────────────────────── */
 
-/* Shared delete ✕ shown to the owner on each staff/affiliate card. */
-.entryDeleteBtn {
+/* Owner edit + delete controls, top-right of each staff/affiliate card. */
+.entryCardActions {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.entryEditBtn,
+.entryDeleteBtn {
   width: 24px;
   height: 24px;
   display: flex;
@@ -2716,13 +2722,38 @@
   font-size: .8rem;
   line-height: 1;
   cursor: pointer;
-  z-index: 2;
   transition: all .15s;
+}
+.entryEditBtn:hover {
+  background: var(--neon, #00e0a4);
+  border-color: var(--neon, #00e0a4);
+  color: #04231d;
 }
 .entryDeleteBtn:hover {
   background: rgba(255, 95, 95, .85);
   border-color: rgba(255, 95, 95, .9);
 }
+
+/* Photo column in the add/edit form: picker + a "remove" link under it. */
+.entryPhotoCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  flex-shrink: 0;
+}
+.entryPhotoClear {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+}
+.entryPhotoClear:hover { color: #ff8080; }
 
 /* Add form: photo picker sits to the left of the fields. */
 .entryFormRow {
@@ -2730,11 +2761,11 @@
   gap: 1rem;
   align-items: flex-start;
 }
-.entryPhotoPick {
+.entryPhotoPick,
+.entryPhotoPickSquare {
   flex-shrink: 0;
   width: 84px;
   height: 84px;
-  border-radius: 12px;
   border: 1.5px dashed var(--border);
   background: rgba(0, 0, 0, .25);
   color: var(--muted);
@@ -2749,8 +2780,12 @@
   padding: 0;
   transition: border-color .15s;
 }
-.entryPhotoPick:hover { border-color: var(--neon); }
-.entryPhotoPick small { color: var(--muted); font-size: .52rem; opacity: .8; }
+.entryPhotoPick { border-radius: 50%; }
+.entryPhotoPickSquare { border-radius: 12px; }
+.entryPhotoPick:hover,
+.entryPhotoPickSquare:hover { border-color: var(--neon); }
+.entryPhotoPick small,
+.entryPhotoPickSquare small { color: var(--muted); font-size: .52rem; opacity: .8; }
 
 /* Staff: responsive grid, each entry stacked photo → name → position. */
 .staffGrid {
@@ -2773,14 +2808,14 @@
 }
 .staffName {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.15rem;
+  font-size: 1.27rem;
   letter-spacing: .03em;
   color: var(--white);
   line-height: 1.1;
 }
 .staffPosition {
   font-family: 'Space Mono', monospace;
-  font-size: .68rem;
+  font-size: .75rem;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--neon);
