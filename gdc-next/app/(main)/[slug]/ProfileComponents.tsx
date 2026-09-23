@@ -21,7 +21,7 @@ import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/li
 import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 import {
-  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf,
+  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf, normalizeUrl,
   type StaffMember, type Affiliate,
 } from '@/lib/staff';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
@@ -3969,6 +3969,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
   const [name, setName] = useState('');
   const [companyType, setCompanyType] = useState('');
   const [description, setDescription] = useState('');
+  const [website, setWebsite] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -3982,10 +3983,10 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
   }
   function openNew() {
     if (affiliates.length >= AFFILIATES_MAX) { setError(`You can add up to ${AFFILIATES_MAX} affiliates.`); return; }
-    setEntryId(newEntryId()); setName(''); setCompanyType(''); setDescription(''); setImage(null); pick(null); setError(null); setMode('new');
+    setEntryId(newEntryId()); setName(''); setCompanyType(''); setDescription(''); setWebsite(''); setImage(null); pick(null); setError(null); setMode('new');
   }
   function openEdit(a: Affiliate) {
-    setEntryId(a.id); setName(a.name); setCompanyType(a.companyType); setDescription(a.description || ''); setImage(a.image || null); pick(null); setError(null); setMode(a.id);
+    setEntryId(a.id); setName(a.name); setCompanyType(a.companyType); setDescription(a.description || ''); setWebsite(a.url || ''); setImage(a.image || null); pick(null); setError(null); setMode(a.id);
   }
   function close() { setMode(null); pick(null); setError(null); }
 
@@ -4014,7 +4015,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
     setBusy(true); setError(null);
     try {
       const uploaded = file ? await uploadEntryImage(userId, file, 'affiliate') : image;
-      const entry: Affiliate = { id: entryId, name: name.trim(), companyType: companyType.trim(), description: description.trim(), image: uploaded };
+      const entry: Affiliate = { id: entryId, name: name.trim(), companyType: companyType.trim(), description: description.trim(), image: uploaded, url: normalizeUrl(website) };
       const next = mode === 'new'
         ? [...affiliates, entry]
         : affiliates.map((a) => (a.id === entryId ? entry : a));
@@ -4034,9 +4035,22 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
           {affiliates.map((a) => (
             <div key={a.id} className={styles.affiliateCard}>
               <div className={styles.affiliateMain}>
-                <EntryImage src={a.image} name={a.name} size={84} square />
+                {a.url ? (
+                  <a href={a.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateImgLink} aria-label={`${a.name} website`}>
+                    <EntryImage src={a.image} name={a.name} size={84} square />
+                  </a>
+                ) : (
+                  <EntryImage src={a.image} name={a.name} size={84} square />
+                )}
                 <div className={styles.affiliateBody}>
-                  <div className={styles.affiliateName}>{a.name}</div>
+                  {a.url ? (
+                    <a href={a.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateNameLink}>
+                      {a.name}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 6, verticalAlign: 'middle', opacity: .8 }}><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                  ) : (
+                    <div className={styles.affiliateName}>{a.name}</div>
+                  )}
                   {a.companyType && <div className={styles.affiliateType}>{a.companyType}</div>}
                   {a.description && <div className={styles.affiliateDesc}>{a.description}</div>}
                 </div>
@@ -4076,6 +4090,8 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
               <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} placeholder="e.g. Florist" className={styles.testimonialAddInput} disabled={busy} />
             </div>
           </div>
+          <div className={styles.testimonialAddFormLabel}>Website <span style={{ opacity: .6 }}>(optional)</span></div>
+          <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. bloomandco.com" className={styles.testimonialAddInput} disabled={busy} />
           <div className={styles.testimonialAddFormLabel}>Description <span style={{ opacity: .6 }}>(optional)</span></div>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short note on why you recommend them…" className={styles.testimonialAddInput} disabled={busy} />
           {error && <div className={styles.testimonialAddError}>{error}</div>}
