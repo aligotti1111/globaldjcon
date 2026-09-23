@@ -12,6 +12,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import UpcomingEventsClient from './UpcomingEventsClient';
+import { buildHostPipeline, type HostStage } from '@/lib/hostPipeline';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,9 @@ export interface UpcomingEvent {
   // manual entry. Hosts viewing it can edit detail fields but can't
   // attach a different DJ (the DJ is already locked).
   requester_id?: string | null;
+  // Read-only "booking progress" pipeline shown at the top of the expanded
+  // card — only the stages this booking actually has, computed server-side.
+  pipeline?: HostStage[];
 }
 
 interface ProfileRow {
@@ -93,7 +97,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, rider_confirmed_at, guestlist_confirmed_at')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -126,6 +130,55 @@ export default async function UpcomingEventsPage() {
       e.dj_name = djInfoById[e.dj_id].name || null;
       e.dj_slug = djInfoById[e.dj_id].slug || null;
     }
+  }
+
+  // ── Booking progress pipeline (read-only) ────────────────────────────────
+  // Pull the deposit/balance payment rows for these bookings so the Deposit and
+  // Balance nodes can show paid/unpaid. The generated types predate
+  // booking_payments, so cast the client for this one query.
+  const eventIds = events.map((e) => e.id);
+  const payByBooking: Record<string, { kind: string; status: string }[]> = {};
+  if (eventIds.length > 0) {
+    const { data: payRows } = await (supabase as unknown as {
+      from: (t: string) => {
+        select: (c: string) => { in: (col: string, v: string[]) => Promise<{ data: { booking_id: string; kind: string; status: string }[] | null }> };
+      };
+    })
+      .from('booking_payments')
+      .select('booking_id, kind, status')
+      .in('booking_id', eventIds);
+    for (const p of payRows || []) {
+      (payByBooking[p.booking_id] ||= []).push({ kind: p.kind, status: p.status });
+    }
+  }
+
+  for (const e of events) {
+    const raw = e as unknown as {
+      booking_type: string | null;
+      contract_status?: string | null;
+      deposit_pct?: number | null;
+      deposit_amount?: number | null;
+      planner_status?: 'sent' | 'partial' | 'submitted' | null;
+      rider_confirmed_at?: string | null;
+      guestlist_confirmed_at?: string | null;
+    };
+    const pays = payByBooking[e.id] || [];
+    const settled = (s: string) => s === 'paid' || s === 'waived';
+    const deposits = pays.filter((p) => p.kind === 'deposit');
+    const balances = pays.filter((p) => p.kind === 'balance');
+    const bookingType = raw.booking_type === 'club' ? 'club' : raw.booking_type === 'mobile' ? 'mobile' : null;
+
+    e.pipeline = buildHostPipeline({
+      bookingType,
+      contractStatus: raw.contract_status ?? null,
+      hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0,
+      depositPaid: deposits.length > 0 && deposits.every((p) => settled(p.status)),
+      plannerStatus: raw.planner_status ?? null,
+      riderConfirmed: !!raw.rider_confirmed_at,
+      guestlistConfirmed: !!raw.guestlist_confirmed_at,
+      hasBalance: balances.length > 0,
+      balancePaid: balances.length > 0 && balances.every((p) => settled(p.status)),
+    });
   }
 
   return (
