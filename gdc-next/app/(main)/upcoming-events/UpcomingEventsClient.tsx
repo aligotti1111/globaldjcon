@@ -287,14 +287,20 @@ function EventRow({
   type PriceRow = { label: string; value: string; total?: boolean; schedule?: boolean };
   const pricingRows: PriceRow[] = (() => {
     const raw = event as unknown as {
+      counter_rate?: number | null;
+      quoted_rate?: number | null;
       total_with_tax?: number | null;
       tax_pct?: number | null;
+      tax_amount?: number | null;
       deposit_pct?: number | null;
       deposit_amount?: number | null;
     };
-    const rate = event.offer_amount ?? null;
+    // Agreed rate: same source order the DJ card uses (offer_amount alone is
+    // frequently null; the real number lives in counter_rate / quoted_rate).
+    const rate = raw.counter_rate ?? raw.quoted_rate ?? event.offer_amount ?? null;
     const totalWithTax = raw.total_with_tax ?? null;
-    if (rate == null || !Number.isFinite(rate)) return [];
+    // Render whenever there's any price at all — a rate or a tax-inclusive total.
+    if ((rate == null || !Number.isFinite(rate)) && (totalWithTax == null || !Number.isFinite(totalWithTax))) return [];
     const cur = event.currency || 'USD';
     let money: (n: number) => string;
     try {
@@ -304,12 +310,19 @@ function EventRow({
       money = (n: number) => `${cur} ${n.toLocaleString()}`;
     }
 
-    const rows: PriceRow[] = [{ label: 'Agreed Rate', value: money(rate) }];
+    const rows: PriceRow[] = [];
+    // Agreed rate — shown when we have it (may be absent on legacy rows that
+    // only stored a tax-inclusive total).
+    const hasRate = rate != null && Number.isFinite(rate);
+    if (hasRate) rows.push({ label: 'Agreed Rate', value: money(rate!) });
 
-    // Tax — amount is the gap between the agreed rate and the tax-inclusive
-    // total; show the % when we know it.
-    const total = totalWithTax != null && Number.isFinite(totalWithTax) ? totalWithTax : rate;
-    const taxAmt = Math.max(0, Math.round((total - rate) * 100) / 100);
+    // Total (tax-inclusive): the stored snapshot when present, else the rate.
+    const total = totalWithTax != null && Number.isFinite(totalWithTax) ? totalWithTax : rate!;
+
+    // Tax — the stored snapshot amount, else the gap between rate and total.
+    const taxAmt = raw.tax_amount != null && Number.isFinite(raw.tax_amount)
+      ? Math.max(0, raw.tax_amount)
+      : (hasRate ? Math.max(0, Math.round((total - rate!) * 100) / 100) : 0);
     if (taxAmt > 0) {
       const pct = raw.tax_pct != null ? ` (${raw.tax_pct}%)` : '';
       rows.push({ label: 'Tax', value: `${money(taxAmt)}${pct}` });
