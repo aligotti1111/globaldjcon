@@ -346,7 +346,7 @@ export default function PlannerBuilder({
 
       {/* How to customise — reads right above the question list. */}
       <div className={styles.editHint}>
-        <span aria-hidden="true">⠿</span> Drag to reorder. Tap a question or its pencil to
+        <span aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg></span> Drag to reorder. Tap a question or its pencil to
         rename it. Add a section title or divider here, or a question at the bottom.
       </div>
 
@@ -362,7 +362,7 @@ export default function PlannerBuilder({
           onDragEnd={() => { setAddDrag(null); setOverI(null); }}
           title="Drag onto a spot in the list, or click to add at the top"
         >
-          ⠿ Add Section Title
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg> Add Section Title
         </button>
         <button
           type="button"
@@ -373,7 +373,7 @@ export default function PlannerBuilder({
           onDragEnd={() => { setAddDrag(null); setOverI(null); }}
           title="Drag onto a spot in the list, or click to add at the top"
         >
-          ⠿ Add Divider
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg> Add Divider
         </button>
         <button
           type="button"
@@ -384,7 +384,7 @@ export default function PlannerBuilder({
           onDragEnd={() => { setAddDrag(null); setOverI(null); }}
           title="Drag onto a spot in the list, or click to add at the top"
         >
-          ⠿ Add Space
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg> Add Space
         </button>
       </div>
 
@@ -425,7 +425,7 @@ export default function PlannerBuilder({
                     onDragStart={() => setDragI(i)}
                     onDragEnd={() => { setDragI(null); setOverI(null); }}
                     aria-hidden="true"
-                  >⠿</span>
+                  ><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg></span>
                   <div className={styles.arrows}>
                     <button type="button" className={styles.arrow} aria-label="Move up" disabled={i === 0}
                       onClick={() => reorderEditable(i, i - 1)}>↑</button>
@@ -499,7 +499,7 @@ export default function PlannerBuilder({
                   onDragStart={() => setDragI(i)}
                   onDragEnd={() => { setDragI(null); setOverI(null); }}
                   aria-hidden="true"
-                >⠿</span>
+                ><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg></span>
                 <div className={styles.arrows}>
                   <button type="button" className={styles.arrow}
                     aria-label="Move up" disabled={pinned || i === 0}
