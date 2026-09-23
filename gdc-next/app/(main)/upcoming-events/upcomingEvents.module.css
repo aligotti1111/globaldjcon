@@ -132,7 +132,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6.4px 16px;
+  padding: 5.76px 16px;
   background: #1c1c24;
   border: 1px solid var(--border);
   border-top: none;
@@ -932,7 +932,7 @@
    centered so it grows outward from the middle as more stages appear. */
 .hdrPipeline {
   position: absolute;
-  left: 50%;
+  left: 54%;
   top: 50%;
   transform: translate(-50%, -50%);
   display: flex;
