@@ -12,8 +12,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import UpcomingEventsClient from './UpcomingEventsClient';
-import { buildHostPipeline } from '@/lib/hostPipeline';
-import type { PipelineStep } from '@/app/(main)/upcoming-bookings/pipeline/types';
+import { buildHostPipeline, type HostStep } from '@/lib/hostPipeline';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -67,7 +66,7 @@ export interface UpcomingEvent {
   // Read-only "booking progress" pipeline shown at the top of the expanded
   // card — only the stages this booking actually has, computed server-side.
   // Uses the DJ-side PipelineStep shape so the host renders the real hero.
-  pipeline?: PipelineStep[];
+  pipeline?: HostStep[];
   pipelineDjType?: 'club' | 'mobile';
 }
 
@@ -140,12 +139,14 @@ export default async function UpcomingEventsPage() {
   // Balance nodes can show paid/unpaid. The generated types predate
   // booking_payments, so cast the client for this one query.
   const eventIds = events.map((e) => e.id);
-  const payByBooking: Record<string, { kind: string; status: string }[]> = {};
+  const payByBooking: Record<string, { id: string; kind: string; status: string }[]> = {};
   // Rider + guest-list confirmations live on their OWN tables (booking_riders /
   // booking_guestlists), NOT on bookings — keyed by booking_id. Best-effort:
   // these lookups must never break the events query.
   const riderConfirmed: Record<string, boolean> = {};
   const guestlistConfirmed: Record<string, boolean> = {};
+  // Planner id per booking, so the host can open their planner from the node.
+  const plannerIdByBooking: Record<string, string> = {};
   if (eventIds.length > 0) {
     type AnyFrom = {
       from: (t: string) => {
@@ -154,9 +155,9 @@ export default async function UpcomingEventsPage() {
     };
     const db = supabase as unknown as AnyFrom;
 
-    const { data: payRows } = await db.from('booking_payments').select('booking_id, kind, status').in('booking_id', eventIds);
-    for (const p of (payRows || []) as { booking_id: string; kind: string; status: string }[]) {
-      (payByBooking[p.booking_id] ||= []).push({ kind: p.kind, status: p.status });
+    const { data: payRows } = await db.from('booking_payments').select('id, booking_id, kind, status').in('booking_id', eventIds);
+    for (const p of (payRows || []) as { id: string; booking_id: string; kind: string; status: string }[]) {
+      (payByBooking[p.booking_id] ||= []).push({ id: p.id, kind: p.kind, status: p.status });
     }
 
     const { data: riderRows } = await db.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', eventIds);
@@ -166,6 +167,10 @@ export default async function UpcomingEventsPage() {
     const { data: glRows } = await db.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', eventIds);
     for (const g of (glRows || []) as { booking_id: string; confirmed_at: string | null }[]) {
       if (g.confirmed_at) guestlistConfirmed[g.booking_id] = true;
+    }
+    const { data: plRows } = await db.from('booking_planners').select('id, booking_id').in('booking_id', eventIds);
+    for (const pl of (plRows || []) as { id: string; booking_id: string }[]) {
+      if (!plannerIdByBooking[pl.booking_id]) plannerIdByBooking[pl.booking_id] = pl.id;
     }
   }
 
@@ -181,6 +186,11 @@ export default async function UpcomingEventsPage() {
     const settled = (s: string) => s === 'paid' || s === 'waived';
     const deposits = pays.filter((p) => p.kind === 'deposit');
     const balances = pays.filter((p) => p.kind === 'balance');
+    const depositPaid = deposits.length > 0 && deposits.every((p) => settled(p.status));
+    const balancePaid = balances.length > 0 && balances.every((p) => settled(p.status));
+    // The still-owed payment row the host can click through to pay.
+    const openDeposit = deposits.find((p) => !settled(p.status));
+    const openBalance = balances.find((p) => !settled(p.status));
     const bookingType = raw.booking_type === 'club' ? 'club' : raw.booking_type === 'mobile' ? 'mobile' : null;
     e.pipelineDjType = bookingType === 'club' ? 'club' : 'mobile';
 
@@ -188,12 +198,16 @@ export default async function UpcomingEventsPage() {
       bookingType,
       contractStatus: raw.contract_status ?? null,
       hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0,
-      depositPaid: deposits.length > 0 && deposits.every((p) => settled(p.status)),
+      depositPaid,
       plannerStatus: raw.planner_status ?? null,
       riderConfirmed: !!riderConfirmed[e.id],
       guestlistConfirmed: !!guestlistConfirmed[e.id],
       hasBalance: balances.length > 0,
-      balancePaid: balances.length > 0 && balances.every((p) => settled(p.status)),
+      balancePaid,
+      // Clickable actions for the host: pay deposit/balance, open planner.
+      depositHref: openDeposit ? `/pay/${openDeposit.id}` : undefined,
+      balanceHref: openBalance ? `/pay/${openBalance.id}` : undefined,
+      plannerHref: plannerIdByBooking[e.id] ? `/planner/${plannerIdByBooking[e.id]}` : undefined,
     });
   }
 
