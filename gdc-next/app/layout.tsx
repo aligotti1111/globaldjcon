@@ -36,54 +36,12 @@
 // Pages inside (simple) get a stripped-down layout instead.
 
 import type { Metadata } from 'next';
-import { Bebas_Neue, DM_Sans, Space_Mono, Inter, Archivo } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
 import Toaster from '@/components/Toaster';
 import { createClient } from '@/lib/supabase/server';
 import type { CurrentUser, UserProfile } from '@/types/db';
 import './styles/index.css';
 
-// Bebas Neue — display headings. Single weight (400) is the only one
-// Google Fonts ships for this family.
-const bebasNeue = Bebas_Neue({
-  weight: '400',
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-bebas',
-});
-
-// DM Sans — body text.
-const dmSans = DM_Sans({
-  weight: ['300', '400', '500', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-dm-sans',
-});
-
-// Space Mono — small caps / monospace accents.
-const spaceMono = Space_Mono({
-  weight: ['400', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-space-mono',
-});
-
-// Inter — modern UI font for small form labels. Designed for legibility
-// at small sizes, which monospace (Space Mono) handles poorly.
-const inter = Inter({
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
-
-// Archivo — condensed-ish grotesk used for the DJ-type banner tag.
-const archivo = Archivo({
-  weight: ['600', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-archivo',
-});
 
 // metadataBase makes every relative/auto-generated URL (opengraph-image,
 // twitter:image, etc.) resolve against the production domain. Without it,
@@ -163,15 +121,28 @@ export default async function RootLayout({
 }) {
   const initialUser = await getInitialUser();
 
-  // Combine all three font CSS-variable classes onto <html> so the
-  // variables are available everywhere. Each next/font import also
-  // registers the actual family name (e.g. "Bebas Neue"), so existing
-  // font-family declarations in CSS modules / global CSS keep working
-  // unchanged.
-  const fontClasses = `${bebasNeue.variable} ${dmSans.variable} ${spaceMono.variable} ${inter.variable} ${archivo.variable}`;
+  // Fonts load at runtime via a <link> to Google Fonts (below) instead of
+  // next/font, whose build-time download was failing intermittently in CI.
+  // The --font-* CSS variables are defined here so every `var(--font-*)` rule
+  // and every literal `font-family: 'Bebas Neue'` rule keeps working unchanged.
+  const fontVars = {
+    ['--font-bebas' as string]: "'Bebas Neue', sans-serif",
+    ['--font-dm-sans' as string]: "'DM Sans', sans-serif",
+    ['--font-space-mono' as string]: "'Space Mono', monospace",
+    ['--font-inter' as string]: "'Inter', sans-serif",
+    ['--font-archivo' as string]: "'Archivo', sans-serif",
+  } as React.CSSProperties;
 
   return (
-    <html lang="en" className={fontClasses}>
+    <html lang="en" style={fontVars}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <AuthProvider initialUser={initialUser}>{children}</AuthProvider>
         <Toaster />
