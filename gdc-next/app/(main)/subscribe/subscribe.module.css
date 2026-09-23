@@ -309,7 +309,18 @@
   text-align: center;
 }
 .graceNote { color: var(--amber, #ffb020); font-size: 0.88rem; }
-.cardCurrent {}
+.cardCurrent {
+  border-color: var(--accent, #00e0a4);
+  box-shadow:
+    0 0 0 2px var(--accent, #00e0a4),
+    0 0 44px -6px color-mix(in srgb, var(--accent, #00e0a4) 65%, transparent),
+    0 34px 70px -28px color-mix(in srgb, var(--accent, #00e0a4) 55%, transparent);
+  transform: scale(1.045);
+  z-index: 2;
+}
+@media (max-width: 640px) {
+  .cardCurrent { transform: none; }
+}
 .manageRow { text-align: center; margin-top: 2rem; }
 .loginHint { color: var(--muted, rgba(255, 255, 255, 0.6)); font-size: 0.85rem; }
 
