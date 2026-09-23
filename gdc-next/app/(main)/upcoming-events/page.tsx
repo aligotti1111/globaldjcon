@@ -48,6 +48,13 @@ export interface UpcomingEvent {
   // Rate fields (visible only to DJ + host who created the booking).
   offer_amount?: number | null;
   currency?: string | null;
+  // Pricing-breakdown fields, so the host's Pricing card mirrors the DJ's
+  // receipt (Agreed Rate → Tax → Total, then a Deposit/Balance schedule).
+  tax_pct?: number | null;
+  total_with_tax?: number | null;
+  deposit_pct?: number | null;
+  deposit_amount?: number | null;
+  package_details?: string | null;
   // Mobile / private booking detail fields — shown in the expanded card
   // for mobile bookings so the host sees the full event context.
   room_details?: string | null;
@@ -100,7 +107,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, package_details')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
