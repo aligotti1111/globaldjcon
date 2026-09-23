@@ -960,10 +960,14 @@
 /* Centered booking-progress strip in the card header (host view). Absolutely
    centered so it grows outward from the middle as more stages appear. */
 .hdrPipeline {
+  /* Left-anchored (not centered) so the first pipeline node sits at the same x
+     on every row — a 5-stage club booking and a 4-stage mobile booking line up
+     stage-for-stage, and the club's extra Guests node just extends further
+     right. */
   position: absolute;
-  left: 54%;
+  left: 42%;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   z-index: 3;
