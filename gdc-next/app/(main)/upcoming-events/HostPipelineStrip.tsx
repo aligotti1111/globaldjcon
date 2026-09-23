@@ -8,7 +8,7 @@ import { useRef } from 'react';
 import PipelineStrip from '../upcoming-bookings/pipeline/PipelineStrip';
 import type { PipelineStep } from '../upcoming-bookings/pipeline/types';
 
-const SLOTS = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'] as const;
+const ORDER = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'];
 const noop = () => {};
 
 export default function HostPipelineStrip({
@@ -20,10 +20,14 @@ export default function HostPipelineStrip({
 }) {
   const btnRef = useRef<HTMLElement | null>(null);
   if (!steps || steps.length === 0) return null;
+  // Only the stages this booking actually has — no empty "—" cells or stray
+  // labels (Contract / Balance / Guests) for stages that don't apply.
+  const present = new Set(steps.map((s) => s.key));
+  const slots = ORDER.filter((k) => present.has(k));
   return (
     <PipelineStrip
       steps={steps}
-      slots={SLOTS}
+      slots={slots}
       djType={djType}
       newSlot={null}
       menuOpenKey={null}
