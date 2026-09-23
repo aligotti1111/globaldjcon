@@ -662,6 +662,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                     onClick={() => subscribe(tier)}
                     disabled={loadingTier !== null || !purchasable}
                     title={!purchasable ? 'Not available yet' : undefined}
+                    style={{ background: '#000', color: '#fff' }}
                   >
                     {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Add Billing'}
                   </button>
