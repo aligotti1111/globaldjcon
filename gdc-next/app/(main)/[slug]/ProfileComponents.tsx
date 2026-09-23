@@ -3127,9 +3127,7 @@ export function EditTabsModal({
                     style={{ touchAction: 'none' }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
-                      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
-                      <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+                      <path d="M12 2 8.5 5.5h2.2v5.3H5.5V8.5L2 12l3.5 3.5v-2.3h5.2v5.3H8.5L12 22l3.5-3.5h-2.2v-5.3h5.2v2.3L22 12l-3.5-3.5v2.3h-5.2V5.5h2.2L12 2Z" />
                     </svg>
                   </button>
                   <div className={styles.tabsRowText}>
