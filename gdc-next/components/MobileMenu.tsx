@@ -23,6 +23,7 @@ import { useAuth } from './AuthProvider';
 import { canAcceptBookings, canDiscounts } from '@/lib/acting';
 import { useUpcomingBookingCount } from './useUpcomingBookingCount';
 import { canBook, type AccessFields } from '@/lib/access';
+import { ContactTrigger } from './ContactModal';
 
 // Shared stroke attributes for the inline icon set. Icons are sized and
 // colored via the .mm-icon CSS class (16px, neon by default).
@@ -389,9 +390,9 @@ export default function MobileMenu() {
         )}
 
         <div className="mobile-menu-section">
-          <Link href="/contact" onClick={close} className="mobile-menu-item muted">
+          <ContactTrigger onClick={close} className="mobile-menu-item muted">
             <IconMessage />Contact
-          </Link>
+          </ContactTrigger>
           <Link href="/privacy" onClick={close} className="mobile-menu-item muted">
             <IconShield />Privacy
           </Link>
