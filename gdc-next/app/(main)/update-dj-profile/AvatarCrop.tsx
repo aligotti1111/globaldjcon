@@ -27,11 +27,19 @@ interface Props {
   // another DJ's profile uploads into their OWN folder (RLS-safe); the public
   // URL is then saved to the owner's row by the caller.
   uploadFolder?: string;
+  // Full storage path (inside the avatars bucket) to write to. When omitted the
+  // avatar default `${uploadFolder||userId}/avatar.png` is used. Callers that
+  // crop something OTHER than the profile avatar (e.g. a staff photo) pass a
+  // unique path here so they don't overwrite the avatar or each other.
+  storagePath?: string;
+  // Optional modal heading + hint override (defaults suit the profile avatar).
+  title?: string;
+  hint?: React.ReactNode;
   onClose: () => void;
   onSuccess: (publicUrl: string) => void;
 }
 
-export default function AvatarCrop({ file, userId, uploadFolder, onClose, onSuccess }: Props) {
+export default function AvatarCrop({ file, userId, uploadFolder, storagePath, title, hint, onClose, onSuccess }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -187,7 +195,7 @@ export default function AvatarCrop({ file, userId, uploadFolder, onClose, onSucc
       // any prior avatar — matches vanilla. Append `?t=` cache-buster to
       // public URL so the new image shows up immediately.
       const supabase = createClient();
-      const path = `${uploadFolder || userId}/avatar.png`;
+      const path = storagePath || `${uploadFolder || userId}/avatar.png`;
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, blob, {
