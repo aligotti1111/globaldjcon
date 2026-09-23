@@ -502,6 +502,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {isComp && !isPaid && accessUntilLabel && (
         <div className={styles.compBanner}>
           Select a package and add your billing information to begin your subscription immediately after the promotion ends.
+          <span style={{ display: 'block', marginTop: '.45rem', fontWeight: 700 }}>Active till {accessUntilLabel}</span>
         </div>
       )}
       {error && <div className={styles.error}>{error}</div>}
@@ -665,7 +666,7 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                     disabled={loadingTier !== null || !purchasable}
                     title={!purchasable ? 'Not available yet' : undefined}
                   >
-                    {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Subscribe'}
+                    {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Add Billing'}
                   </button>
                   {/* No per-card note — the complimentary/billing message already
                       shows in the banner above the plans. */}
