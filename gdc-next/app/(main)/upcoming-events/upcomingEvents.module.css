@@ -174,11 +174,11 @@
     border-radius: 8px 8px 0 0;
     border-bottom-color: transparent;
   }
-  /* Darker card body on mobile (matches the DJ card), so the pipeline band's
-     #16161c reads as a distinct lighter panel rather than blending in. */
+  /* Pure-black card body on mobile (matches the DJ card), so the pipeline
+     band's #16161c reads as a distinct lighter panel rather than blending in. */
   .row,
   .row:hover {
-    background: #0b0b12;
+    background: #000;
   }
 }
 
