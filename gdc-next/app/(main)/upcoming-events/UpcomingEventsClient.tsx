@@ -283,7 +283,9 @@ function EventRow({
 
   // Pricing breakdown rows for the bottom card (mirrors the DJ Pricing card).
   const pricingRows: { label: string; value: string; total?: boolean }[] = (() => {
-    if (event.offer_amount == null || !Number.isFinite(event.offer_amount)) return [];
+    const raw = event as unknown as { total_with_tax?: number | null };
+    const amount = event.offer_amount ?? raw.total_with_tax ?? null;
+    if (amount == null || !Number.isFinite(amount)) return [];
     const cur = event.currency || 'USD';
     let fmt: (n: number) => string;
     try {
@@ -292,7 +294,7 @@ function EventRow({
     } catch {
       fmt = (n: number) => `${cur} ${n.toLocaleString()}`;
     }
-    return [{ label: 'Total', value: fmt(event.offer_amount), total: true }];
+    return [{ label: 'Total', value: fmt(amount), total: true }];
   })();
 
   return (
