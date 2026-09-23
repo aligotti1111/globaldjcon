@@ -12,6 +12,11 @@ import type { PipelineStep } from '@/app/(main)/upcoming-bookings/pipeline/types
 const NEON = '#00e3ad';
 const AMBER = '#eaa94a';
 
+// A host pipeline step is a normal PipelineStep plus an optional link the host
+// can click (pay deposit/balance, open planner). Plain strings only — this
+// crosses the server→client boundary, so no functions.
+export type HostStep = PipelineStep & { href?: string; hrefLabel?: string };
+
 export interface HostPipelineInput {
   bookingType: 'club' | 'mobile' | null;
   contractStatus?: string | null;
@@ -22,17 +27,23 @@ export interface HostPipelineInput {
   guestlistConfirmed?: boolean;
   hasBalance?: boolean;
   balancePaid?: boolean;
+  // Optional host actions.
+  depositHref?: string;
+  balanceHref?: string;
+  plannerHref?: string;
 }
 
-// Read-only step: no actions, not overridable, no info/hint → <PipelineHero>
-// renders it as a plain (non-clickable) node with no dropdown.
+// Read-only step: no actions/overrides → renders as a view-only node. An
+// optional href makes just that one node clickable for the host.
 function ro(
   key: string,
   label: string,
   done: boolean,
   icon: PipelineStep['icon'],
   caption: string,
-): PipelineStep {
+  href?: string,
+  hrefLabel?: string,
+): HostStep {
   return {
     key,
     label,
@@ -42,12 +53,12 @@ function ro(
     done,
     color: done ? NEON : AMBER,
     caption,
-    // no actions / info / hint → the node has no menu (view-only)
+    ...(href ? { href, hrefLabel } : {}),
   };
 }
 
-export function buildHostPipeline(i: HostPipelineInput): PipelineStep[] {
-  const out: PipelineStep[] = [];
+export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
+  const out: HostStep[] = [];
   const club = i.bookingType === 'club';
 
   if (i.contractStatus != null) {
@@ -57,19 +68,22 @@ export function buildHostPipeline(i: HostPipelineInput): PipelineStep[] {
   }
   if (i.hasDeposit) {
     out.push(ro('deposit', 'Deposit', !!i.depositPaid, 'money',
-      i.depositPaid ? 'Paid' : 'Pending'));
+      i.depositPaid ? 'Paid' : 'Pending',
+      i.depositPaid ? undefined : i.depositHref, 'Make a payment'));
   }
   if (!club && i.plannerStatus != null) {
     const done = i.plannerStatus === 'submitted';
     out.push(ro('song_list', 'Planner & Playlist', done, 'music',
-      done ? 'Complete' : 'In progress'));
+      done ? 'Complete' : 'In progress',
+      i.plannerHref, done ? 'View planner' : 'Open planner'));
   }
   if (club && i.riderConfirmed) {
     out.push(ro('song_list', 'Rider', true, 'music', 'Confirmed'));
   }
   if (i.hasBalance) {
     out.push(ro('invoice', 'Balance', !!i.balancePaid, 'receipt',
-      i.balancePaid ? 'Paid' : 'Pending'));
+      i.balancePaid ? 'Paid' : 'Pending',
+      i.balancePaid ? undefined : i.balanceHref, 'Make a payment'));
   }
   if (club && i.guestlistConfirmed) {
     out.push(ro('guestlist', 'Guest List', true, 'doc', 'Confirmed'));
