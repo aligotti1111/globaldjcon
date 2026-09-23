@@ -34,6 +34,7 @@ import {
 // so existing importers (e.g. page.tsx) keep working unchanged.
 import type { DjProfileData, Testimonial, Faq, AboutStats, TabKey } from './profileTypes';
 import { sanitizeBioHtml } from '@/lib/sanitizeBio';
+import { parseStaff, parseAffiliates, type StaffMember, type Affiliate } from '@/lib/staff';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
@@ -41,6 +42,7 @@ import {
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, AddPhotosModal, CreateAlbumModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
+  StaffEditor, StaffGrid, AffiliatesEditor, AffiliatesGrid,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
 import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
@@ -232,7 +234,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // inline) lands back on the same tab. Validates against TabKey list.
   const tabFromUrl = (() => {
     const t = searchParams.get('tab') || '';
-    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials', 'faq'];
+    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates'];
     return (valid as string[]).includes(t) ? (t as TabKey) : null;
   })();
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -812,6 +814,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     } catch { /* invalid JSON — silently ignore */ }
   }
 
+  // Staff + recommended affiliates (jsonb arrays, mobile DJs only). Parsed
+  // defensively — a malformed row yields an empty list rather than crashing.
+  const staffList: StaffMember[] = isMobileDJ ? parseStaff(data.staff) : [];
+  const affiliatesList: Affiliate[] = isMobileDJ ? parseAffiliates(data.affiliates) : [];
+
   // ── Tab visibility ──────────────────────────────────────────────────
   // Stored as JSONB on users.tab_visibility. Format:
   //   { about: bool, mixes: bool, images: bool, video: bool, testimonials: bool }
@@ -827,6 +834,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     video: boolean;
     testimonials: boolean;
     faq: boolean;
+    staff: boolean;
+    affiliates: boolean;
   } = (() => {
     const defaults = {
       about: true,
@@ -837,6 +846,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       testimonials: !isMobileDJ,
       // FAQ tab: mobile DJs only, default OFF (owner turns it on).
       faq: false,
+      // Staff + Affiliates tabs: mobile DJs only, default OFF (owner turns on).
+      staff: false,
+      affiliates: false,
     };
     const raw = data.tab_visibility;
     if (!raw) return defaults;
@@ -861,6 +873,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // empty) so they can add entries; visitors only when there's ≥1 FAQ.
   const showFaqTab =
     isMobileDJ && tabVisibility.faq && (canEdit || faqs.length > 0);
+  // Staff + Affiliates: mobile DJs only, same gating — owner sees whenever
+  // enabled (even empty) to add entries; visitors only when ≥1 entry exists.
+  const showStaffTab =
+    isMobileDJ && tabVisibility.staff && (canEdit || staffList.length > 0);
+  const showAffiliatesTab =
+    isMobileDJ && tabVisibility.affiliates && (canEdit || affiliatesList.length > 0);
 
   // ── Tab order ───────────────────────────────────────────────────────
   // The owner can drag tabs into any order in the Edit Tabs modal; that order
@@ -869,7 +887,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // order (e.g. a newer tab) fall in at the end in their default order, so an
   // old saved order never hides a tab.
   const DEFAULT_TAB_ORDER: Array<Exclude<TabKey, 'booking'>> = [
-    'about', 'mixes', 'images', 'video', 'testimonials', 'faq',
+    'about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates',
   ];
   const tabOrder: Array<Exclude<TabKey, 'booking'>> = (() => {
     const raw = data.tab_order;
@@ -899,6 +917,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     video: { label: 'Video', show: tabVisibility.video },
     testimonials: { label: 'Testimonials', show: showTestimonialsTab },
     faq: { label: 'FAQ', show: showFaqTab },
+    staff: { label: 'Staff', show: showStaffTab },
+    affiliates: { label: 'Affiliates', show: showAffiliatesTab },
   };
 
   // Avatar URL with object-position support
@@ -926,7 +946,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [tabVisibility, showBookingTab, showTestimonialsTab, showFaqTab]);
+  }, [tabVisibility, showBookingTab, showTestimonialsTab, showFaqTab, showStaffTab, showAffiliatesTab]);
 
   function scrollTabsRight() {
     tabsNavRef.current?.scrollBy({ left: 140, behavior: 'smooth' });
@@ -2109,6 +2129,42 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   userId={data.id}
                   existing={faqs}
                 />
+              )}
+            </div>
+          )}
+
+          {/* Staff tab — mobile DJs only. Each entry is photo → name →
+              position (photo optional, initials fallback). Owner adds up to 20
+              with optional image upload; visitors see a read-only grid. */}
+          {showStaffTab && (
+            <div className={paneClass('staff')}>
+              {canEdit && staffList.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the Staff tab on your profile until at
+                  least one team member is added.
+                </div>
+              )}
+              <StaffGrid staff={staffList} userId={data.id} isOwnProfile={canEdit} />
+              {canEdit && (
+                <StaffEditor userId={data.id} existing={staffList} />
+              )}
+            </div>
+          )}
+
+          {/* Affiliates tab — mobile DJs only. Companies the DJ recommends:
+              image (optional) + name + company type + optional description.
+              Owner adds up to 20; visitors see a read-only grid. */}
+          {showAffiliatesTab && (
+            <div className={paneClass('affiliates')}>
+              {canEdit && affiliatesList.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the Affiliates tab on your profile
+                  until at least one company is added.
+                </div>
+              )}
+              <AffiliatesGrid affiliates={affiliatesList} userId={data.id} isOwnProfile={canEdit} />
+              {canEdit && (
+                <AffiliatesEditor userId={data.id} existing={affiliatesList} />
               )}
             </div>
           )}
