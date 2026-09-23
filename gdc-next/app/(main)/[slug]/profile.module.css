@@ -2803,7 +2803,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: var(--card);
+  background: var(--black, #000);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem 1rem;
@@ -2835,7 +2835,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--card);
+  background: var(--black, #000);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem 1.1rem;
