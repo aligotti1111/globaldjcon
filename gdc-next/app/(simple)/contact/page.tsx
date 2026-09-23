@@ -85,7 +85,20 @@ export default function ContactPage() {
 
   return (
     <div className={styles.body}>
-      <div className={styles.container}>
+      <div className={styles.container} style={{ position: 'relative' }}>
+        <Link
+          href="/"
+          aria-label="Close"
+          style={{
+            position: 'absolute', top: 14, right: 14, zIndex: 5,
+            width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '50%', border: '1px solid rgba(255,255,255,.25)',
+            background: 'rgba(255,255,255,.08)', color: '#fff', fontSize: '1.05rem',
+            lineHeight: 1, textDecoration: 'none',
+          }}
+        >
+          ✕
+        </Link>
         <div className={styles.logo}>
           <Link href="/">
             <h1>GLOBAL DJ CONNECT</h1>
