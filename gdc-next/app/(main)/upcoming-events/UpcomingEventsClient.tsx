@@ -281,21 +281,58 @@ function EventRow({
       }`
     : null;
 
-  // Pricing breakdown rows for the bottom card (mirrors the DJ Pricing card).
-  const pricingRows: { label: string; value: string; total?: boolean }[] = (() => {
-    const raw = event as unknown as { total_with_tax?: number | null };
-    const amount = event.offer_amount ?? raw.total_with_tax ?? null;
-    if (amount == null || !Number.isFinite(amount)) return [];
+  // Pricing breakdown rows for the bottom card — the same receipt the DJ sees:
+  // Agreed Rate → Tax → Total (with tax), then a separated Payment schedule band
+  // with Deposit and Balance due day of event.
+  type PriceRow = { label: string; value: string; total?: boolean; schedule?: boolean };
+  const pricingRows: PriceRow[] = (() => {
+    const raw = event as unknown as {
+      total_with_tax?: number | null;
+      tax_pct?: number | null;
+      deposit_pct?: number | null;
+      deposit_amount?: number | null;
+    };
+    const rate = event.offer_amount ?? null;
+    const totalWithTax = raw.total_with_tax ?? null;
+    if (rate == null || !Number.isFinite(rate)) return [];
     const cur = event.currency || 'USD';
-    let fmt: (n: number) => string;
+    let money: (n: number) => string;
     try {
       const nf = new Intl.NumberFormat('en-US', { style: 'currency', currency: cur });
-      fmt = (n: number) => nf.format(n);
+      money = (n: number) => nf.format(n);
     } catch {
-      fmt = (n: number) => `${cur} ${n.toLocaleString()}`;
+      money = (n: number) => `${cur} ${n.toLocaleString()}`;
     }
-    return [{ label: 'Total', value: fmt(amount), total: true }];
+
+    const rows: PriceRow[] = [{ label: 'Agreed Rate', value: money(rate) }];
+
+    // Tax — amount is the gap between the agreed rate and the tax-inclusive
+    // total; show the % when we know it.
+    const total = totalWithTax != null && Number.isFinite(totalWithTax) ? totalWithTax : rate;
+    const taxAmt = Math.max(0, Math.round((total - rate) * 100) / 100);
+    if (taxAmt > 0) {
+      const pct = raw.tax_pct != null ? ` (${raw.tax_pct}%)` : '';
+      rows.push({ label: 'Tax', value: `${money(taxAmt)}${pct}` });
+    }
+
+    rows.push({ label: 'Total (with tax)', value: money(total), total: true });
+
+    // Payment schedule — deposit (from a stored amount or the % of the total)
+    // and the balance owed on the day of the event.
+    const depPct = raw.deposit_pct ?? null;
+    const depAmt = raw.deposit_amount != null
+      ? raw.deposit_amount
+      : (depPct != null ? Math.round((total * depPct) / 100) : null);
+    if (depAmt != null && depAmt > 0) {
+      const pct = depPct != null ? ` (${depPct}%)` : '';
+      rows.push({ label: 'Deposit', value: `${money(depAmt)}${pct}`, schedule: true });
+      rows.push({ label: 'Balance due day of event', value: money(Math.max(0, total - depAmt)), schedule: true });
+    }
+
+    return rows;
   })();
+  const scheduleRows = pricingRows.filter((r) => r.schedule);
+  const mainRows = pricingRows.filter((r) => !r.schedule);
 
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
@@ -571,32 +608,47 @@ function EventRow({
               </div>
             )}
 
-            {event.package_title?.trim() && (
-              <div className={dj.detailSection}>
+            {/* Package — full-width card (matches the DJ card): title + the
+                package description underneath. */}
+            {(event.package_title?.trim() || event.package_details?.trim()) && (
+              <div className={dj.detailSection} style={{ gridColumn: '1 / -1' }}>
                 <div className={dj.detailChip}><span>Package</span></div>
-                <div style={{ marginTop: 14, fontSize: 18, fontWeight: 700 }}>{event.package_title.trim()}</div>
+                {event.package_title?.trim() && (
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginTop: 12 }}>
+                    {event.package_title.trim()}
+                  </div>
+                )}
+                {event.package_details?.trim() && (
+                  <div
+                    style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--muted,#8a8aa0)', marginTop: event.package_title?.trim() ? 6 : 12 }}
+                    dangerouslySetInnerHTML={{ __html: event.package_details }}
+                  />
+                )}
               </div>
             )}
 
-            {/* Pricing breakdown — mirrors the DJ card's Pricing card. */}
-            {event.offer_amount != null && (
+            {/* Pricing — the DJ's exact receipt: Agreed Rate → Tax → Total, then
+                a separated Payment schedule band (Deposit / Balance). */}
+            {mainRows.length > 0 && (
               <div className={`${dj.detailSection} ${dj.detailSectionPricing}`}>
                 <div className={dj.detailChip}><span>Pricing</span></div>
-                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {pricingRows.map((r) => (
-                    <div
-                      key={r.label}
-                      style={{
-                        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-                        gap: 12, paddingTop: r.total ? 10 : 0,
-                        borderTop: r.total ? '1px solid rgba(255,255,255,.1)' : 'none',
-                      }}
-                    >
-                      <span style={{ fontSize: r.total ? 14 : 13, color: r.total ? '#fff' : 'var(--muted,#8a8aa0)', fontWeight: r.total ? 700 : 500, textTransform: 'uppercase', letterSpacing: '.05em' }}>{r.label}</span>
-                      <span style={{ fontSize: r.total ? 20 : 15, fontWeight: 700, color: r.total ? '#00e3ad' : '#fff' }}>{r.value}</span>
-                    </div>
-                  ))}
-                </div>
+                {mainRows.map((r) => (
+                  <div key={r.label} className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}>
+                    <span className={dj.priceKey}>{r.label}</span>
+                    <span className={dj.priceVal}>{r.value}</span>
+                  </div>
+                ))}
+                {scheduleRows.length > 0 && (
+                  <div className={dj.paySched}>
+                    <div className={dj.schedLbl}>Payment schedule</div>
+                    {scheduleRows.map((r) => (
+                      <div key={r.label} className={dj.priceRow}>
+                        <span className={dj.priceKey}>{r.label}</span>
+                        <span className={dj.priceVal}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
