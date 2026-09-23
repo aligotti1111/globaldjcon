@@ -49,41 +49,44 @@ export default function HostPipelineStrip({
           : { borderColor: clickable ? AMBER : '#3a3a4c', color: clickable ? AMBER : '#c2c2ce' };
         const capColor = done ? NEON : isNow ? AMBER : '#7d7d92';
         const open = openKey === st.key;
-        return (
-          <div key={st.key} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, minWidth: 62 }}>
+        const iconRing = (
+          <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', border: '1.5px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', ...ring }}>
+            {stageIcon(st.icon)}
+            {done && (
+              <span style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, borderRadius: '50%', background: NEON, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </span>
+            )}
+          </span>
+        );
+        const inner = (
+          <>
             <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#f2f2f7', whiteSpace: 'nowrap' }}>
               {stageLabel(st.key, djType)}
             </span>
-            {clickable ? (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setOpenKey(open ? null : st.key); }}
-                title={st.hrefLabel}
-                style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', border: '1.5px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, ...ring }}
-              >
-                {stageIcon(st.icon)}
-                {done && (
-                  <span style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, borderRadius: '50%', background: NEON, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  </span>
-                )}
-              </button>
-            ) : (
-              <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', border: '1.5px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', ...ring }}>
-                {stageIcon(st.icon)}
-                {done && (
-                  <span style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, borderRadius: '50%', background: NEON, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  </span>
-                )}
-              </span>
-            )}
+            {iconRing}
             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10.5, fontWeight: 700, color: capColor, whiteSpace: 'nowrap' }}>
               {st.caption}
               {clickable && (
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
               )}
             </span>
+          </>
+        );
+        return (
+          <div key={st.key} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 62 }}>
+            {clickable ? (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setOpenKey(open ? null : st.key); }}
+                title={st.hrefLabel}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}
+              >
+                {inner}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>{inner}</div>
+            )}
             {open && clickable && st.href && (
               <>
                 {/* click-away backdrop */}
