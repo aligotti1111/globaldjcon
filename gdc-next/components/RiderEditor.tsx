@@ -222,7 +222,7 @@ export default function RiderEditor({
                 title="Drag to reorder"
                 style={{ cursor: 'grab', color: MUTED, fontSize: '1.1rem', lineHeight: 1, userSelect: 'none', flexShrink: 0 }}
               >
-                ⠿
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18" /><path d="M8.5 6.5 12 3l3.5 3.5" /><path d="M8.5 17.5 12 21l3.5-3.5" /><path d="M6.5 8.5 3 12l3.5 3.5" /><path d="M17.5 8.5 21 12l-3.5 3.5" /></svg>
               </span>
 
               {/* Every box title is editable — including the defaults
