@@ -1,16 +1,18 @@
 'use client';
 
-// HostPipelineStrip — the host's pipeline for the card header. Centered, and
-// each stage is a cell (LABEL on top, icon in a ring, caption below). Stages
-// the host can act on (pay a deposit/balance, open the planner) are clickable
-// and drop down a small action menu; the rest are view-only.
+// HostPipelineStrip — the host's pipeline for the card header. Uses the EXACT
+// same measurements as the DJ's PipelineStrip (icon 30px, label 9px, caption
+// 9.5px, badge 14px at -3/-3, grey ring for pending / neon ring + check for
+// done, amber caption for the "your move" stage). Clickable stages (pay a
+// deposit/balance, open the planner) drop a small action menu.
 
 import { useState, type CSSProperties } from 'react';
 import { stageLabel } from '../upcoming-bookings/pipeline/types';
 import type { HostStep } from '@/lib/hostPipeline';
 
-const NEON = '#00e3ad';
-const AMBER = '#eaa94a';
+const NEON = '#00e0a4';
+const DONE_CAP = '#3fd6ab';
+const TODO_CAP = '#c08a3e';
 
 function stageIcon(icon: string) {
   const p = {
@@ -26,6 +28,10 @@ function stageIcon(icon: string) {
 
 const ORDER = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'];
 
+// Exact copies of the DJ strip's cell measurements.
+const labelStyle: CSSProperties = { fontSize: 9, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', color: '#f0f0f8', whiteSpace: 'nowrap', textAlign: 'center' };
+const capBase: CSSProperties = { fontSize: 9.5, fontWeight: 500, letterSpacing: '.03em', lineHeight: 1, minWidth: 36, textAlign: 'center', whiteSpace: 'nowrap' };
+
 export default function HostPipelineStrip({
   steps,
   djType,
@@ -39,66 +45,63 @@ export default function HostPipelineStrip({
   const currentKey = ordered.find((s) => !s.done)?.key ?? null;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 34 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28 }}>
       {ordered.map((st) => {
         const done = st.done;
         const isNow = st.key === currentKey;
         const clickable = !!st.href;
+        const open = openKey === st.key;
+        // Ring: neon + fill for done, calm grey otherwise (the DJ carries "your
+        // move" in the caption colour, not by lighting the ring).
         const ring: CSSProperties = done
           ? { borderColor: NEON, background: 'rgba(34,227,173,.14)', color: NEON }
-          : { borderColor: clickable ? AMBER : '#3a3a4c', color: clickable ? AMBER : '#c2c2ce' };
-        const capColor = done ? NEON : isNow ? AMBER : '#7d7d92';
-        const open = openKey === st.key;
+          : { borderColor: '#3a3a4c', color: isNow ? '#b9b9c6' : '#c2c2ce' };
+        const capColor = done ? DONE_CAP : isNow ? TODO_CAP : '#5a5a72';
+
         const iconRing = (
-          <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', border: '1.5px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', ...ring }}>
+          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, fontSize: 16, borderRadius: '50%', border: '1.5px solid', boxSizing: 'border-box', ...ring }}>
             {stageIcon(st.icon)}
             {done && (
-              <span style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, borderRadius: '50%', background: NEON, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ position: 'absolute', right: -3, bottom: -3, width: 14, height: 14, borderRadius: '50%', background: NEON, border: '2px solid #16161f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
               </span>
             )}
           </span>
         );
+        const top = (
+          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            {iconRing}
+            {clickable && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6c6c86" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: 1 }}><polyline points="6 9 12 15 18 9" /></svg>
+            )}
+          </span>
+        );
         const inner = (
           <>
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#f2f2f7', whiteSpace: 'nowrap' }}>
-              {stageLabel(st.key, djType)}
-            </span>
-            {iconRing}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10.5, fontWeight: 700, color: capColor, whiteSpace: 'nowrap' }}>
-              {st.caption}
-              {clickable && (
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-              )}
-            </span>
+            <span style={{ ...labelStyle, marginBottom: 6 }}>{stageLabel(st.key, djType)}</span>
+            {top}
+            <span style={{ ...capBase, color: capColor, marginTop: 5 }}>{st.caption}</span>
           </>
         );
         return (
-          <div key={st.key} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 62 }}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }} key={st.key}>
             {clickable ? (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setOpenKey(open ? null : st.key); }}
                 title={st.hrefLabel}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', fontFamily: 'inherit' }}
               >
                 {inner}
               </button>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>{inner}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>{inner}</div>
             )}
             {open && clickable && st.href && (
               <>
-                {/* click-away backdrop */}
                 <div onClick={(e) => { e.stopPropagation(); setOpenKey(null); }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                 <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', zIndex: 41, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.55)', padding: 6, minWidth: 150 }}>
-                  <a
-                    href={st.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ display: 'block', padding: '8px 12px', borderRadius: 7, color: '#fff', fontSize: 12.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
-                  >
+                  <a href={st.href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: 'block', padding: '8px 12px', borderRadius: 7, color: '#fff', fontSize: 12.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                     {st.hrefLabel} →
                   </a>
                 </div>
