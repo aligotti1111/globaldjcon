@@ -47,6 +47,10 @@ export interface DjProfileData {
   testimonials: string | null;      // JSON-stringified
   faqs: string | null;              // JSON-stringified — mobile DJs only
   about_stats: string | null;       // JSON-stringified — mobile DJs only
+  // Staff members + recommended affiliates (mobile DJs only). jsonb arrays —
+  // parse with parseStaff() / parseAffiliates() from staff.ts.
+  staff?: unknown[] | null;
+  affiliates?: unknown[] | null;
   booking_settings: string | null;  // JSON-stringified — see bookingSettings.ts
   mix_url_1: string | null;
   mix_url_2: string | null;
@@ -102,4 +106,4 @@ export interface AboutStats {
   depositRequired?: { on?: boolean; answer?: 'Yes' | 'No' };
 }
 
-export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq';
+export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq' | 'staff' | 'affiliates';
