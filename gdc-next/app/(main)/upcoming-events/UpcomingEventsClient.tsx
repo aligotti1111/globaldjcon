@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { UpcomingEvent } from './page';
 import styles from './upcomingEvents.module.css';
+import dj from '../upcoming-bookings/upcomingBookings.module.css';
 import EventManualForm from './EventManualForm';
 import HostPipelineHero from './HostPipelineHero';
 import NotesFeed from '@/components/NotesFeed';
@@ -445,211 +446,109 @@ function EventRow({
           {event.pipeline && event.pipeline.length > 0 && (
             <HostPipelineHero steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
           )}
-          <div className={styles.detailsGrid}>
-            {isMobile && (
-              <>
-                {event.dj_name && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>DJ</div>
-                    <div className={styles.detailValue}>
-                      {event.dj_slug ? (
-                        <Link
-                          href={`/${event.dj_slug}`}
-                          className={styles.metaLink}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {event.dj_name}
-                        </Link>
-                      ) : event.dj_name}
-                    </div>
+          <div className={dj.detailsSections}>
+            {/* EVENT */}
+            <div className={dj.detailSection}>
+              <div className={dj.detailChip}><span>Event</span></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
+                {eventTypeLabel && (
+                  <div>
+                    <div className={dj.detailLabel}>Event Type</div>
+                    <div className={dj.detailValue}>{eventTypeLabel}</div>
                   </div>
                 )}
                 {event.event_date && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>Date</div>
-                    <div className={styles.detailValue}>{formatLongDate(event.event_date)}</div>
+                  <div>
+                    <div className={dj.detailLabel}>Event Date</div>
+                    <div className={dj.detailValue}>{formatLongDate(event.event_date)}</div>
                   </div>
                 )}
-                {eventTypeLabel && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>Event Type</div>
-                    <div className={styles.detailValue}>{eventTypeLabel}</div>
+                {event.guest_count != null && (
+                  <div>
+                    <div className={dj.detailLabel}>Guest Count</div>
+                    <div className={dj.detailValue}>{String(event.guest_count)}</div>
                   </div>
                 )}
-                {event.start_time && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>Event Start Time</div>
-                    <div className={styles.detailValue}>{formatTime12(event.start_time)}</div>
-                  </div>
-                )}
-                {event.end_time && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>Event End Time</div>
-                    <div className={styles.detailValue}>{formatTime12(event.end_time)}</div>
-                  </div>
-                )}
-                {event.venue_name?.trim() && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>Venue Name</div>
-                    <div className={styles.detailValue}>{event.venue_name.trim()}</div>
-                  </div>
-                )}
+              </div>
+              {timeRange && (
+                <div style={{ marginTop: 24 }}>
+                  <div className={dj.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>Event Time</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#00e3ad' }}>{timeRange}</div>
+                </div>
+              )}
+              {isWedding && event.ceremony_needed && event.ceremony_start_time && (
+                <div style={{ marginTop: 14 }}>
+                  <div className={dj.detailLabel}>Ceremony</div>
+                  <div className={dj.detailValue}>{formatTime12(event.ceremony_start_time)}</div>
+                </div>
+              )}
+              {isWedding && event.cocktail_needed && event.cocktail_start_time && (
+                <div style={{ marginTop: 14 }}>
+                  <div className={dj.detailLabel}>Cocktail Hour</div>
+                  <div className={dj.detailValue}>{formatTime12(event.cocktail_start_time)}</div>
+                </div>
+              )}
+            </div>
+
+            {/* VENUE + DJ side by side (matches the DJ card's Venue / Host row) */}
+            {(event.venue_name?.trim() || event.venue_address || event.room_details?.trim()) && (
+              <div className={dj.detailSection}>
+                <div className={dj.detailChip}><span>Venue</span></div>
+                <div className={dj.detailPairRow}>
+                  {event.venue_name?.trim() && (
+                    <div className={dj.detailRow}>
+                      <div className={dj.detailLabel}>Venue Name</div>
+                      <div className={dj.detailValue}>{event.venue_name.trim()}</div>
+                    </div>
+                  )}
+                  {event.room_details?.trim() && (
+                    <div className={dj.detailRow}>
+                      <div className={dj.detailLabel}>Room Details</div>
+                      <div className={dj.detailValue}>{event.room_details.trim()}</div>
+                    </div>
+                  )}
+                </div>
                 {event.venue_address && (
-                  <div className={styles.detailItem}>
-                    <div className={styles.detailLabel}>Venue Address</div>
-                    <div className={styles.detailValue}>
-                      {mapUrl ? (
-                        <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                          {event.venue_address}
-                        </a>
-                      ) : event.venue_address}
+                  <div className={dj.detailPairRow} style={{ gridTemplateColumns: '1fr' }}>
+                    <div className={dj.detailRow}>
+                      <div className={dj.detailLabel}>Venue Address</div>
+                      <div className={dj.detailValue}>
+                        {mapUrl ? (
+                          <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>{event.venue_address}</a>
+                        ) : event.venue_address}
+                      </div>
                     </div>
                   </div>
                 )}
-              </>
-            )}
-            {!isMobile && event.booking_type === 'club' && event.event_date && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Date</div>
-                <div className={styles.detailValue}>{formatLongDate(event.event_date)}</div>
               </div>
             )}
-            {!isMobile && timeRange && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Time</div>
-                <div className={styles.detailValue}>{timeRange}</div>
-              </div>
-            )}
-            {!isMobile && event.venue_name?.trim() && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Venue Name</div>
-                <div className={styles.detailValue}>{event.venue_name.trim()}</div>
-              </div>
-            )}
-            {!isMobile && event.venue_address && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Address</div>
-                <div className={styles.detailValue}>
-                  {mapUrl ? (
-                    <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                      {event.venue_address}
-                    </a>
-                  ) : event.venue_address}
-                </div>
-              </div>
-            )}
-            {!isMobile && eventTypeLabel && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Type</div>
-                <div className={styles.detailValue}>{eventTypeLabel}</div>
-              </div>
-            )}
-            {!isMobile && rateText && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Rate</div>
-                <div className={styles.detailValue}>{rateText}</div>
-              </div>
-            )}
-            {/* Mobile BOOKING-REQUEST extras (not shown for manual events,
-                whose richer fields would never have been collected). These
-                mirror what the DJ collected during the booking flow:
-                package selection, room details, guest count, contact phone,
-                and (for weddings) cocktail-hour info. */}
-            {isMobile && !isManual && event.package_title?.trim() && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Package</div>
-                <div className={styles.detailValue}>{event.package_title.trim()}</div>
-              </div>
-            )}
-            {isMobile && !isManual && event.room_details?.trim() && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Room</div>
-                <div className={styles.detailValue}>{event.room_details.trim()}</div>
-              </div>
-            )}
-            {isMobile && !isManual && event.guest_count != null && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Guests</div>
-                <div className={styles.detailValue}>{event.guest_count}</div>
-              </div>
-            )}
-            {isMobile && !isManual && event.phone?.trim() && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Phone</div>
-                <div className={styles.detailValue}>{event.phone.trim()}</div>
-              </div>
-            )}
-            {isMobile && !isManual && isWedding && event.cocktail_needed != null && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Cocktail Hour</div>
-                <div className={styles.detailValue}>
-                  {event.cocktail_needed
-                    ? `Yes${event.cocktail_start_time
-                        ? ` · starts ${formatTime12(event.cocktail_start_time)}` : ''}${
-                        event.cocktail_same_room != null
-                          ? ` · ${event.cocktail_same_room ? 'same room as reception' : 'separate room'}`
-                          : ''}`
-                    : 'No'}
-                </div>
-              </div>
-            )}
-            {isMobile && !isManual && isWedding && event.ceremony_needed != null && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Ceremony Music</div>
-                <div className={styles.detailValue}>
-                  {event.ceremony_needed
-                    ? `Yes${event.ceremony_start_time
-                        ? ` · starts ${formatTime12(event.ceremony_start_time)}` : ''}${
-                        event.ceremony_same_room != null
-                          ? ` · ${event.ceremony_same_room ? 'same room as reception' : 'separate room'}`
-                          : ''}`
-                    : 'No'}
-                </div>
-              </div>
-            )}
-            {isMobile && rateText && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Rate</div>
-                <div className={styles.detailValue}>{rateText}</div>
-              </div>
-            )}
-            {/* External link — not shown for mobile/private events. */}
-            {!isMobile && (
-              <div className={styles.detailItem}>
-                <div className={styles.detailLabel}>Link</div>
-                <div className={styles.detailValue}>
-                  {event.link_url ? (
-                    <span className={styles.linkRow}>
-                      <a href={event.link_url} target="_blank" rel="noreferrer" className={styles.metaLink}>
-                        {event.link_url}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => setShowLinkModal(true)}
-                        className={styles.linkEditInlineBtn}
-                        title="Edit link & label"
-                        aria-label="Edit link & label"
-                      >
-                        Edit
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowLinkModal(true)}
-                      className={styles.linkLikeBtn}
-                    >
-                      + Add link
-                    </button>
+
+            {event.dj_name && (
+              <div className={dj.detailSection}>
+                <div className={dj.detailChip}><span>DJ</span></div>
+                <div className={dj.detailPairRow}>
+                  <div className={dj.detailRow}>
+                    <div className={dj.detailLabel}>Booked With</div>
+                    <div className={dj.detailValue}>
+                      {event.dj_slug ? (
+                        <Link href={`/${event.dj_slug}`} className={styles.metaLink} target="_blank" rel="noreferrer">{event.dj_name}</Link>
+                      ) : event.dj_name}
+                    </div>
+                  </div>
+                  {event.phone?.trim() && (
+                    <div className={dj.detailRow}>
+                      <div className={dj.detailLabel}>Contact Phone</div>
+                      <div className={dj.detailValue}>{event.phone.trim()}</div>
+                    </div>
                   )}
                 </div>
               </div>
             )}
-            {event.notes && (
-              <div className={`${styles.detailItem} ${styles.detailItemFull}`}>
-                <div className={styles.detailLabel}>Original Notes</div>
-                <div className={styles.detailValue}>{event.notes}</div>
+
+            {event.package_title?.trim() && (
+              <div className={dj.detailSection}>
+                <div className={dj.detailChip}><span>Package</span></div>
+                <div style={{ marginTop: 14, fontSize: 18, fontWeight: 700 }}>{event.package_title.trim()}</div>
               </div>
             )}
           </div>
