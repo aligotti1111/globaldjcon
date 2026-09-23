@@ -4070,26 +4070,22 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
 
       {isOwnProfile && mode && (
         <div className={styles.testimonialAddForm}>
-          <div className={styles.entryFormRow}>
-            <div className={styles.entryPhotoCol}>
-              <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.entryPhotoPickSquare} aria-label="Add image (optional)">
-                {shownPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={shownPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
-                ) : (
-                  <span>Image<br /><small>optional</small></span>
-                )}
-              </button>
-              {(shownPreview) && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear}>Remove image</button>}
-            </div>
-            <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
-            <div style={{ flex: 1 }}>
-              <div className={styles.testimonialAddFormLabel}>Company name</div>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bloom & Co" className={styles.testimonialAddInput} disabled={busy} />
-              <div className={styles.testimonialAddFormLabel}>Type of company</div>
-              <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} placeholder="e.g. Florist" className={styles.testimonialAddInput} disabled={busy} />
-            </div>
+          <div className={styles.entryPhotoCol} style={{ alignItems: 'flex-start' }}>
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.entryPhotoPickHalf} aria-label="Add image (optional)">
+              {shownPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shownPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
+              ) : (
+                <span>Image<br /><small>optional</small></span>
+              )}
+            </button>
+            {(shownPreview) && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear}>Remove image</button>}
           </div>
+          <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
+          <div className={styles.testimonialAddFormLabel}>Company name</div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bloom & Co" className={styles.testimonialAddInput} disabled={busy} />
+          <div className={styles.testimonialAddFormLabel}>Type of company</div>
+          <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} placeholder="e.g. Florist" className={styles.testimonialAddInput} disabled={busy} />
           <div className={styles.testimonialAddFormLabel}>Website <span style={{ opacity: .6 }}>(optional)</span></div>
           <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. bloomandco.com" className={styles.testimonialAddInput} disabled={busy} />
           <div className={styles.testimonialAddFormLabel}>Description <span style={{ opacity: .6 }}>(optional)</span></div>
