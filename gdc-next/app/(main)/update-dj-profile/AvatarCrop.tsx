@@ -17,6 +17,7 @@
 // real offsetWidth measurements.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 
@@ -35,11 +36,15 @@ interface Props {
   // Optional modal heading + hint override (defaults suit the profile avatar).
   title?: string;
   hint?: React.ReactNode;
+  // Initial framing. 'cover' (default, avatar behavior) fills the circle,
+  // cropping edges. 'contain' fits the WHOLE photo inside by default so the DJ
+  // sees the entire image and can zoom in from there (used for staff photos).
+  fitMode?: 'cover' | 'contain';
   onClose: () => void;
   onSuccess: (publicUrl: string) => void;
 }
 
-export default function AvatarCrop({ file, userId, uploadFolder, storagePath, title, hint, onClose, onSuccess }: Props) {
+export default function AvatarCrop({ file, userId, uploadFolder, storagePath, title, hint, fitMode = 'cover', onClose, onSuccess }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -55,6 +60,9 @@ export default function AvatarCrop({ file, userId, uploadFolder, storagePath, ti
   const lastYRef = useRef(0);
 
   const [zoom, setZoom] = useState(1);
+  // Lowest zoom the slider allows. In 'contain' mode this can be < 1 so the
+  // whole photo fits inside the frame by default.
+  const [minZoom, setMinZoom] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,19 +80,31 @@ export default function AvatarCrop({ file, userId, uploadFolder, storagePath, ti
           const wrap = wrapRef.current;
           if (!wrap) return;
           const size = wrap.offsetWidth;
-          // Center the image in the canvas
-          xRef.current = (size - img.width) / 2;
-          yRef.current = (size - img.height) / 2;
-          // Initial scale: fit the image inside the 80% circle area
-          const minFit = (size * 0.8) / Math.min(img.width, img.height);
-          if (minFit > 1) {
-            scaleRef.current = minFit;
-            setZoom(Math.min(minFit, 3));
-            xRef.current = (size - img.width * minFit) / 2;
-            yRef.current = (size - img.height * minFit) / 2;
+          if (fitMode === 'contain') {
+            // Show the WHOLE photo by default: fit the longest side inside the
+            // frame. The slider's floor becomes this fit so the DJ can only zoom
+            // in from "entire image visible", never start pre-cropped.
+            const fit = size / Math.max(img.width, img.height);
+            scaleRef.current = fit;
+            setMinZoom(fit);
+            setZoom(fit);
+            xRef.current = (size - img.width * fit) / 2;
+            yRef.current = (size - img.height * fit) / 2;
           } else {
-            scaleRef.current = 1;
-            setZoom(1);
+            // Cover: fill the 80% circle area, cropping the longer edge.
+            xRef.current = (size - img.width) / 2;
+            yRef.current = (size - img.height) / 2;
+            const minFit = (size * 0.8) / Math.min(img.width, img.height);
+            setMinZoom(1);
+            if (minFit > 1) {
+              scaleRef.current = minFit;
+              setZoom(Math.min(minFit, 3));
+              xRef.current = (size - img.width * minFit) / 2;
+              yRef.current = (size - img.height * minFit) / 2;
+            } else {
+              scaleRef.current = 1;
+              setZoom(1);
+            }
           }
           draw();
         });
@@ -218,11 +238,14 @@ export default function AvatarCrop({ file, userId, uploadFolder, storagePath, ti
   // ── Render nothing when no file — modal closed ─────────────────
   if (!file) return null;
 
-  return (
-    <div className={styles.cropModal} onClick={onClose}>
+  // Portal to <body> with a very high z-index so the modal always sits above
+  // the profile hero, banner, and its edit buttons (which live in their own
+  // stacking contexts and were painting over the modal otherwise).
+  const modal = (
+    <div className={styles.cropModal} onClick={onClose} style={{ zIndex: 100000 }}>
       <div className={styles.cropModalInner} onClick={(e) => e.stopPropagation()}>
-        <h3>Crop Profile Photo</h3>
-        {/* Recommended-size hint — exported avatars are 400×400 square,
+        <h3>{title || 'Crop Profile Photo'}</h3>
+        {/* Recommended-size hint — exported images are 400×400 square,
             so a square source 400px+ on its shortest side gives the
             best result. Anything smaller upscales and looks soft. */}
         <p style={{
@@ -233,8 +256,7 @@ export default function AvatarCrop({ file, userId, uploadFolder, storagePath, ti
           textAlign: 'center',
           lineHeight: 1.5,
         }}>
-          Best fit: a square image at least <strong style={{ color: 'var(--neon)' }}>400×400</strong>.
-          800×800 or larger looks crispest.
+          {hint || <>Best fit: a square image at least <strong style={{ color: 'var(--neon)' }}>400×400</strong>. 800×800 or larger looks crispest.</>}
         </p>
 
         <div
@@ -257,8 +279,8 @@ export default function AvatarCrop({ file, userId, uploadFolder, storagePath, ti
           <input
             id="ud-crop-zoom"
             type="range"
-            min={1}
-            max={3}
+            min={minZoom}
+            max={Math.max(3, minZoom * 3)}
             step={0.01}
             value={zoom}
             onChange={onZoomChange}
@@ -291,4 +313,6 @@ export default function AvatarCrop({ file, userId, uploadFolder, storagePath, ti
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 }
