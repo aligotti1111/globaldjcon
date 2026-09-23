@@ -400,15 +400,9 @@ function EventRow({
             )}
           </div>
 
-          {/* Price + read-only booking-progress strip, before the collapse
-              chevron — same order as the DJ card header. */}
+          {/* Agreed price, right of the title (matches the DJ header). */}
           {pricingRows[0] && (
             <div className={styles.hdrPrice}>{pricingRows[0].value}</div>
-          )}
-          {event.pipeline && event.pipeline.length > 0 && (
-            <div className={styles.hdrPipeline}>
-              <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
-            </div>
           )}
 
           <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>
@@ -417,6 +411,14 @@ function EventRow({
             </svg>
           </span>
         </button>
+
+        {/* Centered, interactive booking-progress strip — its own element so
+            its dropdown buttons aren't nested inside the toggle button. */}
+        {event.pipeline && event.pipeline.length > 0 && (
+          <div className={styles.hdrPipeline}>
+            <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
+          </div>
+        )}
 
         <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
           {event.link_url && (
