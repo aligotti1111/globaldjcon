@@ -18,6 +18,24 @@ export interface Affiliate {
   companyType: string;     // "type of company"
   description?: string;    // optional blurb
   image?: string | null;   // logo/representative image; optional
+  url?: string;            // optional website; photo + name link to it
+}
+
+// Normalize a user-entered website into a safe http(s) URL, or '' if invalid.
+// Bare domains (e.g. "bloomco.com") get https:// prepended. Only http/https
+// are allowed — anything else (javascript:, mailto:, etc.) is rejected.
+export function normalizeUrl(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  const t = raw.trim();
+  if (!t) return '';
+  const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
+  try {
+    const u = new URL(withProto);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.href;
+  } catch {
+    return '';
+  }
 }
 
 function coerceArray(raw: unknown): unknown[] {
@@ -66,6 +84,7 @@ export function parseAffiliates(raw: unknown): Affiliate[] {
         companyType,
         description: typeof o.description === 'string' ? o.description : '',
         image: typeof o.image === 'string' ? o.image : null,
+        url: normalizeUrl(o.url),
       };
     })
     .filter((x): x is Affiliate => x !== null)
