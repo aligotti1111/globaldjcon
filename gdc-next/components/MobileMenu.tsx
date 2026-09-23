@@ -330,6 +330,11 @@ export default function MobileMenu() {
                 <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
               </Link>
             )}
+            {!isDj && !isStaff && (
+              <Link href="/past-events" onClick={close} className="mobile-menu-item">
+                <IconClock />Past Events
+              </Link>
+            )}
             {showDjBookings && canBookings && (
               <Link href="/upcoming-bookings?add=1" onClick={close} className="mobile-menu-item">
                 <IconPlus />Add Booking Manually
