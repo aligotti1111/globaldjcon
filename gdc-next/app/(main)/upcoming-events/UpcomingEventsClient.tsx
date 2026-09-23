@@ -443,7 +443,7 @@ function EventRow({
       {expanded && (
         <div className={styles.detailsPanel}>
           {event.pipeline && event.pipeline.length > 0 && (
-            <HostPipelineHero stages={event.pipeline} />
+            <HostPipelineHero steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
           )}
           <div className={styles.detailsGrid}>
             {isMobile && (
