@@ -20,6 +20,10 @@ import { saveProfile, profileUploadFolder } from './profileSave';
 import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/lib/albums';
 import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
+import {
+  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf,
+  type StaffMember, type Affiliate,
+} from '@/lib/staff';
 
 export function BannerTypeEventsDropdown({ events, customTypes = [] }: { events: string[]; customTypes?: CustomEventType[] }) {
   const [open, setOpen] = useState(false);
@@ -2988,6 +2992,8 @@ export function EditTabsModal({
     video: boolean;
     testimonials: boolean;
     faq: boolean;
+    staff: boolean;
+    affiliates: boolean;
   };
   // The owner's current tab order (keys), from users.tab_order.
   initialOrder?: string[];
@@ -3012,9 +3018,11 @@ export function EditTabsModal({
     video: { label: 'Video' },
     testimonials: { label: 'Testimonials', hint: 'Off by default for new mobile DJs' },
     faq: { label: 'FAQ', hint: 'Off by default — turn on to answer common questions' },
+    staff: { label: 'Staff', hint: 'Off by default — show your team members' },
+    affiliates: { label: 'Affiliates', hint: 'Off by default — companies you recommend' },
   };
   const AVAILABLE: TabRowKey[] = isMobileDJ
-    ? ['about', 'mixes', 'images', 'video', 'testimonials', 'faq']
+    ? ['about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates']
     : ['about', 'mixes', 'images', 'video'];
 
   // Working order: start from the saved order (filtered to what's available),
@@ -3748,6 +3756,333 @@ export function FaqAddForm({
         >
           {busy ? 'Saving…' : 'Save'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Staff + Affiliates (mobile DJs only)
+//
+// Two profile tabs backed by jsonb arrays on public.users (staff / affiliates),
+// parsed with parseStaff() / parseAffiliates() from lib/staff.ts.
+//
+//   Staff       — image (optional) + name + job position, stacked photo→name→pos.
+//   Affiliates  — image (optional) + name + company type + optional description.
+//
+// The *Grid components render the read-only display shown to visitors, plus a
+// delete control for the owner. The *Editor components are the owner's "+ Add"
+// form. Images are optional everywhere — the grid shows initials when absent.
+// ──────────────────────────────────────────────────────────────────────────
+
+// Shared: upload one optional entry image to the avatars bucket and return its
+// public URL, or null if no file was chosen. Throws on a validation/upload
+// failure so the caller can surface the message.
+async function uploadEntryImage(
+  userId: string,
+  file: File | null,
+  prefix: 'staff' | 'affiliate',
+): Promise<string | null> {
+  if (!file) return null;
+  const valErr = await validateImageFile(file);
+  if (valErr) throw new Error(valErr);
+  const supabase = createClient();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const rand = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+  const id = rand.replace(/[^a-z0-9]/gi, '');
+  const path = `${profileUploadFolder(userId)}/${prefix}_${id}.${ext}`;
+  const { error: upErr } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (upErr) throw new Error(upErr.message);
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return `${data.publicUrl}?t=${Date.now()}`;
+}
+
+// A round/tile image with an initials fallback when no photo is set.
+function EntryImage({ src, name, size, square }: { src?: string | null; name: string; size: number; square?: boolean }) {
+  const radius = square ? 12 : '50%';
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={thumbUrl(src, 400)}
+        alt={name}
+        style={{ width: size, height: size, objectFit: 'cover', borderRadius: radius, border: '1px solid rgba(255,255,255,.12)' }}
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        width: size, height: size, borderRadius: radius,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)',
+        color: 'var(--neon,#00e0a4)', fontFamily: "'Bebas Neue', sans-serif",
+        fontSize: size * 0.4, letterSpacing: '.03em',
+      }}
+    >
+      {initialsOf(name)}
+    </div>
+  );
+}
+
+export function StaffGrid({ staff, userId, isOwnProfile = false }: { staff: StaffMember[]; userId?: string; isOwnProfile?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  if (staff.length === 0) return null;
+
+  async function remove(id: string) {
+    if (!userId) return;
+    if (!window.confirm('Remove this team member?')) return;
+    setBusy(true);
+    try {
+      const next = staff.filter((s) => s.id !== id);
+      await saveProfile(userId, { staff: next });
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'staff');
+      window.location.href = url.toString();
+    } catch (err) {
+      setBusy(false);
+      alert(err instanceof Error ? err.message : 'Could not remove.');
+    }
+  }
+
+  return (
+    <div className={styles.staffGrid}>
+      {staff.map((s) => (
+        <div key={s.id} className={styles.staffCard}>
+          {isOwnProfile && (
+            <button
+              type="button"
+              onClick={() => remove(s.id)}
+              disabled={busy}
+              className={styles.entryDeleteBtn}
+              title="Remove team member"
+              aria-label="Remove team member"
+            >
+              ✕
+            </button>
+          )}
+          <EntryImage src={s.photo} name={s.name} size={110} />
+          <div className={styles.staffName}>{s.name}</div>
+          {s.position && <div className={styles.staffPosition}>{s.position}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function StaffEditor({ userId, existing }: { userId: string; existing: StaffMember[] }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [position, setPosition] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function pick(f: File | null) {
+    setFile(f);
+    setPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : null; });
+  }
+  function reset() {
+    setName(''); setPosition(''); pick(null); setError(null);
+  }
+
+  async function save() {
+    if (!name.trim()) { setError('Name is required.'); return; }
+    if (existing.length >= STAFF_MAX) { setError(`You can add up to ${STAFF_MAX} team members.`); return; }
+    setBusy(true); setError(null);
+    try {
+      const photo = await uploadEntryImage(userId, file, 'staff');
+      const next: StaffMember[] = [
+        ...existing,
+        { id: newEntryId(), name: name.trim(), position: position.trim(), photo },
+      ];
+      await saveProfile(userId, { staff: next });
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'staff');
+      window.location.href = url.toString();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    if (existing.length >= STAFF_MAX) return null;
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={styles.testimonialAddBtn}>
+        + Add team member
+      </button>
+    );
+  }
+
+  return (
+    <div className={styles.testimonialAddForm}>
+      <div className={styles.entryFormRow}>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className={styles.entryPhotoPick}
+          aria-label="Add photo (optional)"
+        >
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
+          ) : (
+            <span>Photo<br /><small>optional</small></span>
+          )}
+        </button>
+        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
+        <div style={{ flex: 1 }}>
+          <div className={styles.testimonialAddFormLabel}>Name</div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jordan Reyes" className={styles.testimonialAddInput} disabled={busy} />
+          <div className={styles.testimonialAddFormLabel}>Job position</div>
+          <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. MC / Host" className={styles.testimonialAddInput} disabled={busy} />
+        </div>
+      </div>
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button type="button" onClick={() => { reset(); setOpen(false); }} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
+        <button type="button" onClick={save} disabled={busy} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </div>
+  );
+}
+
+export function AffiliatesGrid({ affiliates, userId, isOwnProfile = false }: { affiliates: Affiliate[]; userId?: string; isOwnProfile?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  if (affiliates.length === 0) return null;
+
+  async function remove(id: string) {
+    if (!userId) return;
+    if (!window.confirm('Remove this affiliate?')) return;
+    setBusy(true);
+    try {
+      const next = affiliates.filter((a) => a.id !== id);
+      await saveProfile(userId, { affiliates: next });
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'affiliates');
+      window.location.href = url.toString();
+    } catch (err) {
+      setBusy(false);
+      alert(err instanceof Error ? err.message : 'Could not remove.');
+    }
+  }
+
+  return (
+    <div className={styles.affiliateList}>
+      {affiliates.map((a) => (
+        <div key={a.id} className={styles.affiliateCard}>
+          {isOwnProfile && (
+            <button
+              type="button"
+              onClick={() => remove(a.id)}
+              disabled={busy}
+              className={styles.entryDeleteBtn}
+              title="Remove affiliate"
+              aria-label="Remove affiliate"
+            >
+              ✕
+            </button>
+          )}
+          <EntryImage src={a.image} name={a.name} size={72} square />
+          <div className={styles.affiliateBody}>
+            <div className={styles.affiliateName}>{a.name}</div>
+            {a.companyType && <div className={styles.affiliateType}>{a.companyType}</div>}
+            {a.description && <div className={styles.affiliateDesc}>{a.description}</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AffiliatesEditor({ userId, existing }: { userId: string; existing: Affiliate[] }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [companyType, setCompanyType] = useState('');
+  const [description, setDescription] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function pick(f: File | null) {
+    setFile(f);
+    setPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : null; });
+  }
+  function reset() {
+    setName(''); setCompanyType(''); setDescription(''); pick(null); setError(null);
+  }
+
+  async function save() {
+    if (!name.trim()) { setError('Name is required.'); return; }
+    if (existing.length >= AFFILIATES_MAX) { setError(`You can add up to ${AFFILIATES_MAX} affiliates.`); return; }
+    setBusy(true); setError(null);
+    try {
+      const image = await uploadEntryImage(userId, file, 'affiliate');
+      const next: Affiliate[] = [
+        ...existing,
+        { id: newEntryId(), name: name.trim(), companyType: companyType.trim(), description: description.trim(), image },
+      ];
+      await saveProfile(userId, { affiliates: next });
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'affiliates');
+      window.location.href = url.toString();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    if (existing.length >= AFFILIATES_MAX) return null;
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={styles.testimonialAddBtn}>
+        + Add affiliate
+      </button>
+    );
+  }
+
+  return (
+    <div className={styles.testimonialAddForm}>
+      <div className={styles.entryFormRow}>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className={styles.entryPhotoPick}
+          aria-label="Add image (optional)"
+        >
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
+          ) : (
+            <span>Image<br /><small>optional</small></span>
+          )}
+        </button>
+        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
+        <div style={{ flex: 1 }}>
+          <div className={styles.testimonialAddFormLabel}>Company name</div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bloom & Co" className={styles.testimonialAddInput} disabled={busy} />
+          <div className={styles.testimonialAddFormLabel}>Type of company</div>
+          <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} placeholder="e.g. Florist" className={styles.testimonialAddInput} disabled={busy} />
+        </div>
+      </div>
+      <div className={styles.testimonialAddFormLabel}>Description <span style={{ opacity: .6 }}>(optional)</span></div>
+      <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short note on why you recommend them…" className={styles.testimonialAddInput} disabled={busy} />
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button type="button" onClick={() => { reset(); setOpen(false); }} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
+        <button type="button" onClick={save} disabled={busy} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
   );
