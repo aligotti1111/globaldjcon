@@ -27,6 +27,8 @@ const WRITABLE = new Set<string>([
   'testimonials',
   'faqs',
   'about_stats',
+  'staff',
+  'affiliates',
   'mix_urls', 'mix_url_1', 'mix_url_2', 'mix_url_3',
   'gallery_photos', 'gallery_albums', 'gallery_captions', 'gallery_img_1', 'gallery_img_2', 'gallery_img_3', 'gallery_img_4',
   'video_urls',
