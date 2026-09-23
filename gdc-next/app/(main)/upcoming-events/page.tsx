@@ -97,7 +97,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, rider_confirmed_at, guestlist_confirmed_at')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -138,17 +138,31 @@ export default async function UpcomingEventsPage() {
   // booking_payments, so cast the client for this one query.
   const eventIds = events.map((e) => e.id);
   const payByBooking: Record<string, { kind: string; status: string }[]> = {};
+  // Rider + guest-list confirmations live on their OWN tables (booking_riders /
+  // booking_guestlists), NOT on bookings — keyed by booking_id. Best-effort:
+  // these lookups must never break the events query.
+  const riderConfirmed: Record<string, boolean> = {};
+  const guestlistConfirmed: Record<string, boolean> = {};
   if (eventIds.length > 0) {
-    const { data: payRows } = await (supabase as unknown as {
+    type AnyFrom = {
       from: (t: string) => {
-        select: (c: string) => { in: (col: string, v: string[]) => Promise<{ data: { booking_id: string; kind: string; status: string }[] | null }> };
+        select: (c: string) => { in: (col: string, v: string[]) => Promise<{ data: Record<string, unknown>[] | null }> };
       };
-    })
-      .from('booking_payments')
-      .select('booking_id, kind, status')
-      .in('booking_id', eventIds);
-    for (const p of payRows || []) {
+    };
+    const db = supabase as unknown as AnyFrom;
+
+    const { data: payRows } = await db.from('booking_payments').select('booking_id, kind, status').in('booking_id', eventIds);
+    for (const p of (payRows || []) as { booking_id: string; kind: string; status: string }[]) {
       (payByBooking[p.booking_id] ||= []).push({ kind: p.kind, status: p.status });
+    }
+
+    const { data: riderRows } = await db.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', eventIds);
+    for (const r of (riderRows || []) as { booking_id: string; confirmed_at: string | null }[]) {
+      if (r.confirmed_at) riderConfirmed[r.booking_id] = true;
+    }
+    const { data: glRows } = await db.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', eventIds);
+    for (const g of (glRows || []) as { booking_id: string; confirmed_at: string | null }[]) {
+      if (g.confirmed_at) guestlistConfirmed[g.booking_id] = true;
     }
   }
 
@@ -159,8 +173,6 @@ export default async function UpcomingEventsPage() {
       deposit_pct?: number | null;
       deposit_amount?: number | null;
       planner_status?: 'sent' | 'partial' | 'submitted' | null;
-      rider_confirmed_at?: string | null;
-      guestlist_confirmed_at?: string | null;
     };
     const pays = payByBooking[e.id] || [];
     const settled = (s: string) => s === 'paid' || s === 'waived';
@@ -174,8 +186,8 @@ export default async function UpcomingEventsPage() {
       hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0,
       depositPaid: deposits.length > 0 && deposits.every((p) => settled(p.status)),
       plannerStatus: raw.planner_status ?? null,
-      riderConfirmed: !!raw.rider_confirmed_at,
-      guestlistConfirmed: !!raw.guestlist_confirmed_at,
+      riderConfirmed: !!riderConfirmed[e.id],
+      guestlistConfirmed: !!guestlistConfirmed[e.id],
       hasBalance: balances.length > 0,
       balancePaid: balances.length > 0 && balances.every((p) => settled(p.status)),
     });
