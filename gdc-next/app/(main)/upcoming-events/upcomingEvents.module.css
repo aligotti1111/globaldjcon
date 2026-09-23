@@ -902,3 +902,17 @@
 @media (max-width: 720px) {
   .hdrPipeline { display: none; }
 }
+
+/* Agreed price in the card header (host view), matching the DJ card. */
+.hdrPrice {
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--neon, #00e3ad);
+  white-space: nowrap;
+  margin: 0 4px 0 auto;
+  flex-shrink: 0;
+}
+@media (max-width: 720px) {
+  .hdrPrice { margin-left: 8px; font-size: .85rem; }
+}
