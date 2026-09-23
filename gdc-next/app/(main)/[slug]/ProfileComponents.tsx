@@ -3136,12 +3136,12 @@ export function EditTabsModal({
                     onPointerDown={(e) => { e.preventDefault(); setDragKey(key); }}
                     style={{ touchAction: 'none' }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M12 3v18M3 12h18" />
-                      <path d="M8.5 6.5 12 3l3.5 3.5" />
-                      <path d="M8.5 17.5 12 21l3.5-3.5" />
-                      <path d="M6.5 8.5 3 12l3.5 3.5" />
-                      <path d="M17.5 8.5 21 12l-3.5 3.5" />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                      <path d="M9 8 12 5l3 3" />
+                      <path d="M9 16 12 19l3-3" />
+                      <path d="M8 9 5 12l3 3" />
+                      <path d="M16 9 19 12l-3 3" />
                     </svg>
                   </button>
                   <div className={styles.tabsRowText}>
@@ -3832,7 +3832,7 @@ function EntryImage({ src, name, size, square }: { src?: string | null; name: st
   );
 }
 
-export function StaffSection({ userId, staff, isOwnProfile }: { userId: string; staff: StaffMember[]; isOwnProfile: boolean }) {
+export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { userId: string; staff: StaffMember[]; isOwnProfile: boolean; onPhotoClick?: (src: string) => void }) {
   const { confirm, confirmDialog } = useConfirm();
   // mode: null (viewing), 'new' (adding), or an entry id (editing that one).
   const [mode, setMode] = useState<null | 'new' | string>(null);
@@ -3895,7 +3895,13 @@ export function StaffSection({ userId, staff, isOwnProfile }: { userId: string; 
         <div className={styles.staffGrid}>
           {staff.map((s) => (
             <div key={s.id} className={styles.staffCard}>
-              <EntryImage src={s.photo} name={s.name} size={121} />
+              {s.photo && onPhotoClick ? (
+                <button type="button" onClick={() => onPhotoClick(s.photo!)} className={styles.staffPhotoBtn} aria-label={`View ${s.name}'s photo`}>
+                  <EntryImage src={s.photo} name={s.name} size={121} />
+                </button>
+              ) : (
+                <EntryImage src={s.photo} name={s.name} size={121} />
+              )}
               <div className={styles.staffName}>{s.name}</div>
               {s.position && <div className={styles.staffPosition}>{s.position}</div>}
               {isOwnProfile && (
