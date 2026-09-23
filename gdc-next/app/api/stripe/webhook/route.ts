@@ -56,6 +56,7 @@ import { getStripe } from '@/lib/stripe/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { planForPrice } from '@/lib/stripe/config';
 import { sendSubscribedEmail } from '@/lib/email/subscriptionEmails';
+import { sendActivationWelcome } from '@/lib/activationEmail';
 
 export const runtime = 'nodejs';
 
@@ -151,6 +152,14 @@ async function applySubscription(admin: Admin, subscriptionId: string) {
     } catch (e) {
       console.warn('[stripe/webhook] subscribed email failed', e);
     }
+    // First-touch onboarding: also send the "your booking engine is X steps
+    // from active" email (covers promo/discount + paid signups). Self-gates to
+    // first-time + incomplete setup, so it never fires on renewals or for a DJ
+    // who's already live.
+    await sendActivationWelcome(
+      admin as unknown as Parameters<typeof sendActivationWelcome>[0],
+      userId,
+    );
   }
 
   // Record a discount-code / site-sale redemption if this subscription carried
