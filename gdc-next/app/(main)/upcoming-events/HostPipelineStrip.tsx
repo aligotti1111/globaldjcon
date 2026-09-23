@@ -53,7 +53,7 @@ export default function HostPipelineStrip({
   return (
     <div style={spread
       ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }
-      : { display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 56 }}>
+      : { display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 40 }}>
       {ordered.map((st) => {
         const done = st.done;
         const isNow = st.key === currentKey;
