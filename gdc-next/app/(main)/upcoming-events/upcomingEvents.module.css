@@ -153,6 +153,29 @@
   color: var(--neon, #00e0a4);
 }
 
+/* Mobile-only pipeline band. On desktop the pipeline lives in the header
+   (.hdrPipeline); on narrow screens it moves into a full-width band under the
+   row, evenly spaced across the card like the DJ card. */
+.pipelineMobile { display: none; }
+@media (max-width: 900px) {
+  .pipelineMobile {
+    display: block;
+    padding: 10px 14px 8px;
+    background: #14141b;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+  }
+  /* When a Total Price band follows it, the pipeline band isn't the last
+     child — drop its bottom radius so the price band closes the card. */
+  .pipelineMobile:not(:last-child) { border-radius: 0; }
+  /* Square the row's bottom when the pipeline band sits below it. */
+  .hasMobilePipeline .row {
+    border-radius: 8px 8px 0 0;
+    border-bottom-color: transparent;
+  }
+}
+
 /* The clickable middle area — wraps date pill + venue/meta block. */
 .rowToggle {
   flex: 1 1 auto;
