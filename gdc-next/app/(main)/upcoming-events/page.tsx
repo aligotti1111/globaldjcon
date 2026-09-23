@@ -49,8 +49,13 @@ export interface UpcomingEvent {
   offer_amount?: number | null;
   currency?: string | null;
   // Pricing-breakdown fields, so the host's Pricing card mirrors the DJ's
-  // receipt (Agreed Rate → Tax → Total, then a Deposit/Balance schedule).
+  // receipt (Agreed Rate → Tax → Total, then a Deposit/Balance schedule). The
+  // agreed rate lives in counter_rate ?? quoted_rate ?? offer_amount, same as
+  // the DJ card — offer_amount alone is often null.
+  counter_rate?: number | null;
+  quoted_rate?: number | null;
   tax_pct?: number | null;
+  tax_amount?: number | null;
   total_with_tax?: number | null;
   deposit_pct?: number | null;
   deposit_amount?: number | null;
@@ -107,7 +112,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, package_details')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
