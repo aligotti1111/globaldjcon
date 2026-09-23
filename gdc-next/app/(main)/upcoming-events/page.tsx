@@ -12,7 +12,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import UpcomingEventsClient from './UpcomingEventsClient';
-import { buildHostPipeline, type HostStage } from '@/lib/hostPipeline';
+import { buildHostPipeline } from '@/lib/hostPipeline';
+import type { PipelineStep } from '@/app/(main)/upcoming-bookings/pipeline/types';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -65,7 +66,9 @@ export interface UpcomingEvent {
   requester_id?: string | null;
   // Read-only "booking progress" pipeline shown at the top of the expanded
   // card — only the stages this booking actually has, computed server-side.
-  pipeline?: HostStage[];
+  // Uses the DJ-side PipelineStep shape so the host renders the real hero.
+  pipeline?: PipelineStep[];
+  pipelineDjType?: 'club' | 'mobile';
 }
 
 interface ProfileRow {
@@ -179,6 +182,7 @@ export default async function UpcomingEventsPage() {
     const deposits = pays.filter((p) => p.kind === 'deposit');
     const balances = pays.filter((p) => p.kind === 'balance');
     const bookingType = raw.booking_type === 'club' ? 'club' : raw.booking_type === 'mobile' ? 'mobile' : null;
+    e.pipelineDjType = bookingType === 'club' ? 'club' : 'mobile';
 
     e.pipeline = buildHostPipeline({
       bookingType,
