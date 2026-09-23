@@ -521,7 +521,6 @@
   display: flex;
   align-items: flex-start;
   gap: 2.5rem;
-  border-bottom: 1px solid var(--border);
   /* Trim the banner 10% off each side (80% width, centered). */
   width: 80%;
   margin-left: auto;
