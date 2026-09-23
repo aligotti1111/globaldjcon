@@ -47,7 +47,7 @@ export default function HostPipelineStrip({
   const currentKey = ordered.find((s) => !s.done && !s.muted)?.key ?? null;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 56 }}>
       {ordered.map((st) => {
         const done = st.done;
         const isNow = st.key === currentKey;
