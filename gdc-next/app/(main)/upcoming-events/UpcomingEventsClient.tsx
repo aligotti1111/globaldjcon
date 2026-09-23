@@ -61,9 +61,6 @@ export default function UpcomingEventsClient({
           <h1 className={styles.title}>Upcoming Events</h1>
           <p className={styles.subtitle}>All your confirmed events, nearest first.</p>
         </div>
-        <div className={styles.headerActions}>
-          <Link href="/booking-requests" className={styles.linkBack}>← Back to bookings</Link>
-        </div>
       </div>
 
       {events.length === 0 ? (
