@@ -1,63 +1,78 @@
-// lib/hostPipeline.ts — a READ-ONLY view of a booking's progress for the HOST,
-// mirroring the DJ-side pipeline but computed only from host-visible signals.
+// lib/hostPipeline.ts — build the READ-ONLY pipeline steps for a HOST's booking.
 //
-// Rule (per the DJ side): only show the stages this booking actually has. If
-// the DJ takes no deposit on this booking, there's no Deposit node; if there's
-// no contract, no Contract node; and so on. The host can't act on any of it —
-// it's purely "where is my booking in the process".
+// Returns the SAME PipelineStep shape the DJ side uses, so the host card can
+// render the DJ's real <PipelineHero> and look identical — just with no
+// actions/overrides (which makes every node non-clickable, i.e. view-only).
+//
+// Rule (same as the DJ side): only include a stage this booking actually has.
+// No deposit on the booking → no Deposit node, etc.
 
-export type HostStageKey = 'contract' | 'deposit' | 'planner' | 'rider' | 'balance' | 'guests';
+import type { PipelineStep } from '@/app/(main)/upcoming-bookings/pipeline/types';
 
-export interface HostStage {
-  key: HostStageKey;
-  label: string;
-  done: boolean;
-}
+const NEON = '#00e3ad';
+const AMBER = '#eaa94a';
 
 export interface HostPipelineInput {
   bookingType: 'club' | 'mobile' | null;
-  // A contract stage exists when the DJ required one (contract_status is set the
-  // moment a contract is created/sent). done when signed.
   contractStatus?: string | null;
-  // Deposit stage exists only when this booking carries a deposit (snapshot on
-  // the booking, or a deposit payment row). done when a deposit payment settled.
   hasDeposit?: boolean;
   depositPaid?: boolean;
-  // Planner (mobile only). Exists once it's been sent (planner_status set).
-  // done when the host has submitted it.
   plannerStatus?: 'sent' | 'partial' | 'submitted' | null;
-  // Rider + Guest list (club only). We surface these once the host has
-  // confirmed them (the only host-visible signal), so they read as done.
   riderConfirmed?: boolean;
   guestlistConfirmed?: boolean;
-  // Balance / invoice stage exists once one has been sent. done when settled.
   hasBalance?: boolean;
   balancePaid?: boolean;
 }
 
-// Build the ordered list of stages that apply to this booking. Empty array →
-// nothing to show yet (the host card simply omits the pipeline).
-export function buildHostPipeline(i: HostPipelineInput): HostStage[] {
-  const out: HostStage[] = [];
+// Read-only step: no actions, not overridable, no info/hint → <PipelineHero>
+// renders it as a plain (non-clickable) node with no dropdown.
+function ro(
+  key: string,
+  label: string,
+  done: boolean,
+  icon: PipelineStep['icon'],
+  caption: string,
+): PipelineStep {
+  return {
+    key,
+    label,
+    state: done ? 'done' : 'todo',
+    icon,
+    overridable: false,
+    done,
+    color: done ? NEON : AMBER,
+    caption,
+    // no actions / info / hint → the node has no menu (view-only)
+  };
+}
+
+export function buildHostPipeline(i: HostPipelineInput): PipelineStep[] {
+  const out: PipelineStep[] = [];
   const club = i.bookingType === 'club';
 
   if (i.contractStatus != null) {
-    out.push({ key: 'contract', label: 'Contract', done: i.contractStatus === 'signed' });
+    const signed = i.contractStatus === 'signed';
+    out.push(ro('contract', 'Contract', signed, 'doc',
+      signed ? 'Complete' : i.contractStatus === 'awaiting_client' ? 'Pending' : 'Not Sent'));
   }
   if (i.hasDeposit) {
-    out.push({ key: 'deposit', label: 'Deposit', done: !!i.depositPaid });
+    out.push(ro('deposit', 'Deposit', !!i.depositPaid, 'money',
+      i.depositPaid ? 'Paid' : 'Pending'));
   }
   if (!club && i.plannerStatus != null) {
-    out.push({ key: 'planner', label: 'Planner', done: i.plannerStatus === 'submitted' });
+    const done = i.plannerStatus === 'submitted';
+    out.push(ro('song_list', 'Planner & Playlist', done, 'music',
+      done ? 'Complete' : 'In progress'));
   }
   if (club && i.riderConfirmed) {
-    out.push({ key: 'rider', label: 'Rider', done: true });
+    out.push(ro('song_list', 'Rider', true, 'music', 'Confirmed'));
   }
   if (i.hasBalance) {
-    out.push({ key: 'balance', label: 'Balance', done: !!i.balancePaid });
+    out.push(ro('invoice', 'Balance', !!i.balancePaid, 'receipt',
+      i.balancePaid ? 'Paid' : 'Pending'));
   }
   if (club && i.guestlistConfirmed) {
-    out.push({ key: 'guests', label: 'Guests', done: true });
+    out.push(ro('guestlist', 'Guest List', true, 'doc', 'Confirmed'));
   }
 
   return out;
