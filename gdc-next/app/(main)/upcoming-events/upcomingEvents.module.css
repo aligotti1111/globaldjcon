@@ -104,6 +104,7 @@
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
+  position: relative;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -892,14 +893,19 @@
 .saveBtn:hover:not(:disabled) { background: #00d4a9; }
 .saveBtn:disabled { opacity: .6; cursor: wait; }
 
-/* Read-only booking-progress strip inside the card header (host view). */
+/* Centered booking-progress strip in the card header (host view). Absolutely
+   centered so it grows outward from the middle as more stages appear. */
 .hdrPipeline {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  flex-shrink: 0;
-  margin: 0 6px;
+  z-index: 3;
+  pointer-events: auto;
 }
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .hdrPipeline { display: none; }
 }
 
