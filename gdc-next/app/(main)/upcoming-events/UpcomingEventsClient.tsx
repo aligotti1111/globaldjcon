@@ -348,10 +348,15 @@ function EventRow({
   const mainRows = pricingRows.filter((r) => !r.schedule);
   // The tax-inclusive total for the collapsed row's bottom "Total Price" band.
   const totalPriceStr = pricingRows.find((r) => r.total)?.value ?? pricingRows[0]?.value ?? null;
+  const hasPipeline = !!event.pipeline && event.pipeline.length > 0;
   const showTotalBar = !expanded && !!totalPriceStr;
+  // On mobile the pipeline moves out of the header into a full-width band
+  // under the row (like the DJ card). When either the pipeline band or the
+  // price band sits below the collapsed row, square off its bottom corners.
+  const showMobilePipeline = !expanded && hasPipeline;
 
   return (
-    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''}`}>
+    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''} ${showMobilePipeline ? styles.hasMobilePipeline : ''}`}>
       <div className={styles.row}>
         {/* Date pill — first element in the row. Clickable: toggles
             expansion just like the middle area, so the date acts as part
@@ -517,6 +522,14 @@ function EventRow({
           )}
         </div>
       </div>
+
+      {/* Mobile-only pipeline band — the header pipeline moves here on narrow
+          screens as a full-width, evenly-spaced icon row (like the DJ card). */}
+      {showMobilePipeline && event.pipeline && (
+        <div className={styles.pipelineMobile}>
+          <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} spread />
+        </div>
+      )}
 
       {/* Full-width "Total Price" band under the collapsed row — mirrors the
           DJ card's Total Value strip. */}
