@@ -42,7 +42,7 @@ import {
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, AddPhotosModal, CreateAlbumModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
-  StaffEditor, StaffGrid, AffiliatesEditor, AffiliatesGrid,
+  StaffSection, AffiliatesSection,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
 import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
@@ -2144,10 +2144,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   least one team member is added.
                 </div>
               )}
-              <StaffGrid staff={staffList} userId={data.id} isOwnProfile={canEdit} />
-              {canEdit && (
-                <StaffEditor userId={data.id} existing={staffList} />
-              )}
+              <StaffSection userId={data.id} staff={staffList} isOwnProfile={canEdit} />
             </div>
           )}
 
@@ -2162,10 +2159,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   until at least one company is added.
                 </div>
               )}
-              <AffiliatesGrid affiliates={affiliatesList} userId={data.id} isOwnProfile={canEdit} />
-              {canEdit && (
-                <AffiliatesEditor userId={data.id} existing={affiliatesList} />
-              )}
+              <AffiliatesSection userId={data.id} affiliates={affiliatesList} isOwnProfile={canEdit} />
             </div>
           )}
         </div>
