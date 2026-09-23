@@ -126,6 +126,9 @@ export default function HeaderHostMenu({ name, avatarUrl, isAdmin = false }: Hea
           <Link href="/upcoming-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Upcoming Events
           </Link>
+          <Link href="/past-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Past Events
+          </Link>
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Account Settings
           </Link>
