@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { TIER_LABELS, type Tier } from '@/lib/access';
+import { sendActivationWelcome } from '@/lib/activationEmail';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -258,6 +259,11 @@ export async function POST(req: Request) {
     .from('comp_codes')
     .update({ uses_count: codeData.uses_count + 1 } as unknown as never)
     .eq('id', codeData.id);
+
+  // First-touch onboarding: comp signups bypass Stripe, so send the "your
+  // booking engine is X steps from active" email here. Self-gates to first-time
+  // + incomplete setup, so re-redeeming or an already-live DJ gets nothing.
+  await sendActivationWelcome(admin, user.id);
 
   return NextResponse.json({
     ok: true,
