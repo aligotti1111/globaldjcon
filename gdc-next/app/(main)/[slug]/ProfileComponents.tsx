@@ -3953,7 +3953,8 @@ export function StaffSection({ userId, staff, isOwnProfile }: { userId: string; 
         uploadFolder={profileUploadFolder(userId)}
         storagePath={`${profileUploadFolder(userId)}/staff_${entryId}.png`}
         title="Position Photo"
-        hint="Drag to move, slide to zoom. Leave as-is for a centered fit."
+        fitMode="contain"
+        hint="The whole photo shows by default — drag to move, slide to zoom in."
         onClose={() => setCropFile(null)}
         onSuccess={(u) => { setPhoto(u); setCropFile(null); }}
       />
