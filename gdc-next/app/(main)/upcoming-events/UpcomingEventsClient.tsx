@@ -18,7 +18,7 @@ import type { UpcomingEvent } from './page';
 import styles from './upcomingEvents.module.css';
 import dj from '../upcoming-bookings/upcomingBookings.module.css';
 import EventManualForm from './EventManualForm';
-import HostPipelineHero from './HostPipelineHero';
+import HostPipelineStrip from './HostPipelineStrip';
 import NotesFeed from '@/components/NotesFeed';
 
 interface Props {
@@ -281,6 +281,20 @@ function EventRow({
       }`
     : null;
 
+  // Pricing breakdown rows for the bottom card (mirrors the DJ Pricing card).
+  const pricingRows: { label: string; value: string; total?: boolean }[] = (() => {
+    if (event.offer_amount == null || !Number.isFinite(event.offer_amount)) return [];
+    const cur = event.currency || 'USD';
+    let fmt: (n: number) => string;
+    try {
+      const nf = new Intl.NumberFormat('en-US', { style: 'currency', currency: cur });
+      fmt = (n: number) => nf.format(n);
+    } catch {
+      fmt = (n: number) => `${cur} ${n.toLocaleString()}`;
+    }
+    return [{ label: 'Total', value: fmt(event.offer_amount), total: true }];
+  })();
+
   return (
     <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
       <div className={styles.row}>
@@ -393,6 +407,14 @@ function EventRow({
           </span>
         </button>
 
+        {/* Read-only booking-progress strip in the header — same icons as the
+            DJ card, only the stages this booking has. */}
+        {event.pipeline && event.pipeline.length > 0 && (
+          <div className={styles.hdrPipeline} onClick={(e) => e.stopPropagation()}>
+            <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
+          </div>
+        )}
+
         <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
           {event.link_url && (
             <a
@@ -443,9 +465,6 @@ function EventRow({
 
       {expanded && (
         <div className={styles.detailsPanel}>
-          {event.pipeline && event.pipeline.length > 0 && (
-            <HostPipelineHero steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
-          )}
           <div className={dj.detailsSections}>
             {/* EVENT */}
             <div className={dj.detailSection}>
@@ -549,6 +568,28 @@ function EventRow({
               <div className={dj.detailSection}>
                 <div className={dj.detailChip}><span>Package</span></div>
                 <div style={{ marginTop: 14, fontSize: 18, fontWeight: 700 }}>{event.package_title.trim()}</div>
+              </div>
+            )}
+
+            {/* Pricing breakdown — mirrors the DJ card's Pricing card. */}
+            {event.offer_amount != null && (
+              <div className={`${dj.detailSection} ${dj.detailSectionPricing}`}>
+                <div className={dj.detailChip}><span>Pricing</span></div>
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pricingRows.map((r) => (
+                    <div
+                      key={r.label}
+                      style={{
+                        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+                        gap: 12, paddingTop: r.total ? 10 : 0,
+                        borderTop: r.total ? '1px solid rgba(255,255,255,.1)' : 'none',
+                      }}
+                    >
+                      <span style={{ fontSize: r.total ? 14 : 13, color: r.total ? '#fff' : 'var(--muted,#8a8aa0)', fontWeight: r.total ? 700 : 500, textTransform: 'uppercase', letterSpacing: '.05em' }}>{r.label}</span>
+                      <span style={{ fontSize: r.total ? 20 : 15, fontWeight: 700, color: r.total ? '#00e3ad' : '#fff' }}>{r.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
