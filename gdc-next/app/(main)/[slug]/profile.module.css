@@ -184,8 +184,8 @@
    of the banner, stemming outward from that edge for emphasis. */
 .bannerNameBadge {
   position: absolute;
-  top: 22px;
-  left: 22px;
+  top: 10px;
+  left: 16px;
   z-index: 2;
   padding: .42rem .9rem;
   background: rgba(0, 0, 0, .5);
