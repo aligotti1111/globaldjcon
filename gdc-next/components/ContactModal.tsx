@@ -142,7 +142,7 @@ export function ContactTrigger({ className, children, style, onClick }: { classN
         type="button"
         className={className}
         onClick={() => { onClick?.(); setOpen(true); }}
-        style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', ...style }}
+        style={{ background: 'none', border: 'none', padding: 0, margin: 0, fontFamily: 'inherit', color: 'inherit', cursor: 'pointer', ...style }}
       >
         {children}
       </button>
