@@ -891,3 +891,14 @@
 }
 .saveBtn:hover:not(:disabled) { background: #00d4a9; }
 .saveBtn:disabled { opacity: .6; cursor: wait; }
+
+/* Read-only booking-progress strip inside the card header (host view). */
+.hdrPipeline {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin: 0 6px;
+}
+@media (max-width: 720px) {
+  .hdrPipeline { display: none; }
+}
