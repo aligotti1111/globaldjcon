@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { UpcomingEvent } from './page';
 import styles from './upcomingEvents.module.css';
 import EventManualForm from './EventManualForm';
+import HostPipelineHero from './HostPipelineHero';
 import NotesFeed from '@/components/NotesFeed';
 
 interface Props {
@@ -441,6 +442,9 @@ function EventRow({
 
       {expanded && (
         <div className={styles.detailsPanel}>
+          {event.pipeline && event.pipeline.length > 0 && (
+            <HostPipelineHero stages={event.pipeline} />
+          )}
           <div className={styles.detailsGrid}>
             {isMobile && (
               <>
