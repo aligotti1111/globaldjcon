@@ -35,9 +35,13 @@ const capBase: CSSProperties = { fontSize: 9.5, fontWeight: 500, letterSpacing: 
 export default function HostPipelineStrip({
   steps,
   djType,
+  spread = false,
 }: {
   steps: HostStep[];
   djType: 'club' | 'mobile';
+  /** Full-width, evenly-distributed icons (mobile band). Default is a
+      centered cluster with fixed gaps (desktop header). */
+  spread?: boolean;
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   if (!steps || steps.length === 0) return null;
@@ -47,7 +51,9 @@ export default function HostPipelineStrip({
   const currentKey = ordered.find((s) => !s.done && !s.muted)?.key ?? null;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 56 }}>
+    <div style={spread
+      ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }
+      : { display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 56 }}>
       {ordered.map((st) => {
         const done = st.done;
         const isNow = st.key === currentKey;
