@@ -400,20 +400,23 @@ function EventRow({
             )}
           </div>
 
+          {/* Price + read-only booking-progress strip, before the collapse
+              chevron — same order as the DJ card header. */}
+          {pricingRows[0] && (
+            <div className={styles.hdrPrice}>{pricingRows[0].value}</div>
+          )}
+          {event.pipeline && event.pipeline.length > 0 && (
+            <div className={styles.hdrPipeline}>
+              <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
+            </div>
+          )}
+
           <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </span>
         </button>
-
-        {/* Read-only booking-progress strip in the header — same icons as the
-            DJ card, only the stages this booking has. */}
-        {event.pipeline && event.pipeline.length > 0 && (
-          <div className={styles.hdrPipeline} onClick={(e) => e.stopPropagation()}>
-            <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
-          </div>
-        )}
 
         <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
           {event.link_url && (
