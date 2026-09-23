@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import HostCodeSignup from '@/app/(simple)/signup/HostCodeSignup';
 import InlineLoginForm from '@/components/InlineLoginForm';
 import styles from './bookingLoginGate.module.css';
@@ -33,7 +34,13 @@ export default function BookingLoginGate({
 
   const redirectTarget = `/${encodeURIComponent(djSlug)}?date=${encodeURIComponent(dateKey)}&book=1`;
 
-  return (
+  // Portal to <body> so the overlay sits above the whole page (banner, header,
+  // sticky nav). Rendered inline it gets trapped by an ancestor's stacking
+  // context / backdrop-filter and the banner shows through it.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const content = (
     // Backdrop does NOT close — a stray click outside shouldn't discard a
     // half-filled sign-in / create-account form. Only the ✕ closes it.
     <div className={styles.backdrop}>
@@ -129,4 +136,7 @@ export default function BookingLoginGate({
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(content, document.body);
 }
