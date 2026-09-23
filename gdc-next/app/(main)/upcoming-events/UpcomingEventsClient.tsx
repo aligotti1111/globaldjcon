@@ -346,9 +346,12 @@ function EventRow({
   })();
   const scheduleRows = pricingRows.filter((r) => r.schedule);
   const mainRows = pricingRows.filter((r) => !r.schedule);
+  // The tax-inclusive total for the collapsed row's bottom "Total Price" band.
+  const totalPriceStr = pricingRows.find((r) => r.total)?.value ?? pricingRows[0]?.value ?? null;
+  const showTotalBar = !expanded && !!totalPriceStr;
 
   return (
-    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}>
+    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''}`}>
       <div className={styles.row}>
         {/* Date pill — first element in the row. Clickable: toggles
             expansion just like the middle area, so the date acts as part
@@ -452,11 +455,6 @@ function EventRow({
             )}
           </div>
 
-          {/* Agreed price, right of the title (matches the DJ header). */}
-          {pricingRows[0] && (
-            <div className={styles.hdrPrice}>{pricingRows[0].value}</div>
-          )}
-
           <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="6 9 12 15 18 9" />
@@ -519,6 +517,15 @@ function EventRow({
           )}
         </div>
       </div>
+
+      {/* Full-width "Total Price" band under the collapsed row — mirrors the
+          DJ card's Total Value strip. */}
+      {showTotalBar && (
+        <div className={styles.rowTotalBar}>
+          <span className={styles.rowTotalLabel}>Total Price</span>
+          <span className={styles.rowTotalValue}>{totalPriceStr}</span>
+        </div>
+      )}
 
       {expanded && (
         <div className={styles.detailsPanel}>
