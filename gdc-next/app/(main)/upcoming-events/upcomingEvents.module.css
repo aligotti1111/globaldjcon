@@ -119,6 +119,40 @@
   border-bottom-color: transparent;
 }
 
+/* When the collapsed row carries a Total Price band below it, square off the
+   row's bottom corners so the band butts flush against it. */
+.hasTotalBar .row {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+/* Full-width price band under the collapsed row — label left, amount right,
+   in a lighter shade so it reads as a distinct footer strip. Mirrors the DJ
+   card's "Total Value" band. */
+.rowTotalBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #1c1c24;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  white-space: nowrap;
+}
+.rowTotalLabel {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #c9c9d3;
+}
+.rowTotalValue {
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--neon, #00e0a4);
+}
+
 /* The clickable middle area — wraps date pill + venue/meta block. */
 .rowToggle {
   flex: 1 1 auto;
