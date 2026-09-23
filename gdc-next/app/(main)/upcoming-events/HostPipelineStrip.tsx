@@ -42,7 +42,9 @@ export default function HostPipelineStrip({
   const [openKey, setOpenKey] = useState<string | null>(null);
   if (!steps || steps.length === 0) return null;
   const ordered = ORDER.map((k) => steps.find((s) => s.key === k)).filter(Boolean) as HostStep[];
-  const currentKey = ordered.find((s) => !s.done)?.key ?? null;
+  // "Your move" is the first stage that's neither done nor muted (Skipped /
+  // Not Required / Not Sent stages are inert and never light up amber).
+  const currentKey = ordered.find((s) => !s.done && !s.muted)?.key ?? null;
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28 }}>
