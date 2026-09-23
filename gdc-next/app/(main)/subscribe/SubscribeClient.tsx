@@ -436,6 +436,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           {isComp && accessUntilLabel && (
             <span className={styles.graceNote}>{' '}Access through {accessUntilLabel}.</span>
           )}
+          {isComp && !isPaid && (
+            <span className={styles.graceNote}>{' '}Select a package and add your billing information to begin your subscription immediately after the promotion ends.</span>
+          )}
           {isPaid && accessUntilLabel && currentState === 'active' && (
             <span className={styles.graceNote}>
               {' '}{(cancelInfo?.scheduled ?? cancelScheduled) ? `Active until ${cancelEndLabel}.` : `Renews ${accessUntilLabel}.`}
@@ -499,12 +502,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         />
       )}
 
-      {isComp && !isPaid && accessUntilLabel && (
-        <div className={styles.compBanner}>
-          Select a package and add your billing information to begin your subscription immediately after the promotion ends.
-          <span style={{ display: 'block', marginTop: '.45rem', fontWeight: 700 }}>Active till {accessUntilLabel}</span>
-        </div>
-      )}
       {error && <div className={styles.error}>{error}</div>}
       {switchMsg && <div className={styles.success}>{switchMsg}</div>}
 
