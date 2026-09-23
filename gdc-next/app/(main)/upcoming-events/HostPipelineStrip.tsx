@@ -84,15 +84,21 @@ export default function HostPipelineStrip({
             )}
           </span>
         );
+        // In spread (mobile) mode labels wrap and cells share the width evenly
+        // so the strip never overflows the card, however long a label is.
+        const labelSpread: CSSProperties = spread
+          ? { whiteSpace: 'normal', lineHeight: 1.1, wordBreak: 'break-word' }
+          : {};
+        const capSpread: CSSProperties = spread ? { whiteSpace: 'normal', minWidth: 0 } : {};
         const inner = (
           <>
-            <span style={{ ...labelStyle, marginBottom: 6 }}>{stageLabel(st.key, djType)}</span>
+            <span style={{ ...labelStyle, ...labelSpread, marginBottom: 6 }}>{stageLabel(st.key, djType)}</span>
             {top}
-            <span style={{ ...capBase, color: capColor, marginTop: 5 }}>{st.caption}</span>
+            <span style={{ ...capBase, ...capSpread, color: capColor, marginTop: 5 }}>{st.caption}</span>
           </>
         );
         return (
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }} key={st.key}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', ...(spread ? { flex: '1 1 0', minWidth: 0 } : {}) }} key={st.key}>
             {clickable ? (
               <button
                 type="button"
