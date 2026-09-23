@@ -26,6 +26,14 @@ interface Props {
   userCountry: string;
   userName: string;
   initialEvents: UpcomingEvent[];
+  /** Header + empty-state copy. Defaults suit the Upcoming Events page; the
+      Past Events page passes its own. */
+  title?: string;
+  subtitle?: string;
+  emptyText?: string;
+  emptyHint?: string;
+  /** Order events newest-first (past events) instead of soonest-first. */
+  newestFirst?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -35,6 +43,11 @@ const MONTH_NAMES = [
 
 export default function UpcomingEventsClient({
   userId, userCountry, userName, initialEvents,
+  title = 'Upcoming Events',
+  subtitle = 'All your confirmed events, nearest first.',
+  emptyText = "You don't have any upcoming events yet.",
+  emptyHint = 'Approved booking requests will appear here automatically.',
+  newestFirst = false,
 }: Props) {
   const [events, setEvents] = useState<UpcomingEvent[]>(initialEvents);
   const [editing, setEditing] = useState<UpcomingEvent | null>(null);
@@ -45,7 +58,7 @@ export default function UpcomingEventsClient({
   async function handleUpdated(updated: UpcomingEvent) {
     setEvents((prev) => {
       const next = prev.map((e) => (e.id === updated.id ? updated : e));
-      next.sort(sortByDateTimeAsc);
+      next.sort((a, b) => newestFirst ? sortByDateTimeAsc(b, a) : sortByDateTimeAsc(a, b));
       return next;
     });
     setEditing(null);
@@ -58,17 +71,15 @@ export default function UpcomingEventsClient({
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Upcoming Events</h1>
-          <p className={styles.subtitle}>All your confirmed events, nearest first.</p>
+          <h1 className={styles.title}>{title}</h1>
+          <p className={styles.subtitle}>{subtitle}</p>
         </div>
       </div>
 
       {events.length === 0 ? (
         <div className={styles.empty}>
-          <p>You don&apos;t have any upcoming events yet.</p>
-          <p className={styles.emptyHint}>
-            Approved booking requests will appear here automatically.
-          </p>
+          <p>{emptyText}</p>
+          <p className={styles.emptyHint}>{emptyHint}</p>
         </div>
       ) : (
         grouped.map(({ key, label, items }) => (
