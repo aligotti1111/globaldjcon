@@ -3895,6 +3895,9 @@ export function StaffSection({ userId, staff, isOwnProfile }: { userId: string; 
         <div className={styles.staffGrid}>
           {staff.map((s) => (
             <div key={s.id} className={styles.staffCard}>
+              <EntryImage src={s.photo} name={s.name} size={121} />
+              <div className={styles.staffName}>{s.name}</div>
+              {s.position && <div className={styles.staffPosition}>{s.position}</div>}
               {isOwnProfile && (
                 <div className={styles.entryCardActions}>
                   <button type="button" onClick={() => openEdit(s)} className={styles.entryEditBtn} title="Edit" aria-label="Edit team member">
@@ -3903,9 +3906,6 @@ export function StaffSection({ userId, staff, isOwnProfile }: { userId: string; 
                   <button type="button" onClick={() => remove(s)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove team member">✕</button>
                 </div>
               )}
-              <EntryImage src={s.photo} name={s.name} size={121} />
-              <div className={styles.staffName}>{s.name}</div>
-              {s.position && <div className={styles.staffPosition}>{s.position}</div>}
             </div>
           ))}
         </div>
@@ -4033,6 +4033,14 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
         <div className={styles.affiliateList}>
           {affiliates.map((a) => (
             <div key={a.id} className={styles.affiliateCard}>
+              <div className={styles.affiliateMain}>
+                <EntryImage src={a.image} name={a.name} size={84} square />
+                <div className={styles.affiliateBody}>
+                  <div className={styles.affiliateName}>{a.name}</div>
+                  {a.companyType && <div className={styles.affiliateType}>{a.companyType}</div>}
+                  {a.description && <div className={styles.affiliateDesc}>{a.description}</div>}
+                </div>
+              </div>
               {isOwnProfile && (
                 <div className={styles.entryCardActions}>
                   <button type="button" onClick={() => openEdit(a)} className={styles.entryEditBtn} title="Edit" aria-label="Edit affiliate">
@@ -4041,12 +4049,6 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
                   <button type="button" onClick={() => remove(a)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove affiliate">✕</button>
                 </div>
               )}
-              <EntryImage src={a.image} name={a.name} size={84} square />
-              <div className={styles.affiliateBody}>
-                <div className={styles.affiliateName}>{a.name}</div>
-                {a.companyType && <div className={styles.affiliateType}>{a.companyType}</div>}
-                {a.description && <div className={styles.affiliateDesc}>{a.description}</div>}
-              </div>
             </div>
           ))}
         </div>
