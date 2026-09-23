@@ -1,21 +1,21 @@
-// lib/hostPipeline.ts — build the READ-ONLY pipeline steps for a HOST's booking.
-//
-// Returns the SAME PipelineStep shape the DJ side uses, so the host card can
-// render the DJ's real <PipelineHero> and look identical — just with no
-// actions/overrides (which makes every node non-clickable, i.e. view-only).
-//
-// Rule (same as the DJ side): only include a stage this booking actually has.
-// No deposit on the booking → no Deposit node, etc.
+// lib/hostPipeline.ts — build the host's read-only pipeline steps, showing the
+// FULL pipeline for the booking type (like the DJ card): Contract · Deposit ·
+// Planner/Rider · Balance (· Guests for club). Stages that don't apply render
+// muted ("Not Required" / "Not Sent"), never as a "your move" step. Stages the
+// host can act on carry an href (pay a deposit/balance, open the planner).
 
 import type { PipelineStep } from '@/app/(main)/upcoming-bookings/pipeline/types';
 
-const NEON = '#00e3ad';
+const NEON = '#00e0a4';
 const AMBER = '#eaa94a';
+const MUTED = '#5a5a72';
 
-// A host pipeline step is a normal PipelineStep plus an optional link the host
-// can click (pay deposit/balance, open planner). Plain strings only — this
-// crosses the server→client boundary, so no functions.
-export type HostStep = PipelineStep & { href?: string; hrefLabel?: string };
+export type HostStep = PipelineStep & {
+  href?: string;
+  hrefLabel?: string;
+  /** A stage that doesn't apply to this booking — grey, never "your move". */
+  muted?: boolean;
+};
 
 export interface HostPipelineInput {
   bookingType: 'club' | 'mobile' | null;
@@ -27,23 +27,18 @@ export interface HostPipelineInput {
   guestlistConfirmed?: boolean;
   hasBalance?: boolean;
   balancePaid?: boolean;
-  // Optional host actions.
   depositHref?: string;
   balanceHref?: string;
   plannerHref?: string;
 }
 
-// Read-only step: no actions/overrides → renders as a view-only node. An
-// optional href makes just that one node clickable for the host.
-function ro(
+function step(
   key: string,
   label: string,
-  done: boolean,
   icon: PipelineStep['icon'],
-  caption: string,
-  href?: string,
-  hrefLabel?: string,
+  opts: { done?: boolean; muted?: boolean; caption: string; href?: string; hrefLabel?: string },
 ): HostStep {
+  const done = !!opts.done;
   return {
     key,
     label,
@@ -51,42 +46,78 @@ function ro(
     icon,
     overridable: false,
     done,
-    color: done ? NEON : AMBER,
-    caption,
-    ...(href ? { href, hrefLabel } : {}),
+    color: done ? NEON : opts.muted ? MUTED : AMBER,
+    caption: opts.caption,
+    muted: opts.muted,
+    ...(opts.href ? { href: opts.href, hrefLabel: opts.hrefLabel } : {}),
   };
 }
 
 export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
-  const out: HostStep[] = [];
   const club = i.bookingType === 'club';
+  const out: HostStep[] = [];
 
-  if (i.contractStatus != null) {
-    const signed = i.contractStatus === 'signed';
-    out.push(ro('contract', 'Contract', signed, 'doc',
-      signed ? 'Complete' : i.contractStatus === 'awaiting_client' ? 'Pending' : 'Not Sent'));
+  // Contract — always shown.
+  if (i.contractStatus == null) {
+    out.push(step('contract', 'Contract', 'doc', { muted: true, caption: 'Not Required' }));
+  } else if (i.contractStatus === 'signed') {
+    out.push(step('contract', 'Contract', 'doc', { done: true, caption: 'Complete' }));
+  } else {
+    out.push(step('contract', 'Contract', 'doc', {
+      caption: i.contractStatus === 'awaiting_client' ? 'Pending' : 'Not Sent',
+    }));
   }
-  if (i.hasDeposit) {
-    out.push(ro('deposit', 'Deposit', !!i.depositPaid, 'money',
-      i.depositPaid ? 'Paid' : 'Pending',
-      i.depositPaid ? undefined : i.depositHref, 'Make a payment'));
+
+  // Deposit — always shown.
+  if (!i.hasDeposit) {
+    out.push(step('deposit', 'Deposit', 'money', { muted: true, caption: 'Not Required' }));
+  } else if (i.depositPaid) {
+    out.push(step('deposit', 'Deposit', 'money', { done: true, caption: 'Paid' }));
+  } else if (i.depositHref) {
+    // A payable deposit request exists — the host can click through to pay.
+    out.push(step('deposit', 'Deposit', 'money', {
+      caption: 'Pending',
+      href: i.depositHref, hrefLabel: 'Make a payment',
+    }));
+  } else {
+    // Deposit was expected on the booking but the DJ never requested it →
+    // the DJ card shows "Skipped", so mirror that (muted, no action).
+    out.push(step('deposit', 'Deposit', 'money', { muted: true, caption: 'Skipped' }));
   }
-  if (!club && i.plannerStatus != null) {
-    const done = i.plannerStatus === 'submitted';
-    out.push(ro('song_list', 'Planner & Playlist', done, 'music',
-      done ? 'Complete' : 'In progress',
-      i.plannerHref, done ? 'View planner' : 'Open planner'));
+
+  // Planner (mobile) / Rider (club) — the song_list slot.
+  if (club) {
+    out.push(i.riderConfirmed
+      ? step('song_list', 'Rider', 'music', { done: true, caption: 'Confirmed' })
+      : step('song_list', 'Rider', 'music', { muted: true, caption: 'Pending' }));
+  } else if (i.plannerStatus == null) {
+    out.push(step('song_list', 'Planner & Playlist', 'music', { muted: true, caption: 'Not Sent' }));
+  } else if (i.plannerStatus === 'submitted') {
+    out.push(step('song_list', 'Planner & Playlist', 'music', {
+      done: true, caption: 'Complete', href: i.plannerHref, hrefLabel: 'View planner',
+    }));
+  } else {
+    out.push(step('song_list', 'Planner & Playlist', 'music', {
+      caption: 'In progress', href: i.plannerHref, hrefLabel: 'Open planner',
+    }));
   }
-  if (club && i.riderConfirmed) {
-    out.push(ro('song_list', 'Rider', true, 'music', 'Confirmed'));
+
+  // Balance — always shown.
+  if (!i.hasBalance) {
+    out.push(step('invoice', 'Balance', 'receipt', { muted: true, caption: 'Not Sent' }));
+  } else if (i.balancePaid) {
+    out.push(step('invoice', 'Balance', 'receipt', { done: true, caption: 'Paid' }));
+  } else {
+    out.push(step('invoice', 'Balance', 'receipt', {
+      caption: 'Pending', href: i.balanceHref, hrefLabel: 'Make a payment',
+    }));
   }
-  if (i.hasBalance) {
-    out.push(ro('invoice', 'Balance', !!i.balancePaid, 'receipt',
-      i.balancePaid ? 'Paid' : 'Pending',
-      i.balancePaid ? undefined : i.balanceHref, 'Make a payment'));
-  }
-  if (club && i.guestlistConfirmed) {
-    out.push(ro('guestlist', 'Guest List', true, 'doc', 'Confirmed'));
+
+  // Guest list — club only.
+  if (club) {
+    out.push(i.guestlistConfirmed
+      ? step('guestlist', 'Guest List', 'doc', { done: true, caption: 'Confirmed' })
+      : step('guestlist', 'Guest List', 'doc', { muted: true, caption: 'Pending' }));
   }
 
   return out;
