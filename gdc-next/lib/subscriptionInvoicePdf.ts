@@ -33,6 +33,8 @@ export interface SubInvoiceOptions {
   billedTo: {
     name?: string | null;
     email?: string | null;
+    /** Billing address lines (already formatted, blanks dropped). */
+    addressLines?: (string | null | undefined)[] | null;
   };
   /** The itemised charges (usually one subscription line). */
   lines: SubInvoiceLine[];
@@ -88,24 +90,15 @@ export async function buildSubscriptionInvoicePdf(opts: SubInvoiceOptions): Prom
   const drawR = (t: string, xRight: number, yy: number, size: number, font = reg, color = INK) =>
     page.drawText(t, { x: xRight - font.widthOfTextAtSize(t, size), y: yy, size, font, color });
 
-  // ── Brand header: GLOBAL DJ CONNECT wordmark (left) + INVOICE title (right) ──
-  // A small neon square as a mark, then the wordmark in two weights — the same
-  // "Global DJ Connect" lockup used across the site, so the paper reads as ours.
-  const markSize = 22;
-  page.drawRectangle({ x: MARGIN, y: y - markSize + 2, width: markSize, height: markSize, color: ACCENT });
-  // A stylised "G" glyph inside the mark.
-  drawL('G', MARGIN + 5.5, y - markSize + 6, 15, bold, rgb(1, 1, 1));
-  const wordX = MARGIN + markSize + 10;
-  drawL('GLOBAL DJ', wordX, y - 8, 15, bold, INK);
-  drawL('CONNECT', wordX, y - 22, 15, bold, ACCENT);
-  drawL('globaldjconnect.com', wordX, y - 36, 9, reg, MUTED);
+  // ── Brand header: the GLOBAL DJ CONNECT wordmark in solid black (on the white
+  //    invoice), tagline beneath; INVOICE title on the right. ──
+  drawL('GLOBAL DJ CONNECT', MARGIN, y - 16, 18, bold, INK);
+  drawL('globaldjconnect.com', MARGIN, y - 31, 8.5, reg, MUTED);
+  drawR('INVOICE', rightX, y - 18, 22, bold, INK);
+  drawR(`Invoice ${opts.number}`, rightX, y - 38, 10.5, reg, MUTED);
+  drawR(opts.dateText, rightX, y - 53, 10.5, reg, MUTED);
 
-  // Document title + number + date, right-aligned.
-  drawR('INVOICE', rightX, y - 8, 26, bold, ACCENT);
-  drawR(`Invoice ${opts.number}`, rightX, y - 28, 10.5, reg, MUTED);
-  drawR(opts.dateText, rightX, y - 43, 10.5, reg, MUTED);
-
-  y -= 58;
+  y -= 68;
 
   // Divider.
   page.drawLine({ start: { x: MARGIN, y }, end: { x: rightX, y }, thickness: 1, color: LINE });
@@ -116,6 +109,13 @@ export async function buildSubscriptionInvoicePdf(opts: SubInvoiceOptions): Prom
   let ly = y - 15;
   if (opts.billedTo.name) { drawL(opts.billedTo.name, MARGIN, ly, 11.5, bold); ly -= 15; }
   if (opts.billedTo.email) { drawL(opts.billedTo.email, MARGIN, ly, 10, reg, MUTED); ly -= 14; }
+  for (const line of opts.billedTo.addressLines || []) {
+    if (!line || !String(line).trim()) continue;
+    for (const ln of wrap(String(line), reg, 10, (rightX - MARGIN) / 2 - 20)) {
+      drawL(ln, MARGIN, ly, 10, reg, MUTED);
+      ly -= 13;
+    }
+  }
 
   // From (the platform), right column.
   const rightColX = MARGIN + (rightX - MARGIN) / 2 + 20;
