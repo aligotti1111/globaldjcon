@@ -144,6 +144,9 @@ export default async function PastEventsPage() {
       depositHref: openDeposit ? `/pay/${openDeposit.id}` : undefined,
       balanceHref: openBalance ? `/pay/${openBalance.id}` : undefined,
       plannerHref: plannerIdByBooking[e.id] ? `/planner/${plannerIdByBooking[e.id]}` : undefined,
+      // Settled deposit/balance → let the host download their receipt.
+      depositReceiptHref: depositPaid ? `/api/host/receipt?bookingId=${e.id}&kind=deposit` : undefined,
+      balanceReceiptHref: balancePaid ? `/api/host/receipt?bookingId=${e.id}&kind=balance` : undefined,
     });
   }
 
