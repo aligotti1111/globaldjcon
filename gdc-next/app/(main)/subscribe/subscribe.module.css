@@ -260,6 +260,83 @@
 .switchLink:hover { filter: brightness(1.1); }
 .switchLink:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: none; }
 
+/* ── Manage Subscription toolbar ─────────────────────────── */
+.managePanel {
+  max-width: 620px;
+  margin: 2rem auto 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.1rem 1.2rem 1.25rem;
+}
+.manageHeading {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted, #8a8aa0);
+  margin: 0 0 0.85rem;
+}
+.manageToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 150px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #fff;
+  border-radius: 11px;
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.toolBtn svg { width: 16px; height: 16px; flex: none; }
+.toolBtn:hover { border-color: rgba(255, 255, 255, 0.42); background: rgba(255, 255, 255, 0.04); }
+.toolBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.toolBtnPrimary { border-color: var(--neon, #00e0a4); color: var(--neon, #00e0a4); }
+.toolBtnPrimary:hover { border-color: var(--neon, #00e0a4); background: rgba(0, 224, 164, 0.08); }
+.toolBtnDanger { border-color: rgba(255, 120, 120, 0.5); color: #ff8b8b; }
+.toolBtnDanger:hover { border-color: rgba(255, 120, 120, 0.75); background: rgba(255, 95, 95, 0.06); }
+
+/* ── Invoices modal ──────────────────────────────────────── */
+.invoiceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.invoiceRow:last-child { border-bottom: none; }
+.invoiceMeta { display: flex; flex-direction: column; gap: 0.15rem; text-align: left; min-width: 0; }
+.invoiceDate { font-size: 0.9rem; font-weight: 700; color: #fff; }
+.invoiceSub { font-size: 0.78rem; color: var(--muted, #9a9ab0); }
+.invoiceAmt { font-size: 0.9rem; font-weight: 700; color: #fff; white-space: nowrap; }
+.invoiceStatus {
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 0.12rem 0.45rem; border-radius: 999px; margin-left: 0.4rem;
+}
+.invoiceStatusPaid { background: rgba(0, 224, 164, 0.15); color: var(--neon, #00e0a4); }
+.invoiceStatusOpen { background: rgba(245, 196, 81, 0.16); color: #f5c451; }
+.invoiceDownload {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: #fff;
+  border-radius: 9px; padding: 0.45rem 0.7rem; font-size: 0.8rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.invoiceDownload svg { width: 14px; height: 14px; }
+.invoiceDownload:hover { border-color: var(--neon, #00e0a4); color: var(--neon, #00e0a4); }
+.invoiceDownload:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── Result banners ──────────────────────────────────────── */
 .error {
   max-width: 560px;
