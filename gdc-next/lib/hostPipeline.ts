@@ -30,6 +30,10 @@ export interface HostPipelineInput {
   depositHref?: string;
   balanceHref?: string;
   plannerHref?: string;
+  /** Download a receipt for an already-settled balance (past bookings). */
+  balanceReceiptHref?: string;
+  /** Download a receipt for an already-settled deposit. */
+  depositReceiptHref?: string;
 }
 
 function step(
@@ -72,7 +76,10 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
   if (!i.hasDeposit) {
     out.push(step('deposit', 'Deposit', 'money', { muted: true, caption: 'Not Required' }));
   } else if (i.depositPaid) {
-    out.push(step('deposit', 'Deposit', 'money', { done: true, caption: 'Paid' }));
+    out.push(step('deposit', 'Deposit', 'money', {
+      done: true, caption: 'Paid',
+      href: i.depositReceiptHref, hrefLabel: 'Download receipt',
+    }));
   } else if (i.depositHref) {
     // A payable deposit request exists — the host can click through to pay.
     out.push(step('deposit', 'Deposit', 'money', {
@@ -106,7 +113,10 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
   if (!i.hasBalance) {
     out.push(step('invoice', 'Balance', 'receipt', { muted: true, caption: 'Not Sent' }));
   } else if (i.balancePaid) {
-    out.push(step('invoice', 'Balance', 'receipt', { done: true, caption: 'Paid' }));
+    out.push(step('invoice', 'Balance', 'receipt', {
+      done: true, caption: 'Paid',
+      href: i.balanceReceiptHref, hrefLabel: 'Download receipt',
+    }));
   } else {
     out.push(step('invoice', 'Balance', 'receipt', {
       caption: 'Pending', href: i.balanceHref, hrefLabel: 'Make a payment',
