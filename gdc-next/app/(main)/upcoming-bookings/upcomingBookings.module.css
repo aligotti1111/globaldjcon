@@ -441,6 +441,18 @@
   text-align: right;
   padding-right: 14px;
 }
+/* Desktop: give the header the same framed card look as the booking rows so
+   the labels sit INSIDE a frame aligned with the cards below, not floating in
+   the dead space above them. */
+@media (min-width: 601px) {
+  .colHeads {
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    background: #0b0b12;
+    margin-bottom: 10px;
+    padding: 11px 16px;
+  }
+}
 
 /* ── Row content cells (used by the new clickable .row in expand section) ── */
 /* Stacked date pill: big day number with day-of-week + month stacked
