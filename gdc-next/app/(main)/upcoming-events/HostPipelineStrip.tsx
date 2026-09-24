@@ -6,7 +6,7 @@
 // done, amber caption for the "your move" stage). Clickable stages (pay a
 // deposit/balance, open the planner) drop a small action menu.
 
-import { useState, type CSSProperties } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { stageLabel } from '../upcoming-bookings/pipeline/types';
 import type { HostStep } from '@/lib/hostPipeline';
 
@@ -45,6 +45,25 @@ export default function HostPipelineStrip({
   spread?: boolean;
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the open action menu on any click outside the strip (and on Escape).
+  useEffect(() => {
+    if (!openKey) return;
+    function onDown(e: MouseEvent | TouchEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpenKey(null);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpenKey(null); }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [openKey]);
+
   if (!steps || steps.length === 0) return null;
   const ordered = ORDER.map((k) => steps.find((s) => s.key === k)).filter(Boolean) as HostStep[];
   // "Your move" is the first stage that's neither done nor muted (Skipped /
@@ -52,7 +71,7 @@ export default function HostPipelineStrip({
   const currentKey = ordered.find((s) => !s.done && !s.muted)?.key ?? null;
 
   return (
-    <div style={spread
+    <div ref={wrapRef} style={spread
       ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }
       : { display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 10 }}>
       {ordered.map((st) => {
