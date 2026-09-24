@@ -221,6 +221,9 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [invoices, setInvoices] = useState<InvoiceItem[] | null>(null);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  // Top-left "Manage subscription" dropdown menu.
+  const [manageOpen, setManageOpen] = useState(false);
+  const manageMenuRef = useRef<HTMLDivElement | null>(null);
   // Effective scheduled-cancel state: the client value once they click cancel/
   // resume this session, otherwise the server value read from Stripe — so a
   // reload still shows "set to cancel / Resume" instead of Cancel again.
@@ -390,6 +393,23 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     }
   }
 
+  // Close the manage menu on any outside click or Escape.
+  useEffect(() => {
+    if (!manageOpen) return;
+    function onDown(e: MouseEvent | TouchEvent) {
+      if (manageMenuRef.current && !manageMenuRef.current.contains(e.target as Node)) setManageOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setManageOpen(false); }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [manageOpen]);
+
   // Open the Invoices dialog, loading the list on first open. Comps never reach
   // here (the button is gated on isPaid) — and even if they did, the list shows
   // the REAL Stripe amounts, so a comp's $0 trial invoice reads $0, never the
@@ -503,6 +523,58 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       {subResult === 'cancelled' && (
         <div className={styles.notice}>
           Checkout was cancelled &mdash; you haven&apos;t been charged.
+        </div>
+      )}
+
+      {/* Subscribed → a static "Manage subscription" menu button, top-LEFT of the
+          page. Opens a dropdown with Invoices / Update payment / Cancel (or
+          Resume). Only for a PAID subscriber — comps have nothing to manage. */}
+      {isSubscribed && isPaid && !confirmCancel && (
+        <div className={styles.manageMenuWrap} ref={manageMenuRef}>
+          <button
+            type="button"
+            className={styles.manageMenuBtn}
+            onClick={() => setManageOpen((o) => !o)}
+            aria-haspopup="menu"
+            aria-expanded={manageOpen}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: 17, height: 17 }}>
+              <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Manage subscription
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: 13, height: 13, opacity: 0.7 }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {manageOpen && (
+            <div className={styles.manageMenu} role="menu">
+              {cancelIsScheduled && (
+                <div className={styles.manageMenuNote}>
+                  Set to cancel{cancelEndDate ? ` ${fmtDate(cancelEndDate)}` : ''} — full access until then.
+                </div>
+              )}
+              <button type="button" role="menuitem" className={styles.manageMenuItem} onClick={() => { setManageOpen(false); openInvoices(); }} disabled={invoicesLoading}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 3v18l2-1 2 1 2-1 2 1 2-1 2 1V3l-2 1-2-1-2 1-2-1-2 1-2-1z" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+                {invoicesLoading ? 'Loading…' : 'Invoices'}
+              </button>
+              <button type="button" role="menuitem" className={styles.manageMenuItem} onClick={() => { setManageOpen(false); updateCard(); }} disabled={cardLoading}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+                {cardLoading ? 'Opening…' : 'Update payment'}
+              </button>
+              {cancelIsScheduled ? (
+                <button type="button" role="menuitem" className={`${styles.manageMenuItem} ${styles.manageMenuItemAccent}`} onClick={() => { setManageOpen(false); cancelSub('resume'); }} disabled={cancelBusy}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.36 2.64L3 8" /><path d="M3 3v5h5" /></svg>
+                  {cancelBusy ? 'Working…' : 'Resume subscription'}
+                </button>
+              ) : (
+                <button type="button" role="menuitem" className={`${styles.manageMenuItem} ${styles.manageMenuItemDanger}`} onClick={() => { setManageOpen(false); setConfirmCancel(true); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></svg>
+                  Cancel subscription
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -804,71 +876,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
           </div>
         );
       })()}
-
-      {/* Subscribed (PAID) → the Manage Subscription toolbar. Always shown for a
-          paid subscriber (including one whose cancel is scheduled — they still
-          need Invoices and can Resume). Comps never see this: no Stripe
-          subscription to manage or invoice for the plan amount.
-          Buttons: Invoices + Update payment are always available; the third
-          button is Cancel normally, or Resume once a cancel is scheduled. */}
-      {isSubscribed && isPaid && !confirmCancel && (
-        <div className={styles.managePanel}>
-          <div className={styles.manageHeading}>Manage Subscription</div>
-          {cancelIsScheduled && (
-            <p style={{ fontSize: '.82rem', color: 'var(--muted,#9a9ab0)', margin: '0 0 .85rem', lineHeight: 1.5 }}>
-              Your subscription is set to cancel{cancelEndDate ? ` on ${fmtDate(cancelEndDate)}` : ''}. You keep full access until then — Resume to keep it going.
-            </p>
-          )}
-          <div className={styles.manageToolbar}>
-            <button
-              type="button"
-              className={`${styles.toolBtn}`}
-              onClick={openInvoices}
-              disabled={invoicesLoading}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 3v18l2-1 2 1 2-1 2 1 2-1 2 1V3l-2 1-2-1-2 1-2-1-2 1-2-1z" /><path d="M8 8h8M8 12h8M8 16h5" />
-              </svg>
-              {invoicesLoading ? 'Loading…' : 'Invoices'}
-            </button>
-            <button
-              type="button"
-              className={`${styles.toolBtn} ${styles.toolBtnPrimary}`}
-              onClick={updateCard}
-              disabled={cardLoading}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
-              </svg>
-              {cardLoading ? 'Opening…' : 'Update payment'}
-            </button>
-            {cancelIsScheduled ? (
-              <button
-                type="button"
-                className={`${styles.toolBtn} ${styles.toolBtnPrimary}`}
-                onClick={() => cancelSub('resume')}
-                disabled={cancelBusy}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.36 2.64L3 8" /><path d="M3 3v5h5" />
-                </svg>
-                {cancelBusy ? 'Working…' : 'Resume subscription'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={`${styles.toolBtn} ${styles.toolBtnDanger}`}
-                onClick={() => setConfirmCancel(true)}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" />
-                </svg>
-                Cancel subscription
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Invoices dialog — the DJ's subscription billing history, each row with a
           branded-PDF download. Real Stripe amounts, so a $0 trial reads $0. */}
