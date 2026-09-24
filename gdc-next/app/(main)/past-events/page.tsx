@@ -8,7 +8,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import UpcomingEventsClient from '../upcoming-events/UpcomingEventsClient';
 import { buildHostPipeline } from '@/lib/hostPipeline';
 import type { UpcomingEvent } from '../upcoming-events/page';
@@ -73,10 +73,14 @@ export default async function PastEventsPage() {
       {},
     );
   }
+  const djEmailById: Record<string, string | null> = {};
+  for (const id of djIds) djEmailById[id] = await resolveUserEmail(id);
+
   for (const e of events) {
     if (e.dj_id && djInfoById[e.dj_id]) {
       e.dj_name = djInfoById[e.dj_id].name || null;
       e.dj_slug = djInfoById[e.dj_id].slug || null;
+      e.dj_email = djEmailById[e.dj_id] || null;
     }
   }
 
