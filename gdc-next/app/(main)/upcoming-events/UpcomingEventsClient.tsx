@@ -185,8 +185,10 @@ function EventRow({
   //   - Any approved club/bar booking they made
   // Mobile (private-party) bookings don't get flyer slots — those aren't
   // public-facing promotional events.
-  // Past events are read-only — no adding/replacing flyers (the event is over).
-  const canUploadFlyer = !readOnly && (isManual || event.booking_type === 'club');
+  // Which rows get a flyer slot (club/bar bookings + any manual event). On past
+  // events the box still shows for consistency but isn't clickable (see below).
+  const hasFlyerSlot = isManual || event.booking_type === 'club';
+  const canUploadFlyer = !readOnly && hasFlyerSlot;
   // Mobile / private bookings: no external-link feature (those events
   // aren't public-facing), and they get the full booking-detail panel
   // plus the shared notes feed, mirroring the club/bar layout.
@@ -418,6 +420,12 @@ function EventRow({
             >
               {uploading ? '…' : '+ Flyer'}
             </button>
+          ) : hasFlyerSlot ? (
+            // Past events: show the flyer box for layout consistency, but it's
+            // static — no upload, no click.
+            <div className={styles.flyerSlot} style={{ cursor: 'default', opacity: 0.5 }} aria-hidden="true">
+              + Flyer
+            </div>
           ) : (
             <div className={styles.flyerEmpty} />
           )
