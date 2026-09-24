@@ -965,7 +965,7 @@
      stage-for-stage, and the club's extra Guests node just extends further
      right. */
   position: absolute;
-  left: 42%;
+  left: 27%;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
