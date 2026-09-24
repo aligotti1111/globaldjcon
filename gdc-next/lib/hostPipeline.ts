@@ -23,6 +23,8 @@ export interface HostPipelineInput {
   hasDeposit?: boolean;
   depositPaid?: boolean;
   plannerStatus?: 'sent' | 'partial' | 'submitted' | null;
+  /** Planner completion percent (0–100) — shown as the in-progress caption. */
+  plannerPct?: number | null;
   riderConfirmed?: boolean;
   guestlistConfirmed?: boolean;
   hasBalance?: boolean;
@@ -101,11 +103,12 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
     out.push(step('song_list', 'Planner & Playlist', 'music', { muted: true, caption: 'Not Requested' }));
   } else if (i.plannerStatus === 'submitted') {
     out.push(step('song_list', 'Planner & Playlist', 'music', {
-      done: true, caption: 'Complete', href: i.plannerHref, hrefLabel: 'View planner',
+      done: true, caption: 'Complete', href: i.plannerHref, hrefLabel: 'View Planner',
     }));
   } else {
     out.push(step('song_list', 'Planner & Playlist', 'music', {
-      caption: 'In progress', href: i.plannerHref, hrefLabel: 'Open planner',
+      caption: i.plannerPct != null ? `${i.plannerPct}%` : 'In progress',
+      href: i.plannerHref, hrefLabel: 'Open Planner',
     }));
   }
 
