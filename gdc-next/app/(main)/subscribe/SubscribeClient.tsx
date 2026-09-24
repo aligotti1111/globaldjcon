@@ -189,6 +189,15 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
     ? fmtDate(compUntil)
     : accessUntilLabel;
 
+  // A comp that runs more than 2 years out can't have billing added early:
+  // Stripe caps a scheduled first charge (trial_end) at 730 days, and we won't
+  // start billing before the free period ends. So we hide "Add Billing" for
+  // these and show a note instead — they can add a card once the comp is within
+  // 2 years. (The comp end for a comp is accessUntil.)
+  const TWO_YEARS_MS = 730 * 24 * 60 * 60 * 1000;
+  const compEndMs = accessUntil ? new Date(accessUntil).getTime() : 0;
+  const compTooFar = isComp && compEndMs > Date.now() + TWO_YEARS_MS;
+
   // Open on the interval requested via ?interval (carried from signup), else the
   // one the DJ is already billed at, so their current plan reads as current and
   // the OTHER interval is one toggle away.
@@ -724,17 +733,28 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
                       Subscribe here so they can keep this plan past the free
                       period. Checkout starts a Stripe trial ending at the comp's
                       expiry, so there's no charge until then (see the checkout
-                      route's trial_end). */}
-                  <button
-                    type="button"
-                    className={styles.subscribeBtn}
-                    onClick={() => subscribe(tier)}
-                    disabled={loadingTier !== null || !purchasable}
-                    title={!purchasable ? 'Not available yet' : undefined}
-                    style={{ background: '#fff', color: '#000' }}
-                  >
-                    {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Add Billing'}
-                  </button>
+                      route's trial_end).
+
+                      EXCEPTION: a comp more than 2 years out can't have billing
+                      scheduled yet (Stripe's trial_end cap), so hide the button
+                      and tell them to add it later. */}
+                  {compTooFar ? (
+                    <p style={{ textAlign: 'center', fontSize: '.85rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.5, margin: '.4rem 0 0' }}>
+                      You&apos;re covered through {accessUntilLabel}. You can add billing once your
+                      complimentary access is within 2 years of ending — no card needed until then.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.subscribeBtn}
+                      onClick={() => subscribe(tier)}
+                      disabled={loadingTier !== null || !purchasable}
+                      title={!purchasable ? 'Not available yet' : undefined}
+                      style={{ background: '#fff', color: '#000' }}
+                    >
+                      {!purchasable ? 'Coming soon' : isLoading ? 'Redirecting…' : 'Add Billing'}
+                    </button>
+                  )}
                   {/* No per-card note — the complimentary/billing message already
                       shows in the banner above the plans. */}
                 </>
