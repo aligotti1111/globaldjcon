@@ -78,7 +78,7 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
   } else if (i.depositPaid) {
     out.push(step('deposit', 'Deposit', 'money', {
       done: true, caption: 'Paid',
-      href: i.depositReceiptHref, hrefLabel: 'Download receipt',
+      href: i.depositReceiptHref, hrefLabel: 'Download Receipt',
     }));
   } else if (i.depositHref) {
     // A payable deposit request exists — the host can click through to pay.
@@ -115,7 +115,7 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
   } else if (i.balancePaid) {
     out.push(step('invoice', 'Balance', 'receipt', {
       done: true, caption: 'Paid',
-      href: i.balanceReceiptHref, hrefLabel: 'Download receipt',
+      href: i.balanceReceiptHref, hrefLabel: 'Download Receipt',
     }));
   } else {
     out.push(step('invoice', 'Balance', 'receipt', {
