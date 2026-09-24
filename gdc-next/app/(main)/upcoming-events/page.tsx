@@ -115,7 +115,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, cancel_status')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, cancel_status, status_overrides')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -207,13 +207,25 @@ export default async function UpcomingEventsPage() {
       deposit_pct?: number | null;
       deposit_amount?: number | null;
       planner_status?: 'sent' | 'partial' | 'submitted' | null;
+      status_overrides?: Record<string, boolean> | string | null;
     };
+    // The DJ can mark a stage complete manually (paid in full in cash, contract
+    // done on paper) via status_overrides — no payment row exists then. Honor the
+    // same flags so the host sees the same state as the DJ.
+    let overrides: Record<string, boolean> = {};
+    if (raw.status_overrides) {
+      try {
+        overrides = typeof raw.status_overrides === 'string'
+          ? JSON.parse(raw.status_overrides)
+          : raw.status_overrides;
+      } catch { overrides = {}; }
+    }
     const pays = payByBooking[e.id] || [];
     const settled = (s: string) => s === 'paid' || s === 'waived';
     const deposits = pays.filter((p) => p.kind === 'deposit');
     const balances = pays.filter((p) => p.kind === 'balance');
-    const depositPaid = deposits.length > 0 && deposits.every((p) => settled(p.status));
-    const balancePaid = balances.length > 0 && balances.every((p) => settled(p.status));
+    const depositPaid = (deposits.length > 0 && deposits.every((p) => settled(p.status))) || !!overrides.deposit;
+    const balancePaid = (balances.length > 0 && balances.every((p) => settled(p.status))) || !!overrides.invoice;
     // The still-owed payment row the host can click through to pay.
     const openDeposit = deposits.find((p) => !settled(p.status));
     const openBalance = balances.find((p) => !settled(p.status));
@@ -222,13 +234,14 @@ export default async function UpcomingEventsPage() {
 
     e.pipeline = buildHostPipeline({
       bookingType,
-      contractStatus: raw.contract_status ?? null,
-      hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0,
+      // Contract signed on paper (override) reads the same as e-signed.
+      contractStatus: overrides.contract ? 'signed' : (raw.contract_status ?? null),
+      hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0 || !!overrides.deposit,
       depositPaid,
       plannerStatus: raw.planner_status ?? null,
       riderConfirmed: !!riderConfirmed[e.id],
       guestlistConfirmed: !!guestlistConfirmed[e.id],
-      hasBalance: balances.length > 0,
+      hasBalance: balances.length > 0 || !!overrides.invoice,
       balancePaid,
       // Clickable actions for the host: pay deposit/balance, open planner.
       depositHref: openDeposit ? `/pay/${openDeposit.id}` : undefined,
