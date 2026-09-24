@@ -168,7 +168,6 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
       {djType === 'club' && <span />}
       <span>Time</span>
       <span>Event</span>
-      <span className={styles.headRight}>Value</span>
       {pipeSlotsFor(djType).map((k) => <span key={k}>{k === 'song_list' && djType === 'club' ? 'Rider' : PIPE_HEADS[k]}</span>)}
       {/* Two empty cells: the actions track and the chevron track. Unlabelled
           on purpose — "Actions" over a column that's blank on most rows is
