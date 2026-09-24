@@ -47,7 +47,7 @@ export default async function PastEventsPage() {
   // Past approved-or-manual bookings made by this host/venue, most recent first.
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, status_overrides')
     .eq('requester_id', user.id)
     .lt('event_date', today)
     .or('status.eq.approved,is_manual.eq.true')
@@ -123,13 +123,23 @@ export default async function PastEventsPage() {
       deposit_pct?: number | null;
       deposit_amount?: number | null;
       planner_status?: 'sent' | 'partial' | 'submitted' | null;
+      status_overrides?: Record<string, boolean> | string | null;
     };
+    // Honor the DJ's manual stage overrides (paid in full, contract on paper).
+    let overrides: Record<string, boolean> = {};
+    if (raw.status_overrides) {
+      try {
+        overrides = typeof raw.status_overrides === 'string'
+          ? JSON.parse(raw.status_overrides)
+          : raw.status_overrides;
+      } catch { overrides = {}; }
+    }
     const pays = payByBooking[e.id] || [];
     const settled = (s: string) => s === 'paid' || s === 'waived';
     const deposits = pays.filter((p) => p.kind === 'deposit');
     const balances = pays.filter((p) => p.kind === 'balance');
-    const depositPaid = deposits.length > 0 && deposits.every((p) => settled(p.status));
-    const balancePaid = balances.length > 0 && balances.every((p) => settled(p.status));
+    const depositPaid = (deposits.length > 0 && deposits.every((p) => settled(p.status))) || !!overrides.deposit;
+    const balancePaid = (balances.length > 0 && balances.every((p) => settled(p.status))) || !!overrides.invoice;
     const openDeposit = deposits.find((p) => !settled(p.status));
     const openBalance = balances.find((p) => !settled(p.status));
     const bookingType = raw.booking_type === 'club' ? 'club' : raw.booking_type === 'mobile' ? 'mobile' : null;
@@ -137,13 +147,13 @@ export default async function PastEventsPage() {
 
     e.pipeline = buildHostPipeline({
       bookingType,
-      contractStatus: raw.contract_status ?? null,
-      hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0,
+      contractStatus: overrides.contract ? 'signed' : (raw.contract_status ?? null),
+      hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0 || !!overrides.deposit,
       depositPaid,
       plannerStatus: raw.planner_status ?? null,
       riderConfirmed: !!riderConfirmed[e.id],
       guestlistConfirmed: !!guestlistConfirmed[e.id],
-      hasBalance: balances.length > 0,
+      hasBalance: balances.length > 0 || !!overrides.invoice,
       balancePaid,
       depositHref: openDeposit ? `/pay/${openDeposit.id}` : undefined,
       balanceHref: openBalance ? `/pay/${openBalance.id}` : undefined,
