@@ -34,6 +34,8 @@ interface Props {
   emptyHint?: string;
   /** Order events newest-first (past events) instead of soonest-first. */
   newestFirst?: boolean;
+  /** Past-events view: no adding/replacing flyers or links (the event is over). */
+  readOnly?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -48,6 +50,7 @@ export default function UpcomingEventsClient({
   emptyText = "You don't have any upcoming events yet.",
   emptyHint = 'Approved booking requests will appear here automatically.',
   newestFirst = false,
+  readOnly = false,
 }: Props) {
   const [events, setEvents] = useState<UpcomingEvent[]>(initialEvents);
   const [editing, setEditing] = useState<UpcomingEvent | null>(null);
@@ -91,6 +94,7 @@ export default function UpcomingEventsClient({
                   key={ev.id}
                   event={ev}
                   userId={userId}
+                  readOnly={readOnly}
                   onEdit={() => setEditing(ev)}
                   onDeleted={() => handleDeleted(ev.id)}
                   onLinkSaved={(url, label) => {
@@ -129,10 +133,11 @@ export default function UpcomingEventsClient({
 // ── Row ───────────────────────────────────────────────────────────────
 
 function EventRow({
-  event, userId, onEdit, onDeleted, onLinkSaved, onFlyerSaved,
+  event, userId, readOnly = false, onEdit, onDeleted, onLinkSaved, onFlyerSaved,
 }: {
   event: UpcomingEvent;
   userId: string;
+  readOnly?: boolean;
   onEdit: () => void;
   onDeleted: () => void;
   onLinkSaved: (url: string | null, label: string | null) => void;
@@ -180,7 +185,8 @@ function EventRow({
   //   - Any approved club/bar booking they made
   // Mobile (private-party) bookings don't get flyer slots — those aren't
   // public-facing promotional events.
-  const canUploadFlyer = isManual || event.booking_type === 'club';
+  // Past events are read-only — no adding/replacing flyers (the event is over).
+  const canUploadFlyer = !readOnly && (isManual || event.booking_type === 'club');
   // Mobile / private bookings: no external-link feature (those events
   // aren't public-facing), and they get the full booking-detail panel
   // plus the shared notes feed, mirroring the club/bar layout.
@@ -489,8 +495,9 @@ function EventRow({
               {event.link_label?.trim() || 'More Info'}
             </a>
           )}
-          {/* External-link button — not shown for mobile/private events. */}
-          {!isMobile && (
+          {/* External-link button — not shown for mobile/private events, and
+              hidden on past events (read-only). */}
+          {!isMobile && !readOnly && (
             <button
               type="button"
               className={styles.iconBtn}
