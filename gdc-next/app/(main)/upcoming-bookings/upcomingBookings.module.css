@@ -324,7 +324,7 @@
      full-width "Total Value" band on a second row (see .monthList .rowValue in
      the min-width:601px block), so the top line is date/time/venue/status/
      actions only. */
-  --row-cols: 86px 128px minmax(0, 1fr) 96px 96px 96px 96px 84px 26px;
+  --row-cols: 86px 148px minmax(0, 1fr) 96px 96px 96px 96px 84px 26px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
