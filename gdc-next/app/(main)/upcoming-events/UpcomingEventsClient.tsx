@@ -591,7 +591,7 @@ function EventRow({
               </div>
               {timeRange && (
                 <div style={{ marginTop: 24 }}>
-                  <div className={dj.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>Event Time</div>
+                  <div className={dj.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>{event.booking_type === 'club' ? 'Set Time' : 'Event Time'}</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#00e3ad' }}>{timeRange}</div>
                 </div>
               )}
