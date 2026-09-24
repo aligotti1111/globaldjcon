@@ -68,7 +68,7 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
     out.push(step('contract', 'Contract', 'doc', { done: true, caption: 'Complete' }));
   } else {
     out.push(step('contract', 'Contract', 'doc', {
-      caption: i.contractStatus === 'awaiting_client' ? 'Pending' : 'Not Sent',
+      caption: i.contractStatus === 'awaiting_client' ? 'Pending' : 'Not Requested',
     }));
   }
 
@@ -98,7 +98,7 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
       ? step('song_list', 'Rider', 'music', { done: true, caption: 'Confirmed' })
       : step('song_list', 'Rider', 'music', { muted: true, caption: 'Pending' }));
   } else if (i.plannerStatus == null) {
-    out.push(step('song_list', 'Planner & Playlist', 'music', { muted: true, caption: 'Not Sent' }));
+    out.push(step('song_list', 'Planner & Playlist', 'music', { muted: true, caption: 'Not Requested' }));
   } else if (i.plannerStatus === 'submitted') {
     out.push(step('song_list', 'Planner & Playlist', 'music', {
       done: true, caption: 'Complete', href: i.plannerHref, hrefLabel: 'View planner',
@@ -111,7 +111,7 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
 
   // Balance — always shown.
   if (!i.hasBalance) {
-    out.push(step('invoice', 'Balance', 'receipt', { muted: true, caption: 'Not Sent' }));
+    out.push(step('invoice', 'Balance', 'receipt', { muted: true, caption: 'Not Requested' }));
   } else if (i.balancePaid) {
     out.push(step('invoice', 'Balance', 'receipt', {
       done: true, caption: 'Paid',
