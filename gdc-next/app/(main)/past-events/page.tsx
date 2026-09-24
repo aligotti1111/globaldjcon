@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import UpcomingEventsClient from '../upcoming-events/UpcomingEventsClient';
 import { buildHostPipeline } from '@/lib/hostPipeline';
+import { plannerProgress } from '@/lib/planner';
 import type { UpcomingEvent } from '../upcoming-events/page';
 import type { Metadata } from 'next';
 
@@ -90,6 +91,7 @@ export default async function PastEventsPage() {
   const riderConfirmed: Record<string, boolean> = {};
   const guestlistConfirmed: Record<string, boolean> = {};
   const plannerIdByBooking: Record<string, string> = {};
+  const plannerPctByBooking: Record<string, number> = {};
   if (eventIds.length > 0) {
     type AnyFrom = {
       from: (t: string) => {
@@ -110,9 +112,18 @@ export default async function PastEventsPage() {
     for (const g of (glRows || []) as { booking_id: string; confirmed_at: string | null }[]) {
       if (g.confirmed_at) guestlistConfirmed[g.booking_id] = true;
     }
-    const { data: plRows } = await db.from('booking_planners').select('id, booking_id').in('booking_id', eventIds);
-    for (const pl of (plRows || []) as { id: string; booking_id: string }[]) {
-      if (!plannerIdByBooking[pl.booking_id]) plannerIdByBooking[pl.booking_id] = pl.id;
+    const { data: plRows } = await db.from('booking_planners').select('id, booking_id, fields, responses').in('booking_id', eventIds);
+    for (const pl of (plRows || []) as { id: string; booking_id: string; fields: unknown; responses: unknown }[]) {
+      if (!plannerIdByBooking[pl.booking_id]) {
+        plannerIdByBooking[pl.booking_id] = pl.id;
+        try {
+          const { answered, total } = plannerProgress(
+            (pl.fields as Parameters<typeof plannerProgress>[0]) || [],
+            (pl.responses as Parameters<typeof plannerProgress>[1]) || {},
+          );
+          plannerPctByBooking[pl.booking_id] = total > 0 ? Math.round((answered / total) * 100) : 0;
+        } catch { /* fall back to "In progress" */ }
+      }
     }
   }
 
@@ -151,6 +162,7 @@ export default async function PastEventsPage() {
       hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0 || !!overrides.deposit,
       depositPaid,
       plannerStatus: raw.planner_status ?? null,
+      plannerPct: plannerPctByBooking[e.id] ?? null,
       riderConfirmed: !!riderConfirmed[e.id],
       guestlistConfirmed: !!guestlistConfirmed[e.id],
       hasBalance: balances.length > 0 || !!overrides.invoice,
