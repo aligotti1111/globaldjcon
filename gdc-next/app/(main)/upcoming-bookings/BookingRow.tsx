@@ -168,7 +168,10 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
       {djType === 'club' && <span />}
       <span>Time</span>
       <span>Event</span>
-      {pipeSlotsFor(djType).map((k) => <span key={k}>{k === 'song_list' && djType === 'club' ? 'Rider' : PIPE_HEADS[k]}</span>)}
+      {/* Status columns are labelled INSIDE each cell (Contract / Deposit / …),
+          so the header leaves those tracks blank — no duplicate labels. The
+          empty spans keep the header aligned to the row's track list. */}
+      {pipeSlotsFor(djType).map((k) => <span key={k} />)}
       {/* Two empty cells: the actions track and the chevron track. Unlabelled
           on purpose — "Actions" over a column that's blank on most rows is
           noise — but they MUST be here. The header shares .row's track list,
