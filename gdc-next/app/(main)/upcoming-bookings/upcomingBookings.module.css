@@ -324,7 +324,7 @@
      full-width "Total Value" band on a second row (see .monthList .rowValue in
      the min-width:601px block), so the top line is date/time/venue/status/
      actions only. */
-  --row-cols: 86px 132px minmax(0, 1fr) 96px 96px 96px 96px 84px 26px;
+  --row-cols: 86px 106px minmax(0, 1fr) 96px 96px 96px 96px 84px 26px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -483,7 +483,7 @@
    alignment job the mono was there for. */
 .rowTime {
   font-family: var(--font-inter);
-  font-size: 13px;
+  font-size: 14.5px;
   color: #9d9db5;
   white-space: nowrap;
 }
@@ -507,7 +507,7 @@
    The pipe separator that used to sit before it is gone: a column header says
    "Event", and a divider between two labelled columns is just debris. */
 .rowContext {
-  font-size: 14.5px;
+  font-size: 16px;
   font-weight: 450;
   color: #f2f2f7;
   min-width: 0;
