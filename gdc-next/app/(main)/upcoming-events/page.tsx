@@ -11,7 +11,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import UpcomingEventsClient from './UpcomingEventsClient';
 import { buildHostPipeline, type HostStep } from '@/lib/hostPipeline';
 import type { Metadata } from 'next';
@@ -39,6 +39,7 @@ export interface UpcomingEvent {
   dj_id?: string | null;
   dj_name?: string | null;
   dj_slug?: string | null;
+  dj_email?: string | null;
   flyer_url?: string | null;
   link_url?: string | null;
   link_label?: string | null;
@@ -140,10 +141,16 @@ export default async function UpcomingEventsPage() {
       {},
     );
   }
+  // DJ emails (for the host's "Name / Email / Message" box). Resolved from auth
+  // since the email may not live on the users row.
+  const djEmailById: Record<string, string | null> = {};
+  for (const id of djIds) djEmailById[id] = await resolveUserEmail(id);
+
   for (const e of events) {
     if (e.dj_id && djInfoById[e.dj_id]) {
       e.dj_name = djInfoById[e.dj_id].name || null;
       e.dj_slug = djInfoById[e.dj_id].slug || null;
+      e.dj_email = djEmailById[e.dj_id] || null;
     }
   }
 
