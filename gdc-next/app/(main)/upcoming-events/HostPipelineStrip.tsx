@@ -54,7 +54,7 @@ export default function HostPipelineStrip({
   return (
     <div style={spread
       ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }
-      : { display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 18 }}>
+      : { display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 10 }}>
       {ordered.map((st) => {
         const done = st.done;
         const isNow = st.key === currentKey;
@@ -99,7 +99,7 @@ export default function HostPipelineStrip({
           </>
         );
         return (
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', ...(spread ? { flex: '1 1 0', minWidth: 0 } : { width: 116 }) }} key={st.key}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', ...(spread ? { flex: '1 1 0', minWidth: 0 } : { width: 108 }) }} key={st.key}>
             {clickable ? (
               <button
                 type="button"
