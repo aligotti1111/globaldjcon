@@ -84,11 +84,32 @@ export async function GET(req: NextRequest) {
       };
     });
     if (lines.length === 0) {
-      lines.push({ label: 'Global DJ Connect subscription', amount: round2((inv.total || 0) / 100) });
+      lines.push({ label: 'Global DJ Connect subscription', amount: round2((inv.subtotal ?? inv.total ?? 0) / 100) });
+    }
+
+    // Discounts (promo codes) are applied at the invoice level, not on the line —
+    // so a $49.99 line can settle at $24.99. Surface the discount as its own
+    // negative line so the item total, the discount, and the amount paid all
+    // reconcile on paper instead of looking like a mismatch.
+    const discountCents = (inv.total_discount_amounts || []).reduce((s, d) => s + Number(d.amount || 0), 0);
+    if (discountCents > 0) {
+      lines.push({ label: 'Discount', amount: -round2(discountCents / 100) });
     }
 
     const paid = inv.status === 'paid';
     const totalCents = paid ? (inv.amount_paid || inv.total || 0) : (inv.amount_due || inv.total || 0);
+
+    // Billing address — Stripe snapshots it onto the invoice (customer_address).
+    // Format to readable lines, dropping any blank field.
+    const addr = inv.customer_address || null;
+    const addressLines: string[] = [];
+    if (addr) {
+      if (addr.line1) addressLines.push(addr.line1);
+      if (addr.line2) addressLines.push(addr.line2);
+      const cityLine = [addr.city, addr.state, addr.postal_code].filter(Boolean).join(', ');
+      if (cityLine) addressLines.push(cityLine);
+      if (addr.country) addressLines.push(addr.country);
+    }
 
     const pdfBytes = await buildSubscriptionInvoicePdf({
       number: inv.number || wantId,
@@ -97,6 +118,7 @@ export async function GET(req: NextRequest) {
       billedTo: {
         name: inv.customer_name || null,
         email: inv.customer_email || null,
+        addressLines,
       },
       lines,
       total: { label: paid ? 'Paid' : 'Amount due', amount: round2(totalCents / 100) },
