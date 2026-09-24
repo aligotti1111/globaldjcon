@@ -158,6 +158,7 @@ export default async function PastEventsPage() {
       emptyText="You don't have any past events yet."
       emptyHint="Events move here automatically once their date has passed."
       newestFirst
+      readOnly
     />
   );
 }
