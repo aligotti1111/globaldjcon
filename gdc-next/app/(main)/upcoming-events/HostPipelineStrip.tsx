@@ -30,7 +30,7 @@ const ORDER = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'];
 
 // Exact copies of the DJ strip's cell measurements. Labels wrap so each stage
 // can sit in a fixed-width column (keeps stages aligned row-to-row).
-const labelStyle: CSSProperties = { fontSize: 9, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', color: '#f0f0f8', whiteSpace: 'normal', lineHeight: 1.15, textAlign: 'center', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: 22 };
+const labelStyle: CSSProperties = { fontSize: 9, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', color: '#f0f0f8', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center' };
 const capBase: CSSProperties = { fontSize: 9.5, fontWeight: 500, letterSpacing: '.03em', lineHeight: 1, minWidth: 36, textAlign: 'center', whiteSpace: 'nowrap' };
 
 export default function HostPipelineStrip({
@@ -99,7 +99,7 @@ export default function HostPipelineStrip({
           </>
         );
         return (
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', ...(spread ? { flex: '1 1 0', minWidth: 0 } : { width: 88 }) }} key={st.key}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', ...(spread ? { flex: '1 1 0', minWidth: 0 } : { width: 116 }) }} key={st.key}>
             {clickable ? (
               <button
                 type="button"
