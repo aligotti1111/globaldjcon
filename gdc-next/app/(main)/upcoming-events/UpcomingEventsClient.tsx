@@ -153,6 +153,7 @@ function EventRow({
   // Signed-contract download for the host. Checked when the row is expanded.
   const [contractDocs, setContractDocs] = useState<{ contract?: string; audit?: string } | null>(null);
   const [contractPending, setContractPending] = useState(false);
+  const [showMsgModal, setShowMsgModal] = useState(false);
 
   // When the host opens an event, check whether a contract exists / is signed.
   //   200 + urls → signed (show download buttons)
@@ -642,19 +643,37 @@ function EventRow({
                 <div className={dj.detailChip}><span>DJ</span></div>
                 <div className={dj.detailPairRow}>
                   <div className={dj.detailRow}>
-                    <div className={dj.detailLabel}>Booked With</div>
+                    <div className={dj.detailLabel}>Name</div>
                     <div className={dj.detailValue}>
                       {event.dj_slug ? (
                         <Link href={`/${event.dj_slug}`} className={styles.metaLink} target="_blank" rel="noreferrer">{event.dj_name}</Link>
                       ) : event.dj_name}
                     </div>
                   </div>
+                  {event.dj_email?.trim() && (
+                    <div className={dj.detailRow}>
+                      <div className={dj.detailLabel}>Email</div>
+                      <div className={dj.detailValue}>
+                        <a href={`mailto:${event.dj_email.trim()}`} className={styles.metaLink}>{event.dj_email.trim()}</a>
+                      </div>
+                    </div>
+                  )}
                   {event.phone?.trim() && (
                     <div className={dj.detailRow}>
                       <div className={dj.detailLabel}>Contact Phone</div>
                       <div className={dj.detailValue}>{event.phone.trim()}</div>
                     </div>
                   )}
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowMsgModal(true)}
+                    className={dj.detailValue}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '7px 14px', fontWeight: 600 }}
+                  >
+                    ✉ Message through Global DJ Connect
+                  </button>
                 </div>
               </div>
             )}
@@ -811,6 +830,99 @@ function EventRow({
           }}
         />
       )}
+
+      {showMsgModal && (
+        <MessageDjModal
+          bookingId={event.id}
+          djName={event.dj_name || 'your DJ'}
+          onClose={() => setShowMsgModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Message-DJ modal ──────────────────────────────────────────────────
+// Sends a note to the DJ through Global DJ Connect (emailed, reply-to host).
+
+function MessageDjModal({
+  bookingId, djName, onClose,
+}: {
+  bookingId: string;
+  djName: string;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  async function handleSend() {
+    setError(null);
+    const trimmed = message.trim();
+    if (!trimmed) { setError('Type a message first.'); return; }
+    setSending(true);
+    try {
+      const res = await fetch('/api/host/message-dj', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, message: trimmed }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || 'Could not send the message.');
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not send the message.');
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.modalSmall} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Message {djName}</h3>
+          <button type="button" className={styles.modalClose} onClick={onClose}>✕</button>
+        </div>
+        {done ? (
+          <div className={styles.modalBody}>
+            <p style={{ color: 'var(--white,#fff)', fontSize: 14, lineHeight: 1.6 }}>
+              Sent. {djName} will get it by email and can reply straight to you.
+            </p>
+            <div className={styles.modalActions}>
+              <div className={styles.actionsRight}>
+                <button type="button" className={styles.saveBtn} onClick={onClose}>Done</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className={styles.modalBody}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Your message</span>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={`Write a note to ${djName}…`}
+                  className={styles.input}
+                  style={{ minHeight: 120, resize: 'vertical', fontFamily: 'inherit' }}
+                  maxLength={4000}
+                  autoFocus
+                />
+              </label>
+              {error && <div className={styles.error}>{error}</div>}
+            </div>
+            <div className={styles.modalActions}>
+              <div className={styles.actionsRight}>
+                <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={sending}>Cancel</button>
+                <button type="button" className={styles.saveBtn} onClick={handleSend} disabled={sending}>
+                  {sending ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
