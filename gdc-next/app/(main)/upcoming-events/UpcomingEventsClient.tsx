@@ -154,6 +154,8 @@ function EventRow({
   const [contractDocs, setContractDocs] = useState<{ contract?: string; audit?: string } | null>(null);
   const [contractPending, setContractPending] = useState(false);
   const [showMsgModal, setShowMsgModal] = useState(false);
+  const [cancelStatus, setCancelStatus] = useState<string | null>(event.cancel_status ?? null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // When the host opens an event, check whether a contract exists / is signed.
   //   200 + urls → signed (show download buttons)
@@ -726,6 +728,27 @@ function EventRow({
               </div>
             )}
           </div>
+
+          {/* Request cancellation — host asks the DJ to cancel (mirrors the DJ's
+              own request). Hidden on past events (read-only) and once the
+              booking is already cancelled. */}
+          {!readOnly && event.status !== 'cancelled' && (
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+              {cancelStatus === 'requested' ? (
+                <span style={{ fontSize: 13, color: 'var(--muted,#8a8aa0)' }}>
+                  Cancellation requested — awaiting the DJ&apos;s response.
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  style={{ background: 'transparent', color: '#e06a6a', border: '1px solid rgba(224,106,106,.5)', borderRadius: 8, padding: '8px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                >
+                  Request Cancellation
+                </button>
+              )}
+            </div>
+          )}
           {/* Event flyer block — mirrors the DJ-side card. View-only on the
               host side (the DJ uploads/edits flyers, the host downloads).
               Club/bar bookings only; mobile bookings don't have flyers. */}
@@ -842,6 +865,86 @@ function EventRow({
           onClose={() => setShowMsgModal(false)}
         />
       )}
+
+      {showCancelModal && (
+        <CancelRequestModal
+          bookingId={event.id}
+          onClose={() => setShowCancelModal(false)}
+          onRequested={() => { setCancelStatus('requested'); setShowCancelModal(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Cancellation-request modal ────────────────────────────────────────
+// Host asks the DJ to cancel. Optional reason. POSTs to the shared
+// /api/bookings/cancel-request (session path → actor 'host', emails the DJ).
+
+function CancelRequestModal({
+  bookingId, onClose, onRequested,
+}: {
+  bookingId: string;
+  onClose: () => void;
+  onRequested: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSend() {
+    setError(null);
+    setSending(true);
+    try {
+      const res = await fetch('/api/bookings/cancel-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request', bookingId, reason: reason.trim() || undefined }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || 'Could not send the request.');
+      onRequested();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not send the request.');
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.modalSmall} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Request Cancellation</h3>
+          <button type="button" className={styles.modalClose} onClick={onClose}>✕</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
+            This asks your DJ to cancel — the booking stays active until they accept. If a
+            contract was signed, cancelling here doesn&apos;t undo it.
+          </p>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Reason <span className={styles.fieldOptional}>(optional)</span></span>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Let the DJ know why…"
+              className={styles.input}
+              style={{ minHeight: 90, resize: 'vertical', fontFamily: 'inherit' }}
+              maxLength={1000}
+              autoFocus
+            />
+          </label>
+          {error && <div className={styles.error}>{error}</div>}
+        </div>
+        <div className={styles.modalActions}>
+          <div className={styles.actionsRight}>
+            <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={sending}>Back</button>
+            <button type="button" className={styles.saveBtn} onClick={handleSend} disabled={sending}>
+              {sending ? 'Sending…' : 'Send Request'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
