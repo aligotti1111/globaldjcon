@@ -43,7 +43,7 @@
    only; the mobile card layout below is untouched). !important so it overrides
    the flush-table rules further down regardless of cascade order. */
 @media (min-width: 601px) {
-  .colHeads { display: none !important; }
+  /* Column headers show on desktop, aligned over their columns via --row-cols. */
   .rowWrap {
     border: 1px solid rgba(255, 255, 255, .12) !important;
     border-radius: 14px !important;
@@ -355,6 +355,8 @@
    Desktop table only — the mobile card lays .row out with named areas, so
    --row-cols and this gap have no effect there. */
 .monthListClub .row { column-gap: 9px; row-gap: 0; }
+/* Header must use the same column-gap as the club row so it stays aligned. */
+.monthListClub .colHeads { column-gap: 9px; }
 
 /* Desktop: the club price rides a full-width band on a second grid row, pinned
    flush to the card's side and bottom edges (the .row has 16px padding, so the
