@@ -84,7 +84,10 @@ export async function GET(req: NextRequest) {
     received = b.deposit_amount != null ? Number(b.deposit_amount) : round2(agreed);
     paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
   } else {
-    received = round2(Math.max(0, agreed - (b.deposit_amount != null ? Number(b.deposit_amount) : 0)));
+    // Balance received = the total minus whatever actually landed already
+    // (deposit payments). If the deposit was skipped, nothing was paid first,
+    // so the balance receipt is the FULL amount — not total-minus-deposit-snapshot.
+    received = round2(Math.max(0, agreed - paidSoFar));
     paidToDate = round2(agreed);
   }
 
