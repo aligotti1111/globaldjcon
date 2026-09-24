@@ -79,6 +79,17 @@ function fmtPrice(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
+// One row in the Invoices dialog (shape returned by /api/stripe/invoices).
+interface InvoiceItem {
+  id: string;
+  number: string;
+  dateText: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string;
+}
+
 type Feat = { key: string; text: string; included: boolean; emphasis?: boolean };
 
 // Itemized feature list built from the tier's flags — no hand-written copy to
@@ -196,6 +207,11 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
   const [cancelBusy, setCancelBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelInfo, setCancelInfo] = useState<{ scheduled: boolean; date: string | null } | null>(null);
+  // Invoices — loaded lazily when the DJ opens the Invoices dialog.
+  const [invoicesOpen, setInvoicesOpen] = useState(false);
+  const [invoices, setInvoices] = useState<InvoiceItem[] | null>(null);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   // Effective scheduled-cancel state: the client value once they click cancel/
   // resume this session, otherwise the server value read from Stripe — so a
   // reload still shows "set to cancel / Resume" instead of Cancel again.
@@ -364,6 +380,59 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
       setCancelBusy(false);
     }
   }
+
+  // Open the Invoices dialog, loading the list on first open. Comps never reach
+  // here (the button is gated on isPaid) — and even if they did, the list shows
+  // the REAL Stripe amounts, so a comp's $0 trial invoice reads $0, never the
+  // plan price.
+  async function openInvoices() {
+    setInvoicesOpen(true);
+    if (invoices) return;
+    setError(null);
+    setInvoicesLoading(true);
+    try {
+      const res = await fetch('/api/stripe/invoices');
+      const data = (await res.json().catch(() => ({}))) as { invoices?: InvoiceItem[]; error?: string };
+      if (res.status === 401) { window.location.href = '/login?redirect=/subscribe'; return; }
+      if (!res.ok) throw new Error(data.error || 'Could not load your invoices.');
+      setInvoices(data.invoices || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+      setInvoicesOpen(false);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }
+
+  // Download our Global-DJ-Connect-branded PDF for one invoice.
+  async function downloadInvoice(inv: InvoiceItem) {
+    setDownloadingId(inv.id);
+    try {
+      const res = await fetch(`/api/stripe/invoices?id=${encodeURIComponent(inv.id)}&download=1`);
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || 'Could not download the invoice.');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GlobalDJConnect-Invoice-${inv.number.replace(/[^\w-]/g, '')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  const invMoney = (n: number, cur: string) => {
+    try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: (cur || 'usd').toUpperCase() }).format(n); }
+    catch { return `$${n.toFixed(2)}`; }
+  };
 
   // The best discount that applies to the CURRENT interval — the bigger of the
   // DJ's entered code and any live site-wide sale that covers this interval.
@@ -716,38 +785,96 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         );
       })()}
 
-      {/* Subscribed → one row of ACTION BUTTONS: Booking Settings + (for paid)
-          Update payment method + Cancel subscription, side by side. */}
-      {isSubscribed && (
-        <div className={styles.manageRow} style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', justifyContent: 'center', alignItems: 'center' }}>
-          {isPaid && !cancelIsScheduled && !confirmCancel && (
-            <>
-              <button
-                type="button"
-                onClick={updateCard}
-                disabled={cardLoading}
-                style={{
-                  width: 'auto', border: '1px solid var(--neon,#00e0a4)', background: 'transparent',
-                  color: 'var(--neon,#00e0a4)', borderRadius: 10, padding: '0.85rem 1.2rem',
-                  fontSize: '0.95rem', fontWeight: 700, cursor: cardLoading ? 'default' : 'pointer',
-                  opacity: cardLoading ? 0.6 : 1,
-                }}
-              >
-                {cardLoading ? 'Opening…' : 'Update payment method'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmCancel(true)}
-                style={{
-                  width: 'auto', border: '1px solid rgba(255,120,120,.55)', background: 'transparent',
-                  color: '#ff8b8b', borderRadius: 10, padding: '0.85rem 1.2rem',
-                  fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer',
-                }}
-              >
-                Cancel subscription
-              </button>
-            </>
-          )}
+      {/* Subscribed (PAID) → the Manage Subscription toolbar: Invoices, Update
+          payment method, Cancel subscription. Comps never see this — they have
+          no Stripe subscription to manage or invoice for the plan amount. */}
+      {isSubscribed && isPaid && !cancelIsScheduled && !confirmCancel && (
+        <div className={styles.managePanel}>
+          <div className={styles.manageHeading}>Manage Subscription</div>
+          <div className={styles.manageToolbar}>
+            <button
+              type="button"
+              className={`${styles.toolBtn}`}
+              onClick={openInvoices}
+              disabled={invoicesLoading}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 3v18l2-1 2 1 2-1 2 1 2-1 2 1V3l-2 1-2-1-2 1-2-1-2 1-2-1z" /><path d="M8 8h8M8 12h8M8 16h5" />
+              </svg>
+              {invoicesLoading ? 'Loading…' : 'Invoices'}
+            </button>
+            <button
+              type="button"
+              className={`${styles.toolBtn} ${styles.toolBtnPrimary}`}
+              onClick={updateCard}
+              disabled={cardLoading}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
+              </svg>
+              {cardLoading ? 'Opening…' : 'Update payment'}
+            </button>
+            <button
+              type="button"
+              className={`${styles.toolBtn} ${styles.toolBtnDanger}`}
+              onClick={() => setConfirmCancel(true)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" />
+              </svg>
+              Cancel subscription
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Invoices dialog — the DJ's subscription billing history, each row with a
+          branded-PDF download. Real Stripe amounts, so a $0 trial reads $0. */}
+      {invoicesOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setInvoicesOpen(false); }}
+        >
+          <div style={{ background: 'var(--panel,#14141c)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1.4rem 1.5rem 1.6rem', maxWidth: 520, width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.9rem' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.15rem' }}>Invoices</div>
+              <button type="button" onClick={() => setInvoicesOpen(false)} aria-label="Close" style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, width: 30, height: 30, fontSize: 18, cursor: 'pointer', color: '#fff' }}>×</button>
+            </div>
+            <div style={{ overflowY: 'auto' }}>
+              {invoicesLoading && <div style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.9rem', padding: '1rem 0' }}>Loading your invoices…</div>}
+              {!invoicesLoading && invoices && invoices.length === 0 && (
+                <div style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.9rem', padding: '1rem 0' }}>No invoices yet.</div>
+              )}
+              {!invoicesLoading && invoices && invoices.map((inv) => {
+                const paid = inv.status === 'paid';
+                return (
+                  <div key={inv.id} className={styles.invoiceRow}>
+                    <div className={styles.invoiceMeta}>
+                      <span className={styles.invoiceDate}>
+                        {inv.dateText}
+                        <span className={`${styles.invoiceStatus} ${paid ? styles.invoiceStatusPaid : styles.invoiceStatusOpen}`}>
+                          {paid ? 'Paid' : inv.status}
+                        </span>
+                      </span>
+                      <span className={styles.invoiceSub}>{inv.description} · #{inv.number}</span>
+                    </div>
+                    <span className={styles.invoiceAmt}>{invMoney(inv.amount, inv.currency)}</span>
+                    <button
+                      type="button"
+                      className={styles.invoiceDownload}
+                      onClick={() => downloadInvoice(inv)}
+                      disabled={downloadingId === inv.id}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      {downloadingId === inv.id ? '…' : 'PDF'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
