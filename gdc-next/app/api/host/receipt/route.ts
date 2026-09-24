@@ -33,13 +33,14 @@ export async function GET(req: NextRequest) {
 
   const { data: bData } = await db
     .from('bookings')
-    .select('id, requester_id, dj_id, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+    .select('id, requester_id, dj_id, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, status_overrides')
     .eq('id', bookingId)
     .maybeSingle();
   const b = bData as {
     id: string; requester_id: string | null; dj_id: string | null; currency: string | null;
     deposit_amount: number | null; total_with_tax: number | null; counter_rate: number | null;
     quoted_rate: number | null; offer_amount: number | null;
+    status_overrides: Record<string, boolean> | string | null;
   } | null;
 
   if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
@@ -61,7 +62,16 @@ export async function GET(req: NextRequest) {
     .eq('booking_id', bookingId);
   const pays = ((payData as { kind: string; status: string; amount_paid: number | null }[] | null) || []);
   const settled = (s: string) => s === 'paid' || s === 'waived';
-  const thisKindPaid = pays.some((p) => p.kind === kind && settled(p.status));
+  // The DJ may have marked this stage complete manually (paid in full in cash)
+  // via status_overrides, with no payment row — honor that too.
+  let overrides: Record<string, boolean> = {};
+  if (b.status_overrides) {
+    try {
+      overrides = typeof b.status_overrides === 'string' ? JSON.parse(b.status_overrides) : b.status_overrides;
+    } catch { overrides = {}; }
+  }
+  const overrideKey = kind === 'balance' ? 'invoice' : 'deposit';
+  const thisKindPaid = pays.some((p) => p.kind === kind && settled(p.status)) || !!overrides[overrideKey];
   if (!thisKindPaid) return NextResponse.json({ error: 'No settled payment to receipt.' }, { status: 404 });
 
   const cur = b.currency || 'USD';
