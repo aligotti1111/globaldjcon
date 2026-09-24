@@ -260,52 +260,69 @@
 .switchLink:hover { filter: brightness(1.1); }
 .switchLink:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: none; }
 
-/* ── Manage Subscription toolbar ─────────────────────────── */
-.managePanel {
-  max-width: 620px;
-  margin: 2rem auto 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.02);
-  padding: 1.1rem 1.2rem 1.25rem;
+/* ── Manage Subscription menu (static, top-left of the page) ── */
+.manageMenuWrap {
+  position: relative;
+  align-self: flex-start;
+  margin: 0 0 1.25rem;
 }
-.manageHeading {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted, #8a8aa0);
-  margin: 0 0 0.85rem;
-}
-.manageToolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-.toolBtn {
+.manageMenuBtn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 auto;
-  justify-content: center;
-  min-width: 150px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   color: #fff;
   border-radius: 11px;
-  padding: 0.8rem 1rem;
-  font-size: 0.9rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.toolBtn svg { width: 16px; height: 16px; flex: none; }
-.toolBtn:hover { border-color: rgba(255, 255, 255, 0.42); background: rgba(255, 255, 255, 0.04); }
-.toolBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-.toolBtnPrimary { border-color: var(--neon, #00e0a4); color: var(--neon, #00e0a4); }
-.toolBtnPrimary:hover { border-color: var(--neon, #00e0a4); background: rgba(0, 224, 164, 0.08); }
-.toolBtnDanger { border-color: rgba(255, 120, 120, 0.5); color: #ff8b8b; }
-.toolBtnDanger:hover { border-color: rgba(255, 120, 120, 0.75); background: rgba(255, 95, 95, 0.06); }
+.manageMenuBtn:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.06); }
+
+.manageMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  min-width: 236px;
+  background: #14141c;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+  padding: 6px;
+}
+.manageMenuNote {
+  font-size: 0.74rem;
+  color: var(--muted, #9a9ab0);
+  line-height: 1.4;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+.manageMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.manageMenuItem svg { width: 17px; height: 17px; flex: none; }
+.manageMenuItem:hover { background: rgba(255, 255, 255, 0.06); }
+.manageMenuItem:disabled { opacity: 0.5; cursor: not-allowed; }
+.manageMenuItemAccent { color: var(--neon, #00e0a4); }
+.manageMenuItemDanger { color: #ff8b8b; }
 
 /* ── Invoices modal ──────────────────────────────────────── */
 .invoiceRow {
