@@ -29,7 +29,7 @@ import { canUsePro, type AccessFields } from '@/lib/access';
 import MonthlyStory from './MonthlyStory';
 import AddManualBookingModal from './AddManualBookingModal';
 import CalendarSyncButton from './CalendarSyncButton';
-import BookingRow, { ColumnHeaders } from './BookingRow';
+import BookingRow from './BookingRow';
 import { useConfirm } from '@/components/ConfirmModal';
 
 import { canAcceptBookings, canSendContracts, canRequestDeposit, type ActingRole } from '@/lib/acting';
@@ -610,7 +610,6 @@ export default function UpcomingBookingsClient({
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.4rem' }}>
             <CalendarSyncButton />
           </div>
-          <ColumnHeaders djType={djType} />
           <div className={styles.monthItems}>
             {(sortMode === 'activity' ? activityList : recentList).map((b) => (
               <BookingRow
@@ -647,10 +646,6 @@ export default function UpcomingBookingsClient({
                 <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
                 {mi === 0 && <CalendarSyncButton />}
               </div>
-              {/* Headers under EVERY month, not once at the top. A month of
-                  bookings is taller than a viewport, and a header you've
-                  scrolled past isn't labelling anything. Costs one row. */}
-              <ColumnHeaders djType={djType} />
               <div className={styles.monthItems}>
                 {items.map((b) => (
                   <BookingRow
