@@ -805,12 +805,20 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         );
       })()}
 
-      {/* Subscribed (PAID) → the Manage Subscription toolbar: Invoices, Update
-          payment method, Cancel subscription. Comps never see this — they have
-          no Stripe subscription to manage or invoice for the plan amount. */}
-      {isSubscribed && isPaid && !cancelIsScheduled && !confirmCancel && (
+      {/* Subscribed (PAID) → the Manage Subscription toolbar. Always shown for a
+          paid subscriber (including one whose cancel is scheduled — they still
+          need Invoices and can Resume). Comps never see this: no Stripe
+          subscription to manage or invoice for the plan amount.
+          Buttons: Invoices + Update payment are always available; the third
+          button is Cancel normally, or Resume once a cancel is scheduled. */}
+      {isSubscribed && isPaid && !confirmCancel && (
         <div className={styles.managePanel}>
           <div className={styles.manageHeading}>Manage Subscription</div>
+          {cancelIsScheduled && (
+            <p style={{ fontSize: '.82rem', color: 'var(--muted,#9a9ab0)', margin: '0 0 .85rem', lineHeight: 1.5 }}>
+              Your subscription is set to cancel{cancelEndDate ? ` on ${fmtDate(cancelEndDate)}` : ''}. You keep full access until then — Resume to keep it going.
+            </p>
+          )}
           <div className={styles.manageToolbar}>
             <button
               type="button"
@@ -834,16 +842,30 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
               </svg>
               {cardLoading ? 'Opening…' : 'Update payment'}
             </button>
-            <button
-              type="button"
-              className={`${styles.toolBtn} ${styles.toolBtnDanger}`}
-              onClick={() => setConfirmCancel(true)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" />
-              </svg>
-              Cancel subscription
-            </button>
+            {cancelIsScheduled ? (
+              <button
+                type="button"
+                className={`${styles.toolBtn} ${styles.toolBtnPrimary}`}
+                onClick={() => cancelSub('resume')}
+                disabled={cancelBusy}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.36 2.64L3 8" /><path d="M3 3v5h5" />
+                </svg>
+                {cancelBusy ? 'Working…' : 'Resume subscription'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`${styles.toolBtn} ${styles.toolBtnDanger}`}
+                onClick={() => setConfirmCancel(true)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" />
+                </svg>
+                Cancel subscription
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -898,17 +920,6 @@ function SubscribeInner({ isLoggedIn, currentTier, currentState, source, accessU
         </div>
       )}
 
-      {/* Scheduled-cancel notice — inline status once a cancel is queued. */}
-      {isSubscribed && isPaid && cancelIsScheduled && (
-        <div className={styles.manageRow} style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', marginTop: '1rem' }}>
-          <span style={{ fontSize: '.85rem', color: 'var(--muted,#8a8aa0)' }}>
-            Your subscription is cancelled. If you would like to reactivate it, click Resume below.
-          </span>
-          <button type="button" className={styles.manageBtn} onClick={() => cancelSub('resume')} disabled={cancelBusy}>
-            {cancelBusy ? 'Working…' : 'Resume subscription'}
-          </button>
-        </div>
-      )}
 
       {/* Cancel confirmation — styled modal popup (matches the switch dialog). */}
       {isSubscribed && isPaid && confirmCancel && !cancelIsScheduled && (
