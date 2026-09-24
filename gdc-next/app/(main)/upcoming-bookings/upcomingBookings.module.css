@@ -422,7 +422,9 @@
   display: grid;
   grid-template-columns: var(--row-cols);
   gap: 13px;
-  padding: 2px 12px 9px;
+  /* Match the desktop row's 16px side padding so the headings sit directly over
+     their column content instead of 4px to the left of it. */
+  padding: 2px 16px 9px;
   align-items: end;
   font-family: var(--font-inter);
   font-size: 11px;
