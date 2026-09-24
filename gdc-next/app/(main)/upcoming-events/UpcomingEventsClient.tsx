@@ -423,8 +423,12 @@ function EventRow({
             </button>
           ) : hasFlyerSlot ? (
             // Past events: show the flyer box for layout consistency, but it's
-            // static — no upload, no click.
-            <div className={styles.flyerSlot} style={{ cursor: 'default', opacity: 0.5 }} aria-hidden="true">
+            // static — no upload, no click. Keep the frame fully visible.
+            <div
+              className={styles.flyerSlot}
+              style={{ cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              aria-hidden="true"
+            >
               + Flyer
             </div>
           ) : (
