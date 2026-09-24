@@ -57,6 +57,10 @@ export default function InlineLoginForm({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  // Inline password mode on the identify screen — "Use my password instead"
+  // reveals a password field UNDER the email on the same screen, rather than
+  // swapping to a separate password-only step where the email is hidden.
+  const [usePassword, setUsePassword] = useState(false);
 
   const isEmail = looksLikeEmail(identifier.trim());
 
@@ -138,14 +142,37 @@ export default function InlineLoginForm({ onDone }: { onDone: () => void }) {
     }
   }
 
-  async function handlePasswordSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Inline password sign-in from the identify screen: verify the identifier is
+  // a real password account, then sign in — all without leaving the screen that
+  // still shows the email field.
+  async function handleInlinePassword() {
     setError(null);
+    const raw = identifier.trim();
+    if (!raw) { setError('Enter your email address or phone number.'); return; }
+    if (!password) { setError('Enter your password.'); return; }
     setSubmitting(true);
-    const trimmedEmail = identifier.toLowerCase().trim();
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: trimmedEmail,
+      const res = await fetch('/api/auth/lookup-identifier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: raw }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Something went wrong.');
+      const found = data as Lookup;
+      setLookup(found);
+      if (!found.found) {
+        setError('We couldn’t find an account for that email address.');
+        setSubmitting(false);
+        return;
+      }
+      if (!found.canPassword) {
+        setError('That account signs in with a code. Tap “Send Me a Code”.');
+        setSubmitting(false);
+        return;
+      }
+      const { data: sd, error: authError } = await supabase.auth.signInWithPassword({
+        email: raw.toLowerCase(),
         password,
       });
       if (authError) {
@@ -154,7 +181,7 @@ export default function InlineLoginForm({ onDone }: { onDone: () => void }) {
         }
         throw authError;
       }
-      if (!data?.session) throw new Error('Login failed. Please try again.');
+      if (!sd?.session) throw new Error('Login failed. Please try again.');
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -192,12 +219,13 @@ export default function InlineLoginForm({ onDone }: { onDone: () => void }) {
     setCode('');
     setPassword('');
     setError(null);
+    setUsePassword(false);
   }
 
   // ── IDENTIFY ────────────────────────────────────────────────────────
   if (step === 'identify') {
     return (
-      <form onSubmit={(e) => { e.preventDefault(); handleContinue('code'); }}>
+      <form onSubmit={(e) => { e.preventDefault(); usePassword ? handleInlinePassword() : handleContinue('code'); }}>
         {error && <div className={`${formStyles.alert} ${formStyles.alertError}`}>{error}</div>}
         <div className={formStyles.formGroup}>
           <label htmlFor="im-identifier">Email or Phone Number</label>
@@ -211,18 +239,41 @@ export default function InlineLoginForm({ onDone }: { onDone: () => void }) {
             required
             autoComplete="username"
           />
-          <small style={{ display: 'block', marginTop: '.45rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.45 }}>
-            Enter the email or phone you used when you created your account.
-            A 6-digit login code will be sent to you.
-          </small>
+          {!usePassword && (
+            <small style={{ display: 'block', marginTop: '.45rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.45 }}>
+              Enter the email or phone you used when you created your account.
+              A 6-digit login code will be sent to you.
+            </small>
+          )}
         </div>
+
+        {/* Password field revealed inline — the email above stays put. */}
+        {usePassword && (
+          <div className={formStyles.formGroup}>
+            <label htmlFor="im-password">Password</label>
+            <input
+              id="im-password"
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(null); }}
+              required
+              autoFocus
+              autoComplete="current-password"
+            />
+          </div>
+        )}
+
         <button type="submit" className={formStyles.submitBtn} disabled={submitting}>
-          {submitting ? 'Sending…' : 'Send Me a Code'}
+          {usePassword
+            ? (submitting ? 'Signing in…' : 'Sign In')
+            : (submitting ? 'Sending…' : 'Send Me a Code')}
         </button>
-        {isEmail && (
+
+        {/* Toggle between code and password — both keep the same email on screen. */}
+        {isEmail && !usePassword && (
           <button
             type="button"
-            onClick={() => handleContinue('password')}
+            onClick={() => { setUsePassword(true); setError(null); }}
             disabled={submitting}
             style={{
               display: 'block', width: '100%', marginTop: '.75rem',
@@ -234,41 +285,21 @@ export default function InlineLoginForm({ onDone }: { onDone: () => void }) {
             Use my password instead
           </button>
         )}
-      </form>
-    );
-  }
-
-  // ── PASSWORD ────────────────────────────────────────────────────────
-  if (step === 'password') {
-    return (
-      <form onSubmit={handlePasswordSubmit}>
-        {error && <div className={`${formStyles.alert} ${formStyles.alertError}`}>{error}</div>}
-        <div className={formStyles.formGroup}>
-          <label htmlFor="im-password">Password</label>
-          <input
-            id="im-password"
-            type="password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(null); }}
-            required
-            autoFocus
-            autoComplete="current-password"
-          />
-        </div>
-        <button type="submit" className={formStyles.submitBtn} disabled={submitting}>
-          {submitting ? 'Signing in…' : 'Sign In'}
-        </button>
-        <button
-          type="button"
-          onClick={reset}
-          style={{
-            display: 'block', width: '100%', marginTop: '.6rem',
-            background: 'none', border: 'none', padding: '.4rem',
-            color: 'var(--muted)', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
-          }}
-        >
-          Back
-        </button>
+        {usePassword && (
+          <button
+            type="button"
+            onClick={() => { setUsePassword(false); setPassword(''); setError(null); }}
+            disabled={submitting}
+            style={{
+              display: 'block', width: '100%', marginTop: '.75rem',
+              background: 'none', border: 'none', padding: '.4rem',
+              color: 'var(--neon, #00e0a4)', fontWeight: 700,
+              fontSize: '.82rem', cursor: 'pointer', textDecoration: 'underline',
+            }}
+          >
+            Email me a code instead
+          </button>
+        )}
       </form>
     );
   }
