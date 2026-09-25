@@ -616,14 +616,14 @@ const LANDING_CSS = String.raw`
 .gdc-landing .searchfield .flagsel option{background:#0c0c11;color:var(--ink);font-size:1rem}
 .gdc-landing .searchbtn{flex-shrink:0;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:0;cursor:pointer;font-size:20px;line-height:1;padding:0}
 .gdc-landing .searchbtn svg{width:18px;height:18px;stroke:var(--neon);fill:none}
-/* "Booking Requested" section: two figures side by side (phone left, laptop right). */
-.gdc-landing .brgrid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:36px;align-items:center;justify-content:center;max-width:1000px;margin:0 auto}
+/* "Booking Requested" section: two figures side by side (phone left, laptop
+   right), both images the SAME height (width auto → scaled, never cropped). */
+.gdc-landing .brgrid{display:flex;flex-wrap:wrap;gap:20px 44px;align-items:flex-end;justify-content:center;max-width:920px;margin:0 auto}
 .gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:14px}
-.gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.5rem,2.6vw,2.1rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center}
-/* Feather the photo edges so they melt into the black page instead of sitting
-   on a hard-edged card. The radial mask fades the outer ring to transparent. */
-.gdc-landing .brgrid img{width:100%;height:auto;border-radius:14px;-webkit-mask-image:radial-gradient(135% 118% at 50% 46%,#000 58%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(135% 118% at 50% 46%,#000 58%,rgba(0,0,0,0) 100%)}
-@media(max-width:760px){.gdc-landing .brgrid{grid-template-columns:1fr;gap:40px;max-width:420px}}`;
+.gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center}
+/* Fixed height matches both; feather the edges so they melt into the black page. */
+.gdc-landing .brgrid img{height:280px;width:auto;max-width:100%;border-radius:14px;-webkit-mask-image:radial-gradient(135% 118% at 50% 46%,#000 56%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(135% 118% at 50% 46%,#000 56%,rgba(0,0,0,0) 100%)}
+@media(max-width:760px){.gdc-landing .brgrid img{height:200px}}`;
 
 const LANDING_BODY = String.raw`
 
@@ -727,6 +727,9 @@ const LANDING_BODY = String.raw`
      the "Your Booking Dashboard" sample section. -->
 <section id="bookingrequested" style="padding:40px 0 8px">
   <div class="wrap">
+    <div class="shead reveal">
+      <p>One tap on your profile and a host sends a booking request straight to you for approval.</p>
+    </div>
     <div class="brgrid reveal">
       <figure>
         <figcaption>Booking Requested</figcaption>
