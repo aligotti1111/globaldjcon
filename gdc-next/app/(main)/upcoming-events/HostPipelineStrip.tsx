@@ -139,12 +139,11 @@ export default function HostPipelineStrip({
                     { href: st.href, label: st.hrefLabel },
                     ...(st.href2 ? [{ href: st.href2, label: st.hrefLabel2 }] : []),
                   ].map((a, i) => (
-                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 7, color: '#fff', fontSize: 12.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', borderRadius: 7, color: '#fff', fontSize: 12.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      <span>{a.label}</span>
                       {a.label?.startsWith('Download') ? (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                       ) : null}
-                      {a.label}
-                      {!a.label?.startsWith('Download') && ' →'}
                     </a>
                   ))}
                 </div>
