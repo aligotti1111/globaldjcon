@@ -1104,12 +1104,13 @@
 /* ── TABS ─────────────────────────────────────────────── */
 .tabsNav {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: .35rem;
-  background: rgba(255, 255, 255, .03);
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 14px;
+  align-items: flex-end;
+  gap: 1.4rem;
+  padding: 0 .25rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 0;
   margin: 0 auto 2rem;
   width: 100%;
   max-width: 100%;
@@ -1122,25 +1123,28 @@
   font-size: 1.3rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  padding: .6rem 1rem;
+  padding: .5rem .1rem;
+  margin-bottom: -1px;
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   color: #8b8b9e;
   cursor: pointer;
-  transition: color .15s, background .15s;
-  flex: 0 1 auto;
+  transition: color .15s, border-color .15s;
+  flex: 0 0 auto;
   text-align: center;
 }
 .tabBtn:hover {
-  background: rgba(255, 255, 255, .06);
+  background: transparent;
   color: #fff;
 }
 .tabBtnActive,
 .tabBtnActive:hover {
-  background: var(--neon);
-  color: #04231d;
-  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border-bottom-color: var(--neon);
+  font-weight: 400;
   filter: none;
 }
 /* Owner-only marker — a tiny dot beside a tab label means it's hidden
