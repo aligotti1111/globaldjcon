@@ -476,3 +476,13 @@
      Uses body.is-logged-out to beat any inline display:none set by the page's own JS. */
   body.is-logged-out .header-inner>div:last-child #signin-btn{display:inline-flex !important;padding:.45rem .7rem !important;font-size:.58rem !important;}
 }
+
+/* --- Landing page: prevent a flash of giant, unsized SVGs/images ---------
+   The homepage markup is injected as an HTML string and every icon is sized
+   only by rules inside that page's own injected <style>. Until that style is
+   applied, an inline <svg> with a viewBox but no width/height falls back to the
+   browser default (300x150) — a giant icon for a beat on some loads. This
+   baseline lives in the always-present, render-blocking global stylesheet, so
+   icons start small; the page's own (more specific) rules then set exact sizes. */
+.gdc-landing svg { width: 1.1em; height: 1.1em; }
+.gdc-landing img { max-width: 100%; height: auto; }
