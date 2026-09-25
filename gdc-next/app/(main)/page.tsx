@@ -1301,12 +1301,15 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 // only ever re-renders when the signed-in state actually flips (once), not on
 // every auth-object change or sibling modal toggle. The reveal script also
 // self-heals via a MutationObserver as a second line of defence.
-const LandingMarkup = memo(function LandingMarkup(
-  { signedIn, isHost, isTeammate, djType }: { signedIn: boolean; isHost: boolean; isTeammate: boolean; djType: 'mobile' | 'club' | null },
-) {
+// Takes NO changing props, so memo() keeps it mounted for the life of the page:
+// the huge innerHTML is written exactly once and never re-applied. Auth-dependent
+// classes (gdc-signedin/host/teammate/mobile/club) are toggled on this same node
+// from HomePage via classList, so resolving auth on load no longer re-renders (and
+// re-paints) the markup — which was rebuilding the hero and blinking its bg image.
+const LandingMarkup = memo(function LandingMarkup() {
   return (
     <div
-      className={`gdc-landing ${signedIn ? 'gdc-signedin' : ''} ${isHost ? 'gdc-host' : ''} ${isTeammate ? 'gdc-teammate' : ''} ${djType === 'mobile' ? 'gdc-mobile' : ''} ${djType === 'club' ? 'gdc-club' : ''} ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
+      className={`gdc-landing ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
       dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
     />
   );
@@ -1486,6 +1489,17 @@ export default function HomePage() {
   useEffect(() => {
     (window as unknown as { __gdcAuthed?: boolean }).__gdcAuthed = signedIn;
   }, [signedIn]);
+  // Toggle the auth-dependent classes on the (never-re-rendered) landing root via
+  // the DOM, so resolving auth on load can't re-paint the markup / blink the hero.
+  useEffect(() => {
+    const el = document.querySelector('.gdc-landing');
+    if (!el) return;
+    el.classList.toggle('gdc-signedin', signedIn);
+    el.classList.toggle('gdc-host', isHost);
+    el.classList.toggle('gdc-teammate', isTeammate);
+    el.classList.toggle('gdc-mobile', djType === 'mobile');
+    el.classList.toggle('gdc-club', djType === 'club');
+  }, [signedIn, isHost, isTeammate, djType]);
   useEffect(() => {
     const s = document.createElement('script');
     s.textContent = LANDING_SCRIPT;
@@ -1514,7 +1528,7 @@ export default function HomePage() {
         fetchPriority="high"
       />
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <LandingMarkup signedIn={signedIn} isHost={isHost} isTeammate={isTeammate} djType={djType} />
+      <LandingMarkup />
       {redeemHost && canRedeem && createPortal(
         <RedeemCodeBox variant="link" onDiscount={(_c, _d, pct, appliesTo) => applyLandingDiscount(pct, appliesTo)} />,
         redeemHost,
