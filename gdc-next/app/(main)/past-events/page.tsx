@@ -169,7 +169,10 @@ export default async function PastEventsPage() {
       balancePaid,
       depositHref: openDeposit ? `/pay/${openDeposit.id}` : undefined,
       balanceHref: openBalance ? `/pay/${openBalance.id}` : undefined,
-      plannerHref: plannerIdByBooking[e.id] ? `/planner/${plannerIdByBooking[e.id]}` : undefined,
+      isPast: true,
+      // Past events → planner opens view-only (?view=1) and can be downloaded.
+      plannerHref: plannerIdByBooking[e.id] ? `/planner/${plannerIdByBooking[e.id]}?view=1` : undefined,
+      plannerDownloadHref: plannerIdByBooking[e.id] ? `/planner/${plannerIdByBooking[e.id]}/print?download=1` : undefined,
       // Settled deposit/balance → let the host download their receipt.
       depositReceiptHref: depositPaid ? `/api/host/receipt?bookingId=${e.id}&kind=deposit` : undefined,
       balanceReceiptHref: balancePaid ? `/api/host/receipt?bookingId=${e.id}&kind=balance` : undefined,
