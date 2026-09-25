@@ -159,6 +159,10 @@ export default function ClubBookingForm({
   // Known full name shows as static text with a pencil; clicking it turns the
   // name back into an editable field (booking-only, doesn't touch the account).
   const [editingName, setEditingName] = useState(false);
+  // Known phone shows as static text with a pencil; clicking it turns it back
+  // into an editable field (booking-only — the edited number is sent with this
+  // request but doesn't change the account's stored number).
+  const [editingPhone, setEditingPhone] = useState(false);
   // Prefer the full profile's email, fall back to the narrowed prop.
   const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
   const [contactEmail, setContactEmail] = useState('');
@@ -834,13 +838,22 @@ export default function ClubBookingForm({
 
         {/* Phone — plain text when known (matches MobileBookingForm); editable
             only when the account has no stored number. */}
-        {knownPhone ? (
+        {knownPhone && !editingPhone ? (
           <div className={styles.section}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
               <div className={styles.sectionLabel} style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Phone</div>
               <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {phone}
               </div>
+              <button
+                type="button"
+                onClick={() => setEditingPhone(true)}
+                aria-label="Edit your phone number"
+                title="Edit"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '1rem', lineHeight: 1, padding: 2, flex: 'none' }}
+              >
+                {'✎'}
+              </button>
               {/* Opt-in on the same row, right after the number. */}
               <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginLeft: '1rem', minWidth: 0 }}>
                 <input
@@ -873,6 +886,7 @@ export default function ClubBookingForm({
                 className={`${styles.input} ${styles.hasCheck}`}
                 style={hasError('phone') ? { borderColor: '#ff5f5f' } : undefined}
                 autoComplete="tel"
+                autoFocus={editingPhone}
               />
             </FieldCheck>
           </FormSection>
@@ -881,7 +895,7 @@ export default function ClubBookingForm({
         {/* SMS opt-in — standalone row only when the phone is an editable input
             (no room to sit inline). The known-phone case renders it on the
             phone row above. Opts this ONE booking into text updates. */}
-        {!knownPhone && (
+        {(!knownPhone || editingPhone) && (
           <div className={styles.section}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none' }}>
               <input
