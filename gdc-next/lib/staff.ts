@@ -10,6 +10,7 @@ export interface StaffMember {
   name: string;
   position: string;
   photo?: string | null;   // uploaded image URL; optional (initials fallback)
+  bgColor?: string | null; // optional card background color (hex); null = default
 }
 
 export interface Affiliate {
@@ -86,6 +87,7 @@ export function parseStaff(raw: unknown): StaffMember[] {
         name,
         position,
         photo: typeof o.photo === 'string' ? o.photo : null,
+        bgColor: safeHexColor(o.bgColor),
       };
     })
     .filter((x): x is StaffMember => x !== null)
