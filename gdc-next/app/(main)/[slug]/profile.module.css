@@ -2956,10 +2956,18 @@ a.affiliateImgTop:hover { opacity: .9; }
    the editor gets comfortable width, capped and left-aligned. */
 .affiliateEditCell { grid-column: 1 / -1; }
 .affiliateCardEditing {
-  max-width: 440px;
-  gap: .55rem;
+  max-width: 380px;
+  gap: .3rem;
+  padding: .85rem .9rem;
 }
-.affiliateCardEditing .affiliateImgTop { max-width: 160px; }
+.affiliateCardEditing .affiliateImgTop { max-width: 110px; margin-bottom: .5rem !important; }
+/* Compact fields while editing so the card doesn't tower. */
+.affiliateCardEditing .testimonialAddFormLabel { margin: .35rem 0 .1rem; font-size: .58rem; }
+.affiliateCardEditing .testimonialAddInput { padding: .45rem .6rem; font-size: .82rem; min-height: 0; }
+.affiliateCardEditing textarea.testimonialAddInput { min-height: 2.6rem; }
+.affiliateCardEditing .affiliateColorRow { margin-top: .15rem; }
+.affiliateCardEditing .affiliateColorWheel { width: 30px; height: 30px; }
+.affiliateCardEditing .testimonialAddActions { margin-top: .5rem; }
 
 /* Card background color picker (affiliate editor) — single color wheel. */
 .affiliateColorRow {
