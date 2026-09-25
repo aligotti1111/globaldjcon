@@ -21,7 +21,7 @@ import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/li
 import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 import {
-  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf, normalizeUrl,
+  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf, normalizeUrl, safeHexColor,
   type StaffMember, type Affiliate,
 } from '@/lib/staff';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
@@ -3977,11 +3977,22 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
   const [description, setDescription] = useState('');
   const [website, setWebsite] = useState('');
   const [image, setImage] = useState<string | null>(null);
+  const [bgColor, setBgColor] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Card background presets — brand-dark shades plus a couple of tints. null =
+  // the default (site black). Owners can also pick any custom color.
+  const BG_PRESETS: { label: string; value: string | null }[] = [
+    { label: 'Default', value: null },
+    { label: 'Charcoal', value: '#14141c' },
+    { label: 'Slate', value: '#1b2230' },
+    { label: 'Plum', value: '#221523' },
+    { label: 'Deep teal', value: '#08251f' },
+    { label: 'Wine', value: '#2a1016' },
+  ];
 
   function pick(f: File | null) {
     setFile(f);
@@ -3989,10 +4000,10 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
   }
   function openNew() {
     if (affiliates.length >= AFFILIATES_MAX) { setError(`You can add up to ${AFFILIATES_MAX} affiliates.`); return; }
-    setEntryId(newEntryId()); setName(''); setCompanyType(''); setDescription(''); setWebsite(''); setImage(null); pick(null); setError(null); setMode('new');
+    setEntryId(newEntryId()); setName(''); setCompanyType(''); setDescription(''); setWebsite(''); setImage(null); setBgColor(null); pick(null); setError(null); setMode('new');
   }
   function openEdit(a: Affiliate) {
-    setEntryId(a.id); setName(a.name); setCompanyType(a.companyType); setDescription(a.description || ''); setWebsite(a.url || ''); setImage(a.image || null); pick(null); setError(null); setMode(a.id);
+    setEntryId(a.id); setName(a.name); setCompanyType(a.companyType); setDescription(a.description || ''); setWebsite(a.url || ''); setImage(a.image || null); setBgColor(a.bgColor || null); pick(null); setError(null); setMode(a.id);
   }
   function close() { setMode(null); pick(null); setError(null); }
 
@@ -4021,7 +4032,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
     setBusy(true); setError(null);
     try {
       const uploaded = file ? await uploadEntryImage(userId, file, 'affiliate') : image;
-      const entry: Affiliate = { id: entryId, name: name.trim(), companyType: companyType.trim(), description: description.trim(), image: uploaded, url: normalizeUrl(website) };
+      const entry: Affiliate = { id: entryId, name: name.trim(), companyType: companyType.trim(), description: description.trim(), image: uploaded, url: normalizeUrl(website), bgColor: safeHexColor(bgColor) };
       const next = mode === 'new'
         ? [...affiliates, entry]
         : affiliates.map((a) => (a.id === entryId ? entry : a));
@@ -4039,7 +4050,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
       {affiliates.length > 0 && (
         <div className={styles.affiliateList}>
           {affiliates.map((a) => (
-            <div key={a.id} className={styles.affiliateCard}>
+            <div key={a.id} className={styles.affiliateCard} style={a.bgColor ? { background: a.bgColor } : undefined}>
               <div className={styles.affiliateMain}>
                 {a.image ? (
                   a.url ? (
@@ -4085,7 +4096,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
       )}
 
       {isOwnProfile && mode && (
-        <div className={styles.testimonialAddForm}>
+        <div className={`${styles.testimonialAddForm} ${styles.affiliateEditForm}`}>
           <div className={styles.entryPhotoCol} style={{ alignItems: 'flex-start' }}>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.entryPhotoPickHalf} aria-label="Add image (optional)">
               {shownPreview ? (
@@ -4106,6 +4117,39 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
           <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. bloomandco.com" className={styles.testimonialAddInput} disabled={busy} />
           <div className={styles.testimonialAddFormLabel}>Description <span style={{ opacity: .6 }}>(optional)</span></div>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short note on why you recommend them…" className={styles.testimonialAddInput} disabled={busy} />
+
+          <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
+          <div className={styles.affiliateColorRow}>
+            {BG_PRESETS.map((c) => {
+              const selected = (bgColor || null) === c.value;
+              return (
+                <button
+                  key={c.label}
+                  type="button"
+                  title={c.label}
+                  aria-label={c.label}
+                  onClick={() => setBgColor(c.value)}
+                  disabled={busy}
+                  className={`${styles.affiliateSwatch} ${selected ? styles.affiliateSwatchOn : ''}`}
+                  style={{ background: c.value || '#000' }}
+                >
+                  {c.value === null && <span className={styles.affiliateSwatchNone}>∅</span>}
+                </button>
+              );
+            })}
+            {/* Custom color — native picker. */}
+            <label className={styles.affiliateSwatchCustom} title="Custom color">
+              <input
+                type="color"
+                value={safeHexColor(bgColor) || '#141414'}
+                onChange={(e) => setBgColor(e.target.value)}
+                disabled={busy}
+                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+              />
+              <span aria-hidden="true">+</span>
+            </label>
+          </div>
+
           {error && <div className={styles.testimonialAddError}>{error}</div>}
           <div className={styles.testimonialAddActions}>
             <button type="button" onClick={close} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
