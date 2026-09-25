@@ -1118,9 +1118,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .1em;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: .06em;
   text-transform: uppercase;
   padding: .6rem 1rem;
   background: transparent;
@@ -1902,9 +1902,10 @@
 .aboutStatValue {
   order: 2;
   flex: 0 0 auto;
-  font-family: 'Space Mono', monospace;
-  font-size: .95rem;
-  font-weight: 700;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: .03em;
   color: var(--neon);
   line-height: 1.1;
 }
