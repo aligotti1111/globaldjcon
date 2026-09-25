@@ -2986,8 +2986,16 @@ a.affiliateImgTop:hover { opacity: .9; }
   grid-column: span 2;
   min-width: 240px;
   max-width: none;
+  align-self: start;
+  height: auto;
   gap: .3rem;
   padding: .85rem .9rem;
+}
+/* The "Image / optional" placeholder must stack, not sit in one row. */
+.affiliateCardEditing .affiliateImgFallback {
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
 }
 .affiliateCardEditing .affiliateImgTop { max-width: 110px; margin-bottom: .5rem !important; }
 /* Compact fields while editing so the card doesn't tower. */
@@ -3017,6 +3025,11 @@ a.affiliateImgTop:hover { opacity: .9; }
   grid-column: span 2;
   min-width: 240px;
   max-width: none;
+  /* start (not stretch) + height:auto so the card is exactly as tall as its
+     content — otherwise the grid can size it to a shorter row and the action
+     buttons spill out below the border. */
+  align-self: start;
+  height: auto;
   align-items: stretch;
   text-align: left;
   gap: .3rem;
