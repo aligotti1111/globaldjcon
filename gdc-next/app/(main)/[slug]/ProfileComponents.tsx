@@ -3808,12 +3808,21 @@ function EntryImage({ src, name, size, square }: { src?: string | null; name: st
   const radius = square ? 12 : '50%';
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={thumbUrl(src, 400)}
-        alt={name}
-        style={{ width: size, height: 'auto', maxWidth: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: radius, border: '1px solid rgba(255,255,255,.12)' }}
-      />
+      // A fixed square frame (never taller than its container) that clips the
+      // photo — guarantees a perfect circle/square whatever the image's shape.
+      <span
+        style={{
+          display: 'block', width: size, maxWidth: '100%', aspectRatio: '1 / 1',
+          borderRadius: radius, overflow: 'hidden', border: '1px solid rgba(255,255,255,.12)',
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={thumbUrl(src, 400)}
+          alt={name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      </span>
     );
   }
   return (
