@@ -19,6 +19,14 @@ export interface Affiliate {
   description?: string;    // optional blurb
   image?: string | null;   // logo/representative image; optional
   url?: string;            // optional website; photo + name link to it
+  bgColor?: string | null; // optional card background color (hex); null = default
+}
+
+/** A hex color like #0a0a0f or #abc, else null. Guards stored/entered values. */
+export function safeHexColor(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const s = raw.trim();
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s) ? s : null;
 }
 
 // Normalize a user-entered website into a safe http(s) URL, or '' if invalid.
@@ -85,6 +93,7 @@ export function parseAffiliates(raw: unknown): Affiliate[] {
         description: typeof o.description === 'string' ? o.description : '',
         image: typeof o.image === 'string' ? o.image : null,
         url: normalizeUrl(o.url),
+        bgColor: safeHexColor(o.bgColor),
       };
     })
     .filter((x): x is Affiliate => x !== null)
