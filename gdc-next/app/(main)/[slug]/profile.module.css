@@ -2952,6 +2952,15 @@ a.affiliateImgTop:hover { opacity: .9; }
 /* Affiliate add/edit form — half width on desktop so it doesn't sprawl. */
 .affiliateEditForm { max-width: 560px; }
 
+/* Inline editor: the card itself becomes its editor. The cell spans the row so
+   the editor gets comfortable width, capped and left-aligned. */
+.affiliateEditCell { grid-column: 1 / -1; }
+.affiliateCardEditing {
+  max-width: 440px;
+  gap: .55rem;
+}
+.affiliateCardEditing .affiliateImgTop { max-width: 160px; }
+
 /* Card background color picker (affiliate editor) — single color wheel. */
 .affiliateColorRow {
   display: flex;
