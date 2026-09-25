@@ -2882,11 +2882,11 @@
   gap: .85rem;
   align-items: stretch;
 }
-/* Big image on top, spanning the card width. */
+/* Square image on top, spanning the card width. */
 .affiliateImgTop {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
   background: rgba(255, 255, 255, .06);
@@ -2997,6 +2997,5 @@ a.affiliateImgTop:hover { opacity: .9; }
   /* One centered, capped card on mobile so the top image isn't full-bleed huge. */
   .affiliateList { grid-template-columns: 1fr; justify-content: stretch; }
   .affiliateCard { max-width: 340px; margin: 0 auto; }
-  .affiliateImgTop { aspect-ratio: 16 / 9; }
   .affiliateEditForm { max-width: none; }
 }
