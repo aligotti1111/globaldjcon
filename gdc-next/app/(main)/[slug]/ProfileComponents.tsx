@@ -4038,7 +4038,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
   // The editor lives INSIDE a card shell (same box as the display card) so a DJ
   // edits the affiliate right where it shows — no separate form below.
   const editorCard = (
-    <div className={`${styles.affiliateCard} ${styles.affiliateCardEditing}`} style={bgColor ? { background: bgColor } : undefined}>
+    <div className={`${styles.affiliateCard} ${styles.affiliateCardEditing}`}>
       <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.affiliateImgTop} style={{ cursor: 'pointer', padding: 0, marginBottom: '.85rem' }} aria-label="Add image (optional)">
         {shownPreview ? (
           // eslint-disable-next-line @next/next/no-img-element
