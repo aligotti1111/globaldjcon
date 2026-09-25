@@ -1306,11 +1306,19 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
 // classes (gdc-signedin/host/teammate/mobile/club) are toggled on this same node
 // from HomePage via classList, so resolving auth on load no longer re-renders (and
 // re-paints) the markup — which was rebuilding the hero and blinking its bg image.
+// Hoisted to module scope so these dangerouslySetInnerHTML objects keep a STABLE
+// identity across renders. React 19 no longer compares the __html string — it re-
+// sets innerHTML whenever the prop OBJECT identity changes. A fresh {__html: …}
+// literal in JSX is a new object every render, so each auth-driven re-render was
+// rewriting the whole <style> (re-parsing the stylesheet → re-decoding the hero
+// background = the repeated blink). Stable references make React skip the DOM write.
+const LANDING_CSS_HTML = { __html: LANDING_CSS };
+const LANDING_BODY_HTML = { __html: LANDING_BODY };
 const LandingMarkup = memo(function LandingMarkup() {
   return (
     <div
       className={`gdc-landing ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
-      dangerouslySetInnerHTML={{ __html: LANDING_BODY }}
+      dangerouslySetInnerHTML={LANDING_BODY_HTML}
     />
   );
 });
@@ -1527,7 +1535,7 @@ export default function HomePage() {
         href="/hero.webp"
         fetchPriority="high"
       />
-      <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
+      <style dangerouslySetInnerHTML={LANDING_CSS_HTML} />
       <LandingMarkup />
       {redeemHost && canRedeem && createPortal(
         <RedeemCodeBox variant="link" onDiscount={(_c, _d, pct, appliesTo) => applyLandingDiscount(pct, appliesTo)} />,
