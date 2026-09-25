@@ -2205,7 +2205,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             <img
               src={lightboxSrc}
               alt={captions[lightboxSrc] || ''}
-              style={{ transform: `scale(${lightboxZoom})`, transition: 'transform .15s ease', transformOrigin: 'center center' }}
+              style={{ transform: `scale(${lightboxZoom})`, transition: 'transform .15s ease', transformOrigin: 'center center', maxWidth: '90vw', maxHeight: '88vh', width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 8 }}
             />
             {/* Caption band — transparent black strip along the bottom of the
                 photo, shown when this photo has a caption. */}
