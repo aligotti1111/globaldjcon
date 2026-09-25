@@ -2969,6 +2969,16 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateCardEditing .affiliateColorWheel { width: 30px; height: 30px; }
 .affiliateCardEditing .testimonialAddActions { margin-top: .5rem; }
 
+/* Live preview: the editor card takes the chosen color. On a LIGHT color, flip
+   labels/helper text and control borders to dark so nothing blends in. Inputs
+   keep their own solid field background, so they stay legible on any color. */
+.affiliateCardEditingLight .testimonialAddFormLabel,
+.affiliateCardEditingLight .affiliateColorLabel,
+.affiliateCardEditingLight .affiliateImgFallback,
+.affiliateCardEditingLight .entryPhotoClear { color: rgba(0, 0, 0, .6) !important; }
+.affiliateCardEditingLight .affiliateImgTop { border-color: rgba(0, 0, 0, .22); background: rgba(0, 0, 0, .05); }
+.affiliateCardEditingLight .testimonialAddCancel { border-color: rgba(0, 0, 0, .35); color: rgba(0, 0, 0, .7); }
+
 /* Card background color picker (affiliate editor) — single color wheel. */
 .affiliateColorRow {
   display: flex;
