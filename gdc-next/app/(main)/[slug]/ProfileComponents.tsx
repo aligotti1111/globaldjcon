@@ -4061,10 +4061,11 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
 
       <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
       <div className={styles.affiliateColorRow}>
+        {/* Wheel stays a rainbow so it's always visible; the chosen color shows
+            in the swatch + hex next to it. */}
         <label
           className={styles.affiliateColorWheel}
           title="Pick a color"
-          style={bgColor ? { background: bgColor } : undefined}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
@@ -4078,12 +4079,8 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
             disabled={busy}
             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
           />
-          {!bgColor && (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18 3 3 0 0 0 0-6 2 2 0 0 1 0-4 3 3 0 0 0 0-6z" fill="currentColor" stroke="none" opacity=".35" />
-            </svg>
-          )}
         </label>
+        {bgColor && <span className={styles.affiliateColorChip} style={{ background: bgColor }} aria-hidden="true" />}
         <span className={styles.affiliateColorLabel}>{bgColor ? bgColor.toUpperCase() : 'Default (black)'}</span>
         {bgColor && (
           <button type="button" className={styles.affiliateColorReset} onClick={() => setBgColor(null)} disabled={busy}>Reset</button>
