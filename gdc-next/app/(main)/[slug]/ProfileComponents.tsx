@@ -4145,7 +4145,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
           // eslint-disable-next-line @next/next/no-img-element
           <img src={shownPreview} alt="" />
         ) : (
-          <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase' }}>Image<br /><small style={{ fontSize: '.65rem' }}>optional</small></span>
+          <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase' }}><span>Image</span><small style={{ fontSize: '.65rem', opacity: .8 }}>optional</small></span>
         )}
       </button>
       {shownPreview && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear} style={{ marginBottom: '.6rem' }}>Remove image</button>}
