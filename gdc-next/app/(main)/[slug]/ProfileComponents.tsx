@@ -3853,6 +3853,10 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A staff headshot opens in its OWN circular viewer (not the rectangular
+  // gallery lightbox) so it stays a clean circle when enlarged.
+  const [viewSrc, setViewSrc] = useState<string | null>(null);
+  void onPhotoClick;
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openNew() {
@@ -3963,8 +3967,8 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
               : undefined;
             return (
             <div key={s.id} className={styles.staffCard} style={s.bgColor ? { background: s.bgColor } : undefined}>
-              {s.photo && onPhotoClick ? (
-                <button type="button" onClick={() => onPhotoClick(s.photo!)} className={styles.staffPhotoBtn} aria-label={`View ${s.name}'s photo`}>
+              {s.photo ? (
+                <button type="button" onClick={() => setViewSrc(s.photo!)} className={styles.staffPhotoBtn} aria-label={`View ${s.name}'s photo`}>
                   <EntryImage src={s.photo} name={s.name} size={121} />
                 </button>
               ) : (
@@ -3991,6 +3995,23 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
         <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add team member</button>
       )}
       {error && !mode && <div className={styles.testimonialAddError} style={{ marginTop: '.5rem' }}>{error}</div>}
+
+      {/* Circular headshot viewer — a real round crop, isolated from the gallery
+          lightbox so it can't render as an oval. */}
+      {viewSrc && (
+        <div
+          onClick={() => setViewSrc(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+        >
+          <span
+            style={{ display: 'block', width: 'min(80vw, 80vh)', height: 'min(80vw, 80vh)', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={viewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          </span>
+        </div>
+      )}
 
       {confirmDialog}
       <AvatarCrop
