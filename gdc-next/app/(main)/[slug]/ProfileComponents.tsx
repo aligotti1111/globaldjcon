@@ -4122,11 +4122,20 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
 
           <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
           <div className={styles.affiliateColorRow}>
-            <label className={styles.affiliateColorWheel} title="Pick a color" style={bgColor ? { background: bgColor } : undefined}>
+            <label
+              className={styles.affiliateColorWheel}
+              title="Pick a color"
+              style={bgColor ? { background: bgColor } : undefined}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
               <input
                 type="color"
                 value={safeHexColor(bgColor) || '#141414'}
                 onChange={(e) => setBgColor(e.target.value)}
+                onInput={(e) => setBgColor((e.target as HTMLInputElement).value)}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
                 disabled={busy}
                 style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
               />
