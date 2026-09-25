@@ -1853,12 +1853,16 @@
   padding: 1.3rem 1.45rem;
 }
 .aboutCardHeading {
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  letter-spacing: .12em;
+  display: inline-block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: .07em;
   text-transform: uppercase;
-  color: var(--neon);
-  margin-bottom: .75rem;
+  color: #fff;
+  margin-bottom: 1rem;
+  padding-bottom: .4rem;
+  border-bottom: 2px solid var(--neon);
 }
 @media (max-width: 900px) {
   .aboutGrid { grid-template-columns: 1fr; }
