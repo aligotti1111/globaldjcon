@@ -3039,7 +3039,9 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateColorReset:hover { border-color: var(--neon, #00e0a4); color: var(--neon, #00e0a4); }
 
 @media (max-width: 900px) {
-  .staffGrid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .9rem; }
+  .staffGrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .9rem; }
+  /* A staff card being edited spans the full row so its fields aren't crushed. */
+  .staffCardEditing { max-width: none; }
   /* One centered, capped card on mobile so the top image isn't full-bleed huge. */
   .affiliateList { grid-template-columns: 1fr; justify-content: stretch; }
   .affiliateCard { max-width: 340px; margin: 0 auto; }
