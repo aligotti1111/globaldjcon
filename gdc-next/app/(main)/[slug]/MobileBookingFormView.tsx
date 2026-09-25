@@ -224,6 +224,11 @@ export default function MobileBookingForm({
     (authUser as { name?: string | null } | null)?.name || currentUser.name || '',
   );
   const [fullName, setFullName] = useState(accountName);
+  // Known name/phone show as static text with a pencil; clicking it turns the
+  // field back into an editable input (booking-only — the edit rides with this
+  // request but doesn't change the account's stored value).
+  const [editingName, setEditingName] = useState(false);
+  const [editingPhone, setEditingPhone] = useState(false);
   /**
    * Derived from the ACCOUNT, not from the input — the same trap `knownPhone`
    * documents. Reading `isFullName(fullName)` here would make the field vanish
@@ -641,7 +646,7 @@ export default function MobileBookingForm({
           // Only sent when the stored name was incomplete. The server writes
           // it to users.name so the next booking — and the contract — has a
           // surname to print without asking again.
-          fullName: needsFullName ? normalizeName(fullName) : null,
+          fullName: (needsFullName || editingName) ? normalizeName(fullName) : null,
           cocktailNeeded,
           cocktailStart,
           cocktailSameRoom,
@@ -951,16 +956,20 @@ export default function MobileBookingForm({
             a full one; a field only when it's short a surname. */}
         <div className={styles.formRow}>
           <label htmlFor="mpf-full-name">Your Name</label>
-          {!needsFullName ? (
-            <div
-              style={{
-                padding: '.55rem 0',
-                color: 'var(--white,#fff)',
-                fontSize: '.95rem',
-                fontWeight: 600,
-              }}
-            >
-              {accountName}
+          {!needsFullName && !editingName ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', padding: '.55rem 0' }}>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+                {accountName}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                aria-label="Edit your name"
+                title="Edit"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '1rem', lineHeight: 1, padding: 2, flex: 'none' }}
+              >
+                {'✎'}
+              </button>
             </div>
           ) : (
             <>
@@ -973,6 +982,7 @@ export default function MobileBookingForm({
                   onChange={(e) => setFullName(e.target.value)}
                   className={`${fieldClass('mpf-full-name', styles.input)} ${styles.hasCheck}`}
                   autoComplete="name"
+                  autoFocus={editingName}
                 />
               </FieldCheck>
               <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
@@ -987,7 +997,7 @@ export default function MobileBookingForm({
             empty-looking input next to a number they just proved they own
             reads as another thing to do. */}
         <div className={styles.formRow}>
-          {knownPhone ? (
+          {knownPhone && !editingPhone ? (
             // Label + number + SMS opt-in all on ONE line — the value is
             // read-only (from the account), so a stacked label just burns a row.
             <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
@@ -995,6 +1005,15 @@ export default function MobileBookingForm({
               <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {phone}
               </div>
+              <button
+                type="button"
+                onClick={() => setEditingPhone(true)}
+                aria-label="Edit your phone number"
+                title="Edit"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '1rem', lineHeight: 1, padding: 2, flex: 'none' }}
+              >
+                {'✎'}
+              </button>
               <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0, marginLeft: '1rem', minWidth: 0 }}>
                 <input
                   type="checkbox"
@@ -1020,6 +1039,7 @@ export default function MobileBookingForm({
                 onChange={handlePhoneChange}
                 className={`${fieldClass('mpf-phone', styles.input)} ${styles.hasCheck}`}
                 autoComplete="tel"
+                autoFocus={editingPhone}
               />
             </FieldCheck>
             </>
@@ -1028,7 +1048,7 @@ export default function MobileBookingForm({
 
         {/* SMS opt-in — standalone row only when the phone is an editable input.
             The known-phone case renders it inline on the phone row above. */}
-        {!knownPhone && (
+        {(!knownPhone || editingPhone) && (
           <div className={styles.formRow}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
               <input
