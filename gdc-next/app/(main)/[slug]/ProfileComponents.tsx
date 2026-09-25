@@ -3921,7 +3921,6 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
             type="color"
             value={safeHexColor(bgColor) || '#141414'}
             onChange={(e) => setBgColor(e.target.value)}
-            onInput={(e) => setBgColor((e.target as HTMLInputElement).value)}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             disabled={busy}
@@ -4109,7 +4108,6 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
             type="color"
             value={safeHexColor(bgColor) || '#141414'}
             onChange={(e) => setBgColor(e.target.value)}
-            onInput={(e) => setBgColor((e.target as HTMLInputElement).value)}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             disabled={busy}
