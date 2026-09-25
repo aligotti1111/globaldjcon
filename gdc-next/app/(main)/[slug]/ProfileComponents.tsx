@@ -3812,7 +3812,7 @@ function EntryImage({ src, name, size, square }: { src?: string | null; name: st
       // photo — guarantees a perfect circle/square whatever the image's shape.
       <span
         style={{
-          display: 'block', width: size, maxWidth: '100%', aspectRatio: '1 / 1',
+          display: 'block', width: size, height: size, flex: 'none',
           borderRadius: radius, overflow: 'hidden', border: '1px solid rgba(255,255,255,.12)',
         }}
       >
@@ -3820,7 +3820,7 @@ function EntryImage({ src, name, size, square }: { src?: string | null; name: st
         <img
           src={thumbUrl(src, 400)}
           alt={name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 'inherit' }}
         />
       </span>
     );
