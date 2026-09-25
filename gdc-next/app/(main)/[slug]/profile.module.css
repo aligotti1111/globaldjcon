@@ -1830,7 +1830,7 @@
   color: var(--white);
 }
 .aboutStatsWrap {
-  background: var(--card);
+  background: #000;
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.3rem 1.45rem;
@@ -1843,7 +1843,7 @@
   align-items: start;
 }
 .aboutCard {
-  background: var(--card);
+  background: #000;
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.3rem 1.45rem;
