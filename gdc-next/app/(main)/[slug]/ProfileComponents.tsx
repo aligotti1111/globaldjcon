@@ -4035,18 +4035,83 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
 
   const shownPreview = preview || image;
 
+  // The editor lives INSIDE a card shell (same box as the display card) so a DJ
+  // edits the affiliate right where it shows — no separate form below.
+  const editorCard = (
+    <div className={`${styles.affiliateCard} ${styles.affiliateCardEditing}`} style={bgColor ? { background: bgColor } : undefined}>
+      <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.affiliateImgTop} style={{ cursor: 'pointer', padding: 0, marginBottom: '.85rem' }} aria-label="Add image (optional)">
+        {shownPreview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={shownPreview} alt="" />
+        ) : (
+          <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)' }}>Image<br /><small style={{ fontSize: '.65rem' }}>optional</small></span>
+        )}
+      </button>
+      {shownPreview && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear} style={{ marginBottom: '.6rem' }}>Remove image</button>}
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
+
+      <div className={styles.testimonialAddFormLabel}>Company name</div>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bloom & Co" className={styles.testimonialAddInput} disabled={busy} />
+      <div className={styles.testimonialAddFormLabel}>Type of company</div>
+      <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} placeholder="e.g. Florist" className={styles.testimonialAddInput} disabled={busy} />
+      <div className={styles.testimonialAddFormLabel}>Website <span style={{ opacity: .6 }}>(optional)</span></div>
+      <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. bloomandco.com" className={styles.testimonialAddInput} disabled={busy} />
+      <div className={styles.testimonialAddFormLabel}>Description <span style={{ opacity: .6 }}>(optional)</span></div>
+      <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short note on why you recommend them…" className={styles.testimonialAddInput} disabled={busy} />
+
+      <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
+      <div className={styles.affiliateColorRow}>
+        <label
+          className={styles.affiliateColorWheel}
+          title="Pick a color"
+          style={bgColor ? { background: bgColor } : undefined}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="color"
+            value={safeHexColor(bgColor) || '#141414'}
+            onChange={(e) => setBgColor(e.target.value)}
+            onInput={(e) => setBgColor((e.target as HTMLInputElement).value)}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            disabled={busy}
+            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+          />
+          {!bgColor && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18 3 3 0 0 0 0-6 2 2 0 0 1 0-4 3 3 0 0 0 0-6z" fill="currentColor" stroke="none" opacity=".35" />
+            </svg>
+          )}
+        </label>
+        <span className={styles.affiliateColorLabel}>{bgColor ? bgColor.toUpperCase() : 'Default (black)'}</span>
+        {bgColor && (
+          <button type="button" className={styles.affiliateColorReset} onClick={() => setBgColor(null)} disabled={busy}>Reset</button>
+        )}
+      </div>
+
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button type="button" onClick={close} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
+        <button type="button" onClick={save} disabled={busy} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {affiliates.length > 0 && (
+      {(affiliates.length > 0 || mode === 'new') && (
         <div className={styles.affiliateList}>
           {affiliates.map((a) => {
+            // Editing THIS one → the card becomes its editor in place.
+            if (mode === a.id) return <div key={a.id} className={styles.affiliateEditCell}>{editorCard}</div>;
+
             // Contrast: on a light custom bg, switch text + action buttons to dark
             // so they don't blend in (and vice-versa on dark).
             const light = isLightHex(a.bgColor);
             const nameColor = a.bgColor ? (light ? '#141414' : '#fff') : undefined;
             const typeColor = a.bgColor ? (light ? '#0a7f63' : undefined) : undefined;
             const descColor = a.bgColor ? (light ? 'rgba(0,0,0,.62)' : 'rgba(255,255,255,.72)') : undefined;
-            // A chip backdrop so the edit/delete buttons stay visible on any color.
             const actionBtnStyle: React.CSSProperties | undefined = a.bgColor
               ? { background: light ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.14)', color: light ? '#141414' : '#fff' }
               : undefined;
@@ -4094,70 +4159,8 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
             </div>
             );
           })}
-        </div>
-      )}
-
-      {isOwnProfile && mode && (
-        <div className={`${styles.testimonialAddForm} ${styles.affiliateEditForm}`}>
-          <div className={styles.entryPhotoCol} style={{ alignItems: 'flex-start' }}>
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.entryPhotoPickHalf} aria-label="Add image (optional)">
-              {shownPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={shownPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
-              ) : (
-                <span>Image<br /><small>optional</small></span>
-              )}
-            </button>
-            {(shownPreview) && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear}>Remove image</button>}
-          </div>
-          <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
-          <div className={styles.testimonialAddFormLabel}>Company name</div>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bloom & Co" className={styles.testimonialAddInput} disabled={busy} />
-          <div className={styles.testimonialAddFormLabel}>Type of company</div>
-          <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} placeholder="e.g. Florist" className={styles.testimonialAddInput} disabled={busy} />
-          <div className={styles.testimonialAddFormLabel}>Website <span style={{ opacity: .6 }}>(optional)</span></div>
-          <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. bloomandco.com" className={styles.testimonialAddInput} disabled={busy} />
-          <div className={styles.testimonialAddFormLabel}>Description <span style={{ opacity: .6 }}>(optional)</span></div>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short note on why you recommend them…" className={styles.testimonialAddInput} disabled={busy} />
-
-          <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
-          <div className={styles.affiliateColorRow}>
-            <label
-              className={styles.affiliateColorWheel}
-              title="Pick a color"
-              style={bgColor ? { background: bgColor } : undefined}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <input
-                type="color"
-                value={safeHexColor(bgColor) || '#141414'}
-                onChange={(e) => setBgColor(e.target.value)}
-                onInput={(e) => setBgColor((e.target as HTMLInputElement).value)}
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                disabled={busy}
-                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-              />
-              {!bgColor && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18 3 3 0 0 0 0-6 2 2 0 0 1 0-4 3 3 0 0 0 0-6z" fill="currentColor" stroke="none" opacity=".35" />
-                </svg>
-              )}
-            </label>
-            <span className={styles.affiliateColorLabel}>{bgColor ? bgColor.toUpperCase() : 'Default (black)'}</span>
-            {bgColor && (
-              <button type="button" className={styles.affiliateColorReset} onClick={() => setBgColor(null)} disabled={busy}>
-                Reset
-              </button>
-            )}
-          </div>
-
-          {error && <div className={styles.testimonialAddError}>{error}</div>}
-          <div className={styles.testimonialAddActions}>
-            <button type="button" onClick={close} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
-            <button type="button" onClick={save} disabled={busy} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
-          </div>
+          {/* Adding a new one → an editor card at the end of the grid. */}
+          {mode === 'new' && <div className={styles.affiliateEditCell}>{editorCard}</div>}
         </div>
       )}
 
