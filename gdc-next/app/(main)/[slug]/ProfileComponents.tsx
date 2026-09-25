@@ -4041,12 +4041,22 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
           {affiliates.map((a) => (
             <div key={a.id} className={styles.affiliateCard}>
               <div className={styles.affiliateMain}>
-                {a.url ? (
-                  <a href={a.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateImgLink} aria-label={`${a.name} website`}>
-                    <EntryImage src={a.image} name={a.name} size={84} square />
-                  </a>
+                {a.image ? (
+                  a.url ? (
+                    <a href={a.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateImgTop} aria-label={`${a.name} website`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={thumbUrl(a.image, 700)} alt={a.name} />
+                    </a>
+                  ) : (
+                    <div className={styles.affiliateImgTop}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={thumbUrl(a.image, 700)} alt={a.name} />
+                    </div>
+                  )
                 ) : (
-                  <EntryImage src={a.image} name={a.name} size={84} square />
+                  <div className={styles.affiliateImgTop}>
+                    <span className={styles.affiliateImgFallback}>{initialsOf(a.name)}</span>
+                  </div>
                 )}
                 <div className={styles.affiliateBody}>
                   {a.url ? (
