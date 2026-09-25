@@ -4007,21 +4007,33 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
             </div>
             );
           })}
+          {/* Inline "+" add tile sits to the RIGHT of the staff cards once at
+              least one member exists — a quick way to add another without
+              scrolling to the button below. */}
+          {isOwnProfile && !mode && staff.length > 0 && staff.length < STAFF_MAX && (
+            <button type="button" onClick={openNew} className={styles.staffAddTile} aria-label="Add staff member">
+              <span aria-hidden="true">+</span>
+            </button>
+          )}
           {mode === 'new' && <div className={styles.affiliateEditCell}>{editorCard}</div>}
         </div>
       )}
 
-      {isOwnProfile && !mode && staff.length < STAFF_MAX && (
-        <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add team member</button>
+      {/* The full-width button shows only when there are no members yet; once
+          there's at least one, the inline "+" tile above handles adding more. */}
+      {isOwnProfile && !mode && staff.length === 0 && (
+        <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add staff member</button>
       )}
       {error && !mode && <div className={styles.testimonialAddError} style={{ marginTop: '.5rem' }}>{error}</div>}
 
       {/* Circular headshot viewer — a real round crop, isolated from the gallery
-          lightbox so it can't render as an oval. */}
-      {viewSrc && (
+          lightbox so it can't render as an oval. Rendered through a PORTAL to
+          <body> so a transformed/stacked ancestor (e.g. the banner) can't trap
+          the fixed overlay behind it. */}
+      {viewSrc && typeof document !== 'undefined' && createPortal(
         <div
           onClick={() => setViewSrc(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
         >
           <span
             style={{ display: 'block', width: 'min(360px, 80vw, 70vh)', height: 'min(360px, 80vw, 70vh)', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,.15)' }}
@@ -4030,7 +4042,8 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={viewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
           </span>
-        </div>
+        </div>,
+        document.body
       )}
 
       {confirmDialog}
@@ -4433,6 +4446,40 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   function handleShare() {
     setShareOpen((v) => !v);
   }
+  // Small monochrome icons for each share target, sized to sit inline with
+  // the label in the share menu.
+  const shareIcons: Record<string, React.ReactNode> = {
+    copy: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    ),
+    email: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" />
+      </svg>
+    ),
+    facebook: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12Z" />
+      </svg>
+    ),
+    x: (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.41l-5.8-7.58-6.64 7.58H.46l8.6-9.83L0 1.15h7.6l5.24 6.93 6.06-6.93Zm-1.29 19.5h2.04L6.48 3.24H4.29l13.32 17.41Z" />
+      </svg>
+    ),
+    whatsapp: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.16c-.25.69-1.44 1.32-1.98 1.36-.53.05-1.03.24-3.47-.72-2.93-1.16-4.8-4.16-4.95-4.36-.14-.2-1.19-1.58-1.19-3.01 0-1.43.75-2.13 1.02-2.42.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.66.5.25.59.84 2.02.91 2.17.07.14.12.31.02.51-.1.2-.15.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.29-.13.57.17.29.75 1.23 1.6 1.99 1.11.99 2.04 1.29 2.33 1.44.29.14.46.12.63-.07.17-.2.72-.84.91-1.13.19-.29.39-.24.66-.14.27.1 1.69.8 1.98.94.29.14.48.22.55.34.07.12.07.69-.18 1.38Z" />
+      </svg>
+    ),
+    sms: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+      </svg>
+    ),
+  };
   const shareMenu: { key: string; label: string; href?: string; onClick?: () => void }[] = [
     { key: 'copy', label: copied ? 'Copied!' : 'Copy link', onClick: copyProfileLink },
     { key: 'email', label: 'Email' },
@@ -4682,6 +4729,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
                   className={styles.shareMenuItem}
                   onClick={() => { item.onClick!(); }}
                 >
+                  <span className={styles.shareMenuIcon} aria-hidden="true">{shareIcons[item.key]}</span>
                   {item.label}
                 </button>
               ) : (
@@ -4694,6 +4742,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
                   rel="noopener noreferrer"
                   onClick={() => setShareOpen(false)}
                 >
+                  <span className={styles.shareMenuIcon} aria-hidden="true">{shareIcons[item.key]}</span>
                   {item.label}
                 </a>
               )
