@@ -80,10 +80,16 @@ function fmtDate(d: string | null): string {
 
 export default async function PlannerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ view?: string }>;
 }) {
   const { id } = await params;
+  // ?view=1 → view-only (a host opening a PAST event's planner). Real data,
+  // locked from edits, still downloadable.
+  const sp = searchParams ? await searchParams : undefined;
+  const lockedView = sp?.view === '1';
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const admin = createAdminClient();
@@ -245,6 +251,7 @@ export default async function PlannerPage({
       duePassed={duePassed}
       dueDateLabel={dueDateLabel}
       known={known}
+      lockedView={lockedView}
     />
   );
 }
