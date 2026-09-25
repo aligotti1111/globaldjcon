@@ -3807,28 +3807,32 @@ async function uploadEntryImage(
 function EntryImage({ src, name, size, square }: { src?: string | null; name: string; size: number; square?: boolean }) {
   const radius = square ? 12 : '50%';
   if (src) {
-    // The photo is painted as a BACKGROUND on a box whose width and height are
-    // pinned to the SAME pixel value (and boxSizing: border-box so the 1px
-    // border is included, never added on top to make it wider than tall). A
-    // locked square means a 50% radius is always a true circle. No <img>
-    // element means nothing can leak the photo's own proportions in.
+    // Bulletproof square, whatever the card width:
+    //  - OUTER caps the size at `size` and centers it, but shrinks to 100% when
+    //    the card is narrower than `size` (so it can NEVER be wider than the
+    //    card and get its sides clipped flat).
+    //  - INNER is width:100% with padding-bottom:100% (a % padding is measured
+    //    against the outer's WIDTH), so its height always equals its width — a
+    //    perfect square, hence a true circle at radius 50%. The padding trick
+    //    can't collapse to zero the way `aspect-ratio` did.
+    // The photo is a BACKGROUND (no <img>) so nothing can leak its proportions.
     return (
-      <span
-        role="img"
-        aria-label={name}
-        style={{
-          display: 'block', flex: 'none', boxSizing: 'border-box',
-          width: size, height: size,
-          minWidth: size, maxWidth: size,
-          minHeight: size, maxHeight: size,
-          borderRadius: radius, overflow: 'hidden',
-          border: '1px solid rgba(255,255,255,.12)',
-          backgroundImage: `url("${thumbUrl(src, 400)}")`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      />
+      <span style={{ display: 'block', flex: 'none', width: '100%', maxWidth: size, margin: '0 auto' }}>
+        <span
+          role="img"
+          aria-label={name}
+          style={{
+            display: 'block', position: 'relative',
+            width: '100%', height: 0, paddingBottom: '100%',
+            borderRadius: radius, overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,.12)',
+            backgroundImage: `url("${thumbUrl(src, 400)}")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+      </span>
     );
   }
   return (
