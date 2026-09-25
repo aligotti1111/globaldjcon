@@ -84,7 +84,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
-  djName, hostName, eventDateLabel, venueName, logoUrl, leadDays = 14, duePassed = false, dueDateLabel = '', known, preview = false,
+  djName, hostName, eventDateLabel, venueName, logoUrl, leadDays = 14, duePassed = false, dueDateLabel = '', known, preview = false, lockedView = false,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -112,6 +112,9 @@ export default function PlannerForm({
   known: { k: string; v: string }[];
   /** DJ preview — the REAL page, read-only. No saving, no submit. */
   preview?: boolean;
+  /** View-only mode (host opening a PAST event's planner): locked from edits,
+   *  still downloadable. Unlike preview, this is the real planner with real data. */
+  lockedView?: boolean;
 }) {
   const [responses, setResponses] = useState<PlannerResponses>(initialResponses);
   const [status, setStatus] = useState(initialStatus);
@@ -246,6 +249,8 @@ export default function PlannerForm({
   // the lock takes hold next time they open it. Under 100% at the deadline stays
   // open so they can finish.
   const locked = useMemo(() => {
+    // A past-event view is always locked (view-only), regardless of completion.
+    if (lockedView) return true;
     if (preview || !duePassed) return false;
     let answered = 0;
     let total = 0;
@@ -368,7 +373,13 @@ export default function PlannerForm({
               everything completed at least <strong>{leadDays} days before</strong> the event.
             </div>
           )}
-          {locked && (
+          {locked && lockedView && (
+            <div className={styles.locked}>
+              <strong>This event has passed.</strong> Your planner is now view-only.
+              Use <strong>Download PDF</strong> above to keep a copy.
+            </div>
+          )}
+          {locked && !lockedView && (
             <div className={styles.locked}>
               <strong>This planner is locked.</strong> It&rsquo;s complete and the
               submission deadline ({leadDays} days before the event) has passed, so it
