@@ -3840,6 +3840,7 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
+  const [bgColor, setBgColor] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3847,10 +3848,10 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
 
   function openNew() {
     if (staff.length >= STAFF_MAX) { setError(`You can add up to ${STAFF_MAX} team members.`); return; }
-    setEntryId(newEntryId()); setName(''); setPosition(''); setPhoto(null); setError(null); setMode('new');
+    setEntryId(newEntryId()); setName(''); setPosition(''); setPhoto(null); setBgColor(null); setError(null); setMode('new');
   }
   function openEdit(s: StaffMember) {
-    setEntryId(s.id); setName(s.name); setPosition(s.position); setPhoto(s.photo || null); setError(null); setMode(s.id);
+    setEntryId(s.id); setName(s.name); setPosition(s.position); setPhoto(s.photo || null); setBgColor(s.bgColor || null); setError(null); setMode(s.id);
   }
   function close() { setMode(null); setCropFile(null); setError(null); }
 
@@ -3878,7 +3879,7 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
     if (!name.trim()) { setError('Name is required.'); return; }
     setBusy(true); setError(null);
     try {
-      const entry: StaffMember = { id: entryId, name: name.trim(), position: position.trim(), photo };
+      const entry: StaffMember = { id: entryId, name: name.trim(), position: position.trim(), photo, bgColor: safeHexColor(bgColor) };
       const next = mode === 'new'
         ? [...staff, entry]
         : staff.map((s) => (s.id === entryId ? entry : s));
@@ -3889,12 +3890,71 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
     }
   }
 
+  const editLight = isLightHex(bgColor);
+  // The editor lives INSIDE a staff card shell so a member is edited right where
+  // it shows — one box, no separate form.
+  const editorCard = (
+    <div
+      className={`${styles.staffCard} ${styles.staffCardEditing} ${editLight ? styles.affiliateCardEditingLight : ''}`}
+      style={bgColor ? { background: bgColor } : undefined}
+    >
+      <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.entryPhotoPick} aria-label="Add photo (optional)">
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+        ) : (
+          <span>Photo<br /><small>optional</small></span>
+        )}
+      </button>
+      {photo && <button type="button" onClick={() => setPhoto(null)} disabled={busy} className={styles.entryPhotoClear}>Remove photo</button>}
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; if (f) setCropFile(f); e.currentTarget.value = ''; }} />
+
+      <div className={styles.testimonialAddFormLabel}>Name</div>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jordan Reyes" className={styles.testimonialAddInput} disabled={busy} />
+      <div className={styles.testimonialAddFormLabel}>Job position</div>
+      <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. MC / Host" className={styles.testimonialAddInput} disabled={busy} />
+
+      <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
+      <div className={styles.affiliateColorRow}>
+        <label className={styles.affiliateColorWheel} title="Pick a color" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <input
+            type="color"
+            value={safeHexColor(bgColor) || '#141414'}
+            onChange={(e) => setBgColor(e.target.value)}
+            onInput={(e) => setBgColor((e.target as HTMLInputElement).value)}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            disabled={busy}
+            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+          />
+        </label>
+        {bgColor && <span className={styles.affiliateColorChip} style={{ background: bgColor }} aria-hidden="true" />}
+        <span className={styles.affiliateColorLabel}>{bgColor ? bgColor.toUpperCase() : 'Default (black)'}</span>
+        {bgColor && <button type="button" className={styles.affiliateColorReset} onClick={() => setBgColor(null)} disabled={busy}>Reset</button>}
+      </div>
+
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button type="button" onClick={close} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
+        <button type="button" onClick={save} disabled={busy} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {staff.length > 0 && (
+      {(staff.length > 0 || mode === 'new') && (
         <div className={styles.staffGrid}>
-          {staff.map((s) => (
-            <div key={s.id} className={styles.staffCard}>
+          {staff.map((s) => {
+            if (mode === s.id) return <div key={s.id} className={styles.affiliateEditCell}>{editorCard}</div>;
+            const light = isLightHex(s.bgColor);
+            const nameColor = s.bgColor ? (light ? '#141414' : '#fff') : undefined;
+            const posColor = s.bgColor ? (light ? 'rgba(0,0,0,.62)' : undefined) : undefined;
+            const actionBtnStyle: React.CSSProperties | undefined = s.bgColor
+              ? { background: light ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.14)', color: light ? '#141414' : '#fff' }
+              : undefined;
+            return (
+            <div key={s.id} className={styles.staffCard} style={s.bgColor ? { background: s.bgColor } : undefined}>
               {s.photo && onPhotoClick ? (
                 <button type="button" onClick={() => onPhotoClick(s.photo!)} className={styles.staffPhotoBtn} aria-label={`View ${s.name}'s photo`}>
                   <EntryImage src={s.photo} name={s.name} size={121} />
@@ -3902,48 +3962,20 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
               ) : (
                 <EntryImage src={s.photo} name={s.name} size={121} />
               )}
-              <div className={styles.staffName}>{s.name}</div>
-              {s.position && <div className={styles.staffPosition}>{s.position}</div>}
+              <div className={styles.staffName} style={nameColor ? { color: nameColor } : undefined}>{s.name}</div>
+              {s.position && <div className={styles.staffPosition} style={posColor ? { color: posColor } : undefined}>{s.position}</div>}
               {isOwnProfile && (
                 <div className={styles.entryCardActions}>
-                  <button type="button" onClick={() => openEdit(s)} className={styles.entryEditBtn} title="Edit" aria-label="Edit team member">
+                  <button type="button" onClick={() => openEdit(s)} className={styles.entryEditBtn} title="Edit" aria-label="Edit team member" style={actionBtnStyle}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
-                  <button type="button" onClick={() => remove(s)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove team member">✕</button>
+                  <button type="button" onClick={() => remove(s)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove team member" style={actionBtnStyle}>✕</button>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      )}
-
-      {isOwnProfile && mode && (
-        <div className={styles.testimonialAddForm}>
-          <div className={styles.entryFormRow}>
-            <div className={styles.entryPhotoCol}>
-              <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.entryPhotoPick} aria-label="Add photo (optional)">
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                ) : (
-                  <span>Photo<br /><small>optional</small></span>
-                )}
-              </button>
-              {photo && <button type="button" onClick={() => setPhoto(null)} disabled={busy} className={styles.entryPhotoClear}>Remove photo</button>}
-            </div>
-            <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; if (f) setCropFile(f); e.currentTarget.value = ''; }} />
-            <div style={{ flex: 1 }}>
-              <div className={styles.testimonialAddFormLabel}>Name</div>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jordan Reyes" className={styles.testimonialAddInput} disabled={busy} />
-              <div className={styles.testimonialAddFormLabel}>Job position</div>
-              <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. MC / Host" className={styles.testimonialAddInput} disabled={busy} />
-            </div>
-          </div>
-          {error && <div className={styles.testimonialAddError}>{error}</div>}
-          <div className={styles.testimonialAddActions}>
-            <button type="button" onClick={close} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
-            <button type="button" onClick={save} disabled={busy} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
-          </div>
+            );
+          })}
+          {mode === 'new' && <div className={styles.affiliateEditCell}>{editorCard}</div>}
         </div>
       )}
 
