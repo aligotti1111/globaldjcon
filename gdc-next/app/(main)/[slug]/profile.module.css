@@ -2949,7 +2949,54 @@ a.affiliateImgTop:hover { opacity: .9; }
   margin-top: .2rem;
 }
 
+/* Affiliate add/edit form — half width on desktop so it doesn't sprawl. */
+.affiliateEditForm { max-width: 560px; }
+
+/* Card background color picker (affiliate editor). */
+.affiliateColorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+.affiliateSwatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .1s, border-color .1s;
+}
+.affiliateSwatch:hover { transform: scale(1.08); }
+.affiliateSwatchOn {
+  border-color: var(--neon, #00e0a4);
+  box-shadow: 0 0 0 2px var(--neon, #00e0a4);
+}
+.affiliateSwatchNone { color: var(--muted, #8a8aa0); font-size: 1rem; line-height: 1; }
+.affiliateSwatchCustom {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, .35);
+  color: var(--neon, #00e0a4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  overflow: hidden;
+}
+
 @media (max-width: 900px) {
   .staffGrid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .9rem; }
-  .affiliateList { grid-template-columns: 1fr; }
+  /* One centered, capped card on mobile so the top image isn't full-bleed huge. */
+  .affiliateList { grid-template-columns: 1fr; justify-content: stretch; }
+  .affiliateCard { max-width: 340px; margin: 0 auto; }
+  .affiliateImgTop { aspect-ratio: 16 / 9; }
+  .affiliateEditForm { max-width: none; }
 }
