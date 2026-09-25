@@ -21,7 +21,7 @@ import { canCreateAlbums, albumLimitForTier, newAlbumId, type Album } from '@/li
 import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 import { mobEventLabel, type CustomEventType } from '@/lib/constants';
 import {
-  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf, normalizeUrl, safeHexColor,
+  STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf, normalizeUrl, safeHexColor, isLightHex,
   type StaffMember, type Affiliate,
 } from '@/lib/staff';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
@@ -3983,16 +3983,6 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Card background presets — brand-dark shades plus a couple of tints. null =
-  // the default (site black). Owners can also pick any custom color.
-  const BG_PRESETS: { label: string; value: string | null }[] = [
-    { label: 'Default', value: null },
-    { label: 'Charcoal', value: '#14141c' },
-    { label: 'Slate', value: '#1b2230' },
-    { label: 'Plum', value: '#221523' },
-    { label: 'Deep teal', value: '#08251f' },
-    { label: 'Wine', value: '#2a1016' },
-  ];
 
   function pick(f: File | null) {
     setFile(f);
@@ -4049,7 +4039,18 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
     <>
       {affiliates.length > 0 && (
         <div className={styles.affiliateList}>
-          {affiliates.map((a) => (
+          {affiliates.map((a) => {
+            // Contrast: on a light custom bg, switch text + action buttons to dark
+            // so they don't blend in (and vice-versa on dark).
+            const light = isLightHex(a.bgColor);
+            const nameColor = a.bgColor ? (light ? '#141414' : '#fff') : undefined;
+            const typeColor = a.bgColor ? (light ? '#0a7f63' : undefined) : undefined;
+            const descColor = a.bgColor ? (light ? 'rgba(0,0,0,.62)' : 'rgba(255,255,255,.72)') : undefined;
+            // A chip backdrop so the edit/delete buttons stay visible on any color.
+            const actionBtnStyle: React.CSSProperties | undefined = a.bgColor
+              ? { background: light ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.14)', color: light ? '#141414' : '#fff' }
+              : undefined;
+            return (
             <div key={a.id} className={styles.affiliateCard} style={a.bgColor ? { background: a.bgColor } : undefined}>
               <div className={styles.affiliateMain}>
                 {a.image ? (
@@ -4071,27 +4072,28 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
                 )}
                 <div className={styles.affiliateBody}>
                   {a.url ? (
-                    <a href={a.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateNameLink}>
+                    <a href={a.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateNameLink} style={nameColor ? { color: nameColor } : undefined}>
                       {a.name}
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 6, verticalAlign: 'middle', opacity: .8 }}><path d="M7 17 17 7M8 7h9v9"/></svg>
                     </a>
                   ) : (
-                    <div className={styles.affiliateName}>{a.name}</div>
+                    <div className={styles.affiliateName} style={nameColor ? { color: nameColor } : undefined}>{a.name}</div>
                   )}
-                  {a.companyType && <div className={styles.affiliateType}>{a.companyType}</div>}
-                  {a.description && <div className={styles.affiliateDesc}>{a.description}</div>}
+                  {a.companyType && <div className={styles.affiliateType} style={typeColor ? { color: typeColor } : undefined}>{a.companyType}</div>}
+                  {a.description && <div className={styles.affiliateDesc} style={descColor ? { color: descColor } : undefined}>{a.description}</div>}
                 </div>
               </div>
               {isOwnProfile && (
                 <div className={styles.entryCardActions}>
-                  <button type="button" onClick={() => openEdit(a)} className={styles.entryEditBtn} title="Edit" aria-label="Edit affiliate">
+                  <button type="button" onClick={() => openEdit(a)} className={styles.entryEditBtn} title="Edit" aria-label="Edit affiliate" style={actionBtnStyle}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
-                  <button type="button" onClick={() => remove(a)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove affiliate">✕</button>
+                  <button type="button" onClick={() => remove(a)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove affiliate" style={actionBtnStyle}>✕</button>
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -4120,25 +4122,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
 
           <div className={styles.testimonialAddFormLabel}>Card background <span style={{ opacity: .6 }}>(optional)</span></div>
           <div className={styles.affiliateColorRow}>
-            {BG_PRESETS.map((c) => {
-              const selected = (bgColor || null) === c.value;
-              return (
-                <button
-                  key={c.label}
-                  type="button"
-                  title={c.label}
-                  aria-label={c.label}
-                  onClick={() => setBgColor(c.value)}
-                  disabled={busy}
-                  className={`${styles.affiliateSwatch} ${selected ? styles.affiliateSwatchOn : ''}`}
-                  style={{ background: c.value || '#000' }}
-                >
-                  {c.value === null && <span className={styles.affiliateSwatchNone}>∅</span>}
-                </button>
-              );
-            })}
-            {/* Custom color — native picker. */}
-            <label className={styles.affiliateSwatchCustom} title="Custom color">
+            <label className={styles.affiliateColorWheel} title="Pick a color" style={bgColor ? { background: bgColor } : undefined}>
               <input
                 type="color"
                 value={safeHexColor(bgColor) || '#141414'}
@@ -4146,8 +4130,18 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
                 disabled={busy}
                 style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
               />
-              <span aria-hidden="true">+</span>
+              {!bgColor && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18 3 3 0 0 0 0-6 2 2 0 0 1 0-4 3 3 0 0 0 0-6z" fill="currentColor" stroke="none" opacity=".35" />
+                </svg>
+              )}
             </label>
+            <span className={styles.affiliateColorLabel}>{bgColor ? bgColor.toUpperCase() : 'Default (black)'}</span>
+            {bgColor && (
+              <button type="button" className={styles.affiliateColorReset} onClick={() => setBgColor(null)} disabled={busy}>
+                Reset
+              </button>
+            )}
           </div>
 
           {error && <div className={styles.testimonialAddError}>{error}</div>}
