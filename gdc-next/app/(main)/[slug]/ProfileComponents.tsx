@@ -4037,14 +4037,18 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
 
   // The editor lives INSIDE a card shell (same box as the display card) so a DJ
   // edits the affiliate right where it shows — no separate form below.
+  const editLight = isLightHex(bgColor);
   const editorCard = (
-    <div className={`${styles.affiliateCard} ${styles.affiliateCardEditing}`}>
+    <div
+      className={`${styles.affiliateCard} ${styles.affiliateCardEditing} ${editLight ? styles.affiliateCardEditingLight : ''}`}
+      style={bgColor ? { background: bgColor } : undefined}
+    >
       <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={styles.affiliateImgTop} style={{ cursor: 'pointer', padding: 0, marginBottom: '.85rem' }} aria-label="Add image (optional)">
         {shownPreview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={shownPreview} alt="" />
         ) : (
-          <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)' }}>Image<br /><small style={{ fontSize: '.65rem' }}>optional</small></span>
+          <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase' }}>Image<br /><small style={{ fontSize: '.65rem' }}>optional</small></span>
         )}
       </button>
       {shownPreview && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear} style={{ marginBottom: '.6rem' }}>Remove image</button>}
