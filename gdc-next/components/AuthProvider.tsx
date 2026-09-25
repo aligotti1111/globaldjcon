@@ -28,6 +28,7 @@
 // from re-firing on subsequent page loads after the user dismisses it.
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { CurrentUser, UserProfile } from '@/types/db';
 
@@ -103,6 +104,7 @@ export function AuthProvider({
   children: React.ReactNode;
   initialUser?: CurrentUserWithVerified | null;
 }) {
+  const router = useRouter();
   const [user, setUser] = useState<CurrentUserWithVerified | null>(initialUser);
   const [loading, setLoading] = useState(false);
   // Tracks whether the current user's verification banner has been
@@ -192,8 +194,14 @@ export function AuthProvider({
     // We DON'T eagerly call loadUser() on mount — initialUser is already
     // populated from the server, so a redundant fetch would just cost
     // extra latency without changing what's rendered.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       loadUser();
+      // On sign-out (including one triggered in ANOTHER tab, which Supabase
+      // broadcasts here), the client header updates but any server-rendered
+      // page still shows its authed content until something re-fetches it.
+      // Refresh so server components re-run — their auth guards then redirect
+      // a signed-out viewer off protected pages instead of leaving stale data.
+      if (event === 'SIGNED_OUT') router.refresh();
     });
 
     return () => {
