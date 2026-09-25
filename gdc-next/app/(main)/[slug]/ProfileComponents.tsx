@@ -3807,32 +3807,30 @@ async function uploadEntryImage(
 function EntryImage({ src, name, size, square }: { src?: string | null; name: string; size: number; square?: boolean }) {
   const radius = square ? 12 : '50%';
   if (src) {
-    // Bulletproof square, whatever the card width:
-    //  - OUTER caps the size at `size` and centers it, but shrinks to 100% when
-    //    the card is narrower than `size` (so it can NEVER be wider than the
-    //    card and get its sides clipped flat).
-    //  - INNER is width:100% with padding-bottom:100% (a % padding is measured
-    //    against the outer's WIDTH), so its height always equals its width — a
-    //    perfect square, hence a true circle at radius 50%. The padding trick
-    //    can't collapse to zero the way `aspect-ratio` did.
-    // The photo is a BACKGROUND (no <img>) so nothing can leak its proportions.
+    // A fixed square in exact pixels: width === height, so it is ALWAYS a
+    // perfect square and a 50% radius is ALWAYS a true circle. Fixed px can't
+    // collapse (the way padding-bottom/aspect-ratio did inside the flex card),
+    // and boxSizing:border-box keeps the 1px border from making it wider than
+    // tall. `size` is kept comfortably smaller than the card so nothing clips
+    // its left/right edges. Photo is a BACKGROUND (no <img>) so nothing can
+    // leak the photo's own proportions in.
     return (
-      <span style={{ display: 'block', flex: 'none', width: '100%', maxWidth: size, margin: '0 auto' }}>
-        <span
-          role="img"
-          aria-label={name}
-          style={{
-            display: 'block', position: 'relative',
-            width: '100%', height: 0, paddingBottom: '100%',
-            borderRadius: radius, overflow: 'hidden',
-            border: '1px solid rgba(255,255,255,.12)',
-            backgroundImage: `url("${thumbUrl(src, 400)}")`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
-      </span>
+      <span
+        role="img"
+        aria-label={name}
+        style={{
+          display: 'block', flex: 'none', boxSizing: 'border-box',
+          width: size, height: size,
+          minWidth: size, maxWidth: size, minHeight: size, maxHeight: size,
+          margin: '0 auto',
+          borderRadius: radius, overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,.12)',
+          backgroundImage: `url("${thumbUrl(src, 400)}")`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
     );
   }
   return (
@@ -3979,10 +3977,10 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
             <div key={s.id} className={styles.staffCard} style={s.bgColor ? { background: s.bgColor } : undefined}>
               {s.photo ? (
                 <button type="button" onClick={() => setViewSrc(s.photo!)} className={styles.staffPhotoBtn} aria-label={`View ${s.name}'s photo`}>
-                  <EntryImage src={s.photo} name={s.name} size={121} />
+                  <EntryImage src={s.photo} name={s.name} size={96} />
                 </button>
               ) : (
-                <EntryImage src={s.photo} name={s.name} size={121} />
+                <EntryImage src={s.photo} name={s.name} size={96} />
               )}
               <div className={styles.staffName} style={nameColor ? { color: nameColor } : undefined}>{s.name}</div>
               {s.position && <div className={styles.staffPosition} style={posColor ? { color: posColor } : undefined}>{s.position}</div>}
