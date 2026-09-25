@@ -730,6 +730,21 @@ const LANDING_BODY = String.raw`
   </div>
 </section>
 
+<!-- BOOKING REQUESTED — photo of a client requesting a booking, under the
+     booking-process/dashboard section. -->
+<section id="bookingrequested" style="padding:16px 0 44px">
+  <div class="wrap">
+    <div class="shead reveal">
+      <div class="label">Your link. Their request.</div>
+      <h2>BOOKING REQUESTED</h2>
+      <p>One tap on your link or QR code and a client sends a booking request straight to your dashboard.</p>
+    </div>
+    <div class="reveal" style="display:flex;justify-content:center">
+      <img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async" style="width:100%;max-width:340px;height:auto;border-radius:22px;box-shadow:0 24px 64px rgba(0,0,0,.55)">
+    </div>
+  </div>
+</section>
+
 <!-- FEATURES -->
 <section id="features">
   <div class="wrap">
