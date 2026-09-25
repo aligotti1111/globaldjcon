@@ -3976,9 +3976,20 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
             return (
             <div key={s.id} className={styles.staffCard} style={s.bgColor ? { background: s.bgColor } : undefined}>
               {s.photo ? (
-                <button type="button" onClick={() => setViewSrc(s.photo!)} className={styles.staffPhotoBtn} aria-label={`View ${s.name}'s photo`}>
+                // NOTE: this wrapper is a <span>, not a <button>. A <button>
+                // clips its content to its own box, so when the card got narrow
+                // the button sheared the left/right off the circle (flat sides).
+                // A plain inline-block span never clips its child.
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setViewSrc(s.photo!)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewSrc(s.photo!); } }}
+                  aria-label={`View ${s.name}'s photo`}
+                  style={{ display: 'inline-block', flex: 'none', cursor: 'zoom-in', lineHeight: 0 }}
+                >
                   <EntryImage src={s.photo} name={s.name} size={96} />
-                </button>
+                </span>
               ) : (
                 <EntryImage src={s.photo} name={s.name} size={96} />
               )}
