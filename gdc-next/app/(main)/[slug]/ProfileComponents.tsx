@@ -4256,12 +4256,21 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
             </div>
             );
           })}
-          {/* Adding a new one → an editor card at the end of the grid. */}
-          {mode === 'new' && <div className={styles.affiliateEditCell}>{editorCard}</div>}
+          {/* Inline "+" tile to the RIGHT of the cards once at least one exists. */}
+          {isOwnProfile && !mode && affiliates.length > 0 && affiliates.length < AFFILIATES_MAX && (
+            <button type="button" onClick={openNew} className={styles.staffAddTile} aria-label="Add affiliate">
+              <span aria-hidden="true">+</span>
+            </button>
+          )}
+          {/* Adding a new one → the editor renders as a normal grid item so it
+              opens NEXT TO the existing card(s), not full-width below. */}
+          {mode === 'new' && editorCard}
         </div>
       )}
 
-      {isOwnProfile && !mode && affiliates.length < AFFILIATES_MAX && (
+      {/* Full-width button only when there are none yet; the inline "+" tile
+          handles adding more once at least one affiliate exists. */}
+      {isOwnProfile && !mode && affiliates.length === 0 && (
         <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add affiliate</button>
       )}
       {error && !mode && <div className={styles.testimonialAddError} style={{ marginTop: '.5rem' }}>{error}</div>}
