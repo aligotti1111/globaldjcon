@@ -2916,7 +2916,7 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateName,
 .affiliateNameLink {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.15rem;
+  font-size: 1.6rem;
   letter-spacing: .03em;
   color: var(--white);
   line-height: 1.1;
@@ -2937,16 +2937,16 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateImgLink:hover { opacity: .85; }
 .affiliateType {
   font-family: 'Space Mono', monospace;
-  font-size: .64rem;
+  font-size: .78rem;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--neon);
 }
 .affiliateDesc {
-  font-size: .82rem;
+  font-size: .95rem;
   color: var(--muted);
-  line-height: 1.45;
-  margin-top: .15rem;
+  line-height: 1.5;
+  margin-top: .2rem;
 }
 
 @media (max-width: 900px) {
