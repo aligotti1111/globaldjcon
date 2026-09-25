@@ -3812,7 +3812,7 @@ function EntryImage({ src, name, size, square }: { src?: string | null; name: st
       <img
         src={thumbUrl(src, 400)}
         alt={name}
-        style={{ width: size, height: size, objectFit: 'cover', borderRadius: radius, border: '1px solid rgba(255,255,255,.12)' }}
+        style={{ width: size, height: 'auto', maxWidth: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: radius, border: '1px solid rgba(255,255,255,.12)' }}
       />
     );
   }
@@ -3820,7 +3820,7 @@ function EntryImage({ src, name, size, square }: { src?: string | null; name: st
     <div
       aria-hidden="true"
       style={{
-        width: size, height: size, borderRadius: radius,
+        width: size, height: 'auto', maxWidth: '100%', aspectRatio: '1 / 1', borderRadius: radius,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)',
         color: 'var(--neon,#00e0a4)', fontFamily: "'Bebas Neue', sans-serif",
