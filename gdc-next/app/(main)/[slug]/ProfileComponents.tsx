@@ -3807,22 +3807,29 @@ async function uploadEntryImage(
 function EntryImage({ src, name, size, square }: { src?: string | null; name: string; size: number; square?: boolean }) {
   const radius = square ? 12 : '50%';
   if (src) {
+    // The photo is painted as a BACKGROUND on a hard-locked square box. Every
+    // dimension (width/height AND their min/max) is pinned to the same pixel
+    // value, so no flex stretch, container rule, or stray `img {}` stylesheet
+    // rule can make it wider than tall — a 50% radius on a locked square is
+    // always a true circle. background-size:cover fills it; no <img> element
+    // means nothing can leak the photo's own proportions in.
     return (
-      // A fixed square frame (never taller than its container) that clips the
-      // photo — guarantees a perfect circle/square whatever the image's shape.
       <span
+        role="img"
+        aria-label={name}
         style={{
-          display: 'block', width: size, height: size, flex: 'none',
-          borderRadius: radius, overflow: 'hidden', border: '1px solid rgba(255,255,255,.12)',
+          display: 'block', flex: 'none',
+          width: size, height: size,
+          minWidth: size, maxWidth: size,
+          minHeight: size, maxHeight: size,
+          borderRadius: radius, overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,.12)',
+          backgroundImage: `url("${thumbUrl(src, 400)}")`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
         }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={thumbUrl(src, 400)}
-          alt={name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 'inherit' }}
-        />
-      </span>
+      />
     );
   }
   return (
