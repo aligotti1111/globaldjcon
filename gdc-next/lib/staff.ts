@@ -29,6 +29,20 @@ export function safeHexColor(raw: unknown): string | null {
   return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s) ? s : null;
 }
 
+/** True when a hex color is light enough that dark text reads better on it.
+ *  Uses perceived luminance (sRGB). Falls back to false (dark) on bad input. */
+export function isLightHex(hex: string | null | undefined): boolean {
+  const c = safeHexColor(hex);
+  if (!c) return false;
+  let h = c.slice(1);
+  if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  // Rec. 601 luma, 0–255. > ~150 reads as "light".
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 150;
+}
+
 // Normalize a user-entered website into a safe http(s) URL, or '' if invalid.
 // Bare domains (e.g. "bloomco.com") get https:// prepended. Only http/https
 // are allowed — anything else (javascript:, mailto:, etc.) is rejected.
