@@ -209,48 +209,37 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           {/* ── Bookings ── */}
           {/* Booking Settings lives here, not under Settings. A DJ looking for
               it is thinking about bookings, not about their account — grouping
-              by what you're doing beats grouping by what kind of page it is. */}
-          {(bookingEnabled || isTeammate) && (
-            <>
-              <div className="hdr-dj-menu-sep" />
-              <div style={sectionLabelStyle}>Bookings</div>
-              <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Dashboard
-              </Link>
-              <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Past Bookings
-              </Link>
-              {canAddBookings && (
-                <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                  Add Booking Manually
-                </Link>
-              )}
-              {/* Booking Settings is owner-only — hidden from teammates. */}
-              {!isTeammate && (
-                <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                  Booking Settings
-                </Link>
-              )}
-              {/* Discounts shortcut — owner/admin/manager. Jumps straight to the
-                  Discounts box. Teammates who can't open Booking Settings still
-                  get here (the target renders a discounts-only view for them). */}
-              {canMakeDiscounts && (
-                <Link href="/booking-settings?section=discounts" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                  Add Discount / Promo Code
-                </Link>
-              )}
-            </>
-          )}
+              by what you're doing beats grouping by what kind of page it is.
 
-          {/* Booking Settings still reachable when bookings aren't switched on
-              — that page is where you'd go to set them up. Owner-only. */}
-          {!bookingEnabled && !isTeammate && (
-            <>
-              <div className="hdr-dj-menu-sep" />
-              <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Booking Settings
-              </Link>
-            </>
+              Dashboard + Past Bookings ALWAYS show for a DJ account — a DJ whose
+              plan has lapsed still needs to reach their records. Only the
+              actions that create/charge (Add Manually, discounts) are gated on a
+              live plan. */}
+          <div className="hdr-dj-menu-sep" />
+          <div style={sectionLabelStyle}>Bookings</div>
+          <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Dashboard
+          </Link>
+          <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            Past Bookings
+          </Link>
+          {(bookingEnabled || isTeammate) && canAddBookings && (
+            <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Add Booking Manually
+            </Link>
+          )}
+          {/* Booking Settings is owner-only — hidden from teammates. Shown
+              whether or not bookings are live (it's where you set them up). */}
+          {!isTeammate && (
+            <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Booking Settings
+            </Link>
+          )}
+          {/* Discounts shortcut — owner/admin/manager, live plan only. */}
+          {(bookingEnabled || isTeammate) && canMakeDiscounts && (
+            <Link href="/booking-settings?section=discounts" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Add Discount / Promo Code
+            </Link>
           )}
 
           {/* ── Account ── */}
