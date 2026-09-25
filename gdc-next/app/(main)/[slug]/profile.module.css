@@ -1119,7 +1119,7 @@
   align-items: center;
   gap: 8px;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1rem;
+  font-size: 1.3rem;
   letter-spacing: .06em;
   text-transform: uppercase;
   padding: .6rem 1rem;
@@ -1912,9 +1912,11 @@
 .aboutStatLabel {
   order: 1;
   flex: 1 1 auto;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .08em;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: .05em;
+  line-height: 1.1;
   text-transform: uppercase;
   color: var(--white);
 }
@@ -2223,8 +2225,8 @@
   .tabBtn {
     /* Compact on mobile: smaller text + tighter padding so more tabs fit
        (the row scrolls sideways if they still overflow). */
-    font-size: .74rem;
-    letter-spacing: .08em;
+    font-size: 1.05rem;
+    letter-spacing: .05em;
     padding: .5rem .55rem;
     gap: 6px;
   }
