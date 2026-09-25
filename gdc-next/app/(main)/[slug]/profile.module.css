@@ -2983,7 +2983,9 @@ a.affiliateImgTop:hover { opacity: .9; }
    the editor gets comfortable width, capped and left-aligned. */
 .affiliateEditCell { grid-column: 1 / -1; }
 .affiliateCardEditing {
-  max-width: 380px;
+  grid-column: span 2;
+  min-width: 240px;
+  max-width: none;
   gap: .3rem;
   padding: .85rem .9rem;
 }
@@ -3007,9 +3009,14 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateCardEditingLight .testimonialAddCancel { border-color: rgba(0, 0, 0, .35); color: rgba(0, 0, 0, .7); }
 .affiliateCardEditingLight .entryPhotoPick { border-color: rgba(0, 0, 0, .22); background: rgba(0, 0, 0, .05); }
 
-/* Staff inline editor — the member card becomes its editor. */
+/* Staff inline editor — the member card becomes its editor. It spans two grid
+   columns and holds a comfortable minimum width so the fields never get
+   crushed into a single narrow track; it sits to the right of the first card
+   when the row has room, and wraps to its own line when it doesn't. */
 .staffCardEditing {
-  max-width: 300px;
+  grid-column: span 2;
+  min-width: 240px;
+  max-width: none;
   align-items: stretch;
   text-align: left;
   gap: .3rem;
