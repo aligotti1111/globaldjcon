@@ -3807,21 +3807,20 @@ async function uploadEntryImage(
 function EntryImage({ src, name, size, square }: { src?: string | null; name: string; size: number; square?: boolean }) {
   const radius = square ? 12 : '50%';
   if (src) {
-    // The photo is painted as a BACKGROUND on a box that fills the available
-    // width (capped at `size`) and takes its HEIGHT from that width via
-    // aspect-ratio 1/1. Because height always tracks width, the box is always a
-    // perfect square — so a 50% radius is always a true circle — and because it
-    // never exceeds 100% of its container, the card can never clip its left/
-    // right edges into flat sides. No <img> element means nothing can leak the
-    // photo's own proportions in.
+    // The photo is painted as a BACKGROUND on a box whose width and height are
+    // pinned to the SAME pixel value (and boxSizing: border-box so the 1px
+    // border is included, never added on top to make it wider than tall). A
+    // locked square means a 50% radius is always a true circle. No <img>
+    // element means nothing can leak the photo's own proportions in.
     return (
       <span
         role="img"
         aria-label={name}
         style={{
-          display: 'block', flex: 'none',
-          width: '100%', maxWidth: size,
-          aspectRatio: '1 / 1',
+          display: 'block', flex: 'none', boxSizing: 'border-box',
+          width: size, height: size,
+          minWidth: size, maxWidth: size,
+          minHeight: size, maxHeight: size,
           borderRadius: radius, overflow: 'hidden',
           border: '1px solid rgba(255,255,255,.12)',
           backgroundImage: `url("${thumbUrl(src, 400)}")`,
