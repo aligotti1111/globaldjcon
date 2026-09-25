@@ -55,42 +55,63 @@ export function isSetupComplete(djType: string | null, f: Flags): boolean {
 }
 
 // The full step list for the DJ's type, mirroring the in-app SetupChecklist.
-// Only the data-driven steps (packages / equipment / payments) can be confirmed
-// from the server; the rest are shown as remaining steps to complete.
-export interface Step { label: string; done: boolean; }
+// IMPORTANT: only the data-driven steps (packages / equipment / payments) can be
+// confirmed from the SERVER. The in-app checklist marks the others (settings,
+// contracts, rider, guest list, planner) "done" from BROWSER localStorage, which
+// this email — running server-side — can't see. So we mark those `optional`: they
+// still appear for context, but they are NEVER claimed as incomplete and never
+// counted toward the "X steps away" number. That keeps the count accurate.
+export interface Step { label: string; done: boolean; optional?: boolean; }
 export function stepsFor(djType: string | null, f: Flags): Step[] {
   if (djType === 'club') {
     return [
-      { label: 'Settings', done: false },
+      { label: 'Settings', done: false, optional: true },
       { label: 'Equipment & Rates', done: f.hasEquip },
-      { label: 'Contracts', done: false },
-      { label: 'DJ Rider', done: false },
-      { label: 'Guest List', done: false },
+      { label: 'Contracts', done: false, optional: true },
+      { label: 'DJ Rider', done: false, optional: true },
+      { label: 'Guest List', done: false, optional: true },
       { label: 'Payments', done: f.hasPayment },
     ];
   }
   return [
-    { label: 'Settings', done: false },
+    { label: 'Settings', done: false, optional: true },
     { label: 'Packages', done: f.hasPackage },
-    { label: 'Contracts', done: false },
+    { label: 'Contracts', done: false, optional: true },
     { label: 'Payments', done: f.hasPayment },
-    { label: 'Planner & Playlist', done: false },
+    { label: 'Planner & Playlist', done: false, optional: true },
   ];
 }
 
-// How many steps still remain (for the "X steps away" copy).
+// How many REQUIRED (server-verifiable) steps still remain — the "X steps away"
+// copy. Optional steps are excluded so the count never overstates what's left.
 export function remainingCount(steps: Step[]): number {
-  return steps.filter((s) => !s.done).length;
+  return steps.filter((s) => !s.optional && !s.done).length;
 }
 
-// Renders the steps as a vertical checklist (top-to-bottom).
+// Renders the steps as a vertical checklist (top-to-bottom). Required steps show
+// a check when done / a number when not; optional steps show a neutral dot and an
+// "Optional" tag — never a "not done" state we can't actually verify.
 export function checklistHtml(steps: Step[]): string {
+  let reqNum = 0;
   const rows = steps
-    .map((s, i) => {
-      const circle = s.done
-        ? `<td width="30" valign="middle" style="padding:6px 12px 6px 0;"><div style="width:24px;height:24px;border-radius:50%;background:#00c9a7;color:#04121a;font-weight:700;font-size:13px;line-height:24px;text-align:center;font-family:Arial,sans-serif;">&#10003;</div></td>`
-        : `<td width="30" valign="middle" style="padding:6px 12px 6px 0;"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid #c7c7cf;color:#9a9aa5;font-weight:700;font-size:12px;line-height:20px;text-align:center;font-family:Arial,sans-serif;">${i + 1}</div></td>`;
-      const label = `<td valign="middle" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;color:${s.done ? '#0a6f61' : '#1a1a2e'};font-weight:${s.done ? 600 : 500};padding:6px 0;">${s.label}${s.done ? ' <span style="color:#00a98f;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Done</span>' : ''}</td>`;
+    .map((s) => {
+      let circle: string;
+      if (s.optional) {
+        circle = `<td width="30" valign="middle" style="padding:6px 12px 6px 0;"><div style="width:8px;height:8px;border-radius:50%;background:#c7c7cf;margin:7px;"></div></td>`;
+      } else if (s.done) {
+        circle = `<td width="30" valign="middle" style="padding:6px 12px 6px 0;"><div style="width:24px;height:24px;border-radius:50%;background:#00c9a7;color:#04121a;font-weight:700;font-size:13px;line-height:24px;text-align:center;font-family:Arial,sans-serif;">&#10003;</div></td>`;
+      } else {
+        reqNum++;
+        circle = `<td width="30" valign="middle" style="padding:6px 12px 6px 0;"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid #c7c7cf;color:#9a9aa5;font-weight:700;font-size:12px;line-height:20px;text-align:center;font-family:Arial,sans-serif;">${reqNum}</div></td>`;
+      }
+      const tag = s.optional
+        ? ' <span style="color:#9a9aa5;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Optional</span>'
+        : s.done
+          ? ' <span style="color:#00a98f;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Done</span>'
+          : '';
+      const color = s.optional ? '#6b6b78' : s.done ? '#0a6f61' : '#1a1a2e';
+      const weight = s.done && !s.optional ? 600 : 500;
+      const label = `<td valign="middle" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;color:${color};font-weight:${weight};padding:6px 0;">${s.label}${tag}</td>`;
       return `<tr>${circle}${label}</tr>`;
     })
     .join('');
@@ -104,7 +125,10 @@ export function reminderEmailHtml(
   heading = 'Finish Setup',
 ): string {
   const ctaHref = `${SITE_URL}/booking-settings`;
-  const doneCount = steps.filter((s) => s.done).length;
+  // Count only REQUIRED (server-verifiable) steps — optional steps aren't tracked.
+  const required = steps.filter((s) => !s.optional);
+  const doneCount = required.filter((s) => s.done).length;
+  const totalCount = required.length;
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <tr><td align="center">
@@ -115,7 +139,7 @@ export function reminderEmailHtml(
 <tr><td style="padding:32px;">
 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${heading}</h2>
 <p style="color:#666666;margin-bottom:8px;line-height:1.6;">${message}</p>
-<p style="color:#999999;margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Your setup checklist · ${doneCount} of ${steps.length} done</p>
+<p style="color:#999999;margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Your setup checklist · ${doneCount} of ${totalCount} required done</p>
 ${checklistHtml(steps)}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${ctaHref}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">Finish Setup</a></td></tr></table>
 <p style="text-align:center;margin:18px 0 0;line-height:1.6;">
