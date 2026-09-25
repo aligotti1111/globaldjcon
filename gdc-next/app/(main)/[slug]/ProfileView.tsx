@@ -1934,7 +1934,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 {canEdit ? (
                   <button
                     type="button"
-                    onClick={() => setPhotoManagerOpen(true)}
+                    onClick={() => setAddPhotosOpen(true)}
                     title="Add photos"
                     aria-label="Add photos"
                     style={{
