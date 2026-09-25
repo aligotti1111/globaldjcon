@@ -1939,23 +1939,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     aria-label="Add photos"
                     style={{
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       width: 96,
                       height: 96,
                       margin: '2.5rem auto',
-                      background: 'rgba(0, 245, 196, .08)',
-                      border: '2px solid var(--neon)',
-                      borderRadius: '50%',
+                      background: 'rgba(0, 245, 196, .05)',
+                      border: '2px dashed var(--neon)',
+                      borderRadius: 8,
                       color: 'var(--neon)',
                       cursor: 'pointer',
-                      fontSize: '3rem',
-                      lineHeight: 1,
-                      fontWeight: 300,
                       padding: 0,
                     }}
                   >
-                    +
+                    <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>+</span>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', marginTop: 4 }}>ADD</span>
                   </button>
                 ) : 'Coming Soon'}
               </div>
@@ -2144,7 +2143,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   least one team member is added.
                 </div>
               )}
-              <StaffSection userId={data.id} staff={staffList} isOwnProfile={canEdit} />
+              <StaffSection userId={data.id} staff={staffList} isOwnProfile={canEdit} onPhotoClick={setLightboxSrc} />
             </div>
           )}
 
