@@ -1864,12 +1864,16 @@
   .aboutGrid { grid-template-columns: 1fr; }
 }
 .aboutStatsHeading {
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  letter-spacing: .12em;
+  display: inline-block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: .07em;
   text-transform: uppercase;
-  color: var(--neon);
-  margin-bottom: .75rem;
+  color: #fff;
+  margin-bottom: 1rem;
+  padding-bottom: .4rem;
+  border-bottom: 2px solid var(--neon);
 }
 .aboutStatsHint {
   margin-left: .6rem;
@@ -1907,7 +1911,7 @@
   order: 2;
   flex: 0 0 auto;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 400;
   letter-spacing: .03em;
   color: var(--neon);
@@ -1917,7 +1921,7 @@
   order: 1;
   flex: 1 1 auto;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 400;
   letter-spacing: .05em;
   line-height: 1.1;
