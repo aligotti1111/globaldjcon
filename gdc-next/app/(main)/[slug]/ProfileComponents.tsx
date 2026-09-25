@@ -3967,7 +3967,9 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
       {(staff.length > 0 || mode === 'new') && (
         <div className={styles.staffGrid}>
           {staff.map((s) => {
-            if (mode === s.id) return <div key={s.id} className={styles.affiliateEditCell}>{editorCard}</div>;
+            // display:contents lets editorCard itself be the grid item (spanning
+            // 2 cols, not the full row), so editing looks like the add editor.
+            if (mode === s.id) return <div key={s.id} style={{ display: 'contents' }}>{editorCard}</div>;
             const light = isLightHex(s.bgColor);
             const nameColor = s.bgColor ? (light ? '#141414' : '#fff') : undefined;
             const posColor = s.bgColor ? (light ? 'rgba(0,0,0,.62)' : undefined) : undefined;
@@ -4201,7 +4203,7 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
         <div className={styles.affiliateList}>
           {affiliates.map((a) => {
             // Editing THIS one → the card becomes its editor in place.
-            if (mode === a.id) return <div key={a.id} className={styles.affiliateEditCell}>{editorCard}</div>;
+            if (mode === a.id) return <div key={a.id} style={{ display: 'contents' }}>{editorCard}</div>;
 
             // Contrast: on a light custom bg, switch text + action buttons to dark
             // so they don't blend in (and vice-versa on dark).
