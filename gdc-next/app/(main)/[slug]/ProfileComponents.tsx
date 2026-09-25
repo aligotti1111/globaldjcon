@@ -4004,11 +4004,11 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
           style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
         >
           <span
-            style={{ display: 'block', width: 'min(80vw, 80vh)', height: 'min(80vw, 80vh)', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,.15)' }}
+            style={{ display: 'block', width: 'min(360px, 80vw, 70vh)', height: 'min(360px, 80vw, 70vh)', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={viewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            <img src={viewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
           </span>
         </div>
       )}
