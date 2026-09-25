@@ -4015,7 +4015,10 @@ export function StaffSection({ userId, staff, isOwnProfile, onPhotoClick }: { us
               <span aria-hidden="true">+</span>
             </button>
           )}
-          {mode === 'new' && <div className={styles.affiliateEditCell}>{editorCard}</div>}
+          {/* New-member editor renders as a normal grid item so it appears in
+              the next column — to the RIGHT of the existing card(s) — rather
+              than spanning the full row below them. */}
+          {mode === 'new' && editorCard}
         </div>
       )}
 
