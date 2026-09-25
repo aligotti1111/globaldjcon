@@ -13,6 +13,9 @@ const MUTED = '#5a5a72';
 export type HostStep = PipelineStep & {
   href?: string;
   hrefLabel?: string;
+  /** An optional SECOND action (e.g. a past-event planner: View + Download). */
+  href2?: string;
+  hrefLabel2?: string;
   /** A stage that doesn't apply to this booking — grey, never "your move". */
   muted?: boolean;
 };
@@ -32,6 +35,11 @@ export interface HostPipelineInput {
   depositHref?: string;
   balanceHref?: string;
   plannerHref?: string;
+  /** Download the planner as a PDF (past events → view + download). */
+  plannerDownloadHref?: string;
+  /** The event has already happened — planner becomes view-only, 100%, with a
+   *  download. Past Events passes this; Upcoming Events leaves it false. */
+  isPast?: boolean;
   /** Download a receipt for an already-settled balance (past bookings). */
   balanceReceiptHref?: string;
   /** Download a receipt for an already-settled deposit. */
@@ -42,7 +50,7 @@ function step(
   key: string,
   label: string,
   icon: PipelineStep['icon'],
-  opts: { done?: boolean; muted?: boolean; caption: string; href?: string; hrefLabel?: string },
+  opts: { done?: boolean; muted?: boolean; caption: string; href?: string; hrefLabel?: string; href2?: string; hrefLabel2?: string },
 ): HostStep {
   const done = !!opts.done;
   return {
@@ -56,6 +64,7 @@ function step(
     caption: opts.caption,
     muted: opts.muted,
     ...(opts.href ? { href: opts.href, hrefLabel: opts.hrefLabel } : {}),
+    ...(opts.href2 ? { href2: opts.href2, hrefLabel2: opts.hrefLabel2 } : {}),
   };
 }
 
@@ -101,6 +110,13 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
       : step('song_list', 'Rider', 'music', { muted: true, caption: 'Pending' }));
   } else if (i.plannerStatus == null) {
     out.push(step('song_list', 'Planner & Playlist', 'music', { muted: true, caption: 'Not Requested' }));
+  } else if (i.isPast) {
+    // Past event → the planner is done. View-only (100%) with a download.
+    out.push(step('song_list', 'Planner & Playlist', 'music', {
+      done: true, caption: '100%',
+      href: i.plannerHref, hrefLabel: 'View Planner',
+      href2: i.plannerDownloadHref, hrefLabel2: 'Download PDF',
+    }));
   } else if (i.plannerStatus === 'submitted') {
     out.push(step('song_list', 'Planner & Playlist', 'music', {
       done: true, caption: 'Complete', href: i.plannerHref, hrefLabel: 'View Planner',
