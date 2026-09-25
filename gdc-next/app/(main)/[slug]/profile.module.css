@@ -2619,7 +2619,9 @@
   gap: 2px;
 }
 .shareMenuItem {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   text-align: left;
   background: transparent;
@@ -2635,6 +2637,15 @@
   white-space: nowrap;
 }
 .shareMenuItem:hover { background: rgba(255, 255, 255, .08); color: var(--neon); }
+.shareMenuIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex: none;
+  color: var(--neon);
+}
+.shareMenuIcon svg { display: block; }
 @media (max-width: 700px) {
   .underBannerShareBtn {
     margin-left: .5rem;
@@ -2841,6 +2852,22 @@
   transition: opacity .15s;
 }
 .staffPhotoBtn:hover { opacity: .88; }
+/* Inline "+" tile to add another staff member, sized like a staff card. */
+.staffAddTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  background: rgba(255, 255, 255, .03);
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  color: var(--neon);
+  font-size: 2.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.staffAddTile:hover { border-color: var(--neon); background: rgba(0, 224, 164, .06); }
 
 .staffName {
   font-family: 'Bebas Neue', sans-serif;
@@ -3042,8 +3069,10 @@ a.affiliateImgTop:hover { opacity: .9; }
   .staffGrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .9rem; }
   /* A staff card being edited spans the full row so its fields aren't crushed. */
   .staffCardEditing { max-width: none; }
-  /* One centered, capped card on mobile so the top image isn't full-bleed huge. */
-  .affiliateList { grid-template-columns: 1fr; justify-content: stretch; }
-  .affiliateCard { max-width: 340px; margin: 0 auto; }
+  /* Two smaller cards per row on mobile so more fit on screen at once. */
+  .affiliateList { grid-template-columns: repeat(2, 1fr); justify-content: stretch; gap: .75rem; }
+  .affiliateCard { max-width: none; margin: 0; }
+  /* A card being edited spans the full row so its fields aren't crushed. */
+  .affiliateEditCell { grid-column: 1 / -1; }
   .affiliateEditForm { max-width: none; }
 }
