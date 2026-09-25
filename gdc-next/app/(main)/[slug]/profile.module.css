@@ -2860,7 +2860,10 @@
 /* Affiliates: stacked list of cards — image left, text right. */
 .affiliateList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* Fixed-width cards, left-aligned — a single affiliate must NOT stretch to
+     the full row width (that blew the image up to full-page size). */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 280px));
+  justify-content: start;
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -2875,8 +2878,33 @@
 }
 .affiliateMain {
   display: flex;
-  gap: 1rem;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: .85rem;
+  align-items: stretch;
+}
+/* Big image on top, spanning the card width. */
+.affiliateImgTop {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .12);
+  transition: opacity .15s;
+}
+.affiliateImgTop img { width: 100%; height: 100%; object-fit: cover; display: block; }
+a.affiliateImgTop:hover { opacity: .9; }
+.affiliateImgFallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon, #00e0a4);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: .03em;
 }
 .affiliateBody {
   flex: 1;
