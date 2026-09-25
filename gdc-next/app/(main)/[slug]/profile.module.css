@@ -2978,6 +2978,20 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateCardEditingLight .entryPhotoClear { color: rgba(0, 0, 0, .6) !important; }
 .affiliateCardEditingLight .affiliateImgTop { border-color: rgba(0, 0, 0, .22); background: rgba(0, 0, 0, .05); }
 .affiliateCardEditingLight .testimonialAddCancel { border-color: rgba(0, 0, 0, .35); color: rgba(0, 0, 0, .7); }
+.affiliateCardEditingLight .entryPhotoPick { border-color: rgba(0, 0, 0, .22); background: rgba(0, 0, 0, .05); }
+
+/* Staff inline editor — the member card becomes its editor. */
+.staffCardEditing {
+  max-width: 300px;
+  align-items: stretch;
+  text-align: left;
+  gap: .3rem;
+}
+.staffCardEditing .entryPhotoPick { margin: 0 auto .6rem; }
+.staffCardEditing .testimonialAddFormLabel { margin: .35rem 0 .1rem; font-size: .58rem; }
+.staffCardEditing .testimonialAddInput { padding: .45rem .6rem; font-size: .82rem; min-height: 0; }
+.staffCardEditing .affiliateColorWheel { width: 30px; height: 30px; }
+.staffCardEditing .testimonialAddActions { margin-top: .5rem; }
 
 /* Card background color picker (affiliate editor) — single color wheel. */
 .affiliateColorRow {
