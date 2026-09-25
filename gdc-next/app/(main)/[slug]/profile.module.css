@@ -2766,25 +2766,25 @@
 }
 .entryPhotoPickHalf {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 130px;
+  height: 130px;
+  border-radius: 12px;
   border: 1.5px dashed var(--border);
   background: rgba(0, 0, 0, .25);
   color: var(--muted);
   font-family: 'Space Mono', monospace;
-  font-size: .42rem;
+  font-size: .8rem;
   letter-spacing: .04em;
   text-transform: uppercase;
   text-align: center;
-  line-height: 1.25;
+  line-height: 1.35;
   cursor: pointer;
   overflow: hidden;
   padding: 0;
   transition: border-color .15s;
 }
 .entryPhotoPickHalf:hover { border-color: var(--neon); }
-.entryPhotoPickHalf small { color: var(--muted); font-size: .38rem; opacity: .8; }
+.entryPhotoPickHalf small { color: var(--muted); font-size: .65rem; opacity: .8; }
 
 .entryPhotoPick,
 .entryPhotoPickSquare {
@@ -2831,6 +2831,17 @@
   padding: 1.25rem 1rem;
   gap: .6rem;
 }
+.staffPhotoBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
+  border-radius: 50%;
+  line-height: 0;
+  transition: opacity .15s;
+}
+.staffPhotoBtn:hover { opacity: .88; }
+
 .staffName {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.6rem;
