@@ -4455,26 +4455,33 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
     { key: 'white-plain', label: 'White · no circle', colored: false, plain: true },
     { key: 'color-plain', label: 'Color · no circle', colored: true, plain: true },
   ];
+  // The platforms shown in a style preview, with their brand colors — mirrors
+  // the real under-banner icon row so a preview shows the whole list at once.
+  const previewPlatforms: { icon: React.ReactNode; color: string }[] = [
+    { icon: <WebsiteIcon />, color: '#00f5c4' },
+    { icon: <SoundcloudIcon />, color: '#ff5500' },
+    { icon: <InstagramIcon />, color: '#e1306c' },
+    { icon: <TiktokIcon />, color: '#69c9d0' },
+    { icon: <FacebookIcon />, color: '#1877f2' },
+    { icon: <TwitchIcon />, color: '#9146ff' },
+  ];
+  // A mini render of the FULL icon row in a given style, used both as the
+  // dropdown trigger's swatch and inside each menu option.
   function iconStylePreview(colored: boolean, plain: boolean): React.ReactNode {
     return (
-      <span
-        style={{
-          width: 22,
-          height: 22,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: '50%',
-          border: plain ? 'none' : `1px solid ${colored ? '#e1306c' : '#fff'}`,
-          color: colored ? '#e1306c' : '#fff',
-          flex: 'none',
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <rect x="3" y="3" width="18" height="18" rx="5" />
-          <circle cx="12" cy="12" r="4" />
-          <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
-        </svg>
+      <span className={styles.iconStylePreviewRow} aria-hidden="true">
+        {previewPlatforms.map((p, i) => (
+          <span
+            key={i}
+            className={styles.iconStylePreviewDot}
+            style={{
+              border: plain ? 'none' : `1px solid ${colored ? p.color : '#fff'}`,
+              color: colored ? p.color : '#fff',
+            }}
+          >
+            {p.icon}
+          </span>
+        ))}
       </span>
     );
   }
