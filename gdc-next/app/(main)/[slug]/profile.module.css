@@ -2550,21 +2550,23 @@
 
 /* ── Color icon mode (owner opt-in via the White/Color toggle) ───────────
    When the row carries .socialsColored, each social renders in its brand
-   color (glyph + outline) instead of monochrome white. Applies to both the
-   visitor-facing links and the owner's set icons. Empty "+" add slots stay
-   white so unset platforms don't read as active. */
-.socialsColored .underBannerSocialWebsite,
-.socialsColored .actionBtnWebsite:not(.actionBtnEmpty) { color: var(--neon); border-color: var(--neon) !important; }
-.socialsColored .underBannerSocialSoundcloud,
-.socialsColored .actionBtnSoundcloud:not(.actionBtnEmpty) { color: #ff5500; border-color: #ff5500 !important; }
-.socialsColored .underBannerSocialInstagram,
-.socialsColored .actionBtnInstagram:not(.actionBtnEmpty) { color: #e1306c; border-color: #e1306c !important; }
-.socialsColored .underBannerSocialTiktok,
-.socialsColored .actionBtnTiktok:not(.actionBtnEmpty) { color: #69c9d0; border-color: #69c9d0 !important; }
-.socialsColored .underBannerSocialFacebook,
-.socialsColored .actionBtnFacebook:not(.actionBtnEmpty) { color: #1877f2; border-color: #1877f2 !important; }
-.socialsColored .underBannerSocialTwitch,
-.socialsColored .actionBtnTwitch:not(.actionBtnEmpty) { color: #9146ff; border-color: #9146ff !important; }
+   color (glyph + outline) instead of monochrome white. Applies to the
+   visitor-facing links AND the owner's icons (including the empty "+" add
+   slots, so the DJ can preview the look before adding any socials). The
+   double-class prefix (.underBannerSocials.socialsColored) plus !important
+   is needed to beat the white .actionBtnEmpty override further down. */
+.underBannerSocials.socialsColored .underBannerSocialWebsite,
+.underBannerSocials.socialsColored .actionBtnWebsite { color: var(--neon) !important; border-color: var(--neon) !important; }
+.underBannerSocials.socialsColored .underBannerSocialSoundcloud,
+.underBannerSocials.socialsColored .actionBtnSoundcloud { color: #ff5500 !important; border-color: #ff5500 !important; }
+.underBannerSocials.socialsColored .underBannerSocialInstagram,
+.underBannerSocials.socialsColored .actionBtnInstagram { color: #e1306c !important; border-color: #e1306c !important; }
+.underBannerSocials.socialsColored .underBannerSocialTiktok,
+.underBannerSocials.socialsColored .actionBtnTiktok { color: #69c9d0 !important; border-color: #69c9d0 !important; }
+.underBannerSocials.socialsColored .underBannerSocialFacebook,
+.underBannerSocials.socialsColored .actionBtnFacebook { color: #1877f2 !important; border-color: #1877f2 !important; }
+.underBannerSocials.socialsColored .underBannerSocialTwitch,
+.underBannerSocials.socialsColored .actionBtnTwitch { color: #9146ff !important; border-color: #9146ff !important; }
 
 /* Owner-only White/Color toggle — its own cluster with a left divider, like
    the contact + share clusters. */
