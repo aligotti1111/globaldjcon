@@ -2587,10 +2587,11 @@
 .underBannerSocials.socialsNoCircle .underBannerSocialBtn svg,
 .underBannerSocials.socialsNoCircle .actionBtn svg { width: 19px; height: 19px; }
 
-/* Owner-only icon-style dropdown — its own cluster with a left divider, like
-   the contact + share clusters. */
+/* Owner-only icon-style picker — its own cluster with a left divider, like
+   the contact + share clusters. The panel it opens is anchored to the whole
+   socials row (not this small trigger), so it reads as expanding out of the
+   icon list rather than as a separate floating dropdown. */
 .underBannerIconStyle {
-  position: relative;
   display: inline-flex;
   align-items: center;
   margin-left: .65rem;
@@ -2616,28 +2617,33 @@
 }
 .iconStyleToggle:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .55); }
 .iconStyleLabel { line-height: 1; }
-/* Dropdown popover of the four style presets, each with a mini preview. */
+
+/* Full-width panel that drops out of the icon list. Anchored to the socials
+   row (which is position:relative) and spanning its width, attached directly
+   below with no gap so it looks like part of the list. */
+.underBannerSocials { position: relative; }
 .iconStyleMenu {
   position: absolute;
-  bottom: calc(100% + 8px);
+  top: 100%;
+  left: 0;
   right: 0;
   z-index: 60;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 190px;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  background: #101015;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  padding: 8px;
+  border-radius: 0 0 12px 12px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-top: none;
+  background: var(--black);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .55);
 }
 .iconStyleMenuItem {
   display: flex;
   align-items: center;
-  gap: .6rem;
+  gap: .8rem;
   width: 100%;
-  padding: .5rem .55rem;
+  padding: .55rem .7rem;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -2645,6 +2651,7 @@
   font-family: 'Space Mono', monospace;
   font-size: .62rem;
   letter-spacing: .03em;
+  text-transform: uppercase;
   text-align: left;
   cursor: pointer;
   transition: background .12s;
@@ -2652,10 +2659,36 @@
 .iconStyleMenuItem:hover { background: rgba(255, 255, 255, .08); }
 .iconStyleMenuItemActive { background: rgba(0, 245, 196, .12); }
 .iconStyleCheck { margin-left: auto; color: var(--neon); flex: none; }
+
+/* The mini full-row preview shown in the trigger + each option. */
+.iconStylePreviewRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+}
+.iconStylePreviewDot {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex: none;
+}
+.iconStylePreviewDot svg { width: 12px; height: 12px; display: block; }
+/* In the small trigger swatch the row is tighter and smaller. */
+.iconStyleToggle .iconStylePreviewRow { gap: 2px; }
+.iconStyleToggle .iconStylePreviewDot { width: 14px; height: 14px; }
+.iconStyleToggle .iconStylePreviewDot svg { width: 9px; height: 9px; }
+
 @media (max-width: 700px) {
   .underBannerIconStyle { margin-left: .5rem; padding-left: .6rem; }
   .iconStyleToggle { font-size: .48rem; padding: .26rem .45rem; }
-  .iconStyleMenu { min-width: 170px; }
+  /* Hide the trigger's own tiny preview on mobile to save room. */
+  .iconStyleToggle .iconStylePreviewRow { display: none; }
+  .iconStylePreviewDot { width: 17px; height: 17px; }
+  .iconStyleMenuItem { font-size: .58rem; gap: .5rem; }
 }
 /* Contact cluster (phone + message) — sits between the socials and Share,
    set apart by its own left divider (same treatment as the Share button). */
