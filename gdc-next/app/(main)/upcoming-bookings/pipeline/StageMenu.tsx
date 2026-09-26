@@ -55,7 +55,8 @@ export default function StageMenu({
   // Deposit/balance are confirmed by hand for every rail except card (Stripe
   // self-confirms), so "handled outside the app" reads wrong there — it's the
   // normal way you mark a Venmo/Cash App/Zelle/cash payment received.
-  const payStage = st.key === 'deposit' || st.key === 'balance';
+  // 'invoice' is the balance/final-invoice stage's key; 'deposit' is the deposit.
+  const payStage = st.key === 'deposit' || st.key === 'balance' || st.key === 'invoice';
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); onClose(); }} />
