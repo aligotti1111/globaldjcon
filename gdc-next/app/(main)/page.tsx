@@ -631,7 +631,7 @@ const LANDING_CSS = String.raw`
 /* Connector under the two step cards → the interactive dashboard sample (Step 3). */
 .gdc-landing .brnext{display:flex;flex-direction:column;align-items:center;gap:12px;margin:34px auto 0;color:var(--neon)}
 .gdc-landing .brnext .brnextlabel{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.gdc-landing .brnext svg{width:48px;height:58px;filter:drop-shadow(0 0 10px rgba(0,245,196,.5))}
+.gdc-landing .brnext svg{width:40px;height:70px;filter:drop-shadow(0 0 10px rgba(0,245,196,.5))}
 .gdc-landing #dashsample .brstep3{display:inline-block;font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--neon);margin-bottom:10px}
 /* Subtle role tag over each image: Host on the phone, DJ on the laptop. */
 .gdc-landing .brgrid .brtag{position:absolute;left:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
@@ -753,7 +753,7 @@ const LANDING_BODY = String.raw`
     </div>
     <div class="brnext reveal">
       <span class="brnextlabel">Approved bookings drop into your dashboard</span>
-      <svg viewBox="0 0 60 72" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8 L30 30 L52 8"/><path d="M8 38 L30 60 L52 38"/></svg>
+      <svg viewBox="0 0 46 80" aria-hidden="true"><defs><linearGradient id="brnextg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00f5c4" stop-opacity="0"/><stop offset="1" stop-color="#00f5c4"/></linearGradient></defs><rect x="19" y="0" width="8" height="52" fill="url(#brnextg)"/><path d="M23 78 L4 46 H42 Z" fill="#00f5c4"/></svg>
     </div>
   </div>
 </section>
