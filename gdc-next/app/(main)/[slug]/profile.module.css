@@ -654,8 +654,8 @@
   /* Oversized-type concept: bare mono uppercase location (no pill),
      near-white with a dark halo so it reads over any banner. */
   color: rgba(255, 255, 255, .92);
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .8rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   text-shadow: 0 0 4px rgba(0, 0, 0, .9);
