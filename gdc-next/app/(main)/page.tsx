@@ -623,7 +623,10 @@ const LANDING_CSS = String.raw`
 .gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center}
 /* Fixed height matches both; feather the edges so they melt into the black page. */
 .gdc-landing .brgrid img{height:280px;width:auto;max-width:100%;border-radius:14px;-webkit-mask-image:radial-gradient(135% 118% at 50% 46%,#000 56%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(135% 118% at 50% 46%,#000 56%,rgba(0,0,0,0) 100%)}
-@media(max-width:760px){.gdc-landing .brgrid img{height:200px}}`;
+/* Neon flow arrow between the phone (request) and laptop (approve) images. */
+.gdc-landing .brarrow{display:flex;align-items:center;justify-content:center;align-self:center;color:var(--neon);flex:0 0 auto}
+.gdc-landing .brarrow svg{width:56px;height:28px;filter:drop-shadow(0 0 8px rgba(0,245,196,.4))}
+@media(max-width:760px){.gdc-landing .brgrid img{height:200px}.gdc-landing .brarrow{transform:rotate(90deg);margin:2px 0}.gdc-landing .brarrow svg{width:44px;height:22px}}`;
 
 const LANDING_BODY = String.raw`
 
@@ -735,6 +738,9 @@ const LANDING_BODY = String.raw`
         <figcaption>Booking Requested</figcaption>
         <img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async">
       </figure>
+      <div class="brarrow" aria-hidden="true">
+        <svg viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h40"/><path d="M34 4l8 8-8 8"/></svg>
+      </div>
       <figure>
         <figcaption>Approve Booking</figcaption>
         <img src="/approve-booking.webp" alt="A DJ approving a booking request in their Global DJ Connect dashboard" loading="lazy" decoding="async">
