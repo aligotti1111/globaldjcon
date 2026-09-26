@@ -650,7 +650,7 @@
 .miniBookLabel {
   position: absolute;
   left: 50%;
-  bottom: .1rem;
+  bottom: .4rem;
   transform: translateX(-50%);
   font-family: 'Space Mono', monospace;
   font-size: .42rem;
