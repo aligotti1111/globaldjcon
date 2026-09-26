@@ -484,8 +484,8 @@
    to wide screens so the compact mobile cells keep the small pill. */
 @media (min-width: 701px) {
   .bookBadge {
-    font-size: .45rem;
-    padding: 3px 8px;
+    font-size: .56rem;
+    padding: 4px 10px;
     border-radius: 4px;
     letter-spacing: .06em;
   }
