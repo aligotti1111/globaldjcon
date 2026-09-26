@@ -1576,7 +1576,7 @@ export default function HomePage() {
     // ?v= is a cache-buster — bump it whenever booking-dashboard.js/.css change so
     // browsers holding an old cached copy (which caused a clipped dropdown) refetch.
     const d = document.createElement('script');
-    d.src = '/booking-dashboard.js?v=3';
+    d.src = '/booking-dashboard.js?v=4';
     document.body.appendChild(d);
     return () => { s.remove(); d.remove(); };
   }, []);
