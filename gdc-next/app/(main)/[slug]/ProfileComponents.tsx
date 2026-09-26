@@ -457,8 +457,9 @@ export function SocialAddButton({
             "tap to edit" affordance rather than a smudge on the icon. */}
         <span style={{
           position: 'absolute',
-          top: -3,
-          right: -3,
+          top: -6,
+          left: '50%',
+          transform: 'translateX(-50%)',
           width: isEdit ? 17 : 14,
           height: isEdit ? 17 : 14,
           borderRadius: '50%',
