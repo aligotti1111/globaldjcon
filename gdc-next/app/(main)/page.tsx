@@ -620,12 +620,17 @@ const LANDING_CSS = String.raw`
    right), both images the SAME height (width auto → scaled, never cropped). */
 /* Option 3 — framed step cards: each image on a dark card with a thin neon
    border + soft glow, caption on top. */
-.gdc-landing .brgrid{display:flex;flex-wrap:wrap;gap:28px;align-items:stretch;justify-content:center;max-width:1000px;margin:0 auto}
-.gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;background:linear-gradient(180deg,#0c0c11,#000);border:1px solid rgba(0,245,196,.28);border-radius:18px;padding:22px 22px 26px;box-shadow:0 0 40px rgba(0,245,196,.10)}
+.gdc-landing .brgrid{display:flex;flex-wrap:wrap;gap:22px;align-items:stretch;justify-content:center;max-width:1160px;margin:0 auto}
+/* The laptop card grows to fill the leftover width; the phone card keeps its
+   natural size — so the computer renders as large as the row allows. */
+.gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;background:linear-gradient(180deg,#0c0c11,#000);border:1px solid rgba(0,245,196,.28);border-radius:18px;padding:14px 14px 18px;box-shadow:0 0 40px rgba(0,245,196,.10)}
 .gdc-landing .brgrid .brstep{font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--neon)}
-.gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center;margin-bottom:10px}
-.gdc-landing .brgrid img{height:260px;width:auto;max-width:100%;border-radius:10px}
-@media(max-width:760px){.gdc-landing .brgrid img{height:190px}.gdc-landing .brgrid figure{padding:16px 16px 20px}}`;
+.gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center;margin-bottom:8px}
+.gdc-landing .brgrid img{height:320px;width:auto;max-width:100%;border-radius:10px;display:block}
+.gdc-landing .brgrid .brimgwrap{position:relative;display:inline-block;line-height:0}
+/* Subtle role tag over each image: Host on the phone, DJ on the laptop. */
+.gdc-landing .brgrid .brtag{position:absolute;left:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
+@media(max-width:760px){.gdc-landing .brgrid{gap:16px}.gdc-landing .brgrid img{height:auto;width:100%}.gdc-landing .brgrid figure{padding:12px 12px 16px}}`;
 
 const LANDING_BODY = String.raw`
 
@@ -733,12 +738,12 @@ const LANDING_BODY = String.raw`
       <figure>
         <span class="brstep">Step 1</span>
         <figcaption>Booking Requested</figcaption>
-        <img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async">
+        <div class="brimgwrap"><img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async"><span class="brtag">Host</span></div>
       </figure>
       <figure>
         <span class="brstep">Step 2</span>
         <figcaption>Approve Booking</figcaption>
-        <img src="/approve-booking.webp" alt="A DJ approving a booking request in their Global DJ Connect dashboard" loading="lazy" decoding="async">
+        <div class="brimgwrap"><img src="/approve-booking.webp" alt="A DJ approving a booking request in their Global DJ Connect dashboard" loading="lazy" decoding="async"><span class="brtag">DJ</span></div>
       </figure>
     </div>
   </div>
