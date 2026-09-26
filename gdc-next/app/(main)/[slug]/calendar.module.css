@@ -509,10 +509,10 @@
 /* "Book Now" badge — embed-style pill */
 .bookBadge {
   font-family: 'Space Mono', monospace;
-  font-size: .49rem;
+  font-size: .37rem;
   letter-spacing: .04em;
   text-transform: uppercase;
-  padding: 1.5px 4.5px;
+  padding: 1px 3.5px;
   border-radius: 3px;
   display: inline-block;
   white-space: nowrap;
