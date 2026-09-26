@@ -1105,7 +1105,7 @@
 .tabsNav {
   display: flex;
   align-items: flex-end;
-  gap: 1.4rem;
+  gap: 2.4rem;
   padding: 0 .25rem;
   background: transparent;
   border: none;
