@@ -2568,9 +2568,29 @@
 .underBannerSocials.socialsColored .underBannerSocialTwitch,
 .underBannerSocials.socialsColored .actionBtnTwitch { color: #9146ff !important; border-color: #9146ff !important; }
 
-/* Owner-only White/Color toggle — its own cluster with a left divider, like
+/* No-circle mode: drop the outlined circle frame (and filled square, for the
+   phone/mail contacts) so only the glyphs show. Works alone (white glyphs) or
+   combined with .socialsColored (brand-color glyphs). Sizing is kept for
+   spacing/alignment — only the border + background are removed. */
+.underBannerSocials.socialsNoCircle .underBannerSocialBtn,
+.underBannerSocials.socialsNoCircle .actionBtn,
+.underBannerSocials.socialsNoCircle .underBannerPhone,
+.underBannerSocials.socialsNoCircle .underBannerMail {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+/* No-circle contacts revert to white glyph (they were dark-on-white before). */
+.underBannerSocials.socialsNoCircle .underBannerPhone,
+.underBannerSocials.socialsNoCircle .underBannerMail { color: #fff !important; }
+/* Slightly larger glyphs read better without a frame around them. */
+.underBannerSocials.socialsNoCircle .underBannerSocialBtn svg,
+.underBannerSocials.socialsNoCircle .actionBtn svg { width: 19px; height: 19px; }
+
+/* Owner-only icon-style dropdown — its own cluster with a left divider, like
    the contact + share clusters. */
 .underBannerIconStyle {
+  position: relative;
   display: inline-flex;
   align-items: center;
   margin-left: .65rem;
@@ -2581,7 +2601,7 @@
   display: inline-flex;
   align-items: center;
   gap: .4rem;
-  padding: .3rem .6rem;
+  padding: .28rem .55rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, .35);
   background: rgba(255, 255, 255, .05);
@@ -2595,24 +2615,47 @@
   white-space: nowrap;
 }
 .iconStyleToggle:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .55); }
-.iconStyleToggle:disabled { opacity: .6; cursor: default; }
-.iconStyleSwatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex: none;
-  background: #fff;
-  border: 1px solid rgba(255, 255, 255, .6);
-}
-/* In color mode the swatch previews the brand palette. */
-.socialsColored .iconStyleSwatch {
-  background: conic-gradient(#e1306c, #ff5500, #00f5c4, #1877f2, #9146ff, #e1306c);
-  border-color: transparent;
-}
 .iconStyleLabel { line-height: 1; }
+/* Dropdown popover of the four style presets, each with a mini preview. */
+.iconStyleMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: #101015;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .5);
+}
+.iconStyleMenuItem {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  width: 100%;
+  padding: .5rem .55rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .03em;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s;
+}
+.iconStyleMenuItem:hover { background: rgba(255, 255, 255, .08); }
+.iconStyleMenuItemActive { background: rgba(0, 245, 196, .12); }
+.iconStyleCheck { margin-left: auto; color: var(--neon); flex: none; }
 @media (max-width: 700px) {
   .underBannerIconStyle { margin-left: .5rem; padding-left: .6rem; }
-  .iconStyleToggle { font-size: .48rem; padding: .28rem .5rem; }
+  .iconStyleToggle { font-size: .48rem; padding: .26rem .45rem; }
+  .iconStyleMenu { min-width: 170px; }
 }
 /* Contact cluster (phone + message) — sits between the socials and Share,
    set apart by its own left divider (same treatment as the Share button). */
