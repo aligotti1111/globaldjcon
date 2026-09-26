@@ -379,8 +379,6 @@ const LANDING_CSS = String.raw`
   .flist{border-top:1px solid var(--line);max-width:1000px;margin:0 auto}
 .gdc-landing .flist .r{display:flex;gap:18px;align-items:center;padding:18px 6px;border-bottom:1px solid var(--line);position:relative}
 .gdc-landing .flist .r img{width:42px;height:42px;border-radius:11px;object-fit:cover;flex-shrink:0}
-.gdc-landing .flist .r .ricon{width:42px;height:42px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;background:rgba(0,245,196,.1);border:1px solid rgba(0,245,196,.3);color:var(--neon)}
-.gdc-landing .flist .r .ricon svg{width:24px;height:24px}
 .gdc-landing .flist h3{font-family:var(--disp);font-size:1.3rem;letter-spacing:.01em;min-width:220px}
 .gdc-landing .flist p{color:var(--muted);font-size:.82rem;line-height:1.5;flex:1;margin:0}
 .gdc-landing .flist .titlecol{min-width:170px}
@@ -801,7 +799,7 @@ const LANDING_BODY = String.raw`
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260830_083159_d9cea88f-a41f-45fd-88eb-92c421afd6eb.png" alt=""><h3>Team</h3><p>Give authorized personnel access to your Global DJ Connect account with separate logins and role‑based restrictions — Assistant, Manager, or Admin. <a class="samplelink" onclick="openLB('lbTeamMobile')">Mobile DJ account sample</a> · <a class="samplelink club" onclick="openLB('lbTeamClub')">Club/Bar DJ account sample</a></p></div>
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_85726c22-c72e-478d-9d61-4f1981265900.png" alt=""><h3>SMS &amp; Email</h3><p>By default every request sends an email update; opt in for SMS notifications as a secondary reminder.</p></div>
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_9832a838-15f6-4770-be32-2edcc0b10107.png" alt=""><h3>Past bookings</h3><p>Every completed event moves to your past bookings, keeping a full record — contract, planner or rider, guest list, and receipts all stay attached. Re‑download any document, invoice overtime after the fact, or reference past details when a repeat client books again.</p></div>
-      <div class="r reveal"><span class="ricon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 10v8"/><path d="M17 6v12"/></svg></span><h3>Finance &amp; earnings</h3><p>Every booking, deposit and balance rolls up into one finance report — total earnings, upcoming vs. collected, and a breakdown by event type. Filter by date range and export to CSV for your books or your accountant.</p></div>
+      <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260926_055833_e14bc14b-33d5-4f7a-9cc1-33a2c247b3f7.png" alt=""><h3>Finance &amp; earnings</h3><p>Every booking, deposit and balance rolls up into one finance report — total earnings, upcoming vs. collected, and a breakdown by event type. Filter by date range and export to CSV for your books or your accountant.</p></div>
     </div>
   </div>
 </section>
