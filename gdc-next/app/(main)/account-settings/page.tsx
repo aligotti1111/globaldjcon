@@ -69,6 +69,7 @@ interface NotifyInit {
   email_notify_inbox_message: boolean;
   email_notify_weekly_digest: boolean;
   email_notify_monthly_digest: boolean;
+  email_notify_balance_digest: boolean;
 }
 
 // Build the notification-prefs init from a users row, defaulting every toggle
@@ -91,6 +92,7 @@ function buildNotifyInit(row: Record<string, unknown>): NotifyInit {
     // Digests are opt-IN → default OFF (only on when explicitly true).
     email_notify_weekly_digest: row.email_notify_weekly_digest === true,
     email_notify_monthly_digest: row.email_notify_monthly_digest === true,
+    email_notify_balance_digest: row.email_notify_balance_digest === true,
   };
 }
 
