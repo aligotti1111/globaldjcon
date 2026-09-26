@@ -4412,24 +4412,71 @@ export function ShareCalendarModal({
 export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
-  // Icon style: 'white' (monochrome, default) or 'color' (brand colors). The
-  // owner flips it with a small toggle; the change saves and applies live
-  // (no reload) by swapping a modifier class on the row.
-  const [iconStyle, setIconStyle] = useState<'white' | 'color'>(
-    data.social_icon_style === 'color' ? 'color' : 'white',
-  );
-  const [savingIconStyle, setSavingIconStyle] = useState(false);
-  async function toggleIconStyle() {
-    const next = iconStyle === 'color' ? 'white' : 'color';
+  // Icon style: one of four presets, chosen by the owner from a dropdown and
+  // applied live (no reload) by swapping modifier classes on the row.
+  //   white        → white glyph, white outlined circle (default)
+  //   color        → brand-color glyph + outlined circle
+  //   white-plain  → white glyph, no circle
+  //   color-plain  → brand-color glyph, no circle
+  type IconStyle = 'white' | 'color' | 'white-plain' | 'color-plain';
+  const ICON_STYLE_KEYS: IconStyle[] = ['white', 'color', 'white-plain', 'color-plain'];
+  const initialStyle: IconStyle = ICON_STYLE_KEYS.includes(data.social_icon_style as IconStyle)
+    ? (data.social_icon_style as IconStyle)
+    : 'white';
+  const [iconStyle, setIconStyle] = useState<IconStyle>(initialStyle);
+  const [iconMenuOpen, setIconMenuOpen] = useState(false);
+  const iconMenuRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!iconMenuOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (iconMenuRef.current && !iconMenuRef.current.contains(e.target as Node)) setIconMenuOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setIconMenuOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [iconMenuOpen]);
+  const iconStyleColored = iconStyle === 'color' || iconStyle === 'color-plain';
+  const iconStylePlain = iconStyle === 'white-plain' || iconStyle === 'color-plain';
+  async function chooseIconStyle(next: IconStyle) {
+    const prev = iconStyle;
     setIconStyle(next);          // optimistic
-    setSavingIconStyle(true);
+    setIconMenuOpen(false);
     try {
       await saveProfile(data.id, { social_icon_style: next });
     } catch {
-      setIconStyle(iconStyle);   // revert on failure
-    } finally {
-      setSavingIconStyle(false);
+      setIconStyle(prev);        // revert on failure
     }
+  }
+  // Options for the icon-style dropdown, each with a live mini-preview.
+  const iconStyleOptions: { key: IconStyle; label: string; colored: boolean; plain: boolean }[] = [
+    { key: 'white', label: 'White', colored: false, plain: false },
+    { key: 'color', label: 'Color', colored: true, plain: false },
+    { key: 'white-plain', label: 'White · no circle', colored: false, plain: true },
+    { key: 'color-plain', label: 'Color · no circle', colored: true, plain: true },
+  ];
+  function iconStylePreview(colored: boolean, plain: boolean): React.ReactNode {
+    return (
+      <span
+        style={{
+          width: 22,
+          height: 22,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '50%',
+          border: plain ? 'none' : `1px solid ${colored ? '#e1306c' : '#fff'}`,
+          color: colored ? '#e1306c' : '#fff',
+          flex: 'none',
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+      </span>
+    );
   }
   // Copy-link feedback state — the "Copy link" item in the share menu
   // confirms with a brief "Copied" flip.
@@ -4565,7 +4612,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   // the share button at the end.
 
   return (
-    <div className={`${styles.underBannerSocials}${iconStyle === 'color' ? ` ${styles.socialsColored}` : ''}`}>
+    <div className={`${styles.underBannerSocials}${iconStyleColored ? ` ${styles.socialsColored}` : ''}${iconStylePlain ? ` ${styles.socialsNoCircle}` : ''}`}>
       {links.map(l => (
         isOwnProfile ? (
           // Owner: each SET social stays editable — the icon opens an inline
@@ -4727,25 +4774,49 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
         </div>
       )}
 
-      {/* Owner-only icon-style toggle — lets the DJ choose White or Color
-          for their social icons. Sits in its own cluster (its own divider)
-          before Share. Applies live; saves in the background. */}
+      {/* Owner-only icon-style dropdown — lets the DJ pick how their social
+          icons look (White / Color, each with or without the circle frame).
+          Each option shows a live mini-preview. Applies instantly; saves in
+          the background. Sits in its own cluster (its own divider). */}
       {isOwnProfile && (
-        <div className={styles.underBannerIconStyle}>
+        <span ref={iconMenuRef} className={styles.underBannerIconStyle}>
           <button
             type="button"
             className={styles.iconStyleToggle}
-            onClick={toggleIconStyle}
-            disabled={savingIconStyle}
+            onClick={() => setIconMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={iconMenuOpen}
             title="Choose how your social icons look"
-            aria-label={`Social icons: ${iconStyle === 'color' ? 'Color' : 'White'} — tap to switch`}
           >
-            <span className={styles.iconStyleSwatch} aria-hidden="true" />
-            <span className={styles.iconStyleLabel}>
-              {iconStyle === 'color' ? 'Color icons' : 'White icons'}
-            </span>
+            {iconStylePreview(iconStyleColored, iconStylePlain)}
+            <span className={styles.iconStyleLabel}>Icon style</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
-        </div>
+          {iconMenuOpen && (
+            <div className={styles.iconStyleMenu} role="menu">
+              {iconStyleOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={iconStyle === opt.key}
+                  className={`${styles.iconStyleMenuItem}${iconStyle === opt.key ? ` ${styles.iconStyleMenuItemActive}` : ''}`}
+                  onClick={() => chooseIconStyle(opt.key)}
+                >
+                  {iconStylePreview(opt.colored, opt.plain)}
+                  <span>{opt.label}</span>
+                  {iconStyle === opt.key && (
+                    <svg className={styles.iconStyleCheck} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
       )}
 
       {/* Share button — sits at the end of the socials row, set apart from
