@@ -628,6 +628,11 @@ const LANDING_CSS = String.raw`
 .gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center;margin-bottom:8px}
 .gdc-landing .brgrid img{height:320px;width:auto;max-width:100%;border-radius:10px;display:block}
 .gdc-landing .brgrid .brimgwrap{position:relative;display:inline-block;line-height:0}
+/* Connector under the two step cards → the interactive dashboard sample (Step 3). */
+.gdc-landing .brnext{display:flex;flex-direction:column;align-items:center;gap:12px;margin:34px auto 0;color:var(--neon)}
+.gdc-landing .brnext .brnextlabel{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.gdc-landing .brnext svg{width:48px;height:58px;filter:drop-shadow(0 0 10px rgba(0,245,196,.5))}
+.gdc-landing #dashsample .brstep3{display:inline-block;font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--neon);margin-bottom:10px}
 /* Subtle role tag over each image: Host on the phone, DJ on the laptop. */
 .gdc-landing .brgrid .brtag{position:absolute;left:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
 @media(max-width:760px){.gdc-landing .brgrid{gap:16px}.gdc-landing .brgrid figure{width:100%;padding:12px 12px 16px}.gdc-landing .brgrid .brimgwrap{width:100%;height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}.gdc-landing .brgrid img{height:auto;width:auto;max-width:100%;max-height:100%}}`;
@@ -746,6 +751,10 @@ const LANDING_BODY = String.raw`
         <div class="brimgwrap"><img src="/approve-booking.webp" alt="A DJ approving a booking request in their Global DJ Connect dashboard" loading="lazy" decoding="async"><span class="brtag">DJ</span></div>
       </figure>
     </div>
+    <div class="brnext reveal">
+      <span class="brnextlabel">Approved bookings drop into your dashboard</span>
+      <svg viewBox="0 0 60 72" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8 L30 30 L52 8"/><path d="M8 38 L30 60 L52 38"/></svg>
+    </div>
   </div>
 </section>
 
@@ -753,6 +762,7 @@ const LANDING_BODY = String.raw`
   <link rel="stylesheet" href="/booking-dashboard.css?v=2">
   <div class="wrap">
     <div class="shead reveal">
+      <span class="brstep3">Step 3</span>
       <div class="label">See how the pipeline works</div>
       <h2>YOUR BOOKING DASHBOARD</h2>
       <p>Below is a sample of how two bookings look in your booking dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
