@@ -618,15 +618,13 @@ const LANDING_CSS = String.raw`
 .gdc-landing .searchbtn svg{width:18px;height:18px;stroke:var(--neon);fill:none}
 /* "Booking Requested" section: two figures side by side (phone left, laptop
    right), both images the SAME height (width auto → scaled, never cropped). */
-.gdc-landing .brgrid{display:flex;flex-wrap:wrap;gap:20px 44px;align-items:flex-end;justify-content:center;max-width:920px;margin:0 auto}
-.gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:14px}
+/* Option 3 — framed step cards: each image on a dark card with a thin neon
+   border + soft glow, caption on top. */
+.gdc-landing .brgrid{display:flex;flex-wrap:wrap;gap:28px;align-items:stretch;justify-content:center;max-width:1000px;margin:0 auto}
+.gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:16px;background:linear-gradient(180deg,#0c0c11,#000);border:1px solid rgba(0,245,196,.28);border-radius:18px;padding:22px 22px 26px;box-shadow:0 0 40px rgba(0,245,196,.10)}
 .gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center}
-/* Fixed height matches both; feather the edges so they melt into the black page. */
-.gdc-landing .brgrid img{height:280px;width:auto;max-width:100%;border-radius:14px;-webkit-mask-image:radial-gradient(135% 118% at 50% 46%,#000 56%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(135% 118% at 50% 46%,#000 56%,rgba(0,0,0,0) 100%)}
-/* Neon flow arrow between the phone (request) and laptop (approve) images. */
-.gdc-landing .brarrow{display:flex;align-items:center;justify-content:center;align-self:center;color:var(--neon);flex:0 0 auto}
-.gdc-landing .brarrow svg{width:56px;height:28px;filter:drop-shadow(0 0 8px rgba(0,245,196,.4))}
-@media(max-width:760px){.gdc-landing .brgrid img{height:200px}.gdc-landing .brarrow{transform:rotate(90deg);margin:2px 0}.gdc-landing .brarrow svg{width:44px;height:22px}}`;
+.gdc-landing .brgrid img{height:260px;width:auto;max-width:100%;border-radius:10px}
+@media(max-width:760px){.gdc-landing .brgrid img{height:190px}.gdc-landing .brgrid figure{padding:16px 16px 20px}}`;
 
 const LANDING_BODY = String.raw`
 
@@ -738,9 +736,6 @@ const LANDING_BODY = String.raw`
         <figcaption>Booking Requested</figcaption>
         <img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async">
       </figure>
-      <div class="brarrow" aria-hidden="true">
-        <svg viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h40"/><path d="M34 4l8 8-8 8"/></svg>
-      </div>
       <figure>
         <figcaption>Approve Booking</figcaption>
         <img src="/approve-booking.webp" alt="A DJ approving a booking request in their Global DJ Connect dashboard" loading="lazy" decoding="async">
