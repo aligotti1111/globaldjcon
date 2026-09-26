@@ -2695,6 +2695,15 @@
   flex: 0 0 29px;
   line-height: 1;
 }
+/* Owner empty-slot social/contact add buttons: full white (not the faded
+   grey), so they read the same as the public's white icons — just with the
+   "+" badge added. */
+.underBannerSocials .actionBtnEmpty,
+.underBannerContact .actionBtnEmpty {
+  opacity: 1 !important;
+  color: #fff !important;
+  border-color: #fff !important;
+}
 .underBannerSocials .actionBtn svg,
 .underBannerContact .actionBtn svg {
   width: 15px;
