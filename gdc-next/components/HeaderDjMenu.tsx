@@ -223,6 +223,14 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Past Bookings
           </Link>
+          {/* Finance report — OWNER ONLY + paid feature (bookingEnabled = live
+              paid/comped tier). Sits under Past Bookings; the page also hard-
+              redirects anyone who reaches it by URL. */}
+          {!isTeammate && bookingEnabled && (
+            <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              Finance/Earnings
+            </Link>
+          )}
           {(bookingEnabled || isTeammate) && canAddBookings && (
             <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               Add Booking Manually
@@ -248,14 +256,6 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             Account Settings
           </Link>
-          {/* Finance report — OWNER ONLY + paid feature. Hidden from teammates
-              and from free accounts (bookingEnabled = live paid/comped tier);
-              the page itself also hard-redirects anyone who reaches it by URL. */}
-          {!isTeammate && bookingEnabled && (
-            <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Finance/Earnings
-            </Link>
-          )}
           {!isTeammate && (
             <button
               type="button"
