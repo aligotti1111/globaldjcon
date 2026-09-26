@@ -28,11 +28,11 @@ function stContract(){return{icon:'doc',state:'notsent',S:{
 function stDeposit(){return{icon:'money',state:'notsent',S:{
   notsent:{cap:'Not sent',cls:'waiting',actions:[
     {label:'Request deposit',to:'requested'},{label:'Skip deposit',to:'skipped',cls:'muted'},
-    {label:'Payment options',to:'notsent',cls:'muted'},{label:'✓ Mark Complete',to:'done'}]},
+    {label:'Payment options',to:'notsent',cls:'muted'},{label:'✓ Mark Paid',to:'done'}]},
   requested:{cap:'Pending',cls:'waiting',info:'$0 of '+DEP+' received',actions:[
-    {label:'Cancel request',to:'notsent',cls:'danger'},{label:'✓ Mark Complete',to:'done'}]},
+    {label:'Cancel request',to:'notsent',cls:'danger'},{label:'✓ Mark Paid',to:'done'}]},
   done:{cap:'Complete',cls:'done',info:'Deposit Received.',actions:[
-    {label:'✕ Mark Not Complete',to:'notsent',cls:'danger'}]},
+    {label:'✕ Mark Not Paid',to:'notsent',cls:'danger'}]},
   skipped:{cap:'Skipped',cls:'skipped',info:'Going straight to the balance — no deposit collected.',actions:[
     {label:'Undo skip',to:'notsent',cls:'muted'}]},
 }};}
@@ -56,9 +56,9 @@ function stInvoice(){return{icon:'receipt',state:'locked',S:{
   locked:{cap:'',cls:'locked',hint:'Collect the deposit first — the balance receipt reacts to it.',actions:[]},
   notsent:{cap:'Not sent',cls:'waiting',actions:[
     {label:'Request balance',to:'requested'},{label:'Payment options',to:'notsent',cls:'muted'},
-    {label:'✓ Mark Complete',to:'done'}]},
+    {label:'✓ Mark Paid',to:'done'}]},
   requested:{cap:'Pending',cls:'waiting',info:'Balance sent — waiting on payment.',actions:[
-    {label:'Cancel request',to:'notsent',cls:'danger'},{label:'✓ Mark Complete',to:'done'}]},
+    {label:'Cancel request',to:'notsent',cls:'danger'},{label:'✓ Mark Paid',to:'done'}]},
   done:{cap:'Complete',cls:'done',actions:[
     {label:'Resend Receipt',to:'done'},{label:'Download Receipt',to:'done'}]},
 }};}
