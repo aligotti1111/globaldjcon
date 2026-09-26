@@ -764,7 +764,7 @@ const LANDING_BODY = String.raw`
   <link rel="stylesheet" href="/booking-dashboard.css?v=2">
   <div class="wrap">
     <div class="shead reveal">
-      <span class="brstep3">Step 3</span>
+      <span class="brstep3">Steps 3 &ndash; 7</span>
       <div class="label">See how the pipeline works</div>
       <h2>YOUR BOOKING DASHBOARD</h2>
       <p>Once you approve a booking, the booking can then be found in your Booking Dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
