@@ -4724,6 +4724,50 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           setOpenField={setOpenSocialField}
         />
       )}
+      {/* Owner-only icon-style picker — a caret sitting right after the last
+          social icon. Opens a small popover (like Share) of the four style
+          presets, each a live preview of the whole icon row. Applies instantly;
+          saves in the background. */}
+      {isOwnProfile && (
+        <span ref={iconMenuRef} className={styles.underBannerIconStyle}>
+          <button
+            type="button"
+            className={`${styles.iconStyleCaret}${iconMenuOpen ? ` ${styles.iconStyleCaretOpen}` : ''}`}
+            onClick={() => setIconMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={iconMenuOpen}
+            title="Choose how your social icons look"
+            aria-label="Choose how your social icons look"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          {iconMenuOpen && (
+            <div className={styles.iconStyleMenu} role="menu">
+              <div className={styles.iconStyleMenuHeader}>Choose style</div>
+              {iconStyleOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={iconStyle === opt.key}
+                  aria-label={opt.label}
+                  className={`${styles.iconStyleMenuItem}${iconStyle === opt.key ? ` ${styles.iconStyleMenuItemActive}` : ''}`}
+                  onClick={() => chooseIconStyle(opt.key)}
+                >
+                  {iconStylePreview(opt.colored, opt.plain)}
+                  {iconStyle === opt.key && (
+                    <svg className={styles.iconStyleCheck} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+      )}
       {/* Owner-only phone control — sits in its OWN cluster (own divider),
           apart from the socials, mirroring where visitors see the Call
           button. Always shown so the DJ can set OR change their number. */}
@@ -4779,49 +4823,6 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
             <MailIcon />
           </button>
         </div>
-      )}
-
-      {/* Owner-only icon-style dropdown — lets the DJ pick how their social
-          icons look (White / Color, each with or without the circle frame).
-          Each option shows a live mini-preview. Applies instantly; saves in
-          the background. Sits in its own cluster (its own divider). */}
-      {isOwnProfile && (
-        <span ref={iconMenuRef} className={styles.underBannerIconStyle}>
-          <button
-            type="button"
-            className={`${styles.iconStyleCaret}${iconMenuOpen ? ` ${styles.iconStyleCaretOpen}` : ''}`}
-            onClick={() => setIconMenuOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={iconMenuOpen}
-            title="Choose how your social icons look"
-            aria-label="Choose how your social icons look"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-          {iconMenuOpen && (
-            <div className={styles.iconStyleMenu} role="menu">
-              {iconStyleOptions.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={iconStyle === opt.key}
-                  className={`${styles.iconStyleMenuItem}${iconStyle === opt.key ? ` ${styles.iconStyleMenuItemActive}` : ''}`}
-                  onClick={() => chooseIconStyle(opt.key)}
-                >
-                  {iconStylePreview(opt.colored, opt.plain)}
-                  {iconStyle === opt.key && (
-                    <svg className={styles.iconStyleCheck} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </span>
       )}
 
       {/* Share button — sits at the end of the socials row, set apart from
