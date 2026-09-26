@@ -325,12 +325,6 @@ export default function MobileMenu() {
                 <IconArchive />Past Bookings
               </Link>
             )}
-            {/* Finance/Earnings — owner only + paid. Sits under Past Bookings. */}
-            {isDj && !isStaff && bookingEnabled && (
-              <Link href="/finance" onClick={close} className="mobile-menu-item">
-                <IconChart />Finance/Earnings
-              </Link>
-            )}
             {!isDj && !isStaff && (
               <Link href="/upcoming-events" onClick={close} className="mobile-menu-item">
                 <IconClock />Upcoming Events{upcomingCount > 0 ? ` (${upcomingCount})` : ''}
@@ -372,6 +366,12 @@ export default function MobileMenu() {
             {(isDj || isStaff) && (
               <Link href="/inbox" onClick={close} className="mobile-menu-item">
                 <IconInbox />Inbox
+              </Link>
+            )}
+            {/* Finance/Earnings — owner only + paid (matches the desktop menu). */}
+            {isDj && !isStaff && bookingEnabled && (
+              <Link href="/finance" onClick={close} className="mobile-menu-item">
+                <IconChart />Finance/Earnings
               </Link>
             )}
             {isDj && (
