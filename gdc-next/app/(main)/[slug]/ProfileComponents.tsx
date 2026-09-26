@@ -480,7 +480,12 @@ export function SocialAddButton({
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
-          ) : '+'}
+          ) : (
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#08080d" strokeWidth="4" strokeLinecap="round" aria-hidden="true" style={{ display: 'block' }}>
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+          )}
         </span>
       </button>
     );
@@ -4407,6 +4412,25 @@ export function ShareCalendarModal({
 export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
+  // Icon style: 'white' (monochrome, default) or 'color' (brand colors). The
+  // owner flips it with a small toggle; the change saves and applies live
+  // (no reload) by swapping a modifier class on the row.
+  const [iconStyle, setIconStyle] = useState<'white' | 'color'>(
+    data.social_icon_style === 'color' ? 'color' : 'white',
+  );
+  const [savingIconStyle, setSavingIconStyle] = useState(false);
+  async function toggleIconStyle() {
+    const next = iconStyle === 'color' ? 'white' : 'color';
+    setIconStyle(next);          // optimistic
+    setSavingIconStyle(true);
+    try {
+      await saveProfile(data.id, { social_icon_style: next });
+    } catch {
+      setIconStyle(iconStyle);   // revert on failure
+    } finally {
+      setSavingIconStyle(false);
+    }
+  }
   // Copy-link feedback state — the "Copy link" item in the share menu
   // confirms with a brief "Copied" flip.
   const [copied, setCopied] = useState(false);
@@ -4541,7 +4565,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   // the share button at the end.
 
   return (
-    <div className={styles.underBannerSocials}>
+    <div className={`${styles.underBannerSocials}${iconStyle === 'color' ? ` ${styles.socialsColored}` : ''}`}>
       {links.map(l => (
         isOwnProfile ? (
           // Owner: each SET social stays editable — the icon opens an inline
@@ -4699,6 +4723,27 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
             onClick={onMessageClick}
           >
             <MailIcon />
+          </button>
+        </div>
+      )}
+
+      {/* Owner-only icon-style toggle — lets the DJ choose White or Color
+          for their social icons. Sits in its own cluster (its own divider)
+          before Share. Applies live; saves in the background. */}
+      {isOwnProfile && (
+        <div className={styles.underBannerIconStyle}>
+          <button
+            type="button"
+            className={styles.iconStyleToggle}
+            onClick={toggleIconStyle}
+            disabled={savingIconStyle}
+            title="Choose how your social icons look"
+            aria-label={`Social icons: ${iconStyle === 'color' ? 'Color' : 'White'} — tap to switch`}
+          >
+            <span className={styles.iconStyleSwatch} aria-hidden="true" />
+            <span className={styles.iconStyleLabel}>
+              {iconStyle === 'color' ? 'Color icons' : 'White icons'}
+            </span>
           </button>
         </div>
       )}
