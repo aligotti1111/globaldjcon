@@ -4789,15 +4789,14 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
         <span ref={iconMenuRef} className={styles.underBannerIconStyle}>
           <button
             type="button"
-            className={styles.iconStyleToggle}
+            className={`${styles.iconStyleCaret}${iconMenuOpen ? ` ${styles.iconStyleCaretOpen}` : ''}`}
             onClick={() => setIconMenuOpen((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={iconMenuOpen}
             title="Choose how your social icons look"
+            aria-label="Choose how your social icons look"
           >
-            {iconStylePreview(iconStyleColored, iconStylePlain)}
-            <span className={styles.iconStyleLabel}>Icon style</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
