@@ -26,6 +26,9 @@ export interface DjProfileData {
   // no band). Rendered at ~50% opacity behind just the text.
   profile_name_bg?: string | null;
   profile_location_bg?: string | null;
+  // How the profile's social icons render: 'white' (monochrome, default) or
+  // 'color' (each platform in its brand color). Null → 'white'.
+  social_icon_style?: string | null;
   tab_visibility: string | null;
   // Owner-chosen tab order — a JSON array of tab keys (the Booking tab is
   // always pinned first and is not part of this list). Null → default order.
