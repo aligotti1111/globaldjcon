@@ -151,6 +151,7 @@ export interface NotifyInit {
   email_notify_inbox_message: boolean;
   email_notify_weekly_digest: boolean;
   email_notify_monthly_digest: boolean;
+  email_notify_balance_digest: boolean;
 }
 
 interface Props {
