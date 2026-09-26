@@ -1,4 +1,14 @@
 
+(function () {
+// Re-execution guard. page.tsx re-appends this <script> on every HomePage mount
+// (SPA nav / Back button / dev StrictMode). This is a classic script, so its
+// top-level const/let bindings live in the global lexical scope and SURVIVE
+// removing the old <script> node — a second run used to die with
+// "SyntaxError: Identifier 'ICONS' has already been declared" before render()
+// ran, leaving the fresh, empty mount blank until the user hit "Reset". Now a
+// repeat run just re-renders into whatever mount is currently on the page.
+if (window.__gdcDash) { window.__gdcDash.render(); return; }
+
 const ICONS={
   doc:'<path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M8 13h8M8 17h6"/>',
   money:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4M18 10v4"/>',
@@ -166,7 +176,10 @@ function render(){
   // used to kill the initial render, leaving a blank sample until the user hit
   // "Reset" (which re-runs render() once the node exists).
   const mount=document.getElementById('gdc-dash-mount');
-  if(!mount){ (window.requestAnimationFrame||setTimeout)(render,50); return; }
+  // Retry on the next frame if the mount isn't in the DOM yet — BUT bail if the
+  // landing page is gone entirely (user navigated away mid-load), so we don't
+  // spin a rAF loop forever against a page that no longer exists.
+  if(!mount){ if(!document.querySelector('.gdc-landing')) return; (window.requestAnimationFrame||setTimeout)(render,50); return; }
   MODELS.forEach(gateInvoice);
   const groups=[];
   MODELS.forEach((m,i)=>{ let g=groups.find(x=>x.type===m.type); if(!g){g={type:m.type,label:m.label,items:[]};groups.push(g);} g.items.push({m,i}); });
@@ -287,9 +300,20 @@ function menuHTML(m,mi,key){
 function toggleMenu(mi,key,e){e.stopPropagation();OPEN=(OPEN&&OPEN.mi===mi&&OPEN.key===key)?null:{mi,key};render();}
 function doAction(mi,key,i,e){e.stopPropagation();const stg=MODELS[mi].stages[key];const a=stg.S[stg.state].actions[i];if(a.note)MODELS[mi].note=a.note;if(a.to)stg.state=a.to;OPEN=null;render();}
 function resetAll(){MODELS=buildModels();OPEN=null;render();}
+// The generated markup uses inline onclick="..." handlers, so these must be
+// reachable as window globals — the IIFE wrapper would otherwise scope them away.
+window.resetAll   = resetAll;
+window.toggleCard = toggleCard;
+window.toggleMenu = toggleMenu;
+window.doAction   = doAction;
+window.closeNote  = closeNote;
+// Marker for the re-execution guard at the top of the file.
+window.__gdcDash  = { render: render, reset: resetAll };
+
 document.addEventListener('click',()=>{if(OPEN){OPEN=null;render();}});
 // Boot: render now (render() self-heals if the mount isn't in the DOM yet), and
 // again if Safari restores this page from its back/forward cache with an empty
 // mount. render() is idempotent, so a repeat call is harmless.
 render();
 window.addEventListener('pageshow',function(){ var m=document.getElementById('gdc-dash-mount'); if(m&&!m.innerHTML.trim()) render(); });
+})();
