@@ -110,7 +110,7 @@ export default function StageMenu({
               onClick={() => { if (overrideLocked) return; onToggleOverride(); }}
               style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1 }}
             >
-              {st.done ? '✕ Mark Not Complete' : '✓ Mark Complete'}{overrideLocked ? '  \u{1F512}' : ''}
+              {st.done ? (payStage ? '✕ Mark Not Paid' : '✕ Mark Not Complete') : (payStage ? '✓ Mark Paid' : '✓ Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}
             </button>
             <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>{payStage ? 'Marks it paid — use once you’ve been paid by Venmo, Cash App, Zelle, cash or check. (Card confirms itself.)' : 'For steps handled outside the app.'}</div>
           </>
