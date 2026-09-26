@@ -378,7 +378,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing /* features as a clean list (layout C) */
   .flist{border-top:1px solid var(--line);max-width:1000px;margin:0 auto}
 .gdc-landing .flist .r{display:flex;gap:18px;align-items:center;padding:18px 6px;border-bottom:1px solid var(--line);position:relative}
-.gdc-landing .flist .r img{width:42px;height:42px;border-radius:11px;object-fit:cover;flex-shrink:0}
+.gdc-landing .flist .r img{width:50px;height:50px;border-radius:12px;object-fit:cover;flex-shrink:0}
 .gdc-landing .flist h3{font-family:var(--disp);font-size:1.3rem;letter-spacing:.01em;min-width:220px}
 .gdc-landing .flist p{color:var(--muted);font-size:.82rem;line-height:1.5;flex:1;margin:0}
 .gdc-landing .flist .titlecol{min-width:170px}
