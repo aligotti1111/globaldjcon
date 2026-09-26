@@ -2585,7 +2585,7 @@
 .underBannerSocials.socialsNoCircle .underBannerMail { color: #fff !important; }
 /* Slightly larger glyphs read better without a frame around them. */
 .underBannerSocials.socialsNoCircle .underBannerSocialBtn svg,
-.underBannerSocials.socialsNoCircle .actionBtn svg { width: 19px; height: 19px; }
+.underBannerSocials.socialsNoCircle .actionBtn svg { width: 23px; height: 23px; }
 
 /* Owner-only icon-style picker — a small caret sitting snug next to the last
    social icon. Clicking it drops the four style options out from under the
@@ -2627,6 +2627,17 @@
   border: 1px solid rgba(255, 255, 255, .14);
   background: #0d0d14;
   box-shadow: 0 12px 32px rgba(0, 0, 0, .5);
+}
+.iconStyleMenuHeader {
+  padding: .3rem .6rem .45rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .55);
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  margin-bottom: 2px;
+  white-space: nowrap;
 }
 .iconStyleMenuItem {
   display: flex;
