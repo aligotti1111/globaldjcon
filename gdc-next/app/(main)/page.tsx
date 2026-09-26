@@ -765,7 +765,7 @@ const LANDING_BODY = String.raw`
       <span class="brstep3">Step 3</span>
       <div class="label">See how the pipeline works</div>
       <h2>YOUR BOOKING DASHBOARD</h2>
-      <p>Below is a sample of how two bookings look in your booking dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
+      <p>Once you approve a booking, the booking can then be found in your Booking Dashboard. The icons are used to deploy everything needed during the booking process — keeping you organized with up-to-the-moment status on each item in the pipeline.</p>
     </div>
     <div class="gdc-dash">
       <div id="gdc-dash-mount"></div>
