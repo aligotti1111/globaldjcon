@@ -2592,6 +2592,7 @@
    icon list. No divider/label: just the arrow, so it reads as "expand this
    row". */
 .underBannerIconStyle {
+  position: relative;
   display: inline-flex;
   align-items: center;
   margin-left: .1rem;
@@ -2612,40 +2613,31 @@
 .iconStyleCaret:hover { color: #fff; }
 .iconStyleCaretOpen { transform: rotate(180deg); color: #fff; }
 
-/* Full-width panel that drops out of the icon list. Anchored to the socials
-   row (which is position:relative) and spanning its width, attached directly
-   below with no gap so it looks like part of the list. */
-.underBannerSocials { position: relative; }
+/* Small popover anchored to the caret — same treatment as the Share menu. */
 .iconStyleMenu {
   position: absolute;
-  top: 100%;
-  left: 0;
+  top: calc(100% + 8px);
   right: 0;
   z-index: 60;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px;
-  border-radius: 0 0 12px 12px;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-top: none;
-  background: var(--black);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, .55);
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: #0d0d14;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .5);
 }
 .iconStyleMenuItem {
   display: flex;
   align-items: center;
-  gap: .8rem;
+  gap: .6rem;
   width: 100%;
-  padding: .55rem .7rem;
+  padding: .5rem .6rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .03em;
-  text-transform: uppercase;
   text-align: left;
   cursor: pointer;
   transition: background .12s;
