@@ -633,6 +633,8 @@ const LANDING_CSS = String.raw`
 .gdc-landing .brnext .brnextlabel{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .gdc-landing .brnext svg{width:40px;height:70px;filter:drop-shadow(0 0 10px rgba(0,245,196,.5))}
 .gdc-landing #dashsample .brstep3{display:inline-block;font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--neon);margin-bottom:10px}
+.gdc-landing #financesample .finsample{max-width:1040px;margin:8px auto 0}
+.gdc-landing #financesample .finsample img{display:block;width:100%;height:auto}
 /* Subtle role tag over each image: Host on the phone, DJ on the laptop. */
 .gdc-landing .brgrid .brtag{position:absolute;left:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
 @media(max-width:760px){.gdc-landing .brgrid{gap:16px}.gdc-landing .brgrid figure{width:100%;padding:12px 12px 16px}.gdc-landing .brgrid .brimgwrap{width:100%;height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}.gdc-landing .brgrid img{height:auto;width:auto;max-width:100%;max-height:100%}}`;
@@ -800,6 +802,20 @@ const LANDING_BODY = String.raw`
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_85726c22-c72e-478d-9d61-4f1981265900.png" alt=""><h3>SMS &amp; Email</h3><p>By default every request sends an email update; opt in for SMS notifications as a secondary reminder.</p></div>
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_9832a838-15f6-4770-be32-2edcc0b10107.png" alt=""><h3>Past bookings</h3><p>Every completed event moves to your past bookings, keeping a full record — contract, planner or rider, guest list, and receipts all stay attached. Re‑download any document, invoice overtime after the fact, or reference past details when a repeat client books again.</p></div>
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260926_055833_e14bc14b-33d5-4f7a-9cc1-33a2c247b3f7.png" alt=""><h3>Finance &amp; earnings</h3><p>Every booking, deposit and balance rolls up into one finance report — total earnings, upcoming vs. collected, and a breakdown by event type. Filter by date range and export to CSV for your books or your accountant.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINANCE SAMPLE -->
+<section id="financesample" style="padding:40px 0 0">
+  <div class="wrap">
+    <div class="shead reveal">
+      <div class="label">Know your numbers</div>
+      <h2>FINANCE &amp; EARNINGS</h2>
+      <p>Every booking, deposit and balance rolls up into one report — total earnings, collected vs. expected, tax, and a breakdown by event type. Filter by date range and export to CSV.</p>
+    </div>
+    <div class="finsample reveal">
+      <img loading="lazy" decoding="async" src="/finance-earnings.webp" alt="Finance and earnings report">
     </div>
   </div>
 </section>
