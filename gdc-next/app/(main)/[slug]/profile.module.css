@@ -2587,36 +2587,30 @@
 .underBannerSocials.socialsNoCircle .underBannerSocialBtn svg,
 .underBannerSocials.socialsNoCircle .actionBtn svg { width: 19px; height: 19px; }
 
-/* Owner-only icon-style picker — its own cluster with a left divider, like
-   the contact + share clusters. The panel it opens is anchored to the whole
-   socials row (not this small trigger), so it reads as expanding out of the
-   icon list rather than as a separate floating dropdown. */
+/* Owner-only icon-style picker — a small caret sitting snug next to the last
+   social icon. Clicking it drops the four style options out from under the
+   icon list. No divider/label: just the arrow, so it reads as "expand this
+   row". */
 .underBannerIconStyle {
   display: inline-flex;
   align-items: center;
-  margin-left: .65rem;
-  padding-left: .85rem;
-  border-left: 2px solid rgba(255, 255, 255, .4);
+  margin-left: .1rem;
 }
-.iconStyleToggle {
+.iconStyleCaret {
   display: inline-flex;
   align-items: center;
-  gap: .4rem;
-  padding: .28rem .55rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .35);
-  background: rgba(255, 255, 255, .05);
-  color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-size: .5rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, .8);
   cursor: pointer;
-  transition: all .15s;
-  white-space: nowrap;
+  transition: transform .18s, color .15s;
 }
-.iconStyleToggle:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .55); }
-.iconStyleLabel { line-height: 1; }
+.iconStyleCaret:hover { color: #fff; }
+.iconStyleCaretOpen { transform: rotate(180deg); color: #fff; }
 
 /* Full-width panel that drops out of the icon list. Anchored to the socials
    row (which is position:relative) and spanning its width, attached directly
@@ -2677,16 +2671,8 @@
   flex: none;
 }
 .iconStylePreviewDot svg { width: 12px; height: 12px; display: block; }
-/* In the small trigger swatch the row is tighter and smaller. */
-.iconStyleToggle .iconStylePreviewRow { gap: 2px; }
-.iconStyleToggle .iconStylePreviewDot { width: 14px; height: 14px; }
-.iconStyleToggle .iconStylePreviewDot svg { width: 9px; height: 9px; }
 
 @media (max-width: 700px) {
-  .underBannerIconStyle { margin-left: .5rem; padding-left: .6rem; }
-  .iconStyleToggle { font-size: .48rem; padding: .26rem .45rem; }
-  /* Hide the trigger's own tiny preview on mobile to save room. */
-  .iconStyleToggle .iconStylePreviewRow { display: none; }
   .iconStylePreviewDot { width: 17px; height: 17px; }
   .iconStyleMenuItem { font-size: .58rem; gap: .5rem; }
 }
