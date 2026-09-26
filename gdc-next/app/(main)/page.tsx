@@ -621,8 +621,9 @@ const LANDING_CSS = String.raw`
 /* Option 3 — framed step cards: each image on a dark card with a thin neon
    border + soft glow, caption on top. */
 .gdc-landing .brgrid{display:flex;flex-wrap:wrap;gap:28px;align-items:stretch;justify-content:center;max-width:1000px;margin:0 auto}
-.gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:16px;background:linear-gradient(180deg,#0c0c11,#000);border:1px solid rgba(0,245,196,.28);border-radius:18px;padding:22px 22px 26px;box-shadow:0 0 40px rgba(0,245,196,.10)}
-.gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center}
+.gdc-landing .brgrid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;background:linear-gradient(180deg,#0c0c11,#000);border:1px solid rgba(0,245,196,.28);border-radius:18px;padding:22px 22px 26px;box-shadow:0 0 40px rgba(0,245,196,.10)}
+.gdc-landing .brgrid .brstep{font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--neon)}
+.gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center;margin-bottom:10px}
 .gdc-landing .brgrid img{height:260px;width:auto;max-width:100%;border-radius:10px}
 @media(max-width:760px){.gdc-landing .brgrid img{height:190px}.gdc-landing .brgrid figure{padding:16px 16px 20px}}`;
 
@@ -728,15 +729,14 @@ const LANDING_BODY = String.raw`
      the "Your Booking Dashboard" sample section. -->
 <section id="bookingrequested" style="padding:40px 0 8px">
   <div class="wrap">
-    <div class="shead reveal">
-      <p>One tap on your profile and a host sends a booking request straight to you for approval.</p>
-    </div>
     <div class="brgrid reveal">
       <figure>
+        <span class="brstep">Step 1</span>
         <figcaption>Booking Requested</figcaption>
         <img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async">
       </figure>
       <figure>
+        <span class="brstep">Step 2</span>
         <figcaption>Approve Booking</figcaption>
         <img src="/approve-booking.webp" alt="A DJ approving a booking request in their Global DJ Connect dashboard" loading="lazy" decoding="async">
       </figure>
