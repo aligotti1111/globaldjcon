@@ -34,6 +34,7 @@ interface PrefsRow extends AccessFields {
   // Digest opt-ins (default OFF).
   email_notify_weekly_digest: boolean | null;
   email_notify_monthly_digest: boolean | null;
+  email_notify_balance_digest: boolean | null;
 }
 
 export default async function NotificationsPage() {
@@ -44,7 +45,7 @@ export default async function NotificationsPage() {
   const { data: row } = await supabase
     .from('users')
     .select(
-      'id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message, email_notify_booking_request, email_notify_booking_status, email_notify_inbox_message, email_notify_weekly_digest, email_notify_monthly_digest'
+      'id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, sms_phone, sms_enabled, sms_notify_booking_request, sms_notify_booking_status, sms_notify_inbox_message, email_notify_booking_request, email_notify_booking_status, email_notify_inbox_message, email_notify_weekly_digest, email_notify_monthly_digest, email_notify_balance_digest'
     )
     .eq('id', user.id)
     .single<PrefsRow>();
@@ -75,6 +76,7 @@ export default async function NotificationsPage() {
         // Digests are opt-IN, so default OFF (only on when explicitly true).
         email_notify_weekly_digest: row.email_notify_weekly_digest === true,
         email_notify_monthly_digest: row.email_notify_monthly_digest === true,
+        email_notify_balance_digest: row.email_notify_balance_digest === true,
       }}
     />
   );
