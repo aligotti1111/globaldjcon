@@ -291,7 +291,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     // stuck "Not sent". (Previously only a real balance ROW triggered this, so a
     // manually-marked-paid balance left the deposit sitting on "Not sent".)
     const balanceRequested = payments.some((p) => p.kind === 'balance') || !!overrides.invoice;
-    const depositSkipped = !reallySettled && depositRealPaidNow <= 0 && (!!overrides.deposit_skipped || balanceRequested);
+    // The deposit's "skipped" state must NOT ride on the manual balance-complete
+    // toggle (overrides.invoice): otherwise flipping the balance paid ↔ not paid
+    // would silently flip the deposit too. Only an actual balance request row or
+    // the explicit "Skip deposit" override skips it.
+    const depositSkipped = !reallySettled && depositRealPaidNow <= 0
+      && (!!overrides.deposit_skipped || payments.some((p) => p.kind === 'balance'));
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
     // any of this existed. The override says "this stage is handled" — it does
