@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canBilling } from '@/lib/acting';
 import { EDIT_FIELD_BY_KEY } from '@/lib/bookingEditFields';
+import { notifyBookingSms } from '@/lib/supabase/sms';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -205,6 +206,10 @@ export async function POST(req: Request) {
     }
     const { error } = await admin.from('booking_change_requests').insert(pendingRows as unknown as never);
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+    // Text the host too — but ONLY for approval-required changes, and only when
+    // they opted into SMS for this booking (notifyBookingSms self-gates on
+    // bookings.sms_opt_in + a phone on file). Links to the approve/decline page.
+    await notifyBookingSms(booking.id, 'change', { approvalUrl: `${SITE_URL}/change/${pendingRows[0].token}` });
   }
 
   // ── Email the host ──
