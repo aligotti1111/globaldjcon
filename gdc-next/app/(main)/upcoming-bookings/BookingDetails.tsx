@@ -800,10 +800,18 @@ export default function BookingDetails({
       <>
         {main.map((c) => (
           <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
-            <span className={styles.priceKey}>{c.label}{c.label === 'Agreed Rate' ? badgeFor('price') : null}</span>
+            <span className={styles.priceKey}>{c.label}{c.label === 'Agreed Rate' ? badgeFor('price') : (c.label === 'Tax' || c.label === 'Total (with tax)') ? badgeFor('tax_pct') : null}</span>
             <span className={styles.priceVal}>{c.value}</span>
           </div>
         ))}
+        {/* A pending tax change on a booking that currently has no tax row still
+            needs to show — otherwise the DJ sees no sign the request was sent. */}
+        {pendingCols.has('tax_pct') && !main.some((c) => c.label === 'Tax') && (
+          <div className={styles.priceRow}>
+            <span className={styles.priceKey}>Tax{badgeFor('tax_pct')}</span>
+            <span className={styles.priceVal}>&mdash;</span>
+          </div>
+        )}
         {sched.length > 0 && (
           <div className={styles.paySched}>
             <div className={styles.schedLbl}>Payment schedule</div>
