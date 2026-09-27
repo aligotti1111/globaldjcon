@@ -246,7 +246,12 @@ export default function BookingEditModal({
                 )}
                 <div>
                   <label style={label}>Deposit (%)</label>
-                  <input style={input} type="number" step="1" min="0" max="100" value={depPct} placeholder="e.g. 15" onChange={(e) => setDepPct(e.target.value)} />
+                  <select style={input} value={depPct} onChange={(e) => setDepPct(e.target.value)}>
+                    <option value="">No deposit</option>
+                    {Array.from({ length: 99 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={String(n)}>{n}%</option>
+                    ))}
+                  </select>
                 </div>
                 {priceBreakdown}
                 <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 8, lineHeight: 1.45 }}>Changes tax and deposit for this booking only. Applies right away; the host is emailed the update.</div>
