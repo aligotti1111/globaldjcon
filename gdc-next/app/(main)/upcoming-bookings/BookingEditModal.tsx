@@ -93,12 +93,8 @@ export default function BookingEditModal({
   // We only read the stored value to show it in the breakdown.
   const initDepPct = values.deposit_pct ?? '';
   const depPct = initDepPct;
-  const hasDeposit = (Number(initDepPct) || 0) > 0;
   const [removeTax, setRemoveTax] = useState((Number(initTaxPct) || 0) === 0);
   const [taxPct, setTaxPct] = useState(initTaxPct === '0' ? '' : initTaxPct);
-  // Deposit % can't be changed, but the DJ can skip (waive) it while it's still
-  // unpaid — that drops the deposit to nothing so the full total is the balance.
-  const [skipDeposit, setSkipDeposit] = useState(false);
 
   const isPending = (f: EditFieldDef) => f.tier === 'approve' && !!pendingCols?.has(f.col);
   // Locked fields (pending approval) don't count as editable changes.
@@ -108,7 +104,7 @@ export default function BookingEditModal({
   // Tax edit or skipping the deposit makes the pricing terms dirty.
   const newTaxPctNum = removeTax ? 0 : (Number(taxPct) || 0);
   const taxDirty = isPricing && newTaxPctNum !== (Number(initTaxPct) || 0);
-  const pricingDirty = isPricing && (taxDirty || (skipDeposit && hasDeposit));
+  const pricingDirty = isPricing && taxDirty;
 
   // Live price breakdown: the agreed rate, tax and deposit as they stand, and the
   // new figures as the DJ edits price / tax % / deposit %. A line that changed
@@ -128,7 +124,7 @@ export default function BookingEditModal({
     const tp0 = Number(values.tax_pct) || 0;
     const dp0 = (values.deposit_pct || '').trim() === '' ? 0 : (Number(values.deposit_pct) || 0);
     const o = calc(base0, tp0, dp0);
-    const n = calc(Number(form.price) || 0, removeTax ? 0 : (Number(taxPct) || 0), skipDeposit || depPct.trim() === '' ? 0 : (Number(depPct) || 0));
+    const n = calc(Number(form.price) || 0, removeTax ? 0 : (Number(taxPct) || 0), depPct.trim() === '' ? 0 : (Number(depPct) || 0));
     const Row = ({ label: lbl, oldV, newV, strong }: { label: string; oldV: string; newV: string; strong?: boolean }) => (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: strong ? '1px solid rgba(255,255,255,.16)' : '1px solid rgba(255,255,255,.06)' }}>
         <span style={{ fontSize: strong ? '.86rem' : '.8rem', color: strong ? '#fff' : '#c9c9d6', fontWeight: strong ? 700 : 400 }}>{lbl}</span>
@@ -196,11 +192,8 @@ export default function BookingEditModal({
       const payload: Record<string, unknown> = { bookingId: values.__id, changes };
       if (pricingDirty) {
         // Tax is editable; deposit can only be skipped (waived), not re-set.
-        const pricing: { taxPct?: number; removeTax?: boolean; skipDeposit?: boolean } = {};
-        if (newTaxPctNum !== (Number(initTaxPct) || 0)) {
-          if (removeTax) pricing.removeTax = true; else pricing.taxPct = newTaxPctNum;
-        }
-        if (skipDeposit && hasDeposit) pricing.skipDeposit = true;
+        const pricing: { taxPct?: number; removeTax?: boolean } = {};
+        if (removeTax) pricing.removeTax = true; else pricing.taxPct = newTaxPctNum;
         payload.pricing = pricing;
       }
       const res = await fetch('/api/bookings/edit', {
@@ -353,12 +346,6 @@ export default function BookingEditModal({
                     <label style={label}>Tax rate (%){!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
                     <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
                   </div>
-                )}
-                {hasDeposit && !depositLocked && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 4 }}>
-                    <input type="checkbox" checked={skipDeposit} onChange={(e) => setSkipDeposit(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
-                    <span style={{ fontSize: '.86rem', color: '#fff' }}>Skip deposit (mark it skipped on the booking)</span>
-                  </label>
                 )}
                 {priceBreakdown}
               </div>
