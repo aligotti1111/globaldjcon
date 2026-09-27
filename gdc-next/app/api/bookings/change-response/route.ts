@@ -67,10 +67,16 @@ export async function POST(req: Request) {
   }
 
   // APPROVE — apply each pending change.
-  const { data: bk } = await admin.from('bookings').select('id, tax_pct, currency').eq('id', hit.booking_id).maybeSingle<{ id: string; tax_pct: number | null; currency: string | null }>();
+  const { data: bk } = await admin.from('bookings').select('id, tax_pct, currency, field_edits').eq('id', hit.booking_id).maybeSingle<{ id: string; tax_pct: number | null; currency: string | null; field_edits: Record<string, string> | null }>();
   const taxPct = bk?.tax_pct != null ? Number(bk.tax_pct) : 0;
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const update: Record<string, unknown> = {};
+  // Stamp each approved column so the card shows a "Host approved change" badge
+  // (value prefixed 'approved:' to distinguish it from a plain notify-only edit).
+  const marks: Record<string, string> = { ...(bk?.field_edits || {}) };
+  for (const r of pending) {
+    marks[r.target_col] = `approved:${nowISO}`;
+  }
   for (const r of pending) {
     if (r.target_col === 'price') {
       const price = Number(r.target_raw);
@@ -88,7 +94,8 @@ export async function POST(req: Request) {
       update[r.target_col] = r.target_raw === '' ? null : r.target_raw;
     }
   }
-  if (Object.keys(update).length > 0) {
+  update.field_edits = marks;
+  {
     const { error } = await admin.from('bookings').update(update as unknown as never).eq('id', hit.booking_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
   }
