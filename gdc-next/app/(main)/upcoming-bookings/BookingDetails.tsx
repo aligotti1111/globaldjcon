@@ -21,6 +21,7 @@ import FlyerSlot from './FlyerSlot';
 import OvertimeSection from './OvertimeSection';
 import BookingLog, { type ChangeLogItem } from './BookingLog';
 import BookingEditModal, { type EditSection, type ContractState } from './BookingEditModal';
+import VenueDistance from './VenueDistance';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
   type ContractAction,
@@ -34,7 +35,7 @@ import {
 // ───────────────────────────────────────────────────────────────────────
 
 export default function BookingDetails({
-  booking, djType, userId, clubDepositPct, taxPct, flyerUrl, onFlyerChange, onContractSigned, archive,
+  booking, djType, userId, clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, flyerUrl, onFlyerChange, onContractSigned, archive,
   payments, onMutated, canManageMoney = true, canManageContract = true, onEdit, contractAction, onContractActionHandled, isOwner = false,
 }: {
   booking: UpcomingBooking;
@@ -42,6 +43,9 @@ export default function BookingDetails({
   userId: string;
   clubDepositPct: number;
   taxPct: number;
+  djZip?: string | null;
+  djCity?: string | null;
+  djState?: string | null;
   flyerUrl: string | null;
   onFlyerChange: (url: string | null) => void;
   onContractSigned?: () => void;
@@ -614,11 +618,14 @@ export default function BookingDetails({
               ) : null },
             {
               label: 'Venue Address',
-              value: addressUrl ? (
-                <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>
-                  {booking.venue_address}
-                </a>
-              ) : booking.venue_address,
+              value: booking.venue_address ? (
+                <>
+                  {addressUrl ? (
+                    <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>{booking.venue_address}</a>
+                  ) : booking.venue_address}
+                  <VenueDistance venueLat={(booking as { venue_lat?: number | null }).venue_lat ?? null} venueLon={(booking as { venue_lon?: number | null }).venue_lon ?? null} djZip={djZip} djCity={djCity} djState={djState} />
+                </>
+              ) : null,
             },
           ],
           [
@@ -634,11 +641,14 @@ export default function BookingDetails({
           [
             {
               label: 'Venue Address',
-              value: addressUrl ? (
-                <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>
-                  {booking.venue_address}
-                </a>
-              ) : booking.venue_address,
+              value: booking.venue_address ? (
+                <>
+                  {addressUrl ? (
+                    <a href={addressUrl} target="_blank" rel="noreferrer" className={styles.addressLink}>{booking.venue_address}</a>
+                  ) : booking.venue_address}
+                  <VenueDistance venueLat={(booking as { venue_lat?: number | null }).venue_lat ?? null} venueLon={(booking as { venue_lon?: number | null }).venue_lon ?? null} djZip={djZip} djCity={djCity} djState={djState} />
+                </>
+              ) : null,
             },
           ],
         ]),
