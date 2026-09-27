@@ -261,6 +261,9 @@ export default function BookingEditModal({
               </div>
             )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
+            {changed.some((f) => f.tier === 'notify') && (
+              <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
+            )}
             {hasApprove && changed.length > 0 && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — changed field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
