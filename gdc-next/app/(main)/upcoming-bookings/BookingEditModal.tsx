@@ -254,7 +254,6 @@ export default function BookingEditModal({
                   </select>
                 </div>
                 {priceBreakdown}
-                <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 8, lineHeight: 1.45 }}>Changes tax and deposit for this booking only. Applies right away; the host is emailed the update.</div>
               </div>
             )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
