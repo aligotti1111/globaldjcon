@@ -20,6 +20,7 @@ import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import OvertimeSection from './OvertimeSection';
 import BookingLog from './BookingLog';
+import BookingEditModal, { type EditSection, type ContractState } from './BookingEditModal';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
   type ContractAction,
@@ -227,6 +228,66 @@ export default function BookingDetails({
   const [signedBusy, setSignedBusy] = useState(false);
   const [signedDocs, setSignedDocs] = useState<{ contract?: string; audit?: string } | null>(null);
   const [locallySigned, setLocallySigned] = useState(false);
+
+  // ── Edit-details feature (owner only) ─────────────────────────────────────
+  // Per-section pencil → acknowledgment → form → save. Notify-only fields apply
+  // now ("Edited" badge); date/time/address/price/package-details need host
+  // approval ("Pending change" badge). Declared up here (not just before the
+  // return) so the header blocks below can call badgeFor()/sectionPencil().
+  const [editSection, setEditSection] = useState<EditSection | null>(null);
+  const [fieldEdits, setFieldEdits] = useState<Record<string, string>>(
+    ((booking as { field_edits?: Record<string, string> | null }).field_edits) || {},
+  );
+  const [pendingCols, setPendingCols] = useState<Set<string>>(new Set());
+  const canEdit = isOwner && !archive;
+  useEffect(() => {
+    if (!canEdit) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/bookings/edit?bookingId=${encodeURIComponent(booking.id)}`);
+        const d = (await r.json().catch(() => ({}))) as { field_edits?: Record<string, string>; pending?: { target_col: string }[] };
+        if (!alive) return;
+        if (d.field_edits) setFieldEdits(d.field_edits);
+        if (Array.isArray(d.pending)) setPendingCols(new Set(d.pending.map((p) => p.target_col)));
+      } catch { /* badges just won't show */ }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking.id, canEdit]);
+
+  // Badge next to a field, keyed by its DB column. Pending (amber) beats Edited.
+  const badgeFor = (col: string): React.ReactNode => {
+    const pending = pendingCols.has(col);
+    const edited = !!fieldEdits[col];
+    if (!pending && !edited) return null;
+    return (
+      <span style={{
+        display: 'inline-block', marginLeft: 8, verticalAlign: 'middle',
+        fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700,
+        letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5,
+        color: pending ? '#f5e642' : NEON,
+        background: pending ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)',
+        border: `1px solid ${pending ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)'}`,
+      }}>{pending ? 'Pending change' : 'Edited'}</span>
+    );
+  };
+  const LABEL_COL: Record<string, string> = {
+    'Venue Name': 'venue_name', 'Room Details': 'room_details', 'Venue Address': 'venue_address',
+    'Venue Type': 'venue_type', 'Booked By': 'requester_name', 'Contact Phone': 'phone',
+  };
+  // The pencil button on a section's chip header (owner, non-archive).
+  const sectionPencil = (sec: EditSection): React.ReactNode => canEdit ? (
+    <button
+      type="button"
+      onClick={() => setEditSection(sec)}
+      title="Edit these details"
+      aria-label="Edit these details"
+      style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, background: 'transparent', border: '1px solid rgba(255,255,255,.16)', borderRadius: 7, color: 'var(--muted,#8a8aa0)', cursor: 'pointer', flexShrink: 0 }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+  ) : null;
 
   // When a sent contract is opened, verify with DocuSeal whether it's actually
   // completed. The webhook flips the DB to 'signed', but a page loaded before
@@ -639,7 +700,7 @@ export default function BookingDetails({
       <>
         {main.map((c) => (
           <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
-            <span className={styles.priceKey}>{c.label}</span>
+            <span className={styles.priceKey}>{c.label}{c.label === 'Agreed Rate' ? badgeFor('price') : null}</span>
             <span className={styles.priceVal}>{c.value}</span>
           </div>
         ))}
@@ -703,18 +764,18 @@ export default function BookingDetails({
   const eventHeaderBlock = djType === 'mobile' ? (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
       <div>
-        <div className={styles.detailLabel}>Event Type</div>
+        <div className={styles.detailLabel}>Event Type{badgeFor('event_type')}</div>
         <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
       </div>
       {booking.event_date && (
         <div>
-          <div className={styles.detailLabel}>Event Date</div>
+          <div className={styles.detailLabel}>Event Date{badgeFor('event_date')}</div>
           <div className={styles.detailValue}>{formatLongDate(booking.event_date)}</div>
         </div>
       )}
       {booking.guest_count != null && (
         <div>
-          <div className={styles.detailLabel}>Guest Count</div>
+          <div className={styles.detailLabel}>Guest Count{badgeFor('guest_count')}</div>
           <div className={styles.detailValue}>{String(booking.guest_count)}</div>
         </div>
       )}
@@ -730,19 +791,19 @@ export default function BookingDetails({
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
       {booking.event_date && (
         <div>
-          <div className={styles.detailLabel}>Event Date</div>
+          <div className={styles.detailLabel}>Event Date{badgeFor('event_date')}</div>
           <div className={styles.detailValue}>{formatLongDate(booking.event_date)}</div>
         </div>
       )}
       {setTimeStr && (
         <div>
-          <div className={styles.detailLabel}>Set Time</div>
+          <div className={styles.detailLabel}>Set Time{badgeFor('start_time')}</div>
           <div className={styles.detailValue}>{setTimeStr}</div>
         </div>
       )}
       {booking.venue_name && (
         <div>
-          <div className={styles.detailLabel}>Venue Name</div>
+          <div className={styles.detailLabel}>Venue Name{badgeFor('venue_name')}</div>
           <div className={styles.detailValue}>{booking.venue_name}</div>
         </div>
       )}
@@ -798,11 +859,17 @@ export default function BookingDetails({
   // Package card — rendered just above the Pricing card (see the section map).
   const packageBlock = (hasPackageDetails || booking.package_title) ? (
     <div className={styles.packageBlock} style={{ gridColumn: '1 / -1', background: 'transparent', backgroundImage: 'none' }}>
-      <div className={styles.detailChip}><span>Package</span></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className={styles.detailChip}><span>Package</span></div>
+        {sectionPencil('PACKAGE')}
+      </div>
       {booking.package_title && (
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--white,#fff)', marginTop: 12 }}>
-          {booking.package_title}
+          {booking.package_title}{badgeFor('package_title')}
         </div>
+      )}
+      {(pendingCols.has('package_details') || fieldEdits['package_details']) && (
+        <div style={{ marginTop: 8 }}><span className={styles.detailLabel}>Details</span>{badgeFor('package_details')}</div>
       )}
       {hasPackageDetails && (
         <div
@@ -812,6 +879,30 @@ export default function BookingDetails({
       )}
     </div>
   ) : null;
+
+  const contractState: ContractState =
+    (booking.contract_status === 'signed' || locallySigned) ? 'signed'
+    : (booking.contract_status === 'awaiting_client' || contractSent || (booking as { contract_id?: string | null }).contract_id) ? 'sent'
+    : 'none';
+
+  // Current stored value per editable field key (strings the modal's inputs use).
+  const editValues: Record<string, string> = {
+    __id: booking.id,
+    event_type: booking.event_type || '',
+    guest_count: booking.guest_count != null ? String(booking.guest_count) : '',
+    event_date: (booking.event_date || '').slice(0, 10),
+    start_time: (booking.start_time || '').slice(0, 5),
+    end_time: (booking.end_time || '').slice(0, 5),
+    venue_name: booking.venue_name || '',
+    venue_type: booking.venue_type || '',
+    room_details: booking.room_details || '',
+    venue_address: booking.venue_address || '',
+    requester_name: booking.requester_name || '',
+    phone: booking.phone || '',
+    package_title: booking.package_title || '',
+    package_details: (booking.package_details || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+    price: agreedTotal != null ? String(agreedTotal) : '',
+  };
 
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
@@ -827,7 +918,10 @@ export default function BookingDetails({
           <div
             className={`${styles.detailSection}${g.key === 'PRICING' ? ' ' + styles.detailSectionPricing : ''}`}
           >
-            <div className={styles.detailChip}><span>{g.title}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className={styles.detailChip}><span>{g.title}</span></div>
+              {sectionPencil(g.key as EditSection)}
+            </div>
             {g.key === 'EVENT' && eventHeaderBlock}
             {g.key === 'VENUE' && venueHeaderBlock}
             {g.key === 'PRICING' ? renderPricing(g.rows) : g.rows.map((row, i) => (
@@ -838,7 +932,7 @@ export default function BookingDetails({
               >
                 {row.map((cell) => (
                   <div key={cell.label} className={styles.detailRow}>
-                    <div className={styles.detailLabel}>{cell.label}</div>
+                    <div className={styles.detailLabel}>{cell.label}{LABEL_COL[cell.label] ? badgeFor(LABEL_COL[cell.label]) : null}</div>
                     <div className={styles.detailValue}>{cell.value}</div>
                   </div>
                 ))}
@@ -1058,6 +1152,32 @@ export default function BookingDetails({
           contractId={sendContractId}
           onClose={() => setSendContractId(null)}
           onSent={() => { setContractSent(true); setSendContractId(null); setContractCancelled(false); setResendDone(false); onMutated?.(); }}
+        />
+      )}
+      {editSection && (
+        <BookingEditModal
+          section={editSection}
+          djType={djType}
+          contractState={contractState}
+          values={editValues}
+          onClose={() => setEditSection(null)}
+          onSaved={(res) => {
+            // Reflect the new badges immediately: notify-only cols are "Edited",
+            // approval cols become "Pending change".
+            setFieldEdits(res.field_edits || {});
+            if (res.pending?.length) {
+              setPendingCols((prev) => {
+                const next = new Set(prev);
+                for (const p of res.pending) {
+                  const col = p.field === 'price' ? 'price' : p.field;
+                  next.add(col);
+                }
+                return next;
+              });
+            }
+            setEditSection(null);
+            onMutated?.();
+          }}
         />
       )}
     </div>
