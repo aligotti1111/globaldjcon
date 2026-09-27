@@ -282,7 +282,14 @@ export async function POST(req: Request) {
     const oldDepPct = booking.deposit_pct != null ? Number(booking.deposit_pct) : 0;
     if (p.taxPct !== undefined || p.removeTax) {
       const tp = p.removeTax ? 0 : Math.max(0, Number(p.taxPct) || 0);
-      if (tp !== oldTaxPct && !alreadyPending.has('tax_pct')) {
+      if (tp !== oldTaxPct) {
+        // A prior still-pending tax request is replaced, not blocked, so the DJ
+        // can always re-request tax (there's no per-tax cancel UI).
+        if (alreadyPending.has('tax_pct')) {
+          await admin.from('booking_change_requests')
+            .update({ status: 'superseded', responded_at: nowISO } as unknown as never)
+            .eq('booking_id', booking.id).eq('target_col', 'tax_pct').eq('status', 'pending');
+        }
         // Changing tax creates a new grand total — the host approves the new tax
         // AND the resulting new price together, so both figures are shown.
         const cur = booking.currency || 'USD';
@@ -387,7 +394,7 @@ export async function POST(req: Request) {
           + legalFooter;
         await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} has requested to change booking details - approval needed`, html: shell(content) });
       }
-    } catch { /* non-fatal — the change already landed */ }
+    } catch (e) { console.error('[bookings/edit] host email failed', e); }
   }
 
   return NextResponse.json({
