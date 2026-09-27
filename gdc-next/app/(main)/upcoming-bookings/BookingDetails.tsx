@@ -865,7 +865,7 @@ export default function BookingDetails({
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
       <div>
         <div className={styles.detailLabel}>Event Type{badgeFor('event_type')}</div>
-        <div className={styles.detailValue} style={{ textTransform: 'uppercase' }}>{eventTypeHeaderValue}</div>
+        <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
       </div>
       {booking.event_date && (
         <div>
