@@ -258,7 +258,7 @@ export default function BookingEditModal({
             )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
             {hasApprove && changed.length > 0 && (
-              <div style={{ fontSize: '.76rem', color: '#f5e642', marginTop: 8 }}>When you click Save changes, the host is emailed to approve the date/time/address/price/package-details change — it shows as &ldquo;Pending host approval&rdquo; until they approve. Any other fields apply now.</div>
+              <div style={{ fontSize: '.76rem', color: '#f5e642', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — change field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
               <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
