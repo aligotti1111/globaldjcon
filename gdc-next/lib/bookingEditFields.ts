@@ -34,7 +34,9 @@ export const EDIT_FIELDS: EditFieldDef[] = [
   { key: 'venue_address',   label: 'Venue address',   col: 'venue_address',   tier: 'approve', section: 'VENUE',   kind: 'text' },
 
   { key: 'requester_name',  label: 'Host name',       col: 'requester_name',  tier: 'notify',  section: 'HOST',    kind: 'text' },
-  { key: 'phone',           label: 'Contact phone',   col: 'phone',           tier: 'notify',  section: 'HOST',    kind: 'text' },
+  // NOTE: the contact phone is intentionally NOT DJ-editable. The HOST updates it
+  // on their own booking card (/api/booking/host-phone); it shows an "Updated"
+  // badge on the DJ side.
   { key: 'host_email',      label: 'Email',           col: 'host_email',      tier: 'notify',  section: 'HOST',    kind: 'text' },
 
   { key: 'package_title',   label: 'Package name',    col: 'package_title',   tier: 'notify',  section: 'PACKAGE', kind: 'text' },
