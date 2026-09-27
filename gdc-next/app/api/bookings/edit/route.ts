@@ -282,13 +282,27 @@ export async function POST(req: Request) {
     const oldDepPct = booking.deposit_pct != null ? Number(booking.deposit_pct) : 0;
     if (p.taxPct !== undefined || p.removeTax) {
       const tp = p.removeTax ? 0 : Math.max(0, Number(p.taxPct) || 0);
-      if (tp !== oldTaxPct) {
-        const taxAmt = round2((base * tp) / 100);
-        applyObj.tax_pct = tp;
-        applyObj.tax_amount = taxAmt;
-        applyObj.total_with_tax = round2(base + taxAmt);
-        editStamp.tax_pct = nowISO;
-        appliedLines.push({ label: 'Tax', old: oldTaxPct > 0 ? `${oldTaxPct}%` : 'No tax', neu: tp > 0 ? `${tp}%` : 'No tax', col: 'tax_pct' });
+      if (tp !== oldTaxPct && !alreadyPending.has('tax_pct')) {
+        const oldDisp = oldTaxPct > 0 ? `${oldTaxPct}%` : 'No tax';
+        const newDisp = tp > 0 ? `${tp}%` : 'No tax';
+        if (noHostRecipient) {
+          // No one to approve → apply the tax change immediately.
+          const taxAmt = round2((base * tp) / 100);
+          applyObj.tax_pct = tp;
+          applyObj.tax_amount = taxAmt;
+          applyObj.total_with_tax = round2(base + taxAmt);
+          editStamp.tax_pct = nowISO;
+          appliedLines.push({ label: 'Tax', old: oldDisp, neu: newDisp, col: 'tax_pct' });
+        } else {
+          // Tax needs host approval — queue a change request like the price.
+          pendingRows.push({
+            booking_id: booking.id, dj_id: djId, field: 'Tax',
+            old_value: oldDisp, new_value: newDisp,
+            target_col: 'tax_pct', target_raw: String(tp),
+            token: randomBytes(24).toString('base64url'),
+          });
+          pendingReturn.push({ field: 'tax_pct', label: 'Tax' });
+        }
       }
     }
     if (p.depositPct !== undefined && p.depositPct !== null) {
