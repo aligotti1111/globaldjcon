@@ -35,6 +35,7 @@ export const EDIT_FIELDS: EditFieldDef[] = [
 
   { key: 'requester_name',  label: 'Host name',       col: 'requester_name',  tier: 'notify',  section: 'HOST',    kind: 'text' },
   { key: 'phone',           label: 'Contact phone',   col: 'phone',           tier: 'notify',  section: 'HOST',    kind: 'text' },
+  { key: 'host_email',      label: 'Email',           col: 'host_email',      tier: 'notify',  section: 'HOST',    kind: 'text' },
 
   { key: 'package_title',   label: 'Package name',    col: 'package_title',   tier: 'notify',  section: 'PACKAGE', kind: 'text' },
   { key: 'package_details', label: 'Package details', col: 'package_details', tier: 'approve', section: 'PACKAGE', kind: 'text' },
