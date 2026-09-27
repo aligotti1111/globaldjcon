@@ -226,18 +226,26 @@ export async function POST(req: Request) {
       const dj = await djName();
       const line = (l: { label: string; old: string; neu: string }) =>
         `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(l.label)}</b><br><span style="color:#888;font-size:13px;">${esc(l.old)}</span> → <span style="color:#0a6f61;font-weight:700;">${esc(l.neu)}</span></td></tr>`;
-      let content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} updated your booking</h1>`;
+      const legalFooter = `<p style="margin:20px 0 0;color:#999;font-size:11px;line-height:1.5;border-top:1px solid #eee;padding-top:12px;">${esc(LEGAL)}</p>`;
+      // Two distinct emails so each kind of change reads clearly on its own:
+      //  • notify-only edits  → "<DJ> updated your booking details"
+      //  • approval-required  → "<DJ> has requested to change booking details - approval needed"
+      // Both go out when a single save mixes the two.
       if (appliedLines.length) {
-        content += `<p style="margin:0 0 6px;color:#333;font-size:15px;">These details were updated:</p><table width="100%" cellpadding="0" cellspacing="0">${appliedLines.map(line).join('')}</table>`;
+        const content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} updated your booking details</h1>`
+          + `<p style="margin:0 0 6px;color:#333;font-size:15px;">These details were updated:</p><table width="100%" cellpadding="0" cellspacing="0">${appliedLines.map(line).join('')}</table>`
+          + legalFooter;
+        await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} updated your booking details`, html: shell(content) });
       }
       if (pendingRows.length) {
         const plines = pendingRows.map((r) => `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(r.field)}</b><br><span style="color:#888;font-size:13px;">${esc(r.old_value)}</span> → <span style="color:#b0791f;font-weight:700;">${esc(r.new_value)}</span></td></tr>`).join('');
         const link = `${SITE_URL}/change/${pendingRows[0].token}`;
-        content += `<p style="margin:18px 0 6px;color:#333;font-size:15px;"><b>These changes need your approval</b> before they take effect:</p><table width="100%" cellpadding="0" cellspacing="0">${plines}</table>
-<table cellpadding="0" cellspacing="0" border="0" style="margin:20px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review &amp; respond</a></td></tr></table>`;
+        const content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} has requested to change booking details</h1>`
+          + `<p style="margin:18px 0 6px;color:#333;font-size:15px;"><b>These changes need your approval</b> before they take effect:</p><table width="100%" cellpadding="0" cellspacing="0">${plines}</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:20px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review &amp; respond</a></td></tr></table>`
+          + legalFooter;
+        await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} has requested to change booking details - approval needed`, html: shell(content) });
       }
-      content += `<p style="margin:20px 0 0;color:#999;font-size:11px;line-height:1.5;border-top:1px solid #eee;padding-top:12px;">${esc(LEGAL)}</p>`;
-      await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} updated your booking`, html: shell(content) });
     } catch { /* non-fatal — the change already landed */ }
   }
 
