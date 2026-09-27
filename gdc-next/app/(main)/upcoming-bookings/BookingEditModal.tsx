@@ -78,6 +78,46 @@ export default function BookingEditModal({
   const oldDepNum = initDepPct.trim() === '' ? null : (Number(initDepPct) || 0);
   const pricingDirty = isPricing && (newTaxPctNum !== (Number(initTaxPct) || 0) || newDepNum !== oldDepNum);
 
+  // Live price breakdown: the agreed rate, tax and deposit as they stand, and the
+  // new figures as the DJ edits price / tax % / deposit %. A line that changed
+  // shows the old value struck through next to the new one.
+  const priceBreakdown = (() => {
+    if (!isPricing) return null;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const cur = values.__currency || 'USD';
+    const money = (n: number) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n); } catch { return `$${n.toFixed(2)}`; } };
+    const calc = (base: number, tp: number, dp: number) => {
+      const taxAmt = r2((base * tp) / 100);
+      const total = r2(base + taxAmt);
+      const depAmt = r2((total * dp) / 100);
+      return { base, tp, taxAmt, total, dp, depAmt, balance: r2(total - depAmt) };
+    };
+    const base0 = Number(values.price) || 0;
+    const tp0 = Number(values.tax_pct) || 0;
+    const dp0 = (values.deposit_pct || '').trim() === '' ? 0 : (Number(values.deposit_pct) || 0);
+    const o = calc(base0, tp0, dp0);
+    const n = calc(Number(form.price) || 0, removeTax ? 0 : (Number(taxPct) || 0), depPct.trim() === '' ? 0 : (Number(depPct) || 0));
+    const Row = ({ label: lbl, oldV, newV, strong }: { label: string; oldV: string; newV: string; strong?: boolean }) => (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: strong ? '1px solid rgba(255,255,255,.16)' : '1px solid rgba(255,255,255,.06)' }}>
+        <span style={{ fontSize: strong ? '.86rem' : '.8rem', color: strong ? '#fff' : '#c9c9d6', fontWeight: strong ? 700 : 400 }}>{lbl}</span>
+        <span style={{ fontSize: strong ? '.92rem' : '.85rem', fontWeight: strong ? 800 : 600 }}>
+          {oldV !== newV && <span style={{ color: '#8a8aa0', textDecoration: 'line-through', marginRight: 6, fontWeight: 400 }}>{oldV}</span>}
+          <span style={{ color: oldV !== newV ? NEON : '#fff' }}>{newV}</span>
+        </span>
+      </div>
+    );
+    return (
+      <div style={{ marginTop: 14, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: '4px 12px 10px' }}>
+        <div style={{ fontSize: '.62rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', padding: '8px 0 2px' }}>Price breakdown</div>
+        <Row label="Agreed rate" oldV={money(o.base)} newV={money(n.base)} />
+        <Row label={`Tax${n.tp > 0 ? ` (${n.tp}%)` : ''}`} oldV={o.tp > 0 ? money(o.taxAmt) : 'No tax'} newV={n.tp > 0 ? money(n.taxAmt) : 'No tax'} />
+        <Row label="Total (with tax)" oldV={money(o.total)} newV={money(n.total)} strong />
+        <Row label={`Deposit${n.dp > 0 ? ` (${n.dp}%)` : ''}`} oldV={o.dp > 0 ? money(o.depAmt) : '—'} newV={n.dp > 0 ? money(n.depAmt) : '—'} />
+        <Row label="Balance due" oldV={money(o.balance)} newV={money(n.balance)} />
+      </div>
+    );
+  })();
+
   async function cancelRequest(f: EditFieldDef) {
     setCancelling(f.key); setErr(null);
     try {
@@ -208,6 +248,7 @@ export default function BookingEditModal({
                   <label style={label}>Deposit (%)</label>
                   <input style={input} type="number" step="1" min="0" max="100" value={depPct} placeholder="e.g. 15" onChange={(e) => setDepPct(e.target.value)} />
                 </div>
+                {priceBreakdown}
                 <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 8, lineHeight: 1.45 }}>Changes tax and deposit for this booking only. Applies right away; the host is emailed the update.</div>
               </div>
             )}
