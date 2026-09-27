@@ -184,7 +184,7 @@ export default function BookingEditModal({
           ) : (
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Before you make this change</h3>
-              <p style={{ color: '#d6d6e0', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px', borderLeft: '3px solid #f5e642', paddingLeft: 12 }}>{LEGAL}</p>
+              <p style={{ color: '#d6d6e0', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>{LEGAL}</p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
                 <button style={btnPrimary} onClick={() => setStep('form')}>I understand — Proceed</button>
