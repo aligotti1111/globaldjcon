@@ -318,16 +318,21 @@ export default function BookingDetails({
           <>
             <div onClick={(e) => { e.stopPropagation(); setOpenHist(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
             <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61, minWidth: 220, maxWidth: 300, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', padding: 6 }}>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', padding: '4px 8px 6px' }}>Change history · {items[0].field}</div>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#fff', padding: '4px 8px 6px' }}>Change history · {items[0].field}</div>
               {items.map((it, i) => {
-                const sc = it.status === 'approved' || it.status === 'applied' ? NEON
-                  : it.status === 'pending' ? '#f5e642'
-                  : it.status === 'declined' ? '#ff6b6b'
-                  : 'var(--muted,#8a8aa0)';
+                // items[0] is the latest / current change — its new value stays
+                // teal and un-struck. Every earlier change was superseded, so
+                // strike its new value too (it's no longer in effect).
+                const isCurrent = i === 0;
                 return (
                   <div key={i} style={{ padding: '7px 8px', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-                    <div style={{ fontSize: '.8rem' }}><span style={{ color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.old}</span> <span style={{ color: NEON }}>→</span> <span style={{ color: NEON, fontWeight: 700 }}>{it.neu}</span></div>
-                    <div style={{ fontSize: '.62rem', color: sc, marginTop: 2, fontWeight: 600 }}>{HIST_STATUS[it.status] || it.status} · {fmtWhen(it.at)}</div>
+                    <div style={{ fontSize: '.8rem' }}>
+                      <span style={{ color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.old}</span>
+                      {' '}<span style={{ color: isCurrent ? NEON : 'var(--muted,#8a8aa0)' }}>→</span>{' '}
+                      {isCurrent
+                        ? <span style={{ color: NEON, fontWeight: 700 }}>{it.neu}</span>
+                        : <span style={{ color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.neu}</span>}
+                    </div>
                   </div>
                 );
               })}
