@@ -137,7 +137,7 @@ export default function BookingEditModal({
         <div style={{ fontSize: '.62rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', padding: '8px 0 2px' }}>Price breakdown</div>
         <Row label="Agreed rate" oldV={money(o.base)} newV={money(n.base)} />
         <Row label={`Tax${n.tp > 0 ? ` (${n.tp}%)` : ''}`} oldV={o.tp > 0 ? money(o.taxAmt) : 'No tax'} newV={n.tp > 0 ? money(n.taxAmt) : 'No tax'} />
-        <Row label="Total (with tax)" oldV={money(o.total)} newV={money(n.total)} strong />
+        <Row label={n.tp > 0 ? 'Total (with tax)' : 'Total'} oldV={money(o.total)} newV={money(n.total)} strong />
         {(collected > 0 || depositLocked || depositSkipped) ? (
           // Money already changed hands (or the deposit was skipped): subtract what's
           // been received from the new total. Negative remainder → refund owed.
