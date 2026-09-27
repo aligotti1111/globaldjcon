@@ -174,7 +174,7 @@ export default function BookingEditModal({
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Edit {SECTION_TITLE[section].toLowerCase()} details</h3>
               <p style={{ color: '#c9c9d6', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>
-                The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host&rsquo;s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you&rsquo;re both on the same page. New contract available to be sent if agreed.
+                The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host&rsquo;s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you&rsquo;re both on the same page.
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
@@ -185,6 +185,7 @@ export default function BookingEditModal({
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Before you make this change</h3>
               <p style={{ color: '#d6d6e0', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>{LEGAL}</p>
+              <p style={{ color: '#d6d6e0', fontSize: '.9rem', lineHeight: 1.55, margin: '8px 0 4px' }}>New contract available to be sent if agreed.</p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
                 <button style={btnPrimary} onClick={() => setStep('form')}>I understand — Proceed</button>
