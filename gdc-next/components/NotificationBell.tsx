@@ -19,6 +19,7 @@ const EMOJI: Record<string, string> = {
   invoice: '\u{1F9FE}',   // 🧾
   song_list: '\u{1F3B5}', // 🎵
   guestlist: '\u{1F465}', // 👥
+  change: '\u{2705}',     // ✅
 };
 const WHAT: Record<string, string> = {
   contract: 'Contract signed',
@@ -26,6 +27,7 @@ const WHAT: Record<string, string> = {
   invoice: 'Balance paid',
   song_list: 'Planner submitted',
   guestlist: 'Guest list confirmed',
+  change: 'Change approved',
 };
 
 function fmtDate(d: string | null): string {
