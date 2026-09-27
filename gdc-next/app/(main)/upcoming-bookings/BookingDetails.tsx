@@ -239,6 +239,9 @@ export default function BookingDetails({
     ((booking as { field_edits?: Record<string, string> | null }).field_edits) || {},
   );
   const [pendingCols, setPendingCols] = useState<Set<string>>(new Set());
+  // Per-column pending request detail (old → new) so the edit modal can show
+  // exactly what change is awaiting the host.
+  const [pendingInfo, setPendingInfo] = useState<Record<string, { old: string; neu: string }>>({});
   type HistItem = { field: string; old: string; neu: string; status: string; at: string };
   const [history, setHistory] = useState<Record<string, HistItem[]>>({});
   const [changeLog, setChangeLog] = useState<ChangeLogItem[]>([]);
@@ -250,11 +253,16 @@ export default function BookingDetails({
       const r = await fetch(`/api/bookings/edit?bookingId=${encodeURIComponent(booking.id)}`);
       const d = (await r.json().catch(() => ({}))) as {
         field_edits?: Record<string, string>;
-        pending?: { target_col: string }[];
+        pending?: { target_col: string; old_value?: string | null; new_value?: string | null }[];
         history?: { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string; responded_at: string | null }[];
       };
       if (d.field_edits) setFieldEdits(d.field_edits);
-      if (Array.isArray(d.pending)) setPendingCols(new Set(d.pending.map((p) => p.target_col)));
+      if (Array.isArray(d.pending)) {
+        setPendingCols(new Set(d.pending.map((p) => p.target_col)));
+        const info: Record<string, { old: string; neu: string }> = {};
+        for (const p of d.pending) info[p.target_col] = { old: p.old_value || '—', neu: p.new_value || '—' };
+        setPendingInfo(info);
+      }
       if (Array.isArray(d.history)) {
         const grouped: Record<string, HistItem[]> = {};
         for (const h of d.history) {
@@ -1245,6 +1253,7 @@ export default function BookingDetails({
           values={editValues}
           lockEmail={!!hostUserId}
           pendingCols={pendingCols}
+          pendingInfo={pendingInfo}
           onCancelled={() => { void loadBadges(); onMutated?.(); }}
           onClose={() => setEditSection(null)}
           onSaved={(res) => {
