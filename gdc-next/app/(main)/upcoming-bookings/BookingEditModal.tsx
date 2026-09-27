@@ -21,7 +21,7 @@ const LEGAL = 'Editing this booking does not legally cancel or change either par
 const SECTION_TITLE: Record<EditSection, string> = { EVENT: 'Event', VENUE: 'Venue', HOST: 'Host', PACKAGE: 'Package', PRICING: 'Pricing' };
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, onClose, onSaved,
+  section, djType, contractState, values, lockEmail = false, pendingCols, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -31,8 +31,13 @@ export default function BookingEditModal({
   /** Account-based booking: the host's email is their login, so it can't be
    *  edited here — hide it from the Host form. */
   lockEmail?: boolean;
+  /** DB columns that already have a pending approval request. Those fields are
+   *  locked here — the DJ must cancel the pending request before re-requesting. */
+  pendingCols?: Set<string>;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
+  /** Called after a pending request is cancelled so the parent re-reads badges. */
+  onCancelled?: () => void;
 }) {
   // Which fields belong to this section, minus ones that don't apply to this DJ
   // type (club uses venue_type, mobile uses venue_name/room_details).
@@ -49,9 +54,27 @@ export default function BookingEditModal({
   const [form, setForm] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? ''])));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
-  const changed = fields.filter((f) => (form[f.key] ?? '') !== (values[f.key] ?? ''));
+  const isPending = (f: EditFieldDef) => f.tier === 'approve' && !!pendingCols?.has(f.col);
+  // Locked fields (pending approval) don't count as editable changes.
+  const changed = fields.filter((f) => !isPending(f) && (form[f.key] ?? '') !== (values[f.key] ?? ''));
   const hasApprove = changed.some((f) => f.tier === 'approve');
+
+  async function cancelRequest(f: EditFieldDef) {
+    setCancelling(f.key); setErr(null);
+    try {
+      const res = await fetch('/api/bookings/edit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: values.__id, cancelField: f.key }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Could not cancel.');
+      onCancelled?.();
+      onClose();
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Could not cancel.'); }
+    finally { setCancelling(null); }
+  }
 
   async function save() {
     if (changed.length === 0) { onClose(); return; }
@@ -108,7 +131,18 @@ export default function BookingEditModal({
             {fields.map((f: EditFieldDef) => (
               <div key={f.key} style={{ marginBottom: 11 }}>
                 <label style={label}>{f.label}{f.tier === 'approve' && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
-                {f.key === 'event_type' ? (
+                {isPending(f) ? (
+                  <div style={{ background: 'rgba(245,230,66,.08)', border: '1px solid rgba(245,230,66,.3)', borderRadius: 7, padding: '9px 10px' }}>
+                    <div style={{ color: '#f5e642', fontSize: '.74rem', fontWeight: 700, letterSpacing: '.04em' }}>PENDING HOST APPROVAL</div>
+                    <div style={{ color: '#c9c9d6', fontSize: '.78rem', margin: '3px 0 8px', lineHeight: 1.45 }}>A change to this field is awaiting the host. Cancel it to request a different change.</div>
+                    <button
+                      type="button"
+                      style={{ ...btnGhost, padding: '6px 12px', fontSize: '.78rem', borderColor: 'rgba(255,107,107,.5)', color: '#ff8a8a' }}
+                      disabled={cancelling === f.key}
+                      onClick={() => cancelRequest(f)}
+                    >{cancelling === f.key ? 'Cancelling…' : 'Cancel requested change'}</button>
+                  </div>
+                ) : f.key === 'event_type' ? (
                   <select style={input} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}>
                     {MOBILE_EVENT_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
