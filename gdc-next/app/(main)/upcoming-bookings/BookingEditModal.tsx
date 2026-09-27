@@ -150,7 +150,7 @@ export default function BookingEditModal({
           <>
             {depositPaidAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                <span style={{ fontSize: '.8rem', color: '#c9c9d6' }}>Deposit{o.dp > 0 ? ` (${o.dp}%)` : ''}<span style={{ color: NEON, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', marginLeft: 6 }}>ALREADY PAID</span></span>
+                <span style={{ fontSize: '.8rem', color: '#c9c9d6' }}>Deposit{o.dp > 0 ? ` (${o.dp}%)` : ''}<span style={{ color: NEON, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', marginLeft: 6 }}>PAID</span></span>
                 <span style={{ fontSize: '.85rem', fontWeight: 700, color: '#fff' }}>{money(depositPaidAmount)}</span>
               </div>
             )}
