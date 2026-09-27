@@ -1676,6 +1676,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   isOwnProfile={canEdit}
                   stats={aboutStats}
                   travelDistance={data.travel_distance}
+                  djType={data.dj_type}
                 />
               )}
             </div>
