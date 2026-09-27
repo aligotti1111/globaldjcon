@@ -20,6 +20,14 @@ const LEGAL = 'Editing this booking does not legally cancel or change either par
 
 const SECTION_TITLE: Record<EditSection, string> = { EVENT: 'Event', VENUE: 'Venue', HOST: 'Host', PACKAGE: 'Package', PRICING: 'Pricing' };
 
+// Time options every 15 minutes — value HH:MM (24h), label 12-hour AM/PM.
+const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96 }, (_, i) => {
+  const h = Math.floor(i / 4); const m = (i % 4) * 15;
+  const hh = String(h).padStart(2, '0'); const mm = String(m).padStart(2, '0');
+  let h12 = h % 12; if (h12 === 0) h12 = 12;
+  return { value: `${hh}:${mm}`, label: `${h12}:${mm} ${h >= 12 ? 'PM' : 'AM'}` };
+});
+
 export default function BookingEditModal({
   section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, onClose, onSaved, onCancelled,
 }: {
@@ -226,10 +234,19 @@ export default function BookingEditModal({
                   </>
                 ) : f.key === 'package_details' ? (
                   <textarea style={{ ...input, minHeight: 70, resize: 'vertical' }} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
+                ) : f.kind === 'time' ? (
+                  <select style={input} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}>
+                    <option value="">Select a time</option>
+                    {/* Keep the stored value selectable even if it's off the 15-min grid. */}
+                    {form[f.key] && !TIME_OPTIONS.some((o) => o.value === form[f.key]) && (
+                      <option value={form[f.key]}>{form[f.key]}</option>
+                    )}
+                    {TIME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                 ) : (
                   <input
                     style={input}
-                    type={f.kind === 'date' ? 'date' : f.kind === 'time' ? 'time' : f.kind === 'number' ? 'number' : 'text'}
+                    type={f.kind === 'date' ? 'date' : f.kind === 'number' ? 'number' : 'text'}
                     value={form[f.key] ?? ''}
                     onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
                   />
