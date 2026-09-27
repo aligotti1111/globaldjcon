@@ -216,9 +216,13 @@ export default function BookingEditModal({
                     >{cancelling === f.key ? 'Cancelling…' : 'Cancel requested change'}</button>
                   </div>
                 ) : f.key === 'event_type' ? (
-                  <select style={input} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}>
-                    {MOBILE_EVENT_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  // Event type is fixed for a booking — show it, but don't let it change.
+                  <>
+                    <div style={{ ...input, opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
+                      {MOBILE_EVENT_TYPES.find((o) => o.value === (values[f.key] ?? ''))?.label || values[f.key] || '—'}
+                    </div>
+                    <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 4 }}>Event type can&rsquo;t be changed.</div>
+                  </>
                 ) : f.key === 'package_details' ? (
                   <textarea style={{ ...input, minHeight: 70, resize: 'vertical' }} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
                 ) : (
@@ -258,7 +262,7 @@ export default function BookingEditModal({
             )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
             {hasApprove && changed.length > 0 && (
-              <div style={{ fontSize: '.76rem', color: '#f5e642', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — change field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
+              <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — changed field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
               <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
