@@ -871,7 +871,7 @@ export default function BookingRow({
             the only track that flexes, so they ate it. They have their own
             track now. */}
         <div className={styles.rowContext}>
-          {context && <span className={styles.rowEventType}>{context}</span>}
+          {context && <span className={styles.rowEventType} style={djType !== 'club' ? { textTransform: 'uppercase' } : undefined}>{context}</span>}
           {overlaps && (
             <span
               className={styles.overlapPill}
