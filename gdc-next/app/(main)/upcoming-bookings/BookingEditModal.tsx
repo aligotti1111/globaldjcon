@@ -93,7 +93,10 @@ export default function BookingEditModal({
   // We only read the stored value to show it in the breakdown.
   const initDepPct = values.deposit_pct ?? '';
   const depPct = initDepPct;
-  const [removeTax, setRemoveTax] = useState((Number(initTaxPct) || 0) === 0);
+  // "Apply tax" mirrors the manual-booking flow: checked = tax applies (rate
+  // field shows), unchecked = no tax (no field). Starts checked when the booking
+  // already carries a tax rate.
+  const [applyTax, setApplyTax] = useState((Number(initTaxPct) || 0) > 0);
   const [taxPct, setTaxPct] = useState(initTaxPct === '0' ? '' : initTaxPct);
 
   const isPending = (f: EditFieldDef) => f.tier === 'approve' && !!pendingCols?.has(f.col);
@@ -102,7 +105,7 @@ export default function BookingEditModal({
   const hasApprove = changed.some((f) => f.tier === 'approve');
 
   // Tax edit or skipping the deposit makes the pricing terms dirty.
-  const newTaxPctNum = removeTax ? 0 : (Number(taxPct) || 0);
+  const newTaxPctNum = applyTax ? (Number(taxPct) || 0) : 0;
   const taxDirty = isPricing && newTaxPctNum !== (Number(initTaxPct) || 0);
   const pricingDirty = isPricing && taxDirty;
 
@@ -124,7 +127,7 @@ export default function BookingEditModal({
     const tp0 = Number(values.tax_pct) || 0;
     const dp0 = (values.deposit_pct || '').trim() === '' ? 0 : (Number(values.deposit_pct) || 0);
     const o = calc(base0, tp0, dp0);
-    const n = calc(Number(form.price) || 0, removeTax ? 0 : (Number(taxPct) || 0), depPct.trim() === '' ? 0 : (Number(depPct) || 0));
+    const n = calc(Number(form.price) || 0, applyTax ? (Number(taxPct) || 0) : 0, depPct.trim() === '' ? 0 : (Number(depPct) || 0));
     const Row = ({ label: lbl, oldV, newV, strong }: { label: string; oldV: string; newV: string; strong?: boolean }) => (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: strong ? '1px solid rgba(255,255,255,.16)' : '1px solid rgba(255,255,255,.06)' }}>
         <span style={{ fontSize: strong ? '.86rem' : '.8rem', color: strong ? '#fff' : '#c9c9d6', fontWeight: strong ? 700 : 400 }}>{lbl}</span>
@@ -194,7 +197,7 @@ export default function BookingEditModal({
       if (pricingDirty) {
         // Tax is editable; deposit can only be skipped (waived), not re-set.
         const pricing: { taxPct?: number; removeTax?: boolean } = {};
-        if (removeTax) pricing.removeTax = true; else pricing.taxPct = newTaxPctNum;
+        if (applyTax) pricing.taxPct = newTaxPctNum; else pricing.removeTax = true;
         payload.pricing = pricing;
       }
       const res = await fetch('/api/bookings/edit', {
@@ -361,10 +364,10 @@ export default function BookingEditModal({
                 ) : (
                   <>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 11 }}>
-                      <input type="checkbox" checked={removeTax} onChange={(e) => setRemoveTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
-                      <span style={{ fontSize: '.86rem', color: '#fff' }}>No tax on this booking{!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</span>
+                      <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
+                      <span style={{ fontSize: '.86rem', color: '#fff' }}>Apply tax to this booking{!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</span>
                     </label>
-                    {!removeTax && (
+                    {applyTax && (
                       <div style={{ marginBottom: 11 }}>
                         <label style={label}>Tax rate (%){!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
                         <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
