@@ -800,7 +800,7 @@ export default function BookingDetails({
       <>
         {main.map((c) => (
           <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
-            <span className={styles.priceKey}>{c.label}{c.label === 'Agreed Rate' ? badgeFor('price') : (c.label === 'Tax' || c.label === 'Total (with tax)') ? badgeFor('tax_pct') : null}</span>
+            <span className={styles.priceKey}>{c.label}{c.label === 'Agreed Rate' ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
             <span className={styles.priceVal}>{c.value}</span>
           </div>
         ))}
