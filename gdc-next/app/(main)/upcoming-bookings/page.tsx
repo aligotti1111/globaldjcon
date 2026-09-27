@@ -219,6 +219,10 @@ interface ProfileRow extends AccessFields {
   name: string | null;
   booking_settings: string | null;
   timezone: string | null;
+  zip: string | null;
+  city: string | null;
+  state: string | null;
+  travel_distance: string | null;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -235,7 +239,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings, timezone, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -502,6 +506,9 @@ export default async function UpcomingBookingsPage() {
       clubDepositPct={clubDepositPct}
       mobDepositPct={mobDepositPct}
       taxPct={taxPct}
+      djZip={profile?.zip ?? null}
+      djCity={profile?.city ?? null}
+      djState={profile?.state ?? null}
     />
   );
 }
