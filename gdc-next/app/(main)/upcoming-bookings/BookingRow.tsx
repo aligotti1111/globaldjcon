@@ -186,7 +186,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
 }: {
   booking: UpcomingBooking;
   /** Only the "New activity" sort highlights the changed stage; By Date and
@@ -200,6 +200,9 @@ export default function BookingRow({
   actingRole?: ActingRole;
   clubDepositPct: number;
   taxPct: number;
+  djZip?: string | null;
+  djCity?: string | null;
+  djState?: string | null;
   requireContract: boolean;
   archive?: boolean;
   payments: BookingPayment[];
@@ -1080,6 +1083,7 @@ export default function BookingRow({
           userId={userId}
           clubDepositPct={clubDepositPct}
           taxPct={taxPct}
+          djZip={djZip} djCity={djCity} djState={djState}
           flyerUrl={flyerUrl}
           onFlyerChange={setFlyerUrl}
           onContractSigned={() => setSignedOverride(true)}
