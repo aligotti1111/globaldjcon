@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   }
 
   // APPROVE — apply each pending change.
-  const { data: bk } = await admin.from('bookings').select('id, tax_pct, currency, field_edits').eq('id', hit.booking_id).maybeSingle<{ id: string; tax_pct: number | null; currency: string | null; field_edits: Record<string, string> | null }>();
+  const { data: bk } = await admin.from('bookings').select('id, tax_pct, tax_amount, total_with_tax, counter_rate, currency, field_edits').eq('id', hit.booking_id).maybeSingle<{ id: string; tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; counter_rate: number | null; currency: string | null; field_edits: Record<string, string> | null }>();
   const taxPct = bk?.tax_pct != null ? Number(bk.tax_pct) : 0;
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const update: Record<string, unknown> = {};
@@ -86,14 +86,30 @@ export async function POST(req: Request) {
       const price = Number(r.target_raw);
       if (!Number.isFinite(price)) continue;
       update.counter_rate = price; // highest-priority agreed-rate field → becomes the total
-      if (taxPct > 0) {
-        const tax = round2((price * taxPct) / 100);
+      // Prefer a tax rate approved in this same batch, else the booking's current.
+      const taxRow = pending.find((x) => x.target_col === 'tax_pct');
+      const tp = taxRow ? Math.max(0, Number(taxRow.target_raw) || 0) : taxPct;
+      if (tp > 0) {
+        const tax = round2((price * tp) / 100);
         update.tax_amount = tax;
         update.total_with_tax = round2(price + tax);
       } else {
         update.tax_amount = 0;
         update.total_with_tax = price;
       }
+    } else if (r.target_col === 'tax_pct') {
+      // Tax approved: recompute on the base (a price approved in the same batch
+      // is handled by the price branch above; otherwise use the current base).
+      const priceRow = pending.find((x) => x.target_col === 'price');
+      if (priceRow) continue; // price branch already recomputed with this tax
+      const base = (bk?.tax_amount != null && bk?.total_with_tax != null)
+        ? round2(Number(bk.total_with_tax) - Number(bk.tax_amount))
+        : Number(bk?.counter_rate ?? 0);
+      const tp = Math.max(0, Number(r.target_raw) || 0);
+      const tax = round2((base * tp) / 100);
+      update.tax_pct = tp;
+      update.tax_amount = tax;
+      update.total_with_tax = round2(base + tax);
     } else {
       update[r.target_col] = r.target_raw === '' ? null : r.target_raw;
     }
