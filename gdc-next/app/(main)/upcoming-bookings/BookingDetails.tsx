@@ -1004,7 +1004,9 @@ export default function BookingDetails({
     package_details: (booking.package_details || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     price: agreedTotal != null ? String(agreedTotal) : '',
     // Per-booking pricing terms the modal can edit (immediate, this booking only).
-    tax_pct: effTaxPct != null ? String(effTaxPct) : '0',
+    // The booking's OWN frozen tax (0 when none), not the DJ's global fallback —
+    // so on a no-tax booking the editor starts at 0 and adding a rate registers.
+    tax_pct: snapTaxPct != null ? String(snapTaxPct) : '0',
     deposit_pct: booking.deposit_pct != null ? String(booking.deposit_pct) : (djType === 'club' && clubDepositPct > 0 ? String(clubDepositPct) : ''),
     __currency: booking.currency || 'USD',
   };
