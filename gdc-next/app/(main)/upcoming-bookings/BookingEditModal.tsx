@@ -29,7 +29,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96
 });
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, collected = 0, depositLocked = false, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -48,6 +48,10 @@ export default function BookingEditModal({
   /** Manual booking with no host recipient: nothing to approve or notify, so
    *  every change applies immediately and no approval/notify copy shows. */
   noHostRecipient?: boolean;
+  /** Total money already received on this booking (deposit + balance payments). */
+  collected?: number;
+  /** A deposit was already received or skipped — the deposit % can't change. */
+  depositLocked?: boolean;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
   /** Called after a pending request is cancelled so the parent re-reads badges. */
@@ -73,21 +77,25 @@ export default function BookingEditModal({
   // Per-booking pricing terms (PRICING section only): tax %, deposit %, no-tax.
   const isPricing = section === 'PRICING';
   const initTaxPct = values.tax_pct ?? '0';
+  // Deposit is NOT editable here — it stays as configured in Booking Settings.
+  // We only read the stored value to show it in the breakdown.
   const initDepPct = values.deposit_pct ?? '';
+  const depPct = initDepPct;
+  const hasDeposit = (Number(initDepPct) || 0) > 0;
   const [removeTax, setRemoveTax] = useState((Number(initTaxPct) || 0) === 0);
   const [taxPct, setTaxPct] = useState(initTaxPct === '0' ? '' : initTaxPct);
-  const [depPct, setDepPct] = useState(initDepPct);
+  // Deposit % can't be changed, but the DJ can skip (waive) it while it's still
+  // unpaid — that drops the deposit to nothing so the full total is the balance.
+  const [skipDeposit, setSkipDeposit] = useState(false);
 
   const isPending = (f: EditFieldDef) => f.tier === 'approve' && !!pendingCols?.has(f.col);
   // Locked fields (pending approval) don't count as editable changes.
   const changed = fields.filter((f) => !isPending(f) && (form[f.key] ?? '') !== (values[f.key] ?? ''));
   const hasApprove = changed.some((f) => f.tier === 'approve');
 
-  // Did the pricing terms change from what's stored?
+  // Tax edit or skipping the deposit makes the pricing terms dirty.
   const newTaxPctNum = removeTax ? 0 : (Number(taxPct) || 0);
-  const newDepNum = depPct.trim() === '' ? null : (Number(depPct) || 0);
-  const oldDepNum = initDepPct.trim() === '' ? null : (Number(initDepPct) || 0);
-  const pricingDirty = isPricing && (newTaxPctNum !== (Number(initTaxPct) || 0) || newDepNum !== oldDepNum);
+  const pricingDirty = isPricing && (newTaxPctNum !== (Number(initTaxPct) || 0) || (skipDeposit && hasDeposit));
 
   // Live price breakdown: the agreed rate, tax and deposit as they stand, and the
   // new figures as the DJ edits price / tax % / deposit %. A line that changed
@@ -107,7 +115,7 @@ export default function BookingEditModal({
     const tp0 = Number(values.tax_pct) || 0;
     const dp0 = (values.deposit_pct || '').trim() === '' ? 0 : (Number(values.deposit_pct) || 0);
     const o = calc(base0, tp0, dp0);
-    const n = calc(Number(form.price) || 0, removeTax ? 0 : (Number(taxPct) || 0), depPct.trim() === '' ? 0 : (Number(depPct) || 0));
+    const n = calc(Number(form.price) || 0, removeTax ? 0 : (Number(taxPct) || 0), skipDeposit || depPct.trim() === '' ? 0 : (Number(depPct) || 0));
     const Row = ({ label: lbl, oldV, newV, strong }: { label: string; oldV: string; newV: string; strong?: boolean }) => (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: strong ? '1px solid rgba(255,255,255,.16)' : '1px solid rgba(255,255,255,.06)' }}>
         <span style={{ fontSize: strong ? '.86rem' : '.8rem', color: strong ? '#fff' : '#c9c9d6', fontWeight: strong ? 700 : 400 }}>{lbl}</span>
@@ -123,8 +131,21 @@ export default function BookingEditModal({
         <Row label="Agreed rate" oldV={money(o.base)} newV={money(n.base)} />
         <Row label={`Tax${n.tp > 0 ? ` (${n.tp}%)` : ''}`} oldV={o.tp > 0 ? money(o.taxAmt) : 'No tax'} newV={n.tp > 0 ? money(n.taxAmt) : 'No tax'} />
         <Row label="Total (with tax)" oldV={money(o.total)} newV={money(n.total)} strong />
-        <Row label={`Deposit${n.dp > 0 ? ` (${n.dp}%)` : ''}`} oldV={o.dp > 0 ? money(o.depAmt) : '—'} newV={n.dp > 0 ? money(n.depAmt) : '—'} />
-        <Row label="Balance due" oldV={money(o.balance)} newV={money(n.balance)} />
+        {(collected > 0 || depositLocked) ? (
+          // Money already changed hands: subtract what's been received from the new
+          // total. A negative remainder means the DJ owes the host a refund.
+          <>
+            <Row label="Received (paid)" oldV={money(collected)} newV={money(collected)} />
+            {r2(n.total - collected) >= 0
+              ? <Row label="Balance due" oldV={money(Math.max(0, r2(o.total - collected)))} newV={money(r2(n.total - collected))} strong />
+              : <Row label="Refund owed" oldV={o.total - collected < 0 ? money(r2(collected - o.total)) : money(0)} newV={money(r2(collected - n.total))} strong />}
+          </>
+        ) : (
+          <>
+            <Row label={`Deposit${n.dp > 0 ? ` (${n.dp}%)` : ''}`} oldV={o.dp > 0 ? money(o.depAmt) : '—'} newV={n.dp > 0 ? money(n.depAmt) : '—'} />
+            <Row label="Balance due" oldV={money(o.balance)} newV={money(n.balance)} />
+          </>
+        )}
       </div>
     );
   })();
@@ -152,11 +173,12 @@ export default function BookingEditModal({
       changed.forEach((f) => { changes[f.key] = form[f.key] ?? ''; });
       const payload: Record<string, unknown> = { bookingId: values.__id, changes };
       if (pricingDirty) {
-        const pricing: { taxPct?: number; removeTax?: boolean; depositPct?: number } = {};
+        // Tax is editable; deposit can only be skipped (waived), not re-set.
+        const pricing: { taxPct?: number; removeTax?: boolean; skipDeposit?: boolean } = {};
         if (newTaxPctNum !== (Number(initTaxPct) || 0)) {
           if (removeTax) pricing.removeTax = true; else pricing.taxPct = newTaxPctNum;
         }
-        if (newDepNum !== oldDepNum && newDepNum !== null) pricing.depositPct = newDepNum;
+        if (skipDeposit && hasDeposit) pricing.skipDeposit = true;
         payload.pricing = pricing;
       }
       const res = await fetch('/api/bookings/edit', {
@@ -271,15 +293,12 @@ export default function BookingEditModal({
                     <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
                   </div>
                 )}
-                <div>
-                  <label style={label}>Deposit (%)</label>
-                  <select style={input} value={depPct} onChange={(e) => setDepPct(e.target.value)}>
-                    <option value="">No deposit</option>
-                    {Array.from({ length: 99 }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={String(n)}>{n}%</option>
-                    ))}
-                  </select>
-                </div>
+                {hasDeposit && !depositLocked && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 4 }}>
+                    <input type="checkbox" checked={skipDeposit} onChange={(e) => setSkipDeposit(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
+                    <span style={{ fontSize: '.86rem', color: '#fff' }}>Skip deposit (mark it skipped on the booking)</span>
+                  </label>
+                )}
                 {priceBreakdown}
               </div>
             )}
