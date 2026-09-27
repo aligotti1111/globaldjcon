@@ -43,6 +43,8 @@ export interface UpcomingBooking {
   // approvals are listed as column names in pending_change_cols.
   field_edits?: Record<string, string> | null;
   pending_change_cols?: string[];
+  // Host's account/login email (read-only) for account-based bookings.
+  account_email?: string | null;
   event_date: string | null;
   start_time: string | null;
   end_time: string | null;
@@ -324,6 +326,17 @@ export default async function UpcomingBookingsPage() {
     );
   }
 
+  // Account (host) email for bookings made through a logged-in account — read
+  // from the mirrored public.users.email. Shown read-only on the card (the DJ
+  // can't change someone's account/login email); manual + account-less online
+  // bookings use the editable host_email column instead.
+  const accountEmailMap: Record<string, string | null> = {};
+  const accountReqIds = [...new Set(bookingRows.filter((b) => b.requester_id).map((b) => b.requester_id as string))];
+  if (accountReqIds.length > 0) {
+    const { data: eRows } = await admin.from('users').select('id, email').in('id', accountReqIds);
+    for (const u of (((eRows as { id: string; email: string | null }[] | null) || []))) accountEmailMap[u.id] = u.email;
+  }
+
   // NOTE: we deliberately do NOT hydrate overtime_rate from the DJ's current
   // packages. That fallback used to fire whenever the row's overtime_rate was
   // null — but null is ambiguous: it means both "not recorded" AND "this
@@ -464,6 +477,7 @@ export default async function UpcomingBookingsPage() {
       // planner_sent_at rides in on the booking row itself (native column).
       planner_submitted_at: plannerSubmittedByBooking[b.id] || null,
       pending_change_cols: pendingColsByBooking[b.id] || [],
+      account_email: b.requester_id ? (accountEmailMap[b.requester_id as string] || null) : null,
     };
   });
 
