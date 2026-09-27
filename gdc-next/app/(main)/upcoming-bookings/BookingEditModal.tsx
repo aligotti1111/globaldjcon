@@ -174,7 +174,7 @@ export default function BookingEditModal({
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Edit {SECTION_TITLE[section].toLowerCase()} details</h3>
               <p style={{ color: '#c9c9d6', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>
-                The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host&rsquo;s approval before they take effect. Make sure you&rsquo;re both on the same page.
+                The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host&rsquo;s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you&rsquo;re both on the same page. New contract available to be sent if agreed.
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
