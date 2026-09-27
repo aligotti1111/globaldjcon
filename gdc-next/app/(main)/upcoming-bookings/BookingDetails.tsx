@@ -269,7 +269,7 @@ export default function BookingDetails({
         color: pending ? '#f5e642' : NEON,
         background: pending ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)',
         border: `1px solid ${pending ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)'}`,
-      }}>{pending ? 'Pending change' : 'Edited'}</span>
+      }}>{pending ? 'Pending host approval' : 'Edited'}</span>
     );
   };
   const LABEL_COL: Record<string, string> = {
