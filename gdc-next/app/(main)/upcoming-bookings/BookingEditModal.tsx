@@ -168,12 +168,13 @@ export default function BookingEditModal({
     );
   })();
 
-  async function cancelRequest(f: EditFieldDef) {
-    setCancelling(f.key); setErr(null);
+  async function cancelRequest(f: EditFieldDef) { await cancelByKey(f.key); }
+  async function cancelByKey(key: string) {
+    setCancelling(key); setErr(null);
     try {
       const res = await fetch('/api/bookings/edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: values.__id, cancelField: f.key }),
+        body: JSON.stringify({ bookingId: values.__id, cancelField: key }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not cancel.');
@@ -337,15 +338,39 @@ export default function BookingEditModal({
             {isPricing && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.1)' }}>
                 <div style={{ fontSize: '.66rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', margin: '0 0 10px' }}>Tax &amp; deposit · this booking only</div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 11 }}>
-                  <input type="checkbox" checked={removeTax} onChange={(e) => setRemoveTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
-                  <span style={{ fontSize: '.86rem', color: '#fff' }}>No tax on this booking{!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</span>
-                </label>
-                {!removeTax && (
-                  <div style={{ marginBottom: 11 }}>
-                    <label style={label}>Tax rate (%){!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
-                    <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
+                {pendingCols?.has('tax_pct') ? (
+                  // A tax change is awaiting the host — lock the tax controls and
+                  // offer to cancel the pending request.
+                  <div style={{ background: 'rgba(245,230,66,.08)', border: '1px solid rgba(245,230,66,.3)', borderRadius: 7, padding: '9px 10px', marginBottom: 11 }}>
+                    <div style={{ color: '#f5e642', fontSize: '.74rem', fontWeight: 700, letterSpacing: '.04em' }}>TAX — PENDING HOST APPROVAL</div>
+                    {pendingInfo?.['tax_pct'] && (
+                      <div style={{ fontSize: '.86rem', margin: '5px 0 2px' }}>
+                        <span style={{ color: '#8a8aa0', textDecoration: 'line-through' }}>{pendingInfo['tax_pct'].old}</span>
+                        {' '}<span style={{ color: '#f5e642' }}>→</span>{' '}
+                        <span style={{ color: '#fff', fontWeight: 700 }}>{pendingInfo['tax_pct'].neu}</span>
+                      </div>
+                    )}
+                    <div style={{ color: '#c9c9d6', fontSize: '.78rem', margin: '3px 0 8px', lineHeight: 1.45 }}>This tax change is awaiting the host. Cancel it to request a different tax.</div>
+                    <button
+                      type="button"
+                      style={{ ...btnGhost, padding: '6px 12px', fontSize: '.78rem', borderColor: 'rgba(255,107,107,.5)', color: '#ff8a8a' }}
+                      disabled={cancelling === 'tax_pct'}
+                      onClick={() => cancelByKey('tax_pct')}
+                    >{cancelling === 'tax_pct' ? 'Cancelling…' : 'Cancel requested change'}</button>
                   </div>
+                ) : (
+                  <>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 11 }}>
+                      <input type="checkbox" checked={removeTax} onChange={(e) => setRemoveTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
+                      <span style={{ fontSize: '.86rem', color: '#fff' }}>No tax on this booking{!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</span>
+                    </label>
+                    {!removeTax && (
+                      <div style={{ marginBottom: 11 }}>
+                        <label style={label}>Tax rate (%){!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
+                        <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
+                      </div>
+                    )}
+                  </>
                 )}
                 {priceBreakdown}
               </div>
