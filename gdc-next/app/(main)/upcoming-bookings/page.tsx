@@ -38,6 +38,11 @@ export const metadata: Metadata = {
 
 export interface UpcomingBooking {
   id: string;
+  // Edit-tracking: notify-only edits + host-approved changes are stamped here
+  // (value 'approved:…' means a host-approved required change); pending host
+  // approvals are listed as column names in pending_change_cols.
+  field_edits?: Record<string, string> | null;
+  pending_change_cols?: string[];
   event_date: string | null;
   start_time: string | null;
   end_time: string | null;
@@ -283,7 +288,7 @@ export default async function UpcomingBookingsPage() {
   // RLS client returns nothing for a teammate. Scoped hard to djId below.
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at, planner_status')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at, planner_status, field_edits')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
@@ -413,14 +418,21 @@ export default async function UpcomingBookingsPage() {
   // confirmed" / "Guest list confirmed" for club bookings.
   const riderConfirmedByBooking: Record<string, string | null> = {};
   const glConfirmedByBooking: Record<string, string | null> = {};
+  // Fields with a still-pending host-approval change → drives the "Pending host
+  // approval" badge on the collapsed row (near the date) as well as in the panel.
+  const pendingColsByBooking: Record<string, string[]> = {};
   if (bookingIds.length > 0) {
     // Admin client, same as the bookings read above: these tables have no
     // team-member RLS policy, so the session client returns nothing for a
     // teammate. Hard-scoped to this owner's bookingIds, so nothing can leak.
-    const [{ data: riderRows }, { data: glRows }] = await Promise.all([
+    const [{ data: riderRows }, { data: glRows }, { data: changeRows }] = await Promise.all([
       admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', bookingIds),
       admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', bookingIds),
+      admin.from('booking_change_requests').select('booking_id, target_col').in('booking_id', bookingIds).eq('status', 'pending'),
     ]);
+    for (const c of (((changeRows as unknown) as { booking_id: string; target_col: string }[] | null) || [])) {
+      (pendingColsByBooking[c.booking_id] ||= []).push(c.target_col);
+    }
     for (const r of (((riderRows as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
       noteActivity(r.booking_id, r.confirmed_at, 'song_list');
       if (r.confirmed_at) riderConfirmedByBooking[r.booking_id] = r.confirmed_at;
@@ -451,6 +463,7 @@ export default async function UpcomingBookingsPage() {
       guestlist_confirmed_at: glConfirmedByBooking[b.id] || null,
       // planner_sent_at rides in on the booking row itself (native column).
       planner_submitted_at: plannerSubmittedByBooking[b.id] || null,
+      pending_change_cols: pendingColsByBooking[b.id] || [],
     };
   });
 
