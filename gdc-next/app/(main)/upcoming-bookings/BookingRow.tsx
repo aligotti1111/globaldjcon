@@ -642,6 +642,11 @@ export default function BookingRow({
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
   const { day, dow, mo } = getDateParts(booking.event_date);
+  // Edit status of the DATE, surfaced on the collapsed row near the date pill:
+  // amber while the host hasn't approved yet, teal once they have.
+  const dateChangePending = (booking.pending_change_cols || []).includes('event_date');
+  const dateEditMark = booking.field_edits?.event_date;
+  const dateChangeApproved = typeof dateEditMark === 'string' && dateEditMark.startsWith('approved');
   // Header time range. When the booker added a cocktail hour, the row's
   // start reflects the cocktail-hour start (the DJ is engaged from then),
   // running through the event end. Otherwise it's the plain event window.
@@ -800,6 +805,21 @@ export default function BookingRow({
             <div className={styles.dow}>{dow}</div>
             <div className={styles.mo}>{mo}</div>
           </div>
+          {(dateChangePending || dateChangeApproved) && (
+            <div
+              title={dateChangePending ? 'A new date is pending the host’s approval' : 'The host approved a date change'}
+              style={{
+                marginTop: 5, alignSelf: 'center', textAlign: 'center', lineHeight: 1.15,
+                fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.5rem', fontWeight: 700,
+                letterSpacing: '.05em', textTransform: 'uppercase', padding: '2px 5px', borderRadius: 5,
+                color: dateChangePending ? '#f5e642' : NEON,
+                background: dateChangePending ? 'rgba(245,230,66,.12)' : 'rgba(0,245,196,.12)',
+                border: `1px solid ${dateChangePending ? 'rgba(245,230,66,.4)' : 'rgba(0,245,196,.4)'}`,
+              }}
+            >
+              {dateChangePending ? 'Change pending' : 'Date approved'}
+            </div>
+          )}
         </div>
         {/* 2 — Flyer. Club/bar only, which is why --row-cols has a club
             variant with an extra track rather than a 0-width column that would
