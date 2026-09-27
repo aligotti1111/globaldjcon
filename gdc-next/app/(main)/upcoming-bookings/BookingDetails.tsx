@@ -331,7 +331,7 @@ export default function BookingDetails({
   };
   const LABEL_COL: Record<string, string> = {
     'Venue Name': 'venue_name', 'Room Details': 'room_details', 'Venue Address': 'venue_address',
-    'Venue Type': 'venue_type', 'Booked By': 'requester_name', 'Contact Phone': 'phone', 'Email': 'host_email',
+    'Venue Type': 'venue_type', 'Booked By': 'requester_name', 'Contact Phone': 'phone', 'Email': 'host_email', 'Host name': 'requester_name',
   };
   // The pencil button on a section's chip header (owner, non-archive).
   const sectionPencil = (sec: EditSection): React.ReactNode => canEdit ? (
@@ -630,6 +630,11 @@ export default function BookingDetails({
               : null,
           },
         ],
+    // Row 4b: Host name — for MANUAL bookings, show the host name the DJ entered
+    // (online bookings already show it as "Booked By" below, so skip there).
+    [
+      { label: 'Host name', value: (booking.is_manual && booking.requester_name) ? booking.requester_name : null },
+    ],
     // Row 5: Booked By + Contact Phone
     [
       { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
@@ -733,7 +738,7 @@ export default function BookingDetails({
   const sectionForRow = (row: DetailRow): SectionKey => {
     const s = row.map((c) => c.label).join('|');
     if (/Venue|Room|Equipment|Set Type|Set Time/.test(s)) return 'VENUE';
-    if (/Booked By|Contact Phone|Email/.test(s)) return 'HOST';
+    if (/Booked By|Contact Phone|Email|Host name/.test(s)) return 'HOST';
     if (/Agreed Rate|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
     return 'EVENT';
   };
