@@ -1258,6 +1258,8 @@ export default function BookingDetails({
           lockEmail={!!hostUserId}
           pendingCols={pendingCols}
           pendingInfo={pendingInfo}
+          collected={payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0)}
+          depositLocked={payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived'))}
           noHostRecipient={!hostUserId && !((booking as { host_email?: string | null }).host_email || '').trim() && !((booking as { account_email?: string | null }).account_email || '').trim()}
           onCancelled={() => { void loadBadges(); onMutated?.(); }}
           onClose={() => setEditSection(null)}
