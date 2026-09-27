@@ -604,6 +604,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
   // Hero tags — event types (mobile DJs only, as a popup) vs separate tags
   const isMobileDJ = data.dj_type === 'mobile';
+  // The new About design (bold bio card + Quick Facts) is now shown for BOTH DJ
+  // types — mobile and club/bar — not just mobile. Staff/affiliates stay
+  // mobile-only (they use isMobileDJ directly, not this flag).
+  const showAboutDesign = data.dj_type === 'mobile' || data.dj_type === 'club';
   const eventTypes = data.event_types
     ? data.event_types.split(',').map(s => s.trim()).filter(Boolean)
     : [];
@@ -805,9 +809,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     } catch { /* invalid JSON — silently ignore */ }
   }
 
-  // About highlight cards (JSON-stringified, mobile DJs only)
+  // About highlight cards (JSON-stringified) — mobile + club/bar DJs.
   let aboutStats: AboutStats = {};
-  if (isMobileDJ && data.about_stats) {
+  if (showAboutDesign && data.about_stats) {
     try {
       const parsed = JSON.parse(data.about_stats) as AboutStats;
       if (parsed && typeof parsed === 'object') aboutStats = parsed;
@@ -1644,14 +1648,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           <div className={paneClass('about')}>
             {/* Two columns when Quick Facts (mobile DJs) show; otherwise the
                 About card spans the full section width. */}
-            <div className={styles.aboutGrid} style={isMobileDJ ? undefined : { gridTemplateColumns: '1fr' }}>
+            <div className={styles.aboutGrid} style={showAboutDesign ? undefined : { gridTemplateColumns: '1fr' }}>
               <div className={styles.aboutCard}>
                 <div className={styles.aboutCardHeading}>About</div>
                 {canEdit ? (
                   <OwnerEditableBio userId={data.id} initialBio={data.bio} />
                 ) : data.bio ? (
                   <div
-                    className={isMobileDJ ? styles.bioTextMobile : styles.bioText}
+                    className={showAboutDesign ? styles.bioTextMobile : styles.bioText}
                     dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(data.bio) }}
                   />
                 ) : (
@@ -1666,7 +1670,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )}
               </div>
-              {isMobileDJ && (
+              {showAboutDesign && (
                 <AboutStatsRow
                   userId={data.id}
                   isOwnProfile={canEdit}
