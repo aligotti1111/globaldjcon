@@ -12,9 +12,21 @@
 
 import type { UpcomingBooking, BookingPayment } from './page';
 
+// One row of the change history (from booking_change_requests) — every edit the
+// owner made, plus the host's approve/decline where required.
+export type ChangeLogItem = {
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  status: string;          // 'applied' | 'pending' | 'approved' | 'declined' | 'superseded'
+  created_at: string;
+  responded_at: string | null;
+};
+
 interface Props {
   booking: UpcomingBooking;
   payments: BookingPayment[];
+  changes?: ChangeLogItem[];
 }
 
 type Actor = 'dj' | 'host';
@@ -40,7 +52,7 @@ function kindLabel(kind: string): string {
   return 'Payment';
 }
 
-export default function BookingLog({ booking, payments }: Props) {
+export default function BookingLog({ booking, payments, changes }: Props) {
   const entries: Entry[] = [];
   const add = (ts: string | null | undefined, label: string, actor: Actor) => {
     if (!ts) return;
@@ -151,6 +163,21 @@ export default function BookingLog({ booking, payments }: Props) {
       add(respondedAt, 'Cancellation accepted', byDj ? 'host' : 'dj');
     } else if (booking.cancel_status === 'declined') {
       add(respondedAt, 'Cancellation declined', byDj ? 'host' : 'dj');
+    }
+  }
+
+  // ── Booking-detail changes (owner edits + host approvals) ── Each change is a
+  // step: the owner made it, and for approval-required fields the host's
+  // approve/decline is its own later step.
+  for (const c of (changes || [])) {
+    const val = `${c.field}: ${c.old_value || '—'} → ${c.new_value || '—'}`;
+    if (c.status === 'applied') {
+      add(c.created_at, `Updated ${val}`, 'dj');
+    } else {
+      add(c.created_at, `Requested change (needs host approval) — ${val}`, 'dj');
+      if (c.status === 'approved') add(c.responded_at, `Host approved change — ${c.field}`, 'host');
+      else if (c.status === 'declined') add(c.responded_at, `Host declined change — ${c.field}`, 'host');
+      else if (c.status === 'superseded') add(c.responded_at, `Change replaced by a newer one — ${c.field}`, 'dj');
     }
   }
 
