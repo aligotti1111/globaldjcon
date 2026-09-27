@@ -395,7 +395,14 @@ export default function BookingRow({
   }
   function overrideLockedFor(key: string): boolean {
     if (key === 'contract') return !roleCanContract;
-    if (key === 'deposit' || key === 'invoice') return !roleCanMoney;
+    if (key === 'deposit' || key === 'invoice') {
+      if (!roleCanMoney) return true;
+      // Once a price change is submitted (awaiting the host), the deposit can't be
+      // marked unpaid — the amounts are in flux until the host confirms the new
+      // price. Unlocks again once there's no pending price change.
+      if (key === 'deposit' && (booking.pending_change_cols || []).includes('price')) return true;
+      return false;
+    }
     return false;
   }
   function runContract(a: ContractAction) {
