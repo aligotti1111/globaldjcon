@@ -29,7 +29,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96
 });
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -45,6 +45,9 @@ export default function BookingEditModal({
   /** Per-column detail of the pending change (old → new), to show what's awaiting
    *  the host on a locked field. Keyed by DB column. */
   pendingInfo?: Record<string, { old: string; neu: string }>;
+  /** Manual booking with no host recipient: nothing to approve or notify, so
+   *  every change applies immediately and no approval/notify copy shows. */
+  noHostRecipient?: boolean;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
   /** Called after a pending request is cancelled so the parent re-reads badges. */
@@ -182,7 +185,9 @@ export default function BookingEditModal({
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Edit {SECTION_TITLE[section].toLowerCase()} details</h3>
               <p style={{ color: '#c9c9d6', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>
-                The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host&rsquo;s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you&rsquo;re both on the same page.
+                {noHostRecipient
+                  ? 'This booking has no host contact on file, so changes apply right away.'
+                  : 'The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host’s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.'}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
@@ -205,7 +210,7 @@ export default function BookingEditModal({
             <h3 style={{ margin: '0 0 14px', fontSize: '1rem' }}>Edit {SECTION_TITLE[section].toLowerCase()} details</h3>
             {fields.map((f: EditFieldDef) => (
               <div key={f.key} style={{ marginBottom: 11 }}>
-                <label style={label}>{f.label}{f.tier === 'approve' && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
+                <label style={label}>{f.label}{f.tier === 'approve' && !noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
                 {isPending(f) ? (
                   <div style={{ background: 'rgba(245,230,66,.08)', border: '1px solid rgba(245,230,66,.3)', borderRadius: 7, padding: '9px 10px' }}>
                     <div style={{ color: '#f5e642', fontSize: '.74rem', fontWeight: 700, letterSpacing: '.04em' }}>PENDING HOST APPROVAL</div>
@@ -279,10 +284,10 @@ export default function BookingEditModal({
               </div>
             )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
-            {changed.some((f) => f.tier === 'notify') && (
+            {!noHostRecipient && changed.some((f) => f.tier === 'notify') && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
             )}
-            {hasApprove && changed.length > 0 && (
+            {!noHostRecipient && hasApprove && changed.length > 0 && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — changed field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
