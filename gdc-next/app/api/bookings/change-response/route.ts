@@ -51,6 +51,10 @@ export async function POST(req: Request) {
   // Resolve the token → the booking, then the whole pending batch for it.
   const { data: hit } = await admin.from('booking_change_requests').select('id, booking_id, dj_id, status').eq('token', token).maybeSingle<ReqRow>();
   if (!hit) return NextResponse.json({ error: 'This link is not valid.' }, { status: 404 });
+  // The DJ cancelled this request — the host can no longer approve or decline it.
+  if (hit.status === 'cancelled' || hit.status === 'superseded') {
+    return NextResponse.json({ error: 'This request was cancelled by the DJ.', cancelled: true }, { status: 409 });
+  }
   const { data: pend } = await admin.from('booking_change_requests')
     .select('id, booking_id, dj_id, field, old_value, new_value, target_col, target_raw, status')
     .eq('booking_id', hit.booking_id).eq('status', 'pending');
