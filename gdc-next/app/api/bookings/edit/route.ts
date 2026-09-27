@@ -110,7 +110,7 @@ export async function GET(req: Request) {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: b } = await admin.from('bookings').select('dj_id, field_edits').eq('id', bookingId).maybeSingle<{ dj_id: string | null; field_edits: Record<string, string> | null }>();
   if (!b || b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  const { data: pend } = await admin.from('booking_change_requests').select('target_col, field, new_value').eq('booking_id', bookingId).eq('status', 'pending');
+  const { data: pend } = await admin.from('booking_change_requests').select('target_col, field, old_value, new_value').eq('booking_id', bookingId).eq('status', 'pending');
   // Full per-field history (newest first) — drives the change-history dropdown
   // when a field has been changed more than once.
   const { data: hist } = await admin
