@@ -993,6 +993,9 @@ export default function BookingDetails({
     package_title: booking.package_title || '',
     package_details: (booking.package_details || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     price: agreedTotal != null ? String(agreedTotal) : '',
+    // Per-booking pricing terms the modal can edit (immediate, this booking only).
+    tax_pct: effTaxPct != null ? String(effTaxPct) : '0',
+    deposit_pct: booking.deposit_pct != null ? String(booking.deposit_pct) : (djType === 'club' && clubDepositPct > 0 ? String(clubDepositPct) : ''),
   };
 
   return (
