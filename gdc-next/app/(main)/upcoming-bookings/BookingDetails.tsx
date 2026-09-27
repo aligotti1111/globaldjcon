@@ -239,6 +239,9 @@ export default function BookingDetails({
     ((booking as { field_edits?: Record<string, string> | null }).field_edits) || {},
   );
   const [pendingCols, setPendingCols] = useState<Set<string>>(new Set());
+  type HistItem = { field: string; old: string; neu: string; status: string; at: string };
+  const [history, setHistory] = useState<Record<string, HistItem[]>>({});
+  const [openHist, setOpenHist] = useState<string | null>(null);
   const canEdit = isOwner && !archive;
   useEffect(() => {
     if (!canEdit) return;
@@ -246,35 +249,82 @@ export default function BookingDetails({
     (async () => {
       try {
         const r = await fetch(`/api/bookings/edit?bookingId=${encodeURIComponent(booking.id)}`);
-        const d = (await r.json().catch(() => ({}))) as { field_edits?: Record<string, string>; pending?: { target_col: string }[] };
+        const d = (await r.json().catch(() => ({}))) as {
+          field_edits?: Record<string, string>;
+          pending?: { target_col: string }[];
+          history?: { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string }[];
+        };
         if (!alive) return;
         if (d.field_edits) setFieldEdits(d.field_edits);
         if (Array.isArray(d.pending)) setPendingCols(new Set(d.pending.map((p) => p.target_col)));
+        if (Array.isArray(d.history)) {
+          const grouped: Record<string, HistItem[]> = {};
+          for (const h of d.history) {
+            (grouped[h.target_col] ||= []).push({ field: h.field, old: h.old_value || '—', neu: h.new_value || '—', status: h.status, at: h.created_at });
+          }
+          setHistory(grouped);
+        }
       } catch { /* badges just won't show */ }
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.id, canEdit]);
 
+  const HIST_STATUS: Record<string, string> = {
+    applied: 'Applied', approved: 'Host approved', declined: 'Declined by host',
+    pending: 'Pending host approval', superseded: 'Replaced',
+  };
+  const fmtWhen = (iso: string) => { try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } };
+
   // Badge next to a field, keyed by its DB column. Pending (amber) beats Edited.
+  // When a field has been changed MORE THAN ONCE, the badge becomes a dropdown
+  // that lists the full history; a single change stays a plain badge.
   const badgeFor = (col: string): React.ReactNode => {
     const pending = pendingCols.has(col);
     const mark = fieldEdits[col];
     const approved = typeof mark === 'string' && mark.startsWith('approved');
     if (!pending && !mark) return null;
-    // Amber = waiting on the host; teal = the host approved a required change;
-    // muted teal = a notify-only edit that applied immediately.
     const label = pending ? 'Pending host approval' : approved ? 'Host approved change' : 'Edited';
     const amber = pending;
+    const color = amber ? '#f5e642' : NEON;
+    const bg = amber ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)';
+    const bd = amber ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)';
+    const base: React.CSSProperties = {
+      display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, verticalAlign: 'middle',
+      fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700,
+      letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5,
+      color, background: bg, border: `1px solid ${bd}`,
+    };
+    const items = history[col] || [];
+    if (items.length <= 1) return <span style={base}>{label}</span>;
+    // Multiple changes → dropdown of the history.
+    const open = openHist === col;
     return (
-      <span style={{
-        display: 'inline-block', marginLeft: 8, verticalAlign: 'middle',
-        fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700,
-        letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5,
-        color: amber ? '#f5e642' : NEON,
-        background: amber ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)',
-        border: `1px solid ${amber ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)'}`,
-      }}>{label}</span>
+      <span style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpenHist(open ? null : col); }}
+          style={{ ...base, cursor: 'pointer' }}
+          title="Show change history"
+        >
+          {label}<span style={{ fontSize: '.6rem', lineHeight: 1 }}>{items.length}×</span>
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        {open && (
+          <>
+            <div onClick={(e) => { e.stopPropagation(); setOpenHist(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+            <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61, minWidth: 220, maxWidth: 300, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', padding: 6 }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', padding: '4px 8px 6px' }}>Change history · {items[0].field}</div>
+              {items.map((it, i) => (
+                <div key={i} style={{ padding: '7px 8px', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+                  <div style={{ fontSize: '.8rem', color: '#fff' }}><span style={{ color: 'var(--muted,#8a8aa0)' }}>{it.old}</span> → <span style={{ color: NEON, fontWeight: 700 }}>{it.neu}</span></div>
+                  <div style={{ fontSize: '.62rem', color: 'var(--muted,#8a8aa0)', marginTop: 2 }}>{HIST_STATUS[it.status] || it.status} · {fmtWhen(it.at)}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </span>
     );
   };
   const LABEL_COL: Record<string, string> = {
