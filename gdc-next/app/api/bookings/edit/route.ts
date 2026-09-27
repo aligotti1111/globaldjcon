@@ -160,6 +160,10 @@ export async function POST(req: Request) {
   for (const [key, rawVal] of Object.entries(changes)) {
     const def = EDIT_FIELD_BY_KEY[key];
     if (!def) continue;
+    // The host's email is their account login on account-based bookings — the DJ
+    // can't change it here. Only the booking-level host_email (manual / account-
+    // less online bookings) is editable.
+    if (key === 'host_email' && booking.requester_id) continue;
     const val = typeof rawVal === 'string' ? rawVal.trim() : String(rawVal ?? '');
     const oldDisp = displayOld(key, booking);
     const newDisp = displayNew(key, val, booking.currency);
