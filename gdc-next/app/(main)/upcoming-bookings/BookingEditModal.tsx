@@ -59,10 +59,24 @@ export default function BookingEditModal({
   const [err, setErr] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
 
+  // Per-booking pricing terms (PRICING section only): tax %, deposit %, no-tax.
+  const isPricing = section === 'PRICING';
+  const initTaxPct = values.tax_pct ?? '0';
+  const initDepPct = values.deposit_pct ?? '';
+  const [removeTax, setRemoveTax] = useState((Number(initTaxPct) || 0) === 0);
+  const [taxPct, setTaxPct] = useState(initTaxPct === '0' ? '' : initTaxPct);
+  const [depPct, setDepPct] = useState(initDepPct);
+
   const isPending = (f: EditFieldDef) => f.tier === 'approve' && !!pendingCols?.has(f.col);
   // Locked fields (pending approval) don't count as editable changes.
   const changed = fields.filter((f) => !isPending(f) && (form[f.key] ?? '') !== (values[f.key] ?? ''));
   const hasApprove = changed.some((f) => f.tier === 'approve');
+
+  // Did the pricing terms change from what's stored?
+  const newTaxPctNum = removeTax ? 0 : (Number(taxPct) || 0);
+  const newDepNum = depPct.trim() === '' ? null : (Number(depPct) || 0);
+  const oldDepNum = initDepPct.trim() === '' ? null : (Number(initDepPct) || 0);
+  const pricingDirty = isPricing && (newTaxPctNum !== (Number(initTaxPct) || 0) || newDepNum !== oldDepNum);
 
   async function cancelRequest(f: EditFieldDef) {
     setCancelling(f.key); setErr(null);
@@ -80,14 +94,23 @@ export default function BookingEditModal({
   }
 
   async function save() {
-    if (changed.length === 0) { onClose(); return; }
+    if (changed.length === 0 && !pricingDirty) { onClose(); return; }
     setBusy(true); setErr(null);
     try {
       const changes: Record<string, string> = {};
       changed.forEach((f) => { changes[f.key] = form[f.key] ?? ''; });
+      const payload: Record<string, unknown> = { bookingId: values.__id, changes };
+      if (pricingDirty) {
+        const pricing: { taxPct?: number; removeTax?: boolean; depositPct?: number } = {};
+        if (newTaxPctNum !== (Number(initTaxPct) || 0)) {
+          if (removeTax) pricing.removeTax = true; else pricing.taxPct = newTaxPctNum;
+        }
+        if (newDepNum !== oldDepNum && newDepNum !== null) pricing.depositPct = newDepNum;
+        payload.pricing = pricing;
+      }
       const res = await fetch('/api/bookings/edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: values.__id, changes }),
+        body: JSON.stringify(payload),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; applied?: string[]; pending?: { field: string; label: string }[]; field_edits?: Record<string, string> };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
@@ -168,13 +191,33 @@ export default function BookingEditModal({
                 )}
               </div>
             ))}
+            {isPricing && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+                <div style={{ fontSize: '.66rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', margin: '0 0 10px' }}>Tax &amp; deposit · this booking only</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 11 }}>
+                  <input type="checkbox" checked={removeTax} onChange={(e) => setRemoveTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
+                  <span style={{ fontSize: '.86rem', color: '#fff' }}>No tax on this booking</span>
+                </label>
+                {!removeTax && (
+                  <div style={{ marginBottom: 11 }}>
+                    <label style={label}>Tax rate (%)</label>
+                    <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
+                  </div>
+                )}
+                <div>
+                  <label style={label}>Deposit (%)</label>
+                  <input style={input} type="number" step="1" min="0" max="100" value={depPct} placeholder="e.g. 15" onChange={(e) => setDepPct(e.target.value)} />
+                </div>
+                <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 8, lineHeight: 1.45 }}>Changes tax and deposit for this booking only. Applies right away; the host is emailed the update.</div>
+              </div>
+            )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
             {hasApprove && changed.length > 0 && (
               <div style={{ fontSize: '.76rem', color: '#f5e642', marginTop: 8 }}>When you click Save changes, the host is emailed to approve the date/time/address/price/package-details change — it shows as &ldquo;Pending host approval&rdquo; until they approve. Any other fields apply now.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
               <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
-              <button style={{ ...btnPrimary, opacity: (busy || changed.length === 0) ? 0.5 : 1 }} disabled={busy || changed.length === 0} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
+              <button style={{ ...btnPrimary, opacity: (busy || (changed.length === 0 && !pricingDirty)) ? 0.5 : 1 }} disabled={busy || (changed.length === 0 && !pricingDirty)} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
             </div>
           </>
         )}
