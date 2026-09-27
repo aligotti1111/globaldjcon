@@ -107,6 +107,10 @@ export interface AboutStats {
   backup?: { on?: boolean; answer?: 'Yes' | 'No' };
   eventsTotal?: { on?: boolean; count?: string };
   depositRequired?: { on?: boolean; answer?: 'Yes' | 'No' };
+  // Club/bar-specific quick facts.
+  ownEquipment?: { on?: boolean; answer?: 'Yes' | 'No' };
+  residencies?: { on?: boolean; answer?: 'Yes' | 'No' };
+  travels?: { on?: boolean; answer?: 'Yes' | 'No' };
 }
 
 export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq' | 'staff' | 'affiliates';
