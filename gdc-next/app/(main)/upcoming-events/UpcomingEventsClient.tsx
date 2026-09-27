@@ -156,6 +156,27 @@ function EventRow({
   const [showMsgModal, setShowMsgModal] = useState(false);
   const [cancelStatus, setCancelStatus] = useState<string | null>(event.cancel_status ?? null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // Host can update the contact phone on their own booking — saves straight
+  // away (no approval, no email); the DJ sees it flagged as updated.
+  const [phoneShown, setPhoneShown] = useState(event.phone || '');
+  const [editPhone, setEditPhone] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState(event.phone || '');
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [phoneErr, setPhoneErr] = useState<string | null>(null);
+  async function saveHostPhone() {
+    setSavingPhone(true); setPhoneErr(null);
+    try {
+      const r = await fetch('/api/booking/host-phone', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: event.id, phone: phoneDraft }),
+      });
+      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!r.ok || !d.ok) throw new Error(d.error || 'Could not save.');
+      setPhoneShown(phoneDraft.trim());
+      setEditPhone(false);
+    } catch (e) { setPhoneErr(e instanceof Error ? e.message : 'Could not save.'); }
+    finally { setSavingPhone(false); }
+  }
 
   // When the host opens an event, check whether a contract exists / is signed.
   //   200 + urls → signed (show download buttons)
@@ -664,10 +685,40 @@ function EventRow({
                       </div>
                     </div>
                   )}
-                  {event.phone?.trim() && (
+                  {(phoneShown.trim() || !readOnly) && (
                     <div className={dj.detailRow}>
-                      <div className={dj.detailLabel}>Contact Phone</div>
-                      <div className={dj.detailValue}>{event.phone.trim()}</div>
+                      <div className={dj.detailLabel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        Contact Phone
+                        {!readOnly && !editPhone && (
+                          <button
+                            type="button"
+                            onClick={() => { setPhoneDraft(phoneShown); setPhoneErr(null); setEditPhone(true); }}
+                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--neon,#00e0a4)', borderRadius: 6, padding: '1px 7px', fontSize: '.62rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '.05em' }}
+                          >
+                            {phoneShown.trim() ? 'Update' : 'Add'}
+                          </button>
+                        )}
+                      </div>
+                      {editPhone ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            value={phoneDraft}
+                            onChange={(e) => setPhoneDraft(e.target.value)}
+                            placeholder="(555) 555-5555"
+                            autoFocus
+                            style={{ background: '#0c0c11', border: '1px solid rgba(255,255,255,.16)', borderRadius: 7, padding: '8px 10px', color: '#fff', fontSize: '.9rem', maxWidth: 220 }}
+                          />
+                          {phoneErr && <div style={{ color: '#ff6b6b', fontSize: '.75rem' }}>{phoneErr}</div>}
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button type="button" disabled={savingPhone} onClick={() => setEditPhone(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: '#8a8aa0', borderRadius: 7, padding: '6px 12px', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                            <button type="button" disabled={savingPhone} onClick={saveHostPhone} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#04150f', borderRadius: 7, padding: '6px 14px', fontSize: '.8rem', fontWeight: 800, cursor: 'pointer', opacity: savingPhone ? 0.6 : 1 }}>{savingPhone ? 'Saving…' : 'Save'}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={dj.detailValue}>{phoneShown.trim() || <span style={{ color: '#8a8aa0' }}>Not set</span>}</div>
+                      )}
                     </div>
                   )}
                 </div>
