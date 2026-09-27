@@ -69,6 +69,10 @@ interface Props {
   clubDepositPct?: number;
   mobDepositPct?: number;
   taxPct?: number;
+  // DJ home base — used to show driving distance to each booking's venue.
+  djZip?: string | null;
+  djCity?: string | null;
+  djState?: string | null;
 }
 
 
@@ -79,6 +83,7 @@ export default function UpcomingBookingsClient({
   requireContract: requireContractProp, riderEnabled: riderEnabledProp,
   guestlistEnabled: guestlistEnabledProp, clubDepositPct: clubDepositPctProp,
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
+  djZip = null, djCity = null, djState = null,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Payment ledger rows per booking (booking_payments). Owned at the top so a
@@ -622,6 +627,7 @@ export default function UpcomingBookingsClient({
                 actingRole={actingRole}
                 clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
                 taxPct={taxPct}
+                djZip={djZip} djCity={djCity} djState={djState}
                 requireContract={requireContract}
                 archive={archive}
                 payments={paymentsMap[b.id] || []}
@@ -658,6 +664,7 @@ export default function UpcomingBookingsClient({
                 actingRole={actingRole}
                     clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
                     taxPct={taxPct}
+                    djZip={djZip} djCity={djCity} djState={djState}
                     requireContract={requireContract}
                     archive={archive}
                     payments={paymentsMap[b.id] || []}
