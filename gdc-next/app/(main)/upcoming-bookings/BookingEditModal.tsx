@@ -29,7 +29,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96
 });
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, collected = 0, depositLocked = false, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, collected = 0, depositLocked = false, pendingPayment = false, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -52,6 +52,9 @@ export default function BookingEditModal({
   collected?: number;
   /** A deposit was already received or skipped — the deposit % can't change. */
   depositLocked?: boolean;
+  /** A deposit or balance request is out (sent, unpaid) — the DJ must cancel it
+   *  before changing the price so the amounts stay in sync. */
+  pendingPayment?: boolean;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
   /** Called after a pending request is cancelled so the parent re-reads badges. */
@@ -258,6 +261,12 @@ export default function BookingEditModal({
                       {MOBILE_EVENT_TYPES.find((o) => o.value === (values[f.key] ?? ''))?.label || values[f.key] || '—'}
                     </div>
                     <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 4 }}>Event type can&rsquo;t be changed.</div>
+                  </>
+                ) : f.key === 'price' && pendingPayment ? (
+                  // A deposit/balance request is out — lock the price until it's cancelled.
+                  <>
+                    <div style={{ ...input, opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>{form[f.key] || '—'}</div>
+                    <div style={{ fontSize: '.72rem', color: '#f5e642', marginTop: 4, lineHeight: 1.45 }}>A deposit or balance request is still pending. Cancel it on the booking before changing the price.</div>
                   </>
                 ) : f.key === 'package_details' ? (
                   <textarea style={{ ...input, minHeight: 70, resize: 'vertical' }} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
