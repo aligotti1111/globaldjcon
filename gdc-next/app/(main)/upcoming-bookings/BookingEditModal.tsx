@@ -29,7 +29,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96
 });
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, collected = 0, depositLocked = false, pendingPayment = false, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, collected = 0, depositPaidAmount = 0, depositLocked = false, pendingPayment = false, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -50,6 +50,8 @@ export default function BookingEditModal({
   noHostRecipient?: boolean;
   /** Total money already received on this booking (deposit + balance payments). */
   collected?: number;
+  /** Money already paid toward the deposit specifically — drives "ALREADY PAID". */
+  depositPaidAmount?: number;
   /** A deposit was already received or skipped — the deposit % can't change. */
   depositLocked?: boolean;
   /** A deposit or balance request is out (sent, unpaid) — the DJ must cancel it
@@ -138,7 +140,17 @@ export default function BookingEditModal({
           // Money already changed hands: subtract what's been received from the new
           // total. A negative remainder means the DJ owes the host a refund.
           <>
-            <Row label="Received (paid)" oldV={money(collected)} newV={money(collected)} />
+            {depositPaidAmount > 0 ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                <span style={{ fontSize: '.8rem', color: '#c9c9d6' }}>Deposit{o.dp > 0 ? ` (${o.dp}%)` : ''}<span style={{ color: NEON, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', marginLeft: 6 }}>ALREADY PAID</span></span>
+                <span style={{ fontSize: '.85rem', fontWeight: 700, color: '#fff' }}>{money(depositPaidAmount)}</span>
+              </div>
+            ) : (
+              <Row label="Received (paid)" oldV={money(collected)} newV={money(collected)} />
+            )}
+            {collected > depositPaidAmount && depositPaidAmount > 0 && (
+              <Row label="Also received" oldV={money(r2(collected - depositPaidAmount))} newV={money(r2(collected - depositPaidAmount))} />
+            )}
             {r2(n.total - collected) >= 0
               ? <Row label="Balance due" oldV={money(Math.max(0, r2(o.total - collected)))} newV={money(r2(n.total - collected))} strong />
               : <Row label="Refund owed" oldV={o.total - collected < 0 ? money(r2(collected - o.total)) : money(0)} newV={money(r2(collected - n.total))} strong />}
