@@ -6,26 +6,20 @@
 
 import { useEffect, useState, memo } from 'react';
 import { createPortal } from 'react-dom';
-import { Bebas_Neue, DM_Sans, Space_Mono } from 'next/font/google';
 import { useAuth } from '@/components/AuthProvider';
 import RedeemCodeBox from './subscribe/RedeemCodeBox';
 
-// Self-host the marketing fonts via next/font instead of a runtime @import of
-// Google Fonts. The old @import lived INSIDE the injected <style> string, so the
-// browser didn't even discover the fonts until the client JS ran and inserted
-// that style — leaving the Bebas Neue hero headings invisible on first paint
-// (the "black homepage until it loads" report). next/font preloads them from our
-// own origin and exposes each as a CSS variable, wired into --disp/--body/--mono
-// below. `display: swap` shows fallback text immediately, then swaps.
-const fBebas = Bebas_Neue({ weight: '400', subsets: ['latin'], display: 'swap', variable: '--f-bebas' });
-const fDmSans = DM_Sans({ weight: ['400', '500', '600', '700'], subsets: ['latin'], display: 'swap', variable: '--f-dmsans' });
-const fSpaceMono = Space_Mono({ weight: ['400', '700'], subsets: ['latin'], display: 'swap', variable: '--f-mono' });
+// The marketing fonts (Bebas Neue, DM Sans, Space Mono) are loaded once in the
+// root layout via a <link> to Google Fonts — the same families listed there.
+// We deliberately do NOT use next/font here: its build-time font download fails
+// intermittently in CI ("next/font … Cannot read properties of null"). The CSS
+// below wires --disp/--body/--mono straight to the family names.
 
 const LANDING_CSS = String.raw`
 .gdc-landing{
     --bg:#000; --card:#0c0c11; --card-2:#111118; --ink:#fff; --muted:#8b8b96; --faint:#5c5c68;
     --neon:#00f5c4; --amber:#f5e642; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.15);
-    --mono:var(--f-mono),'Space Mono',monospace; --disp:var(--f-bebas),'Bebas Neue',sans-serif; --body:var(--f-dmsans),'DM Sans',sans-serif;
+    --mono:'Space Mono',monospace; --disp:'Bebas Neue',sans-serif; --body:'DM Sans',sans-serif;
   }
 .gdc-landing.gdc-signedin .price .plan:first-child{display:none!important}
 /* Hosts don't subscribe — hide the whole pricing section for a signed-in host. */
@@ -1377,7 +1371,7 @@ const LANDING_BODY_HTML = { __html: LANDING_BODY };
 const LandingMarkup = memo(function LandingMarkup() {
   return (
     <div
-      className={`gdc-landing ${fBebas.variable} ${fDmSans.variable} ${fSpaceMono.variable}`}
+      className="gdc-landing"
       dangerouslySetInnerHTML={LANDING_BODY_HTML}
     />
   );
