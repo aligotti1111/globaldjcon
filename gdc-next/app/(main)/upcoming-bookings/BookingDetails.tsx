@@ -6,7 +6,7 @@
 // actions (send / resend / cancel / download / portal), the notes feed, the
 // in-card flyer, and the payments ledger.
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
@@ -244,37 +244,37 @@ export default function BookingDetails({
   const [changeLog, setChangeLog] = useState<ChangeLogItem[]>([]);
   const [openHist, setOpenHist] = useState<string | null>(null);
   const canEdit = isOwner && !archive;
-  useEffect(() => {
+  const loadBadges = useCallback(async () => {
     if (!canEdit) return;
-    let alive = true;
-    (async () => {
-      try {
-        const r = await fetch(`/api/bookings/edit?bookingId=${encodeURIComponent(booking.id)}`);
-        const d = (await r.json().catch(() => ({}))) as {
-          field_edits?: Record<string, string>;
-          pending?: { target_col: string }[];
-          history?: { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string; responded_at: string | null }[];
-        };
-        if (!alive) return;
-        if (d.field_edits) setFieldEdits(d.field_edits);
-        if (Array.isArray(d.pending)) setPendingCols(new Set(d.pending.map((p) => p.target_col)));
-        if (Array.isArray(d.history)) {
-          const grouped: Record<string, HistItem[]> = {};
-          for (const h of d.history) {
-            (grouped[h.target_col] ||= []).push({ field: h.field, old: h.old_value || '—', neu: h.new_value || '—', status: h.status, at: h.created_at });
-          }
-          setHistory(grouped);
-          setChangeLog(d.history.map((h) => ({ field: h.field, old_value: h.old_value, new_value: h.new_value, status: h.status, created_at: h.created_at, responded_at: h.responded_at })));
+    try {
+      const r = await fetch(`/api/bookings/edit?bookingId=${encodeURIComponent(booking.id)}`);
+      const d = (await r.json().catch(() => ({}))) as {
+        field_edits?: Record<string, string>;
+        pending?: { target_col: string }[];
+        history?: { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string; responded_at: string | null }[];
+      };
+      if (d.field_edits) setFieldEdits(d.field_edits);
+      if (Array.isArray(d.pending)) setPendingCols(new Set(d.pending.map((p) => p.target_col)));
+      if (Array.isArray(d.history)) {
+        const grouped: Record<string, HistItem[]> = {};
+        for (const h of d.history) {
+          // Only effective changes feed the value chain: applied edits, host-
+          // approved changes, and a still-pending one. Cancelled / declined /
+          // superseded requests never took effect, so they stay out of it.
+          if (!['applied', 'approved', 'pending'].includes(h.status)) continue;
+          (grouped[h.target_col] ||= []).push({ field: h.field, old: h.old_value || '—', neu: h.new_value || '—', status: h.status, at: h.created_at });
         }
-      } catch { /* badges just won't show */ }
-    })();
-    return () => { alive = false; };
+        setHistory(grouped);
+        setChangeLog(d.history.map((h) => ({ field: h.field, old_value: h.old_value, new_value: h.new_value, status: h.status, created_at: h.created_at, responded_at: h.responded_at })));
+      }
+    } catch { /* badges just won't show */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.id, canEdit]);
+  useEffect(() => { void loadBadges(); }, [loadBadges]);
 
   const HIST_STATUS: Record<string, string> = {
     applied: 'Applied', approved: 'Host approved', declined: 'Declined by host',
-    pending: 'Pending host approval', superseded: 'Replaced',
+    pending: 'Pending host approval', superseded: 'Replaced', cancelled: 'Cancelled by DJ',
   };
   const fmtWhen = (iso: string) => { try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } };
 
@@ -319,23 +319,24 @@ export default function BookingDetails({
             <div onClick={(e) => { e.stopPropagation(); setOpenHist(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
             <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61, minWidth: 220, maxWidth: 300, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', padding: 6 }}>
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#fff', padding: '4px 8px 6px' }}>Change history · {items[0].field}</div>
-              {items.map((it, i) => {
-                // items[0] is the latest / current change — its new value stays
-                // teal and un-struck. Every earlier change was superseded, so
-                // strike its new value too (it's no longer in effect).
-                const isCurrent = i === 0;
+              {(() => {
+                // Build one chronological chain of values instead of paired
+                // rows. items[0] is the latest change, so walking from the
+                // oldest change's `old` (the original) through each `neu` gives:
+                // original → … → current. All but the final are struck out; the
+                // final value (the live event date) shows in green at the bottom.
+                const chain = [items[items.length - 1].old, ...items.slice().reverse().map(it => it.neu)];
                 return (
-                  <div key={i} style={{ padding: '7px 8px', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-                    <div style={{ fontSize: '.8rem' }}>
-                      <span style={{ color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.old}</span>
-                      {' '}<span style={{ color: isCurrent ? NEON : 'var(--muted,#8a8aa0)' }}>→</span>{' '}
-                      {isCurrent
-                        ? <span style={{ color: NEON, fontWeight: 700 }}>{it.neu}</span>
-                        : <span style={{ color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.neu}</span>}
-                    </div>
+                  <div style={{ padding: '4px 8px 6px' }}>
+                    {chain.map((v, i) => {
+                      const isCurrent = i === chain.length - 1;
+                      return (
+                        <div key={i} style={{ fontSize: '.82rem', lineHeight: 1.5, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? NEON : '#ff8a8a', textDecoration: isCurrent ? 'none' : 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{v}</div>
+                      );
+                    })}
                   </div>
                 );
-              })}
+              })()}
             </div>
           </>
         )}
@@ -1243,6 +1244,8 @@ export default function BookingDetails({
           contractState={contractState}
           values={editValues}
           lockEmail={!!hostUserId}
+          pendingCols={pendingCols}
+          onCancelled={() => { void loadBadges(); onMutated?.(); }}
           onClose={() => setEditSection(null)}
           onSaved={(res) => {
             // Reflect the new badges immediately: notify-only cols are "Edited",
