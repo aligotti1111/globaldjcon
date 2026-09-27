@@ -163,16 +163,17 @@ export async function POST(req: Request) {
   // The DJ can't send a second request for a field while one is pending; instead
   // they cancel the pending one here, which frees the field to be re-requested.
   if (body.cancelField) {
-    const def = EDIT_FIELD_BY_KEY[body.cancelField];
-    if (!def) return NextResponse.json({ error: 'Unknown field' }, { status: 400 });
+    // Tax has no EDIT_FIELDS entry but is cancellable by its own column.
+    const col = body.cancelField === 'tax_pct' ? 'tax_pct' : EDIT_FIELD_BY_KEY[body.cancelField]?.col;
+    if (!col) return NextResponse.json({ error: 'Unknown field' }, { status: 400 });
     // Grab the request being cancelled (for the email) before flipping its status.
     const { data: cancelled } = await admin.from('booking_change_requests')
       .select('field, old_value, new_value')
-      .eq('booking_id', booking.id).eq('target_col', def.col).eq('status', 'pending')
+      .eq('booking_id', booking.id).eq('target_col', col).eq('status', 'pending')
       .order('created_at', { ascending: false }).limit(1).maybeSingle<{ field: string; old_value: string | null; new_value: string | null }>();
     const { error } = await admin.from('booking_change_requests')
       .update({ status: 'cancelled', responded_at: new Date().toISOString() } as unknown as never)
-      .eq('booking_id', booking.id).eq('target_col', def.col).eq('status', 'pending');
+      .eq('booking_id', booking.id).eq('target_col', col).eq('status', 'pending');
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     // Notify the host that the request they were asked to approve is withdrawn.
     const hostEmail = booking.requester_id ? await resolveUserEmail(booking.requester_id) : (booking.host_email || null);
@@ -188,7 +189,7 @@ export async function POST(req: Request) {
         await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} cancelled a booking change request`, html: shell(content) });
       } catch { /* non-fatal — the cancel already happened */ }
     }
-    return NextResponse.json({ ok: true, cancelled: def.col });
+    return NextResponse.json({ ok: true, cancelled: col });
   }
 
   // Fields that already have a pending approval request — a second request on the
