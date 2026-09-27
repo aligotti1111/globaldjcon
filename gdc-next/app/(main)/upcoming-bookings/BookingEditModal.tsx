@@ -21,7 +21,7 @@ const LEGAL = 'Editing this booking does not legally cancel or change either par
 const SECTION_TITLE: Record<EditSection, string> = { EVENT: 'Event', VENUE: 'Venue', HOST: 'Host', PACKAGE: 'Package', PRICING: 'Pricing' };
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -34,6 +34,9 @@ export default function BookingEditModal({
   /** DB columns that already have a pending approval request. Those fields are
    *  locked here — the DJ must cancel the pending request before re-requesting. */
   pendingCols?: Set<string>;
+  /** Per-column detail of the pending change (old → new), to show what's awaiting
+   *  the host on a locked field. Keyed by DB column. */
+  pendingInfo?: Record<string, { old: string; neu: string }>;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
   /** Called after a pending request is cancelled so the parent re-reads badges. */
@@ -134,7 +137,14 @@ export default function BookingEditModal({
                 {isPending(f) ? (
                   <div style={{ background: 'rgba(245,230,66,.08)', border: '1px solid rgba(245,230,66,.3)', borderRadius: 7, padding: '9px 10px' }}>
                     <div style={{ color: '#f5e642', fontSize: '.74rem', fontWeight: 700, letterSpacing: '.04em' }}>PENDING HOST APPROVAL</div>
-                    <div style={{ color: '#c9c9d6', fontSize: '.78rem', margin: '3px 0 8px', lineHeight: 1.45 }}>A change to this field is awaiting the host. Cancel it to request a different change.</div>
+                    {pendingInfo?.[f.col] && (
+                      <div style={{ fontSize: '.86rem', margin: '5px 0 2px' }}>
+                        <span style={{ color: '#8a8aa0', textDecoration: 'line-through' }}>{pendingInfo[f.col].old}</span>
+                        {' '}<span style={{ color: '#f5e642' }}>→</span>{' '}
+                        <span style={{ color: '#fff', fontWeight: 700 }}>{pendingInfo[f.col].neu}</span>
+                      </div>
+                    )}
+                    <div style={{ color: '#c9c9d6', fontSize: '.78rem', margin: '3px 0 8px', lineHeight: 1.45 }}>This change is awaiting the host. Cancel it to request a different change.</div>
                     <button
                       type="button"
                       style={{ ...btnGhost, padding: '6px 12px', fontSize: '.78rem', borderColor: 'rgba(255,107,107,.5)', color: '#ff8a8a' }}
