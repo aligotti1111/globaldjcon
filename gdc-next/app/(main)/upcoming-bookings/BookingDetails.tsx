@@ -996,6 +996,7 @@ export default function BookingDetails({
     // Per-booking pricing terms the modal can edit (immediate, this booking only).
     tax_pct: effTaxPct != null ? String(effTaxPct) : '0',
     deposit_pct: booking.deposit_pct != null ? String(booking.deposit_pct) : (djType === 'club' && clubDepositPct > 0 ? String(clubDepositPct) : ''),
+    __currency: booking.currency || 'USD',
   };
 
   return (
