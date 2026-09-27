@@ -109,7 +109,19 @@ export async function GET(req: Request) {
   const { data: b } = await admin.from('bookings').select('dj_id, field_edits').eq('id', bookingId).maybeSingle<{ dj_id: string | null; field_edits: Record<string, string> | null }>();
   if (!b || b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const { data: pend } = await admin.from('booking_change_requests').select('target_col, field, new_value').eq('booking_id', bookingId).eq('status', 'pending');
-  return NextResponse.json({ ok: true, field_edits: b.field_edits || {}, pending: (pend || []) as { target_col: string; field: string; new_value: string }[] });
+  // Full per-field history (newest first) — drives the change-history dropdown
+  // when a field has been changed more than once.
+  const { data: hist } = await admin
+    .from('booking_change_requests')
+    .select('target_col, field, old_value, new_value, status, created_at, responded_at')
+    .eq('booking_id', bookingId)
+    .order('created_at', { ascending: false });
+  return NextResponse.json({
+    ok: true,
+    field_edits: b.field_edits || {},
+    pending: (pend || []) as { target_col: string; field: string; new_value: string }[],
+    history: (hist || []) as { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string; responded_at: string | null }[],
+  });
 }
 
 export async function POST(req: Request) {
@@ -139,7 +151,7 @@ export async function POST(req: Request) {
   const applyObj: Record<string, unknown> = {};
   const editStamp: Record<string, string> = { ...(booking.field_edits || {}) };
   const nowISO = new Date().toISOString();
-  const appliedLines: { label: string; old: string; neu: string }[] = [];
+  const appliedLines: { label: string; old: string; neu: string; col: string }[] = [];
   const pendingRows: { booking_id: string; dj_id: string; field: string; old_value: string; new_value: string; target_col: string; target_raw: string; token: string }[] = [];
   const pendingReturn: { field: string; label: string }[] = [];
 
@@ -155,7 +167,7 @@ export async function POST(req: Request) {
       // guest_count is numeric; everything else stores as text/null.
       applyObj[def.col] = def.kind === 'number' ? (val === '' ? null : Number(val)) : (val === '' ? null : val);
       editStamp[def.col] = nowISO;
-      appliedLines.push({ label: def.label, old: oldDisp, neu: newDisp });
+      appliedLines.push({ label: def.label, old: oldDisp, neu: newDisp, col: def.col });
     } else {
       pendingRows.push({
         booking_id: booking.id, dj_id: djId, field: def.label,
@@ -176,6 +188,14 @@ export async function POST(req: Request) {
     applyObj.field_edits = editStamp;
     const { error } = await admin.from('bookings').update(applyObj as unknown as never).eq('id', booking.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+    // Record each applied change as history too (status 'applied'), so a field
+    // changed more than once shows a full dropdown of its changes.
+    const appliedRows = appliedLines.map((l) => ({
+      booking_id: booking.id, dj_id: djId, field: l.label,
+      old_value: l.old, new_value: l.neu, target_col: l.col, target_raw: null,
+      status: 'applied', token: randomBytes(24).toString('base64url'),
+    }));
+    await admin.from('booking_change_requests').insert(appliedRows as unknown as never);
   }
   // Supersede any earlier still-pending request for the same field, then insert.
   if (pendingRows.length > 0) {
