@@ -3318,13 +3318,18 @@ export function AboutStatsRow({
   userId,
   isOwnProfile,
   stats,
+  djType,
 }: {
   userId: string;
   isOwnProfile: boolean;
   stats: AboutStats;
   // travelDistance is still passed by the caller but no longer surfaced here.
   travelDistance?: string | null;
+  /** 'club' shows the club/bar quick-facts set; anything else the mobile set. */
+  djType?: 'club' | 'mobile' | string | null;
 }) {
+  const isClub = djType === 'club';
+  const eventsLabel = isClub ? 'Sets played' : 'Total events';
   const [draft, setDraft] = useState<AboutStats>(stats);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3333,11 +3338,17 @@ export function AboutStatsRow({
   type Card = { key: string; label: string; value: string };
   const cards: Card[] = [];
   if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
-  if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: 'Total events', value: stats.events.tier });
+  if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: eventsLabel, value: stats.events.tier });
   if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: stats.insured.answer || 'Yes' });
-  if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
-  if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit %', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
-  if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: stats.destination.answer || 'Yes' });
+  if (isClub) {
+    if (stats.ownEquipment?.on) cards.push({ key: 'ownEquipment', label: 'Brings own equipment', value: stats.ownEquipment.answer || 'Yes' });
+    if (stats.residencies?.on) cards.push({ key: 'residencies', label: 'Open to residencies', value: stats.residencies.answer || 'Yes' });
+    if (stats.travels?.on) cards.push({ key: 'travels', label: 'Travels for bookings', value: stats.travels.answer || 'Yes' });
+  } else {
+    if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
+    if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit %', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
+    if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: stats.destination.answer || 'Yes' });
+  }
   if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: stats.backup.answer || 'Yes' });
 
   async function save() {
@@ -3378,15 +3389,25 @@ export function AboutStatsRow({
 
   // The editable facts, in display order. Labels match the public cards so the
   // owner sees exactly what a visitor sees as they fill each one in.
-  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' }[] = [
-    { key: 'established', label: 'Established', control: 'year' },
-    { key: 'events', label: 'Total events', control: 'tier' },
-    { key: 'insured', label: 'Insured', control: 'yesno' },
-    { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
-    { key: 'deposit', label: 'Deposit %', control: 'pct' },
-    { key: 'destination', label: 'Destination weddings', control: 'yesno' },
-    { key: 'backup', label: 'Backup equipment', control: 'yesno' },
-  ];
+  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' }[] = isClub
+    ? [
+        { key: 'established', label: 'Established', control: 'year' },
+        { key: 'events', label: eventsLabel, control: 'tier' },
+        { key: 'insured', label: 'Insured', control: 'yesno' },
+        { key: 'ownEquipment', label: 'Brings own equipment', control: 'yesno' },
+        { key: 'residencies', label: 'Open to residencies', control: 'yesno' },
+        { key: 'travels', label: 'Travels for bookings', control: 'yesno' },
+        { key: 'backup', label: 'Backup equipment', control: 'yesno' },
+      ]
+    : [
+        { key: 'established', label: 'Established', control: 'year' },
+        { key: 'events', label: 'Total events', control: 'tier' },
+        { key: 'insured', label: 'Insured', control: 'yesno' },
+        { key: 'depositRequired', label: 'Deposit required', control: 'yesno' },
+        { key: 'deposit', label: 'Deposit %', control: 'pct' },
+        { key: 'destination', label: 'Destination weddings', control: 'yesno' },
+        { key: 'backup', label: 'Backup equipment', control: 'yesno' },
+      ];
 
   function setAnswer(key: keyof AboutStats, v: string) {
     setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), answer: (v || undefined) as 'Yes' | 'No' | undefined } }));
