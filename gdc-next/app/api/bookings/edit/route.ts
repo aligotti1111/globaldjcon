@@ -136,7 +136,7 @@ export async function POST(req: Request) {
   if (!canBilling(acting.role)) return NextResponse.json({ error: 'Only the account owner can edit booking details.' }, { status: 403 });
   const djId = acting.djId;
 
-  const body = (await req.json().catch(() => ({}))) as { bookingId?: string; changes?: Record<string, string> };
+  const body = (await req.json().catch(() => ({}))) as { bookingId?: string; changes?: Record<string, string>; cancelField?: string };
   const bookingId = body.bookingId;
   const changes = body.changes || {};
   if (!bookingId || typeof changes !== 'object') return NextResponse.json({ error: 'Bad request' }, { status: 400 });
@@ -150,16 +150,41 @@ export async function POST(req: Request) {
   if (!bData || bData.dj_id !== djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   const booking = bData;
 
+  // ── Cancel a still-pending request ──
+  // The DJ can't send a second request for a field while one is pending; instead
+  // they cancel the pending one here, which frees the field to be re-requested.
+  if (body.cancelField) {
+    const def = EDIT_FIELD_BY_KEY[body.cancelField];
+    if (!def) return NextResponse.json({ error: 'Unknown field' }, { status: 400 });
+    const { error } = await admin.from('booking_change_requests')
+      .update({ status: 'cancelled', responded_at: new Date().toISOString() } as unknown as never)
+      .eq('booking_id', booking.id).eq('target_col', def.col).eq('status', 'pending');
+    if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+    return NextResponse.json({ ok: true, cancelled: def.col });
+  }
+
+  // Fields that already have a pending approval request — a second request on the
+  // same field is blocked until the DJ cancels the first (above).
+  const { data: existingPending } = await admin.from('booking_change_requests')
+    .select('target_col').eq('booking_id', booking.id).eq('status', 'pending');
+  const alreadyPending = new Set((existingPending || []).map((r: { target_col: string }) => r.target_col));
+
   const applyObj: Record<string, unknown> = {};
   const editStamp: Record<string, string> = { ...(booking.field_edits || {}) };
   const nowISO = new Date().toISOString();
   const appliedLines: { label: string; old: string; neu: string; col: string }[] = [];
   const pendingRows: { booking_id: string; dj_id: string; field: string; old_value: string; new_value: string; target_col: string; target_raw: string; token: string }[] = [];
   const pendingReturn: { field: string; label: string }[] = [];
+  const blocked: { field: string; label: string }[] = [];
 
   for (const [key, rawVal] of Object.entries(changes)) {
     const def = EDIT_FIELD_BY_KEY[key];
     if (!def) continue;
+    // Approval field that's already awaiting the host — block the duplicate.
+    if (def.tier === 'approve' && alreadyPending.has(def.col)) {
+      blocked.push({ field: key, label: def.label });
+      continue;
+    }
     // The host's email is their account login on account-based bookings — the DJ
     // can't change it here. Only the booking-level host_email (manual / account-
     // less online bookings) is editable.
@@ -186,7 +211,7 @@ export async function POST(req: Request) {
   }
 
   if (appliedLines.length === 0 && pendingRows.length === 0) {
-    return NextResponse.json({ ok: true, applied: [], pending: [], field_edits: booking.field_edits || {} });
+    return NextResponse.json({ ok: true, applied: [], pending: [], blocked, field_edits: booking.field_edits || {} });
   }
 
   // Apply the notify-only tier immediately.
@@ -203,12 +228,9 @@ export async function POST(req: Request) {
     }));
     await admin.from('booking_change_requests').insert(appliedRows as unknown as never);
   }
-  // Supersede any earlier still-pending request for the same field, then insert.
+  // Insert new pending requests. Duplicates on an already-pending field were
+  // blocked above, so there's no prior pending row to supersede here.
   if (pendingRows.length > 0) {
-    for (const r of pendingRows) {
-      await admin.from('booking_change_requests').update({ status: 'superseded', responded_at: nowISO } as unknown as never)
-        .eq('booking_id', booking.id).eq('target_col', r.target_col).eq('status', 'pending');
-    }
     const { error } = await admin.from('booking_change_requests').insert(pendingRows as unknown as never);
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     // Text the host too — but ONLY for approval-required changes, and only when
