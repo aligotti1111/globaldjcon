@@ -178,6 +178,7 @@ export default function BookingLog({ booking, payments, changes }: Props) {
       if (c.status === 'approved') add(c.responded_at, `Host approved change — ${c.field}`, 'host');
       else if (c.status === 'declined') add(c.responded_at, `Host declined change — ${c.field}`, 'host');
       else if (c.status === 'superseded') add(c.responded_at, `Change replaced by a newer one — ${c.field}`, 'dj');
+      else if (c.status === 'cancelled') add(c.responded_at, `Cancelled requested change — ${c.field}`, 'dj');
     }
   }
 
