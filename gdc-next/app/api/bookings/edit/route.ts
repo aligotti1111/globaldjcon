@@ -81,6 +81,7 @@ function displayOld(f: string, b: BookingRow): string {
     case 'venue_address': return b.venue_address || '—';
     case 'requester_name': return b.requester_name || '—';
     case 'phone': return b.phone || '—';
+    case 'host_email': return b.host_email || '—';
     case 'package_title': return b.package_title || '—';
     case 'package_details': return (b.package_details || '—').replace(/<[^>]+>/g, ' ').trim() || '—';
     case 'event_type': return b.event_type || '—';
