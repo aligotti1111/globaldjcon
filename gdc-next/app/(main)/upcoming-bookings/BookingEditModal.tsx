@@ -9,9 +9,10 @@
 // fields become pending change requests (host emailed an approve/decline link).
 // The parent re-reads the booking so the "Edited" / "Pending change" badges show.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { EDIT_FIELDS, type EditFieldDef } from '@/lib/bookingEditFields';
 import { MOBILE_EVENT_TYPES, NEON } from './shared';
+import { searchAddresses } from '../[slug]/mobileBookingForm';
 
 export type EditSection = 'EVENT' | 'VENUE' | 'HOST' | 'PACKAGE' | 'PRICING';
 export type ContractState = 'none' | 'sent' | 'signed';
@@ -80,6 +81,10 @@ export default function BookingEditModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  // Venue-address autocomplete (same Nominatim search as the booking form).
+  const [addrSug, setAddrSug] = useState<{ display: string }[]>([]);
+  const [showAddr, setShowAddr] = useState(false);
+  const addrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Per-booking pricing terms (PRICING section only): tax %, deposit %, no-tax.
   const isPricing = section === 'PRICING';
@@ -282,6 +287,39 @@ export default function BookingEditModal({
                     <div style={{ ...input, opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>{form[f.key] || '—'}</div>
                     <div style={{ fontSize: '.72rem', color: '#f5e642', marginTop: 4, lineHeight: 1.45 }}>A deposit or balance request is still pending. Cancel it on the booking before changing the price.</div>
                   </>
+                ) : f.key === 'venue_address' ? (
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      style={input}
+                      type="text"
+                      autoComplete="off"
+                      value={form[f.key] ?? ''}
+                      placeholder="123 Main St, City, State"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((p) => ({ ...p, [f.key]: val }));
+                        if (addrTimer.current) clearTimeout(addrTimer.current);
+                        if (val.trim().length < 3) { setAddrSug([]); setShowAddr(false); return; }
+                        addrTimer.current = setTimeout(async () => {
+                          const results = await searchAddresses(val.trim());
+                          setAddrSug(results); setShowAddr(results.length > 0);
+                        }, 350);
+                      }}
+                      onBlur={() => setTimeout(() => setShowAddr(false), 150)}
+                      onFocus={() => { if (addrSug.length > 0) setShowAddr(true); }}
+                    />
+                    {showAddr && addrSug.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, marginTop: 2, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,.6)', maxHeight: 220, overflowY: 'auto' }}>
+                        {addrSug.map((s, i) => (
+                          <div
+                            key={i}
+                            onMouseDown={(e) => { e.preventDefault(); setForm((p) => ({ ...p, [f.key]: s.display })); setShowAddr(false); }}
+                            style={{ padding: '9px 11px', fontSize: '.82rem', color: '#c9c9d6', cursor: 'pointer', borderTop: i ? '1px solid rgba(255,255,255,.07)' : 'none' }}
+                          >{s.display}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ) : f.key === 'package_details' ? (
                   <textarea style={{ ...input, minHeight: 70, resize: 'vertical' }} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
                 ) : f.kind === 'time' ? (
@@ -330,7 +368,7 @@ export default function BookingEditModal({
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
             )}
             {!noHostRecipient && ((hasApprove && changed.length > 0) || taxDirty) && (
-              <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — the changed field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
+              <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — the altered field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
               <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
