@@ -102,7 +102,8 @@ export default function BookingEditModal({
 
   // Tax edit or skipping the deposit makes the pricing terms dirty.
   const newTaxPctNum = removeTax ? 0 : (Number(taxPct) || 0);
-  const pricingDirty = isPricing && (newTaxPctNum !== (Number(initTaxPct) || 0) || (skipDeposit && hasDeposit));
+  const taxDirty = isPricing && newTaxPctNum !== (Number(initTaxPct) || 0);
+  const pricingDirty = isPricing && (taxDirty || (skipDeposit && hasDeposit));
 
   // Live price breakdown: the agreed rate, tax and deposit as they stand, and the
   // new figures as the DJ edits price / tax % / deposit %. A line that changed
@@ -307,11 +308,11 @@ export default function BookingEditModal({
                 <div style={{ fontSize: '.66rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', margin: '0 0 10px' }}>Tax &amp; deposit · this booking only</div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 11 }}>
                   <input type="checkbox" checked={removeTax} onChange={(e) => setRemoveTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
-                  <span style={{ fontSize: '.86rem', color: '#fff' }}>No tax on this booking</span>
+                  <span style={{ fontSize: '.86rem', color: '#fff' }}>No tax on this booking{!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</span>
                 </label>
                 {!removeTax && (
                   <div style={{ marginBottom: 11 }}>
-                    <label style={label}>Tax rate (%)</label>
+                    <label style={label}>Tax rate (%){!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
                     <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
                   </div>
                 )}
@@ -328,7 +329,7 @@ export default function BookingEditModal({
             {!noHostRecipient && changed.some((f) => f.tier === 'notify') && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
             )}
-            {!noHostRecipient && hasApprove && changed.length > 0 && (
+            {!noHostRecipient && ((hasApprove && changed.length > 0) || taxDirty) && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — the changed field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
