@@ -12,16 +12,19 @@ const LEGAL = 'Approving or declining here does not legally cancel or modify eit
 interface Change { label: string; old: string; neu: string }
 
 export default function ChangeRespond({
-  token, valid, resolved, ctx, changes,
+  token, valid, resolved, cancelled = false, ctx, changes,
 }: {
   token: string;
   valid: boolean;
   resolved: boolean;
+  /** The DJ cancelled this request — no approve/decline; show a cancelled note. */
+  cancelled?: boolean;
   ctx: { djName: string; when: string | null; venue: string | null } | null;
   changes: Change[];
 }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<'approved' | 'declined' | null>(null);
+  const [wasCancelled, setWasCancelled] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function respond(action: 'approve' | 'decline') {
@@ -31,7 +34,9 @@ export default function ChangeRespond({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, action }),
       });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; cancelled?: boolean };
+      // The DJ cancelled between page load and this click — show the cancelled note.
+      if (res.status === 409 && json.cancelled) { setWasCancelled(true); return; }
       if (!res.ok || !json.ok) throw new Error(json.error || 'Something went wrong.');
       setDone(action === 'approve' ? 'approved' : 'declined');
     } catch (e) { setErr(e instanceof Error ? e.message : 'Something went wrong.'); }
@@ -43,6 +48,9 @@ export default function ChangeRespond({
 
   if (!valid) {
     return <div style={wrap}><div style={card}><h1 style={{ fontSize: '1.1rem', margin: '0 0 8px' }}>Link not found</h1><p style={{ color: '#8a8aa0', fontSize: '.9rem', margin: 0 }}>This approval link isn&rsquo;t valid. It may have expired or already been used.</p></div></div>;
+  }
+  if ((cancelled || wasCancelled) && !done) {
+    return <div style={wrap}><div style={card}><h1 style={{ fontSize: '1.1rem', margin: '0 0 8px' }}>Request cancelled</h1><p style={{ color: '#c9c9d6', fontSize: '.92rem', margin: 0, lineHeight: 1.55 }}>{ctx?.djName || 'The DJ'} cancelled this change request, so there&rsquo;s nothing to approve. If they still need to change something, they&rsquo;ll send a new request.</p></div></div>;
   }
   if (done || resolved) {
     const msg = done === 'approved' ? 'Thanks — the changes are approved and applied.'
