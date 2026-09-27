@@ -36,10 +36,14 @@ export default async function ChangePage({ params }: { params: Promise<{ token: 
     if (pending.length === 0) resolvedStatus = 'done';
   }
 
+  // The DJ cancelled this specific request → the host can no longer act on it.
+  const cancelled = hit?.status === 'cancelled' || hit?.status === 'superseded';
+
   return (
     <ChangeRespond
       token={token}
       valid={!!hit}
+      cancelled={cancelled}
       resolved={resolvedStatus === 'approved' || resolvedStatus === 'declined' || resolvedStatus === 'done'}
       ctx={ctx}
       changes={pending.map((r) => ({ label: r.field, old: r.old_value || '—', neu: r.new_value || '—' }))}
