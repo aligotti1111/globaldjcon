@@ -65,6 +65,7 @@ interface BookingRow {
   package_title: string | null; package_details: string | null;
   counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null; currency: string | null;
   tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; deposit_pct: number | null;
+  status_overrides: Record<string, boolean> | null;
   contract_status: string | null; field_edits: Record<string, string> | null;
 }
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -142,7 +143,8 @@ export async function POST(req: Request) {
     bookingId?: string; changes?: Record<string, string>; cancelField?: string;
     // Per-booking pricing terms — applied immediately (DJ's own billing config),
     // host emailed an FYI. taxPct null/removeTax:true → no tax on this booking.
-    pricing?: { taxPct?: number | null; removeTax?: boolean; depositPct?: number | null };
+    // skipDeposit → mark the deposit skipped on the booking card.
+    pricing?: { taxPct?: number | null; removeTax?: boolean; depositPct?: number | null; skipDeposit?: boolean };
   };
   const bookingId = body.bookingId;
   const changes = body.changes || {};
@@ -151,7 +153,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: bData } = await admin
     .from('bookings')
-    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, contract_status, field_edits')
+    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, status_overrides, contract_status, field_edits')
     .eq('id', bookingId)
     .maybeSingle<BookingRow>();
   if (!bData || bData.dj_id !== djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -284,6 +286,14 @@ export async function POST(req: Request) {
         applyObj.deposit_pct = dp;
         editStamp.deposit_pct = nowISO;
         appliedLines.push({ label: 'Deposit', old: `${oldDepPct}%`, neu: `${dp}%`, col: 'deposit_pct' });
+      }
+    }
+    // Skip the deposit: mark it skipped on the booking card (status_overrides).
+    if (p.skipDeposit) {
+      const cur = booking.status_overrides || {};
+      if (!cur.deposit_skipped) {
+        applyObj.status_overrides = { ...cur, deposit_skipped: true };
+        appliedLines.push({ label: 'Deposit', old: 'Required', neu: 'Skipped', col: 'deposit_skip' });
       }
     }
   }
