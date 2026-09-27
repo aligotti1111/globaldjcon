@@ -19,7 +19,7 @@ import type { NamedRider } from '@/lib/rider';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import OvertimeSection from './OvertimeSection';
-import BookingLog from './BookingLog';
+import BookingLog, { type ChangeLogItem } from './BookingLog';
 import BookingEditModal, { type EditSection, type ContractState } from './BookingEditModal';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
@@ -241,6 +241,7 @@ export default function BookingDetails({
   const [pendingCols, setPendingCols] = useState<Set<string>>(new Set());
   type HistItem = { field: string; old: string; neu: string; status: string; at: string };
   const [history, setHistory] = useState<Record<string, HistItem[]>>({});
+  const [changeLog, setChangeLog] = useState<ChangeLogItem[]>([]);
   const [openHist, setOpenHist] = useState<string | null>(null);
   const canEdit = isOwner && !archive;
   useEffect(() => {
@@ -252,7 +253,7 @@ export default function BookingDetails({
         const d = (await r.json().catch(() => ({}))) as {
           field_edits?: Record<string, string>;
           pending?: { target_col: string }[];
-          history?: { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string }[];
+          history?: { target_col: string; field: string; old_value: string | null; new_value: string | null; status: string; created_at: string; responded_at: string | null }[];
         };
         if (!alive) return;
         if (d.field_edits) setFieldEdits(d.field_edits);
@@ -263,6 +264,7 @@ export default function BookingDetails({
             (grouped[h.target_col] ||= []).push({ field: h.field, old: h.old_value || '—', neu: h.new_value || '—', status: h.status, at: h.created_at });
           }
           setHistory(grouped);
+          setChangeLog(d.history.map((h) => ({ field: h.field, old_value: h.old_value, new_value: h.new_value, status: h.status, created_at: h.created_at, responded_at: h.responded_at })));
         }
       } catch { /* badges just won't show */ }
     })();
@@ -329,7 +331,7 @@ export default function BookingDetails({
   };
   const LABEL_COL: Record<string, string> = {
     'Venue Name': 'venue_name', 'Room Details': 'room_details', 'Venue Address': 'venue_address',
-    'Venue Type': 'venue_type', 'Booked By': 'requester_name', 'Contact Phone': 'phone',
+    'Venue Type': 'venue_type', 'Booked By': 'requester_name', 'Contact Phone': 'phone', 'Email': 'host_email',
   };
   // The pencil button on a section's chip header (owner, non-archive).
   const sectionPencil = (sec: EditSection): React.ReactNode => canEdit ? (
@@ -633,6 +635,10 @@ export default function BookingDetails({
       { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
       { label: 'Contact Phone', value: booking.phone },
     ],
+    // Row 5b: Host email (online + manual bookings). Editable from the Host pencil.
+    [
+      { label: 'Email', value: (booking as { host_email?: string | null }).host_email || null },
+    ],
     // Row 6: Agreed Rate. (Overtime moved out of the receipt to the Event card's
     // bottom-right — see overtimeControl below.)
     [
@@ -725,7 +731,7 @@ export default function BookingDetails({
   const sectionForRow = (row: DetailRow): SectionKey => {
     const s = row.map((c) => c.label).join('|');
     if (/Venue|Room|Equipment|Set Type|Set Time/.test(s)) return 'VENUE';
-    if (/Booked By|Contact Phone/.test(s)) return 'HOST';
+    if (/Booked By|Contact Phone|Email/.test(s)) return 'HOST';
     if (/Agreed Rate|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
     return 'EVENT';
   };
@@ -820,7 +826,7 @@ export default function BookingDetails({
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
       <div>
         <div className={styles.detailLabel}>Event Type{badgeFor('event_type')}</div>
-        <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
+        <div className={styles.detailValue} style={{ textTransform: 'uppercase' }}>{eventTypeHeaderValue}</div>
       </div>
       {booking.event_date && (
         <div>
@@ -954,6 +960,7 @@ export default function BookingDetails({
     venue_address: booking.venue_address || '',
     requester_name: booking.requester_name || '',
     phone: booking.phone || '',
+    host_email: (booking as { host_email?: string | null }).host_email || '',
     package_title: booking.package_title || '',
     package_details: (booking.package_details || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     price: agreedTotal != null ? String(agreedTotal) : '',
@@ -1187,7 +1194,7 @@ export default function BookingDetails({
       )}
       {/* Booking log — the full timeline, at the very bottom of the card.
           Owner-only feature. */}
-      {isOwner && <BookingLog booking={booking} payments={payments} />}
+      {isOwner && <BookingLog booking={booking} payments={payments} changes={changeLog} />}
 
       {contractOpen && (
         <ContractPortal
