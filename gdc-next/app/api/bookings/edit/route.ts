@@ -163,10 +163,29 @@ export async function POST(req: Request) {
   if (body.cancelField) {
     const def = EDIT_FIELD_BY_KEY[body.cancelField];
     if (!def) return NextResponse.json({ error: 'Unknown field' }, { status: 400 });
+    // Grab the request being cancelled (for the email) before flipping its status.
+    const { data: cancelled } = await admin.from('booking_change_requests')
+      .select('field, old_value, new_value')
+      .eq('booking_id', booking.id).eq('target_col', def.col).eq('status', 'pending')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle<{ field: string; old_value: string | null; new_value: string | null }>();
     const { error } = await admin.from('booking_change_requests')
       .update({ status: 'cancelled', responded_at: new Date().toISOString() } as unknown as never)
       .eq('booking_id', booking.id).eq('target_col', def.col).eq('status', 'pending');
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+    // Notify the host that the request they were asked to approve is withdrawn.
+    const hostEmail = booking.requester_id ? await resolveUserEmail(booking.requester_id) : (booking.host_email || null);
+    if (cancelled && hostEmail && process.env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const dj = (await admin.from('users').select('name').eq('id', djId).maybeSingle<{ name: string | null }>()).data?.name || 'Your DJ';
+        const content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} cancelled a requested change</h1>`
+          + `<p style="margin:0 0 6px;color:#333;font-size:15px;">This change no longer needs your approval — it has been withdrawn:</p>`
+          + `<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(cancelled.field)}</b><br><span style="color:#888;font-size:13px;">${esc(cancelled.old_value || '—')}</span> → <span style="color:#888;font-size:13px;text-decoration:line-through;">${esc(cancelled.new_value || '—')}</span></td></tr></table>`
+          + `<p style="margin:16px 0 0;color:#555;font-size:14px;">Your booking stays exactly as it was. If they still need to change something, they&rsquo;ll send a new request.</p>`
+          + `<p style="margin:20px 0 0;color:#999;font-size:11px;line-height:1.5;border-top:1px solid #eee;padding-top:12px;">${esc(LEGAL)}</p>`;
+        await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} cancelled a booking change request`, html: shell(content) });
+      } catch { /* non-fatal — the cancel already happened */ }
+    }
     return NextResponse.json({ ok: true, cancelled: def.col });
   }
 
