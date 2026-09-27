@@ -64,8 +64,10 @@ interface BookingRow {
   venue_name: string | null; venue_type: string | null; room_details: string | null; venue_address: string | null;
   package_title: string | null; package_details: string | null;
   counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null; currency: string | null;
+  tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; deposit_pct: number | null;
   contract_status: string | null; field_edits: Record<string, string> | null;
 }
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Display value for a field's CURRENT stored value (for the "was → now" line).
 function displayOld(f: string, b: BookingRow): string {
@@ -136,7 +138,12 @@ export async function POST(req: Request) {
   if (!canBilling(acting.role)) return NextResponse.json({ error: 'Only the account owner can edit booking details.' }, { status: 403 });
   const djId = acting.djId;
 
-  const body = (await req.json().catch(() => ({}))) as { bookingId?: string; changes?: Record<string, string>; cancelField?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    bookingId?: string; changes?: Record<string, string>; cancelField?: string;
+    // Per-booking pricing terms — applied immediately (DJ's own billing config),
+    // host emailed an FYI. taxPct null/removeTax:true → no tax on this booking.
+    pricing?: { taxPct?: number | null; removeTax?: boolean; depositPct?: number | null };
+  };
   const bookingId = body.bookingId;
   const changes = body.changes || {};
   if (!bookingId || typeof changes !== 'object') return NextResponse.json({ error: 'Bad request' }, { status: 400 });
@@ -144,7 +151,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: bData } = await admin
     .from('bookings')
-    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, contract_status, field_edits')
+    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, contract_status, field_edits')
     .eq('id', bookingId)
     .maybeSingle<BookingRow>();
   if (!bData || bData.dj_id !== djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -207,6 +214,38 @@ export async function POST(req: Request) {
         token: randomBytes(24).toString('base64url'),
       });
       pendingReturn.push({ field: key, label: def.label });
+    }
+  }
+
+  // ── Per-booking pricing terms (tax % / deposit % / remove tax) ──
+  // Applied immediately: this is the DJ's own billing configuration for this one
+  // booking, not a change the host must approve. The taxable base is the current
+  // pre-tax amount (frozen snapshot base when present, else the agreed rate).
+  if (body.pricing) {
+    const p = body.pricing;
+    const base = (booking.tax_amount != null && booking.total_with_tax != null)
+      ? round2(Number(booking.total_with_tax) - Number(booking.tax_amount))
+      : Number(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? 0);
+    const oldTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
+    const oldDepPct = booking.deposit_pct != null ? Number(booking.deposit_pct) : 0;
+    if (p.taxPct !== undefined || p.removeTax) {
+      const tp = p.removeTax ? 0 : Math.max(0, Number(p.taxPct) || 0);
+      if (tp !== oldTaxPct) {
+        const taxAmt = round2((base * tp) / 100);
+        applyObj.tax_pct = tp;
+        applyObj.tax_amount = taxAmt;
+        applyObj.total_with_tax = round2(base + taxAmt);
+        editStamp.tax_pct = nowISO;
+        appliedLines.push({ label: 'Tax', old: oldTaxPct > 0 ? `${oldTaxPct}%` : 'No tax', neu: tp > 0 ? `${tp}%` : 'No tax', col: 'tax_pct' });
+      }
+    }
+    if (p.depositPct !== undefined && p.depositPct !== null) {
+      const dp = Math.max(0, Number(p.depositPct) || 0);
+      if (dp !== oldDepPct) {
+        applyObj.deposit_pct = dp;
+        editStamp.deposit_pct = nowISO;
+        appliedLines.push({ label: 'Deposit', old: `${oldDepPct}%`, neu: `${dp}%`, col: 'deposit_pct' });
+      }
     }
   }
 
