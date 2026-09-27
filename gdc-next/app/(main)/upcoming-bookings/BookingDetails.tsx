@@ -285,8 +285,10 @@ export default function BookingDetails({
     const pending = pendingCols.has(col);
     const mark = fieldEdits[col];
     const approved = typeof mark === 'string' && mark.startsWith('approved');
+    // The host updating their own contact phone stamps 'hostupdated:'.
+    const hostUpdated = typeof mark === 'string' && mark.startsWith('hostupdated');
     if (!pending && !mark) return null;
-    const label = pending ? 'Pending host approval' : approved ? 'Host approved change' : 'Edited';
+    const label = pending ? 'Pending host approval' : approved ? 'Host approved change' : hostUpdated ? 'Updated by host' : 'Edited';
     const amber = pending;
     const color = amber ? '#f5e642' : NEON;
     const bg = amber ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)';
