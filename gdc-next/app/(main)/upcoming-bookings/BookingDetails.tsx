@@ -1259,6 +1259,7 @@ export default function BookingDetails({
           pendingCols={pendingCols}
           pendingInfo={pendingInfo}
           collected={payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0)}
+          depositPaidAmount={payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + (Number(p.amount_paid) || 0), 0)}
           pendingPayment={payments.some((p) => (p.kind === 'deposit' || p.kind === 'balance') && (p.status === 'requested' || p.status === 'pending_confirmation'))}
           depositLocked={payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived')) || !!(booking as { status_overrides?: Record<string, boolean> | null }).status_overrides?.deposit_skipped}
           noHostRecipient={!hostUserId && !((booking as { host_email?: string | null }).host_email || '').trim() && !((booking as { account_email?: string | null }).account_email || '').trim()}
