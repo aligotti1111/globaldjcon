@@ -283,8 +283,14 @@ export async function POST(req: Request) {
     if (p.taxPct !== undefined || p.removeTax) {
       const tp = p.removeTax ? 0 : Math.max(0, Number(p.taxPct) || 0);
       if (tp !== oldTaxPct && !alreadyPending.has('tax_pct')) {
-        const oldDisp = oldTaxPct > 0 ? `${oldTaxPct}%` : 'No tax';
-        const newDisp = tp > 0 ? `${tp}%` : 'No tax';
+        // Changing tax creates a new grand total — the host approves the new tax
+        // AND the resulting new price together, so both figures are shown.
+        const cur = booking.currency || 'USD';
+        const money = (n: number) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n); } catch { return `$${n.toFixed(2)}`; } };
+        const oldTotal = round2(base + round2((base * oldTaxPct) / 100));
+        const newTotal = round2(base + round2((base * tp) / 100));
+        const oldDisp = `${oldTaxPct > 0 ? `${oldTaxPct}%` : 'No tax'} · total ${money(oldTotal)}`;
+        const newDisp = `${tp > 0 ? `${tp}%` : 'No tax'} · total ${money(newTotal)}`;
         if (noHostRecipient) {
           // No one to approve → apply the tax change immediately.
           const taxAmt = round2((base * tp) / 100);
@@ -292,16 +298,16 @@ export async function POST(req: Request) {
           applyObj.tax_amount = taxAmt;
           applyObj.total_with_tax = round2(base + taxAmt);
           editStamp.tax_pct = nowISO;
-          appliedLines.push({ label: 'Tax', old: oldDisp, neu: newDisp, col: 'tax_pct' });
+          appliedLines.push({ label: 'Tax & total', old: oldDisp, neu: newDisp, col: 'tax_pct' });
         } else {
-          // Tax needs host approval — queue a change request like the price.
+          // Tax + new total need host approval — queued as one change request.
           pendingRows.push({
-            booking_id: booking.id, dj_id: djId, field: 'Tax',
+            booking_id: booking.id, dj_id: djId, field: 'Tax & total',
             old_value: oldDisp, new_value: newDisp,
             target_col: 'tax_pct', target_raw: String(tp),
             token: randomBytes(24).toString('base64url'),
           });
-          pendingReturn.push({ field: 'tax_pct', label: 'Tax' });
+          pendingReturn.push({ field: 'tax_pct', label: 'Tax & total' });
         }
       }
     }
