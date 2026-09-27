@@ -799,25 +799,27 @@ export default function BookingRow({
       */}
       <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer' }}>
         {/* 1 — Date pill. Kept as-is: it's what you look for first. */}
-        <div className={styles.rowDate}>
-          <div className={styles.dayNum}>{day}</div>
-          <div className={styles.dayMeta}>
-            <div className={styles.dow}>{dow}</div>
-            <div className={styles.mo}>{mo}</div>
+        <div className={styles.rowDate} style={(dateChangePending || dateChangeApproved) ? { flexDirection: 'column', alignItems: 'flex-start', gap: 4 } : undefined}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div className={styles.dayNum}>{day}</div>
+            <div className={styles.dayMeta}>
+              <div className={styles.dow}>{dow}</div>
+              <div className={styles.mo}>{mo}</div>
+            </div>
           </div>
           {(dateChangePending || dateChangeApproved) && (
             <div
               title={dateChangePending ? 'A new date is pending the host’s approval' : 'The host approved a date change'}
               style={{
-                marginTop: 5, alignSelf: 'center', textAlign: 'center', lineHeight: 1.15,
+                whiteSpace: 'nowrap', lineHeight: 1,
                 fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.5rem', fontWeight: 700,
-                letterSpacing: '.05em', textTransform: 'uppercase', padding: '2px 5px', borderRadius: 5,
+                letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 6px', borderRadius: 5,
                 color: dateChangePending ? '#f5e642' : NEON,
                 background: dateChangePending ? 'rgba(245,230,66,.12)' : 'rgba(0,245,196,.12)',
                 border: `1px solid ${dateChangePending ? 'rgba(245,230,66,.4)' : 'rgba(0,245,196,.4)'}`,
               }}
             >
-              {dateChangePending ? 'Change pending' : 'Date approved'}
+              {dateChangePending ? 'Pending host approval' : 'Host approved change'}
             </div>
           )}
         </div>
