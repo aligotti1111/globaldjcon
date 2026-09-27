@@ -259,17 +259,22 @@ export default function BookingDetails({
   // Badge next to a field, keyed by its DB column. Pending (amber) beats Edited.
   const badgeFor = (col: string): React.ReactNode => {
     const pending = pendingCols.has(col);
-    const edited = !!fieldEdits[col];
-    if (!pending && !edited) return null;
+    const mark = fieldEdits[col];
+    const approved = typeof mark === 'string' && mark.startsWith('approved');
+    if (!pending && !mark) return null;
+    // Amber = waiting on the host; teal = the host approved a required change;
+    // muted teal = a notify-only edit that applied immediately.
+    const label = pending ? 'Pending host approval' : approved ? 'Host approved change' : 'Edited';
+    const amber = pending;
     return (
       <span style={{
         display: 'inline-block', marginLeft: 8, verticalAlign: 'middle',
         fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700,
         letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5,
-        color: pending ? '#f5e642' : NEON,
-        background: pending ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)',
-        border: `1px solid ${pending ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)'}`,
-      }}>{pending ? 'Pending host approval' : 'Edited'}</span>
+        color: amber ? '#f5e642' : NEON,
+        background: amber ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)',
+        border: `1px solid ${amber ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)'}`,
+      }}>{label}</span>
     );
   };
   const LABEL_COL: Record<string, string> = {
