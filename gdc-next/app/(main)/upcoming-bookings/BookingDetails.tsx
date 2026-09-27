@@ -635,9 +635,11 @@ export default function BookingDetails({
       { label: 'Booked By', value: booking.is_manual ? 'You (manual)' : (booking.requester_name || null) },
       { label: 'Contact Phone', value: booking.phone },
     ],
-    // Row 5b: Host email (online + manual bookings). Editable from the Host pencil.
+    // Row 5b: Host email — shown for ALL bookings. Account bookings show the
+    // host's account email (read-only); manual / account-less bookings show the
+    // editable host_email column.
     [
-      { label: 'Email', value: (booking as { host_email?: string | null }).host_email || null },
+      { label: 'Email', value: (booking as { host_email?: string | null }).host_email || (booking as { account_email?: string | null }).account_email || null },
     ],
     // Row 6: Agreed Rate. (Overtime moved out of the receipt to the Event card's
     // bottom-right — see overtimeControl below.)
@@ -1222,6 +1224,7 @@ export default function BookingDetails({
           djType={djType}
           contractState={contractState}
           values={editValues}
+          lockEmail={!!hostUserId}
           onClose={() => setEditSection(null)}
           onSaved={(res) => {
             // Reflect the new badges immediately: notify-only cols are "Edited",
