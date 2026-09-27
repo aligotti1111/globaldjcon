@@ -126,7 +126,7 @@ async function dispatchSms(rawPhone: string, body: string, tag: string): Promise
 // BOOKING (bookings.sms_opt_in, bookings.phone). One checkbox on the request
 // form turns this on for that single booking. Fired on the four milestones:
 // accepted, denied, contract sent, deposit/balance requested.
-export type BookingSmsStage = 'accepted' | 'denied' | 'offer' | 'contract' | 'deposit' | 'balance';
+export type BookingSmsStage = 'accepted' | 'denied' | 'offer' | 'contract' | 'deposit' | 'balance' | 'change';
 
 // "2026-09-06" → "Sep 6". Noon-anchored so a timezone can't shift the day.
 function shortDate(iso: string | null | undefined): string {
@@ -142,7 +142,7 @@ function shortDate(iso: string | null | undefined): string {
 export async function notifyBookingSms(
   bookingId: string | null | undefined,
   stage: BookingSmsStage,
-  opts?: { payUrl?: string | null },
+  opts?: { payUrl?: string | null; approvalUrl?: string | null },
 ): Promise<void> {
   if (!bookingId) return;
   try {
@@ -172,6 +172,10 @@ export async function notifyBookingSms(
     const balanceBody = payUrl
       ? `${djName} requested the balance for your ${date} booking. Pay here: ${payUrl}`
       : `${djName} requested the balance for your ${date} booking. Check your email to pay.`;
+    const approvalUrl = opts?.approvalUrl?.trim() || '';
+    const changeBody = approvalUrl
+      ? `${djName} requested a change to your ${date} booking that needs your approval. Review: ${approvalUrl}`
+      : `${djName} requested a change to your ${date} booking that needs your approval. Check your email.`;
     const lines: Record<BookingSmsStage, string> = {
       accepted: `Good news — ${djName} accepted your booking for ${date}. Details are in your email.`,
       denied:   `Update — ${djName} couldn't take your booking for ${date}. Details are in your email.`,
@@ -179,6 +183,7 @@ export async function notifyBookingSms(
       contract: `${djName} sent a contract to sign for your ${date} booking. Check your email to sign.`,
       deposit:  depositBody,
       balance:  balanceBody,
+      change:   changeBody,
     };
     await dispatchSms(b.phone, withSmsFooter(lines[stage]), `booking_${stage}`);
   } catch (e) {
