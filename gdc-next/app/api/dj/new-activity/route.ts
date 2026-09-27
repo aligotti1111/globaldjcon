@@ -18,7 +18,7 @@ import { MOB_EVENT_LABELS } from '@/lib/constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Slot = 'contract' | 'deposit' | 'invoice' | 'song_list' | 'guestlist';
+type Slot = 'contract' | 'deposit' | 'invoice' | 'song_list' | 'guestlist' | 'change';
 
 export async function GET() {
   const supabase = await createClient();
@@ -58,11 +58,12 @@ export async function GET() {
   };
 
   if (ids.length > 0) {
-    const [{ data: pay }, { data: plan }, { data: riders }, { data: gls }] = await Promise.all([
+    const [{ data: pay }, { data: plan }, { data: riders }, { data: gls }, { data: changes }] = await Promise.all([
       admin.from('booking_payments').select('booking_id, kind, marked_sent_at').in('booking_id', ids),
       admin.from('booking_planners').select('booking_id, submitted_at').in('booking_id', ids),
       admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', ids),
       admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', ids),
+      admin.from('booking_change_requests').select('booking_id, responded_at, status').in('booking_id', ids).eq('status', 'approved'),
     ]);
     for (const p of ((pay as { booking_id: string; kind: string | null; marked_sent_at: string | null }[] | null) || [])) {
       note(p.booking_id, p.marked_sent_at, p.kind === 'deposit' ? 'deposit' : 'invoice');
@@ -75,6 +76,9 @@ export async function GET() {
     }
     for (const g of ((gls as { booking_id: string; confirmed_at: string | null }[] | null) || [])) {
       note(g.booking_id, g.confirmed_at, 'guestlist');
+    }
+    for (const c of ((changes as { booking_id: string; responded_at: string | null }[] | null) || [])) {
+      note(c.booking_id, c.responded_at, 'change');
     }
   }
 
