@@ -209,6 +209,17 @@ export async function POST(req: Request) {
   // has no one to approve or be notified — so every change just applies now.
   const noHostRecipient = !booking.requester_id && !(booking.host_email && booking.host_email.trim());
 
+  // A deposit/balance request that's out (sent, unpaid) locks the price: the DJ
+  // must cancel it before changing the price so the amounts can't drift.
+  let pendingPayment = false;
+  if ('price' in changes) {
+    const { data: payRows } = await admin.from('booking_payments')
+      .select('kind, status').eq('booking_id', booking.id);
+    pendingPayment = ((payRows as { kind: string; status: string }[] | null) || [])
+      .some((p) => (p.kind === 'deposit' || p.kind === 'balance') && (p.status === 'requested' || p.status === 'pending_confirmation'));
+    if (pendingPayment) return NextResponse.json({ error: 'Cancel the pending deposit or balance request before changing the price.' }, { status: 409 });
+  }
+
   for (const [key, rawVal] of Object.entries(changes)) {
     const def = EDIT_FIELD_BY_KEY[key];
     if (!def) continue;
