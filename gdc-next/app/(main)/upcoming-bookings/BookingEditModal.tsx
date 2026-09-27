@@ -21,13 +21,16 @@ const LEGAL = 'Editing this booking does not legally cancel or change either par
 const SECTION_TITLE: Record<EditSection, string> = { EVENT: 'Event', VENUE: 'Venue', HOST: 'Host', PACKAGE: 'Package', PRICING: 'Pricing' };
 
 export default function BookingEditModal({
-  section, djType, contractState, values, onClose, onSaved,
+  section, djType, contractState, values, lockEmail = false, onClose, onSaved,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
   contractState: ContractState;
   /** Current stored value per field key (strings; date=YYYY-MM-DD, time=HH:MM). */
   values: Record<string, string>;
+  /** Account-based booking: the host's email is their login, so it can't be
+   *  edited here — hide it from the Host form. */
+  lockEmail?: boolean;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
 }) {
@@ -38,8 +41,9 @@ export default function BookingEditModal({
     if (f.key === 'venue_name' || f.key === 'room_details') return djType !== 'club';
     if (f.key === 'venue_type') return djType === 'club';
     if (f.key === 'event_type') return djType !== 'club';
+    if (f.key === 'host_email' && lockEmail) return false; // account email is read-only
     return true;
-  }), [section, djType]);
+  }), [section, djType, lockEmail]);
 
   const [step, setStep] = useState<'ack' | 'form'>('ack');
   const [form, setForm] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? ''])));
