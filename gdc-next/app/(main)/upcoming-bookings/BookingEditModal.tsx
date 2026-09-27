@@ -16,7 +16,7 @@ import { MOBILE_EVENT_TYPES, NEON } from './shared';
 export type EditSection = 'EVENT' | 'VENUE' | 'HOST' | 'PACKAGE' | 'PRICING';
 export type ContractState = 'none' | 'sent' | 'signed';
 
-const LEGAL = 'Editing this booking does not legally cancel or change either party’s existing contractual agreement. Any change must be mutually agreed upon by you and the host. Global DJ Connect is not responsible for enforcing this booking or any changes to it.';
+const LEGAL = 'Editing this booking does not legally cancel or change either party’s pre-existing contractual agreement. Any change must be mutually agreed upon by you and the host. Global DJ Connect is not responsible for enforcing this booking or any changes to it.';
 
 const SECTION_TITLE: Record<EditSection, string> = { EVENT: 'Event', VENUE: 'Venue', HOST: 'Host', PACKAGE: 'Package', PRICING: 'Pricing' };
 
