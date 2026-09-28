@@ -70,6 +70,8 @@ interface BookingRow {
   counter_rate: number | null;
   quoted_rate: number | null;
   offer_amount: number | null;
+  balance_settled_total?: number | null;
+  status_overrides?: Record<string, boolean> | null;
 }
 
 interface PaymentRow {
@@ -642,13 +644,19 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, balance_settled_total, status_overrides')
       .eq('id', p.booking_id)
       .maybeSingle();
     const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
     if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
+    // A "New Balance" top-up: this booking was ALREADY settled once (a prior
+    // balance paid, or a hand "mark paid" that stamped balance_settled_total)
+    // and the DJ is now collecting the delta from a price increase. The receipt
+    // must count everything already collected, and the email skips the full
+    // booking-progress box (the pipeline already completed the first time).
+    const isNewBalanceTopUp = p.kind === 'balance' && b.balance_settled_total != null;
 
     if (action === 'waive') {
       const { error } = await db
@@ -704,6 +712,21 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>${money(outstanding, cur)} still due</strong>. A receipt is attached.
 </p>`;
 
+      // Paid-to-date = EVERYTHING collected on the booking, not just this row —
+      // otherwise a "New Balance" top-up receipt undercounts (it ignores the
+      // original balance, which was often marked paid by hand with no ledger
+      // amount) and shows a bogus balance remaining. Sum all rows + a manually
+      // completed deposit, and once a balance is settled floor to the event
+      // total so the receipt reads paid-in-full (balance remaining 0).
+      const { data: allPaysData } = await db.from('booking_payments').select('kind, amount_paid').eq('booking_id', p.booking_id);
+      const allPays = (allPaysData as { kind: string; amount_paid?: number }[] | null) || [];
+      let paidToDateAll = allPays.reduce((s, r) => s + Number(r.amount_paid || 0), 0);
+      const so = b.status_overrides || {};
+      if (so.deposit && !allPays.some((r) => r.kind === 'deposit' && Number(r.amount_paid || 0) > 0)) paidToDateAll += Number(b.deposit_amount || 0);
+      if (p.kind === 'balance' && (status === 'paid' || b.balance_settled_total != null)) {
+        paidToDateAll = Math.max(paidToDateAll, Number(b.total_with_tax || paidToDateAll));
+      }
+      paidToDateAll = round2(paidToDateAll);
       // A branded RECEIPT PDF for what actually arrived. Amounts here come from
       // the ledger (received now + paid-to-date), not the invoice. null-safe.
       const receiptAtt = await buildBookingDocAttachment(db, {
@@ -714,15 +737,17 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         paymentKind: (KINDS.has(p.kind) ? p.kind : 'other') as 'deposit' | 'balance' | 'other',
         receivedNow: received,
         method: p.method,
-        paidToDate: nextPaid,
+        paidToDate: paidToDateAll,
         clientEmail: to,
       });
 
       // Booking progress tracker at the bottom of the confirmation. The ledger
       // update above has already committed, so the box reflects this payment —
       // the deposit (or balance) now shows Paid ✓ with the next step flagged.
-      // Same shared box the contract email uses; '' for club bookings.
-      const progressBox = await bookingProgressBox(p.booking_id);
+      // Same shared box the contract email uses; '' for club bookings. A New
+      // Balance top-up skips it — the pipeline already completed the first time,
+      // and re-showing "Deposit skipped / Planner / Balance paid" here is noise.
+      const progressBox = isNewBalanceTopUp ? '' : await bookingProgressBox(p.booking_id);
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
