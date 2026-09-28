@@ -75,10 +75,10 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('bookings')
-    .select('status_overrides, dj_id')
+    .select('status_overrides, dj_id, total_with_tax')
     .eq('id', bookingId)
     .maybeSingle();
-  const row = data as { status_overrides?: Record<string, boolean> | null; dj_id?: string | null } | null;
+  const row = data as { status_overrides?: Record<string, boolean> | null; dj_id?: string | null; total_with_tax?: number | null } | null;
   if (!row) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
   if (row.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
@@ -109,6 +109,10 @@ export async function POST(req: Request) {
     // "Mark Complete" on the BALANCE / final invoice handled outside the app.
     if (done) patch.balance_completed_at = now;
     else patch.balance_completion_undone_at = now;
+    // Snapshot the total the booking is now paid-in-full at. A later price
+    // increase leaves total_with_tax above this, and the gap becomes the
+    // collectable "new balance". Cleared when the balance is un-marked.
+    patch.balance_settled_total = done ? (row.total_with_tax ?? null) : null;
   }
 
   try {
