@@ -173,7 +173,9 @@ markAllComplete(MODELS[3]);  // The Vault starts fully done (load only; Reset cl
 
 function gateInvoice(m){
   const dep=m.stages.deposit, inv=m.stages.invoice;
-  if(!dep){ if(inv.state==='locked') inv.state='notsent'; return; }
+  // No deposit stage, OR a "Not Required" deposit (club/bar) → the balance isn't
+  // gated on a deposit, so it shows Not sent rather than a locked dash.
+  if(!dep || dep.state==='notreq'){ if(inv.state==='locked') inv.state='notsent'; return; }
   const settled=dep.state==='done'||dep.state==='skipped';
   if(inv.state==='locked'&&settled) inv.state='notsent';
   if(!settled&&['notsent','requested','done'].includes(inv.state)) inv.state='locked';
