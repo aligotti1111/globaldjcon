@@ -838,10 +838,27 @@ export default function BookingDetails({
     const balancePaidLine = balanceManualPaid || !!so.invoice
       || (booking as { balance_settled_total?: number | null }).balance_settled_total != null
       || payments.some((p) => p.kind === 'balance' && (p.status === 'paid' || p.status === 'waived' || Number(p.amount_paid) > 0));
-    const paidTag = (
-      <span style={{ marginLeft: 8, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, color: NEON, background: 'rgba(0,245,196,.12)', border: '1px solid rgba(0,245,196,.35)', whiteSpace: 'nowrap' }}>Paid</span>
+    // The deposit was skipped (never collected, billed in the balance).
+    const depositSkippedLine = !depositPaidLine && (!!so.deposit_skipped
+      || payments.some((p) => p.kind === 'deposit' && p.status === 'waived')
+      || (balancePaidLine && !payments.some((p) => p.kind === 'deposit' && Number(p.amount_paid) > 0)));
+    const tag = (text: string, color: string, bg: string, bd: string) => (
+      <span style={{ marginLeft: 8, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, color, background: bg, border: `1px solid ${bd}`, whiteSpace: 'nowrap' }}>{text}</span>
     );
-    const isPaidLine = (l: string) => (/Deposit/i.test(l) && depositPaidLine) || (/Balance/i.test(l) && balancePaidLine);
+    const paidTag = tag('Paid', NEON, 'rgba(0,245,196,.12)', 'rgba(0,245,196,.35)');
+    const skippedTag = tag('Skipped', '#8a8aa0', 'rgba(255,255,255,.06)', 'rgba(255,255,255,.18)');
+    const depTag = depositPaidLine ? paidTag : (depositSkippedLine ? skippedTag : null);
+    const isPaidLine = (l: string) => /Balance/i.test(l) && balancePaidLine;
+    // Post-payment delta: a price change on an already-settled booking. The
+    // snapshot is what it was paid-in-full at; the difference against the current
+    // total is a remaining balance (price rose) or a refund owed (price fell).
+    const snap = (booking as { balance_settled_total?: number | null }).balance_settled_total;
+    const rowPaid = payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0);
+    const manualDep = depositManualPaid ? (depositAmountNum ?? 0) : 0;
+    const collectedTotal = snap != null
+      ? Math.max(rowPaid + manualDep, Number(snap))
+      : (balanceManualPaid && cardTotal != null ? Math.max(rowPaid + manualDep, round2(Number(cardTotal))) : rowPaid + manualDep);
+    const delta = cardTotal != null && balancePaidLine ? round2(Number(cardTotal) - collectedTotal) : 0;
     return (
       <>
         {main.map((c) => (
@@ -863,10 +880,24 @@ export default function BookingDetails({
             <div className={styles.schedLbl}>Payment schedule</div>
             {sched.map((c) => (
               <div key={c.label} className={styles.priceRow}>
-                <span className={styles.priceKey}>{c.label}{isPaidLine(c.label) && paidTag}</span>
+                <span className={styles.priceKey}>{c.label}{/Deposit/i.test(c.label) ? depTag : (isPaidLine(c.label) ? paidTag : null)}</span>
                 <span className={styles.priceVal}>{c.value}</span>
               </div>
             ))}
+            {/* Price changed AFTER the balance was settled: show what's still
+                owed (price rose) or owed back to the client (price fell). */}
+            {delta > 0.009 && (
+              <div className={styles.priceRow}>
+                <span className={styles.priceKey} style={{ color: '#f0b64a', fontWeight: 700 }}>Remaining balance</span>
+                <span className={styles.priceVal} style={{ color: '#f0b64a', fontWeight: 700 }}>{money(delta)}</span>
+              </div>
+            )}
+            {delta < -0.009 && (
+              <div className={styles.priceRow}>
+                <span className={styles.priceKey} style={{ color: '#ff8a8a', fontWeight: 700 }}>Refund owed</span>
+                <span className={styles.priceVal} style={{ color: '#ff8a8a', fontWeight: 700 }}>{money(Math.abs(delta))}</span>
+              </div>
+            )}
           </div>
         )}
       </>
