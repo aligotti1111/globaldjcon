@@ -2703,6 +2703,24 @@
   opacity: .55;
   cursor: not-allowed;
 }
+/* Owner-only "hidden until you subscribe" hint on the phone control — a quiet
+   pill link to /subscribe, shown when a free DJ has saved a number. */
+.underBannerPhoneLocked {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: #d8b24a;
+  background: rgba(216, 178, 74, .12);
+  border: 1px solid rgba(216, 178, 74, .3);
+  border-radius: 999px;
+  padding: .22rem .6rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.underBannerPhoneLocked:hover { background: rgba(216, 178, 74, .2); }
 @media (max-width: 700px) {
   .underBannerContact { gap: .35rem; margin-left: .5rem; padding-left: .6rem; }
 }
