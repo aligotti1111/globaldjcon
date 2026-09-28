@@ -257,10 +257,15 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     the request modal opens blank — which is correct: nobody ever agreed a
     deposit percentage on this booking, so the DJ types what they actually want.
   */
+  // A deposit is part of THIS booking only when one was actually configured at
+  // booking time (a non-zero % or amount frozen from the DJ's booking settings).
+  // If the DJ's settings took no deposit, deposit_pct/amount are null or 0 — so
+  // the deposit column falls through to the "Not Required" placeholder rather
+  // than showing Pending/Skipped. is_manual alone no longer forces a deposit:
+  // a manual booking with no deposit configured isn't required to have one.
   const bookingHasDeposit =
-    booking.deposit_pct != null
-    || booking.deposit_amount != null
-    || !!booking.is_manual;
+    (booking.deposit_pct != null && Number(booking.deposit_pct) > 0)
+    || (booking.deposit_amount != null && Number(booking.deposit_amount) > 0);
   // Only the DEPOSIT rows, not every payment on the booking.
   //
   // This step used to read `payments` whole. That was fine while deposit was
@@ -271,7 +276,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
   // nothing to do with the deposit. The two columns have to read their own
   // rows or they lie about each other.
   const depositPays = payments.filter((p) => p.kind === 'deposit');
-  if (depositPays.length > 0 || bookingHasDeposit || overrides.deposit || overrides.deposit_skipped) {
+  // Render the deposit column only when a deposit is actually part of this
+  // booking: a real deposit payment, a configured deposit, or a hand "mark
+  // paid". NOT the auto-skip flag alone — on a booking that took no deposit,
+  // requesting the balance sets deposit_skipped, which would otherwise show
+  // "Skipped" instead of the correct "Not Required" placeholder.
+  if (depositPays.length > 0 || bookingHasDeposit || overrides.deposit) {
     const settled = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
     // .every() is true for an empty array — a deposit that exists on the
     // booking but has never been requested would read as PAID. Require a row
