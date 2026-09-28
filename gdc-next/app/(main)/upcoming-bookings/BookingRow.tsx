@@ -525,6 +525,34 @@ export default function BookingRow({
     setReqOpen(true);
   }
 
+  // Mark a specific balance payment row PAID IN FULL (used by "Mark New Balance
+  // Paid" — the row created to collect a post-price-change remainder). Confirms
+  // the outstanding amount, which settles the row and makes the payments route
+  // auto-send a receipt reflecting the NEW total.
+  function markBalancePaid(paymentId: string) {
+    const row = payments.find((p) => p.id === paymentId);
+    if (!row) return;
+    const outstanding = Math.max(0, Math.round((Number(row.amount || 0) - Number(row.amount_paid || 0)) * 100) / 100);
+    if (outstanding <= 0) return;
+    setConfirmModal({
+      title: 'Mark the new balance paid?',
+      body: `This records ${fmtMoney(outstanding, booking.currency || 'USD')} as received and sends the client an updated receipt for the new total.`,
+      okLabel: 'Mark paid',
+      cancelLabel: 'Not yet',
+      onOk: async () => {
+        try {
+          const res = await fetch('/api/payments', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'confirm', paymentId, amountReceived: outstanding }),
+          });
+          if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not mark it paid.'); return; }
+          onPaymentsChange(booking.id, payments.map((pp) => pp.id === paymentId ? { ...pp, amount_paid: Number(pp.amount || 0), status: 'paid' } : pp));
+          onMutated?.();
+        } catch { alert('Could not mark it paid.'); }
+      },
+    });
+  }
+
   function cancelRequest(paymentId: string) {
     setConfirmModal({
       title: 'Cancel this payment request?',
@@ -762,7 +790,7 @@ export default function BookingRow({
     requestPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
