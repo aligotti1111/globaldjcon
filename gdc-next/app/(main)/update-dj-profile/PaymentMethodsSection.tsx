@@ -687,6 +687,20 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     }
   }
 
+  // Closing a tile must never leave the section stranded as "unsaved". If the
+  // open edits are valid, persist them; if something's half-filled (a
+  // validation error), discard the in-progress edits back to what's saved.
+  // Either way the section ends clean, so the leave-guard won't nag over a
+  // value the DJ already walked away from.
+  function closeTile() {
+    if (firstError) {
+      setMethods(savedMethods);          // discard invalid in-progress edits
+    } else if (anyPaymentsDirty) {
+      void persistClean(buildClean(methods));
+    }
+    setOpenTile(null);
+  }
+
   async function save() {
     if (firstError) {
       setFeedback({ msg: firstError, ok: false });
@@ -1557,7 +1571,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   where a way out belongs — not sharing an edge with the button
                   that commits. */}
               {cfg.footnote && (<p style={{ margin: '.9rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>{cfg.footnote}</p>)}<div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => setOpenTile(null)} style={btn(false)}>
+                <button type="button" onClick={() => closeTile()} style={btn(false)}>
                   Close
                 </button>
                 {byType[t] && (
