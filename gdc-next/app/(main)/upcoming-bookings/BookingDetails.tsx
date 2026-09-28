@@ -878,12 +878,21 @@ export default function BookingDetails({
         {sched.length > 0 && (
           <div className={styles.paySched}>
             <div className={styles.schedLbl}>Payment schedule</div>
-            {sched.map((c) => (
-              <div key={c.label} className={styles.priceRow}>
-                <span className={styles.priceKey}>{c.label}{/Deposit/i.test(c.label) ? depTag : (isPaidLine(c.label) ? paidTag : null)}</span>
-                <span className={styles.priceVal}>{c.value}</span>
-              </div>
-            ))}
+            {sched.map((c) => {
+              const isDep = /Deposit/i.test(c.label);
+              // Deposit skipped → no dollar amount on the deposit, and the whole
+              // total is billed as the balance (nothing split into a deposit that
+              // never happened).
+              const shown = depositSkippedLine
+                ? (isDep ? '—' : (cardTotal != null ? money(cardTotal) : c.value))
+                : c.value;
+              return (
+                <div key={c.label} className={styles.priceRow}>
+                  <span className={styles.priceKey}>{c.label}{isDep ? depTag : (isPaidLine(c.label) ? paidTag : null)}</span>
+                  <span className={styles.priceVal}>{shown}</span>
+                </div>
+              );
+            })}
             {/* Price changed AFTER the balance was settled: show what's still
                 owed (price rose) or owed back to the client (price fell). */}
             {delta > 0.009 && (
