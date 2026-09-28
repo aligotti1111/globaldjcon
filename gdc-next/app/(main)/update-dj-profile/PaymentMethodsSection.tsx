@@ -524,7 +524,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const isDirty = useCallback((t: PaymentMethodType): boolean => {
     const cur = byType[t];
     const saved = savedByType[t];
-    // Present now but not saved (or vice-versa) is a change by definition.
+    // Present now but not saved: only a real change if the rail actually has
+    // content save() would keep. An opened-but-empty handle tile (Venmo, Cash
+    // App, Zelle, PayPal Option 2…) that the DJ walked away from is a no-op —
+    // save() drops it — so it must NOT count as unsaved, or it traps the page
+    // behind the leave guard forever. Handle-less rails (cash / check) are a
+    // real selection the moment they're present.
+    if (cur && !saved) {
+      return METHOD_TYPES[cur.type].handleLabel === '' ? true : !!cleanHandle(cur);
+    }
+    // Saved but now gone = a removal (removeType persists it immediately, so
+    // this only shows transiently).
     if (!cur || !saved) return !!cur !== !!saved;
     const norm = (m: PaymentMethod) => [
       cleanHandle(m),
