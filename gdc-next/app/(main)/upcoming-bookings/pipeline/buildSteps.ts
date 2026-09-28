@@ -707,11 +707,17 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     // Request New Balance asks for exactly the remainder. A price DECREASE never
     // creates a new balance: an overpaid booking simply stays paid (no refund).
     const currentTotal = bookingTotalWithTax(booking, taxPct) ?? Number(booking.total_with_tax ?? 0);
-    const collected = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
-    // Only a REAL settled balance in the ledger counts as "was paid in full" — a
-    // manually marked full-cash booking (overrides.invoice, no row, no amount)
-    // has nothing to diff against, so it never spuriously shows a new balance.
-    const wasPaidInFull = anyBalanceSettled && collected > 0;
+    // What was collected. Real payment rows are exact; a balance/deposit marked
+    // paid BY HAND records no amount, so we fall back to balance_settled_total —
+    // the total stamped when the balance last settled (payment, waive, or manual
+    // "mark paid"). That snapshot is what a later price increase is diffed
+    // against, so the new-balance delta is right for hand-paid bookings too.
+    const settledSnap = (booking as { balance_settled_total?: number | null }).balance_settled_total;
+    const rowCollected = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+    const collected = settledSnap != null ? Math.max(rowCollected, Number(settledSnap)) : rowCollected;
+    // "Paid in full" = a real settled balance OR the balance was hand-marked paid
+    // (invoice override / a settled-total snapshot exists).
+    const wasPaidInFull = (anyBalanceSettled && collected > 0) || (!!overrides.invoice && collected > 0) || settledSnap != null;
     const newBalanceDue = Math.round((currentTotal - collected) * 100) / 100;
     // The fresh, still-unpaid balance request the DJ sent to collect the delta.
     const unpaidBalanceRow = balancePays.find((p) => !settledP(p) && Number(p.amount_paid || 0) <= 0) || null;
