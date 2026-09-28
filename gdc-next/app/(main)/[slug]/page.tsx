@@ -27,7 +27,7 @@ import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
 import styles from './profile.module.css';
 import type { Metadata } from 'next';
-import { canBook, type AccessFields } from '@/lib/access';
+import { canBook, canUsePro, type AccessFields } from '@/lib/access';
 import { getActingContext, canEditProfile as roleCanEditProfile } from '@/lib/acting';
 
 // Render fresh on every request. The DJ's booking_settings (deposit %,
@@ -256,6 +256,12 @@ export default async function DjProfilePage({ params }: PageProps) {
   // — both must be satisfied. Sub/comp columns come from the select('*') above.
   const hasBookingAccess = canBook(profile as unknown as AccessFields);
 
+  // Phone paywall. A free DJ can still enter their number, but it only shows to
+  // visitors once they're on a paid (or comped) plan — same Pro gate as the
+  // rest of the pro suite. Computed here so no subscription columns leak to the
+  // client beyond this single boolean.
+  const ownerIsPro = canUsePro(profile as unknown as AccessFields);
+
   // Preload the banner as a high-priority image as the HTML streams. The banner
   // is a CSS background-image, which the browser can't discover until stylesheets
   // parse — so on mobile it fetched late and popped in. This tells the browser to
@@ -274,6 +280,7 @@ export default async function DjProfilePage({ params }: PageProps) {
       isOwnProfile={isOwnProfile}
       canEditProfile={canEditProfile}
       hasBookingAccess={hasBookingAccess}
+      ownerIsPro={ownerIsPro}
     />
   );
 }
