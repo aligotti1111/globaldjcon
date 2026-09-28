@@ -298,8 +298,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     // toggle (overrides.invoice): otherwise flipping the balance paid ↔ not paid
     // would silently flip the deposit too. Only an actual balance request row or
     // the explicit "Skip deposit" override skips it.
+    // A balance that's been requested OR marked paid (manual "mark paid" sets
+    // overrides.invoice, which records no balance row) means the DJ billed the
+    // whole thing — so a deposit that was never collected reads as skipped, not
+    // a stuck "Not sent". Only when no deposit money actually came in.
     const depositSkipped = !reallySettled && depositRealPaidNow <= 0
-      && (!!overrides.deposit_skipped || payments.some((p) => p.kind === 'balance'));
+      && (!!overrides.deposit_skipped || payments.some((p) => p.kind === 'balance') || !!overrides.invoice);
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
     // any of this existed. The override says "this stage is handled" — it does
