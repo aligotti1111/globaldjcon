@@ -30,7 +30,8 @@ interface StatusResp {
 }
 
 export default function PaypalConnectSection(
-  { onStatus, initialReady = false }: { onStatus?: (ready: boolean) => void; initialReady?: boolean } = {},
+  { onStatus, initialReady = false, blockedByManual = false }:
+    { onStatus?: (ready: boolean) => void; initialReady?: boolean; blockedByManual?: boolean } = {},
 ) {
   // If the parent already knows the DJ is connected (it checks on page load),
   // seed straight into the "Connected" state and skip the spinner — the click
@@ -161,15 +162,26 @@ export default function PaypalConnectSection(
       {loading ? (
         <p style={{ margin: 0, fontSize: '.82rem', color: 'var(--muted,#9a9ab0)' }}>Checking PayPal status…</p>
       ) : !connected ? (
-        <>
-          <button type="button" onClick={() => void connect()} disabled={busy} style={btn(true, !busy)}>
+        <div style={{ opacity: blockedByManual ? 0.45 : 1 }}>
+          <button
+            type="button"
+            onClick={() => { if (!blockedByManual) void connect(); }}
+            disabled={busy || blockedByManual}
+            style={{ ...btn(true, !busy && !blockedByManual), ...(blockedByManual ? { cursor: 'not-allowed' } : null) }}
+          >
             {busy ? 'Opening PayPal…' : 'Connect your PayPal account'}
           </button>
-          <p style={{ margin: '10px 0 0', fontSize: '.76rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.55 }}>
-            Global DJ Connect never gains access to your PayPal account. Connecting builds a pre-loaded payment path,
-            so your clients can complete payment in a single tap — directly into your account, with zero friction.
-          </p>
-        </>
+          {blockedByManual ? (
+            <p style={{ margin: '10px 0 0', fontSize: '.78rem', color: '#e6b455', lineHeight: 1.55 }}>
+              You&rsquo;ve entered a PayPal.me / email under Option 2 — clear it below to connect an account instead.
+            </p>
+          ) : (
+            <p style={{ margin: '10px 0 0', fontSize: '.76rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.55 }}>
+              Global DJ Connect never gains access to your PayPal account. Connecting builds a pre-loaded payment path,
+              so your clients can complete payment in a single tap — directly into your account, with zero friction.
+            </p>
+          )}
+        </div>
       ) : !ready ? (
         <>
           <p style={{ margin: '0 0 12px', fontSize: '.82rem', color: '#e6b455', lineHeight: 1.55 }}>
