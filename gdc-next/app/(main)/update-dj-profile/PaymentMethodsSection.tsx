@@ -1225,6 +1225,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           // Option 1 (Connect PayPal) overrides Option 2 (manual PayPal.me /
           // email): once connected, the manual rail is greyed and unclickable.
           const paypalManualDisabled = t === 'paypal' && paypalReady;
+          // The reverse lock: once Option 2 (a manual PayPal.me / email) has a
+          // value, Option 1 (Connect) is blocked — the two rails are mutually
+          // exclusive. Only applies while not already connected.
+          const paypalManualFilled = t === 'paypal' && !paypalReady && !!(m.handle || '').trim();
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
@@ -1246,7 +1250,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               {t === 'paypal' && (
                 <>
                   <div style={{ fontFamily: 'inherit', color: 'var(--neon)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-.01em', textTransform: 'none', margin: '0 0 .35rem' }}>Option 1 — Connect your PayPal business account</div>
-                  <PaypalConnectSection onStatus={setPaypalReady} initialReady={paypalReady} />
+                  <PaypalConnectSection onStatus={setPaypalReady} initialReady={paypalReady} blockedByManual={paypalManualFilled} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                     <span style={{ fontSize: '.66rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>Or</span>
