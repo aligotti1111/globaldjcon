@@ -125,8 +125,8 @@ function buildModels(){
       {who:'YOU',cls:'you',text:'Rider sent to host',when:'Jun 12, 2026, 11:30 AM'}
     ]};
   list[0].det={
-    badges:['Includes cocktail hour','Includes ceremony music'],
-    dateLong:'Wednesday, July 29, 2026',guests:'200',overtime:'$200.00/hr',
+    badges:['Includes ceremony music','Includes cocktail hour'],
+    dateLong:'Wednesday, July 29, 2026',guests:'200',overtime:'$200.00/hr',distance:'6.8 mi to venue from your zipcode',
     schedule:[
       {label:'Ceremony',time:'1:00 PM',note:'separate room'},
       {label:'Cocktail hour',time:'2:00 PM',note:'same room as reception'},
@@ -143,7 +143,7 @@ function buildModels(){
       {who:'YOU',cls:'you',text:'Deposit auto-skipped — balance requested',when:'Jul 22, 2026, 3:16 AM'},
       {who:'YOU',cls:'you',text:'Contract sent to host',when:'Jul 29, 2026, 3:31 AM'}
     ]};
-  list[1].det={evSub:'25th',dateLong:'Monday, September 28, 2026',guests:'120',overtime:'$100.00/hr',
+  list[1].det={evSub:'25th',dateLong:'Monday, September 28, 2026',guests:'120',overtime:'$100.00/hr',distance:'12.3 mi to venue from your zipcode',
     venue:'Lakeside Pavilion',room:'Terrace Room',addr:'480 Harbor Dr, Raleigh, NC 27601',
     bookedBy:'James Carter',phone:'(919) 555-0148',pkg:'Standard Party',pkgDesc:'5 hrs · sound + MC',
     pricing:{rate:'$400.00',discount:'20% OFF — saved $100.00 (was $500.00)',tax:'$35.50 (8.875%)',total:'$435.50',
@@ -262,6 +262,7 @@ function mobDetailHTML(m){
           <div class="df"><span class="dk">${m.type==='club'?'Venue type':'Room details'}</span><span class="dv">${d.room||''}</span></div>
         </div>
         <div class="df"><span class="dk">Venue address</span><span class="dv"><a class="dlink">${d.addr||''}</a></span></div>
+        ${d.distance?`<div class="dvdist"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${d.distance}</div>`:''}
       </div>
       <div class="dsec">
         <span class="dpill">HOST</span>
