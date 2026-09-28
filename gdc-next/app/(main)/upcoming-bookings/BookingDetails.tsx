@@ -593,6 +593,14 @@ export default function BookingDetails({
   // freezes it and nets it out of the new balance.
   const depositManualPaid = !!(booking as { status_overrides?: Record<string, boolean> | null }).status_overrides?.deposit
     && !payments.some((p) => p.kind === 'deposit' && Number(p.amount_paid) > 0);
+  // Balance marked paid BY HAND (status_overrides.invoice) with no real balance
+  // payment row — a paid-in-full booking whose money never went through the app.
+  // Like the manual deposit, its amount must count as collected so the pricing
+  // editor's breakdown nets it out (otherwise a price bump reads the whole new
+  // total as still due). A hand-paid balance settles the whole booking, so the
+  // collected amount is the current (pre-change) total.
+  const balanceManualPaid = !!(booking as { status_overrides?: Record<string, boolean> | null }).status_overrides?.invoice
+    && !payments.some((p) => p.kind === 'balance' && Number(p.amount_paid) > 0);
   const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
   const ceremonyCharge = booking.ceremony_price != null ? Number(booking.ceremony_price) : 0;
   const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
@@ -1303,7 +1311,12 @@ export default function BookingDetails({
           lockEmail={!!hostUserId}
           pendingCols={pendingCols}
           pendingInfo={pendingInfo}
-          collected={payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0)}
+          collected={(() => {
+            const base = payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0);
+            // A hand-paid balance settles the whole booking — top the collected
+            // amount up to the current total so the new-balance nets it out.
+            return balanceManualPaid && cardTotal != null ? Math.max(base, round2(Number(cardTotal))) : base;
+          })()}
           depositPaidAmount={payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0)}
           depositSkipped={!!(booking as { status_overrides?: Record<string, boolean> | null }).status_overrides?.deposit_skipped || payments.some((p) => p.kind === 'deposit' && p.status === 'waived')}
           pendingPayment={payments.some((p) => (p.kind === 'deposit' || p.kind === 'balance') && (p.status === 'requested' || p.status === 'pending_confirmation'))}
