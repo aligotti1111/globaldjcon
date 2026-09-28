@@ -62,6 +62,9 @@ interface Props {
   // Paywall: true when the DJ has an active subscription/comp (Tier 1+).
   // ANDed with the existing enabled + completeness checks below.
   hasBookingAccess: boolean;
+  // Phone paywall: true when the owner is on a paid/comped plan. A free DJ's
+  // saved number stays editable but is hidden from visitors until this is true.
+  ownerIsPro?: boolean;
 }
 
 // Owner-only "⋯" menu shown next to the hero name and the location. One button
@@ -152,7 +155,7 @@ function HeroColorMenu({ which, textColor, onText, band, onBand }: {
   );
 }
 
-export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess }: Props) {
+export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess, ownerIsPro = false }: Props) {
   // Who may edit the public profile (all tabs except Booking): the owner, or a
   // permitted team member. `actingAsMember` is true only for the member case —
   // their writes route through /api/profile/update instead of a direct write.
@@ -1436,6 +1439,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           effectiveSlug={effectiveSlug}
           isOwnProfile={canEdit}
           bookingEnabled={bookingEnabled}
+          ownerIsPro={ownerIsPro}
           onShareClick={() => setShareModalOpen(true)}
           isLoggedIn={isLoggedIn}
           onMessageClick={() => {
