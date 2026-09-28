@@ -395,12 +395,21 @@ export default function BookingEditModal({
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
             )}
             {!noHostRecipient && ((hasApprove && changed.length > 0) || taxDirty) && (
-              <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Save Changes, the host is emailed to approve the change — the altered field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
+              <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Submit Change Request, the host is emailed to approve the change — the altered field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
-              <button style={{ ...btnPrimary, opacity: (busy || (changed.length === 0 && !pricingDirty)) ? 0.5 : 1 }} disabled={busy || (changed.length === 0 && !pricingDirty)} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
-            </div>
+            {(() => {
+              // Any dirty change that needs the host's sign-off (an approval-tier
+              // field, or a tax edit) turns Save into "Submit Change Request".
+              // With no host to approve, or notify-only fields, it stays "Save Change".
+              const requiresApproval = !noHostRecipient && ((hasApprove && changed.length > 0) || taxDirty);
+              const disabled = busy || (changed.length === 0 && !pricingDirty);
+              return (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                  <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
+                  <button style={{ ...btnPrimary, opacity: disabled ? 0.5 : 1 }} disabled={disabled} onClick={save}>{busy ? (requiresApproval ? 'Submitting…' : 'Saving…') : (requiresApproval ? 'Submit Change Request' : 'Save Change')}</button>
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
