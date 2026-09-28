@@ -29,7 +29,7 @@ const FLYER_IMG="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BS
 function flyerHTML(m){ return m.flyer ? '<div class="flyer flyer-img"><img width="46" height="46" src="'+m.flyer+'" alt="Event flyer"></div>' : FLYER; }
 
 const DEP='$600';
-function capColor(cls,cap){ if(cls==='done')return 'var(--neon)'; if(cls==='skipped')return '#f2f2f7'; if(/^not sent$/i.test(cap||''))return '#ff6b6b'; return 'var(--gold)'; }
+function capColor(cls,cap){ if(cls==='done')return 'var(--neon)'; if(cls==='skipped')return '#f2f2f7'; if(cls==='muted')return '#7a7a8c'; if(/^not sent$/i.test(cap||''))return '#ff6b6b'; return 'var(--gold)'; }
 
 function stContract(){return{icon:'doc',state:'notsent',S:{
   notsent:{cap:'Not sent',cls:'waiting',actions:[{label:'Review & send contract',to:'notsent'}]},
@@ -50,6 +50,11 @@ function stDeposit(){return{icon:'money',state:'notsent',S:{
     {label:'✕ Mark Not Paid',to:'notsent',cls:'danger'}]},
   skipped:{cap:'Skipped',cls:'skipped',info:'Going straight to the balance — no deposit collected.',actions:[
     {label:'Undo skip',to:'notsent',cls:'muted'}]},
+}};}
+// Club/bar bookings don't take a deposit — the stage shows "Not Required".
+function stDepositNR(){return{icon:'money',state:'notreq',S:{
+  notreq:{cap:'Not Required',cls:'muted',info:'No deposit is taken on club / bar bookings.',actions:[
+    {label:'Request deposit',to:'notreq'},{label:'Payment options',to:'notreq',cls:'muted'}]},
 }};}
 function stPlanner(){return{icon:'music',state:'notsent',S:{
   notsent:{cap:'Not sent',cls:'waiting',actions:[
@@ -92,8 +97,8 @@ function mkBooking(type,label,date,time,event,val){
     slots:['contract','deposit','song_list','invoice'],
     stages:{contract:stContract(),deposit:stDeposit(),song_list:stPlanner(),invoice:stInvoice()}};
   return {type,label,date,time,event,val,
-    slots:['contract','song_list','invoice','guestlist'],
-    stages:{contract:stContract(),song_list:stRider(),invoice:stInvoice(),guestlist:stGuest()}};
+    slots:['contract','deposit','song_list','invoice','guestlist'],
+    stages:{contract:stContract(),deposit:stDepositNR(),song_list:stRider(),invoice:stInvoice(),guestlist:stGuest()}};
 }
 function markAllComplete(m){ m.slots.forEach(k=>{ const st=m.stages[k]; st.state = st.S.done ? 'done' : (st.S.sent ? 'sent' : st.state); }); }
 function buildModels(){
