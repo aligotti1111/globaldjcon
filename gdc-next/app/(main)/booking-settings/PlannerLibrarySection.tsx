@@ -381,13 +381,19 @@ export default function PlannerLibrarySection() {
         used automatically the next time you send that event type&rsquo;s planner.
       </p>
 
+      {/* Timing panel — one group: WHEN to ask the planner back (submission
+          window) on top, then a divider, then WHEN to nudge (auto-reminders).
+          Reads as a single "timing" block rather than three stacked boxes. */}
+      <div style={{
+        maxWidth: 720, marginBottom: '1.1rem',
+        border: '1px solid rgba(140,140,170,.18)', borderRadius: 10,
+        background: 'rgba(255,255,255,.02)',
+      }}>
       {/* Submission deadline — how far ahead of the event the client is asked to
           finish. Shows on the client's planner. Saved to the DJ, default 14 days. */}
       <div style={{
         display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem',
-        maxWidth: 720, padding: '.7rem .8rem', marginBottom: '1.1rem',
-        border: '1px solid rgba(140,140,170,.18)', borderRadius: 9,
-        background: 'rgba(255,255,255,.02)',
+        padding: '.85rem .9rem',
       }}>
         <label htmlFor="planner-lead" style={{ fontSize: '.85rem', color: 'var(--white,#fff)' }}>
           Ask clients to submit their Planner &amp; Playlist at least
@@ -410,13 +416,12 @@ export default function PlannerLibrarySection() {
 
       {/* Auto-reminders — up to two nudges emailed to the client before the
           event if the Planner & Playlist still isn't complete. Each lead time
-          must be at least `leadDays` out (never closer to the event than the
-          deadline above) and never same-day, so the ladder is filtered to
-          values ≥ leadDays. Off = that slot sends nothing. */}
+          must be MORE than `leadDays` out (land before the deadline above), so
+          the ladder is filtered to values > leadDays. Off = that slot sends
+          nothing. Sits under a hairline divider inside the same timing panel. */}
       <div style={{
-        maxWidth: 720, padding: '.85rem .9rem', marginBottom: '1.1rem',
-        border: '1px solid rgba(140,140,170,.18)', borderRadius: 9,
-        background: 'rgba(255,255,255,.02)',
+        padding: '.85rem .9rem',
+        borderTop: '1px solid rgba(140,140,170,.16)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
           <span style={{ fontSize: '.85rem', color: 'var(--white,#fff)', fontWeight: 600 }}>
@@ -464,6 +469,7 @@ export default function PlannerLibrarySection() {
             </div>
           );
         })}
+      </div>
       </div>
 
       {err && <div style={{ color: '#ff7676', fontSize: '.82rem', marginBottom: '.7rem' }}>{err}</div>}
