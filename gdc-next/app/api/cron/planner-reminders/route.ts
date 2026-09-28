@@ -150,10 +150,11 @@ export async function GET(req: Request) {
   for (const dj of djs) {
     const lead = dj.planner_lead_days ?? 14;
     // The reminder days that are actually valid for this DJ right now: set,
-    // at least `lead` out, never same-day, de-duplicated.
+    // strictly MORE than `lead` out (must land before the deadline, never on the
+    // due date or after it), de-duplicated.
     const reminderDays = Array.from(new Set(
       [dj.planner_reminder_days_1, dj.planner_reminder_days_2]
-        .filter((d): d is number => typeof d === 'number' && d > 0 && d >= lead),
+        .filter((d): d is number => typeof d === 'number' && d > lead),
     ));
     if (reminderDays.length === 0) continue;
 
