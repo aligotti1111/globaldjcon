@@ -21,6 +21,18 @@ const LEGAL = 'Editing this booking does not legally cancel or change either par
 
 const SECTION_TITLE: Record<EditSection, string> = { EVENT: 'Event', VENUE: 'Venue', HOST: 'Host', PACKAGE: 'Package', PRICING: 'Pricing' };
 
+// Ack copy tailored to the section being edited — only names what actually
+// needs the host's approval in that section, so a price edit says "price",
+// a package edit says "package", etc. HOST details are notify-only (no
+// approval), so its copy drops the approval sentence.
+const SECTION_ACK: Record<EditSection, string> = {
+  EVENT: 'The host will be notified of anything you change here. Changes to the date or time need the host’s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+  VENUE: 'The host will be notified of anything you change here. A change to the venue address needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+  HOST: 'The host will be notified of anything you change here. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+  PACKAGE: 'The host will be notified of anything you change here. A change to the package needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+  PRICING: 'The host will be notified of anything you change here. A change to the price or tax needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+};
+
 // Time options every 15 minutes — value HH:MM (24h), label 12-hour AM/PM.
 const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96 }, (_, i) => {
   const h = Math.floor(i / 4); const m = (i % 4) * 15;
@@ -228,7 +240,7 @@ export default function BookingEditModal({
               <p style={{ color: '#c9c9d6', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>
                 {noHostRecipient
                   ? 'This booking has no host contact on file, so changes apply right away.'
-                  : 'The host will be notified of anything you change here. Some changes (date, time, address, price, package details) need the host’s approval before they take effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.'}
+                  : SECTION_ACK[section]}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
