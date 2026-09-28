@@ -414,12 +414,27 @@ export async function POST(req: Request) {
       const line = (l: { label: string; old: string; neu: string }) =>
         `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(l.label)}</b><br><span style="color:#888;font-size:13px;">${esc(l.old)}</span> → <span style="color:#0a6f61;font-weight:700;">${esc(l.neu)}</span></td></tr>`;
       const legalFooter = `<p style="margin:20px 0 0;color:#999;font-size:11px;line-height:1.5;border-top:1px solid #eee;padding-top:12px;">${esc(LEGAL)}</p>`;
+      // Which booking this is about — pinned to the TOP of every change email so
+      // the host knows the event before reading the changes.
+      const evDate = booking.event_date
+        ? new Date(`${booking.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+        : '';
+      const evTime = booking.start_time
+        ? `${fmtTime(booking.start_time)}${booking.end_time ? ` – ${fmtTime(booking.end_time)}` : ''}`
+        : '';
+      const eventHeader = `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="background:#f4f4f6;border-radius:8px;padding:12px 16px;">`
+        + `<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Event details</div>`
+        + (evDate ? `<div style="font-size:15px;color:#111;font-weight:700;margin-top:3px;">${esc(evDate)}${evTime ? ` <span style="color:#666;font-weight:400;">· ${esc(evTime)}</span>` : ''}</div>` : '')
+        + (booking.venue_name ? `<div style="font-size:14px;color:#333;margin-top:2px;">${esc(booking.venue_name)}</div>` : '')
+        + (booking.requester_name ? `<div style="font-size:13px;color:#888;margin-top:2px;">Host: ${esc(booking.requester_name)}</div>` : '')
+        + `</td></tr></table>`;
       // Two distinct emails so each kind of change reads clearly on its own:
       //  • notify-only edits  → "<DJ> updated your booking details"
       //  • approval-required  → "<DJ> has requested to change booking details - approval needed"
       // Both go out when a single save mixes the two.
       if (appliedLines.length) {
         const content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} updated your booking details</h1>`
+          + eventHeader
           + `<p style="margin:0 0 6px;color:#333;font-size:15px;">These details were updated:</p><table width="100%" cellpadding="0" cellspacing="0">${appliedLines.map(line).join('')}</table>`
           + legalFooter;
         await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} updated your booking details`, html: shell(content) });
@@ -483,6 +498,7 @@ export async function POST(req: Request) {
 
         const link = `${SITE_URL}/change/${pendingRows[0].token}`;
         const content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} has requested to change booking details</h1>`
+          + eventHeader
           + `<p style="margin:18px 0 6px;color:#333;font-size:15px;"><b>These changes need your approval</b> before they take effect:</p>`
           + (plines ? `<table width="100%" cellpadding="0" cellspacing="0">${plines}</table>` : '')
           + breakdownHtml
