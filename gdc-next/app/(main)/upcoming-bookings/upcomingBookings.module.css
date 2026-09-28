@@ -545,6 +545,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Oswald: a condensed display face so long event names ("QUINCEAÑERA
+     CELEBRATION") fit on one line without shrinking, and reads like an event
+     marquee rather than body text. Only the mobile (uppercase) event type gets
+     it — the club venue name keeps the inherited Inter. */
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: .02em;
 }
 /* The overlap warning stays in the event cell and never shrinks — the name
    gives way first. It's about the event, and it's one glyph. */
