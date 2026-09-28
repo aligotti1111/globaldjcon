@@ -425,8 +425,8 @@ export default function PlannerLibrarySection() {
           {remSaved && <span style={{ fontSize: '.78rem', color: 'var(--neon,#00e0a4)' }}>✓ Saved</span>}
         </div>
         <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5, margin: '0 0 .7rem' }}>
-          If a client hasn&rsquo;t finished their Planner &amp; Playlist, email them a reminder this far ahead of the event.
-          A reminder has to land before your {leadDays}-day submission window &mdash; never on the due date or after it.
+          If a client hasn&rsquo;t finished their Planner &amp; Playlist, an automatic reminder email will be sent to the host.
+          A reminder has to land before your submission window selected above.
         </p>
         {[0, 1].map((slot) => {
           const value = slot === 0 ? rem1 : rem2;
