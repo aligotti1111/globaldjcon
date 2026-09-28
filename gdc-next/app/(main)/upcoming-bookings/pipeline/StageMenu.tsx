@@ -22,7 +22,7 @@ export type StageMenuStep = {
   manualComplete?: boolean;
   info?: string;
   hint?: string;
-  actions?: { label: string; run: () => void; danger?: boolean }[];
+  actions?: { label: string; run: () => void; danger?: boolean; disabled?: boolean; title?: string }[];
 };
 
 const NO_ACCESS = 'Your account level doesn’t have access to this. Ask an owner or manager.';
@@ -85,17 +85,21 @@ export default function StageMenu({
           </div>
         )}
         {(st.actions ?? []).map((a) => {
-          const locked = actionLocked(a.label);
+          // A per-action `disabled` shows the action but greys it out (e.g.
+          // "Request balance" while a deposit is still pending) — distinct from
+          // the role-based `actionLocked`, which shows a permissions lock.
+          const roleLocked = actionLocked(a.label);
+          const locked = roleLocked || !!a.disabled;
           return (
             <button
               key={a.label}
               type="button"
               disabled={locked}
-              title={locked ? NO_ACCESS : undefined}
+              title={a.title || (roleLocked ? NO_ACCESS : undefined)}
               onClick={() => { if (locked) return; onRunAction(a.run); }}
               style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1 }}
             >
-              {titleCase(a.label)}{locked ? '  \u{1F512}' : ''}
+              {titleCase(a.label)}{roleLocked ? '  \u{1F512}' : ''}
             </button>
           );
         })}
