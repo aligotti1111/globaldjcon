@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
   // Booking snapshot BEFORE any approve mutation — the "old" side of the price
   // breakdown, and the base for recompute on approve.
-  const { data: bk } = await admin.from('bookings').select('id, tax_pct, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, deposit_amount, balance_settled_total, status_overrides, field_edits').eq('id', hit.booking_id).maybeSingle<{ id: string; tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null; currency: string | null; deposit_amount: number | null; balance_settled_total: number | null; status_overrides: Record<string, boolean> | null; field_edits: Record<string, string> | null }>();
+  const { data: bk } = await admin.from('bookings').select('id, tax_pct, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, deposit_amount, balance_settled_total, status_overrides, field_edits, event_date, start_time, end_time, venue_name, requester_name').eq('id', hit.booking_id).maybeSingle<{ id: string; tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null; currency: string | null; deposit_amount: number | null; balance_settled_total: number | null; status_overrides: Record<string, boolean> | null; field_edits: Record<string, string> | null; event_date: string | null; start_time: string | null; end_time: string | null; venue_name: string | null; requester_name: string | null }>();
   const taxPct = bk?.tax_pct != null ? Number(bk.tax_pct) : 0;
 
   // Build the price breakdown (old → new) when a price / tax change is in the
@@ -97,10 +97,28 @@ export async function POST(req: Request) {
     breakdown = { cur, oldRate, newRate, oldTaxPct, newTaxPct, oldTax, newTax, oldTotal, newTotal, collected };
   }
 
+  // Which booking this is about — pinned to the top of the DJ's email.
+  const fmtT = (t: string | null) => {
+    const m = t && /^(\d{1,2}):(\d{2})/.exec(t);
+    if (!m) return '';
+    let h = parseInt(m[1], 10); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+    return `${h}:${m[2]} ${ap}`;
+  };
+  const evDate = bk?.event_date
+    ? new Date(`${bk.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : '';
+  const evTime = bk?.start_time ? `${fmtT(bk.start_time)}${bk.end_time ? ` – ${fmtT(bk.end_time)}` : ''}` : '';
+  const eventHeader = `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="background:#f4f4f6;border-radius:8px;padding:12px 16px;">`
+    + `<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Event details</div>`
+    + (evDate ? `<div style="font-size:15px;color:#111;font-weight:700;margin-top:3px;">${esc(evDate)}${evTime ? ` <span style="color:#666;font-weight:400;">· ${esc(evTime)}</span>` : ''}</div>` : '')
+    + (bk?.venue_name ? `<div style="font-size:14px;color:#333;margin-top:2px;">${esc(bk.venue_name)}</div>` : '')
+    + (bk?.requester_name ? `<div style="font-size:13px;color:#888;margin-top:2px;">Host: ${esc(bk.requester_name)}</div>` : '')
+    + `</td></tr></table>`;
+
   if (action === 'decline') {
     await admin.from('booking_change_requests').update({ status: 'declined', responded_at: nowISO } as unknown as never)
       .eq('booking_id', hit.booking_id).eq('status', 'pending');
-    await notifyDj(admin, hit.dj_id, hit.booking_id, pending, 'declined', breakdown);
+    await notifyDj(admin, hit.dj_id, hit.booking_id, pending, 'declined', breakdown, eventHeader);
     return NextResponse.json({ ok: true, action: 'declined' });
   }
 
@@ -152,7 +170,7 @@ export async function POST(req: Request) {
   }
   await admin.from('booking_change_requests').update({ status: 'approved', responded_at: nowISO } as unknown as never)
     .eq('booking_id', hit.booking_id).eq('status', 'pending');
-  await notifyDj(admin, hit.dj_id, hit.booking_id, pending, 'approved', breakdown);
+  await notifyDj(admin, hit.dj_id, hit.booking_id, pending, 'approved', breakdown, eventHeader);
   return NextResponse.json({ ok: true, action: 'approved' });
 }
 
@@ -178,7 +196,7 @@ function breakdownTable(b: Breakdown): string {
   return `<p style="margin:16px 0 6px;color:#333;font-size:13px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Price breakdown</p><table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
 }
 
-async function notifyDj(admin: SupabaseClient, djId: string, bookingId: string, rows: ReqRow[], outcome: 'approved' | 'declined', breakdown: Breakdown | null) {
+async function notifyDj(admin: SupabaseClient, djId: string, bookingId: string, rows: ReqRow[], outcome: 'approved' | 'declined', breakdown: Breakdown | null, eventHeader: string) {
   const email = await resolveUserEmail(djId);
   if (!email || !process.env.RESEND_API_KEY) return;
   try {
@@ -194,12 +212,14 @@ async function notifyDj(admin: SupabaseClient, djId: string, bookingId: string, 
     let content: string;
     if (outcome === 'approved') {
       content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">The host approved your changes</h1>
+${eventHeader}
 <p style="margin:0 0 6px;color:#333;font-size:15px;">These changes are now live on the booking:</p>
 ${listTable}${brTable}
 <p style="margin:16px 0 6px;color:#333;font-size:15px;">If a contract is already in place, you can send an <b>updated contract</b> reflecting these changes.</p>
 <table cellpadding="0" cellspacing="0" border="0" style="margin:16px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Open booking</a></td></tr></table>`;
     } else {
       content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">The host declined your changes</h1>
+${eventHeader}
 <p style="margin:0 0 6px;color:#333;font-size:15px;">Nothing was changed. The booking stays as it was:</p>
 ${listTable}${brTable}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:16px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Open booking</a></td></tr></table>`;
