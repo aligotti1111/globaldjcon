@@ -599,8 +599,22 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
   function removeType(t: PaymentMethodType) {
     setFeedback(null);
-    setMethods((prev) => prev.filter((m) => m.type !== t));
+    // PayPal: Remove just clears the Option 2 (PayPal.me / email) input and
+    // leaves the tile open on the page — it doesn't tear the whole PayPal
+    // method off the grid (Option 1 Connect lives in the same tile). Clearing
+    // the handle also re-enables the Connect button.
+    // Either way we persist the result immediately so the change is saved and
+    // the page doesn't get stuck behind the unsaved-changes guard.
+    if (t === 'paypal') {
+      const next = methods.map((m) => (m.type === t ? { ...m, handle: '', contact: '' } : m));
+      setMethods(next);
+      void persistClean(buildClean(next), '✓ Removed.');
+      return;
+    }
+    const next = methods.filter((m) => m.type !== t);
+    setMethods(next);
     setOpenTile(null);
+    void persistClean(buildClean(next), '✓ Removed.');
   }
 
   const firstError = (TYPE_ORDER
@@ -618,6 +632,50 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       return vc ? vc(m.contact || '') : null;
     })
     .find((e) => e)) || null;
+
+  // Build the server payload from an explicit list (not just current state), so
+  // an action that changes the list — Remove — can persist the post-change list
+  // in the same tick instead of waiting for a state round-trip.
+  function buildClean(list: PaymentMethod[]) {
+    return list
+      .filter((m) => METHOD_TYPES[m.type].handleLabel === '' || !!cleanHandle(m))
+      .map((m) => ({
+        id: m.id,
+        type: m.type,
+        handle: cleanHandle(m),
+        note: (m.note || '').trim(),
+        enabled: true,
+        ...(METHOD_TYPES[m.type].contactLabel ? { contact: (m.contact || '').trim() } : {}),
+        ...(m.type === 'cash' && (m.dropoffAddress || '').trim()
+          ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
+          : {}),
+      }));
+  }
+
+  // Persist a cleaned list and sync BOTH methods + savedMethods so the parent's
+  // unsaved-changes guard sees a clean slate (no phantom "unsaved" after Remove).
+  async function persistClean(clean: ReturnType<typeof buildClean>, successMsg = '✓ Saved.') {
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/dj/payment-methods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ methods: clean }),
+      });
+      const jr = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !jr.ok) throw new Error(jr.error || 'Could not save.');
+      setMethods(clean);
+      setSavedMethods(clean);
+      setFeedback({ msg: successMsg, ok: true });
+      setTimeout(() => setFeedback(null), 2500);
+      try { window.dispatchEvent(new Event('gdc-setup-progress')); } catch { /* no-op */ }
+    } catch (e) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Could not save.', ok: false });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function save() {
     if (firstError) {
