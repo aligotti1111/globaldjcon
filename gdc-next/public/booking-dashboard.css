@@ -33,6 +33,7 @@
 .gdc-dash .st.waiting .ring{border-color:rgba(255,255,255,.16);color:#b9b9c6}
 .gdc-dash .st.done .ring{border-color:var(--neon);background:rgba(0,245,196,.14);color:var(--neon)}
 .gdc-dash .st.skipped .ring{border-color:rgba(255,255,255,.28);color:#f2f2f7}
+.gdc-dash .st.muted .ring{border-color:#2f2f3d;color:#5a5a72}
 .gdc-dash .badge{position:absolute;right:-3px;bottom:-3px;width:15px;height:15px;border-radius:50%;background:var(--neon);border:2px solid var(--card);display:flex;align-items:center;justify-content:center}
 .gdc-dash .badge svg{width:8px;height:8px;stroke:#06231b;stroke-width:5;fill:none}
 .gdc-dash .chev{color:#6c6c86;display:inline-flex}
@@ -47,6 +48,12 @@
 
 
 .gdc-dash .deskwrap{--dcols:74px 62px 190px 1fr 112px 112px 112px 112px 26px}
+/* Club / bar rows carry a 5th stage (Deposit — Not Required), so they get an
+   extra, narrower stage column and a tighter gap to keep the icons together. */
+.gdc-dash .section.club .deskwrap{--dcols:74px 58px 170px 1fr 84px 84px 84px 84px 84px 24px}
+.gdc-dash .section.club .drow{gap:7px}
+.gdc-dash .section.club .drow .st{transform:translateX(-8px)}
+.gdc-dash .section.club .strip{grid-template-columns:repeat(5,1fr)}
 .gdc-dash .drow .flyer{margin-left:0;justify-self:center;width:56px;height:56px}
 .gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
 .gdc-dash .colheads span{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;white-space:nowrap}
