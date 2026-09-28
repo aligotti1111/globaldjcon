@@ -59,7 +59,7 @@
 .gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
 .gdc-dash .colheads span{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;white-space:nowrap}
 .gdc-dash .colheads .l{text-align:left}.gdc-dash .colheads .r{text-align:center}
-.gdc-dash .drowwrap{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.gdc-dash .drowwrap{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px}
 .gdc-dash .section.mobile .drowwrap{box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 26px rgba(0,245,196,.05)}
 .gdc-dash .section.club .drowwrap{box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 26px rgba(245,230,66,.05)}
 .gdc-dash .drow{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:center;padding:12px 18px}
@@ -68,7 +68,7 @@
 .gdc-dash .dvtime{justify-self:start;font-size:.9rem;color:var(--ink);white-space:nowrap}
 .gdc-dash .dvevent{justify-self:start;transform:translateX(14px);font-family:'Oswald',sans-serif;font-weight:600;font-size:1.2rem;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .gdc-dash .drow[onclick]{cursor:pointer}
-.gdc-dash .deskvaluebar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px;background:#2b2b2b}
+.gdc-dash .deskvaluebar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px;background:#2b2b2b;border-radius:0 0 14px 14px}
 .gdc-dash .deskvaluebar .lbl{font-family:var(--mono);font-size:.58rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#c9c9d3}
 .gdc-dash .deskvaluebar .amt{font-family:var(--mono);font-weight:700;font-size:.95rem;letter-spacing:.01em;color:var(--neon)}
 .gdc-dash .rowchev{transition:transform .2s}
@@ -101,6 +101,7 @@
 .gdc-dash .cnx{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--muted);font-size:.9rem;line-height:1;cursor:pointer;padding:2px 4px}
 .gdc-dash .cnx:hover{color:var(--ink)}
 .gdc-dash .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:14px 4px 16px;border-top:1px solid var(--line)}
+.gdc-dash .section:not(.club) .card .strip .st{transform:translateX(-7px)}
 .gdc-dash .valuebar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.03);border-top:1px solid var(--line);border-radius:0 0 16px 16px}
 .gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#c9c9d3}
 .gdc-dash .valuebar .amt{font-family:var(--mono);font-weight:700;font-size:1rem;color:var(--neon)}
