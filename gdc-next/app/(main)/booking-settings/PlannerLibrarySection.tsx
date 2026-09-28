@@ -16,6 +16,11 @@ import { createClient } from '@/lib/supabase/client';
 import SectionBanner from '../update-dj-profile/SectionBanner';
 
 const LEAD_OPTIONS = [7, 10, 14, 21, 30];
+// The ladder a reminder day can be picked from. Filtered at render time to the
+// values that are allowed: at least `leadDays` out (a reminder can't be closer
+// to the event than the submission deadline the DJ asked the planner back by)
+// and never same-day. So if the deadline is 21 days, only 21/30/45/60 show.
+const REMINDER_LADDER = [7, 10, 14, 21, 30, 45, 60];
 
 type TemplateLite = {
   id: string;
@@ -160,6 +165,13 @@ export default function PlannerLibrarySection() {
   const [leadDays, setLeadDays] = useState(14);
   const [leadSaved, setLeadSaved] = useState(false);
 
+  // Two optional auto-reminder lead times. 0 = that reminder is off. Saved to
+  // users.planner_reminder_days_1 / _2 (null when off) and read by the hourly
+  // planner-reminders cron.
+  const [rem1, setRem1] = useState(0);
+  const [rem2, setRem2] = useState(0);
+  const [remSaved, setRemSaved] = useState(false);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -167,10 +179,21 @@ export default function PlannerLibrarySection() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !active) return;
-        const { data } = await supabase.from('users').select('planner_lead_days').eq('id', user.id).maybeSingle();
-        const v = (data as { planner_lead_days?: number | null } | null)?.planner_lead_days;
-        if (active && typeof v === 'number') setLeadDays(v);
-      } catch { /* falls back to 14 */ }
+        const { data } = await supabase
+          .from('users')
+          .select('planner_lead_days, planner_reminder_days_1, planner_reminder_days_2')
+          .eq('id', user.id)
+          .maybeSingle();
+        const row = data as {
+          planner_lead_days?: number | null;
+          planner_reminder_days_1?: number | null;
+          planner_reminder_days_2?: number | null;
+        } | null;
+        if (!active) return;
+        if (typeof row?.planner_lead_days === 'number') setLeadDays(row.planner_lead_days);
+        if (typeof row?.planner_reminder_days_1 === 'number') setRem1(row.planner_reminder_days_1);
+        if (typeof row?.planner_reminder_days_2 === 'number') setRem2(row.planner_reminder_days_2);
+      } catch { /* falls back to defaults */ }
     })();
     return () => { active = false; };
   }, []);
@@ -178,15 +201,44 @@ export default function PlannerLibrarySection() {
   async function saveLeadDays(days: number) {
     setLeadDays(days);
     setLeadSaved(false);
+    // A reminder can't be closer to the event than the new deadline — drop any
+    // that are now too soon so the saved value can never break the rule.
+    const nextRem1 = rem1 && rem1 < days ? 0 : rem1;
+    const nextRem2 = rem2 && rem2 < days ? 0 : rem2;
+    if (nextRem1 !== rem1) setRem1(nextRem1);
+    if (nextRem2 !== rem2) setRem2(nextRem2);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { error } = await supabase
         .from('users')
-        .update({ planner_lead_days: days } as unknown as never)
+        .update({
+          planner_lead_days: days,
+          planner_reminder_days_1: nextRem1 || null,
+          planner_reminder_days_2: nextRem2 || null,
+        } as unknown as never)
         .eq('id', user.id);
       if (!error) { setLeadSaved(true); setTimeout(() => setLeadSaved(false), 2000); }
+    } catch { /* non-fatal */ }
+  }
+
+  async function saveReminders(next1: number, next2: number) {
+    setRem1(next1);
+    setRem2(next2);
+    setRemSaved(false);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase
+        .from('users')
+        .update({
+          planner_reminder_days_1: next1 || null,
+          planner_reminder_days_2: next2 || null,
+        } as unknown as never)
+        .eq('id', user.id);
+      if (!error) { setRemSaved(true); setTimeout(() => setRemSaved(false), 2000); }
     } catch { /* non-fatal */ }
   }
 
@@ -354,6 +406,64 @@ export default function PlannerLibrarySection() {
           ))}
         </select>
         {leadSaved && <span style={{ fontSize: '.78rem', color: 'var(--neon,#00e0a4)' }}>✓ Saved</span>}
+      </div>
+
+      {/* Auto-reminders — up to two nudges emailed to the client before the
+          event if the Planner & Playlist still isn't complete. Each lead time
+          must be at least `leadDays` out (never closer to the event than the
+          deadline above) and never same-day, so the ladder is filtered to
+          values ≥ leadDays. Off = that slot sends nothing. */}
+      <div style={{
+        maxWidth: 720, padding: '.85rem .9rem', marginBottom: '1.1rem',
+        border: '1px solid rgba(140,140,170,.18)', borderRadius: 9,
+        background: 'rgba(255,255,255,.02)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
+          <span style={{ fontSize: '.85rem', color: 'var(--white,#fff)', fontWeight: 600 }}>
+            Automatic reminders
+          </span>
+          {remSaved && <span style={{ fontSize: '.78rem', color: 'var(--neon,#00e0a4)' }}>✓ Saved</span>}
+        </div>
+        <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5, margin: '0 0 .7rem' }}>
+          If a client hasn&rsquo;t finished their Planner &amp; Playlist, email them a reminder this far ahead of the event.
+          A reminder can&rsquo;t be same-day or sooner than the {leadDays}-day submission window above.
+        </p>
+        {[0, 1].map((slot) => {
+          const value = slot === 0 ? rem1 : rem2;
+          const other = slot === 0 ? rem2 : rem1;
+          const opts = REMINDER_LADDER.filter((d) => d >= leadDays && d !== other);
+          return (
+            <div key={slot} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginTop: slot === 0 ? 0 : '.5rem' }}>
+              <label htmlFor={`planner-rem-${slot}`} style={{ fontSize: '.83rem', color: 'var(--muted,#c9c9d3)', minWidth: 62 }}>
+                Reminder {slot + 1}
+              </label>
+              <select
+                id={`planner-rem-${slot}`}
+                value={value}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (slot === 0) void saveReminders(v, rem2);
+                  else void saveReminders(rem1, v);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,.06)', border: '1px solid rgba(140,140,170,.4)',
+                  borderRadius: 6, color: '#fff', padding: '.35rem .5rem', fontSize: '.85rem',
+                }}
+              >
+                <option value={0}>Off</option>
+                {/* If the saved value is no longer in the allowed ladder (e.g.
+                    the deadline was lengthened past it), still show it so it
+                    reads correctly until changed. */}
+                {value > 0 && !opts.includes(value) && (
+                  <option value={value}>{value} days before the event</option>
+                )}
+                {opts.map((d) => (
+                  <option key={d} value={d}>{d} days before the event</option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
       </div>
 
       {err && <div style={{ color: '#ff7676', fontSize: '.82rem', marginBottom: '.7rem' }}>{err}</div>}
