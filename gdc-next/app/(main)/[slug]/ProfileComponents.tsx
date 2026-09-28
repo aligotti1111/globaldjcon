@@ -4430,7 +4430,7 @@ export function ShareCalendarModal({
 // against the bottom of the banner, centered. For owners, also shows
 // "+ add" buttons for missing socials so they can add inline.
 // ──────────────────────────────────────────────────────────────────────────
-export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
+export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingEnabled, ownerIsPro = false, onShareClick, isLoggedIn = false, onMessageClick }: { data: DjProfileData; effectiveSlug: string; isOwnProfile: boolean; bookingEnabled: boolean; ownerIsPro?: boolean; onShareClick: () => void; isLoggedIn?: boolean; onMessageClick?: () => void }) {
   // Lifted: only one SocialAddButton can be expanded at a time.
   const [openSocialField, setOpenSocialField] = useState<string | null>(null);
   // Icon style: one of four presets, chosen by the owner from a dropdown and
@@ -4809,6 +4809,17 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
             openField={openSocialField}
             setOpenField={setOpenSocialField}
           />
+          {/* Free plan: the number is saved but hidden from visitors. Tell the
+              owner why, and where to unlock it. */}
+          {data.phone && !ownerIsPro && (
+            <a
+              href="/subscribe"
+              className={styles.underBannerPhoneLocked}
+              title="Upgrade to show your phone number on your profile"
+            >
+              🔒 Hidden until you subscribe
+            </a>
+          )}
         </div>
       )}
       {/* Contact cluster — phone + message. Sits after the socials with its
@@ -4819,7 +4830,10 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
           by onMessageClick). */}
       {!isOwnProfile && (
         <div className={styles.underBannerContact}>
-          {data.phone && (
+          {/* Phone paywall: a visitor only sees the Call button when the DJ is
+              on a paid/comped plan. A free DJ can save a number but it stays
+              hidden here until they subscribe. */}
+          {data.phone && ownerIsPro && (
             <a
               href={`tel:${data.phone}`}
               className={`${styles.underBannerSocialBtn} ${styles.underBannerPhone}`}
