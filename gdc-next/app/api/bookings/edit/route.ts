@@ -64,7 +64,7 @@ interface BookingRow {
   venue_name: string | null; venue_type: string | null; room_details: string | null; venue_address: string | null;
   package_title: string | null; package_details: string | null;
   counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null; currency: string | null;
-  tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; deposit_pct: number | null;
+  tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; deposit_pct: number | null; deposit_amount: number | null;
   status_overrides: Record<string, boolean> | null;
   contract_status: string | null; field_edits: Record<string, string> | null;
 }
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: bData } = await admin
     .from('bookings')
-    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, status_overrides, contract_status, field_edits')
+    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, status_overrides, contract_status, field_edits')
     .eq('id', bookingId)
     .maybeSingle<BookingRow>();
   if (!bData || bData.dj_id !== djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -396,11 +396,61 @@ export async function POST(req: Request) {
         await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} updated your booking details`, html: shell(content) });
       }
       if (pendingRows.length) {
-        const plines = pendingRows.map((r) => `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(r.field)}</b><br><span style="color:#888;font-size:13px;">${esc(r.old_value)}</span> → <span style="color:#b0791f;font-weight:700;">${esc(r.new_value)}</span></td></tr>`).join('');
+        // Drop the raw price/tax rows from the plain change list when a full
+        // breakdown is shown below — otherwise the host sees the numbers twice.
+        const pricePending = pendingRows.find((r) => r.target_col === 'price');
+        const taxPending = pendingRows.find((r) => r.target_col === 'tax_pct');
+        const showBreakdown = !!(pricePending || taxPending);
+        const plines = pendingRows
+          .filter((r) => !(showBreakdown && (r.target_col === 'price' || r.target_col === 'tax_pct')))
+          .map((r) => `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(r.field)}</b><br><span style="color:#888;font-size:13px;">${esc(r.old_value)}</span> → <span style="color:#b0791f;font-weight:700;">${esc(r.new_value)}</span></td></tr>`).join('');
+
+        // ── PRICE BREAKDOWN (matches the DJ's edit modal) ──
+        // Agreed rate, tax, total, what's already been paid, and the resulting
+        // new balance due — each as old → new so the host sees exactly what
+        // they're approving.
+        let breakdownHtml = '';
+        if (showBreakdown) {
+          const cur = booking.currency || 'USD';
+          const money = (n: number) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n); } catch { return `$${n.toFixed(2)}`; } };
+          const oldRate = Number(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? 0);
+          const newRate = pricePending ? Number(pricePending.target_raw) : oldRate;
+          const oldTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
+          const newTaxPct = taxPending ? Number(taxPending.target_raw) : oldTaxPct;
+          const oldTax = round2((oldRate * oldTaxPct) / 100);
+          const newTax = round2((newRate * newTaxPct) / 100);
+          const oldTotal = round2(oldRate + oldTax);
+          const newTotal = round2(newRate + newTax);
+          // Everything already collected (real payments + hand-marked deposit /
+          // balance), so the host sees the remaining balance, not the full total.
+          const { data: payAll } = await admin.from('booking_payments').select('kind, amount_paid, status').eq('booking_id', booking.id);
+          const pr = (payAll as { kind: string; amount_paid?: number; status?: string }[] | null) || [];
+          let collected = pr.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+          const so = booking.status_overrides || {};
+          if (so.deposit && !pr.some((p) => p.kind === 'deposit' && Number(p.amount_paid || 0) > 0)) collected += Number(booking.deposit_amount || 0);
+          if (so.invoice && !pr.some((p) => p.kind === 'balance' && Number(p.amount_paid || 0) > 0)) collected = Math.max(collected, oldTotal);
+          collected = round2(collected);
+          const oldBal = Math.max(0, round2(oldTotal - collected));
+          const newBal = round2(newTotal - collected);
+          const brRow = (label: string, oldV: string | null, newV: string, strong = false) =>
+            `<tr><td style="padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px;color:#111;${strong ? 'font-weight:700;' : ''}">${esc(label)}</td>`
+            + `<td align="right" style="padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px;">${oldV != null ? `<span style="color:#aaa;text-decoration:line-through;">${esc(oldV)}</span> ` : ''}<span style="color:#0a6f61;font-weight:700;">${esc(newV)}</span></td></tr>`;
+          const rows = [
+            brRow('Agreed rate', money(oldRate), money(newRate)),
+            (oldTaxPct > 0 || newTaxPct > 0) ? brRow(`Tax (${newTaxPct}%)`, money(oldTax), money(newTax)) : '',
+            brRow(newTaxPct > 0 ? 'Total (with tax)' : 'Total', money(oldTotal), money(newTotal), true),
+            collected > 0 ? `<tr><td style="padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px;color:#111;">Received (paid)</td><td align="right" style="padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px;color:#111;font-weight:700;">${esc(money(collected))}</td></tr>` : '',
+            brRow(collected > 0 ? 'New balance due' : 'Balance due', money(oldBal), money(newBal), true),
+          ].join('');
+          breakdownHtml = `<p style="margin:16px 0 6px;color:#333;font-size:13px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Price breakdown</p><table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
+        }
+
         const link = `${SITE_URL}/change/${pendingRows[0].token}`;
         const content = `<h1 style="margin:0 0 12px;font-size:20px;color:#111;">${esc(dj)} has requested to change booking details</h1>`
-          + `<p style="margin:18px 0 6px;color:#333;font-size:15px;"><b>These changes need your approval</b> before they take effect:</p><table width="100%" cellpadding="0" cellspacing="0">${plines}</table>
-<table cellpadding="0" cellspacing="0" border="0" style="margin:20px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review &amp; respond</a></td></tr></table>`
+          + `<p style="margin:18px 0 6px;color:#333;font-size:15px;"><b>These changes need your approval</b> before they take effect:</p>`
+          + (plines ? `<table width="100%" cellpadding="0" cellspacing="0">${plines}</table>` : '')
+          + breakdownHtml
+          + `<table cellpadding="0" cellspacing="0" border="0" style="margin:20px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review &amp; respond</a></td></tr></table>`
           + legalFooter;
         await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} has requested to change booking details - approval needed`, html: shell(content) });
       }
