@@ -517,8 +517,15 @@ export default function BookingRow({
       // deduction is a deposit collected OFF-APP (marked complete, no payment
       // row) — that money is real, it just isn't in `paid`.
       const depositMarked = !!overrides.deposit && depositRealPaid <= 0 ? Number(booking.deposit_amount || 0) : 0;
-      const remaining = Math.max(0, Math.round((total - paid - depositMarked) * 100) / 100);
-      setReqAmount(remaining > 0 ? String(remaining) : '');
+      // A balance already settled BY HAND (mark-paid, no ledger row) records no
+      // amount_paid either — the total it was paid-in-full at lives in
+      // balance_settled_total. A "New Balance" after a price increase must bill
+      // only the DIFFERENCE (new total − what was already collected), not the
+      // whole thing again. Use the snapshot as the collected floor.
+      const settledSnap = Number((booking as { balance_settled_total?: number | null }).balance_settled_total ?? 0);
+      const collected = Math.max(paid + depositMarked, settledSnap);
+      const remaining = Math.max(0, Math.round((total - collected) * 100) / 100);
+      setReqAmount(remaining > 0 ? remaining.toFixed(2) : '');
     } else {
       setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
     }
