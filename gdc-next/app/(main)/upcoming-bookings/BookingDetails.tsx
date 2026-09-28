@@ -344,7 +344,7 @@ export default function BookingDetails({
         {open && (
           <>
             <div onClick={(e) => { e.stopPropagation(); setOpenHist(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
-            <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61, minWidth: 220, maxWidth: 300, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', padding: 6 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61, minWidth: 220, maxWidth: 'min(92vw, 460px)', width: 'max-content', background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', padding: 6 }}>
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#fff', padding: '4px 8px 6px' }}>Change history · {allItems[0].field}</div>
               {/* Effective value chain: original → … → the value that remains
                   (green, bottom). All prior values struck out. */}
@@ -362,8 +362,8 @@ export default function BookingDetails({
               {rejected.length > 0 && (
                 <div style={{ padding: '2px 8px 4px', marginTop: 2, borderTop: '1px solid rgba(255,255,255,.1)' }}>
                   {rejected.slice().reverse().map((it, i) => (
-                    <div key={`rej-${i}`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '4px 0' }}>
-                      <span style={{ fontSize: '.82rem', lineHeight: 1.4, color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.neu}</span>
+                    <div key={`rej-${i}`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '4px 0', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '.82rem', lineHeight: 1.4, color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)', whiteSpace: 'nowrap' }}>{it.neu}</span>
                       <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#ff8a8a', background: 'rgba(255,138,138,.12)', border: '1px solid rgba(255,138,138,.3)', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>{HIST_STATUS[it.status] || it.status}</span>
                     </div>
                   ))}
