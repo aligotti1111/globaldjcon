@@ -34,6 +34,35 @@ const SITE_URL = 'https://globaldjconnect.com';
 function esc(s: string): string {
   return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 }
+
+// Package details are free text (often a list, one item per line). Rather than
+// a single "old → new" line, show the WHOLE thing before and after — preserving
+// the line/list layout — with removed lines struck (red) and added/changed lines
+// highlighted (green). A line-level compare: a trimmed line present in both is
+// unchanged; only in the old = removed; only in the new = added.
+function packageChangeHtml(oldRaw: string | null, newRaw: string | null): string {
+  const oldLines = String(oldRaw ?? '').split(/\r?\n/);
+  const newLines = String(newRaw ?? '').split(/\r?\n/);
+  const oldSet = new Set(oldLines.map((l) => l.trim()).filter(Boolean));
+  const newSet = new Set(newLines.map((l) => l.trim()).filter(Boolean));
+  const line = (raw: string, mode: 'same' | 'removed' | 'added') => {
+    const t = raw.trim();
+    if (!t) return '';
+    const style = mode === 'removed'
+      ? 'color:#b0392f;text-decoration:line-through;'
+      : mode === 'added'
+        ? 'color:#0a6f61;font-weight:700;background:#e9f7f2;border-radius:3px;'
+        : 'color:#333;';
+    return `<div style="padding:3px 8px;font-size:14px;line-height:1.5;white-space:pre-wrap;${style}">${esc(raw)}</div>`;
+  };
+  const prev = oldLines.map((l) => line(l, newSet.has(l.trim()) ? 'same' : 'removed')).join('') || '<div style="padding:3px 8px;font-size:14px;color:#999;">(none)</div>';
+  const next = newLines.map((l) => line(l, oldSet.has(l.trim()) ? 'same' : 'added')).join('') || '<div style="padding:3px 8px;font-size:14px;color:#999;">(none)</div>';
+  return `<div style="margin:6px 0 4px;"><b style="font-size:14px;color:#111;">Package details</b></div>`
+    + `<p style="margin:8px 0 4px;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Previously</p>`
+    + `<div style="border:1px solid #eee;border-radius:6px;padding:4px 0;">${prev}</div>`
+    + `<p style="margin:12px 0 4px;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Updated to</p>`
+    + `<div style="border:1px solid #d7efe6;border-radius:6px;padding:4px 0;background:#fbfffe;">${next}</div>`;
+}
 function shell(content: string): string {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
 <tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -400,10 +429,17 @@ export async function POST(req: Request) {
         // breakdown is shown below — otherwise the host sees the numbers twice.
         const pricePending = pendingRows.find((r) => r.target_col === 'price');
         const taxPending = pendingRows.find((r) => r.target_col === 'tax_pct');
+        const pkgPending = pendingRows.find((r) => r.target_col === 'package_details');
         const showBreakdown = !!(pricePending || taxPending);
         const plines = pendingRows
           .filter((r) => !(showBreakdown && (r.target_col === 'price' || r.target_col === 'tax_pct')))
+          .filter((r) => r.target_col !== 'package_details')
           .map((r) => `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(r.field)}</b><br><span style="color:#888;font-size:13px;">${esc(r.old_value)}</span> → <span style="color:#b0791f;font-weight:700;">${esc(r.new_value)}</span></td></tr>`).join('');
+        // Full before/after for the package details, layout preserved + changes
+        // highlighted (old = the current booking value, new = the requested text).
+        const packageHtml = pkgPending
+          ? packageChangeHtml(booking.package_details, pkgPending.target_raw)
+          : '';
 
         // ── PRICE BREAKDOWN (matches the DJ's edit modal) ──
         // Agreed rate, tax, total, what's already been paid, and the resulting
@@ -450,6 +486,7 @@ export async function POST(req: Request) {
           + `<p style="margin:18px 0 6px;color:#333;font-size:15px;"><b>These changes need your approval</b> before they take effect:</p>`
           + (plines ? `<table width="100%" cellpadding="0" cellspacing="0">${plines}</table>` : '')
           + breakdownHtml
+          + packageHtml
           + `<table cellpadding="0" cellspacing="0" border="0" style="margin:20px auto 4px;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${link}" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review &amp; respond</a></td></tr></table>`
           + legalFooter;
         await resend.emails.send({ from: FROM, to: hostEmail, subject: `${dj} has requested to change booking details - approval needed`, html: shell(content) });
