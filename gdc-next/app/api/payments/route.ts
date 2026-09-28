@@ -635,6 +635,11 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
         .update({ status: 'waived', confirmed_at: new Date().toISOString() } as unknown as never)
         .eq('id', paymentId);
       if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+      // Waiving the balance settles the booking — snapshot the total it's now
+      // paid-in-full at, so a later price increase can surface a new balance.
+      if (p.kind === 'balance') {
+        await admin.from('bookings').update({ balance_settled_total: b.total_with_tax ?? null } as unknown as never).eq('id', p.booking_id);
+      }
       await logActivity(acting, { action: `payment.${p.kind}.waived`, summary: `Waived a ${p.kind === 'balance' ? 'balance' : 'deposit'}`, bookingId: p.booking_id });
       return NextResponse.json({ ok: true });
     }
@@ -658,6 +663,12 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
       .update({ amount_paid: nextPaid, status, confirmed_at: new Date().toISOString() } as unknown as never)
       .eq('id', paymentId);
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+
+    // A balance that just reached PAID settles the booking — snapshot the total
+    // it's paid-in-full at so a later price increase surfaces a new balance.
+    if (p.kind === 'balance' && status === 'paid') {
+      await admin.from('bookings').update({ balance_settled_total: b.total_with_tax ?? null } as unknown as never).eq('id', p.booking_id);
+    }
 
     // Receipt to the client.
     const to = await clientEmailFor(b);
