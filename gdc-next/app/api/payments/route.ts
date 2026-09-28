@@ -348,6 +348,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No amount to request on this booking.' }, { status: 400 });
     }
 
+    // Can't request the balance while a deposit is still PENDING (requested but
+    // unpaid). Otherwise the deposit sits in limbo — neither paid nor skipped —
+    // while a full balance goes out. The DJ must first settle that deposit (mark
+    // it paid) OR cancel it, then bill the whole amount as one balance request.
+    // A deposit that was never requested at all is fine — the balance just
+    // absorbs it (auto-skip below).
+    if (kind === 'balance') {
+      const { data: depPend } = await db
+        .from('booking_payments')
+        .select('id, status, amount_paid')
+        .eq('booking_id', bookingId)
+        .eq('kind', 'deposit');
+      const rows = (depPend as { status?: string; amount_paid?: number }[] | null) || [];
+      const depositPending = rows.some((r) =>
+        (r.status === 'requested' || r.status === 'pending_confirmation')
+        && Number(r.amount_paid || 0) <= 0);
+      if (depositPending) {
+        return NextResponse.json({ error: 'A deposit request is still pending. Mark it paid or cancel it first, then request the full balance.' }, { status: 409 });
+      }
+    }
+
     const dueDate = typeof body.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.dueDate)
       ? body.dueDate : null;
 
