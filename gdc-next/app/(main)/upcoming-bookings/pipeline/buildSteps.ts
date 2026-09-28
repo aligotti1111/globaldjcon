@@ -3,7 +3,7 @@
 // overrides and the row's action handlers, it returns the ordered pipeline
 // steps plus the row's computed value. No hooks, no JSX.
 
-import { NEON, AMBER, MUTED, fmtMoney, capMoney, type ContractAction } from '../shared';
+import { NEON, AMBER, MUTED, fmtMoney, type ContractAction } from '../shared';
 import type { PipelineStep, StepState } from './types';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from '../page';
 import type { NamedRider } from '@/lib/rider';
@@ -403,26 +403,15 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // Done means done. Show the fraction if there are real amounts to show,
       // otherwise say nothing and let the check carry it — "$0/$0" on a waived
       // deposit would be a lie about money that was never owed.
+      // A STATE WORD, never a dollar amount — Not Sent / Pending / Paid /
+      // Skipped. (The received/asked figures live in the dropdown's info line
+      // below, where there's room to be precise.)
       caption: depositSkipped
         ? 'Skipped'
         : allDone
-        ? (overrides.deposit && paidSoFar <= 0
-            // Marked complete by hand, no app payment behind it — say so, the
-            // same way the Contract step reads 'Complete'. (A real payment still
-            // shows the amount fraction below, which is more informative.)
-            ? 'Complete'
-            : paidSoFar > 0
-              ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
-              : undefined)
+        ? 'Paid'
         : depositRow
-          // Show received/asked from the moment it's requested — "$0/$600"
-          // before anything lands, "$300/$600" once part is in. The DJ sees the
-          // target the whole time, not just after a partial arrives. Guard on
-          // askedFor > 0 so a zero-amount row never prints a meaningless
-          // "$0/$0" (same reason the waived case above says nothing).
-          ? (askedFor > 0
-              ? `${capMoney(paidSoFar, currency)}/${capMoney(askedFor, currency)}`
-              : 'Pending')
+          ? 'Pending'
           : 'Not Sent',
       // Shown at the top of the dropdown, above the actions. When the deposit
       // was auto-skipped because the balance was requested for the whole amount,
