@@ -17,9 +17,9 @@ import SectionBanner from '../update-dj-profile/SectionBanner';
 
 const LEAD_OPTIONS = [7, 10, 14, 21, 30];
 // The ladder a reminder day can be picked from. Filtered at render time to the
-// values that are allowed: at least `leadDays` out (a reminder can't be closer
-// to the event than the submission deadline the DJ asked the planner back by)
-// and never same-day. So if the deadline is 21 days, only 21/30/45/60 show.
+// values that are allowed: strictly MORE than `leadDays` out — a reminder must
+// land before the submission deadline, not on the due date itself and never
+// after it. So if the deadline is 21 days, only 30/45/60 show.
 const REMINDER_LADDER = [7, 10, 14, 21, 30, 45, 60];
 
 type TemplateLite = {
@@ -201,10 +201,10 @@ export default function PlannerLibrarySection() {
   async function saveLeadDays(days: number) {
     setLeadDays(days);
     setLeadSaved(false);
-    // A reminder can't be closer to the event than the new deadline — drop any
-    // that are now too soon so the saved value can never break the rule.
-    const nextRem1 = rem1 && rem1 < days ? 0 : rem1;
-    const nextRem2 = rem2 && rem2 < days ? 0 : rem2;
+    // A reminder must land BEFORE the deadline — drop any that are now on or
+    // after the new due date so the saved value can never break the rule.
+    const nextRem1 = rem1 && rem1 <= days ? 0 : rem1;
+    const nextRem2 = rem2 && rem2 <= days ? 0 : rem2;
     if (nextRem1 !== rem1) setRem1(nextRem1);
     if (nextRem2 !== rem2) setRem2(nextRem2);
     try {
@@ -426,12 +426,12 @@ export default function PlannerLibrarySection() {
         </div>
         <p style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', lineHeight: 1.5, margin: '0 0 .7rem' }}>
           If a client hasn&rsquo;t finished their Planner &amp; Playlist, email them a reminder this far ahead of the event.
-          A reminder can&rsquo;t be same-day or sooner than the {leadDays}-day submission window above.
+          A reminder has to land before your {leadDays}-day submission window &mdash; never on the due date or after it.
         </p>
         {[0, 1].map((slot) => {
           const value = slot === 0 ? rem1 : rem2;
           const other = slot === 0 ? rem2 : rem1;
-          const opts = REMINDER_LADDER.filter((d) => d >= leadDays && d !== other);
+          const opts = REMINDER_LADDER.filter((d) => d > leadDays && d !== other);
           return (
             <div key={slot} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginTop: slot === 0 ? 0 : '.5rem' }}>
               <label htmlFor={`planner-rem-${slot}`} style={{ fontSize: '.83rem', color: 'var(--muted,#c9c9d3)', minWidth: 62 }}>
