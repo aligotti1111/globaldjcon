@@ -99,6 +99,11 @@ export default function PipelineStrip({
         const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
         // "Not sent" reads red so it stands apart from an amber "Pending".
         const capColorFinal = /^not sent$/i.test(cap || '') ? '#ff6b6b' : capColor;
+        // NEW BALANCE (price rose after paid-in-full): two-tone caption —
+        // "Paid" in green, the new-balance part in white.
+        const capNode: React.ReactNode = (st.newBalanceDue && st.newBalanceDue > 0)
+          ? (<><span style={{ color: '#3fd6ab' }}>Paid</span><span style={{ color: '#7a7a8c' }}> / </span><span style={{ color: '#f2f2f7' }}>{cap || 'New Balance'}</span></>)
+          : (cap || '');
         // A stage the DJ turned OFF in their pipeline settings: it shows the
         // greyed icon + "Not Required" so it can still be deployed on a one-off,
         // but it must read as muted — NOT as an amber "your move" step. No dot,
@@ -172,12 +177,12 @@ export default function PipelineStrip({
                   }}
                 >
                   <span className={styles.stTop}>{inner}</span>
-                  <span className={styles.stCap} style={{ color: capColorFinal }}>{cap || ''}</span>
+                  <span className={styles.stCap} style={{ color: capColorFinal }}>{capNode}</span>
                 </button>
               ) : (
                 <div className={styles.stBtn} style={{ cursor: 'default' }} title={stageLabel(st.key, djType)}>
                   <span className={styles.stTop}>{inner}</span>
-                  <span className={styles.stCap} style={{ color: capColorFinal }}>{cap || ''}</span>
+                  <span className={styles.stCap} style={{ color: capColorFinal }}>{capNode}</span>
                 </div>
               )}
               {open && hasMenu && menuPos && (
