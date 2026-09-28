@@ -829,6 +829,19 @@ export default function BookingDetails({
     const isTotal = (l: string) => /^Total/i.test(l);
     const main = cells.filter((c) => !isSchedule(c.label));
     const sched = cells.filter((c) => isSchedule(c.label));
+    // Whether each half of the schedule is settled — a real ledger payment
+    // (paid/waived/part), or a hand "mark paid". Drives a small PAID tag so the
+    // DJ can see at a glance which portions are collected.
+    const so = (booking as { status_overrides?: Record<string, boolean> | null }).status_overrides || {};
+    const depositPaidLine = depositManualPaid
+      || payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived' || Number(p.amount_paid) > 0));
+    const balancePaidLine = balanceManualPaid || !!so.invoice
+      || (booking as { balance_settled_total?: number | null }).balance_settled_total != null
+      || payments.some((p) => p.kind === 'balance' && (p.status === 'paid' || p.status === 'waived' || Number(p.amount_paid) > 0));
+    const paidTag = (
+      <span style={{ marginLeft: 8, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, color: NEON, background: 'rgba(0,245,196,.12)', border: '1px solid rgba(0,245,196,.35)', whiteSpace: 'nowrap' }}>Paid</span>
+    );
+    const isPaidLine = (l: string) => (/Deposit/i.test(l) && depositPaidLine) || (/Balance/i.test(l) && balancePaidLine);
     return (
       <>
         {main.map((c) => (
@@ -850,7 +863,7 @@ export default function BookingDetails({
             <div className={styles.schedLbl}>Payment schedule</div>
             {sched.map((c) => (
               <div key={c.label} className={styles.priceRow}>
-                <span className={styles.priceKey}>{c.label}</span>
+                <span className={styles.priceKey}>{c.label}{isPaidLine(c.label) && paidTag}</span>
                 <span className={styles.priceVal}>{c.value}</span>
               </div>
             ))}
