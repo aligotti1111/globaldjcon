@@ -691,6 +691,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     const settledP = (p: BookingPayment) => p.status === 'paid' || p.status === 'waived';
     const balancePays = payments.filter((p) => p.kind === 'balance');
     const depositSettled = !depositRow || settledP(depositRow);
+    // A deposit that's out but unpaid blocks a balance request — the DJ must
+    // settle it or cancel it first (server enforces this too). A deposit that
+    // was never requested doesn't block; the balance just absorbs it.
+    const depositPending = payments.some((p) => p.kind === 'deposit'
+      && (p.status === 'requested' || p.status === 'pending_confirmation')
+      && Number(p.amount_paid || 0) <= 0);
     const balanceRow = balancePays[0] || null;
     const balanceSettled = balancePays.length > 0 && balancePays.every(settledP);
     // At least one balance payment actually settled — stays true even after a
@@ -790,7 +796,11 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                     ]
                   : []),
             ]
-          : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(done ? [{ label: 'Re-send receipt', run: () => sendReceipt('balance') }, { label: 'Download receipt', run: () => downloadReceipt?.('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${balanceRow.id}`).catch(() => {}); } }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+          : [...((balanceRow || done || depositPending) ? [] : [{ label: 'Request balance', run: () => openRequest('balance') }]), ...(done ? [{ label: 'Re-send receipt', run: () => sendReceipt('balance') }, { label: 'Download receipt', run: () => downloadReceipt?.('balance') }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${balanceRow.id}`).catch(() => {}); } }] : []), ...(balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+        // Why "Request balance" is missing: a deposit is still out and unpaid.
+        hint: (!hasNewBalance && !archive && !balanceRow && !done && depositPending)
+          ? 'Settle or cancel the pending deposit first, then request the full balance.'
+          : undefined,
       });
     }
   }
