@@ -31,6 +31,9 @@ export interface BuildStepsCtx {
   runContract: (a: ContractAction) => void;
   openRequest: (kind?: 'deposit' | 'balance') => void;
   cancelRequest: (paymentId: string) => void;
+  /** Mark a specific (new-balance) payment row paid in full. Optional so the
+   *  module and BookingRow can land in either order without a red build. */
+  markBalancePaid?: (paymentId: string) => void;
   sendReceipt: (kind: 'deposit' | 'balance') => Promise<void> | void;
   // Optional so this module and BookingRow can be committed in either order
   // without a red build (the site deploys only on green).
@@ -51,7 +54,7 @@ export interface BuildStepsCtx {
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
+  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
   const steps: PipelineStep[] = [];
   /*
     MANUAL BOOKINGS CAN HAVE A CONTRACT — this used to be `!booking.is_manual`,
@@ -686,20 +689,46 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     const depositSettled = !depositRow || settledP(depositRow);
     const balanceRow = balancePays[0] || null;
     const balanceSettled = balancePays.length > 0 && balancePays.every(settledP);
+    // At least one balance payment actually settled — stays true even after a
+    // fresh unpaid "new balance" row is added alongside it (which would make the
+    // every()-based balanceSettled flip to false).
+    const anyBalanceSettled = balancePays.some(settledP);
     // Money has landed somewhere — a deposit that settled, or a balance that
     // did. Before that, a receipt has nothing to describe.
     const anyMoneyIn =
-      (!!depositRow && settledP(depositRow)) || balanceSettled || !!overrides.invoice;
-    const done = balanceSettled || !!overrides.invoice;
+      (!!depositRow && settledP(depositRow)) || anyBalanceSettled || !!overrides.invoice;
+    const doneRaw = balanceSettled || !!overrides.invoice;
+
+    // ── NEW BALANCE AFTER A PRICE INCREASE ─────────────────────────────────
+    // Once the balance is paid in full, a later price INCREASE leaves an
+    // outstanding remainder (current total − everything collected). The step
+    // reopens showing "Paid / New Balance" so the DJ can bill just the delta —
+    // the payments route already computes a balance request as total − paid, so
+    // Request New Balance asks for exactly the remainder. A price DECREASE never
+    // creates a new balance: an overpaid booking simply stays paid (no refund).
+    const currentTotal = bookingTotalWithTax(booking, taxPct) ?? Number(booking.total_with_tax ?? 0);
+    const collected = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+    // Only a REAL settled balance in the ledger counts as "was paid in full" — a
+    // manually marked full-cash booking (overrides.invoice, no row, no amount)
+    // has nothing to diff against, so it never spuriously shows a new balance.
+    const wasPaidInFull = anyBalanceSettled && collected > 0;
+    const newBalanceDue = Math.round((currentTotal - collected) * 100) / 100;
+    // The fresh, still-unpaid balance request the DJ sent to collect the delta.
+    const unpaidBalanceRow = balancePays.find((p) => !settledP(p) && Number(p.amount_paid || 0) <= 0) || null;
+    const hasNewBalance = wasPaidInFull && newBalanceDue > 0.009;
+    const newBalanceRequested = hasNewBalance && !!unpaidBalanceRow;
+    // In the new-balance state the step is NOT done — money is still owed.
+    const done = doneRaw && !hasNewBalance;
     if (!isCancelled || balanceRow || anyMoneyIn) {
       const currency = balanceRow ? (booking.currency || 'USD') : (booking.currency || 'USD');
       steps.push({
         key: 'invoice',
-        label: done ? 'Balance' : balanceRow ? 'Balance sent' : 'Send balance',
+        label: hasNewBalance ? 'Paid / New Balance' : done ? 'Balance' : balanceRow ? 'Balance sent' : 'Send balance',
         state: done ? 'done' : 'todo',
         icon: 'receipt',
-        overridable: !balanceSettled,
+        overridable: !balanceSettled && !hasNewBalance,
         done,
+        newBalanceDue: hasNewBalance ? newBalanceDue : undefined,
         color: done ? NEON : AMBER,
         // Same vocabulary as the rest: Not sent / Pending / check.
         //
@@ -708,20 +737,38 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         // always full colour, a receipt with no check and no word looks
         // identical whether it's gone out or not, and invoice becomes the one
         // column you can't read.)
-        caption: done ? 'Paid' : balanceRow ? 'Pending' : 'Not Sent',
-        info: balanceRow
+        // Same vocabulary as the rest: Not sent / Pending / check — plus the
+        // new-balance states (a price rose after paid-in-full).
+        caption: hasNewBalance
+          ? (newBalanceRequested ? 'New balance sent' : 'New Balance')
+          : done ? 'Paid' : balanceRow ? 'Pending' : 'Not Sent',
+        info: hasNewBalance
+          ? `${fmtMoney(collected, currency)} paid · ${fmtMoney(newBalanceDue, currency)} new balance due`
+          : balanceRow
           ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
           : depositSettled
             ? undefined
             : undefined,
-        // Past Bookings: no "Request balance" workflow — just let the DJ send
-        // or resend the invoice. If an invoice was NEVER sent (no balanceRow),
+        // New balance takes over the whole action list when present: Request New
+        // Balance → (once sent) Mark New Balance Paid + copy link + cancel. When
+        // it's marked paid the payments route auto-sends a receipt reflecting the
+        // NEW total. Past Bookings: no "Request balance" workflow — just send or
+        // resend the invoice. If an invoice was NEVER sent (no balanceRow),
         // "Send invoice" stays available even after the balance is marked
         // complete — the DJ may have been paid in cash but still owes the client
         // a receipt. Once an invoice exists, "Resend invoice" only shows while
-        // it's still unpaid. Once the balance is settled (marked complete),
-        // the DJ can resend or download the paid-in-full receipt.
-        actions: archive
+        // it's still unpaid. Once settled, the DJ can resend/download the receipt.
+        actions: hasNewBalance
+          ? (newBalanceRequested
+              ? [
+                  { label: 'Mark New Balance Paid', run: () => markBalancePaid?.(unpaidBalanceRow!.id) },
+                  ...(Number(unpaidBalanceRow!.amount_paid || 0) <= 0
+                    ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${unpaidBalanceRow!.id}`).catch(() => {}); } }]
+                    : []),
+                  { label: 'Cancel request', run: () => cancelRequest(unpaidBalanceRow!.id) },
+                ]
+              : [{ label: 'Request New Balance', run: () => openRequest('balance') }])
+          : archive
           ? [
               ...(!balanceRow
                   ? [{ label: 'Send invoice', run: () => openRequest('balance') }]
