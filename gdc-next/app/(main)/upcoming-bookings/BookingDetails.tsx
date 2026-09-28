@@ -270,10 +270,10 @@ export default function BookingDetails({
       if (Array.isArray(d.history)) {
         const grouped: Record<string, HistItem[]> = {};
         for (const h of d.history) {
-          // Only effective changes feed the value chain: applied edits, host-
-          // approved changes, and a still-pending one. Cancelled / declined /
-          // superseded requests never took effect, so they stay out of it.
-          if (!['applied', 'approved', 'pending'].includes(h.status)) continue;
+          // Effective changes (applied / approved / pending) feed the value chain.
+          // Declined / cancelled / superseded requests never took effect, but the
+          // DJ should still see they were attempted — they're rendered separately,
+          // struck out with a status tag, under the current value in the dropdown.
           (grouped[h.target_col] ||= []).push({ field: h.field, old: h.old_value || '—', neu: h.new_value || '—', status: h.status, at: h.created_at });
         }
         setHistory(grouped);
@@ -299,22 +299,37 @@ export default function BookingDetails({
     const approved = typeof mark === 'string' && mark.startsWith('approved');
     // The host updating their own contact phone stamps 'hostupdated:'.
     const hostUpdated = typeof mark === 'string' && mark.startsWith('hostupdated');
-    if (!pending && !mark) return null;
-    const label = pending ? 'Pending host approval' : approved ? 'Host approved change' : hostUpdated ? 'Updated by host' : 'Edited';
+    const allItems = history[col] || [];
+    const EFFECTIVE = ['applied', 'approved', 'pending'];
+    const eff = allItems.filter((it) => EFFECTIVE.includes(it.status));
+    const rejected = allItems.filter((it) => !EFFECTIVE.includes(it.status));
+    // Show the badge when the field is pending, has an effective edit marker, OR
+    // has a rejected attempt (declined / cancelled / superseded) worth surfacing.
+    if (!pending && !mark && rejected.length === 0) return null;
+    // A field whose ONLY history is rejected attempts (nothing ever took effect)
+    // reads as "Change declined" in muted red, not the green "Edited".
+    const rejectedOnly = !pending && !mark && eff.length === 0;
+    const label = rejectedOnly ? 'Change declined' : pending ? 'Pending host approval' : approved ? 'Host approved change' : hostUpdated ? 'Updated by host' : 'Edited';
     const amber = pending;
-    const color = amber ? '#f5e642' : NEON;
-    const bg = amber ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)';
-    const bd = amber ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)';
+    const color = rejectedOnly ? '#ff8a8a' : amber ? '#f5e642' : NEON;
+    const bg = rejectedOnly ? 'rgba(255,138,138,.1)' : amber ? 'rgba(245,230,66,.1)' : 'rgba(0,245,196,.12)';
+    const bd = rejectedOnly ? 'rgba(255,138,138,.35)' : amber ? 'rgba(245,230,66,.35)' : 'rgba(0,245,196,.35)';
     const base: React.CSSProperties = {
       display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, verticalAlign: 'middle',
       fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.52rem', fontWeight: 700,
       letterSpacing: '.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5,
       color, background: bg, border: `1px solid ${bd}`,
     };
-    const items = history[col] || [];
-    if (items.length <= 1) return <span style={base}>{label}</span>;
-    // Multiple changes → dropdown of the history.
+    // Plain badge only when there's a single effective change and no rejected
+    // attempts to surface. Otherwise it becomes the history dropdown.
+    if (eff.length <= 1 && rejected.length === 0) return <span style={base}>{label}</span>;
     const open = openHist === col;
+    // The value that REMAINS in effect: the newest effective value, or — when
+    // every attempt was rejected — the value the declined request was trying to
+    // change (its `old`), which is still the live value.
+    const chain = eff.length
+      ? [eff[eff.length - 1].old, ...eff.slice().reverse().map((it) => it.neu)]
+      : [rejected[rejected.length - 1].old];
     return (
       <span style={{ position: 'relative', display: 'inline-block' }}>
         <button
@@ -323,32 +338,37 @@ export default function BookingDetails({
           style={{ ...base, cursor: 'pointer' }}
           title="Show change history"
         >
-          {label}<span style={{ fontSize: '.6rem', lineHeight: 1 }}>{items.length}×</span>
+          {label}<span style={{ fontSize: '.6rem', lineHeight: 1 }}>{allItems.length}×</span>
           <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         {open && (
           <>
             <div onClick={(e) => { e.stopPropagation(); setOpenHist(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
             <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61, minWidth: 220, maxWidth: 300, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', padding: 6 }}>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#fff', padding: '4px 8px 6px' }}>Change history · {items[0].field}</div>
-              {(() => {
-                // Build one chronological chain of values instead of paired
-                // rows. items[0] is the latest change, so walking from the
-                // oldest change's `old` (the original) through each `neu` gives:
-                // original → … → current. All but the final are struck out; the
-                // final value (the live event date) shows in green at the bottom.
-                const chain = [items[items.length - 1].old, ...items.slice().reverse().map(it => it.neu)];
-                return (
-                  <div style={{ padding: '4px 8px 6px' }}>
-                    {chain.map((v, i) => {
-                      const isCurrent = i === chain.length - 1;
-                      return (
-                        <div key={i} style={{ fontSize: '.82rem', lineHeight: 1.5, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? NEON : '#ff8a8a', textDecoration: isCurrent ? 'none' : 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{v}</div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#fff', padding: '4px 8px 6px' }}>Change history · {allItems[0].field}</div>
+              {/* Effective value chain: original → … → the value that remains
+                  (green, bottom). All prior values struck out. */}
+              <div style={{ padding: '4px 8px 6px' }}>
+                {chain.map((v, i) => {
+                  const isCurrent = i === chain.length - 1;
+                  return (
+                    <div key={i} style={{ fontSize: '.82rem', lineHeight: 1.5, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? NEON : '#ff8a8a', textDecoration: isCurrent ? 'none' : 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{v}</div>
+                  );
+                })}
+              </div>
+              {/* Rejected attempts — declined / cancelled / superseded. Never took
+                  effect, shown struck out with a tag so the DJ knows it was tried
+                  and what the price that remains is. */}
+              {rejected.length > 0 && (
+                <div style={{ padding: '2px 8px 4px', marginTop: 2, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+                  {rejected.slice().reverse().map((it, i) => (
+                    <div key={`rej-${i}`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '4px 0' }}>
+                      <span style={{ fontSize: '.82rem', lineHeight: 1.4, color: '#ff8a8a', textDecoration: 'line-through', textDecorationColor: 'rgba(255,138,138,.6)' }}>{it.neu}</span>
+                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#ff8a8a', background: 'rgba(255,138,138,.12)', border: '1px solid rgba(255,138,138,.3)', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>{HIST_STATUS[it.status] || it.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
