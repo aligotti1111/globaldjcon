@@ -121,13 +121,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Could not save.' }, { status: 502 });
   }
 
-  // Marking the DEPOSIT paid OR skipped by hand resolves the deposit stage, so any
-  // still-outstanding deposit request is no longer live — remove it. That way
+  // Marking the DEPOSIT paid/skipped — OR marking the BALANCE paid (which bills
+  // the whole thing, so the deposit is moot) — resolves the deposit stage, so any
+  // still-outstanding deposit request is no longer live and is removed. That way
   // un-marking later returns to "Request deposit" (no request) instead of
   // resurrecting a stale pending one, and a skipped deposit doesn't keep showing
   // "$0 of $X received" with Copy link / Cancel. Only unpaid requests are
   // deleted; a real paid/part-paid/waived deposit in the ledger is left untouched.
-  if ((key === 'deposit' || key === 'deposit_skipped') && done) {
+  if ((key === 'deposit' || key === 'deposit_skipped' || key === 'invoice') && done) {
     try {
       // booking_payments predates the generated types, so use an untyped view.
       const db = admin as unknown as { from: (t: string) => { delete: () => { eq: (c: string, v: unknown) => unknown } } };
