@@ -194,7 +194,7 @@ function dateHTML(m){return `<div class="dateb"><span class="n">${m.date.n}</spa
 function groupHTML(g){
   const s=g.items[0].m;
   const stageHeads=s.slots.map(k=>`<span>${shortLabel(k,s.type)}</span>`).join('');
-  const heads=`<span class="l">Date</span><span></span><span class="l">Time</span><span class="l">${s.type==='club'?'Venue':'Event'}</span><span class="r">Value</span>${stageHeads}<span></span>`;
+  const heads=`<span class="l">Date</span><span></span><span class="l">Time</span><span class="l">${s.type==='club'?'Venue':'Event'}</span>${stageHeads}<span></span>`;
   const drows=g.items.map(({m,i})=>drowHTML(m,i)).join('');
   const mobs=g.items.map(({m,i})=>mobCardHTML(m,i)).join('');
   const note=g.type==='club'?`<p class="cnote">All club / bar bookings display on your public profile — with the option to add a URL for more info.</p>`:'';
@@ -210,8 +210,12 @@ function drowHTML(m,mi){
   const d=m.det||{};
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
-  const row=`<div class="drow${open?' open':''}"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}</span><span class="dval">${m.val}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
-  return row+(m.note?noteHTML(mi,m.note):'')+(open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'');
+  const row=`<div class="drow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  // Value now lives in a full-width "Total Value" footer at the bottom of the
+  // card (matching the booking card), not an inline column.
+  const valuebar=`<div class="deskvaluebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>`;
+  const detail=open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'';
+  return `<div class="drowwrap${open?' open':''}">${row}${m.note?noteHTML(mi,m.note):''}${detail}${valuebar}</div>`;
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
