@@ -20,6 +20,12 @@ export type PipelineStep = {
   info?: string;
   /** Why an action you'd expect isn't offered (wraps; kept out of `info`). */
   hint?: string;
+  /**
+   * Balance step only: an outstanding remainder created by a price INCREASE
+   * after the balance was already paid in full. When set (> 0) the strip shows
+   * a two-tone "Paid / New Balance" caption and the step reopens to collect it.
+   */
+  newBalanceDue?: number;
   actions?: { label: string; run: () => void; danger?: boolean }[];
 };
 
