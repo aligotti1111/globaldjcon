@@ -69,7 +69,7 @@
 .gdc-dash .deskdetail{background:var(--card);padding:16px 18px 18px;border-top:1px solid var(--line)}
 .gdc-dash .deskdetail .mobdetail{padding:0;border-top:none}
 .gdc-dash .drow .st{justify-self:center;display:flex;flex-direction:column;align-items:center;gap:8px}
-.gdc-dash .drow .st .lab{display:block;font-size:.62rem;font-weight:600;letter-spacing:.08em;color:#fff}
+.gdc-dash .drow .st .lab{display:block;font-size:.72rem;font-weight:600;letter-spacing:.08em;color:#fff}
 .gdc-dash .drow .rowchev{justify-self:end}
 
 
