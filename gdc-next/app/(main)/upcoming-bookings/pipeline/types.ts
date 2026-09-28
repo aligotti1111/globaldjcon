@@ -26,7 +26,7 @@ export type PipelineStep = {
    * a two-tone "Paid / New Balance" caption and the step reopens to collect it.
    */
   newBalanceDue?: number;
-  actions?: { label: string; run: () => void; danger?: boolean }[];
+  actions?: { label: string; run: () => void; danger?: boolean; disabled?: boolean; title?: string }[];
 };
 
 // Stage display name shared by the strip tooltip and the menu header
