@@ -295,10 +295,19 @@ export async function POST(req: Request) {
         // AND the resulting new price together, so both figures are shown.
         const cur = booking.currency || 'USD';
         const money = (n: number) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n); } catch { return `$${n.toFixed(2)}`; } };
-        const oldTotal = round2(base + round2((base * oldTaxPct) / 100));
-        const newTotal = round2(base + round2((base * tp) / 100));
-        const oldDisp = `${oldTaxPct > 0 ? `${oldTaxPct}%` : 'No tax'} · total ${money(oldTotal)}`;
-        const newDisp = `${tp > 0 ? `${tp}%` : 'No tax'} · total ${money(newTotal)}`;
+        const oldTaxAmt = round2((base * oldTaxPct) / 100);
+        const newTaxAmt = round2((base * tp) / 100);
+        const oldTotal = round2(base + oldTaxAmt);
+        const newTotal = round2(base + newTaxAmt);
+        // Full breakdown so the host sees WHAT the % is applied to and the dollar
+        // amount it works out to, not just the percentage:
+        //   "$400.00 + 5.75% tax ($23.00) = $423.00"  /  "$400.00 · no tax = $400.00"
+        const fmtBreakdown = (pct: number, taxAmt: number, total: number) =>
+          pct > 0
+            ? `${money(base)} + ${pct}% tax (${money(taxAmt)}) = ${money(total)}`
+            : `${money(base)} · no tax = ${money(total)}`;
+        const oldDisp = fmtBreakdown(oldTaxPct, oldTaxAmt, oldTotal);
+        const newDisp = fmtBreakdown(tp, newTaxAmt, newTotal);
         if (noHostRecipient) {
           // No one to approve → apply the tax change immediately.
           const taxAmt = round2((base * tp) / 100);
