@@ -1313,8 +1313,11 @@ export default function BookingDetails({
           pendingInfo={pendingInfo}
           collected={(() => {
             const base = payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0);
-            // A hand-paid balance settles the whole booking — top the collected
-            // amount up to the current total so the new-balance nets it out.
+            // A hand-paid balance settles the whole booking. Prefer the snapshot
+            // total stamped when the balance settled (accurate even after a price
+            // change); fall back to the current total for legacy rows with no snap.
+            const snap = (booking as { balance_settled_total?: number | null }).balance_settled_total;
+            if (snap != null) return Math.max(base, round2(Number(snap)));
             return balanceManualPaid && cardTotal != null ? Math.max(base, round2(Number(cardTotal))) : base;
           })()}
           depositPaidAmount={payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0)}
