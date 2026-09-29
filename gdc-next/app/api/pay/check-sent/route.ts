@@ -35,7 +35,7 @@ function shell(content: string): string {
 }
 
 export async function POST(req: Request) {
-  let body: { paymentId?: unknown; mode?: unknown };
+  let body: { paymentId?: unknown; mode?: unknown; method?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const paymentId = typeof body.paymentId === 'string' && body.paymentId ? body.paymentId : null;
   if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
@@ -43,6 +43,10 @@ export async function POST(req: Request) {
   // 'at-event' — cash/check will be handed over at the event (balance); record
   //              intent only, the DJ collects on the day.
   const mode = (body as { mode?: unknown }).mode === 'at-event' ? 'at-event' : 'sent';
+  // Which method the client picked for at-event, so the DJ's heads-up says
+  // "in cash" or "by check" instead of the generic "cash or check". Null when
+  // the client came from a link that didn't specify.
+  const method = body.method === 'cash' ? 'cash' : body.method === 'check' ? 'check' : null;
 
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
@@ -91,8 +95,11 @@ export async function POST(req: Request) {
       const heading = mode === 'at-event'
         ? `${who} will pay at the event`
         : `${who} is mailing a check`;
+      // "in cash" / "by check" when the client's link told us which; otherwise
+      // the generic "by cash or check".
+      const payWord = method === 'cash' ? 'in cash' : method === 'check' ? 'by check' : 'by cash or check';
       const bodyLines = mode === 'at-event'
-        ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">They plan to pay their ${kindLabel} of <strong>${amt}</strong> in person${forWhen}${atVenue} — by cash or check on the day. Nothing to do now; collect it at the event and confirm what you receive.</p>`
+        ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed payment will be paid ${payWord} at the event${forWhen}${atVenue}. Nothing to do now; collect it at the event and <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
       const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${heading}</h1>
