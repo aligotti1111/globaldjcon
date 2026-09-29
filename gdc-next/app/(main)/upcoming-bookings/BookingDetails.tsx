@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment } from './page';
+import { confirmedRail } from './pipeline/buildSteps';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import RiderSendModal from './RiderSendModal';
@@ -909,6 +910,38 @@ export default function BookingDetails({
             )}
           </div>
         )}
+        {/* When the host has confirmed they'll hand over CASH or mail/bring a
+            CHECK for a still-unpaid deposit or balance, note it here — with the
+            date they confirmed — under the pricing. The balance is assumed paid
+            on the day of the event. */}
+        {(() => {
+          const fmtDate = (iso?: string | null) => {
+            if (!iso) return null;
+            const d = new Date(iso);
+            return isNaN(d.getTime()) ? null : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          };
+          const depRow = payments.find((p) => p.kind === 'deposit' && confirmedRail(p));
+          const balRow = payments.find((p) => p.kind === 'balance' && confirmedRail(p));
+          const lines: string[] = [];
+          const depRail = confirmedRail(depRow);
+          if (depRail) {
+            const d = fmtDate(depRow?.marked_sent_at);
+            lines.push(`Host confirmed${d ? ` on ${d}` : ''} they'll pay the deposit ${depRail === 'cash' ? 'in cash' : 'by check'}.`);
+          }
+          const balRail = confirmedRail(balRow);
+          if (balRail) {
+            const d = fmtDate(balRow?.marked_sent_at);
+            lines.push(`Host confirmed${d ? ` on ${d}` : ''} they'll pay the balance ${balRail === 'cash' ? 'in cash' : 'by check'} on the day of the event.`);
+          }
+          if (!lines.length) return null;
+          return (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {lines.map((n, i) => (
+                <p key={i} style={{ margin: 0, fontSize: '.72rem', color: '#9a9aac', lineHeight: 1.5, fontStyle: 'italic' }}>{n}</p>
+              ))}
+            </div>
+          );
+        })()}
       </>
     );
   };
