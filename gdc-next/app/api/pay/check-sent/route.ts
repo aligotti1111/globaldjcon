@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { checkMemo, referenceCode, splitMailAddress } from '@/lib/paymentMethods';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -79,10 +80,10 @@ export async function POST(req: Request) {
   // Tell the DJ a check is coming.
   const { data: bData } = await admin
     .from('bookings')
-    .select('dj_id, requester_name, event_date, venue_name')
+    .select('dj_id, requester_name, event_date, venue_name, host_email, requester_id')
     .eq('id', p.booking_id)
     .maybeSingle();
-  const b = bData as { dj_id: string | null; requester_name: string | null; event_date: string | null; venue_name: string | null } | null;
+  const b = bData as { dj_id: string | null; requester_name: string | null; event_date: string | null; venue_name: string | null; host_email: string | null; requester_id: string | null } | null;
 
   if (b?.dj_id && process.env.RESEND_API_KEY) {
     const djEmail = await resolveUserEmail(b.dj_id);
@@ -114,5 +115,40 @@ ${bodyLines}
     }
   }
 
+  // CHECK chosen → also email the HOST where to send it: payable-to name, the
+  // DJ's mailing address, and the memo (event date · venue · booking code) so
+  // the DJ can match the envelope to this booking.
+  if (method === 'check' && b?.dj_id && process.env.RESEND_API_KEY) {
+    const to = b.host_email?.trim() || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
+    if (to) {
+      const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
+      const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
+      const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string }>) : [];
+      const chk = methods.find((x) => x?.type === 'check');
+      if (chk?.handle) {
+        const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
+        const memo = checkMemo(b.event_date, b.venue_name, referenceCode(p.booking_id, p.kind));
+        const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];
+        const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to send your check</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please mail your check to the address below.</p>
+<p style="margin:0 0 2px;color:#666;font-size:13px;">Make it payable to:</p>
+<p style="margin:0 0 12px;font-size:16px;color:#111;">${chk.handle}</p>
+${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail to:</p>
+<p style="margin:0 0 12px;font-size:15px;color:#111;line-height:1.45;">${addrLines.join('<br>')}</p>` : ''}
+${memo ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Include with your check:</p>
+<p style="margin:0 0 14px;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
+<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`;
+        try {
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          await resend.emails.send({ from: FROM, to, subject: 'Where to send your check', html: shell(content) });
+        } catch { /* non-fatal */ }
+      }
+    }
+  }
+
   return NextResponse.json({ ok: true });
+}
+
+function kindLabelFor(kind: string): string {
+  return kind === 'balance' ? 'balance' : kind === 'deposit' ? 'deposit' : 'payment';
 }
