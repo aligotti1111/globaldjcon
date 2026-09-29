@@ -1545,7 +1545,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       $600, and the client already sees it spelled out in the
                       "Reach out to…" line. Showing it twice made a safety net
                       into clutter. */}
-                  {shown && !err && t !== 'cash' && (
+                  {shown && !err && t !== 'cash' && t !== 'check' && (
                     <div style={{ marginTop: '.6rem', padding: '.5rem .6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--deep)' }}>
                       <div style={{ ...label, marginBottom: '.2rem' }}>Client sees</div>
                       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.85rem', color: 'var(--neon)', wordBreak: 'break-all' }}>
