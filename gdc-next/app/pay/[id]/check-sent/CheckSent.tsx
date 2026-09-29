@@ -8,12 +8,13 @@ function money(n: number, currency = 'USD'): string {
 }
 
 export default function CheckSent({
-  paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null,
+  paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null, djName = null, cashPhone = null,
 }: {
   paymentId: string; amount: number; currency: string; kind: string;
   alreadySettled: boolean; eventDate: string | null; venueName: string | null; atEvent?: boolean;
-  method?: 'cash' | 'check' | null;
+  method?: 'cash' | 'check' | null; djName?: string | null; cashPhone?: string | null;
 }) {
+  const dj = djName?.trim() || 'your DJ';
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
   const kindLabel = kind === 'balance' ? 'balance' : kind === 'deposit' ? 'deposit' : 'payment';
   // A deposit is paid AHEAD of the event, never "at the event" — so the
@@ -68,13 +69,24 @@ export default function CheckSent({
               disabled={state === 'sending'}
               style={{ width: '100%', background: '#00e0a4', color: '#06231b', border: 'none', borderRadius: 10, padding: '14px 20px', fontWeight: 700, fontSize: 15, cursor: state === 'sending' ? 'default' : 'pointer', opacity: state === 'sending' ? 0.7 : 1 }}
             >
-              {state === 'sending' ? 'Notifying…' : beforeEvent ? "Let my DJ know I'll pay before the event" : atEvent ? "Let my DJ know I'll pay at the event" : "Let my DJ know it's on the way"}
+              {state === 'sending' ? 'Confirming…'
+                : method === 'cash' ? 'Confirm cash payment'
+                : method === 'check' ? 'Confirm check payment'
+                : beforeEvent ? "Let my DJ know I'll pay before the event"
+                : atEvent ? "Let my DJ know I'll pay at the event"
+                : "Let my DJ know it's on the way"}
             </button>
             {state === 'error' && (
               <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>
             )}
-            <p style={{ color: '#6f6f80', fontSize: 12, lineHeight: 1.6, margin: '16px 0 0' }}>
-              This just gives them a heads-up. Your payment is only marked received once your DJ confirms it{beforeEvent ? '' : atEvent ? ' at the event' : ''}.
+            <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.65, margin: '18px 0 0' }}>
+              {method === 'cash' ? (
+                <>This just gives {dj} a heads-up you&apos;ll be paying in cash. Your payment is only marked received once {dj} confirms it.{cashPhone ? <> Please arrange a drop-off time — call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong>.</> : <> Please arrange a drop-off time with them.</>}</>
+              ) : method === 'check' ? (
+                <>This just gives {dj} a heads-up you&apos;ll be paying by check. Your payment is only marked received once {dj} confirms it.</>
+              ) : (
+                <>This just gives {dj} a heads-up. Your payment is only marked received once {dj} confirms it{beforeEvent ? '' : atEvent ? ' at the event' : ''}.</>
+              )}
             </p>
           </>
         )}
