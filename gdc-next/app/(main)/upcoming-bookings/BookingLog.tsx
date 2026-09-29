@@ -116,6 +116,10 @@ export default function BookingLog({ booking, payments, changes }: Props) {
   add(booking.balance_completion_undone_at, 'Balance completion undone', 'dj');
   add(booking.deposit_skipped_at, 'Deposit skipped', 'dj');
   add(booking.deposit_skip_undone_at, 'Deposit skip undone', 'dj');
+  // A deposit / balance REQUEST that was cancelled (its payment row is deleted,
+  // so these write-once stamps keep the event on the log).
+  add(booking.deposit_request_cancelled_at, 'Deposit request cancelled', 'dj');
+  add(booking.balance_request_cancelled_at, 'Balance request cancelled', 'dj');
   if (!booking.deposit_skipped_at) {
     const depositRealPaid = payments
       .filter((p) => p.kind === 'deposit')
