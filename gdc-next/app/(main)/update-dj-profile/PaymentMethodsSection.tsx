@@ -1374,7 +1374,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
-              <div style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem', marginBottom: '.4rem' }}>{cfg.label}</div>
+              {/* Hero header — the method you're editing reads big, in the
+                  display font, so it's obvious which rail this panel is for. */}
+              <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, color: 'var(--white)', fontSize: '1.75rem', letterSpacing: '.03em', lineHeight: 1, marginBottom: '.55rem' }}>{cfg.label}</div>
               {/* White, not muted: this is the rail's actual behaviour — what
                   the client will have to do, what it costs, what it can't do.
                   Greying it made the one paragraph that answers "should I use
@@ -1417,7 +1419,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           style={{ ...field, marginTop: 0, flex: 1, minWidth: 120 }}
                         >
                           {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'} before the event</option>
+                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
                           ))}
                         </select>
                       </div>
@@ -1586,9 +1588,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           type="button"
                           onClick={() => patchType(t, { contact: accountAddress })}
                           style={{
-                            marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
-                            color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
-                            fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
+                            marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0,
+                            color: 'var(--neon)', fontSize: '.8rem', cursor: 'pointer',
+                            fontFamily: 'inherit', textDecoration: 'underline',
                           }}
                         >
                           {(m.contact || '').trim() ? 'Use my account address instead' : `Use my account address (${accountAddress})`}
@@ -1616,9 +1618,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             type="button"
                             onClick={() => patchType(t, { checkPhone: accountPhone })}
                             style={{
-                              marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
-                              color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
-                              fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
+                              marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0,
+                              color: 'var(--neon)', fontSize: '.8rem', cursor: 'pointer',
+                              fontFamily: 'inherit', textDecoration: 'underline',
                             }}
                           >
                             {(m.checkPhone || '').trim() ? 'Use my account number instead' : `Use my account number (${accountPhone})`}
