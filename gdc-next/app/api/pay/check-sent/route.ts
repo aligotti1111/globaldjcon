@@ -69,7 +69,11 @@ export async function POST(req: Request) {
   // collects on the day); 'sent' flags a mailed check as claimed-sent. Neither
   // ever marks 'paid' — that's the DJ's call alone.
   const patch = mode === 'at-event'
-    ? { client_intent: 'pay_at_event' }
+    // Record the chosen rail (cash/check) AND when the host confirmed, so the
+    // DJ's dashboard can show "Pending/Cash" (or /Check) and the confirmation
+    // date under pricing. Method is only stored when the client's link told us
+    // which — a generic at-event link leaves it null.
+    ? { client_intent: 'pay_at_event', marked_sent_at: new Date().toISOString(), ...(method ? { method } : {}) }
     : { status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: 'check', client_intent: 'pay_now' };
   const { error: upErr } = await db
     .from('booking_payments')
