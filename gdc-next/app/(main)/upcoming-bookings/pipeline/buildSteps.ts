@@ -813,6 +813,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                       ? [{ label: 'Request balance', run: () => openRequest('balance') }]
                       : [{ label: 'Resend invoice', run: () => openRequest('balance') }])
                   : []),
+              // Cancel an unpaid balance request — same as the deposit's cancel:
+              // clears the request, logs it, and emails the host a cancellation
+              // notice (handled by /api/payments cancel-request for any kind).
+              ...(!done && balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled
+                  ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }]
+                  : []),
               ...(done
                   ? [
                       { label: 'Resend receipt', run: () => sendReceipt('balance') },
