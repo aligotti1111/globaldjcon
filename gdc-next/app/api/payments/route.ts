@@ -204,29 +204,32 @@ ${body}${showAmount ? amountTag : ''}
 
     if (m.type === 'cash') {
       const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
-      const cashNote = hasId
-        ? `\n<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="color:#2E7D32;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>`
+      const confirmBtn = hasId
+        ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="display:block;margin:12px 0 0;background:#2E7D32;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Cash As Payment Choice</a>`
         : '';
       const body = isBalance
-        ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>${cashNote}`
-        : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>`;
+        ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>${confirmBtn}`
+        : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>${confirmBtn}`;
       return card('cash', body);
     }
 
     if (m.type === 'check') {
       const memo = checkMemo(eventDate, venueName, reference);
       const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
+      const confirmBtn = hasId
+        ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=check" style="display:block;margin:12px 0 0;background:#37474F;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Check As Payment Choice</a>`
+        : '';
       const body = isBalance
         ? `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">Bring your check to the event${eventWhen}, made payable to:</p>
 <p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${hasId ? `\n<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=check" style="color:#455A64;font-weight:700;text-decoration:underline;">Let your DJ know you'll pay at the event &rarr;</a></p>` : ''}`
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${confirmBtn}`
         : `<p style="margin:10px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
 <p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
 <p style="margin:1px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${hasId ? `\n<p style="margin:8px 0 0;font-size:13px;"><a href="${SITE_URL}/pay/${paymentId}/check-sent" style="color:#455A64;font-weight:700;text-decoration:underline;">Mailed it? Let your DJ know your check is on the way &rarr;</a></p>` : ''}`;
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${confirmBtn}`;
       return card('check', body);
     }
 
