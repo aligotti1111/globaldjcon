@@ -93,13 +93,20 @@ export async function POST(req: Request) {
       const kindLabel = p.kind === 'balance' ? 'balance' : p.kind === 'deposit' ? 'deposit' : 'payment';
       const forWhen = b.event_date ? ` for the ${b.event_date} event` : '';
       const atVenue = b.venue_name ? ` at ${b.venue_name}` : '';
-      const heading = mode === 'at-event'
+      // A deposit is paid AHEAD of the event, so an at-event confirm for a
+      // deposit reads "before the event", not "at the event".
+      const depositAhead = mode === 'at-event' && p.kind === 'deposit';
+      const heading = depositAhead
+        ? `${who} will pay their deposit before the event`
+        : mode === 'at-event'
         ? `${who} will pay at the event`
         : `${who} is mailing a check`;
       // "in cash" / "by check" when the client's link told us which; otherwise
       // the generic "by cash or check".
       const payWord = method === 'cash' ? 'in cash' : method === 'check' ? 'by check' : 'by cash or check';
-      const bodyLines = mode === 'at-event'
+      const bodyLines = depositAhead
+        ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll pay their deposit of <strong>${amt}</strong> ${payWord} before the event${forWhen}${atVenue}. Arrange to collect it ahead of time, then <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
+        : mode === 'at-event'
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed payment will be paid ${payWord} at the event${forWhen}${atVenue}. Nothing to do now; collect it at the event and <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
@@ -110,7 +117,7 @@ ${bodyLines}
 </td></tr></table>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to: djEmail, subject: mode === 'at-event' ? `${who} will pay at the event — ${amt}` : `${who} is mailing a check — ${amt}`, html: shell(content) });
+        await resend.emails.send({ from: FROM, to: djEmail, subject: depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : `${who} is mailing a check — ${amt}`, html: shell(content) });
       } catch { /* non-fatal */ }
     }
   }
