@@ -1516,7 +1516,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
                       }}
                     >
-                      Use my account number ({accountPhone})
+                      Apply my account phone number ({accountPhone})
                     </button>
                   )}
 
@@ -1593,7 +1593,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             fontFamily: 'inherit', textDecoration: 'underline',
                           }}
                         >
-                          {(m.contact || '').trim() ? 'Use my account address instead' : `Use my account address (${accountAddress})`}
+                          {(m.contact || '').trim() ? 'Apply my account address instead' : `Apply my account address (${accountAddress})`}
                         </button>
                       )}
                     </>
@@ -1623,7 +1623,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                               fontFamily: 'inherit', textDecoration: 'underline',
                             }}
                           >
-                            {(m.checkPhone || '').trim() ? 'Use my account number instead' : `Use my account number (${accountPhone})`}
+                            {(m.checkPhone || '').trim() ? 'Apply my account phone number instead' : `Apply my account phone number (${accountPhone})`}
                           </button>
                         )}
                       </div>
@@ -1668,7 +1668,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                                 fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
                               }}
                             >
-                              {(m.dropoffAddress || '').trim() ? 'Use my account address instead' : `Use my account address (${accountAddress})`}
+                              {(m.dropoffAddress || '').trim() ? 'Apply my account address instead' : `Apply my account address (${accountAddress})`}
                             </button>
                           )}
                           <label style={{ ...label, marginTop: '.7rem' }}>Open hours (optional)</label>
