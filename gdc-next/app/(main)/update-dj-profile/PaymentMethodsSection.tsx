@@ -1233,7 +1233,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
                       <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
                         <div style={{ ...label, marginBottom: '.35rem' }}>What you sell</div>
-                        <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.5 }}>&quot;DJ services for weddings, parties and private events.&quot;</p>
+                        <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.5 }}>&quot;DJ services for events, weddings, and parties.&quot;</p>
                       </div>
 
                       <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
