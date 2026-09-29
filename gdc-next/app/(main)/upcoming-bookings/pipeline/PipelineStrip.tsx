@@ -73,16 +73,33 @@ export default function PipelineStrip({
       : k === 'guestlist' ? 'Guests'
       : '';
 
+  // Which glyph a slot uses, INDEPENDENT of whether it has a live step. Lets an
+  // empty slot still draw its stage icon (greyed) instead of a bare dash.
+  const slotIcon = (k: string): string =>
+    k === 'deposit' || k === 'invoice' ? 'money'
+      : k === 'song_list' ? 'music'
+      : 'doc';
+
   return (
     <div className={styles.statusStrip}>
       {slots.map((slotKey) => {
         const st = steps.find((s) => s.key === slotKey);
         const isNew = newSlot != null && slotKey === newSlot;
         if (!st) {
+          // No live step for this slot (e.g. a booking with no deposit). Still
+          // show the stage's icon in a muted, ring-only state — every column
+          // always carries its icon — with a dash caption for "not applicable".
           return (
             <div key={slotKey} className={styles.stCell}>
-              <span className={styles.stLabel}>{shortLabel(slotKey)}</span>
-              <span className={styles.stDash} aria-hidden="true">—</span>
+              <span className={styles.stLabel} style={{ color: '#f2f2f7' }}>{shortLabel(slotKey)}</span>
+              <div className={styles.stBtn} style={{ cursor: 'default' }}>
+                <span className={styles.stTop}>
+                  <span className={styles.stIcon} style={{ color: '#5a5a72', borderColor: '#2f2f3d' }}>
+                    {stageIcon(slotIcon(slotKey))}
+                  </span>
+                </span>
+                <span className={styles.stCap} style={{ color: '#5a5a72' }} aria-label="Not applicable">—</span>
+              </div>
             </div>
           );
         }
