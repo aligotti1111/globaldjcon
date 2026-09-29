@@ -185,7 +185,13 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
       const lines = [cashLine(m)];
       const drop = cashDropoff(m);
       if (drop) lines.push(`Or drop it at: ${drop}`);
-      options.push({ type: 'cash', label: 'Cash', lines, accent });
+      options.push({
+        type: 'cash',
+        label: 'Cash',
+        lines,
+        secondary: { href: `/pay/${pay.id}/check-sent?mode=at-event&method=cash`, label: 'Confirm Cash As Payment Choice' },
+        accent,
+      });
       continue;
     }
     if (m.type === 'check') {
@@ -198,7 +204,7 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
         instruction: copyInstruction(m),
         copy: m.handle,
         lines,
-        secondary: { href: `/pay/${pay.id}/check-sent`, label: 'Mailed it? Let your DJ know →' },
+        secondary: { href: `/pay/${pay.id}/check-sent?mode=at-event&method=check`, label: 'Confirm Check As Payment Choice' },
         accent,
       });
       continue;
