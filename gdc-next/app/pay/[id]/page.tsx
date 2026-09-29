@@ -183,7 +183,7 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
       continue;
     }
     if (m.type === 'cash') {
-      const lines = [cashLine(m)];
+      const lines = [cashLine(m, m.smsOk === true && pay.kind === 'deposit')];
       const drop = cashDropoff(m);
       if (drop) lines.push(`Or drop it at: ${drop}`);
       options.push({
