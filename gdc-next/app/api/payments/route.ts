@@ -210,7 +210,7 @@ ${body}${showAmount ? amountTag : ''}
         : '';
       const body = isBalance
         ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>${confirmBtn}`
-        : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m)}</p>${confirmBtn}`;
+        : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m, m.smsOk === true)}</p>${confirmBtn}`;
       return card('cash', body);
     }
 
