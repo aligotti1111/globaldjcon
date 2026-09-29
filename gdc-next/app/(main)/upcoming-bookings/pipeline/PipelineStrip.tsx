@@ -23,9 +23,10 @@ function stageIcon(icon: string) {
     strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
   };
   if (icon === 'money') {
-    // A clean dollar sign for the money stages (deposit + balance). Rendered a
-    // touch larger than the other glyphs so the "$" reads clearly on the row.
-    return (<svg {...p} width={20} height={20}><line x1="12" y1="2.5" x2="12" y2="21.5" /><path d="M17 6.5H9.75a3.25 3.25 0 0 0 0 6.5h4.5a3.25 3.25 0 0 1 0 6.5H6.5" /></svg>);
+    // Canonical dollar-sign glyph (matches the standard "$" proportions), used
+    // for the money stages (deposit + balance). Rendered a touch larger than the
+    // other glyphs so the "$" reads clearly on the row.
+    return (<svg {...p} width={18} height={18}><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>);
   }
   if (icon === 'music') {
     return (<svg {...p}><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="16" r="2.5" /><path d="M8.5 18V5l12-2v11" /></svg>);
