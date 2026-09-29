@@ -1395,7 +1395,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <label style={{ ...qLabel }}>Can the host pay by check the night of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
-                      {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => (
+                      {([['Yes', true], ['No, check must be in hand prior to event', false]] as const).map(([lbl, val]) => (
                         <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
                           <input
                             type="radio"
@@ -1408,8 +1408,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         </label>
                       ))}
                     </div>
-                    {/* When it's "No", the deadline dropdown sits on the SAME line
-                        as the Yes/No answer. */}
+                    {/* When it's "No", a divider separates the answer from the
+                        deadline question, which sits on the same line. */}
+                    {m.checkNightOf !== true && (
+                      <span aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
+                    )}
                     {m.checkNightOf !== true && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
                         <label style={{ ...qLabel, margin: 0, flexShrink: 0 }}>How far in advance must the check be received?</label>
