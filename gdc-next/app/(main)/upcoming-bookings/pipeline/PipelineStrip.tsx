@@ -98,7 +98,7 @@ export default function PipelineStrip({
                     {stageIcon(slotIcon(slotKey))}
                   </span>
                 </span>
-                <span className={styles.stCap} style={{ color: '#5a5a72' }} aria-label="Not applicable">—</span>
+                <span className={styles.stCap} style={{ color: '#5a5a72' }} aria-label="Not applicable">{' '}</span>
               </div>
             </div>
           );
