@@ -17,7 +17,7 @@
 //   - Club: max 1 booking per date (real + manual combined). Soft block.
 //   - Mobile: max users.booking_settings.mob_bookings_per_day per date. Soft block.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -118,7 +118,14 @@ export default function UpcomingBookingsClient({
   // updates in place. (Server data is authoritative; it supersedes the optimistic
   // copy the instant the refresh lands.)
   const router = useRouter();
-  const refresh = () => router.refresh();
+  // Fetch fresh server data WITHOUT the page appearing to reload. Wrapping the
+  // router.refresh() in a transition keeps the current UI on screen and fully
+  // interactive while the new data streams in the background, then swaps it in —
+  // so an action (mark paid, cancel, request…) updates the log/timestamps in
+  // place instead of flashing a refresh. The optimistic local update already
+  // reflected the change instantly; this just reconciles quietly.
+  const [, startRefresh] = useTransition();
+  const refresh = () => startRefresh(() => router.refresh());
   useEffect(() => { setBookings(initialBookings); }, [initialBookings]);
   useEffect(() => { setPaymentsMap(initialPayments || {}); }, [initialPayments]);
   useEffect(() => { setPlannerMap(initialPlanners || {}); }, [initialPlanners]);
