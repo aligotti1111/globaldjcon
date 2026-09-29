@@ -48,6 +48,10 @@ export async function POST(req: Request) {
   // "in cash" or "by check" instead of the generic "cash or check". Null when
   // the client came from a link that didn't specify.
   const method = body.method === 'cash' ? 'cash' : body.method === 'check' ? 'check' : null;
+  // For a check, how the host will get it to the DJ: 'dropoff' (hand it over —
+  // email them the call/text number) or 'mail' (email them the mailing address).
+  const handoffRaw = (body as { handoff?: unknown }).handoff;
+  const handoff = handoffRaw === 'dropoff' ? 'dropoff' : handoffRaw === 'mail' ? 'mail' : null;
 
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
@@ -135,23 +139,37 @@ ${bodyLines}
       const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string }>) : [];
-      const chk = methods.find((x) => x?.type === 'check');
+      const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string } | undefined;
       if (chk?.handle) {
         const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
         const memo = checkMemo(b.event_date, b.venue_name, referenceCode(p.booking_id, p.kind));
         const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];
-        const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to send your check</h1>
-<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please mail your check to the address below.</p>
-<p style="margin:0 0 2px;color:#666;font-size:13px;">Make it payable to:</p>
+        const chkPhone = chk.checkPhone?.trim() || null;
+        const payableBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Make it payable to:</p>
 <p style="margin:0 0 12px;font-size:16px;color:#111;">${chk.handle}</p>
+${memo ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Include with your check:</p>
+<p style="margin:0 0 14px;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}`;
+        // Drop-off → give them the call/text number. Mail → give the address.
+        const isDropoff = handoff === 'dropoff';
+        const subject = isDropoff ? 'Dropping off your check' : 'Where to send your check';
+        const content = isDropoff
+          ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Dropping off your check</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, here are the details for your check.</p>
+${payableBlock}
+${chkPhone
+  ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange the drop-off:</p>
+<p style="margin:0 0 14px;font-size:15px;color:#111;">Call or text <strong>${chkPhone}</strong></p>`
+  : `<p style="margin:0 0 14px;color:#333;font-size:14px;">Reach out to your DJ to arrange dropping it off.</p>`}
+<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`
+          : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to send your check</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please mail your check to the address below.</p>
+${payableBlock}
 ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail to:</p>
 <p style="margin:0 0 12px;font-size:15px;color:#111;line-height:1.45;">${addrLines.join('<br>')}</p>` : ''}
-${memo ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Include with your check:</p>
-<p style="margin:0 0 14px;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}
 <p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`;
         try {
           const resend = new Resend(process.env.RESEND_API_KEY);
-          await resend.emails.send({ from: FROM, to, subject: 'Where to send your check', html: shell(content) });
+          await resend.emails.send({ from: FROM, to, subject, html: shell(content) });
         } catch { /* non-fatal */ }
       }
     }
