@@ -8,6 +8,17 @@ import type { PipelineStep, StepState } from './types';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from '../page';
 import type { NamedRider } from '@/lib/rider';
 
+// When a host has CONFIRMED (via the pay page) they'll hand over cash or mail a
+// check for a still-unpaid deposit/balance, this returns 'cash' | 'check' so the
+// stage caption can read "Pending/Cash" or "Pending/Check". Null once the money
+// actually settles, or when no cash/check intent was recorded.
+export function confirmedRail(row: BookingPayment | null | undefined): 'cash' | 'check' | null {
+  if (!row) return null;
+  if (row.status === 'paid' || row.status === 'waived') return null;
+  if (!row.client_intent) return null; // host hasn't confirmed an intent yet
+  return row.method === 'cash' ? 'cash' : row.method === 'check' ? 'check' : null;
+}
+
 export interface BuildStepsCtx {
   booking: UpcomingBooking;
   taxPct: number;
@@ -421,7 +432,9 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         : allDone
         ? 'Paid'
         : depositRow
-          ? 'Pending'
+          ? (confirmedRail(depositRow) === 'cash' ? 'Pending/Cash'
+             : confirmedRail(depositRow) === 'check' ? 'Pending/Check'
+             : 'Pending')
           : 'Not Sent',
       // Shown at the top of the dropdown, above the actions. When the deposit
       // was auto-skipped because the balance was requested for the whole amount,
@@ -756,7 +769,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         // new-balance states (a price rose after paid-in-full).
         caption: hasNewBalance
           ? (newBalanceRequested ? 'New balance sent' : 'New Balance')
-          : done ? 'Paid' : balanceRow ? 'Pending' : 'Not Sent',
+          : done ? 'Paid'
+          : balanceRow
+            ? (confirmedRail(balanceRow) === 'cash' ? 'Pending/Cash'
+               : confirmedRail(balanceRow) === 'check' ? 'Pending/Check'
+               : 'Pending')
+            : 'Not Sent',
         info: hasNewBalance
           ? `${fmtMoney(collected, currency)} paid · ${fmtMoney(newBalanceDue, currency)} new balance due`
           : balanceRow
