@@ -1032,7 +1032,7 @@ select.input {
   grid-template-columns: var(--row-cols);
   gap: 13px;
   align-items: center;
-  height: 62px;
+  height: 66px;
   padding: 0 12px;
   background: transparent;
   border: none;
@@ -1214,8 +1214,8 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   font-size: 16px;
   line-height: 1;
   /* The stage icon now sits inside a tidy circular node. The ring colour is set
