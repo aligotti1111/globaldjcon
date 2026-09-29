@@ -68,6 +68,12 @@ export interface PaymentMethod {
    */
   dropoffAddress?: string;
   dropoffHours?: string;
+  /**
+   * Cash only: the DJ lets the host TEXT the phone (not just call) to arrange
+   * the cash drop-off. Only ever applied to the DEPOSIT flow, where a meeting
+   * has to be set up ahead of time. Optional; older rows load as call-only.
+   */
+  smsOk?: boolean;
 }
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -279,15 +285,16 @@ export function isMobileOnly(m: PaymentMethod): boolean {
  * get a number and an instruction. Shared here so the booking card and the
  * email can't word it differently.
  */
-export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>): string {
+export function cashLine(m: Pick<PaymentMethod, 'handle' | 'contact'>, allowText = false): string {
   const phone = (m.handle || '').trim();
   const who = (m.contact || '').trim();
   if (!phone) return 'Pay in person.';
-  // An instruction, not a fact. "Call (555) 123-4567" states a number; "reach
-  // out to Mike to arrange" tells them the thing they have to DO — cash can't
-  // hold a date on its own, someone has to actually meet.
-  if (!who) return `Reach out on ${phone} to arrange payment.`;
-  return `Reach out to ${who} on ${phone} to arrange payment.`;
+  // "via call or text" only when the DJ opted in (deposit flow); otherwise the
+  // number is call-only. An instruction, not a fact: cash can't hold a date on
+  // its own, someone has to actually meet.
+  const how = allowText ? 'via call or text ' : '';
+  if (!who) return `Reach out ${how}on ${phone} to arrange payment.`;
+  return `Reach out to ${who} ${how}on ${phone} to arrange payment.`;
 }
 
 /**
