@@ -29,6 +29,7 @@ import {
   cashLine,
   cashDropoff,
   checkMemo,
+  splitMailAddress,
   isLinkable,
   METHOD_TYPES,
   type PaymentMethod,
@@ -196,7 +197,7 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
     }
     if (m.type === 'check') {
       const lines: string[] = [];
-      if (m.contact) lines.push(`Mail to: ${m.contact}`);
+      if (m.contact) { lines.push('Mail to:'); for (const ln of splitMailAddress(m.contact)) lines.push(ln); }
       lines.push(`Include: ${checkMemo(booking.event_date, booking.venue_name, reference)}`);
       options.push({
         type: 'check',
