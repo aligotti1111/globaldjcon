@@ -1383,7 +1383,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   this?" read as fine print. */}
               {/* PayPal shows its own Option 1/Option 2 copy below, so the
                   generic one-line hint is suppressed for it. */}
-              {t !== 'paypal' && (
+              {t !== 'paypal' && cfg.hint && (
                 <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
               )}
 
