@@ -485,6 +485,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             contact: typeof o.contact === 'string' ? o.contact : undefined,
             dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
             dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
+            smsOk: o.smsOk === true ? true : undefined,
           };
         });
         setMethods(mapped);
@@ -542,6 +543,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       (m.contact || '').trim(),
       (m.dropoffAddress || '').trim(),
       (m.dropoffHours || '').trim(),
+      m.smsOk ? '1' : '0',
     ].join('\u0000');
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
@@ -679,6 +681,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         ...(m.type === 'cash' && (m.dropoffAddress || '').trim()
           ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
           : {}),
+        ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
       }));
   }
 
@@ -752,6 +755,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 dropoffHours: (m.dropoffHours || '').trim(),
               }
             : {}),
+          ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
         }));
       // OWNER-ONLY on the server. No team member of any role may change where
       // money lands — the endpoint rejects non-owners, so this is airtight
@@ -1435,6 +1439,23 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     >
                       Use my account number ({accountPhone})
                     </button>
+                  )}
+
+                  {/* Cash + DEPOSIT only: let the host text (not just call) to
+                      arrange the drop-off. When on, the deposit email says they
+                      can reach out via call OR text. */}
+                  {t === 'cash' && (
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginTop: '.7rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={m.smsOk === true}
+                        onChange={(e) => patchType(t, { smsOk: e.target.checked })}
+                        style={{ accentColor: 'var(--neon)', marginTop: '.15rem', flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.4 }}>
+                        Allow host to text this number to arrange the cash drop-off
+                      </span>
+                    </label>
                   )}
 
                   {/* The readback exists for the IRREVERSIBLE rails: a mistyped
