@@ -306,6 +306,36 @@ export function cashDropoff(m: Pick<PaymentMethod, 'dropoffAddress' | 'dropoffHo
   return hrs ? `${addr} — open ${hrs}` : addr;
 }
 
+// Street-type words that end the first line of a US mailing address.
+const STREET_SUFFIXES = new Set([
+  'street', 'st', 'avenue', 'ave', 'road', 'rd', 'boulevard', 'blvd', 'drive', 'dr',
+  'lane', 'ln', 'court', 'ct', 'place', 'pl', 'way', 'terrace', 'ter', 'circle', 'cir',
+  'square', 'sq', 'parkway', 'pkwy', 'highway', 'hwy', 'loop', 'trail', 'trl', 'row',
+  'plaza', 'alley', 'crossing', 'path', 'pike', 'run', 'walk',
+]);
+
+/**
+ * Split a check "Mail to" address into display lines so it reads like a real
+ * mailing block (street on line 1, city/state/zip on line 2) instead of one
+ * long run-on. If the DJ already typed newlines, those are honored as-is.
+ * Otherwise we break after the last street-type word (Place, St, Ave…). Falls
+ * back to a single line when no street word is found.
+ */
+export function splitMailAddress(raw: string): string[] {
+  const s = (raw || '').trim();
+  if (!s) return [];
+  if (s.includes('\n')) return s.split('\n').map((x) => x.trim()).filter(Boolean);
+  const words = s.split(/\s+/);
+  let breakAfter = -1;
+  for (let i = 0; i < words.length - 1; i++) {
+    if (STREET_SUFFIXES.has(words[i].replace(/[.,]/g, '').toLowerCase())) breakAfter = i;
+  }
+  if (breakAfter >= 0 && breakAfter < words.length - 1) {
+    return [words.slice(0, breakAfter + 1).join(' '), words.slice(breakAfter + 1).join(' ')];
+  }
+  return [s];
+}
+
 /**
  * What the client includes with their check so the DJ can match it.
  *
