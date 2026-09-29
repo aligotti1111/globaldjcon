@@ -36,10 +36,28 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
 
   const { data: bookingData } = await admin
     .from('bookings')
-    .select('event_date, venue_name')
+    .select('event_date, venue_name, dj_id')
     .eq('id', pay.booking_id)
     .maybeSingle();
-  const booking = bookingData as unknown as { event_date: string | null; venue_name: string | null } | null;
+  const booking = bookingData as unknown as { event_date: string | null; venue_name: string | null; dj_id: string | null } | null;
+
+  // The DJ's display name (used in place of a vague "your DJ") and, for a cash
+  // choice, the phone the host should call/text to arrange a drop-off.
+  let djName: string | null = null;
+  let cashPhone: string | null = null;
+  if (booking?.dj_id) {
+    const { data: djData } = await admin
+      .from('users')
+      .select('name, payment_methods')
+      .eq('id', booking.dj_id)
+      .maybeSingle();
+    const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
+    djName = dj?.name?.trim() || null;
+    if (payMethod === 'cash') {
+      const methods = Array.isArray(dj?.payment_methods) ? (dj!.payment_methods as Array<{ type?: string; handle?: string }>) : [];
+      cashPhone = methods.find((m) => m?.type === 'cash')?.handle?.trim() || null;
+    }
+  }
 
   return (
     <CheckSent
@@ -52,6 +70,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       venueName={booking?.venue_name || null}
       atEvent={atEvent}
       method={payMethod}
+      djName={djName}
+      cashPhone={cashPhone}
     />
   );
 }
