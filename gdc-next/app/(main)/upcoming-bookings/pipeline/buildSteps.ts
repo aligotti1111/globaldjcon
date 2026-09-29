@@ -740,7 +740,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         key: 'invoice',
         label: hasNewBalance ? 'Paid / New Balance' : done ? 'Balance' : balanceRow ? 'Balance sent' : 'Send balance',
         state: done ? 'done' : 'todo',
-        icon: 'receipt',
+        icon: 'money',
         overridable: !balanceSettled && !hasNewBalance,
         done,
         newBalanceDue: hasNewBalance ? newBalanceDue : undefined,
