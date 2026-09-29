@@ -925,7 +925,16 @@ export default function BookingRow({
             the only track that flexes, so they ate it. They have their own
             track now. */}
         <div className={styles.rowContext}>
-          {context && <span className={styles.rowEventType} style={djType !== 'club' ? { textTransform: 'uppercase' } : undefined}>{context}</span>}
+          {/* Mobile rows show the event type; put the venue name under it (club
+              rows already lead with the venue, so no second line there). */}
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+            {context && <span className={styles.rowEventType} style={djType !== 'club' ? { textTransform: 'uppercase' } : undefined}>{context}</span>}
+            {djType !== 'club' && booking.venue_name && (
+              <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.6rem', letterSpacing: '.03em', color: '#8a8aa0', textTransform: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                {booking.venue_name}
+              </span>
+            )}
+          </div>
           {overlaps && (
             <span
               className={styles.overlapPill}
