@@ -1127,12 +1127,18 @@ ${optionsBlock}`
       if (process.env.RESEND_API_KEY) {
         const to = await clientEmailFor(b);
         if (to) {
+          // Name the DJ / company rather than a vague "your DJ".
+          let djName = 'your DJ';
+          if (b.dj_id) {
+            const { data: djRow } = await admin.from('users').select('name').eq('id', b.dj_id).maybeSingle();
+            const nm = (djRow as { name?: string | null } | null)?.name?.trim();
+            if (nm) djName = nm;
+          }
           const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
           const amt = money(Number(p.amount), p.currency || b.currency || 'USD');
           const when = b.event_date ? ` for your ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} event` : '';
           const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Your ${kindLabel} request was cancelled</h1>
-<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, the ${kindLabel} of <strong>${amt}</strong>${when} has been cancelled by your DJ — there's nothing to pay right now.</p>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">If you already tried to pay it, don't worry: nothing was collected. Your DJ will send a new request if one is needed.</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, the ${kindLabel} of <strong>${amt}</strong>${when} has been cancelled by ${djName} — there's nothing to pay right now.</p>`;
           try {
             const resend = new Resend(process.env.RESEND_API_KEY);
             await resend.emails.send({ from: FROM, to, subject: `Your ${kindLabel} request was cancelled`, html: shell(content) });
