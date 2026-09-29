@@ -37,6 +37,7 @@ import {
   referenceCode,
   cashLine,
   checkMemo,
+  splitMailAddress,
   METHOD_TYPES,
   type PaymentMethod,
 } from '@/lib/paymentMethods';
@@ -227,7 +228,7 @@ ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your
         : `<p style="margin:10px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
 <p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
 ${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
-<p style="margin:1px 0 0;font-size:14px;color:#111;white-space:pre-line;">${m.contact}</p>` : ''}
+<p style="margin:1px 0 0;font-size:14px;color:#111;line-height:1.45;">${splitMailAddress(m.contact).join('<br>')}</p>` : ''}
 ${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
 <p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${confirmBtn}`;
       return card('check', body);
