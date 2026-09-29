@@ -1146,6 +1146,13 @@ export default function BookingDetails({
                 {overtimeControl}
               </div>
             )}
+            {/* The host opted in to text updates on the booking form — so the DJ
+                knows SMS is fair game (and to which number). */}
+            {g.key === 'HOST' && (booking as { sms_opt_in?: boolean | null }).sms_opt_in && (
+              <div style={{ marginTop: 10, fontSize: '.78rem', fontStyle: 'italic', color: '#00e0a4' }}>
+                ✓ Opted in to text (SMS) updates
+              </div>
+            )}
             {g.key === 'HOST' && hostUserId && (
               <div style={{ marginTop: 12 }}>
                 <button
