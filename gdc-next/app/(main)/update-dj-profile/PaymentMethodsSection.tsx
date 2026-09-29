@@ -1372,6 +1372,43 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
               )}
 
+              {/* Check timing sits at the TOP — it changes the whole flow the
+                  host is shown. Compact radios; the weeks dropdown only when
+                  night-of isn't allowed. */}
+              {t === 'check' && (
+                <div style={{ margin: '0 0 .85rem' }}>
+                  <label style={{ ...label }}>Can the host pay by check the night of the event?</label>
+                  <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.3rem' }}>
+                    {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => (
+                      <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
+                        <input
+                          type="radio"
+                          name={`checkNightOf-${m.id}`}
+                          checked={(m.checkNightOf === true) === val}
+                          onChange={() => patchType(t, { checkNightOf: val })}
+                          style={{ accentColor: 'var(--neon)' }}
+                        />
+                        {lbl}
+                      </label>
+                    ))}
+                  </div>
+                  {m.checkNightOf !== true && (
+                    <div style={{ marginTop: '.55rem' }}>
+                      <label style={{ ...label }}>How far in advance must the check be received?</label>
+                      <select
+                        value={String(m.checkLeadWeeks ?? 2)}
+                        onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
+                        style={{ ...field, marginTop: '.25rem' }}
+                      >
+                        {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
+                          <option key={w} value={w}>{w} week{w === 1 ? '' : 's'} before the event</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* PayPal offers TWO ways to get paid. Option 1: connect a PayPal
                   business account for auto-tracked payments (deposits/balances
                   mark themselves paid). Option 2: the manual PayPal.me/email
@@ -1543,52 +1580,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     </>
                   )}
 
-                  {/* Check timing — most DJs want the check in hand and cashed
-                      BEFORE the event. Ask whether night-of is OK; if not, how
-                      many weeks ahead it must be paid. This is relayed to the
-                      host on the check payment page. */}
+                  {/* Phone the host can call/text to arrange getting the check
+                      to the DJ (drop it off, or hand it off before the deadline).
+                      Optional. The night-of + lead-time questions live at the top
+                      of this tile. */}
                   {t === 'check' && (
                     <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
-                      <label style={{ ...label }}>Can the host pay by check the night of the event?</label>
-                      <div style={{ display: 'flex', gap: '.5rem', marginTop: '.4rem' }}>
-                        {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => {
-                          const on = (m.checkNightOf === true) === val;
-                          return (
-                            <button
-                              key={lbl}
-                              type="button"
-                              onClick={() => patchType(t, { checkNightOf: val })}
-                              style={{
-                                flex: 1, padding: '.5rem', borderRadius: 6, cursor: 'pointer',
-                                fontSize: '.8rem', fontFamily: 'inherit',
-                                border: `1px solid ${on ? 'var(--neon)' : 'var(--border)'}`,
-                                background: on ? 'rgba(0,245,196,.12)' : 'var(--deep)',
-                                color: on ? 'var(--neon)' : 'var(--white)', fontWeight: on ? 700 : 400,
-                              }}
-                            >
-                              {lbl}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {m.checkNightOf !== true && (
-                        <div style={{ marginTop: '.7rem' }}>
-                          <label style={{ ...label }}>How far in advance must the check be paid?</label>
-                          <select
-                            value={String(m.checkLeadWeeks ?? 2)}
-                            onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
-                            style={{ ...field, marginTop: '.35rem' }}
-                          >
-                            {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                              <option key={w} value={w}>{w} week{w === 1 ? '' : 's'} before the event</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      {/* Phone the host can call/text to arrange getting the
-                          check to the DJ (bring it in person or hand it off
-                          before the deadline). Optional. */}
-                      <div style={{ marginTop: '.7rem' }}>
+                      <div>
                         <label style={{ ...label }}>Phone for the host to call or text (optional)</label>
                         <input
                           value={m.checkPhone || ''}
