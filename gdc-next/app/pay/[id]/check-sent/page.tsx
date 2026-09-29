@@ -18,10 +18,11 @@ interface PayRow {
   id: string; booking_id: string; kind: string; amount: number; currency: string | null; status: string;
 }
 
-export default async function CheckSentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mode?: string }> }) {
+export default async function CheckSentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mode?: string; method?: string }> }) {
   const { id } = await params;
-  const { mode } = await searchParams;
+  const { mode, method } = await searchParams;
   const atEvent = mode === 'at-event';
+  const payMethod = method === 'cash' ? 'cash' : method === 'check' ? 'check' : null;
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
 
@@ -50,6 +51,7 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       eventDate={booking?.event_date || null}
       venueName={booking?.venue_name || null}
       atEvent={atEvent}
+      method={payMethod}
     />
   );
 }
