@@ -200,9 +200,17 @@ export default function PayHub({
               )}
 
               {o.secondary && (
-                <p style={{ margin: '.6rem 0 0', fontSize: '.75rem' }}>
-                  <a href={o.secondary.href} style={{ color: o.accent, fontWeight: 700, textDecoration: 'underline' }}>{o.secondary.label}</a>
-                </p>
+                <a
+                  href={o.secondary.href}
+                  style={{
+                    display: 'block', textAlign: 'center', marginTop: '.6rem',
+                    background: 'transparent', color: o.accent, textDecoration: 'none',
+                    fontWeight: 800, padding: '.7rem 1rem', borderRadius: 9, fontSize: '.85rem',
+                    border: `1px solid ${o.accent}`,
+                  }}
+                >
+                  {o.secondary.label}
+                </a>
               )}
             </div>
           ))}
