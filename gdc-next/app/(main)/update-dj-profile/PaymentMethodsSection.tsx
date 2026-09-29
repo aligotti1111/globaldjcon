@@ -1411,6 +1411,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <p style={{ margin: '.4rem 0 0', color: '#f5c451', fontSize: '.72rem', lineHeight: 1.5 }}>
                       {t === 'check'
                         ? 'Global DJ Connect can’t track Check payments off-app. When the check is received and has cleared, mark it paid in your booking dashboard and the receipt will auto-send.'
+                        : t === 'cash'
+                        ? 'Global DJ Connect can’t track Cash payments off-app. When cash has been received, mark it paid in your booking dashboard and the receipt will auto-send.'
                         : `Global DJ Connect can’t track ${cfg.label} payments off-app. When payment is complete, mark it paid in your booking dashboard and the receipt will auto-send.`}
                     </p>
                   )}
