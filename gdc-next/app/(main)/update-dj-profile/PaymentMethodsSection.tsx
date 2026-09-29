@@ -816,6 +816,19 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     marginBottom: '.35rem',
     display: 'block',
   };
+  // Readable label for full-sentence questions — the all-caps mono `label`
+  // above works for short tags ("PAYABLE TO") but is hard to read on a whole
+  // sentence, so questions use sentence case in the normal sans font.
+  const qLabel: React.CSSProperties = {
+    fontFamily: 'inherit',
+    fontSize: '.82rem',
+    letterSpacing: 'normal',
+    textTransform: 'none',
+    color: 'var(--white)',
+    marginBottom: '.35rem',
+    display: 'block',
+    fontWeight: 600,
+  };
   const field: React.CSSProperties = {
     width: '100%',
     background: 'var(--deep)',
@@ -1377,7 +1390,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   night-of isn't allowed. */}
               {t === 'check' && (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <label style={{ ...label }}>Can the host pay by check the night of the event?</label>
+                  <label style={{ ...qLabel }}>Can the host pay by check the night of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
                       {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => (
@@ -1397,7 +1410,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         as the Yes/No answer. */}
                     {m.checkNightOf !== true && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
-                        <label style={{ ...label, margin: 0, flexShrink: 0 }}>How far in advance must the check be received?</label>
+                        <label style={{ ...qLabel, margin: 0, flexShrink: 0 }}>How far in advance must the check be received?</label>
                         <select
                           value={String(m.checkLeadWeeks ?? 2)}
                           onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
