@@ -16,42 +16,257 @@ function dateSuffix(iso: string | null): string {
   return ` on ${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 }
 
-export default function CheckSent({
-  paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null, djName = null, cashPhone = null,
-}: {
+interface Props {
   paymentId: string; amount: number; currency: string; kind: string;
   alreadySettled: boolean; eventDate: string | null; venueName: string | null; atEvent?: boolean;
   method?: 'cash' | 'check' | null; djName?: string | null; cashPhone?: string | null;
-}) {
+  // Check-specific rules + contact, used for the interactive BALANCE-by-check flow.
+  checkNightOf?: boolean;
+  checkDeadline?: string | null;
+  checkLeadWeeks?: number | null;
+  checkPhone?: string | null;
+  checkPayTo?: string | null;
+  checkAddressLines?: string[];
+  checkMemoLine?: string;
+}
+
+const WRAP: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
+const CARD: React.CSSProperties = { maxWidth: 440, width: '100%', background: '#15151c', border: '1px solid #26263200', borderRadius: 16, padding: 28, textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.5)' };
+const PRIMARY_BTN: React.CSSProperties = { width: '100%', background: '#00e0a4', color: '#06231b', border: 'none', borderRadius: 10, padding: '14px 20px', fontWeight: 700, fontSize: 15, cursor: 'pointer' };
+const CHOICE_BTN: React.CSSProperties = { width: '100%', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.22)', borderRadius: 10, padding: '13px 18px', fontWeight: 600, fontSize: 14, cursor: 'pointer', marginTop: 10, textAlign: 'left', lineHeight: 1.4 };
+
+function Brand() {
+  return <div style={{ fontFamily: 'Impact,Arial,sans-serif', fontSize: 22, letterSpacing: '.06em', color: '#00f5c4', fontWeight: 700, marginBottom: 20 }}>GLOBAL DJ CONNECT</div>;
+}
+
+export default function CheckSent(props: Props) {
+  const {
+    paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null,
+    djName = null, cashPhone = null, checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
+    checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '',
+  } = props;
+
   const dj = djName?.trim() || 'your DJ';
-  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
   const isDeposit = kind === 'deposit';
   const amt = money(amount, currency);
   const when = dateSuffix(eventDate);
   const forVenue = venueName ? ` for ${venueName}` : '';
+  const subject = isDeposit ? 'Deposit' : 'Balance';
 
-  async function notify() {
+  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
+  // Check flows: which arrangement the host picked.
+  const [choice, setChoice] = useState<'none' | 'nightof' | 'early' | 'dropoff' | 'mail'>('none');
+  const [doneMsg, setDoneMsg] = useState<React.ReactNode>(null);
+
+  async function notify(mode: 'at-event' | 'sent', done: React.ReactNode, handoff?: 'dropoff' | 'mail') {
     setState('sending');
     try {
       const res = await fetch('/api/pay/check-sent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId, mode: atEvent ? 'at-event' : 'sent', method }),
+        body: JSON.stringify({ paymentId, mode, method: method || 'check', ...(handoff ? { handoff } : {}) }),
       });
-      setState(res.ok ? 'done' : 'error');
+      if (res.ok) { setDoneMsg(done); setState('done'); } else { setState('error'); }
     } catch { setState('error'); }
   }
 
-  // Four fully independent messages — deposit/balance × cash/check — plus a
-  // generic fallback if the link never told us which method. A deposit is paid
-  // AHEAD of the event; a balance is paid ON the day.
-  type Copy = { heading: string; prompt: React.ReactNode; button: string; footnote: React.ReactNode | null; done: React.ReactNode };
+  const Hero = () => (
+    <>
+      <h1 style={{ fontFamily: 'Impact,Arial,sans-serif', fontSize: 34, letterSpacing: '.04em', textTransform: 'uppercase', margin: '0 0 2px', lineHeight: 1.05 }}>{subject}</h1>
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#00f5c4', margin: '0 0 16px' }}>{amt}</div>
+    </>
+  );
+
+  // Reusable "how to get the check to the DJ" block: call/text + mail address.
+  const HandOff = () => (
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '4px 0 18px' }}>
+      {checkPhone && (
+        <p style={{ margin: '0 0 10px', color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>
+          Call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange getting the check to {dj}.
+        </p>
+      )}
+      {(checkPayTo || checkAddressLines.length > 0) && (
+        <div style={{ color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>
+          <div style={{ color: '#8a8a98', fontSize: 12 }}>Or mail it{checkPayTo ? ', payable to:' : ':'}</div>
+          {checkPayTo && <div style={{ color: '#fff' }}>{checkPayTo}</div>}
+          {checkAddressLines.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
+      {!checkPhone && !checkPayTo && checkAddressLines.length === 0 && (
+        <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange getting the check to them.</p>
+      )}
+    </div>
+  );
+
+  // ─────────────── BALANCE paid by CHECK — interactive ───────────────
+  const isBalanceCheck = !isDeposit && method === 'check';
+  if (isBalanceCheck) {
+    let bodyDone: React.ReactNode = doneMsg;
+    return (
+      <div style={WRAP}>
+        <div style={CARD}>
+          <Brand />
+          {state === 'done' ? (
+            <>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
+              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
+              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                {bodyDone || <>We let {dj} know about your balance of <strong style={{ color: '#fff' }}>{amt}</strong> by check{forVenue}. They&apos;ll confirm it once received. Thanks!</>}
+              </p>
+            </>
+          ) : (
+            <>
+              <Hero />
+              {checkNightOf ? (
+                // Night-of allowed: host chooses pay-night vs get-it-there-early.
+                choice === 'none' ? (
+                  <>
+                    <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>How would you like to pay {dj} by check?</p>
+                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('nightof')}>
+                      Pay by check the night of the event{when}
+                    </button>
+                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('early')}>
+                      Get the check to {dj} beforehand (drop off or mail)
+                    </button>
+                  </>
+                ) : choice === 'nightof' ? (
+                  <>
+                    <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 18px' }}>
+                      You&apos;ll bring your check for <strong style={{ color: '#fff' }}>{amt}</strong> the night of the event{when}. It&apos;s only marked received once {dj} confirms it.
+                    </p>
+                    <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                      onClick={() => notify('at-event', <>We let {dj} know you&apos;ll pay your balance of <strong style={{ color: '#fff' }}>{amt}</strong> by check the night of the event{when}. Thanks!</>)}>
+                      {state === 'sending' ? 'Confirming…' : 'Confirm — paying by check the night of'}
+                    </button>
+                    <BackLink onClick={() => setChoice('none')} />
+                  </>
+                ) : (
+                  <>
+                    <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
+                      Get your check for <strong style={{ color: '#fff' }}>{amt}</strong> to {dj} ahead of the event:
+                    </p>
+                    <HandOff />
+                    <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                      onClick={() => notify('sent', <>We let {dj} know your balance check of <strong style={{ color: '#fff' }}>{amt}</strong> is on the way. They&apos;ll confirm it once it arrives. Thanks!</>)}>
+                      {state === 'sending' ? 'Confirming…' : "Confirm — check is on the way"}
+                    </button>
+                    <BackLink onClick={() => setChoice('none')} />
+                  </>
+                )
+              ) : (
+                // Prior required: must be received by the deadline.
+                <>
+                  <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px' }}>
+                    <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>
+                      {dj} needs your check <strong>received by {checkDeadline || `${checkLeadWeeks ?? ''} week${checkLeadWeeks === 1 ? '' : 's'} before the event`}</strong>
+                      {checkDeadline && checkLeadWeeks ? <span style={{ fontWeight: 400 }}> ({checkLeadWeeks} week{checkLeadWeeks === 1 ? '' : 's'} before the event)</span> : null}, not the night of.
+                    </p>
+                  </div>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
+                    Send your check for <strong style={{ color: '#fff' }}>{amt}</strong> so it arrives in time:
+                  </p>
+                  <HandOff />
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('sent', <>We let {dj} know your balance check of <strong style={{ color: '#fff' }}>{amt}</strong> is on the way — to arrive by {checkDeadline || 'the deadline'}. They&apos;ll confirm it once it arrives. Thanks!</>)}>
+                    {state === 'sending' ? 'Confirming…' : "Confirm — check is on the way"}
+                  </button>
+                </>
+              )}
+              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Always-shown "make it payable to + memo" block (check flows).
+  const PayableMemo = () => (
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 16px' }}>
+      {checkPayTo && (
+        <>
+          <div style={{ color: '#8a8a98', fontSize: 12 }}>Make the check payable to</div>
+          <div style={{ color: '#fff', fontSize: 15, marginBottom: checkMemoLine ? 10 : 0 }}>{checkPayTo}</div>
+        </>
+      )}
+      {checkMemoLine && (
+        <>
+          <div style={{ color: '#8a8a98', fontSize: 12 }}>Include this memo on the check</div>
+          <div style={{ fontFamily: 'monospace', color: '#fff', fontSize: 13.5 }}>{checkMemoLine}</div>
+        </>
+      )}
+    </div>
+  );
+
+  // ─────────────── DEPOSIT paid by CHECK — drop off or mail ───────────────
+  const isDepositCheck = isDeposit && method === 'check';
+  if (isDepositCheck) {
+    return (
+      <div style={WRAP}>
+        <div style={CARD}>
+          <Brand />
+          {state === 'done' ? (
+            <>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
+              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
+              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                {doneMsg || <>We let {dj} know your deposit check of <strong style={{ color: '#fff' }}>{amt}</strong> is on the way. They&apos;ll confirm it once received. Thanks!</>}
+              </p>
+            </>
+          ) : (
+            <>
+              <Hero />
+              <PayableMemo />
+              {choice === 'none' ? (
+                <>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>Will you drop off your check or mail it?</p>
+                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('dropoff')}>Drop it off in person</button>
+                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('mail')}>Mail it</button>
+                </>
+              ) : choice === 'dropoff' ? (
+                <>
+                  <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+                    {checkPhone
+                      ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
+                      : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your check.</p>}
+                  </div>
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll drop off your deposit check of <strong style={{ color: '#fff' }}>{amt}</strong>. They&apos;ll confirm it once received. Thanks!</>, 'dropoff')}>
+                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll drop it off"}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+                    <div style={{ color: '#8a8a98', fontSize: 12 }}>Mail your check to</div>
+                    {checkPayTo && <div style={{ color: '#fff', fontSize: 14 }}>{checkPayTo}</div>}
+                    {checkAddressLines.length > 0
+                      ? checkAddressLines.map((l, i) => <div key={i} style={{ color: '#d5d5df', fontSize: 13.5 }}>{l}</div>)
+                      : <div style={{ color: '#d5d5df', fontSize: 13.5 }}>Ask {dj} for the mailing address.</div>}
+                  </div>
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('sent', <>We let {dj} know your deposit check of <strong style={{ color: '#fff' }}>{amt}</strong> is in the mail. They&apos;ll confirm it once it arrives. Thanks!</>, 'mail')}>
+                    {state === 'sending' ? 'Confirming…' : "Confirm — it's in the mail"}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              )}
+              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────── Everything else — simple per-combo copy ───────────────
+  type Copy = { prompt: React.ReactNode; button: string; footnote: React.ReactNode | null; done: React.ReactNode };
   const bold = (s: string) => <strong style={{ color: '#fff' }}>{s}</strong>;
   const phoneEl = cashPhone ? <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> : null;
 
   let copy: Copy;
   if (isDeposit && method === 'cash') {
     copy = {
-      heading: 'Paying your deposit in cash?',
       prompt: <>Let {dj} know you&apos;ll pay your deposit of {bold(amt)} in cash before the event{when}, so they can arrange to collect it ahead of time.</>,
       button: 'Confirm cash deposit',
       footnote: <>This just gives {dj} a heads-up you&apos;ll pay your deposit in cash. It&apos;s only marked received once {dj} confirms it.{phoneEl ? <> Please arrange a drop-off time — call or text {phoneEl}.</> : <> Please arrange a drop-off time with them.</>}</>,
@@ -59,7 +274,6 @@ export default function CheckSent({
     };
   } else if (isDeposit && method === 'check') {
     copy = {
-      heading: 'Paying your deposit by check?',
       prompt: <>Let {dj} know your deposit check of {bold(amt)} is on the way, so they can watch for it before the event{when}.</>,
       button: 'Confirm check deposit',
       footnote: <>This just gives {dj} a heads-up you&apos;ll pay your deposit by check. It&apos;s only marked received once {dj} confirms the check has arrived.</>,
@@ -67,25 +281,14 @@ export default function CheckSent({
     };
   } else if (!isDeposit && method === 'cash') {
     copy = {
-      heading: 'Paying your balance in cash?',
       prompt: <>This just gives {dj} a heads-up you&apos;ll be paying in cash. Your payment is only marked received once {dj} confirms it. Balance can be paid day of event{phoneEl ? <> or arrange a drop-off time — call or text {phoneEl}.</> : ' or arrange a drop-off time with them.'}</>,
       button: 'Confirm Cash As Payment Of Choice',
       footnote: null,
       done: <>We let {dj} know you&apos;ll pay your balance of {bold(amt)} in cash at the event{when}. They&apos;ll collect it on the day. Thanks!</>,
     };
-  } else if (!isDeposit && method === 'check') {
-    copy = {
-      heading: 'Paying your balance by check?',
-      prompt: <>Let {dj} know you&apos;ll pay your balance of {bold(amt)} by check, so they know to expect it{when ? <> for the event{when}</> : null}.</>,
-      button: 'Confirm check balance',
-      footnote: <>This just gives {dj} a heads-up you&apos;ll pay your balance by check. It&apos;s only marked received once {dj} confirms it.</>,
-      done: <>We let {dj} know you&apos;ll pay your balance of {bold(amt)} by check{forVenue}. They&apos;ll confirm it once received. Thanks!</>,
-    };
   } else {
-    // Generic fallback — the link didn't specify a method.
     const kindWord = isDeposit ? 'deposit' : 'balance';
     copy = {
-      heading: isDeposit ? 'Arranging your deposit?' : 'Paying at the event?',
       prompt: isDeposit
         ? <>Let {dj} know you&apos;ll pay your deposit of {bold(amt)} before the event{when}, so they can arrange to collect it ahead of time.</>
         : <>Let {dj} know you&apos;ll pay your balance of {bold(amt)} in person at the event{when}, so they know to expect it on the day.</>,
@@ -97,14 +300,10 @@ export default function CheckSent({
     };
   }
 
-  const wrap: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
-  const card: React.CSSProperties = { maxWidth: 440, width: '100%', background: '#15151c', border: '1px solid #26263200', borderRadius: 16, padding: 28, textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.5)' };
-
   return (
-    <div style={wrap}>
-      <div style={card}>
-        <div style={{ fontFamily: 'Impact,Arial,sans-serif', fontSize: 22, letterSpacing: '.06em', color: '#00f5c4', fontWeight: 700, marginBottom: 20 }}>GLOBAL DJ CONNECT</div>
-
+    <div style={WRAP}>
+      <div style={CARD}>
+        <Brand />
         {state === 'done' ? (
           <>
             <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
@@ -113,15 +312,13 @@ export default function CheckSent({
           </>
         ) : (
           <>
-            {/* Hero: the subject (Deposit / Balance) with the amount under it. */}
-            <h1 style={{ fontFamily: 'Impact,Arial,sans-serif', fontSize: 34, letterSpacing: '.04em', textTransform: 'uppercase', margin: '0 0 2px', lineHeight: 1.05 }}>{isDeposit ? 'Deposit' : 'Balance'}</h1>
-            <div style={{ fontSize: 26, fontWeight: 700, color: '#00f5c4', margin: '0 0 16px' }}>{amt}</div>
+            <Hero />
             <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>{copy.prompt}</p>
             <button
               type="button"
-              onClick={notify}
+              onClick={() => notify(atEvent ? 'at-event' : 'sent', copy.done)}
               disabled={state === 'sending'}
-              style={{ width: '100%', background: '#00e0a4', color: '#06231b', border: 'none', borderRadius: 10, padding: '14px 20px', fontWeight: 700, fontSize: 15, cursor: state === 'sending' ? 'default' : 'pointer', opacity: state === 'sending' ? 0.7 : 1 }}
+              style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1, cursor: state === 'sending' ? 'default' : 'pointer' }}
             >
               {state === 'sending' ? 'Confirming…' : copy.button}
             </button>
@@ -135,5 +332,13 @@ export default function CheckSent({
         )}
       </div>
     </div>
+  );
+}
+
+function BackLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} style={{ background: 'transparent', border: 'none', color: '#8a8a98', fontSize: 12.5, cursor: 'pointer', marginTop: 14, textDecoration: 'underline' }}>
+      ← choose a different option
+    </button>
   );
 }
