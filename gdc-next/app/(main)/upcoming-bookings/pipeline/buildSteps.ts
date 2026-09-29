@@ -785,9 +785,16 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               : [{ label: 'Request New Balance', run: () => openRequest('balance') }])
           : archive
           ? [
-              ...(!balanceRow
-                  ? [{ label: 'Send invoice', run: () => openRequest('balance') }]
-                  : (!done ? [{ label: 'Resend invoice', run: () => openRequest('balance') }] : [])),
+              // Once the balance is marked paid, there is nothing left to bill
+              // — only the receipt actions. The billing action appears only while
+              // it's still unpaid: "Request balance" if none was ever sent (incl.
+              // after a paid balance is marked NOT paid), "Resend invoice" if a
+              // request exists but hasn't settled.
+              ...(!done
+                  ? (!balanceRow
+                      ? [{ label: 'Request balance', run: () => openRequest('balance') }]
+                      : [{ label: 'Resend invoice', run: () => openRequest('balance') }])
+                  : []),
               ...(done
                   ? [
                       { label: 'Resend receipt', run: () => sendReceipt('balance') },
