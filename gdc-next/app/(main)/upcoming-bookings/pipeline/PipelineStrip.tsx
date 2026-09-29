@@ -23,10 +23,13 @@ function stageIcon(icon: string) {
     strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
   };
   if (icon === 'money') {
-    // Canonical dollar-sign glyph (matches the standard "$" proportions), used
-    // for the money stages (deposit + balance). Rendered a touch larger than the
-    // other glyphs so the "$" reads clearly on the row.
-    return (<svg {...p} width={18} height={18}><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>);
+    // The money stages (deposit + balance) use a TYPOGRAPHIC "$" — a plain Inter
+    // text glyph, not a drawn line-icon — to match the design mockup exactly.
+    // Colour is inherited from the ring (currentColor), so it turns neon when the
+    // stage is done just like the ring does.
+    return (
+      <span style={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: 15, fontWeight: 400, lineHeight: 1 }}>$</span>
+    );
   }
   if (icon === 'music') {
     return (<svg {...p}><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="16" r="2.5" /><path d="M8.5 18V5l12-2v11" /></svg>);
