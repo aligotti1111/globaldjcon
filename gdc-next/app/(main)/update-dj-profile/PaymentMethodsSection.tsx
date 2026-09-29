@@ -643,6 +643,26 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     })
     .find((e) => e)) || null;
 
+  // Clearing a previously-saved rail's handle means "I don't want this method
+  // anymore" — the DJ emptied the field instead of hitting Remove. That reads
+  // as a dirty edit the per-tile Save can't commit (empty rails aren't saved),
+  // so it would sit forever as a phantom "unsaved change" and trap the leave
+  // guard. Detect it and persist the removal automatically (buildClean drops
+  // empty rails), keeping the tile open so the DJ sees it's now an "add" slot.
+  // Debounced so clearing-to-retype doesn't nuke the saved value mid-edit.
+  useEffect(() => {
+    if (!loaded || saving || firstError) return;
+    const cleared = (TYPE_ORDER as PaymentMethodType[]).some((t) => {
+      const cur = byType[t];
+      const saved = savedByType[t];
+      return !!cur && !!saved && METHOD_TYPES[t].handleLabel !== '' && !cleanHandle(cur) && !!cleanHandle(saved);
+    });
+    if (!cleared) return;
+    const timer = setTimeout(() => { void persistClean(buildClean(methods), '✓ Removed.'); }, 650);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byType, savedByType, loaded, saving, firstError]);
+
   // Build the server payload from an explicit list (not just current state), so
   // an action that changes the list — Remove — can persist the post-change list
   // in the same tick instead of waiting for a state round-trip.
