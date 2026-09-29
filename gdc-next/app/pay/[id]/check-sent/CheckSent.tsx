@@ -8,10 +8,11 @@ function money(n: number, currency = 'USD'): string {
 }
 
 export default function CheckSent({
-  paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false,
+  paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null,
 }: {
   paymentId: string; amount: number; currency: string; kind: string;
   alreadySettled: boolean; eventDate: string | null; venueName: string | null; atEvent?: boolean;
+  method?: 'cash' | 'check' | null;
 }) {
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
   const kindLabel = kind === 'balance' ? 'balance' : kind === 'deposit' ? 'deposit' : 'payment';
@@ -21,7 +22,7 @@ export default function CheckSent({
     try {
       const res = await fetch('/api/pay/check-sent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId, mode: atEvent ? 'at-event' : 'sent' }),
+        body: JSON.stringify({ paymentId, mode: atEvent ? 'at-event' : 'sent', method }),
       });
       setState(res.ok ? 'done' : 'error');
     } catch { setState('error'); }
