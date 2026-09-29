@@ -1376,36 +1376,40 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   host is shown. Compact radios; the weeks dropdown only when
                   night-of isn't allowed. */}
               {t === 'check' && (
-                <div style={{ margin: '0 0 .85rem' }}>
+                <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
                   <label style={{ ...label }}>Can the host pay by check the night of the event?</label>
-                  <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.3rem' }}>
-                    {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => (
-                      <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
-                        <input
-                          type="radio"
-                          name={`checkNightOf-${m.id}`}
-                          checked={(m.checkNightOf === true) === val}
-                          onChange={() => patchType(t, { checkNightOf: val })}
-                          style={{ accentColor: 'var(--neon)' }}
-                        />
-                        {lbl}
-                      </label>
-                    ))}
-                  </div>
-                  {m.checkNightOf !== true && (
-                    <div style={{ marginTop: '.55rem' }}>
-                      <label style={{ ...label }}>How far in advance must the check be received?</label>
-                      <select
-                        value={String(m.checkLeadWeeks ?? 2)}
-                        onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
-                        style={{ ...field, marginTop: '.25rem' }}
-                      >
-                        {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                          <option key={w} value={w}>{w} week{w === 1 ? '' : 's'} before the event</option>
-                        ))}
-                      </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
+                    <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
+                      {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => (
+                        <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
+                          <input
+                            type="radio"
+                            name={`checkNightOf-${m.id}`}
+                            checked={(m.checkNightOf === true) === val}
+                            onChange={() => patchType(t, { checkNightOf: val })}
+                            style={{ accentColor: 'var(--neon)' }}
+                          />
+                          {lbl}
+                        </label>
+                      ))}
                     </div>
-                  )}
+                    {/* When it's "No", the deadline dropdown sits on the SAME line
+                        as the Yes/No answer. */}
+                    {m.checkNightOf !== true && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
+                        <label style={{ ...label, margin: 0, flexShrink: 0 }}>How far in advance must the check be received?</label>
+                        <select
+                          value={String(m.checkLeadWeeks ?? 2)}
+                          onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
+                          style={{ ...field, marginTop: 0, flex: 1, minWidth: 120 }}
+                        >
+                          {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
+                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'} before the event</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
