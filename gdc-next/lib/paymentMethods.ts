@@ -74,6 +74,26 @@ export interface PaymentMethod {
    * has to be set up ahead of time. Optional; older rows load as call-only.
    */
   smsOk?: boolean;
+  /**
+   * Check only. Whether the host may pay by check the NIGHT of the event.
+   * Most DJs want the check in hand and cashed BEFORE the event, so this
+   * defaults to false (a check must arrive ahead of time). Optional; older
+   * rows load as "no restriction set".
+   */
+  checkNightOf?: boolean;
+  /**
+   * Check only, and only meaningful when checkNightOf is false: how many WEEKS
+   * before the event the check must be paid/mailed, 1–10. The host is told this
+   * deadline so the DJ can deposit and clear it in time. Optional.
+   */
+  checkLeadWeeks?: number;
+  /**
+   * Check only, optional: a phone the host can call or text to arrange getting
+   * the check to the DJ (bring-it-in-person when night-of is allowed, or a
+   * hand-off before the deadline when it isn't). Separate from the mailing
+   * address in `contact`.
+   */
+  checkPhone?: string;
 }
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
