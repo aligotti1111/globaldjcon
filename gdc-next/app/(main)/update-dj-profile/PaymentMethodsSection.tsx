@@ -486,6 +486,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
             dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
             smsOk: o.smsOk === true ? true : undefined,
+            checkNightOf: o.checkNightOf === true ? true : undefined,
+            checkLeadWeeks: typeof o.checkLeadWeeks === 'number' ? o.checkLeadWeeks : undefined,
+            checkPhone: typeof o.checkPhone === 'string' ? o.checkPhone : undefined,
           };
         });
         setMethods(mapped);
@@ -544,6 +547,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       (m.dropoffAddress || '').trim(),
       (m.dropoffHours || '').trim(),
       m.smsOk ? '1' : '0',
+      m.checkNightOf ? '1' : '0',
+      String(m.checkLeadWeeks ?? ''),
+      (m.checkPhone || '').trim(),
     ].join('\u0000');
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
@@ -682,6 +688,16 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
           : {}),
         ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
+        // Check: whether the host may pay the night of the event, and (if not)
+        // how many weeks ahead they must pay. checkNightOf is stored explicitly
+        // (even false) so the check page can rely on it.
+        ...(m.type === 'check'
+          ? {
+              checkNightOf: m.checkNightOf === true,
+              ...(m.checkNightOf ? {} : { checkLeadWeeks: m.checkLeadWeeks ?? 2 }),
+              ...((m.checkPhone || '').trim() ? { checkPhone: (m.checkPhone || '').trim() } : {}),
+            }
+          : {}),
       }));
   }
 
@@ -756,6 +772,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               }
             : {}),
           ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
+          ...(m.type === 'check'
+            ? {
+                checkNightOf: m.checkNightOf === true,
+                ...(m.checkNightOf ? {} : { checkLeadWeeks: m.checkLeadWeeks ?? 2 }),
+                ...((m.checkPhone || '').trim() ? { checkPhone: (m.checkPhone || '').trim() } : {}),
+              }
+            : {}),
         }));
       // OWNER-ONLY on the server. No team member of any role may change where
       // money lands — the endpoint rejects non-owners, so this is airtight
@@ -1518,6 +1541,76 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         </button>
                       )}
                     </>
+                  )}
+
+                  {/* Check timing — most DJs want the check in hand and cashed
+                      BEFORE the event. Ask whether night-of is OK; if not, how
+                      many weeks ahead it must be paid. This is relayed to the
+                      host on the check payment page. */}
+                  {t === 'check' && (
+                    <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
+                      <label style={{ ...label }}>Can the host pay by check the night of the event?</label>
+                      <div style={{ display: 'flex', gap: '.5rem', marginTop: '.4rem' }}>
+                        {([['Yes', true], ['No', false]] as const).map(([lbl, val]) => {
+                          const on = (m.checkNightOf === true) === val;
+                          return (
+                            <button
+                              key={lbl}
+                              type="button"
+                              onClick={() => patchType(t, { checkNightOf: val })}
+                              style={{
+                                flex: 1, padding: '.5rem', borderRadius: 6, cursor: 'pointer',
+                                fontSize: '.8rem', fontFamily: 'inherit',
+                                border: `1px solid ${on ? 'var(--neon)' : 'var(--border)'}`,
+                                background: on ? 'rgba(0,245,196,.12)' : 'var(--deep)',
+                                color: on ? 'var(--neon)' : 'var(--white)', fontWeight: on ? 700 : 400,
+                              }}
+                            >
+                              {lbl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {m.checkNightOf !== true && (
+                        <div style={{ marginTop: '.7rem' }}>
+                          <label style={{ ...label }}>How far in advance must the check be paid?</label>
+                          <select
+                            value={String(m.checkLeadWeeks ?? 2)}
+                            onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
+                            style={{ ...field, marginTop: '.35rem' }}
+                          >
+                            {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
+                              <option key={w} value={w}>{w} week{w === 1 ? '' : 's'} before the event</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {/* Phone the host can call/text to arrange getting the
+                          check to the DJ (bring it in person or hand it off
+                          before the deadline). Optional. */}
+                      <div style={{ marginTop: '.7rem' }}>
+                        <label style={{ ...label }}>Phone for the host to call or text (optional)</label>
+                        <input
+                          value={m.checkPhone || ''}
+                          placeholder={accountPhone || '(555) 123-4567'}
+                          onChange={(e) => patchType(t, { checkPhone: e.target.value })}
+                          style={{ ...field, marginTop: '.35rem' }}
+                        />
+                        {accountPhone && (m.checkPhone || '').trim() !== accountPhone && (
+                          <button
+                            type="button"
+                            onClick={() => patchType(t, { checkPhone: accountPhone })}
+                            style={{
+                              marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
+                              color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
+                              fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
+                            }}
+                          >
+                            {(m.checkPhone || '').trim() ? 'Use my account number instead' : `Use my account number (${accountPhone})`}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {/* Drop-off — cash only, and behind a button because most DJs
