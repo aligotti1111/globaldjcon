@@ -1238,7 +1238,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
                       <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '.6rem .7rem' }}>
                         <div style={{ ...label, marginBottom: '.35rem' }}>Statement descriptor</div>
-                        <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.5 }}>Your DJ name — this is what shows on your client&apos;s card statement. Make it something they&apos;ll recognise, or you&apos;ll get &quot;what&apos;s this charge?&quot; calls and chargebacks.</p>
+                        <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.5 }}>Your Company or DJ name — this is what shows on your client&apos;s card statement. Make it something they&apos;ll recognize, or you&apos;ll get &quot;what&apos;s this charge?&quot; calls and chargebacks.</p>
                       </div>
                     </div>
                   </div>
