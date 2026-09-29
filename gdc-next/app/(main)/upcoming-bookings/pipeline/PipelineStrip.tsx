@@ -18,12 +18,13 @@ import { stageLabel, type PipelineStep } from './types';
 // anything else (contract) → a document.
 function stageIcon(icon: string) {
   const p = {
-    width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none',
+    width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none',
     stroke: 'currentColor', strokeWidth: 1.9,
     strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
   };
   if (icon === 'money') {
-    return (<svg {...p}><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 10v4M18 10v4" /></svg>);
+    // A clean dollar sign for the money stages (deposit + balance).
+    return (<svg {...p}><line x1="12" y1="2.5" x2="12" y2="21.5" /><path d="M17 6.5H9.75a3.25 3.25 0 0 0 0 6.5h4.5a3.25 3.25 0 0 1 0 6.5H6.5" /></svg>);
   }
   if (icon === 'music') {
     return (<svg {...p}><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="16" r="2.5" /><path d="M8.5 18V5l12-2v11" /></svg>);
