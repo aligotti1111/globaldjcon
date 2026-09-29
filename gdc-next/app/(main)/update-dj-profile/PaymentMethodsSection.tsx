@@ -1376,7 +1376,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
               {/* Hero header — the method you're editing reads big, in the
                   display font, so it's obvious which rail this panel is for. */}
-              <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, color: 'var(--white)', fontSize: '1.75rem', letterSpacing: '.03em', lineHeight: 1, marginBottom: '.7rem', paddingBottom: '.55rem', borderBottom: '1px solid var(--border)' }}>{cfg.label}</div>
+              <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, color: 'var(--white)', fontSize: '1.75rem', letterSpacing: '.03em', lineHeight: 1, marginBottom: '.7rem', paddingBottom: '.55rem', borderBottom: '1px solid rgba(255,255,255,.5)' }}>{cfg.label}</div>
               {/* White, not muted: this is the rail's actual behaviour — what
                   the client will have to do, what it costs, what it can't do.
                   Greying it made the one paragraph that answers "should I use
