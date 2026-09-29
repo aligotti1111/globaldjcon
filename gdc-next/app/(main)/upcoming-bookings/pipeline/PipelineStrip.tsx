@@ -135,7 +135,7 @@ export default function PipelineStrip({
           ? 'var(--neon,#00e0a4)'
           : (!st.done && waiting)
             ? '#b9b9c6'
-            : skipped ? '#f2f2f7' : '#c2c2ce';
+            : skipped ? '#b9b9c6' : '#c2c2ce';
         const inner = (
           <>
             <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle }}>
