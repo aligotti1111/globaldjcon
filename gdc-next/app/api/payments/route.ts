@@ -1094,10 +1094,10 @@ ${optionsBlock}`
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
       .eq('id', p.booking_id)
       .maybeSingle();
-    const b = bData as { id: string; dj_id: string | null } | null;
+    const b = bData as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
     if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
@@ -1113,8 +1113,32 @@ ${optionsBlock}`
       .select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
 
+    const kindLabel = p.kind === 'balance' ? 'balance' : 'deposit';
     if (Array.isArray(delRows) && delRows.length > 0) {
-      await logActivity(acting, { action: `payment.${p.kind}.request_withdrawn`, summary: `Withdrew a ${p.kind === 'balance' ? 'balance' : 'deposit'} request`, bookingId: p.booking_id });
+      // Booking log: the payment row is now gone, so stamp a write-once column
+      // (like the overtime log stamps) that BookingLog reads to keep the event.
+      const stampCol = p.kind === 'balance' ? 'balance_request_cancelled_at' : 'deposit_request_cancelled_at';
+      await db.from('bookings').update({ [stampCol]: new Date().toISOString() } as unknown as never).eq('id', p.booking_id);
+      // Team activity feed.
+      await logActivity(acting, { action: `payment.${p.kind}.request_cancelled`, summary: `Cancelled a ${kindLabel} request`, bookingId: p.booking_id });
+
+      // Tell the host their payment request was cancelled, so a link they still
+      // have in their inbox doesn't leave them confused about whether to pay.
+      if (process.env.RESEND_API_KEY) {
+        const to = await clientEmailFor(b);
+        if (to) {
+          const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
+          const amt = money(Number(p.amount), p.currency || b.currency || 'USD');
+          const when = b.event_date ? ` for your ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} event` : '';
+          const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Your ${kindLabel} request was cancelled</h1>
+<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, the ${kindLabel} of <strong>${amt}</strong>${when} has been cancelled by your DJ — there's nothing to pay right now.</p>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">If you already tried to pay it, don't worry: nothing was collected. Your DJ will send a new request if one is needed.</p>`;
+          try {
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            await resend.emails.send({ from: FROM, to, subject: `Your ${kindLabel} request was cancelled`, html: shell(content) });
+          } catch { /* non-fatal — the cancellation itself already succeeded */ }
+        }
+      }
     }
     return NextResponse.json({ ok: true });
   }
