@@ -16,6 +16,10 @@ export default function CheckSent({
 }) {
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
   const kindLabel = kind === 'balance' ? 'balance' : kind === 'deposit' ? 'deposit' : 'payment';
+  // A deposit is paid AHEAD of the event, never "at the event" — so the
+  // in-person/at-event flow becomes "before the event" wording for deposits.
+  const beforeEvent = atEvent && kind === 'deposit';
+  const payWord = method === 'cash' ? ' in cash' : method === 'check' ? ' by check' : '';
 
   async function notify() {
     setState('sending');
@@ -41,16 +45,20 @@ export default function CheckSent({
             <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
             <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
             <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-              {atEvent
+              {beforeEvent
+                ? <>We let your DJ know you'll pay your deposit of <strong style={{ color: '#fff' }}>{money(amount, currency)}</strong>{payWord} before the event{eventDate ? ` on ${eventDate}` : ''}. They'll confirm it once received. Thanks!</>
+                : atEvent
                 ? <>We let your DJ know you'll pay <strong style={{ color: '#fff' }}>{money(amount, currency)}</strong> at the event{eventDate ? ` on ${eventDate}` : ''}. They'll collect it on the day. Thanks!</>
                 : <>We let your DJ know a check for <strong style={{ color: '#fff' }}>{money(amount, currency)}</strong> is on the way{venueName ? ` for ${venueName}` : ''}. They'll confirm it once it arrives. Thanks!</>}
             </p>
           </>
         ) : (
           <>
-            <h1 style={{ fontSize: 20, margin: '0 0 8px' }}>{atEvent ? 'Paying at the event?' : 'Mailing a check?'}</h1>
+            <h1 style={{ fontSize: 20, margin: '0 0 8px' }}>{beforeEvent ? 'Arranging your deposit?' : atEvent ? 'Paying at the event?' : 'Mailing a check?'}</h1>
             <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>
-              {atEvent
+              {beforeEvent
+                ? <>Let your DJ know you'll pay your deposit of <strong style={{ color: '#fff' }}>{money(amount, currency)}</strong>{payWord} before the event{eventDate ? ` on ${eventDate}` : ''}, so they can arrange to collect it ahead of time.</>
+                : atEvent
                 ? <>Let your DJ know you'll pay your {kindLabel} of <strong style={{ color: '#fff' }}>{money(amount, currency)}</strong> in person at the event{eventDate ? ` on ${eventDate}` : ''}, so they know to expect it on the day.</>
                 : <>Let your DJ know your {kindLabel} of <strong style={{ color: '#fff' }}>{money(amount, currency)}</strong> is on the way{eventDate ? ` for the ${eventDate} event` : ''}, so they know to watch for the envelope.</>}
             </p>
@@ -60,13 +68,13 @@ export default function CheckSent({
               disabled={state === 'sending'}
               style={{ width: '100%', background: '#00e0a4', color: '#06231b', border: 'none', borderRadius: 10, padding: '14px 20px', fontWeight: 700, fontSize: 15, cursor: state === 'sending' ? 'default' : 'pointer', opacity: state === 'sending' ? 0.7 : 1 }}
             >
-              {state === 'sending' ? 'Notifying…' : atEvent ? "Let my DJ know I'll pay at the event" : "Let my DJ know it's on the way"}
+              {state === 'sending' ? 'Notifying…' : beforeEvent ? "Let my DJ know I'll pay before the event" : atEvent ? "Let my DJ know I'll pay at the event" : "Let my DJ know it's on the way"}
             </button>
             {state === 'error' && (
               <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>
             )}
             <p style={{ color: '#6f6f80', fontSize: 12, lineHeight: 1.6, margin: '16px 0 0' }}>
-              This just gives them a heads-up. Your payment is only marked received once your DJ confirms it{atEvent ? ' at the event' : ''}.
+              This just gives them a heads-up. Your payment is only marked received once your DJ confirms it{beforeEvent ? '' : atEvent ? ' at the event' : ''}.
             </p>
           </>
         )}
