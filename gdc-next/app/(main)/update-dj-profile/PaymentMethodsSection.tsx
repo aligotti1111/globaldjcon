@@ -1516,7 +1516,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
                       }}
                     >
-                      Apply my account phone number ({accountPhone})
+                      Apply {accountPhone}
                     </button>
                   )}
 
@@ -1593,7 +1593,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             fontFamily: 'inherit', textDecoration: 'underline',
                           }}
                         >
-                          {`Apply my account address (${accountAddress})`}
+                          {`Apply ${accountAddress}`}
                         </button>
                       )}
                     </>
@@ -1623,7 +1623,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                               fontFamily: 'inherit', textDecoration: 'underline',
                             }}
                           >
-                            {`Apply my account phone number (${accountPhone})`}
+                            {`Apply ${accountPhone}`}
                           </button>
                         )}
                       </div>
@@ -1668,7 +1668,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                                 fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
                               }}
                             >
-                              {`Apply my account address (${accountAddress})`}
+                              {`Apply ${accountAddress}`}
                             </button>
                           )}
                           <label style={{ ...label, marginTop: '.7rem' }}>Open hours (optional)</label>
