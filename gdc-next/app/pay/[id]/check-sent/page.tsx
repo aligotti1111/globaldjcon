@@ -9,6 +9,7 @@
 import { notFound } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { splitMailAddress, checkMemo, referenceCode } from '@/lib/paymentMethods';
 import CheckSent from './CheckSent';
 
 export const runtime = 'nodejs';
@@ -45,6 +46,14 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
   // choice, the phone the host should call/text to arrange a drop-off.
   let djName: string | null = null;
   let cashPhone: string | null = null;
+  // Check-specific: the DJ's rules (night-of allowed? how far ahead?) plus the
+  // payable-to name, mailing address, and a call/text number — all relayed to
+  // the host when they're paying the BALANCE by check.
+  let checkNightOf = false;
+  let checkLeadWeeks: number | null = null;
+  let checkPhone: string | null = null;
+  let checkPayTo: string | null = null;
+  let checkAddressLines: string[] = [];
   if (booking?.dj_id) {
     const { data: djData } = await admin
       .from('users')
@@ -53,9 +62,30 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       .maybeSingle();
     const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
     djName = dj?.name?.trim() || null;
+    const methods = Array.isArray(dj?.payment_methods)
+      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string }>)
+      : [];
     if (payMethod === 'cash') {
-      const methods = Array.isArray(dj?.payment_methods) ? (dj!.payment_methods as Array<{ type?: string; handle?: string }>) : [];
       cashPhone = methods.find((m) => m?.type === 'cash')?.handle?.trim() || null;
+    }
+    if (payMethod === 'check') {
+      const chk = methods.find((m) => m?.type === 'check');
+      checkNightOf = chk?.checkNightOf === true;
+      checkLeadWeeks = typeof chk?.checkLeadWeeks === 'number' ? chk!.checkLeadWeeks : null;
+      checkPhone = chk?.checkPhone?.trim() || null;
+      checkPayTo = chk?.handle?.trim() || null;
+      checkAddressLines = chk?.contact ? splitMailAddress(chk.contact) : [];
+    }
+  }
+
+  // Deadline the check must be RECEIVED by = event date − leadWeeks. Computed
+  // server-side so the host just sees a date. Only when the DJ requires it ahead.
+  let checkDeadline: string | null = null;
+  if (payMethod === 'check' && !checkNightOf && checkLeadWeeks && booking?.event_date) {
+    const d = new Date(`${booking.event_date}T12:00:00`);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() - checkLeadWeeks * 7);
+      checkDeadline = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
   }
 
@@ -72,6 +102,13 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       method={payMethod}
       djName={djName}
       cashPhone={cashPhone}
+      checkNightOf={checkNightOf}
+      checkDeadline={checkDeadline}
+      checkLeadWeeks={checkLeadWeeks}
+      checkPhone={checkPhone}
+      checkPayTo={checkPayTo}
+      checkAddressLines={checkAddressLines}
+      checkMemoLine={payMethod === 'check' ? checkMemo(booking?.event_date ?? null, booking?.venue_name ?? null, referenceCode(pay.booking_id, pay.kind)) : ''}
     />
   );
 }
