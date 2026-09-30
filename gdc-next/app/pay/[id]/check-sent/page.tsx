@@ -46,6 +46,12 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
   // choice, the phone the host should call/text to arrange a drop-off.
   let djName: string | null = null;
   let cashPhone: string | null = null;
+  // Cash mirrors check for the BALANCE: whether the host may pay in cash the
+  // night of the event, and (if not) how far ahead the cash must be dropped off.
+  // Cash can never be mailed, so the only hand-off is an in-person drop-off.
+  let cashNightOf = false;
+  let cashLeadWeeks: number | null = null;
+  let cashCanText = false;
   // Check-specific: the DJ's rules (night-of allowed? how far ahead?) plus the
   // payable-to name, mailing address, and a call/text number — all relayed to
   // the host when they're paying the BALANCE by check.
@@ -64,10 +70,14 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
     djName = dj?.name?.trim() || null;
     const methods = Array.isArray(dj?.payment_methods)
-      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean }>)
+      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean }>)
       : [];
     if (payMethod === 'cash') {
-      cashPhone = methods.find((m) => m?.type === 'cash')?.handle?.trim() || null;
+      const csh = methods.find((m) => m?.type === 'cash');
+      cashPhone = csh?.handle?.trim() || null;
+      cashNightOf = csh?.cashNightOf === true;
+      cashLeadWeeks = typeof csh?.cashLeadWeeks === 'number' ? csh.cashLeadWeeks : null;
+      cashCanText = csh?.smsOk === true;
     }
     if (payMethod === 'check') {
       const chk = methods.find((m) => m?.type === 'check');
@@ -90,6 +100,15 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkDeadline = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
   }
+  // Same deadline math for a cash balance that must be dropped off ahead of time.
+  let cashDeadline: string | null = null;
+  if (payMethod === 'cash' && !cashNightOf && cashLeadWeeks && booking?.event_date) {
+    const d = new Date(`${booking.event_date}T12:00:00`);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() - cashLeadWeeks * 7);
+      cashDeadline = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+  }
 
   return (
     <CheckSent
@@ -104,6 +123,10 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       method={payMethod}
       djName={djName}
       cashPhone={cashPhone}
+      cashNightOf={cashNightOf}
+      cashDeadline={cashDeadline}
+      cashLeadWeeks={cashLeadWeeks}
+      cashCanText={cashCanText}
       checkNightOf={checkNightOf}
       checkDeadline={checkDeadline}
       checkLeadWeeks={checkLeadWeeks}
