@@ -220,17 +220,33 @@ ${body}${showAmount ? amountTag : ''}
       const confirmBtn = hasId
         ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=check" style="display:block;margin:12px 0 0;background:#37474F;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Check As Payment Choice</a>`
         : '';
+      // The DJ's check rules (from their payment settings) decide the wording.
+      const chkNightOf = (m as { checkNightOf?: boolean }).checkNightOf === true;
+      const chkWeeks = (m as { checkLeadWeeks?: number }).checkLeadWeeks;
+      const leadTxt = chkWeeks ? `${chkWeeks} week${chkWeeks === 1 ? '' : 's'} before the event` : 'ahead of the event';
+      const addrHtml = m.contact
+        ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Mail to:</p>
+<p style="margin:1px 0 0;font-size:14px;color:#111;line-height:1.45;">${splitMailAddress(m.contact).join('<br>')}</p>`
+        : '';
+      const memoHtml = memo
+        ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
+<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>`
+        : '';
+      // Balance: a deposit is always paid ahead, so only the balance can be
+      // brought day-of — and only if the DJ allows it. Otherwise it must be
+      // received by the deadline (mail or drop-off).
+      const balanceLead = chkNightOf
+        ? `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">Pay by check the day of the event${eventWhen}, or get it to ${djName || 'your DJ'} ahead of time. Made payable to:</p>`
+        : `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">${djName || 'Your DJ'} needs this check received ${leadTxt} — mail it or arrange a drop-off. Made payable to:</p>`;
       const body = isBalance
-        ? `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">Bring your check to the event${eventWhen}, made payable to:</p>
+        ? `${balanceLead}
 <p style="margin:2px 0 0;font-size:15px;color:#111;">${m.handle}</p>
-${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${confirmBtn}`
-        : `<p style="margin:10px 0 0;color:#666;font-size:12px;">Make it payable to:</p>
+${addrHtml}
+${memoHtml}${confirmBtn}`
+        : `<p style="margin:10px 0 0;color:#666;font-size:12px;line-height:1.5;">Deposits can&rsquo;t be brought to the event — mail your check or arrange a drop-off with ${djName || 'your DJ'}. Made payable to:</p>
 <p style="margin:1px 0 0;font-size:15px;color:#111;">${m.handle}</p>
-${m.contact ? `<p style="margin:7px 0 0;color:#666;font-size:12px;">Mail to:</p>
-<p style="margin:1px 0 0;font-size:14px;color:#111;line-height:1.45;">${splitMailAddress(m.contact).join('<br>')}</p>` : ''}
-${memo ? `<p style="margin:8px 0 0;color:#666;font-size:12px;">Include with your check:</p>
-<p style="margin:1px 0 0;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}${confirmBtn}`;
+${addrHtml}
+${memoHtml}${confirmBtn}`;
       return card('check', body);
     }
 
