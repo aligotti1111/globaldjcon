@@ -212,7 +212,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   check: {
     label: 'Check',
     handleLabel: 'Payable to',
-    placeholder: 'DJ Nova LLC',
+    placeholder: '',
     contactLabel: 'Mailing address',
     contactPlaceholder: '123 Main St, Staten Island, NY 10307',
     hint: '',
