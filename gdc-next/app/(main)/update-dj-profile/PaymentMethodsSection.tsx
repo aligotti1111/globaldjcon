@@ -1499,15 +1499,19 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 // Tri-state: yes / no / unanswered (undefined). Turns red only
                 // AFTER a save attempt, so the DJ isn't scolded before trying.
                 const unanswered = attempted && m.checkNightOf === undefined;
-                // Bigger, heavier section headings ("Balance" / "Deposit").
-                const heroHead: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", color: 'var(--neon)', fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '.5rem' };
+                // Section headings sit in a solid "notched accent bar" — a filled
+                // block with a darker offset notch on the left. Balance = neon,
+                // Deposit = deeper green, so the two read as distinct.
+                const headBase: React.CSSProperties = { display: 'inline-block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, padding: '.28rem .8rem .28rem 1.1rem', borderRadius: 4, marginBottom: '.6rem' };
+                const balHead: React.CSSProperties = { ...headBase, background: '#00f5c4', color: '#04121a', boxShadow: '-6px 0 0 rgba(0,245,196,.3)' };
+                const depHead: React.CSSProperties = { ...headBase, background: '#0a9b86', color: '#eafff8', boxShadow: '-6px 0 0 rgba(10,155,134,.35)' };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
                   {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
                   <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
                     {/* Balance column */}
                     <div style={{ flex: '1 1 320px', minWidth: 280, paddingRight: '1.4rem' }}>
-                      <div style={heroHead}>Balance</div>
+                      <div style={balHead}>Balance</div>
                       <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
                         {([['Yes', true], ['No, check must be in hand prior to date of event', false]] as const).map(([lbl, val]) => (
@@ -1548,7 +1552,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Deposit column — deposits are always paid ahead, so
                         there's no night-of choice: mail or drop off, full stop. */}
                     <div style={{ flex: '1 1 240px', minWidth: 220, paddingLeft: '1.4rem' }}>
-                      <div style={heroHead}>Deposit</div>
+                      <div style={depHead}>Deposit</div>
                       <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
                     </div>
                   </div>
@@ -1561,14 +1565,16 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   ahead of the event — is always an in-person drop-off. */}
               {t === 'cash' && (() => {
                 const unanswered = attempted && m.cashNightOf === undefined;
-                const heroHead: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", color: 'var(--neon)', fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '.5rem' };
+                const headBase: React.CSSProperties = { display: 'inline-block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, padding: '.28rem .8rem .28rem 1.1rem', borderRadius: 4, marginBottom: '.6rem' };
+                const balHead: React.CSSProperties = { ...headBase, background: '#00f5c4', color: '#04121a', boxShadow: '-6px 0 0 rgba(0,245,196,.3)' };
+                const depHead: React.CSSProperties = { ...headBase, background: '#0a9b86', color: '#eafff8', boxShadow: '-6px 0 0 rgba(10,155,134,.35)' };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
                   {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
                   <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
                     {/* Balance column */}
                     <div style={{ flex: '1 1 320px', minWidth: 280, paddingRight: '1.4rem' }}>
-                      <div style={heroHead}>Balance</div>
+                      <div style={balHead}>Balance</div>
                       <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
                         {([['Yes', true], ['No, cash must be exchanged prior to date of event', false]] as const).map(([lbl, val]) => (
@@ -1608,7 +1614,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Deposit column — a cash deposit is always paid ahead and
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
                     <div style={{ flex: '1 1 240px', minWidth: 220, paddingLeft: '1.4rem' }}>
-                      <div style={heroHead}>Deposit</div>
+                      <div style={depHead}>Deposit</div>
                       <p style={{ ...qLabel, margin: 0 }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
                     </div>
                   </div>
