@@ -101,6 +101,19 @@ export interface PaymentMethod {
    */
   checkCall?: boolean;
   checkText?: boolean;
+  /**
+   * Cash only. Whether the host may pay the BALANCE in cash the night of the
+   * event. Mirrors checkNightOf. When false, the host must drop the cash off
+   * ahead of time (cash can never be mailed). Optional; older rows load as
+   * "no restriction set".
+   */
+  cashNightOf?: boolean;
+  /**
+   * Cash only, and only meaningful when cashNightOf is false: how many WEEKS
+   * before the event the cash must be dropped off, 1–10. Mirrors checkLeadWeeks.
+   * Optional.
+   */
+  cashLeadWeeks?: number;
 }
 
 /** The host-facing verb for the check drop-off phone, per the DJ's toggles. */
