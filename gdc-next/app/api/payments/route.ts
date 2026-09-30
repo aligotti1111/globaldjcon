@@ -228,7 +228,7 @@ ${body}${showAmount ? amountTag : ''}
         : chkNightOf
           ? `If paying by check, you can bring it the day of the event or get it to ${djName || 'your DJ'} ahead of time.`
           : `If paying by check, the check must be received ${leadTxt}.`;
-      const body = `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.55;">${msg} Please click &ldquo;Confirm Check As Payment Choice&rdquo; below to confirm you are paying by check. See additional instructions on the next page.</p>${confirmBtn}`;
+      const body = `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.55;">${msg} Please click &ldquo;Confirm Check As Payment Choice&rdquo; below to notify ${djName || 'the DJ'} you are paying by check. See additional instructions on the link.</p>${confirmBtn}`;
       return card('check', body);
     }
 
