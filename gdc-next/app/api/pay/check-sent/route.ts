@@ -78,7 +78,9 @@ export async function POST(req: Request) {
     // date under pricing. Method is only stored when the client's link told us
     // which — a generic at-event link leaves it null.
     ? { client_intent: 'pay_at_event', marked_sent_at: new Date().toISOString(), ...(method ? { method } : {}) }
-    : { status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: 'check', client_intent: 'pay_now' };
+    // A 'sent' claim is a check mailed ahead OR cash dropped off ahead — store
+    // the rail the client actually chose (fall back to check for older links).
+    : { status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: method || 'check', client_intent: 'pay_now' };
   const { error: upErr } = await db
     .from('booking_payments')
     .update(patch as unknown as never)
@@ -104,10 +106,15 @@ export async function POST(req: Request) {
       // A deposit is paid AHEAD of the event, so an at-event confirm for a
       // deposit reads "before the event", not "at the event".
       const depositAhead = mode === 'at-event' && p.kind === 'deposit';
+      // A 'sent' claim for cash is a drop-off (cash can't be mailed); for check
+      // it's a mailed/handed-over check.
+      const sentCash = mode !== 'at-event' && method === 'cash';
       const heading = depositAhead
         ? `${who} will pay their deposit before the event`
         : mode === 'at-event'
         ? `${who} will pay at the event`
+        : sentCash
+        ? `${who} will drop off cash`
         : `${who} is mailing a check`;
       // "in cash" / "by check" when the client's link told us which; otherwise
       // the generic "by cash or check".
@@ -116,6 +123,9 @@ export async function POST(req: Request) {
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll pay their deposit of <strong>${amt}</strong> ${payWord} before the event${forWhen}${atVenue}. Arrange to collect it ahead of time, then <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : mode === 'at-event'
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed payment will be paid ${payWord} at the event${forWhen}${atVenue}. Nothing to do now; collect it at the event and <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
+        : sentCash
+        ? `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll drop off their ${kindLabel} of <strong>${amt}</strong> in cash${forWhen}${atVenue}.</p>
+<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Arrange the hand-off — it isn't marked paid until you receive it and confirm.</p>`
         : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
       const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${heading}</h1>
@@ -125,7 +135,7 @@ ${bodyLines}
 </td></tr></table>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to: djEmail, subject: depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : `${who} is mailing a check — ${amt}`, html: shell(content) });
+        await resend.emails.send({ from: FROM, to: djEmail, subject: depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : sentCash ? `${who} will drop off cash — ${amt}` : `${who} is mailing a check — ${amt}`, html: shell(content) });
       } catch { /* non-fatal */ }
     }
   }
