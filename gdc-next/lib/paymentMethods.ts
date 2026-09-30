@@ -114,6 +114,17 @@ export interface PaymentMethod {
    * Optional.
    */
   cashLeadWeeks?: number;
+  /**
+   * Check only: which ways the DJ will ACCEPT the check. Each is an independent
+   * on/off the DJ toggles. Default all on (undefined === on). The host only sees
+   * the ways left on.
+   *   checkMail    — host mails the check to `contact` (mailing address)
+   *   checkMeet    — host calls/texts `checkPhone` to arrange handing it over
+   *   checkOffice  — host drops it at the office (`dropoffAddress` + `dropoffHours`)
+   */
+  checkMail?: boolean;
+  checkMeet?: boolean;
+  checkOffice?: boolean;
 }
 
 /** The host-facing verb for the check drop-off phone, per the DJ's toggles. */
