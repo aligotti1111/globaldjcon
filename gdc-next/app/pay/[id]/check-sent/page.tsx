@@ -52,6 +52,9 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
   let cashNightOf = false;
   let cashLeadWeeks: number | null = null;
   let cashCanText = false;
+  // Optional office where the host can drop off cash / a check, with open hours.
+  let dropoffAddress: string | null = null;
+  let dropoffHours: string | null = null;
   // Check-specific: the DJ's rules (night-of allowed? how far ahead?) plus the
   // payable-to name, mailing address, and a call/text number — all relayed to
   // the host when they're paying the BALANCE by check.
@@ -70,7 +73,7 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
     djName = dj?.name?.trim() || null;
     const methods = Array.isArray(dj?.payment_methods)
-      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean }>)
+      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string }>)
       : [];
     if (payMethod === 'cash') {
       const csh = methods.find((m) => m?.type === 'cash');
@@ -78,6 +81,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       cashNightOf = csh?.cashNightOf === true;
       cashLeadWeeks = typeof csh?.cashLeadWeeks === 'number' ? csh.cashLeadWeeks : null;
       cashCanText = csh?.smsOk === true;
+      dropoffAddress = csh?.dropoffAddress?.trim() || null;
+      dropoffHours = csh?.dropoffHours?.trim() || null;
     }
     if (payMethod === 'check') {
       const chk = methods.find((m) => m?.type === 'check');
@@ -87,6 +92,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkPayTo = chk?.handle?.trim() || null;
       checkAddressLines = chk?.contact ? splitMailAddress(chk.contact) : [];
       checkVerb = checkContactVerb({ checkCall: chk?.checkCall, checkText: chk?.checkText });
+      dropoffAddress = chk?.dropoffAddress?.trim() || null;
+      dropoffHours = chk?.dropoffHours?.trim() || null;
     }
   }
 
@@ -127,6 +134,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       cashDeadline={cashDeadline}
       cashLeadWeeks={cashLeadWeeks}
       cashCanText={cashCanText}
+      dropoffAddressLines={dropoffAddress ? splitMailAddress(dropoffAddress) : []}
+      dropoffHours={dropoffHours}
       checkNightOf={checkNightOf}
       checkDeadline={checkDeadline}
       checkLeadWeeks={checkLeadWeeks}
