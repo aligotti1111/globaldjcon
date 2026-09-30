@@ -26,6 +26,9 @@ interface Props {
   cashDeadline?: string | null;
   cashLeadWeeks?: number | null;
   cashCanText?: boolean;
+  // Optional office drop-off location (cash + check), with open hours.
+  dropoffAddressLines?: string[];
+  dropoffHours?: string | null;
   // Check-specific rules + contact, used for the interactive BALANCE-by-check flow.
   checkNightOf?: boolean;
   checkDeadline?: string | null;
@@ -51,6 +54,7 @@ export default function CheckSent(props: Props) {
     paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null,
     djName = null, cashPhone = null,
     cashNightOf = false, cashDeadline = null, cashLeadWeeks = null, cashCanText = false,
+    dropoffAddressLines = [], dropoffHours = null,
     checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
     checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '', checkContactVerb = 'call or text',
   } = props;
@@ -102,12 +106,23 @@ export default function CheckSent(props: Props) {
       )}
     </div>
   );
+  // Optional office where the host can bring cash / a check, with hours.
+  const OfficeBlock = () => (
+    dropoffAddressLines.length > 0 ? (
+      <>
+        <div style={{ color: '#8a8a98', fontSize: 12, marginTop: 12 }}>Drop-off location</div>
+        {dropoffAddressLines.map((l, i) => <div key={i} style={{ color: '#fff', fontSize: 14, lineHeight: 1.45 }}>{l}</div>)}
+        {dropoffHours && <div style={{ color: '#d5d5df', fontSize: 13, marginTop: 4 }}>{dropoffHours}</div>}
+      </>
+    ) : null
+  );
   // Detail shown after the host picks how they'll get the check to the DJ.
   const DropoffDetail = () => (
     <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
       {checkPhone
         ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
         : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your check.</p>}
+      <OfficeBlock />
     </div>
   );
   const MailDetail = () => (
@@ -269,6 +284,7 @@ export default function CheckSent(props: Props) {
       {cashPhone
         ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{cashVerb.charAt(0).toUpperCase() + cashVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> to arrange dropping off your cash to {dj}.</p>
         : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your cash.</p>}
+      <OfficeBlock />
     </div>
   );
 
