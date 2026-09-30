@@ -748,7 +748,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         note: (m.note || '').trim(),
         enabled: true,
         ...(METHOD_TYPES[m.type].contactLabel ? { contact: (m.contact || '').trim() } : {}),
-        ...(m.type === 'cash' && (m.dropoffAddress || '').trim()
+        ...((m.type === 'cash' || m.type === 'check') && (m.dropoffAddress || '').trim()
           ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
           : {}),
         ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
@@ -842,9 +842,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           // Only written when the rail actually has a second field, so a Venmo
           // row doesn't carry a stray empty `contact` forever.
           ...(METHOD_TYPES[m.type].contactLabel ? { contact: (m.contact || '').trim() } : {}),
-          // Cash-only, and only when the DJ actually filled one in — an empty
-          // string here would make cashDropoff() think there's an address.
-          ...(m.type === 'cash' && (m.dropoffAddress || '').trim()
+          // Cash + check, and only when the DJ actually filled one in — an empty
+          // string here would make the drop-off readers think there's an address.
+          ...((m.type === 'cash' || m.type === 'check') && (m.dropoffAddress || '').trim()
             ? {
                 dropoffAddress: (m.dropoffAddress || '').trim(),
                 dropoffHours: (m.dropoffHours || '').trim(),
@@ -1547,7 +1547,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
-                      {([['Yes', true], ['No, cash must be dropped off prior to date of event', false]] as const).map(([lbl, val]) => (
+                      {([['Yes', true], ['No, cash must be exchanged prior to date of event', false]] as const).map(([lbl, val]) => (
                         <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
                           <input
                             type="radio"
@@ -1586,7 +1586,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       cash can't be mailed, so it's an in-person drop-off, full stop. */}
                   <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Deposit</div>
-                    <p style={{ ...qLabel, margin: 0 }}>Host will arrange a drop-off to exchange the cash — a cash deposit can’t be mailed.</p>
+                    <p style={{ ...qLabel, margin: 0 }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
                   </div>
                 </div>
                 );
@@ -1810,11 +1810,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     </div>
                   )}
 
-                  {/* Drop-off — cash only, and behind a button because most DJs
+                  {/* Drop-off — cash + check, behind a button because most DJs
                       don't have an office. Two fields, not one: an address with
                       no hours sends a client across town to a locked door, and
                       a client who does that once pays at the event forever. */}
-                  {t === 'cash' && (
+                  {(t === 'cash' || t === 'check') && (
                     <div style={{ marginTop: '.7rem' }}>
                       {!showDropoff && !(m.dropoffAddress || '').trim() ? (
                         <button
