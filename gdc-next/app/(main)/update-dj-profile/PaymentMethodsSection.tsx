@@ -831,10 +831,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   // thing you have to read to fill the form in — and muted grey put them below
   // the placeholder text they're labelling.
   const label: React.CSSProperties = {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: '.6rem',
-    letterSpacing: '.08em',
+    fontFamily: 'inherit',
+    fontSize: '.74rem',
+    letterSpacing: '.03em',
     textTransform: 'uppercase',
+    fontWeight: 600,
     color: 'var(--white)',
     marginBottom: '.35rem',
     display: 'block',
