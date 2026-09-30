@@ -687,6 +687,26 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [byType, savedByType, loaded, saving, firstError]);
 
+  // Auto-fill cash/check contact details from the DJ's account when they open
+  // that tile — the phone (cash + check) and mailing address (check) — so the
+  // common case needs no "Apply" tap. Only fills EMPTY fields on open, never
+  // overwrites what the DJ typed or cleared, and only when the account has it.
+  useEffect(() => {
+    if (!loaded) return;
+    if (openTile !== 'cash' && openTile !== 'check') return;
+    const t = openTile;
+    const cur = byType[t];
+    const patch: Partial<PaymentMethod> = {};
+    if (t === 'cash') {
+      if (accountPhone && !(cur?.handle || '').trim()) patch.handle = accountPhone;
+    } else {
+      if (accountAddress && !(cur?.contact || '').trim()) patch.contact = accountAddress;
+      if (accountPhone && !(cur?.checkPhone || '').trim()) patch.checkPhone = accountPhone;
+    }
+    if (Object.keys(patch).length) patchType(t, patch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTile, loaded, accountPhone, accountAddress]);
+
   // Build the server payload from an explicit list (not just current state), so
   // an action that changes the list — Remove — can persist the post-change list
   // in the same tick instead of waiting for a state round-trip.
