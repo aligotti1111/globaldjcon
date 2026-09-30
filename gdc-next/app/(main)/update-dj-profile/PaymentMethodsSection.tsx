@@ -1424,7 +1424,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
-                      {([['Yes', true], ['No, check must be in hand prior to event', false]] as const).map(([lbl, val]) => (
+                      {([['Yes', true], ['No, check must be in hand prior to date of event', false]] as const).map(([lbl, val]) => (
                         <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
                           <input
                             type="radio"
@@ -1760,7 +1760,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       out to, where to send it, and what to include. A third
                       free-text box invites a DJ to repeat one of those in
                       slightly different words, and then the two can disagree. */}
-                  {t !== 'check' && t !== 'cash' && t !== 'cashapp' && t !== 'paypal' && (
+                  {t !== 'check' && t !== 'cash' && t !== 'cashapp' && t !== 'paypal' && t !== 'venmo' && t !== 'zelle' && (
                     <>
                       <label style={{ ...label, marginTop: '.7rem' }}>Note to client (optional)</label>
                       <input
