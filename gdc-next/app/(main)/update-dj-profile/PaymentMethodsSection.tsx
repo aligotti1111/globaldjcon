@@ -664,21 +664,25 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       if (!(m.handle || '').trim() && METHOD_TYPES[t].handleLabel) return null;
       const e = METHOD_TYPES[t].validate(m.handle || '');
       if (e) return e;
+      // The night-of question is only enforced for the tile the DJ is actively
+      // editing — otherwise an unanswered Cash rail would block saving the Check
+      // rail (and show a "cash" error on the check page). Each tile validates
+      // its own balance question when it's the one open.
       // Check must have the night-of question answered (yes or no) before it
       // can be saved — it changes the whole flow the host is shown.
-      if (t === 'check' && m.checkNightOf === undefined) {
+      if (t === openTile && t === 'check' && m.checkNightOf === undefined) {
         return 'Answer whether the host can pay the balance by check the day of the event.';
       }
       // If night-of isn't allowed, a lead time must be chosen.
-      if (t === 'check' && m.checkNightOf === false && m.checkLeadWeeks == null) {
+      if (t === openTile && t === 'check' && m.checkNightOf === false && m.checkLeadWeeks == null) {
         return 'Choose how far in advance the check must be received.';
       }
       // Cash mirrors check: the night-of question must be answered, and a lead
       // time chosen when the host can't pay in cash the day of the event.
-      if (t === 'cash' && m.cashNightOf === undefined) {
+      if (t === openTile && t === 'cash' && m.cashNightOf === undefined) {
         return 'Answer whether the host can pay the balance in cash the day of the event.';
       }
-      if (t === 'cash' && m.cashNightOf === false && m.cashLeadWeeks == null) {
+      if (t === openTile && t === 'cash' && m.cashNightOf === false && m.cashLeadWeeks == null) {
         return 'Choose how far in advance the cash must be dropped off.';
       }
       // A phone with no name is half a Cash rail: the client rings a stranger
