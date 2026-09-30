@@ -1411,6 +1411,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const unanswered = attempted && m.checkNightOf === undefined;
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Balance</div>
                   <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
@@ -1451,6 +1452,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {unanswered && (
                     <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
                   )}
+                  {/* Deposit sub-section — deposits are always paid ahead, so
+                      there's no night-of choice: mail or drop off, full stop. */}
+                  <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Deposit</div>
+                    <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
+                  </div>
                 </div>
                 );
               })()}
