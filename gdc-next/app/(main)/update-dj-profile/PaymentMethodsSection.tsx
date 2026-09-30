@@ -1501,8 +1501,24 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               {cfg.handleLabel ? (
                 <>
                   {/* PayPal's field label is suppressed — the Option 2 note
-                      above already tells them what to enter. */}
-                  {t !== 'paypal' && <label style={label}>{cfg.handleLabel}</label>}
+                      above already tells them what to enter. Cash puts the
+                      "allow text" toggle on the same line as the phone label. */}
+                  {t === 'cash' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                      <label style={{ ...label, marginBottom: 0 }}>{cfg.handleLabel}</label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.78rem', color: 'var(--white)', textTransform: 'none', letterSpacing: 0, marginBottom: '.35rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={m.smsOk === true}
+                          onChange={(e) => patchType(t, { smsOk: e.target.checked })}
+                          style={{ accentColor: 'var(--neon)' }}
+                        />
+                        Allow host to text this number to arrange the cash drop-off
+                      </label>
+                    </div>
+                  ) : (
+                    t !== 'paypal' && <label style={label}>{cfg.handleLabel}</label>
+                  )}
                   <input
                     autoFocus={!paypalManualDisabled}
                     value={m.handle}
@@ -1562,22 +1578,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     </button>
                   )}
 
-                  {/* Cash + DEPOSIT only: let the host text (not just call) to
-                      arrange the drop-off. When on, the deposit email says they
-                      can reach out via call OR text. */}
-                  {t === 'cash' && (
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginTop: '.7rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={m.smsOk === true}
-                        onChange={(e) => patchType(t, { smsOk: e.target.checked })}
-                        style={{ accentColor: 'var(--neon)', marginTop: '.15rem', flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.4 }}>
-                        Allow host to text this number to arrange the cash drop-off
-                      </span>
-                    </label>
-                  )}
 
                   {/* The readback exists for the IRREVERSIBLE rails: a mistyped
                       Zelle or Venmo handle sends a stranger real money and no
