@@ -94,6 +94,23 @@ export interface PaymentMethod {
    * address in `contact`.
    */
   checkPhone?: string;
+  /**
+   * Check only: which contact methods the host may use on that phone to arrange
+   * a drop-off. Default both on. Drives the host-facing wording ("call", "text",
+   * or "call or text").
+   */
+  checkCall?: boolean;
+  checkText?: boolean;
+}
+
+/** The host-facing verb for the check drop-off phone, per the DJ's toggles. */
+export function checkContactVerb(m: Pick<PaymentMethod, 'checkCall' | 'checkText'>): string {
+  const call = m.checkCall !== false;
+  const text = m.checkText !== false;
+  if (call && text) return 'call or text';
+  if (call) return 'call';
+  if (text) return 'text';
+  return 'call or text';
 }
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
