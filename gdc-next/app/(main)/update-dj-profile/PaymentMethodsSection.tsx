@@ -1738,111 +1738,95 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       for. A client holding $600 at a venue they've never been
                       to needs a name as much as a number — "call this number"
                       gets them a stranger saying "who?". */}
-                  {t === 'check' && (
-                    <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
-                      <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.55rem' }}>Ways you&rsquo;ll accept the check — pick any</div>
-                      {([['checkMail', 'Mail it to me', '#00f5c4'], ['checkMeet', 'Arrange a meet-up', '#14c9a4'], ['checkOffice', 'Drop off at my office', '#0a9b86']] as const).map(([key, title, clr], i) => (
-                        <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.5rem .6rem', marginBottom: '.4rem', border: `1px solid ${m[key] !== false ? clr : 'var(--border)'}`, borderLeft: `3px solid ${clr}`, borderRadius: 7, background: 'rgba(255,255,255,.02)' }}>
-                          <input type="checkbox" checked={m[key] !== false} onChange={(e) => patchType(t, { [key]: e.target.checked ? undefined : false })} style={{ accentColor: clr }} />
-                          <span style={{ width: 18, height: 18, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.62rem', fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
-                          <span style={{ fontSize: '.86rem', fontWeight: 600, color: 'var(--white)' }}>{title}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  {cfg.contactLabel && (t !== 'check' || m.checkMail !== false) && (
-                    <>
-                      <label style={{ ...label, marginTop: '.7rem' }}>{t === 'check' ? 'Mailing address' : cfg.contactLabel}</label>
-                      {/* Check's mailing address gets the type-ahead and inherits
-                          the account address; Cash's "Ask for" is a name, so it
-                          stays a plain box. */}
-                      {t === 'check' ? (
-                        addressField({
-                          value: m.contact || '',
-                          onChange: (v) => patchType(t, { contact: v }),
-                          placeholder: '',
-                          invalid: !!contactErr,
-                        })
-                      ) : (
-                        <input
-                          value={m.contact || ''}
-                          placeholder={cfg.contactPlaceholder}
-                          onChange={(e) => patchType(t, { contact: e.target.value })}
-                          style={{ ...field, borderColor: contactErr ? '#ff6b6b' : 'var(--border)' }}
-                        />
-                      )}
-                      {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
-                      {/* One tap to pull in the account address. Offered, not
-                          forced — a DJ may take checks at a different address
-                          than the office. Hidden once it already matches. */}
-                      {t === 'check' && accountAddress && (m.contact || '').trim() !== accountAddress && (
-                        <button
-                          type="button"
-                          onClick={() => patchType(t, { contact: accountAddress })}
-                          style={{
-                            marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0,
-                            color: 'var(--neon)', fontSize: '.8rem', cursor: 'pointer',
-                            fontFamily: 'inherit', textDecoration: 'underline',
-                          }}
-                        >
-                          {`Apply ${accountAddress}`}
-                        </button>
-                      )}
-                    </>
-                  )}
+                  {t === 'check' && (() => {
+                    const cardWrap = (clr: string, on: boolean): React.CSSProperties => ({ border: `1px solid ${on ? clr : 'var(--border)'}`, borderLeft: `3px solid ${clr}`, borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
+                    const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
+                    const numBadge = (clr: string, n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
+                    const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
+                    const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
+                    return (
+                      <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.55rem' }}>Ways you&rsquo;ll accept the check — pick any</div>
 
-                  {/* Phone the host can call/text to arrange getting the check
-                      to the DJ (drop it off, or hand it off before the deadline).
-                      Optional. The night-of + lead-time questions live at the top
-                      of this tile. */}
-                  {t === 'check' && m.checkMeet !== false && (
-                    <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
-                      <div>
-                        <label style={{ ...label }}>Phone for the host to call or text to arrange drop-off (optional)</label>
-                        <input
-                          value={m.checkPhone || ''}
-                          placeholder=""
-                          onChange={(e) => patchType(t, { checkPhone: e.target.value })}
-                          style={{ ...field, marginTop: '.35rem' }}
-                        />
-                        {accountPhone && (m.checkPhone || '').trim() !== accountPhone && (
-                          <button
-                            type="button"
-                            onClick={() => patchType(t, { checkPhone: accountPhone })}
-                            style={{
-                              marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0,
-                              color: 'var(--neon)', fontSize: '.8rem', cursor: 'pointer',
-                              fontFamily: 'inherit', textDecoration: 'underline',
-                            }}
-                          >
-                            {`Apply ${accountPhone}`}
-                          </button>
-                        )}
-                        {/* Which ways the host may reach that number — default
-                            both. Drives the "call", "text", or "call or text"
-                            wording the host sees. */}
-                        <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.55rem' }}>
-                          {([['Call', 'checkCall'], ['Text', 'checkText']] as const).map(([lbl, key]) => (
-                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
-                              <input
-                                type="checkbox"
-                                checked={m[key] !== false}
-                                onChange={(e) => patchType(t, { [key]: e.target.checked ? undefined : false })}
-                                style={{ accentColor: 'var(--neon)' }}
-                              />
-                              {lbl}
-                            </label>
-                          ))}
+                        {/* 1 · Mail it to me */}
+                        <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
+                          <label style={cardHead}>
+                            <input type="checkbox" checked={m.checkMail !== false} onChange={(e) => patchType(t, { checkMail: e.target.checked ? undefined : false })} style={{ accentColor: '#00f5c4' }} />
+                            {numBadge('#00f5c4', 1)}
+                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail it to me</span>
+                          </label>
+                          {m.checkMail !== false && (
+                            <div style={bodyPad}>
+                              <label style={label}>Mailing address</label>
+                              {addressField({ value: m.contact || '', onChange: (v) => patchType(t, { contact: v }), placeholder: '', invalid: !!contactErr })}
+                              {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
+                              {accountAddress && (m.contact || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { contact: accountAddress }))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 2 · Arrange a meet-up */}
+                        <div style={cardWrap('#14c9a4', m.checkMeet !== false)}>
+                          <label style={cardHead}>
+                            <input type="checkbox" checked={m.checkMeet !== false} onChange={(e) => patchType(t, { checkMeet: e.target.checked ? undefined : false })} style={{ accentColor: '#14c9a4' }} />
+                            {numBadge('#14c9a4', 2)}
+                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Arrange a meet-up</span>
+                          </label>
+                          {m.checkMeet !== false && (
+                            <div style={bodyPad}>
+                              <label style={label}>Phone for the host to call or text to arrange drop-off (optional)</label>
+                              <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
+                              {accountPhone && (m.checkPhone || '').trim() !== accountPhone && applyLink(accountPhone, () => patchType(t, { checkPhone: accountPhone }))}
+                              <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.55rem' }}>
+                                {([['Call', 'checkCall'], ['Text', 'checkText']] as const).map(([lbl, key]) => (
+                                  <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
+                                    <input type="checkbox" checked={m[key] !== false} onChange={(e) => patchType(t, { [key]: e.target.checked ? undefined : false })} style={{ accentColor: 'var(--neon)' }} />
+                                    {lbl}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 3 · Drop off at my office */}
+                        <div style={cardWrap('#0a9b86', m.checkOffice !== false)}>
+                          <label style={cardHead}>
+                            <input type="checkbox" checked={m.checkOffice !== false} onChange={(e) => patchType(t, { checkOffice: e.target.checked ? undefined : false })} style={{ accentColor: '#0a9b86' }} />
+                            {numBadge('#0a9b86', 3)}
+                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop off at my office</span>
+                          </label>
+                          {m.checkOffice !== false && (
+                            <div style={bodyPad}>
+                              <label style={label}>Office address</label>
+                              {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
+                              {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { dropoffAddress: accountAddress }))}
+                              <label style={{ ...label, marginTop: '.7rem' }}>Open hours</label>
+                              <input value={m.dropoffHours || ''} placeholder="Mon–Fri 10am–6pm" onChange={(e) => patchType(t, { dropoffHours: e.target.value })} style={field} />
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
+                    );
+                  })()}
+                  {cfg.contactLabel && t !== 'check' && (
+                    <>
+                      <label style={{ ...label, marginTop: '.7rem' }}>{cfg.contactLabel}</label>
+                      <input
+                        value={m.contact || ''}
+                        placeholder={cfg.contactPlaceholder}
+                        onChange={(e) => patchType(t, { contact: e.target.value })}
+                        style={{ ...field, borderColor: contactErr ? '#ff6b6b' : 'var(--border)' }}
+                      />
+                      {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
+                    </>
                   )}
 
                   {/* Drop-off — cash + check, behind a button because most DJs
                       don't have an office. Two fields, not one: an address with
                       no hours sends a client across town to a locked door, and
                       a client who does that once pays at the event forever. */}
-                  {(t === 'cash' || (t === 'check' && m.checkOffice !== false)) && (
+                  {t === 'cash' && (
                     <div style={{ marginTop: '.7rem' }}>
                       {!showDropoff && !(m.dropoffAddress || '').trim() ? (
                         <button
