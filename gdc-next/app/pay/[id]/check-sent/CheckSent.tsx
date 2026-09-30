@@ -38,6 +38,9 @@ interface Props {
   checkAddressLines?: string[];
   checkMemoLine?: string;
   checkContactVerb?: string;
+  // Which ways the DJ accepts a check (default both true).
+  checkCanMail?: boolean;
+  checkCanDropoff?: boolean;
 }
 
 const WRAP: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
@@ -57,6 +60,7 @@ export default function CheckSent(props: Props) {
     dropoffAddressLines = [], dropoffHours = null,
     checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
     checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '', checkContactVerb = 'call or text',
+    checkCanMail = true, checkCanDropoff = true,
   } = props;
 
   const dj = djName?.trim() || 'your DJ';
@@ -171,10 +175,12 @@ export default function CheckSent(props: Props) {
                   {checkNightOf && (
                     <button type="button" style={CHOICE_BTN} onClick={() => setChoice('nightof')}>I&apos;ll bring it the day of the event{when}</button>
                   )}
-                  {checkPhone && (
+                  {checkPhone && checkCanDropoff && (
                     <button type="button" style={CHOICE_BTN} onClick={() => setChoice('dropoff')}>I&apos;ll drop it off (arrange with {dj})</button>
                   )}
-                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('mail')}>I&apos;ll mail it{mustPrior ? ` — arriving by ${bannerDeadline}` : ''}</button>
+                  {checkCanMail && (
+                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('mail')}>I&apos;ll mail it{mustPrior ? ` — arriving by ${bannerDeadline}` : ''}</button>
+                  )}
                 </>
               ) : choice === 'nightof' ? (
                 <>
@@ -234,8 +240,8 @@ export default function CheckSent(props: Props) {
               {choice === 'none' ? (
                 <>
                   <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>Will you drop off your check or mail it?</p>
-                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('dropoff')}>Drop it off in person</button>
-                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('mail')}>Mail it</button>
+                  {checkCanDropoff && <button type="button" style={CHOICE_BTN} onClick={() => setChoice('dropoff')}>Drop it off in person</button>}
+                  {checkCanMail && <button type="button" style={CHOICE_BTN} onClick={() => setChoice('mail')}>Mail it</button>}
                 </>
               ) : choice === 'dropoff' ? (
                 <>
