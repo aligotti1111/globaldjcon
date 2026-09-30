@@ -245,6 +245,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     return () => { cancelled = true; };
   }, [ownerHint]);
   const [saving, setSaving] = useState(false);
+  // Set once the DJ clicks Save — turns the check night-of question red if it
+  // was never answered (tri-state: yes / no / unanswered).
+  const [attempted, setAttempted] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
 
@@ -486,7 +489,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
             dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
             smsOk: o.smsOk === true ? true : undefined,
-            checkNightOf: o.checkNightOf === true ? true : undefined,
+            checkNightOf: typeof o.checkNightOf === 'boolean' ? o.checkNightOf : undefined,
             checkLeadWeeks: typeof o.checkLeadWeeks === 'number' ? o.checkLeadWeeks : undefined,
             checkPhone: typeof o.checkPhone === 'string' ? o.checkPhone : undefined,
           };
@@ -644,6 +647,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       if (!(m.handle || '').trim() && METHOD_TYPES[t].handleLabel) return null;
       const e = METHOD_TYPES[t].validate(m.handle || '');
       if (e) return e;
+      // Check must have the night-of question answered (yes or no) before it
+      // can be saved — it changes the whole flow the host is shown.
+      if (t === 'check' && m.checkNightOf === undefined) {
+        return 'Answer whether the host can pay by check the night of the event.';
+      }
       // A phone with no name is half a Cash rail: the client rings a stranger
       // and says "...hi?". Both halves or neither.
       const vc = METHOD_TYPES[t].validateContact;
@@ -741,6 +749,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   }
 
   async function save() {
+    // Mark that a save was attempted so an unanswered check question can turn
+    // red (the button stays clickable precisely so this can fire).
+    setAttempted(true);
     if (firstError) {
       setFeedback({ msg: firstError, ok: false });
       return;
@@ -1390,19 +1401,23 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               {/* Check timing sits at the TOP — it changes the whole flow the
                   host is shown. Compact radios; the weeks dropdown only when
                   night-of isn't allowed. */}
-              {t === 'check' && (
+              {t === 'check' && (() => {
+                // Tri-state: yes / no / unanswered (undefined). Turns red only
+                // AFTER a save attempt, so the DJ isn't scolded before trying.
+                const unanswered = attempted && m.checkNightOf === undefined;
+                return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <label style={{ ...qLabel }}>Can the host pay by check the night of the event?</label>
+                  <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay by check the night of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
                       {([['Yes', true], ['No, check must be in hand prior to event', false]] as const).map(([lbl, val]) => (
-                        <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
+                        <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
                           <input
                             type="radio"
                             name={`checkNightOf-${m.id}`}
-                            checked={(m.checkNightOf === true) === val}
+                            checked={m.checkNightOf === val}
                             onChange={() => patchType(t, { checkNightOf: val })}
-                            style={{ accentColor: 'var(--neon)' }}
+                            style={{ accentColor: unanswered ? '#ff6b6b' : 'var(--neon)' }}
                           />
                           {lbl}
                         </label>
@@ -1410,10 +1425,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     </div>
                     {/* When it's "No", a divider separates the answer from the
                         deadline question, which sits on the same line. */}
-                    {m.checkNightOf !== true && (
+                    {m.checkNightOf === false && (
                       <span aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
                     )}
-                    {m.checkNightOf !== true && (
+                    {m.checkNightOf === false && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
                         <label style={{ ...qLabel, margin: 0, flexShrink: 0 }}>How far in advance must the check be received?</label>
                         <select
@@ -1428,8 +1443,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       </div>
                     )}
                   </div>
+                  {unanswered && (
+                    <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
+                  )}
                 </div>
-              )}
+                );
+              })()}
 
               {/* PayPal offers TWO ways to get paid. Option 1: connect a PayPal
                   business account for auto-tracked payments (deposits/balances
