@@ -1768,6 +1768,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <input type="checkbox" checked={m.checkMail !== false} onChange={(e) => patchType(t, { checkMail: e.target.checked ? undefined : false })} style={{ accentColor: '#00f5c4' }} />
                             {numBadge('#00f5c4', 1)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail it to me</span>
+                            <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.15rem', lineHeight: 1 }}>✉️</span>
                           </label>
                           {(
                             <div style={bodyPad}>
@@ -1785,6 +1786,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <input type="checkbox" checked={m.checkMeet !== false} onChange={(e) => patchType(t, { checkMeet: e.target.checked ? undefined : false })} style={{ accentColor: '#14c9a4' }} />
                             {numBadge('#14c9a4', 2)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Arrange a meet-up</span>
+                            <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.15rem', lineHeight: 1 }}>🤝</span>
                           </label>
                           {(
                             <div style={bodyPad}>
@@ -1809,6 +1811,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <input type="checkbox" checked={m.checkOffice !== false} onChange={(e) => patchType(t, { checkOffice: e.target.checked ? undefined : false })} style={{ accentColor: '#0a9b86' }} />
                             {numBadge('#0a9b86', 3)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop off at my office</span>
+                            <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.15rem', lineHeight: 1 }}>🏠</span>
                           </label>
                           {(
                             <div style={bodyPad}>
