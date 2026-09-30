@@ -28,6 +28,7 @@ interface Props {
   checkPayTo?: string | null;
   checkAddressLines?: string[];
   checkMemoLine?: string;
+  checkContactVerb?: string;
 }
 
 const WRAP: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
@@ -43,7 +44,7 @@ export default function CheckSent(props: Props) {
   const {
     paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null,
     djName = null, cashPhone = null, checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
-    checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '',
+    checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '', checkContactVerb = 'call or text',
   } = props;
 
   const dj = djName?.trim() || 'your DJ';
@@ -97,7 +98,7 @@ export default function CheckSent(props: Props) {
   const DropoffDetail = () => (
     <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
       {checkPhone
-        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
+        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
         : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your check.</p>}
     </div>
   );
@@ -217,7 +218,7 @@ export default function CheckSent(props: Props) {
                 <>
                   <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
                     {checkPhone
-                      ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
+                      ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
                       : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your check.</p>}
                   </div>
                   <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
