@@ -652,6 +652,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       if (t === 'check' && m.checkNightOf === undefined) {
         return 'Answer whether the host can pay by check the night of the event.';
       }
+      // If night-of isn't allowed, a lead time must be chosen.
+      if (t === 'check' && m.checkNightOf === false && m.checkLeadWeeks == null) {
+        return 'Choose how far in advance the check must be received.';
+      }
       // A phone with no name is half a Cash rail: the client rings a stranger
       // and says "...hi?". Both halves or neither.
       const vc = METHOD_TYPES[t].validateContact;
@@ -1430,12 +1434,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     )}
                     {m.checkNightOf === false && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
-                        <label style={{ ...qLabel, margin: 0, flexShrink: 0 }}>How far in advance must the check be received?</label>
+                        <label style={{ ...qLabel, margin: 0, flexShrink: 0, color: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the check be received?</label>
                         <select
-                          value={String(m.checkLeadWeeks ?? 2)}
-                          onChange={(e) => patchType(t, { checkLeadWeeks: Number(e.target.value) })}
-                          style={{ ...field, marginTop: 0, width: 'auto', flex: '0 0 auto', minWidth: 110 }}
+                          value={m.checkLeadWeeks != null ? String(m.checkLeadWeeks) : ''}
+                          onChange={(e) => { const v = e.target.value; if (v) patchType(t, { checkLeadWeeks: Number(v) }); }}
+                          style={{ ...field, marginTop: 0, width: 'auto', flex: '0 0 auto', minWidth: 110, borderColor: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--border)' }}
                         >
+                          <option value="" disabled>Select…</option>
                           {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
                             <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
                           ))}
