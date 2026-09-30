@@ -882,7 +882,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     // Input + country picker side by side — the same pairing the booking form
     // uses. The country biases the address search (and is what the booking
     // page shows), so it lives right next to the box it affects.
-    <div style={{ display: 'flex', gap: '.4rem', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', gap: '.4rem', alignItems: 'stretch' }}>
       <div style={{ position: 'relative', flex: 1 }}>
         <input
           value={opts.value}
