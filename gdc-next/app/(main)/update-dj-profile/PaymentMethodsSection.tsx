@@ -650,7 +650,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       // Check must have the night-of question answered (yes or no) before it
       // can be saved — it changes the whole flow the host is shown.
       if (t === 'check' && m.checkNightOf === undefined) {
-        return 'Answer whether the host can pay by check the night of the event.';
+        return 'Answer whether the host can pay the balance by check the day of the event.';
       }
       // If night-of isn't allowed, a lead time must be chosen.
       if (t === 'check' && m.checkNightOf === false && m.checkLeadWeeks == null) {
@@ -1411,7 +1411,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const unanswered = attempted && m.checkNightOf === undefined;
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay by check the night of the event?</label>
+                  <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
                     <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
                       {([['Yes', true], ['No, check must be in hand prior to event', false]] as const).map(([lbl, val]) => (
