@@ -492,6 +492,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             checkNightOf: typeof o.checkNightOf === 'boolean' ? o.checkNightOf : undefined,
             checkLeadWeeks: typeof o.checkLeadWeeks === 'number' ? o.checkLeadWeeks : undefined,
             checkPhone: typeof o.checkPhone === 'string' ? o.checkPhone : undefined,
+            checkCall: o.checkCall === false ? false : undefined,
+            checkText: o.checkText === false ? false : undefined,
           };
         });
         setMethods(mapped);
@@ -553,6 +555,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       m.checkNightOf ? '1' : '0',
       String(m.checkLeadWeeks ?? ''),
       (m.checkPhone || '').trim(),
+      m.checkCall === false ? '0' : '1',
+      m.checkText === false ? '0' : '1',
     ].join('\u0000');
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
@@ -708,6 +712,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               checkNightOf: m.checkNightOf === true,
               ...(m.checkNightOf ? {} : { checkLeadWeeks: m.checkLeadWeeks ?? 2 }),
               ...((m.checkPhone || '').trim() ? { checkPhone: (m.checkPhone || '').trim() } : {}),
+              ...(m.checkCall === false ? { checkCall: false } : {}),
+              ...(m.checkText === false ? { checkText: false } : {}),
             }
           : {}),
       }));
@@ -792,6 +798,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 checkNightOf: m.checkNightOf === true,
                 ...(m.checkNightOf ? {} : { checkLeadWeeks: m.checkLeadWeeks ?? 2 }),
                 ...((m.checkPhone || '').trim() ? { checkPhone: (m.checkPhone || '').trim() } : {}),
+                ...(m.checkCall === false ? { checkCall: false } : {}),
+                ...(m.checkText === false ? { checkText: false } : {}),
               }
             : {}),
         }));
@@ -1640,7 +1648,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {t === 'check' && (
                     <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
                       <div>
-                        <label style={{ ...label }}>Phone for the host to call or text (optional)</label>
+                        <label style={{ ...label }}>Phone for the host to call or text to arrange drop-off (optional)</label>
                         <input
                           value={m.checkPhone || ''}
                           placeholder={accountPhone || '(555) 123-4567'}
@@ -1660,6 +1668,22 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             {`Apply ${accountPhone}`}
                           </button>
                         )}
+                        {/* Which ways the host may reach that number — default
+                            both. Drives the "call", "text", or "call or text"
+                            wording the host sees. */}
+                        <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.55rem' }}>
+                          {([['Call', 'checkCall'], ['Text', 'checkText']] as const).map(([lbl, key]) => (
+                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
+                              <input
+                                type="checkbox"
+                                checked={m[key] !== false}
+                                onChange={(e) => patchType(t, { [key]: e.target.checked ? undefined : false })}
+                                style={{ accentColor: 'var(--neon)' }}
+                              />
+                              {lbl}
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
