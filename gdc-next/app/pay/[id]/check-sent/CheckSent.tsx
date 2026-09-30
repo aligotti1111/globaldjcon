@@ -76,109 +76,6 @@ export default function CheckSent(props: Props) {
     </>
   );
 
-  // Reusable "how to get the check to the DJ" block: call/text + mail address.
-  const HandOff = () => (
-    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '4px 0 18px' }}>
-      {checkPhone && (
-        <p style={{ margin: '0 0 10px', color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>
-          Call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange getting the check to {dj}.
-        </p>
-      )}
-      {(checkPayTo || checkAddressLines.length > 0) && (
-        <div style={{ color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>
-          <div style={{ color: '#8a8a98', fontSize: 12 }}>Or mail it{checkPayTo ? ', payable to:' : ':'}</div>
-          {checkPayTo && <div style={{ color: '#fff' }}>{checkPayTo}</div>}
-          {checkAddressLines.map((l, i) => <div key={i}>{l}</div>)}
-        </div>
-      )}
-      {!checkPhone && !checkPayTo && checkAddressLines.length === 0 && (
-        <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange getting the check to them.</p>
-      )}
-    </div>
-  );
-
-  // ─────────────── BALANCE paid by CHECK — interactive ───────────────
-  const isBalanceCheck = !isDeposit && method === 'check';
-  if (isBalanceCheck) {
-    let bodyDone: React.ReactNode = doneMsg;
-    return (
-      <div style={WRAP}>
-        <div style={CARD}>
-          <Brand />
-          {state === 'done' ? (
-            <>
-              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
-              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
-              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                {bodyDone || <>We let {dj} know about your balance of <strong style={{ color: '#fff' }}>{amt}</strong> by check{forVenue}. They&apos;ll confirm it once received. Thanks!</>}
-              </p>
-            </>
-          ) : (
-            <>
-              <Hero />
-              {checkNightOf ? (
-                // Night-of allowed: host chooses pay-night vs get-it-there-early.
-                choice === 'none' ? (
-                  <>
-                    <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>How would you like to pay {dj} by check?</p>
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('nightof')}>
-                      Pay by check the night of the event{when}
-                    </button>
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('early')}>
-                      Get the check to {dj} beforehand (drop off or mail)
-                    </button>
-                  </>
-                ) : choice === 'nightof' ? (
-                  <>
-                    <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 18px' }}>
-                      You&apos;ll bring your check for <strong style={{ color: '#fff' }}>{amt}</strong> the night of the event{when}. It&apos;s only marked received once {dj} confirms it.
-                    </p>
-                    <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                      onClick={() => notify('at-event', <>We let {dj} know you&apos;ll pay your balance of <strong style={{ color: '#fff' }}>{amt}</strong> by check the night of the event{when}. Thanks!</>)}>
-                      {state === 'sending' ? 'Confirming…' : 'Confirm — paying by check the night of'}
-                    </button>
-                    <BackLink onClick={() => setChoice('none')} />
-                  </>
-                ) : (
-                  <>
-                    <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
-                      Get your check for <strong style={{ color: '#fff' }}>{amt}</strong> to {dj} ahead of the event:
-                    </p>
-                    <HandOff />
-                    <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                      onClick={() => notify('sent', <>We let {dj} know your balance check of <strong style={{ color: '#fff' }}>{amt}</strong> is on the way. They&apos;ll confirm it once it arrives. Thanks!</>)}>
-                      {state === 'sending' ? 'Confirming…' : "Confirm — check is on the way"}
-                    </button>
-                    <BackLink onClick={() => setChoice('none')} />
-                  </>
-                )
-              ) : (
-                // Prior required: must be received by the deadline.
-                <>
-                  <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px' }}>
-                    <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>
-                      {dj} needs your check <strong>received by {checkDeadline || `${checkLeadWeeks ?? ''} week${checkLeadWeeks === 1 ? '' : 's'} before the event`}</strong>
-                      {checkDeadline && checkLeadWeeks ? <span style={{ fontWeight: 400 }}> ({checkLeadWeeks} week{checkLeadWeeks === 1 ? '' : 's'} before the event)</span> : null}, not the night of.
-                    </p>
-                  </div>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
-                    Send your check for <strong style={{ color: '#fff' }}>{amt}</strong> so it arrives in time:
-                  </p>
-                  <HandOff />
-                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                    onClick={() => notify('sent', <>We let {dj} know your balance check of <strong style={{ color: '#fff' }}>{amt}</strong> is on the way — to arrive by {checkDeadline || 'the deadline'}. They&apos;ll confirm it once it arrives. Thanks!</>)}>
-                    {state === 'sending' ? 'Confirming…' : "Confirm — check is on the way"}
-                  </button>
-                </>
-              )}
-              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // Always-shown "make it payable to + memo" block (check flows).
   const PayableMemo = () => (
     <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 16px' }}>
@@ -196,6 +93,100 @@ export default function CheckSent(props: Props) {
       )}
     </div>
   );
+  // Detail shown after the host picks how they'll get the check to the DJ.
+  const DropoffDetail = () => (
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+      {checkPhone
+        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Call or text <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
+        : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your check.</p>}
+    </div>
+  );
+  const MailDetail = () => (
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+      <div style={{ color: '#8a8a98', fontSize: 12 }}>Mail your check to</div>
+      {checkPayTo && <div style={{ color: '#fff', fontSize: 14 }}>{checkPayTo}</div>}
+      {checkAddressLines.length > 0
+        ? checkAddressLines.map((l, i) => <div key={i} style={{ color: '#d5d5df', fontSize: 13.5 }}>{l}</div>)
+        : <div style={{ color: '#d5d5df', fontSize: 13.5 }}>Ask {dj} for the mailing address.</div>}
+    </div>
+  );
+
+  // ─────────────── BALANCE paid by CHECK — interactive ───────────────
+  // Deposits can never be brought to the event (paid ahead), so night-of only
+  // ever applies to the BALANCE, and only when the DJ allows it. When the DJ
+  // requires the check ahead, show the deadline. Either way the host picks HOW
+  // it reaches the DJ: drop off (call/text) or mail.
+  const isBalanceCheck = !isDeposit && method === 'check';
+  if (isBalanceCheck) {
+    const mustPrior = checkNightOf === false;
+    const bannerDeadline = checkDeadline || (checkLeadWeeks ? `${checkLeadWeeks} week${checkLeadWeeks === 1 ? '' : 's'} before the event` : 'the deadline');
+    return (
+      <div style={WRAP}>
+        <div style={CARD}>
+          <Brand />
+          {state === 'done' ? (
+            <>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
+              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
+              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                {doneMsg || <>We let {dj} know about your balance of <strong style={{ color: '#fff' }}>{amt}</strong> by check{forVenue}. They&apos;ll confirm it once received. Thanks!</>}
+              </p>
+            </>
+          ) : (
+            <>
+              <Hero />
+              <PayableMemo />
+              {mustPrior && (
+                <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
+                  <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your check received by {bannerDeadline}, not the day of the event.</p>
+                </div>
+              )}
+              {choice === 'none' ? (
+                <>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>How will you get your check to {dj}?</p>
+                  {checkNightOf && (
+                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('nightof')}>I&apos;ll bring it the day of the event{when}</button>
+                  )}
+                  {checkPhone && (
+                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('dropoff')}>I&apos;ll drop it off (arrange with {dj})</button>
+                  )}
+                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('mail')}>I&apos;ll mail it{mustPrior ? ` — arriving by ${bannerDeadline}` : ''}</button>
+                </>
+              ) : choice === 'nightof' ? (
+                <>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 18px' }}>You&apos;ll bring your check for <strong style={{ color: '#fff' }}>{amt}</strong> the day of the event{when}. It&apos;s only marked received once {dj} confirms it.</p>
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('at-event', <>We let {dj} know you&apos;ll pay your balance of <strong style={{ color: '#fff' }}>{amt}</strong> by check the day of the event{when}. Thanks!</>)}>
+                    {state === 'sending' ? 'Confirming…' : 'Confirm — bringing it the day of'}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              ) : choice === 'dropoff' ? (
+                <>
+                  <DropoffDetail />
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll drop off your balance check of <strong style={{ color: '#fff' }}>{amt}</strong>. They&apos;ll confirm it once received. Thanks!</>, 'dropoff')}>
+                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll drop it off"}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              ) : (
+                <>
+                  <MailDetail />
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('sent', <>We let {dj} know your balance check of <strong style={{ color: '#fff' }}>{amt}</strong> is in the mail{mustPrior ? ` — to arrive by ${bannerDeadline}` : ''}. They&apos;ll confirm it once it arrives. Thanks!</>, 'mail')}>
+                    {state === 'sending' ? 'Confirming…' : "Confirm — it's in the mail"}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              )}
+              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────── DEPOSIT paid by CHECK — drop off or mail ───────────────
   const isDepositCheck = isDeposit && method === 'check';
