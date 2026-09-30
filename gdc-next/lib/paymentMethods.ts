@@ -194,9 +194,9 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   cash: {
     label: 'Cash',
     handleLabel: 'Phone to call',
-    placeholder: '(555) 123-4567',
+    placeholder: '',
     contactLabel: 'Ask for (optional)',
-    contactPlaceholder: 'Mike',
+    contactPlaceholder: '',
     hint: 'Paid in person; a deposit needs an arranged meeting. Your phone and office address come from Account Settings — tap to use them below, or enter different ones.',
     validate: (v) => {
       const t = v.trim();
