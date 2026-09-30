@@ -250,6 +250,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const [attempted, setAttempted] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
+  // Which tile is awaiting a "yes, remove" confirmation (two-tap Remove).
+  const [confirmingRemove, setConfirmingRemove] = useState<PaymentMethodType | null>(null);
+  // Tiles the DJ has explicitly Removed this session — auto-fill leaves these
+  // alone from then on, so Remove means blank and stays blank.
+  const autofillOff = useRef<Set<PaymentMethodType>>(new Set());
 
   // When the DJ connects PayPal (Option 1), Option 2 (the manual PayPal.me /
   // email rail) is greyed out and made unclickable — Option 1 overrides it.
@@ -494,6 +499,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             checkPhone: typeof o.checkPhone === 'string' ? o.checkPhone : undefined,
             checkCall: o.checkCall === false ? false : undefined,
             checkText: o.checkText === false ? false : undefined,
+            cashNightOf: typeof o.cashNightOf === 'boolean' ? o.cashNightOf : undefined,
+            cashLeadWeeks: typeof o.cashLeadWeeks === 'number' ? o.cashLeadWeeks : undefined,
           };
         });
         setMethods(mapped);
@@ -557,6 +564,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       (m.checkPhone || '').trim(),
       m.checkCall === false ? '0' : '1',
       m.checkText === false ? '0' : '1',
+      m.cashNightOf === undefined ? '' : (m.cashNightOf ? '1' : '0'),
+      String(m.cashLeadWeeks ?? ''),
     ].join('\u0000');
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
@@ -624,6 +633,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
   function removeType(t: PaymentMethodType) {
     setFeedback(null);
+    setConfirmingRemove(null);
+    // Remove means "leave it blank" — stop the account auto-fill from silently
+    // re-populating this tile the next time it's opened.
+    autofillOff.current.add(t);
     // PayPal: Remove just clears the Option 2 (PayPal.me / email) input and
     // leaves the tile open on the page — it doesn't tear the whole PayPal
     // method off the grid (Option 1 Connect lives in the same tile). Clearing
@@ -660,6 +673,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       if (t === 'check' && m.checkNightOf === false && m.checkLeadWeeks == null) {
         return 'Choose how far in advance the check must be received.';
       }
+      // Cash mirrors check: the night-of question must be answered, and a lead
+      // time chosen when the host can't pay in cash the day of the event.
+      if (t === 'cash' && m.cashNightOf === undefined) {
+        return 'Answer whether the host can pay the balance in cash the day of the event.';
+      }
+      if (t === 'cash' && m.cashNightOf === false && m.cashLeadWeeks == null) {
+        return 'Choose how far in advance the cash must be dropped off.';
+      }
       // A phone with no name is half a Cash rail: the client rings a stranger
       // and says "...hi?". Both halves or neither.
       const vc = METHOD_TYPES[t].validateContact;
@@ -687,14 +708,21 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [byType, savedByType, loaded, saving, firstError]);
 
+  // Switching to a different tile clears the "attempted" red state so a freshly
+  // opened tile never opens pre-scolded.
+  useEffect(() => { setAttempted(false); setConfirmingRemove(null); }, [openTile]);
+
   // Auto-fill cash/check contact details from the DJ's account when they open
   // that tile — the phone (cash + check) and mailing address (check) — so the
   // common case needs no "Apply" tap. Only fills EMPTY fields on open, never
   // overwrites what the DJ typed or cleared, and only when the account has it.
+  // Once the DJ hits Remove on a tile, we stop auto-filling it for the rest of
+  // the session — Remove means "leave it blank", not "blank it and refill it".
   useEffect(() => {
     if (!loaded) return;
     if (openTile !== 'cash' && openTile !== 'check') return;
     const t = openTile;
+    if (autofillOff.current.has(t)) return;
     const cur = byType[t];
     const patch: Partial<PaymentMethod> = {};
     if (t === 'cash') {
@@ -724,6 +752,15 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
           : {}),
         ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
+        // Cash mirrors check's balance rule: can the host pay in cash the night
+        // of the event, and (if not) how many weeks ahead must it be dropped off.
+        // Stored explicitly (even false) so the host cash page can rely on it.
+        ...(m.type === 'cash'
+          ? {
+              cashNightOf: m.cashNightOf === true,
+              ...(m.cashNightOf ? {} : { cashLeadWeeks: m.cashLeadWeeks ?? 2 }),
+            }
+          : {}),
         // Check: whether the host may pay the night of the event, and (if not)
         // how many weeks ahead they must pay. checkNightOf is stored explicitly
         // (even false) so the check page can rely on it.
@@ -776,6 +813,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       void persistClean(buildClean(methods));
     }
     setOpenTile(null);
+    setAttempted(false);                  // a freshly reopened tile isn't "attempted"
   }
 
   async function save() {
@@ -813,6 +851,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               }
             : {}),
           ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
+          ...(m.type === 'cash'
+            ? {
+                cashNightOf: m.cashNightOf === true,
+                ...(m.cashNightOf ? {} : { cashLeadWeeks: m.cashLeadWeeks ?? 2 }),
+              }
+            : {}),
           ...(m.type === 'check'
             ? {
                 checkNightOf: m.checkNightOf === true,
@@ -1393,10 +1437,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           const t = openTile;
           const cfg = METHOD_TYPES[t];
           const m = byType[t] || { id: 'draft', type: t, handle: '', note: '', enabled: true };
-          // Shown errors only appear once the DJ has typed something — nobody
-          // wants to be told a field is required before they've touched it.
-          const err = (m.handle || '').trim() || !cfg.handleLabel ? cfg.validate(m.handle || '') : null;
-          const contactErr = cfg.validateContact && (m.contact || '').trim()
+          // Shown errors appear once the DJ has typed something — or once they
+          // press Save/Activate on an empty required field (attempted), so the
+          // reason the button "didn't work" is spelled out on the field itself.
+          const err = (m.handle || '').trim() || !cfg.handleLabel || attempted ? cfg.validate(m.handle || '') : null;
+          const contactErr = cfg.validateContact && ((m.contact || '').trim() || attempted)
             ? cfg.validateContact(m.contact || '')
             : null;
           // Whether it COULD go live — evaluated against the real values, not
@@ -1486,6 +1531,62 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Deposit</div>
                     <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
+                  </div>
+                </div>
+                );
+              })()}
+
+              {/* Cash mirrors Check's Balance/Deposit split. The difference:
+                  cash can never be MAILED, so a cash deposit — and cash paid
+                  ahead of the event — is always an in-person drop-off. */}
+              {t === 'cash' && (() => {
+                const unanswered = attempted && m.cashNightOf === undefined;
+                return (
+                <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Balance</div>
+                  <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
+                    <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
+                      {([['Yes', true], ['No, cash must be dropped off prior to date of event', false]] as const).map(([lbl, val]) => (
+                        <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
+                          <input
+                            type="radio"
+                            name={`cashNightOf-${m.id}`}
+                            checked={m.cashNightOf === val}
+                            onChange={() => patchType(t, { cashNightOf: val })}
+                            style={{ accentColor: unanswered ? '#ff6b6b' : 'var(--neon)' }}
+                          />
+                          {lbl}
+                        </label>
+                      ))}
+                    </div>
+                    {m.cashNightOf === false && (
+                      <span aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
+                    )}
+                    {m.cashNightOf === false && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
+                        <label style={{ ...qLabel, margin: 0, flexShrink: 0, color: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the cash be dropped off?</label>
+                        <select
+                          value={m.cashLeadWeeks != null ? String(m.cashLeadWeeks) : ''}
+                          onChange={(e) => { const v = e.target.value; if (v) patchType(t, { cashLeadWeeks: Number(v) }); }}
+                          style={{ ...field, marginTop: 0, width: 'auto', flex: '0 0 auto', minWidth: 110, borderColor: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--border)' }}
+                        >
+                          <option value="" disabled>Select…</option>
+                          {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
+                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  {unanswered && (
+                    <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
+                  )}
+                  {/* Deposit sub-section — a cash deposit is always paid ahead and
+                      cash can't be mailed, so it's an in-person drop-off, full stop. */}
+                  <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Deposit</div>
+                    <p style={{ ...qLabel, margin: 0 }}>Host will arrange a drop-off to exchange the cash — a cash deposit can’t be mailed.</p>
                   </div>
                 </div>
                 );
@@ -1807,9 +1908,25 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   Close
                 </button>
                 {byType[t] && (
-                  <button type="button" onClick={() => removeType(t)} style={btn(false)}>
-                    Remove
-                  </button>
+                  confirmingRemove === t ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '.75rem', color: 'var(--white)' }}>Remove this payment method?</span>
+                      <button
+                        type="button"
+                        onClick={() => removeType(t)}
+                        style={{ ...btn(false), borderColor: '#ff6b6b', color: '#ff6b6b' }}
+                      >
+                        Yes, remove
+                      </button>
+                      <button type="button" onClick={() => setConfirmingRemove(null)} style={btn(false)}>
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmingRemove(t)} style={btn(false)}>
+                      Remove
+                    </button>
+                  )
                 )}
                 {/* Disabled until the rail would actually work. Before this,
                     Activate on an empty tile ran the save, dropped the empty
@@ -1818,20 +1935,24 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     when their clients would never see it. A button that lies
                     about succeeding is worse than one that won't press. */}
                 {(() => {
-                  // Match the Settings tab's Save button exactly: neon fill +
-                  // dark text when there's something to commit, transparent +
-                  // muted "✓ Saved" when clean.
-                  const actionable = !saving && complete && !nothingToSave && !paypalManualDisabled;
+                  // The button stays PRESSABLE even when required fields are
+                  // empty — a greyed-out button just leaves the DJ wondering why
+                  // nothing happens. Pressing it runs save(), which flips
+                  // `attempted` and highlights the missing field(s) in red with
+                  // an inline reason. It only goes truly inert when there's
+                  // nothing to do: mid-save, already-saved-and-unchanged, or the
+                  // PayPal manual rail overridden by Connect.
+                  const actionable = !saving && !nothingToSave && !paypalManualDisabled;
                   return (
                     <button
                       type="button"
                       onClick={() => void save()}
-                      disabled={saving || !complete || nothingToSave || paypalManualDisabled}
+                      disabled={saving || nothingToSave || paypalManualDisabled}
                       title={
                         paypalManualDisabled ? 'PayPal is connected via Option 1 — manual option not needed.'
                           : nothingToSave ? 'Already saved — nothing to update.'
                           : complete ? undefined
-                          : 'Fill in the fields above first'
+                          : 'Fill in the required fields — press to see what’s missing'
                       }
                       style={{
                         marginLeft: 'auto',
