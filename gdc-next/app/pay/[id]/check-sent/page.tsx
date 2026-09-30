@@ -64,6 +64,11 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
   let checkPayTo: string | null = null;
   let checkAddressLines: string[] = [];
   let checkVerb = 'call or text';
+  // Which ways the DJ accepts a check (default all on). The host only sees the
+  // ways the DJ left enabled.
+  let checkMail = true;
+  let checkMeet = true;
+  let checkOffice = true;
   if (booking?.dj_id) {
     const { data: djData } = await admin
       .from('users')
@@ -73,7 +78,7 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
     djName = dj?.name?.trim() || null;
     const methods = Array.isArray(dj?.payment_methods)
-      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string }>)
+      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; checkMail?: boolean; checkMeet?: boolean; checkOffice?: boolean }>)
       : [];
     if (payMethod === 'cash') {
       const csh = methods.find((m) => m?.type === 'cash');
@@ -92,6 +97,9 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkPayTo = chk?.handle?.trim() || null;
       checkAddressLines = chk?.contact ? splitMailAddress(chk.contact) : [];
       checkVerb = checkContactVerb({ checkCall: chk?.checkCall, checkText: chk?.checkText });
+      checkMail = chk?.checkMail !== false;
+      checkMeet = chk?.checkMeet !== false;
+      checkOffice = chk?.checkOffice !== false;
       dropoffAddress = chk?.dropoffAddress?.trim() || null;
       dropoffHours = chk?.dropoffHours?.trim() || null;
     }
@@ -143,6 +151,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkPayTo={checkPayTo}
       checkAddressLines={checkAddressLines}
       checkContactVerb={checkVerb}
+      checkCanMail={checkMail}
+      checkCanDropoff={checkMeet || checkOffice}
       checkMemoLine={payMethod === 'check' ? checkMemo(booking?.event_date ?? null, booking?.venue_name ?? null, referenceCode(pay.booking_id, pay.kind)) : ''}
     />
   );
