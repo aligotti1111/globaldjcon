@@ -1499,54 +1499,58 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 // Tri-state: yes / no / unanswered (undefined). Turns red only
                 // AFTER a save attempt, so the DJ isn't scolded before trying.
                 const unanswered = attempted && m.checkNightOf === undefined;
+                // Bigger, heavier section headings ("Balance" / "Deposit").
+                const heroHead: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", color: 'var(--neon)', fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '.5rem' };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Balance</div>
-                  <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
-                    <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
-                      {([['Yes', true], ['No, check must be in hand prior to date of event', false]] as const).map(([lbl, val]) => (
-                        <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
-                          <input
-                            type="radio"
-                            name={`checkNightOf-${m.id}`}
-                            checked={m.checkNightOf === val}
-                            onChange={() => patchType(t, { checkNightOf: val })}
-                            style={{ accentColor: unanswered ? '#ff6b6b' : 'var(--neon)' }}
-                          />
-                          {lbl}
-                        </label>
-                      ))}
-                    </div>
-                    {/* When it's "No", a divider separates the answer from the
-                        deadline question, which sits on the same line. */}
-                    {m.checkNightOf === false && (
-                      <span aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
-                    )}
-                    {m.checkNightOf === false && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
-                        <label style={{ ...qLabel, margin: 0, flexShrink: 0, color: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the check be received?</label>
-                        <select
-                          value={m.checkLeadWeeks != null ? String(m.checkLeadWeeks) : ''}
-                          onChange={(e) => { const v = e.target.value; if (v) patchType(t, { checkLeadWeeks: Number(v) }); }}
-                          style={{ ...field, marginTop: 0, width: 'auto', flex: '0 0 auto', minWidth: 110, borderColor: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--border)' }}
-                        >
-                          <option value="" disabled>Select…</option>
-                          {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
-                          ))}
-                        </select>
+                  {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
+                  <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
+                    {/* Balance column */}
+                    <div style={{ flex: '1 1 320px', minWidth: 280, paddingRight: '1.4rem' }}>
+                      <div style={heroHead}>Balance</div>
+                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
+                        {([['Yes', true], ['No, check must be in hand prior to date of event', false]] as const).map(([lbl, val]) => (
+                          <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
+                            <input
+                              type="radio"
+                              name={`checkNightOf-${m.id}`}
+                              checked={m.checkNightOf === val}
+                              onChange={() => patchType(t, { checkNightOf: val })}
+                              style={{ accentColor: unanswered ? '#ff6b6b' : 'var(--neon)' }}
+                            />
+                            {lbl}
+                          </label>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                  {unanswered && (
-                    <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
-                  )}
-                  {/* Deposit sub-section — deposits are always paid ahead, so
-                      there's no night-of choice: mail or drop off, full stop. */}
-                  <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Deposit</div>
-                    <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
+                      {/* When it's "No", the deadline question appears below. */}
+                      {m.checkNightOf === false && (
+                        <div style={{ marginTop: '.6rem' }}>
+                          <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the check be received?</label>
+                          <select
+                            value={m.checkLeadWeeks != null ? String(m.checkLeadWeeks) : ''}
+                            onChange={(e) => { const v = e.target.value; if (v) patchType(t, { checkLeadWeeks: Number(v) }); }}
+                            style={{ ...field, marginTop: 0, width: 'auto', minWidth: 110, borderColor: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--border)' }}
+                          >
+                            <option value="" disabled>Select…</option>
+                            {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
+                              <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {unanswered && (
+                        <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
+                      )}
+                    </div>
+                    {/* Center divider */}
+                    <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
+                    {/* Deposit column — deposits are always paid ahead, so
+                        there's no night-of choice: mail or drop off, full stop. */}
+                    <div style={{ flex: '1 1 240px', minWidth: 220, paddingLeft: '1.4rem' }}>
+                      <div style={heroHead}>Deposit</div>
+                      <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
+                    </div>
                   </div>
                 </div>
                 );
@@ -1557,52 +1561,56 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   ahead of the event — is always an in-person drop-off. */}
               {t === 'cash' && (() => {
                 const unanswered = attempted && m.cashNightOf === undefined;
+                const heroHead: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", color: 'var(--neon)', fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '.5rem' };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Balance</div>
-                  <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
-                    <div style={{ display: 'flex', gap: '1.4rem', flexShrink: 0 }}>
-                      {([['Yes', true], ['No, cash must be exchanged prior to date of event', false]] as const).map(([lbl, val]) => (
-                        <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
-                          <input
-                            type="radio"
-                            name={`cashNightOf-${m.id}`}
-                            checked={m.cashNightOf === val}
-                            onChange={() => patchType(t, { cashNightOf: val })}
-                            style={{ accentColor: unanswered ? '#ff6b6b' : 'var(--neon)' }}
-                          />
-                          {lbl}
-                        </label>
-                      ))}
-                    </div>
-                    {m.cashNightOf === false && (
-                      <span aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
-                    )}
-                    {m.cashNightOf === false && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '1 1 300px', minWidth: 240 }}>
-                        <label style={{ ...qLabel, margin: 0, flexShrink: 0, color: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the cash be dropped off?</label>
-                        <select
-                          value={m.cashLeadWeeks != null ? String(m.cashLeadWeeks) : ''}
-                          onChange={(e) => { const v = e.target.value; if (v) patchType(t, { cashLeadWeeks: Number(v) }); }}
-                          style={{ ...field, marginTop: 0, width: 'auto', flex: '0 0 auto', minWidth: 110, borderColor: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--border)' }}
-                        >
-                          <option value="" disabled>Select…</option>
-                          {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
-                          ))}
-                        </select>
+                  {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
+                  <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
+                    {/* Balance column */}
+                    <div style={{ flex: '1 1 320px', minWidth: 280, paddingRight: '1.4rem' }}>
+                      <div style={heroHead}>Balance</div>
+                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
+                        {([['Yes', true], ['No, cash must be exchanged prior to date of event', false]] as const).map(([lbl, val]) => (
+                          <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
+                            <input
+                              type="radio"
+                              name={`cashNightOf-${m.id}`}
+                              checked={m.cashNightOf === val}
+                              onChange={() => patchType(t, { cashNightOf: val })}
+                              style={{ accentColor: unanswered ? '#ff6b6b' : 'var(--neon)' }}
+                            />
+                            {lbl}
+                          </label>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                  {unanswered && (
-                    <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
-                  )}
-                  {/* Deposit sub-section — a cash deposit is always paid ahead and
-                      cash can't be mailed, so it's an in-person drop-off, full stop. */}
-                  <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.4rem' }}>Deposit</div>
-                    <p style={{ ...qLabel, margin: 0 }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
+                      {m.cashNightOf === false && (
+                        <div style={{ marginTop: '.6rem' }}>
+                          <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the cash be dropped off?</label>
+                          <select
+                            value={m.cashLeadWeeks != null ? String(m.cashLeadWeeks) : ''}
+                            onChange={(e) => { const v = e.target.value; if (v) patchType(t, { cashLeadWeeks: Number(v) }); }}
+                            style={{ ...field, marginTop: 0, width: 'auto', minWidth: 110, borderColor: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--border)' }}
+                          >
+                            <option value="" disabled>Select…</option>
+                            {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
+                              <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {unanswered && (
+                        <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
+                      )}
+                    </div>
+                    {/* Center divider */}
+                    <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
+                    {/* Deposit column — a cash deposit is always paid ahead and
+                        cash can't be mailed, so it's an in-person drop-off, full stop. */}
+                    <div style={{ flex: '1 1 240px', minWidth: 220, paddingLeft: '1.4rem' }}>
+                      <div style={heroHead}>Deposit</div>
+                      <p style={{ ...qLabel, margin: 0 }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
+                    </div>
                   </div>
                 </div>
                 );
@@ -1755,7 +1763,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             {numBadge('#00f5c4', 1)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail it to me</span>
                           </label>
-                          {m.checkMail !== false && (
+                          {(
                             <div style={bodyPad}>
                               <label style={label}>Mailing address</label>
                               {addressField({ value: m.contact || '', onChange: (v) => patchType(t, { contact: v }), placeholder: '', invalid: !!contactErr })}
@@ -1772,7 +1780,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             {numBadge('#14c9a4', 2)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Arrange a meet-up</span>
                           </label>
-                          {m.checkMeet !== false && (
+                          {(
                             <div style={bodyPad}>
                               <label style={label}>Phone for the host to call or text to arrange drop-off (optional)</label>
                               <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
@@ -1796,7 +1804,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             {numBadge('#0a9b86', 3)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop off at my office</span>
                           </label>
-                          {m.checkOffice !== false && (
+                          {(
                             <div style={bodyPad}>
                               <label style={label}>Office address</label>
                               {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
