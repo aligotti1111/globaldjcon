@@ -20,6 +20,12 @@ interface Props {
   paymentId: string; amount: number; currency: string; kind: string;
   alreadySettled: boolean; eventDate: string | null; venueName: string | null; atEvent?: boolean;
   method?: 'cash' | 'check' | null; djName?: string | null; cashPhone?: string | null;
+  // Cash-specific rules for the interactive BALANCE-by-cash flow. Cash can never
+  // be mailed, so the only hand-off ahead of the event is an in-person drop-off.
+  cashNightOf?: boolean;
+  cashDeadline?: string | null;
+  cashLeadWeeks?: number | null;
+  cashCanText?: boolean;
   // Check-specific rules + contact, used for the interactive BALANCE-by-check flow.
   checkNightOf?: boolean;
   checkDeadline?: string | null;
@@ -43,7 +49,9 @@ function Brand() {
 export default function CheckSent(props: Props) {
   const {
     paymentId, amount, currency, kind, alreadySettled, eventDate, venueName, atEvent = false, method = null,
-    djName = null, cashPhone = null, checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
+    djName = null, cashPhone = null,
+    cashNightOf = false, cashDeadline = null, cashLeadWeeks = null, cashCanText = false,
+    checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
     checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '', checkContactVerb = 'call or text',
   } = props;
 
@@ -243,6 +251,112 @@ export default function CheckSent(props: Props) {
                   <BackLink onClick={() => setChoice('none')} />
                 </>
               )}
+              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────── BALANCE paid by CASH — interactive ───────────────
+  // Mirrors the check balance flow, minus mail: cash is either brought the day
+  // of the event (when the DJ allows it) or dropped off in person, by a deadline
+  // when the DJ requires it ahead of time.
+  const cashVerb = cashCanText ? 'call or text' : 'call';
+  const CashDropoffDetail = () => (
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+      {cashPhone
+        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{cashVerb.charAt(0).toUpperCase() + cashVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> to arrange dropping off your cash to {dj}.</p>
+        : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your cash.</p>}
+    </div>
+  );
+
+  const isBalanceCash = !isDeposit && method === 'cash';
+  if (isBalanceCash) {
+    const mustPrior = cashNightOf === false;
+    const bannerDeadline = cashDeadline || (cashLeadWeeks ? `${cashLeadWeeks} week${cashLeadWeeks === 1 ? '' : 's'} before the event` : 'the deadline');
+    return (
+      <div style={WRAP}>
+        <div style={CARD}>
+          <Brand />
+          {state === 'done' ? (
+            <>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
+              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
+              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                {doneMsg || <>We let {dj} know about your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash{forVenue}. They&apos;ll confirm it once received. Thanks!</>}
+              </p>
+            </>
+          ) : (
+            <>
+              <Hero />
+              {mustPrior && (
+                <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
+                  <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your cash dropped off by {bannerDeadline}, not the day of the event.</p>
+                </div>
+              )}
+              {choice === 'none' ? (
+                <>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>How will you get your cash to {dj}?</p>
+                  {cashNightOf && (
+                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('nightof')}>I&apos;ll bring it the day of the event{when}</button>
+                  )}
+                  <button type="button" style={CHOICE_BTN} onClick={() => setChoice('dropoff')}>I&apos;ll drop it off (arrange with {dj}){mustPrior ? ` — by ${bannerDeadline}` : ''}</button>
+                </>
+              ) : choice === 'nightof' ? (
+                <>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 18px' }}>You&apos;ll bring your cash for <strong style={{ color: '#fff' }}>{amt}</strong> the day of the event{when}. It&apos;s only marked received once {dj} confirms it.</p>
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('at-event', <>We let {dj} know you&apos;ll pay your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash the day of the event{when}. Thanks!</>)}>
+                    {state === 'sending' ? 'Confirming…' : 'Confirm — bringing it the day of'}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              ) : (
+                <>
+                  <CashDropoffDetail />
+                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll drop off your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash{mustPrior ? ` — by ${bannerDeadline}` : ''}. They&apos;ll confirm it once received. Thanks!</>, 'dropoff')}>
+                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll drop it off"}
+                  </button>
+                  <BackLink onClick={() => setChoice('none')} />
+                </>
+              )}
+              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────── DEPOSIT paid by CASH — drop off only ───────────────
+  // A cash deposit is always paid ahead of the event and can't be mailed, so
+  // the only path is an in-person drop-off.
+  const isDepositCash = isDeposit && method === 'cash';
+  if (isDepositCash) {
+    return (
+      <div style={WRAP}>
+        <div style={CARD}>
+          <Brand />
+          {state === 'done' ? (
+            <>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
+              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
+              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                {doneMsg || <>We let {dj} know you&apos;ll drop off your deposit of <strong style={{ color: '#fff' }}>{amt}</strong> in cash. They&apos;ll confirm it once received. Thanks!</>}
+              </p>
+            </>
+          ) : (
+            <>
+              <Hero />
+              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>A cash deposit is arranged in person — it can&apos;t be mailed.</p>
+              <CashDropoffDetail />
+              <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
+                onClick={() => notify('sent', <>We let {dj} know you&apos;ll drop off your deposit of <strong style={{ color: '#fff' }}>{amt}</strong> in cash. They&apos;ll confirm it once received. Thanks!</>, 'dropoff')}>
+                {state === 'sending' ? 'Confirming…' : "Confirm — I'll drop it off"}
+              </button>
               {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
             </>
           )}
