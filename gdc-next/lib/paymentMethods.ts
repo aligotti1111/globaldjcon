@@ -145,7 +145,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
     label: 'Zelle',
     handleLabel: 'Email or phone',
     placeholder: 'you@email.com or (555) 123-4567',
-    hint: 'Client sends from their bank app. No link exists for Zelle, so they copy this by hand — double-check it.',
+    hint: '',
     validate: (v) => {
       const t = v.trim();
       if (!t) return 'Enter the email or phone your Zelle is registered to.';
