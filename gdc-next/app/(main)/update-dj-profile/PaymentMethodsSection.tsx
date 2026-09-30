@@ -493,7 +493,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             contact: typeof o.contact === 'string' ? o.contact : undefined,
             dropoffAddress: typeof o.dropoffAddress === 'string' ? o.dropoffAddress : undefined,
             dropoffHours: typeof o.dropoffHours === 'string' ? o.dropoffHours : undefined,
-            smsOk: o.smsOk === true ? true : undefined,
+            smsOk: typeof o.smsOk === 'boolean' ? o.smsOk : undefined,
             checkNightOf: typeof o.checkNightOf === 'boolean' ? o.checkNightOf : undefined,
             checkLeadWeeks: typeof o.checkLeadWeeks === 'number' ? o.checkLeadWeeks : undefined,
             checkPhone: typeof o.checkPhone === 'string' ? o.checkPhone : undefined,
@@ -558,7 +558,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       (m.contact || '').trim(),
       (m.dropoffAddress || '').trim(),
       (m.dropoffHours || '').trim(),
-      m.smsOk ? '1' : '0',
+      m.smsOk === false ? '0' : '1',
       m.checkNightOf ? '1' : '0',
       String(m.checkLeadWeeks ?? ''),
       (m.checkPhone || '').trim(),
@@ -751,7 +751,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         ...((m.type === 'cash' || m.type === 'check') && (m.dropoffAddress || '').trim()
           ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
           : {}),
-        ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
+        ...(m.type === 'cash' ? { smsOk: m.smsOk !== false } : {}),
         // Cash mirrors check's balance rule: can the host pay in cash the night
         // of the event, and (if not) how many weeks ahead must it be dropped off.
         // Stored explicitly (even false) so the host cash page can rely on it.
@@ -850,7 +850,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 dropoffHours: (m.dropoffHours || '').trim(),
               }
             : {}),
-          ...(m.type === 'cash' && m.smsOk ? { smsOk: true } : {}),
+          ...(m.type === 'cash' ? { smsOk: m.smsOk !== false } : {}),
           ...(m.type === 'cash'
             ? {
                 cashNightOf: m.cashNightOf === true,
@@ -1626,12 +1626,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       above already tells them what to enter. Cash puts the
                       "allow text" toggle on the same line as the phone label. */}
                   {t === 'cash' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
                       <label style={{ ...label, marginBottom: 0 }}>{cfg.handleLabel}</label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.78rem', color: 'var(--white)', textTransform: 'none', letterSpacing: 0, marginBottom: '.35rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.78rem', color: 'var(--white)', textTransform: 'none', letterSpacing: 0, marginBottom: 0 }}>
                         <input
                           type="checkbox"
-                          checked={m.smsOk === true}
+                          checked={m.smsOk !== false}
                           onChange={(e) => patchType(t, { smsOk: e.target.checked })}
                           style={{ accentColor: 'var(--neon)' }}
                         />
