@@ -1825,11 +1825,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           type="button"
                           onClick={() => setShowDropoff(true)}
                           style={{
-                            background: 'transparent', border: '1px solid var(--border)',
-                            borderRadius: 6, color: 'var(--muted)', fontSize: '.68rem',
+                            background: 'transparent', border: '1px solid var(--neon)',
+                            borderRadius: 6, color: 'var(--neon)', fontSize: '.68rem',
                             padding: '.45rem .8rem', cursor: 'pointer',
                             fontFamily: "'Space Mono', monospace", letterSpacing: '.06em',
-                            textTransform: 'uppercase',
+                            textTransform: 'uppercase', fontWeight: 700,
                           }}
                         >
                           + Add office address for drop-off
