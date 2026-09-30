@@ -1610,7 +1610,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         addressField({
                           value: m.contact || '',
                           onChange: (v) => patchType(t, { contact: v }),
-                          placeholder: accountAddress || cfg.contactPlaceholder || '',
+                          placeholder: '',
                           invalid: !!contactErr,
                         })
                       ) : (
@@ -1651,7 +1651,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         <label style={{ ...label }}>Phone for the host to call or text to arrange drop-off (optional)</label>
                         <input
                           value={m.checkPhone || ''}
-                          placeholder={accountPhone || '(555) 123-4567'}
+                          placeholder=""
                           onChange={(e) => patchType(t, { checkPhone: e.target.value })}
                           style={{ ...field, marginTop: '.35rem' }}
                         />
@@ -1714,7 +1714,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           {addressField({
                             value: m.dropoffAddress || '',
                             onChange: (v) => patchType(t, { dropoffAddress: v }),
-                            placeholder: accountAddress || '123 Main St, Staten Island, NY 10307',
+                            placeholder: '',
                           })}
                           {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && (
                             <button
