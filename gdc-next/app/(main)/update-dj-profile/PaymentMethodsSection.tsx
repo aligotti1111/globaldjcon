@@ -501,6 +501,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             checkText: o.checkText === false ? false : undefined,
             cashNightOf: typeof o.cashNightOf === 'boolean' ? o.cashNightOf : undefined,
             cashLeadWeeks: typeof o.cashLeadWeeks === 'number' ? o.cashLeadWeeks : undefined,
+            checkMail: o.checkMail === false ? false : undefined,
+            checkMeet: o.checkMeet === false ? false : undefined,
+            checkOffice: o.checkOffice === false ? false : undefined,
           };
         });
         setMethods(mapped);
@@ -566,6 +569,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       m.checkText === false ? '0' : '1',
       m.cashNightOf === undefined ? '' : (m.cashNightOf ? '1' : '0'),
       String(m.cashLeadWeeks ?? ''),
+      m.checkMail === false ? '0' : '1',
+      m.checkMeet === false ? '0' : '1',
+      m.checkOffice === false ? '0' : '1',
     ].join('\u0000');
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
@@ -775,6 +781,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               ...((m.checkPhone || '').trim() ? { checkPhone: (m.checkPhone || '').trim() } : {}),
               ...(m.checkCall === false ? { checkCall: false } : {}),
               ...(m.checkText === false ? { checkText: false } : {}),
+              ...(m.checkMail === false ? { checkMail: false } : {}),
+              ...(m.checkMeet === false ? { checkMeet: false } : {}),
+              ...(m.checkOffice === false ? { checkOffice: false } : {}),
             }
           : {}),
       }));
@@ -868,6 +877,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 ...((m.checkPhone || '').trim() ? { checkPhone: (m.checkPhone || '').trim() } : {}),
                 ...(m.checkCall === false ? { checkCall: false } : {}),
                 ...(m.checkText === false ? { checkText: false } : {}),
+                ...(m.checkMail === false ? { checkMail: false } : {}),
+                ...(m.checkMeet === false ? { checkMeet: false } : {}),
+                ...(m.checkOffice === false ? { checkOffice: false } : {}),
               }
             : {}),
         }));
@@ -1726,9 +1738,21 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       for. A client holding $600 at a venue they've never been
                       to needs a name as much as a number — "call this number"
                       gets them a stranger saying "who?". */}
-                  {cfg.contactLabel && (
+                  {t === 'check' && (
+                    <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.55rem' }}>Ways you&rsquo;ll accept the check — pick any</div>
+                      {([['checkMail', 'Mail it to me', '#00f5c4'], ['checkMeet', 'Arrange a meet-up', '#14c9a4'], ['checkOffice', 'Drop off at my office', '#0a9b86']] as const).map(([key, title, clr], i) => (
+                        <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.5rem .6rem', marginBottom: '.4rem', border: `1px solid ${m[key] !== false ? clr : 'var(--border)'}`, borderLeft: `3px solid ${clr}`, borderRadius: 7, background: 'rgba(255,255,255,.02)' }}>
+                          <input type="checkbox" checked={m[key] !== false} onChange={(e) => patchType(t, { [key]: e.target.checked ? undefined : false })} style={{ accentColor: clr }} />
+                          <span style={{ width: 18, height: 18, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.62rem', fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
+                          <span style={{ fontSize: '.86rem', fontWeight: 600, color: 'var(--white)' }}>{title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {cfg.contactLabel && (t !== 'check' || m.checkMail !== false) && (
                     <>
-                      <label style={{ ...label, marginTop: '.7rem' }}>{cfg.contactLabel}</label>
+                      <label style={{ ...label, marginTop: '.7rem' }}>{t === 'check' ? 'Mailing address' : cfg.contactLabel}</label>
                       {/* Check's mailing address gets the type-ahead and inherits
                           the account address; Cash's "Ask for" is a name, so it
                           stays a plain box. */}
@@ -1771,7 +1795,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       to the DJ (drop it off, or hand it off before the deadline).
                       Optional. The night-of + lead-time questions live at the top
                       of this tile. */}
-                  {t === 'check' && (
+                  {t === 'check' && m.checkMeet !== false && (
                     <div style={{ marginTop: '.9rem', paddingTop: '.8rem', borderTop: '1px solid var(--border)' }}>
                       <div>
                         <label style={{ ...label }}>Phone for the host to call or text to arrange drop-off (optional)</label>
@@ -1818,7 +1842,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       don't have an office. Two fields, not one: an address with
                       no hours sends a client across town to a locked door, and
                       a client who does that once pays at the event forever. */}
-                  {(t === 'cash' || t === 'check') && (
+                  {(t === 'cash' || (t === 'check' && m.checkOffice !== false)) && (
                     <div style={{ marginTop: '.7rem' }}>
                       {!showDropoff && !(m.dropoffAddress || '').trim() ? (
                         <button
