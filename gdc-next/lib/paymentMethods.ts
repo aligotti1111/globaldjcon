@@ -144,7 +144,7 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
   zelle: {
     label: 'Zelle',
     handleLabel: 'Email or phone',
-    placeholder: 'you@email.com or (555) 123-4567',
+    placeholder: '',
     hint: '',
     validate: (v) => {
       const t = v.trim();
