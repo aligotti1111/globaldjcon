@@ -1808,7 +1808,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           <div style={cardHead} onClick={() => patchType(t, { checkMail: m.checkMail !== false ? false : undefined })}>
                             {toggleSwitch(m.checkMail !== false, '#00f5c4')}
                             {numBadge('#00f5c4', 1)}
-                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail It</span>
+                            <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' }}>Mail It</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>📭</span>
                           </div>
                           {(
@@ -1826,7 +1826,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           <div style={cardHead} onClick={() => patchType(t, { checkMeet: m.checkMeet === true ? undefined : true })}>
                             {toggleSwitch(m.checkMeet === true, '#14c9a4')}
                             {numBadge('#14c9a4', 2)}
-                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Exchange In Person</span>
+                            <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' }}>Exchange In Person</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🤝</span>
                           </div>
                           {(
@@ -1851,7 +1851,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           <div style={cardHead} onClick={() => patchType(t, { checkOffice: m.checkOffice === true ? undefined : true })}>
                             {toggleSwitch(m.checkOffice === true, '#0a9b86')}
                             {numBadge('#0a9b86', 3)}
-                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop Off At Office</span>
+                            <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' }}>Drop Off At Office</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🏠</span>
                           </div>
                           {(
