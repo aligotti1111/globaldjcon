@@ -696,7 +696,25 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       if (!m || !m.enabled) return null;
       // A row that exists but is entirely empty is a tile the DJ opened and
       // walked away from — not an error to shout about. It's dropped on save.
-      if (!(m.handle || '').trim() && METHOD_TYPES[t].handleLabel) return null;
+      // BUT a check/cash tile with other fields filled in (balance answer,
+      // address, phone, toggles) is a real in-progress option — if we treat it
+      // as "empty" and let save() run, buildClean drops it for the missing
+      // handle and every field the DJ typed vanishes. So require the handle
+      // (payable-to / cash name) instead of silently discarding.
+      if (!(m.handle || '').trim() && METHOD_TYPES[t].handleLabel) {
+        if ((t === 'check' || t === 'cash') && t === openTile) {
+          const hasOther = !!((m.contact || '').trim() || (m.dropoffAddress || '').trim()
+            || (m.dropoffHours || '').trim() || (m.checkPhone || '').trim()
+            || m.checkNightOf !== undefined || m.cashNightOf !== undefined
+            || m.checkMail === false || m.checkMeet === false || m.checkOffice === false);
+          if (hasOther) {
+            return t === 'check'
+              ? 'Enter who the check should be made payable to.'
+              : 'Enter the number clients should use for cash.';
+          }
+        }
+        return null;
+      }
       const e = METHOD_TYPES[t].validate(m.handle || '');
       if (e) return e;
       // The night-of question is only enforced for the tile the DJ is actively
@@ -1727,18 +1745,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         </p>
                   )}
 
-                  {/* Off-app manual rails: we can't see the money land, so the DJ
-                      marks it paid themselves and the receipt fires from there. */}
-                  {(t === 'venmo' || t === 'cashapp' || t === 'zelle' || t === 'cash' || t === 'check') && (
-                    <p style={{ margin: '.4rem 0 0', color: '#f5c451', fontSize: '.72rem', lineHeight: 1.5 }}>
-                      {t === 'check'
-                        ? 'Global DJ Connect can’t track Check payments off-app. When the check is received and has cleared, mark it paid in your booking dashboard and the receipt will auto-send.'
-                        : t === 'cash'
-                        ? 'Global DJ Connect can’t track Cash payments off-app. When cash has been received, mark it paid in your booking dashboard and the receipt will auto-send.'
-                        : `Global DJ Connect can’t track ${cfg.label} payments off-app. When payment is complete, mark it paid in your booking dashboard and the receipt will auto-send.`}
-                    </p>
-                  )}
-
                   {/* Offered, not auto-filled. Silently writing their account
                       number into a field they didn't touch means they can't
                       tell what's saved from what's suggested — and a DJ may
@@ -1961,7 +1967,20 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   eye lands last after reading the fields, and the way out is
                   where a way out belongs — not sharing an edge with the button
                   that commits. */}
-              {cfg.footnote && (<p style={{ margin: '.9rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>{cfg.footnote}</p>)}<div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
+              {cfg.footnote && (<p style={{ margin: '.9rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>{cfg.footnote}</p>)}
+              {/* Off-app manual rails: we can't see the money land, so the DJ
+                  marks it paid themselves and the receipt fires from there. Sits
+                  at the bottom, just above the Save/Activate button. */}
+              {(t === 'venmo' || t === 'cashapp' || t === 'zelle' || t === 'cash' || t === 'check') && (
+                <p style={{ margin: '.9rem 0 0', color: '#f5c451', fontSize: '.72rem', lineHeight: 1.5 }}>
+                  {t === 'check'
+                    ? 'Global DJ Connect can’t track Check payments off-app. When the check is received and has cleared, mark it paid in your booking dashboard and the receipt will auto-send.'
+                    : t === 'cash'
+                    ? 'Global DJ Connect can’t track Cash payments off-app. When cash has been received, mark it paid in your booking dashboard and the receipt will auto-send.'
+                    : `Global DJ Connect can’t track ${cfg.label} payments off-app. When payment is complete, mark it paid in your booking dashboard and the receipt will auto-send.`}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
                 {isSavedLive(t) && (
                   <button type="button" onClick={() => setConfirmingRemove(t)} style={btn(false)}>
                     Remove this payment option
