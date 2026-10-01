@@ -78,16 +78,19 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
     djName = dj?.name?.trim() || null;
     const methods = Array.isArray(dj?.payment_methods)
-      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; checkMail?: boolean; checkMeet?: boolean; checkOffice?: boolean }>)
+      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; checkMail?: boolean; checkMeet?: boolean; checkOffice?: boolean; cashMeet?: boolean; cashOffice?: boolean }>)
       : [];
     if (payMethod === 'cash') {
       const csh = methods.find((m) => m?.type === 'cash');
-      cashPhone = csh?.handle?.trim() || null;
+      // Which ways the DJ accepts cash: meet-up (default on) and office (default off).
+      const cashMeet = csh?.cashMeet !== false;
+      const cashOffice = csh?.cashOffice === true;
+      cashPhone = cashMeet ? (csh?.handle?.trim() || null) : null;
       cashNightOf = csh?.cashNightOf === true;
       cashLeadWeeks = typeof csh?.cashLeadWeeks === 'number' ? csh.cashLeadWeeks : null;
-      cashCanText = csh?.smsOk === true;
-      dropoffAddress = csh?.dropoffAddress?.trim() || null;
-      dropoffHours = csh?.dropoffHours?.trim() || null;
+      cashCanText = cashMeet && csh?.smsOk === true;
+      dropoffAddress = cashOffice ? (csh?.dropoffAddress?.trim() || null) : null;
+      dropoffHours = cashOffice ? (csh?.dropoffHours?.trim() || null) : null;
     }
     if (payMethod === 'check') {
       const chk = methods.find((m) => m?.type === 'check');
