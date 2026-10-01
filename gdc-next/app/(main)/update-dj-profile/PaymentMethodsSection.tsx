@@ -1510,7 +1510,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
                   <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
                     {/* Balance column */}
-                    <div style={{ flex: '1 1 320px', minWidth: 280, paddingRight: '1.4rem' }}>
+                    <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
                       <div style={balHead}>Balance</div>
                       <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
@@ -1551,7 +1551,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
                     {/* Deposit column — deposits are always paid ahead, so
                         there's no night-of choice: mail or drop off, full stop. */}
-                    <div style={{ flex: '1 1 240px', minWidth: 220, paddingLeft: '1.4rem' }}>
+                    <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
                       <div style={depHead}>Deposit</div>
                       <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
                     </div>
@@ -1573,7 +1573,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
                   <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
                     {/* Balance column */}
-                    <div style={{ flex: '1 1 320px', minWidth: 280, paddingRight: '1.4rem' }}>
+                    <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
                       <div style={balHead}>Balance</div>
                       <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
@@ -1613,7 +1613,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
                     {/* Deposit column — a cash deposit is always paid ahead and
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
-                    <div style={{ flex: '1 1 240px', minWidth: 220, paddingLeft: '1.4rem' }}>
+                    <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
                       <div style={depHead}>Deposit</div>
                       <p style={{ ...qLabel, margin: 0 }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
                     </div>
