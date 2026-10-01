@@ -508,6 +508,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             checkMail: o.checkMail === false ? false : undefined,
             checkMeet: o.checkMeet === true ? true : undefined,
             checkOffice: o.checkOffice === true ? true : undefined,
+            cashMeet: o.cashMeet === false ? false : undefined,
+            cashOffice: o.cashOffice === true ? true : undefined,
           };
         });
         setMethods(mapped);
@@ -564,6 +566,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       m.checkMail === false ? '0' : '1',
       m.checkMeet === true ? '1' : '0',
       m.checkOffice === true ? '1' : '0',
+      m.cashMeet === false ? '0' : '1',
+      m.cashOffice === true ? '1' : '0',
     ].join('\u0000');
     // Present now but not saved: only a real change if the rail actually has
     // content save() would keep. An opened-but-empty handle tile (Venmo, Cash
@@ -706,7 +710,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           const hasOther = !!((m.contact || '').trim() || (m.dropoffAddress || '').trim()
             || (m.dropoffHours || '').trim() || (m.checkPhone || '').trim()
             || m.checkNightOf !== undefined || m.cashNightOf !== undefined
-            || m.checkMail === false || m.checkMeet === true || m.checkOffice === true);
+            || m.checkMail === false || m.checkMeet === true || m.checkOffice === true
+            || m.cashMeet === false || m.cashOffice === true);
           if (hasOther) {
             return t === 'check'
               ? 'Enter who the check should be made payable to.'
@@ -809,6 +814,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           ? { dropoffAddress: (m.dropoffAddress || '').trim(), dropoffHours: (m.dropoffHours || '').trim() }
           : {}),
         ...(m.type === 'cash' ? { smsOk: m.smsOk !== false } : {}),
+        ...(m.type === 'cash' && m.cashMeet === false ? { cashMeet: false } : {}),
+        ...(m.type === 'cash' && m.cashOffice === true ? { cashOffice: true } : {}),
         // Cash mirrors check's balance rule: can the host pay in cash the night
         // of the event, and (if not) how many weeks ahead must it be dropped off.
         // Stored explicitly (even false) so the host cash page can rely on it.
@@ -911,6 +918,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               }
             : {}),
           ...(m.type === 'cash' ? { smsOk: m.smsOk !== false } : {}),
+        ...(m.type === 'cash' && m.cashMeet === false ? { cashMeet: false } : {}),
+        ...(m.type === 'cash' && m.cashOffice === true ? { cashOffice: true } : {}),
           ...(m.type === 'cash'
             ? {
                 cashNightOf: m.cashNightOf === true,
@@ -1669,6 +1678,69 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 );
               })()}
 
+              {/* Cash accept-method cards — mirrors the Check tile, but cash can't
+                  be mailed, so there's no Mail option: just Exchange In Person and
+                  Drop Off At Office. Same toggle/numbered-card styling. */}
+              {t === 'cash' && (() => {
+                const CLR = '#00f5c4';
+                const cardWrap = (on: boolean): React.CSSProperties => ({ border: `1px solid ${on ? CLR : 'var(--border)'}`, borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
+                const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
+                const numBadge = (n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: CLR, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
+                const title: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
+                const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
+                const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
+                const toggleSwitch = (on: boolean) => (
+                  <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? CLR : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                  </span>
+                );
+                const lbl: React.CSSProperties = { ...label, color: '#6b727b' };
+                const meetOn = m.cashMeet !== false;   // default ON
+                const officeOn = m.cashOffice === true; // default OFF
+                return (
+                  <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.55rem' }}>Ways you&rsquo;ll accept the cash — pick any</div>
+
+                    {/* 1 · Exchange In Person */}
+                    <div style={cardWrap(meetOn)}>
+                      <div style={cardHead} onClick={() => patchType(t, { cashMeet: meetOn ? false : undefined })}>
+                        {toggleSwitch(meetOn)}
+                        {numBadge(1)}
+                        <span style={title}>Exchange In Person</span>
+                        <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🤝</span>
+                      </div>
+                      <div style={bodyPad}>
+                        <label style={lbl}>Phone for the host to call or text to arrange the cash drop-off</label>
+                        <input value={m.handle} placeholder="" onChange={(e) => patchType(t, { handle: e.target.value })} style={{ ...field, marginTop: '.35rem', borderColor: err ? '#ff6b6b' : 'var(--border)' }} />
+                        {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
+                        {accountPhone && cleanHandle(m) !== accountPhone && applyLink(accountPhone, () => patchType(t, { handle: accountPhone }))}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)', marginTop: '.55rem' }}>
+                          <input type="checkbox" checked={m.smsOk !== false} onChange={(e) => patchType(t, { smsOk: e.target.checked })} style={{ accentColor: 'var(--neon)' }} />
+                          Allow host to text this number
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* 2 · Drop Off At Office */}
+                    <div style={cardWrap(officeOn)}>
+                      <div style={cardHead} onClick={() => patchType(t, { cashOffice: officeOn ? undefined : true })}>
+                        {toggleSwitch(officeOn)}
+                        {numBadge(2)}
+                        <span style={title}>Drop Off At Office</span>
+                        <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🏠</span>
+                      </div>
+                      <div style={bodyPad}>
+                        <label style={lbl}>Office address</label>
+                        {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
+                        {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { dropoffAddress: accountAddress }))}
+                        <label style={{ ...lbl, marginTop: '.7rem' }}>Open hours</label>
+                        <input value={m.dropoffHours || ''} placeholder="Mon–Fri 10am–6pm" onChange={(e) => patchType(t, { dropoffHours: e.target.value })} style={field} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* PayPal offers TWO ways to get paid. Option 1: connect a PayPal
                   business account for auto-tracked payments (deposits/balances
                   mark themselves paid). Option 2: the manual PayPal.me/email
@@ -1699,26 +1771,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
               {cfg.handleLabel ? (
                 <>
-                  {/* PayPal's field label is suppressed — the Option 2 note
-                      above already tells them what to enter. Cash puts the
-                      "allow text" toggle on the same line as the phone label. */}
-                  {t === 'cash' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
-                      <label style={{ ...label, marginBottom: 0 }}>{cfg.handleLabel}</label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.78rem', color: 'var(--white)', textTransform: 'none', letterSpacing: 0, marginBottom: 0 }}>
-                        <input
-                          type="checkbox"
-                          checked={m.smsOk !== false}
-                          onChange={(e) => patchType(t, { smsOk: e.target.checked })}
-                          style={{ accentColor: 'var(--neon)' }}
-                        />
-                        Allow host to text this number to arrange the cash drop-off
-                      </label>
-                    </div>
-                  ) : (
-                    t !== 'paypal' && <label style={label}>{cfg.handleLabel}</label>
-                  )}
-                  <input
+                  {/* Cash renders its phone inside the accept-method cards above,
+                      so the shared handle field is skipped for it. */}
+                  {t !== 'paypal' && t !== 'cash' && <label style={label}>{cfg.handleLabel}</label>}
+                  {t !== 'cash' && <input
                     autoFocus={!paypalManualDisabled}
                     value={m.handle}
                     placeholder={cfg.placeholder}
@@ -1730,8 +1786,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       ...(t === 'check' ? { maxWidth: 340 } : null),
                       ...(paypalManualDisabled ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' as const } : null),
                     }}
-                  />
-                  {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
+                  />}
+                  {t !== 'cash' && err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
 
                   {/* PayPal only becomes a one-tap button when it's a PayPal.me
                       link. A plain email is valid but leaves the client to open
@@ -1752,19 +1808,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       well want clients calling a different number than the one
                       we text them on. One tap if it's the same, ignorable if
                       it isn't. */}
-                  {t === 'cash' && accountPhone && cleanHandle(m) !== accountPhone && (
-                    <button
-                      type="button"
-                      onClick={() => patchType(t, { handle: accountPhone })}
-                      style={{
-                        marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
-                        color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
-                        fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
-                      }}
-                    >
-                      Apply {accountPhone}
-                    </button>
-                  )}
 
 
                   {/* The readback exists for the IRREVERSIBLE rails: a mistyped
@@ -1868,7 +1911,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       </div>
                     );
                   })()}
-                  {cfg.contactLabel && t !== 'check' && (
+                  {cfg.contactLabel && t !== 'check' && t !== 'cash' && (
                     <>
                       <label style={{ ...label, marginTop: '.7rem' }}>{cfg.contactLabel}</label>
                       <input
@@ -1879,73 +1922,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       />
                       {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
                     </>
-                  )}
-
-                  {/* Drop-off — cash + check, behind a button because most DJs
-                      don't have an office. Two fields, not one: an address with
-                      no hours sends a client across town to a locked door, and
-                      a client who does that once pays at the event forever. */}
-                  {t === 'cash' && (
-                    <div style={{ marginTop: '.7rem' }}>
-                      {!showDropoff && !(m.dropoffAddress || '').trim() ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowDropoff(true)}
-                          style={{
-                            background: 'transparent', border: '1px solid var(--neon)',
-                            borderRadius: 6, color: 'var(--neon)', fontSize: '.68rem',
-                            padding: '.45rem .8rem', cursor: 'pointer',
-                            fontFamily: "'Space Mono', monospace", letterSpacing: '.06em',
-                            textTransform: 'uppercase', fontWeight: 700,
-                          }}
-                        >
-                          + Add office address for drop-off
-                        </button>
-                      ) : (
-                        <>
-                          <label style={label}>Office address (optional)</label>
-                          {addressField({
-                            value: m.dropoffAddress || '',
-                            onChange: (v) => patchType(t, { dropoffAddress: v }),
-                            placeholder: '',
-                          })}
-                          {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && (
-                            <button
-                              type="button"
-                              onClick={() => patchType(t, { dropoffAddress: accountAddress })}
-                              style={{
-                                marginTop: '.35rem', background: 'transparent', border: 'none', padding: 0,
-                                color: 'var(--neon)', fontSize: '.7rem', cursor: 'pointer',
-                                fontFamily: "'Space Mono', monospace", textDecoration: 'underline',
-                              }}
-                            >
-                              {`Apply ${accountAddress}`}
-                            </button>
-                          )}
-                          <label style={{ ...label, marginTop: '.7rem' }}>Open hours (optional)</label>
-                          <input
-                            value={m.dropoffHours || ''}
-                            placeholder="Mon–Fri 10am–6pm"
-                            onChange={(e) => patchType(t, { dropoffHours: e.target.value })}
-                            style={field}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              patchType(t, { dropoffAddress: '', dropoffHours: '' });
-                              setShowDropoff(false);
-                            }}
-                            style={{
-                              marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0,
-                              color: 'var(--muted)', fontSize: '.68rem', cursor: 'pointer',
-                              textDecoration: 'underline', fontFamily: "'Space Mono', monospace",
-                            }}
-                          >
-                            Remove drop-off address
-                          </button>
-                        </>
-                      )}
-                    </div>
                   )}
 
                   {/* Check already tells the client everything: who to make it
