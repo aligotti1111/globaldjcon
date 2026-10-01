@@ -614,6 +614,19 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     return vc ? !vc(m.contact || '') : true;
   }, [byType]);
 
+  // Same test, but against what's actually SAVED on the server — not the
+  // in-progress edits in state. Drives the Activate↔Save button and the Remove
+  // button: a rail isn't a real "active payment option" until a save succeeds,
+  // so the button stays "Activate" (and Remove stays hidden) until then. If a
+  // save fails, savedByType is unchanged, so an already-active rail stays "Save".
+  const isSavedLive = useCallback((t: PaymentMethodType): boolean => {
+    const m = savedByType[t];
+    if (!m || !m.enabled) return false;
+    if (METHOD_TYPES[t].validate(m.handle || '')) return false;
+    const vc = METHOD_TYPES[t].validateContact;
+    return vc ? !vc(m.contact || '') : true;
+  }, [savedByType]);
+
   // Card is "live" when Stripe is ready; PayPal is live when EITHER the DJ
   // connected via Option 1 (paypalReady) OR saved a manual PayPal.me/email;
   // every other rail is live once it has a saved handle.
@@ -1949,7 +1962,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   where a way out belongs — not sharing an edge with the button
                   that commits. */}
               {cfg.footnote && (<p style={{ margin: '.9rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>{cfg.footnote}</p>)}<div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
-                {byType[t] && (
+                {isSavedLive(t) && (
                   <button type="button" onClick={() => setConfirmingRemove(t)} style={btn(false)}>
                     Remove this payment option
                   </button>
@@ -2016,7 +2029,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         cursor: actionable ? 'pointer' : 'not-allowed',
                       }}
                     >
-                      {saving ? 'Saving…' : !isLive(t) ? 'Activate' : nothingToSave ? '✓ Saved' : 'Save'}
+                      {saving ? 'Saving…' : !isSavedLive(t) ? 'Activate' : nothingToSave ? '✓ Saved' : 'Save'}
                     </button>
                   );
                 })()}
