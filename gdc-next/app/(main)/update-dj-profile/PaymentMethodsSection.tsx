@@ -506,8 +506,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             cashNightOf: typeof o.cashNightOf === 'boolean' ? o.cashNightOf : undefined,
             cashLeadWeeks: typeof o.cashLeadWeeks === 'number' ? o.cashLeadWeeks : undefined,
             checkMail: o.checkMail === false ? false : undefined,
-            checkMeet: o.checkMeet === false ? false : undefined,
-            checkOffice: o.checkOffice === false ? false : undefined,
+            checkMeet: o.checkMeet === true ? true : undefined,
+            checkOffice: o.checkOffice === true ? true : undefined,
           };
         });
         setMethods(mapped);
@@ -562,8 +562,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       m.cashNightOf === undefined ? '' : (m.cashNightOf ? '1' : '0'),
       String(m.cashLeadWeeks ?? ''),
       m.checkMail === false ? '0' : '1',
-      m.checkMeet === false ? '0' : '1',
-      m.checkOffice === false ? '0' : '1',
+      m.checkMeet === true ? '1' : '0',
+      m.checkOffice === true ? '1' : '0',
     ].join('\u0000');
     // Present now but not saved: only a real change if the rail actually has
     // content save() would keep. An opened-but-empty handle tile (Venmo, Cash
@@ -706,7 +706,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           const hasOther = !!((m.contact || '').trim() || (m.dropoffAddress || '').trim()
             || (m.dropoffHours || '').trim() || (m.checkPhone || '').trim()
             || m.checkNightOf !== undefined || m.cashNightOf !== undefined
-            || m.checkMail === false || m.checkMeet === false || m.checkOffice === false);
+            || m.checkMail === false || m.checkMeet === true || m.checkOffice === true);
           if (hasOther) {
             return t === 'check'
               ? 'Enter who the check should be made payable to.'
@@ -829,8 +829,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               ...(m.checkCall === false ? { checkCall: false } : {}),
               ...(m.checkText === false ? { checkText: false } : {}),
               ...(m.checkMail === false ? { checkMail: false } : {}),
-              ...(m.checkMeet === false ? { checkMeet: false } : {}),
-              ...(m.checkOffice === false ? { checkOffice: false } : {}),
+              ...(m.checkMeet === true ? { checkMeet: true } : {}),
+              ...(m.checkOffice === true ? { checkOffice: true } : {}),
             }
           : {}),
       }));
@@ -925,8 +925,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 ...(m.checkCall === false ? { checkCall: false } : {}),
                 ...(m.checkText === false ? { checkText: false } : {}),
                 ...(m.checkMail === false ? { checkMail: false } : {}),
-                ...(m.checkMeet === false ? { checkMeet: false } : {}),
-                ...(m.checkOffice === false ? { checkOffice: false } : {}),
+                ...(m.checkMeet === true ? { checkMeet: true } : {}),
+                ...(m.checkOffice === true ? { checkOffice: true } : {}),
               }
             : {}),
         }));
@@ -1793,19 +1793,25 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     const numBadge = (clr: string, n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                     const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
                     const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
+                    // Toggle switch — replaces the checkbox on each accept-method card.
+                    const toggleSwitch = (on: boolean, clr: string) => (
+                      <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? clr : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
+                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                      </span>
+                    );
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                         <div style={{ ...label, color: 'var(--neon)', fontSize: '.72rem', marginBottom: '.55rem' }}>Ways you&rsquo;ll accept the check — pick any</div>
 
-                        {/* 1 · Mail it to me */}
+                        {/* 1 · Mail it to me — ON by default */}
                         <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
-                          <label style={cardHead}>
-                            <input type="checkbox" checked={m.checkMail !== false} onChange={(e) => patchType(t, { checkMail: e.target.checked ? undefined : false })} style={{ accentColor: '#00f5c4' }} />
+                          <div style={cardHead} onClick={() => patchType(t, { checkMail: m.checkMail !== false ? false : undefined })}>
+                            {toggleSwitch(m.checkMail !== false, '#00f5c4')}
                             {numBadge('#00f5c4', 1)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail It</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>📭</span>
-                          </label>
-                          {(
+                          </div>
+                          {m.checkMail !== false && (
                             <div style={bodyPad}>
                               <label style={label}>Mailing address</label>
                               {addressField({ value: m.contact || '', onChange: (v) => patchType(t, { contact: v }), placeholder: '', invalid: !!contactErr })}
@@ -1815,15 +1821,15 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           )}
                         </div>
 
-                        {/* 2 · Arrange a meet-up */}
-                        <div style={cardWrap('#14c9a4', m.checkMeet !== false)}>
-                          <label style={cardHead}>
-                            <input type="checkbox" checked={m.checkMeet !== false} onChange={(e) => patchType(t, { checkMeet: e.target.checked ? undefined : false })} style={{ accentColor: '#14c9a4' }} />
+                        {/* 2 · Arrange a meet-up — OFF by default */}
+                        <div style={cardWrap('#14c9a4', m.checkMeet === true)}>
+                          <div style={cardHead} onClick={() => patchType(t, { checkMeet: m.checkMeet === true ? undefined : true })}>
+                            {toggleSwitch(m.checkMeet === true, '#14c9a4')}
                             {numBadge('#14c9a4', 2)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Exchange In Person</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🤝</span>
-                          </label>
-                          {(
+                          </div>
+                          {m.checkMeet === true && (
                             <div style={bodyPad}>
                               <label style={label}>Phone for the host to call or text to arrange drop-off (optional)</label>
                               <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
@@ -1840,15 +1846,15 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           )}
                         </div>
 
-                        {/* 3 · Drop off at my office */}
-                        <div style={cardWrap('#0a9b86', m.checkOffice !== false)}>
-                          <label style={cardHead}>
-                            <input type="checkbox" checked={m.checkOffice !== false} onChange={(e) => patchType(t, { checkOffice: e.target.checked ? undefined : false })} style={{ accentColor: '#0a9b86' }} />
+                        {/* 3 · Drop off at my office — OFF by default */}
+                        <div style={cardWrap('#0a9b86', m.checkOffice === true)}>
+                          <div style={cardHead} onClick={() => patchType(t, { checkOffice: m.checkOffice === true ? undefined : true })}>
+                            {toggleSwitch(m.checkOffice === true, '#0a9b86')}
                             {numBadge('#0a9b86', 3)}
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop Off At Office</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🏠</span>
-                          </label>
-                          {(
+                          </div>
+                          {m.checkOffice === true && (
                             <div style={bodyPad}>
                               <label style={label}>Office address</label>
                               {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
@@ -1972,7 +1978,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   marks it paid themselves and the receipt fires from there. Sits
                   at the bottom, just above the Save/Activate button. */}
               {(t === 'venmo' || t === 'cashapp' || t === 'zelle' || t === 'cash' || t === 'check') && (
-                <p style={{ margin: '.9rem 0 0', color: '#f5c451', fontSize: '.72rem', lineHeight: 1.5 }}>
+                <p style={{ margin: '.9rem 0 0', color: '#f5c451', fontSize: '.82rem', lineHeight: 1.55 }}>
                   {t === 'check'
                     ? 'Global DJ Connect can’t track Check payments off-app. When the check is received and has cleared, mark it paid in your booking dashboard and the receipt will auto-send.'
                     : t === 'cash'
