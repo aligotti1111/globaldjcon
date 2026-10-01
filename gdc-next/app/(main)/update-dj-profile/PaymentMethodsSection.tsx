@@ -1811,7 +1811,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail It</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>📭</span>
                           </div>
-                          {m.checkMail !== false && (
+                          {(
                             <div style={bodyPad}>
                               <label style={label}>Mailing address</label>
                               {addressField({ value: m.contact || '', onChange: (v) => patchType(t, { contact: v }), placeholder: '', invalid: !!contactErr })}
@@ -1829,7 +1829,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Exchange In Person</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🤝</span>
                           </div>
-                          {m.checkMeet === true && (
+                          {(
                             <div style={bodyPad}>
                               <label style={label}>Phone for the host to call or text to arrange drop-off (optional)</label>
                               <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
@@ -1854,7 +1854,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop Off At Office</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🏠</span>
                           </div>
-                          {m.checkOffice === true && (
+                          {(
                             <div style={bodyPad}>
                               <label style={label}>Office address</label>
                               {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
