@@ -1823,10 +1823,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         </div>
 
                         {/* 2 · Arrange a meet-up — OFF by default */}
-                        <div style={cardWrap('#14c9a4', m.checkMeet === true)}>
+                        <div style={cardWrap('#00f5c4', m.checkMeet === true)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkMeet: m.checkMeet === true ? undefined : true })}>
-                            {toggleSwitch(m.checkMeet === true, '#14c9a4')}
-                            {numBadge('#14c9a4', 2)}
+                            {toggleSwitch(m.checkMeet === true, '#00f5c4')}
+                            {numBadge('#00f5c4', 2)}
                             <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' }}>Exchange In Person</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🤝</span>
                           </div>
@@ -1848,10 +1848,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         </div>
 
                         {/* 3 · Drop off at my office — OFF by default */}
-                        <div style={cardWrap('#0a9b86', m.checkOffice === true)}>
+                        <div style={cardWrap('#00f5c4', m.checkOffice === true)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkOffice: m.checkOffice === true ? undefined : true })}>
-                            {toggleSwitch(m.checkOffice === true, '#0a9b86')}
-                            {numBadge('#0a9b86', 3)}
+                            {toggleSwitch(m.checkOffice === true, '#00f5c4')}
+                            {numBadge('#00f5c4', 3)}
                             <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' }}>Drop Off At Office</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🏠</span>
                           </div>
