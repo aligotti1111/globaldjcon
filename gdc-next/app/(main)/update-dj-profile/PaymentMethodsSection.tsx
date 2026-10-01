@@ -572,11 +572,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     // behind the leave guard forever.
     if (cur && !saved) {
       // Check / Cash carry many fields beyond the handle (balance answer,
-      // accept-method toggles, mailing/office address, phone…). ANY of them
-      // populated or changed from the default is a real edit the DJ must save —
-      // not just the "payable to" / handle. Compare against a blank tile.
+      // accept-method toggles, mailing/office address, phone…). ANY of them the
+      // DJ populated or changed is a real edit they must save — not just the
+      // "payable to" / handle. We compare against the tile's OPEN baseline, not a
+      // blank one: opening Check auto-fills the account address + phone, and that
+      // auto-fill is not a DJ edit, so it must not count as unsaved on its own.
       if (cur.type === 'check' || cur.type === 'cash') {
-        return norm(cur) !== norm({ id: cur.id, type: cur.type, handle: '' } as PaymentMethod);
+        const af = !autofillOff.current.has(cur.type);
+        const base = (cur.type === 'cash'
+          ? { id: cur.id, type: 'cash', handle: af && accountPhone ? accountPhone : '' }
+          : { id: cur.id, type: 'check', handle: '', contact: af && accountAddress ? accountAddress : '', checkPhone: af && accountPhone ? accountPhone : '' }) as PaymentMethod;
+        return norm(cur) !== norm(base);
       }
       return METHOD_TYPES[cur.type].handleLabel === '' ? true : !!cleanHandle(cur);
     }
@@ -584,7 +590,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     // this only shows transiently).
     if (!cur || !saved) return !!cur !== !!saved;
     return norm(cur) !== norm(saved);
-  }, [byType, savedByType]);
+  }, [byType, savedByType, accountPhone, accountAddress]);
 
   // Aggregate "has any unsaved rail change" — reported up so the Payments tab
   // in Booking Settings can show the unsaved dot.
