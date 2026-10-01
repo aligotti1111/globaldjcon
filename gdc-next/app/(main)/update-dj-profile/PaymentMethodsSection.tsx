@@ -1548,7 +1548,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       )}
                     </div>
                     {/* Center divider */}
-                    <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
+                    <span aria-hidden="true" style={{ width: 2, alignSelf: 'stretch', background: 'rgba(255,255,255,.75)', flexShrink: 0, borderRadius: 2 }} />
                     {/* Deposit column — deposits are always paid ahead, so
                         there's no night-of choice: mail or drop off, full stop. */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
@@ -1610,7 +1610,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       )}
                     </div>
                     {/* Center divider */}
-                    <span aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.5)', flexShrink: 0 }} />
+                    <span aria-hidden="true" style={{ width: 2, alignSelf: 'stretch', background: 'rgba(255,255,255,.75)', flexShrink: 0, borderRadius: 2 }} />
                     {/* Deposit column — a cash deposit is always paid ahead and
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
