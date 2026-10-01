@@ -1503,8 +1503,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 // block with a darker offset notch on the left. Balance = neon,
                 // Deposit = deeper green, so the two read as distinct.
                 const headBase: React.CSSProperties = { display: 'inline-block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, padding: '.28rem .8rem .28rem 1.1rem', borderRadius: 4, marginBottom: '.6rem' };
-                const balHead: React.CSSProperties = { ...headBase, background: '#00f5c4', color: '#04121a', boxShadow: '-6px 0 0 rgba(0,245,196,.3)' };
-                const depHead: React.CSSProperties = { ...headBase, background: '#0a9b86', color: '#eafff8', boxShadow: '-6px 0 0 rgba(10,155,134,.35)' };
+                const balHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(0,245,196,.9), rgba(0,245,196,.15))', color: '#04121a', borderRadius: 6 };
+                const depHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.12))', color: '#eafff8', borderRadius: 6 };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
                   {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
@@ -1566,8 +1566,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               {t === 'cash' && (() => {
                 const unanswered = attempted && m.cashNightOf === undefined;
                 const headBase: React.CSSProperties = { display: 'inline-block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, padding: '.28rem .8rem .28rem 1.1rem', borderRadius: 4, marginBottom: '.6rem' };
-                const balHead: React.CSSProperties = { ...headBase, background: '#00f5c4', color: '#04121a', boxShadow: '-6px 0 0 rgba(0,245,196,.3)' };
-                const depHead: React.CSSProperties = { ...headBase, background: '#0a9b86', color: '#eafff8', boxShadow: '-6px 0 0 rgba(10,155,134,.35)' };
+                const balHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(0,245,196,.9), rgba(0,245,196,.15))', color: '#04121a', borderRadius: 6 };
+                const depHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.12))', color: '#eafff8', borderRadius: 6 };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
                   {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
