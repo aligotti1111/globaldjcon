@@ -98,8 +98,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkAddressLines = chk?.contact ? splitMailAddress(chk.contact) : [];
       checkVerb = checkContactVerb({ checkCall: chk?.checkCall, checkText: chk?.checkText });
       checkMail = chk?.checkMail !== false;
-      checkMeet = chk?.checkMeet !== false;
-      checkOffice = chk?.checkOffice !== false;
+      checkMeet = chk?.checkMeet === true;
+      checkOffice = chk?.checkOffice === true;
       dropoffAddress = chk?.dropoffAddress?.trim() || null;
       dropoffHours = chk?.dropoffHours?.trim() || null;
     }
