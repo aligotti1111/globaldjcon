@@ -1676,7 +1676,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
                       <div style={depHead}>Deposit</div>
-                      <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: 'var(--white)' }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
+                      <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: 'var(--white)' }}>Host will choose one of the options below to get you the deposit.</p>
                     </div>
                   </div>
                 </div>
