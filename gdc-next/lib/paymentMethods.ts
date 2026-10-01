@@ -116,8 +116,9 @@ export interface PaymentMethod {
   cashLeadWeeks?: number;
   /**
    * Check only: which ways the DJ will ACCEPT the check. Each is an independent
-   * on/off the DJ toggles. Default all on (undefined === on). The host only sees
-   * the ways left on.
+   * on/off toggle. Defaults: Mail is ON (undefined === on, off only when false);
+   * Meet-up and Office are OFF (undefined === off, on only when true). The host
+   * only sees the ways left on.
    *   checkMail    — host mails the check to `contact` (mailing address)
    *   checkMeet    — host calls/texts `checkPhone` to arrange handing it over
    *   checkOffice  — host drops it at the office (`dropoffAddress` + `dropoffHours`)
