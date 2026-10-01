@@ -57,7 +57,7 @@
 // own handle rendered exactly as the client will see it, before it can ever be
 // used. That readback is the cheapest defense that exists.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
@@ -2053,7 +2053,155 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             {feedback.msg}
           </p>
         )}
+
+        <PaymentReminderBox />
       </div>
+    </div>
+  );
+}
+
+// ── Payment Reminder ──────────────────────────────────────────────────
+// A standalone box (own load + save, own GET/POST to /api/dj/payment-reminders)
+// so it doesn't entangle the rail editor's dirty/save machinery above. The DJ
+// sets how many days AFTER each request was sent to nudge a host who still
+// hasn't paid — deposit and balance independently, blank = off. Whatever they
+// set here, GDC also sends one "last call" 3 days before the event if the
+// payment is still open, and every reminder carries a one-click stop link.
+function PaymentReminderBox() {
+  const [deposit, setDeposit] = useState<string>('');
+  const [balance, setBalance] = useState<string>('');
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<{ deposit: string; balance: string } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/dj/payment-reminders');
+        const j = (await r.json().catch(() => ({}))) as { depositDays?: number | null; balanceDays?: number | null };
+        if (cancelled) return;
+        const d = j.depositDays != null ? String(j.depositDays) : '';
+        const b = j.balanceDays != null ? String(j.balanceDays) : '';
+        setDeposit(d); setBalance(b);
+        setSaved({ deposit: d, balance: b });
+      } catch { /* leave blank */ }
+      finally { if (!cancelled) setLoaded(true); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Keep only digits, cap at 60 so a slip of the keyboard can't schedule a
+  // reminder two years out.
+  const clean = (s: string): string => {
+    const n = s.replace(/[^0-9]/g, '').replace(/^0+/, '');
+    if (!n) return '';
+    return String(Math.min(parseInt(n, 10), 60));
+  };
+
+  const dirty = !!saved && (deposit !== saved.deposit || balance !== saved.balance);
+
+  const save = async () => {
+    setSaving(true); setMsg(null);
+    try {
+      const r = await fetch('/api/dj/payment-reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          depositDays: deposit === '' ? null : parseInt(deposit, 10),
+          balanceDays: balance === '' ? null : parseInt(balance, 10),
+        }),
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { error?: string };
+        setMsg({ text: j.error || 'Could not save.', ok: false });
+      } else {
+        setSaved({ deposit, balance });
+        setMsg({ text: 'Saved.', ok: true });
+      }
+    } catch {
+      setMsg({ text: 'Could not save.', ok: false });
+    } finally { setSaving(false); }
+  };
+
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: '.72rem', color: '#6b727b', marginBottom: '.35rem', lineHeight: 1.45 };
+  const inputWrap: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.5rem' };
+  const numInput: React.CSSProperties = {
+    width: 64, textAlign: 'center', background: 'var(--panel, #11151a)', color: '#f4f6f8',
+    border: '1px solid var(--border)', borderRadius: 7, padding: '.5rem', fontSize: '.95rem',
+    fontFamily: "'Space Mono', monospace",
+  };
+
+  return (
+    <div style={{ marginTop: '1.4rem', padding: '1.1rem 1.1rem 1.2rem', border: '1px solid var(--border)', borderRadius: 10, background: 'rgba(255,255,255,.02)' }}>
+      <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.35rem', letterSpacing: '.03em', color: '#f4f6f8', marginBottom: '.25rem' }}>
+        Payment Reminder
+      </div>
+      <p style={{ margin: '0 0 1rem', fontSize: '.78rem', color: '#8d95a0', lineHeight: 1.55 }}>
+        Automatically remind a host who hasn&rsquo;t paid yet. Set how many days after you send each request to nudge them — leave blank to turn that one off. Either way, anyone still unpaid gets one last reminder 3 days before the event, and every email has a one-tap link to stop reminders for that payment.
+      </p>
+
+      {!loaded ? (
+        <p style={{ margin: 0, fontSize: '.78rem', color: '#6b727b' }}>Loading…</p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+            <div>
+              <label style={labelStyle} htmlFor="pr-deposit">Remind about the <strong style={{ color: '#aeb4bc' }}>deposit</strong> this many days after the request is sent</label>
+              <div style={inputWrap}>
+                <input
+                  id="pr-deposit"
+                  type="text"
+                  inputMode="numeric"
+                  value={deposit}
+                  placeholder="Off"
+                  onChange={(e) => setDeposit(clean(e.target.value))}
+                  style={numInput}
+                />
+                <span style={{ fontSize: '.78rem', color: '#6b727b' }}>days after</span>
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle} htmlFor="pr-balance">Remind about the <strong style={{ color: '#aeb4bc' }}>balance</strong> this many days after the request is sent</label>
+              <div style={inputWrap}>
+                <input
+                  id="pr-balance"
+                  type="text"
+                  inputMode="numeric"
+                  value={balance}
+                  placeholder="Off"
+                  onChange={(e) => setBalance(clean(e.target.value))}
+                  style={numInput}
+                />
+                <span style={{ fontSize: '.78rem', color: '#6b727b' }}>days after</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.9rem', marginTop: '1.1rem' }}>
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving || !dirty}
+              style={{
+                background: !saving && dirty ? 'var(--neon)' : 'transparent',
+                color: !saving && dirty ? '#04121a' : 'var(--muted)',
+                border: `1px solid ${!saving && dirty ? 'var(--neon)' : 'var(--border)'}`,
+                borderRadius: 7, padding: '.55rem 1.2rem',
+                fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700,
+                letterSpacing: '.06em', textTransform: 'uppercase',
+                cursor: !saving && dirty ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {saving ? 'Saving…' : dirty ? 'Save' : '✓ Saved'}
+            </button>
+            {msg && (
+              <span style={{ fontSize: '.75rem', color: msg.ok ? 'var(--success)' : '#ff6b6b' }}>{msg.text}</span>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
