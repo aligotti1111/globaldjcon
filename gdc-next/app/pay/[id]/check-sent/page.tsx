@@ -52,6 +52,11 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
   let cashNightOf = false;
   let cashLeadWeeks: number | null = null;
   let cashCanText = false;
+  // Which cash hand-offs the DJ turned on: exchange in person (meet, with a
+  // phone) and drop off at the office (with an address). The host only sees the
+  // options the DJ enabled.
+  let cashMeet = false;
+  let cashOffice = false;
   // Optional office where the host can drop off cash / a check, with open hours.
   let dropoffAddress: string | null = null;
   let dropoffHours: string | null = null;
@@ -83,8 +88,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     if (payMethod === 'cash') {
       const csh = methods.find((m) => m?.type === 'cash');
       // Which ways the DJ accepts cash: meet-up (default on) and office (default off).
-      const cashMeet = csh?.cashMeet !== false;
-      const cashOffice = csh?.cashOffice === true;
+      cashMeet = csh?.cashMeet !== false;
+      cashOffice = csh?.cashOffice === true;
       cashPhone = cashMeet ? (csh?.handle?.trim() || null) : null;
       cashNightOf = csh?.cashNightOf === true;
       cashLeadWeeks = typeof csh?.cashLeadWeeks === 'number' ? csh.cashLeadWeeks : null;
@@ -145,6 +150,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       cashDeadline={cashDeadline}
       cashLeadWeeks={cashLeadWeeks}
       cashCanText={cashCanText}
+      cashMeet={cashMeet}
+      cashOffice={cashOffice}
       dropoffAddressLines={dropoffAddress ? splitMailAddress(dropoffAddress) : []}
       dropoffHours={dropoffHours}
       checkNightOf={checkNightOf}
