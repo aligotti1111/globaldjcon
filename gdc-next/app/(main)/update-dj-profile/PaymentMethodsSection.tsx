@@ -58,6 +58,7 @@
 // used. That readback is the cheapest defense that exists.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import SectionBanner from './SectionBanner';
@@ -250,8 +251,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const [attempted, setAttempted] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
-  // Which tile is awaiting a "yes, remove" confirmation (two-tap Remove).
+  // Which tile is awaiting a "yes, remove" confirmation (Remove pop-up).
   const [confirmingRemove, setConfirmingRemove] = useState<PaymentMethodType | null>(null);
+  // The confirm modal portals to document.body, which only exists on the client.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   // Tiles the DJ has explicitly Removed this session — auto-fill leaves these
   // alone from then on, so Remove means blank and stays blank.
   const autofillOff = useRef<Set<PaymentMethodType>>(new Set());
@@ -1934,25 +1938,30 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   that commits. */}
               {cfg.footnote && (<p style={{ margin: '.9rem 0 0', fontSize: '.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>{cfg.footnote}</p>)}<div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
                 {byType[t] && (
-                  confirmingRemove === t ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '.75rem', color: 'var(--white)' }}>Remove this payment method?</span>
-                      <button
-                        type="button"
-                        onClick={() => removeType(t)}
-                        style={{ ...btn(false), borderColor: '#ff6b6b', color: '#ff6b6b' }}
-                      >
-                        Yes, remove
-                      </button>
-                      <button type="button" onClick={() => setConfirmingRemove(null)} style={btn(false)}>
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button type="button" onClick={() => setConfirmingRemove(t)} style={btn(false)}>
-                      Remove this payment option
-                    </button>
-                  )
+                  <button type="button" onClick={() => setConfirmingRemove(t)} style={btn(false)}>
+                    Remove this payment option
+                  </button>
+                )}
+                {/* Confirm pop-up — centered modal over a dark scrim. Portaled to
+                    <body> so no parent overflow/transform can clip it. */}
+                {mounted && confirmingRemove === t && createPortal(
+                  <div
+                    onClick={() => setConfirmingRemove(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ width: '100%', maxWidth: 380, background: '#121317', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.3rem', boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}
+                    >
+                      <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.4rem', letterSpacing: '.03em', color: '#f4f6f8', marginBottom: '.5rem' }}>Remove this payment option?</div>
+                      <p style={{ margin: '0 0 1.1rem', fontSize: '.85rem', color: '#8d95a0', lineHeight: 1.5 }}>This payment option will be removed and its details cleared. You can add it back any time.</p>
+                      <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => setConfirmingRemove(null)} style={btn(false)}>Cancel</button>
+                        <button type="button" onClick={() => removeType(t)} style={{ ...btn(false), borderColor: '#ff6b6b', color: '#ff6b6b' }}>Yes, remove</button>
+                      </div>
+                    </div>
+                  </div>,
+                  document.body
                 )}
                 {/* Disabled until the rail would actually work. Before this,
                     Activate on an empty tile ran the save, dropped the empty
