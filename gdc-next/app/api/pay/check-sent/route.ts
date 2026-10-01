@@ -48,10 +48,17 @@ export async function POST(req: Request) {
   // "in cash" or "by check" instead of the generic "cash or check". Null when
   // the client came from a link that didn't specify.
   const method = body.method === 'cash' ? 'cash' : body.method === 'check' ? 'check' : null;
-  // For a check, how the host will get it to the DJ: 'dropoff' (hand it over —
-  // email them the call/text number) or 'mail' (email them the mailing address).
+  // How the host will get the money to the DJ:
+  //   check → 'dropoff' (call/text number) or 'mail' (mailing address)
+  //   cash  → 'meet' (exchange in person, call/text number) or 'office' (drop
+  //           off at the office address). Day-of cash comes through as 'at-event'
+  //           with no handoff — nothing to arrange, no host email.
   const handoffRaw = (body as { handoff?: unknown }).handoff;
-  const handoff = handoffRaw === 'dropoff' ? 'dropoff' : handoffRaw === 'mail' ? 'mail' : null;
+  const handoff = handoffRaw === 'dropoff' ? 'dropoff'
+    : handoffRaw === 'mail' ? 'mail'
+    : handoffRaw === 'meet' ? 'meet'
+    : handoffRaw === 'office' ? 'office'
+    : null;
 
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
@@ -182,6 +189,56 @@ ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail 
           await resend.emails.send({ from: FROM, to, subject, html: shell(content) });
         } catch { /* non-fatal */ }
       }
+    }
+  }
+
+  // CASH chosen → email the HOST how to get it to the DJ, with the price:
+  //   'meet'   → the call/text number to arrange handing it over in person
+  //   'office' → the office drop-off address (+ hours)
+  // Day-of cash ('at-event') needs no arrangement, so it gets no logistics email.
+  if (method === 'cash' && (handoff === 'meet' || handoff === 'office') && b?.dj_id && process.env.RESEND_API_KEY) {
+    const to = b.host_email?.trim() || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
+    if (to) {
+      const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
+      const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
+      const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string }>) : [];
+      const csh = methods.find((x) => x?.type === 'cash');
+      const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
+      const amt = money(Number(p.amount), p.currency || 'USD');
+      const kindLabel = kindLabelFor(p.kind);
+      const amountBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Amount due:</p>
+<p style="margin:0 0 14px;font-size:18px;color:#111;font-weight:700;">${amt}</p>`;
+
+      let subject: string;
+      let content: string;
+      if (handoff === 'meet') {
+        const phone = csh?.handle?.trim() || null;
+        const verb = csh?.smsOk ? 'Call or text' : 'Call';
+        subject = `Paying your ${kindLabel} in cash`;
+        content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Paying your ${kindLabel} in cash</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, you&rsquo;ll hand your cash to your DJ in person. Here are the details.</p>
+${amountBlock}
+${phone
+  ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange the hand-off:</p>
+<p style="margin:0 0 14px;font-size:15px;color:#111;">${verb} <strong>${phone}</strong></p>`
+  : `<p style="margin:0 0 14px;color:#333;font-size:14px;">Reach out to your DJ to arrange handing it over.</p>`}
+<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabel} is marked paid once your DJ receives and confirms the cash.</p>`;
+      } else {
+        const addrLines = csh?.dropoffAddress ? splitMailAddress(csh.dropoffAddress) : [];
+        const hours = csh?.dropoffHours?.trim() || null;
+        subject = `Where to drop off your cash ${kindLabel}`;
+        content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your cash</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please drop your cash off at the office below.</p>
+${amountBlock}
+${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Drop-off location:</p>
+<p style="margin:0 0 ${hours ? '6' : '14'}px;font-size:15px;color:#111;line-height:1.45;">${addrLines.join('<br>')}</p>` : ''}
+${hours ? `<p style="margin:0 0 14px;font-size:14px;color:#333;">${hours}</p>` : ''}
+<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabel} is marked paid once your DJ receives and confirms the cash.</p>`;
+      }
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({ from: FROM, to, subject, html: shell(content) });
+      } catch { /* non-fatal */ }
     }
   }
 
