@@ -1,24 +1,23 @@
 // GET /api/cron/payment-reminders
 //
-// The unpaid-payment nudge to the HOST. Each DJ can turn on two reminders
-// (Booking Settings → Payments → Payment Reminder):
-//   users.payment_reminder_deposit_days — N days AFTER the deposit request was
-//                                         sent, if the deposit still isn't paid.
-//   users.payment_reminder_balance_days — same, for the balance request.
-// NULL = off for that kind. If a kind is on, the host can get up to two nudges
-// for that request, each sent once:
-//   1. days-after-sent lands on today  → stamps payment_reminder_sent_at
-//   2. the event is PRE_EVENT_DAYS away → stamps payment_reminder_pre_sent_at
-// Either only fires while the payment is still unpaid, and the host can stop all
-// reminders for a single request via the email link (payment_reminders_stopped).
+// The unpaid-payment nudge to the HOST. Each DJ can turn on up to two reminders
+// per kind (Booking Settings → Payments → Payment Reminder):
+//   users.payment_reminder_deposit_days   — deposit, Nth day after the request
+//   users.payment_reminder_deposit_days_2 — deposit, 2nd reminder
+//   users.payment_reminder_balance_days   — balance, 1st reminder
+//   users.payment_reminder_balance_days_2 — balance, 2nd reminder
+// NULL = that reminder is off. When a reminder's days-since-sent lands on today
+// and the payment is still unpaid, the host gets one email with their pay link.
 //
 // Trigger: netlify/functions/payment-reminders.mjs pings this once an HOUR. The
-// route self-gates to the 9 AM Eastern hour (DST-aware) so a request gets at
-// most one send per day. ?force=1 bypasses the time gate (still needs the
-// secret); ?dry=1 computes + reports without sending.
+// route self-gates to the 9 AM Eastern hour (DST-aware) so a reminder sends at
+// most once per day. ?force=1 bypasses the time gate (still needs the secret);
+// ?dry=1 computes + reports without sending.
 //
-// No double-sends: the matching stamp column is set on send, and a stamped row
-// is never picked up again for that nudge.
+// No double-sends: a booking_payments row is one kind, so it carries two stamps —
+// payment_reminder_sent_at (1st) and payment_reminder_2_sent_at (2nd) — and a
+// stamped reminder is never picked up again. The host can stop all reminders for
+// a single request from the email (payment_reminders_stopped).
 //
 // Auth: requires CRON_SECRET, as Authorization: Bearer <secret> or ?key=<secret>.
 
@@ -75,24 +74,17 @@ function daysSince(fromYmd: string, todayYmd: string): number {
   return Math.round((a - b) / 86400000);
 }
 
-// Whole days from `todayYmd` up to `eventYmd` (both YYYY-MM-DD).
-function daysUntil(eventYmd: string, todayYmd: string): number {
-  return -daysSince(eventYmd, todayYmd);
-}
-
-// How many days before the event the "last call" reminder fires.
-const PRE_EVENT_DAYS = 3;
-
 interface DjRow extends AccessFields {
   id: string;
   name: string | null;
   payment_reminder_deposit_days: number | null;
+  payment_reminder_deposit_days_2: number | null;
   payment_reminder_balance_days: number | null;
+  payment_reminder_balance_days_2: number | null;
 }
 
 interface BookingRow {
   id: string;
-  event_date: string | null;
   venue_name: string | null;
   requester_name: string | null;
   host_email: string | null;
@@ -109,7 +101,7 @@ interface PaymentRow {
   confirmed_at: string | null;
   requested_at: string | null;
   payment_reminder_sent_at: string | null;
-  payment_reminder_pre_sent_at: string | null;
+  payment_reminder_2_sent_at: string | null;
   payment_reminders_stopped: boolean | null;
 }
 
@@ -138,9 +130,9 @@ export async function GET(req: Request) {
   // DJs with at least one reminder set. Pro feature — a lapsed DJ sends nothing.
   const { data: djRows, error: djErr } = await db
     .from('users')
-    .select('id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_reminder_deposit_days, payment_reminder_balance_days')
+    .select('id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_reminder_deposit_days, payment_reminder_deposit_days_2, payment_reminder_balance_days, payment_reminder_balance_days_2')
     .eq('role', 'dj')
-    .or('payment_reminder_deposit_days.not.is.null,payment_reminder_balance_days.not.is.null')
+    .or('payment_reminder_deposit_days.not.is.null,payment_reminder_deposit_days_2.not.is.null,payment_reminder_balance_days.not.is.null,payment_reminder_balance_days_2.not.is.null')
     .limit(5000);
   if (djErr) return NextResponse.json({ error: djErr.message }, { status: 502 });
 
@@ -155,15 +147,16 @@ export async function GET(req: Request) {
   let scanned = 0;
 
   for (const dj of djs) {
-    const dayFor = (kind: string | null): number | null =>
-      kind === 'deposit' ? dj.payment_reminder_deposit_days
-        : kind === 'balance' ? dj.payment_reminder_balance_days
-        : null;
+    // The two reminder days for a kind, as [first, second]. Either may be null.
+    const daysFor = (kind: string | null): [number | null, number | null] =>
+      kind === 'deposit' ? [dj.payment_reminder_deposit_days, dj.payment_reminder_deposit_days_2]
+        : kind === 'balance' ? [dj.payment_reminder_balance_days, dj.payment_reminder_balance_days_2]
+        : [null, null];
 
     // This DJ's bookings (for host contact), then their payment requests.
     const { data: bRows } = await db
       .from('bookings')
-      .select('id, event_date, venue_name, requester_name, host_email, requester_id')
+      .select('id, venue_name, requester_name, host_email, requester_id')
       .eq('dj_id', dj.id)
       .is('deleted_at', null)
       .limit(3000);
@@ -177,7 +170,7 @@ export async function GET(req: Request) {
       const chunk = ids.slice(i, i + 200);
       const { data: pRows } = await db
         .from('booking_payments')
-        .select('id, booking_id, kind, status, amount, currency, confirmed_at, requested_at, payment_reminder_sent_at, payment_reminder_pre_sent_at, payment_reminders_stopped')
+        .select('id, booking_id, kind, status, amount, currency, confirmed_at, requested_at, payment_reminder_sent_at, payment_reminder_2_sent_at, payment_reminders_stopped')
         .in('booking_id', chunk);
       payments = payments.concat((pRows || []) as unknown as PaymentRow[]);
     }
@@ -186,40 +179,37 @@ export async function GET(req: Request) {
     const djName = dj.name?.trim() || 'Your DJ';
 
     for (const p of payments) {
-      const day = dayFor(p.kind);
-      if (!day) continue;                                                        // reminders off for this kind
+      const [day1, day2] = daysFor(p.kind);
+      if (day1 == null && day2 == null) continue;                                // no reminders for this kind
       if (p.payment_reminders_stopped) continue;                                 // host asked us to stop
       if (p.confirmed_at || PAID.has((p.status || '').toLowerCase())) continue;  // already paid
-      const b = bookings.get(p.booking_id);
-      if (!b) continue;
+      if (!p.requested_at) continue;                                             // request never sent
+      const since = daysSince(p.requested_at, today);
 
       // Which reminder, if any, is due today — and the column we stamp so it only
-      // fires once. The "N days after the request" nudge and the fixed "3 days
-      // before the event" last call are independent.
-      let stampField: 'payment_reminder_sent_at' | 'payment_reminder_pre_sent_at' | null = null;
-      if (!p.payment_reminder_sent_at && p.requested_at && daysSince(p.requested_at, today) === day) {
+      // fires once.
+      let stampField: 'payment_reminder_sent_at' | 'payment_reminder_2_sent_at' | null = null;
+      if (day1 != null && !p.payment_reminder_sent_at && since === day1) {
         stampField = 'payment_reminder_sent_at';
-      } else if (!p.payment_reminder_pre_sent_at && b.event_date && daysUntil(b.event_date, today) === PRE_EVENT_DAYS) {
-        stampField = 'payment_reminder_pre_sent_at';
+      } else if (day2 != null && !p.payment_reminder_2_sent_at && since === day2) {
+        stampField = 'payment_reminder_2_sent_at';
       }
       if (!stampField) continue;
 
+      const b = bookings.get(p.booking_id);
+      if (!b) continue;
       const to = b.host_email?.trim() || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
       if (!to) continue;
 
       const kindLabel = p.kind === 'deposit' ? 'deposit' : 'balance';
-      const lastCall = stampField === 'payment_reminder_pre_sent_at';
       const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
       const amt = typeof p.amount === 'number' ? money(p.amount, p.currency) : '';
       const link = `${SITE_URL}/pay/${p.id}`;
       const stopLink = `${SITE_URL}/api/pay/${p.id}/stop-reminders`;
       const venue = b.venue_name?.trim() ? ` for your event at ${esc(b.venue_name.trim())}` : '';
-      const lead = lastCall
-        ? `Your event is in ${PRE_EVENT_DAYS} days and your ${kindLabel}${amt ? ` of <strong>${amt}</strong>` : ''}${venue} still hasn&rsquo;t been paid.`
-        : `Just a reminder from ${esc(djName)} — your ${kindLabel}${amt ? ` of <strong>${amt}</strong>` : ''}${venue} hasn&rsquo;t been paid yet.`;
 
-      const content = `<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, ${lastCall ? 'last call on your ' + kindLabel : 'a friendly payment reminder'}</h1>
-<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">${lead} You can take care of it with the button below.</p>
+      const content = `<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, a friendly payment reminder</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Just a reminder from ${esc(djName)} — your ${kindLabel}${amt ? ` of <strong>${amt}</strong>` : ''}${venue} hasn&rsquo;t been paid yet. You can take care of it with the button below.</p>
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;">
 <tr><td style="background:#000000;border-radius:8px;">
 <a href="${link}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Pay your ${kindLabel}</a>
@@ -237,9 +227,7 @@ Already paid this ${kindLabel}? <a href="${stopLink}" style="color:#666;">Stop r
         await resend!.emails.send({
           from: FROM,
           to,
-          subject: lastCall
-            ? `Last call: your ${kindLabel}${amt ? ` of ${amt}` : ''} is due before your event`
-            : `Reminder: your ${kindLabel}${amt ? ` of ${amt}` : ''} is still due`,
+          subject: `Reminder: your ${kindLabel}${amt ? ` of ${amt}` : ''} is still due`,
           html: shell(content),
         });
         emails += 1;
