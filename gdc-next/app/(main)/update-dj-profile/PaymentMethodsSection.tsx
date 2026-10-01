@@ -1788,7 +1788,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       to needs a name as much as a number — "call this number"
                       gets them a stranger saying "who?". */}
                   {t === 'check' && (() => {
-                    const cardWrap = (clr: string, on: boolean): React.CSSProperties => ({ border: `1px solid ${on ? clr : 'var(--border)'}`, borderLeft: `3px solid ${clr}`, borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
+                    const cardWrap = (clr: string, on: boolean): React.CSSProperties => ({ border: `1px solid ${on ? clr : 'var(--border)'}`, borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
                     const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
                     const numBadge = (clr: string, n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                     const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
