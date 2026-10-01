@@ -1559,10 +1559,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Balance column */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
                       <div style={balHead}>Balance</div>
-                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
+                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : '#6b727b' }}>Can the host pay the balance by check the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
                         {([['Yes', true], ['No, check must be in hand prior to date of event', false]] as const).map(([lbl, val]) => (
-                          <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
+                          <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : '#6b727b' }}>
                             <input
                               type="radio"
                               name={`checkNightOf-${m.id}`}
@@ -1577,7 +1577,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       {/* When it's "No", the deadline question appears below. */}
                       {m.checkNightOf === false && (
                         <div style={{ marginTop: '.6rem' }}>
-                          <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the check be received?</label>
+                          <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (attempted && m.checkLeadWeeks == null) ? '#ff6b6b' : '#6b727b' }}>How far in advance must the check be received?</label>
                           <select
                             value={m.checkLeadWeeks != null ? String(m.checkLeadWeeks) : ''}
                             onChange={(e) => { const v = e.target.value; if (v) patchType(t, { checkLeadWeeks: Number(v) }); }}
@@ -1600,7 +1600,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         there's no night-of choice: mail or drop off, full stop. */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
                       <div style={depHead}>Deposit</div>
-                      <p style={{ ...qLabel, margin: 0 }}>Host will choose one of the options below to get you the deposit.</p>
+                      <p style={{ ...qLabel, margin: 0, color: '#6b727b' }}>Host will choose one of the options below to get you the deposit.</p>
                     </div>
                   </div>
                 </div>
@@ -1622,10 +1622,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Balance column */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
                       <div style={balHead}>Balance</div>
-                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
+                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : '#6b727b' }}>Can the host pay the balance in cash the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
                         {([['Yes', true], ['No, cash must be exchanged prior to date of event', false]] as const).map(([lbl, val]) => (
-                          <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>
+                          <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : '#6b727b' }}>
                             <input
                               type="radio"
                               name={`cashNightOf-${m.id}`}
@@ -1639,7 +1639,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       </div>
                       {m.cashNightOf === false && (
                         <div style={{ marginTop: '.6rem' }}>
-                          <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : 'var(--white)' }}>How far in advance must the cash be dropped off?</label>
+                          <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (attempted && m.cashLeadWeeks == null) ? '#ff6b6b' : '#6b727b' }}>How far in advance must the cash be dropped off?</label>
                           <select
                             value={m.cashLeadWeeks != null ? String(m.cashLeadWeeks) : ''}
                             onChange={(e) => { const v = e.target.value; if (v) patchType(t, { cashLeadWeeks: Number(v) }); }}
@@ -1662,7 +1662,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
                       <div style={depHead}>Deposit</div>
-                      <p style={{ ...qLabel, margin: 0 }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
+                      <p style={{ ...qLabel, margin: 0, color: '#6b727b' }}>Host and DJ will arrange to exchange the cash. If you have an office, add the address and hours as an option below.</p>
                     </div>
                   </div>
                 </div>
