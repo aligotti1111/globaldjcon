@@ -85,11 +85,15 @@ interface DjRow extends AccessFields {
 
 interface BookingRow {
   id: string;
+  status: string | null;
   venue_name: string | null;
   requester_name: string | null;
   host_email: string | null;
   requester_id: string | null;
 }
+
+// A called-off booking should never chase money. Matches lib/finance's rule.
+const DEAD_BOOKING = new Set(['cancelled', 'canceled', 'rejected', 'declined']);
 
 interface PaymentRow {
   id: string;
@@ -156,12 +160,16 @@ export async function GET(req: Request) {
     // This DJ's bookings (for host contact), then their payment requests.
     const { data: bRows } = await db
       .from('bookings')
-      .select('id, venue_name, requester_name, host_email, requester_id')
+      .select('id, status, venue_name, requester_name, host_email, requester_id')
       .eq('dj_id', dj.id)
       .is('deleted_at', null)
       .limit(3000);
     const bookings = new Map<string, BookingRow>();
-    for (const b of (bRows || []) as unknown as BookingRow[]) bookings.set(b.id, b);
+    // Skip cancelled/rejected bookings outright — no chasing money on a dead one.
+    for (const b of (bRows || []) as unknown as BookingRow[]) {
+      if (DEAD_BOOKING.has((b.status || '').toLowerCase())) continue;
+      bookings.set(b.id, b);
+    }
     if (bookings.size === 0) continue;
 
     const ids = Array.from(bookings.keys());
