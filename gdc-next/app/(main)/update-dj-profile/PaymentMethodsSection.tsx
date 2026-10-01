@@ -1559,7 +1559,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Balance column */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
                       <div style={balHead}>Balance</div>
-                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
+                      <label style={{ ...qLabel, fontSize: '.95rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
                         {([['Yes', true], ['No, check must be in hand prior to date of event', false]] as const).map(([lbl, val]) => (
                           <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : '#6b727b' }}>
@@ -1622,7 +1622,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Balance column */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
                       <div style={balHead}>Balance</div>
-                      <label style={{ ...qLabel, color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
+                      <label style={{ ...qLabel, fontSize: '.95rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
                         {([['Yes', true], ['No, cash must be exchanged prior to date of event', false]] as const).map(([lbl, val]) => (
                           <label key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', cursor: 'pointer', fontSize: '.82rem', color: unanswered ? '#ff6b6b' : '#6b727b' }}>
@@ -1727,6 +1727,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     style={{
                       ...field,
                       borderColor: err ? '#ff6b6b' : 'var(--border)',
+                      ...(t === 'check' ? { maxWidth: 340 } : null),
                       ...(paypalManualDisabled ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' as const } : null),
                     }}
                   />
