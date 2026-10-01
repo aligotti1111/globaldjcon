@@ -637,8 +637,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   // every other rail is live once it has a saved handle.
   const tileLive = (k: TileKey): boolean =>
     k === 'card' ? !!card?.ready
-      : k === 'paypal' ? (paypalReady || isLive(k))
-      : isLive(k);
+      : k === 'paypal' ? (paypalReady || isSavedLive(k))
+      : isSavedLive(k);
 
   // Which tiles the DJ has ALREADY set up (a connected card, or a saved rail).
   // Used to pick which one opens by default.
