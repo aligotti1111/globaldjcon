@@ -202,13 +202,11 @@ ${body}${showAmount ? amountTag : ''}
     }
 
     if (m.type === 'cash') {
-      const eventWhen = eventDate ? ` on ${eventDate}` : ' the day of your event';
       const confirmBtn = hasId
         ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="display:block;margin:12px 0 0;background:#2E7D32;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Cash As Payment Choice</a>`
         : '';
-      const body = isBalance
-        ? `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">Pay in cash at the event${eventWhen}. ${cashLine(m)}</p>${confirmBtn}`
-        : `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.5;">${cashLine(m, m.smsOk === true)}</p>${confirmBtn}`;
+      const cashMsg = `Please click confirm below if you plan to ${isBalance ? 'settle the balance' : 'pay the deposit'} in cash, further instruction can be found on the link.`;
+      const body = `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.55;">${cashMsg}</p>${confirmBtn}`;
       return card('cash', body);
     }
 
@@ -220,15 +218,8 @@ ${body}${showAmount ? amountTag : ''}
       // The full details — who it's payable to, the mailing address, the memo,
       // and how to hand it off — live on the confirm page, so the email stays a
       // short heads-up that points there.
-      const chkNightOf = (m as { checkNightOf?: boolean }).checkNightOf === true;
-      const chkWeeks = (m as { checkLeadWeeks?: number }).checkLeadWeeks;
-      const leadTxt = chkWeeks ? `${chkWeeks} week${chkWeeks === 1 ? '' : 's'} prior to the event` : 'ahead of the event';
-      const msg = !isBalance
-        ? `If paying by check, deposits can&rsquo;t be brought to the event — you&rsquo;ll mail it or arrange a drop-off with ${djName || 'your DJ'}.`
-        : chkNightOf
-          ? `If paying by check, you can bring it the day of the event or get it to ${djName || 'your DJ'} ahead of time.`
-          : `If paying by check, the check must be received ${leadTxt}.`;
-      const body = `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.55;">${msg} Please click &ldquo;Confirm Check As Payment Choice&rdquo; below to notify ${djName || 'the DJ'} you are paying by check. See additional instructions on the link.</p>${confirmBtn}`;
+      const checkMsg = `Please click confirm below if you plan to ${isBalance ? 'settle the balance' : 'pay the deposit'} with a check, further instruction can be found on the link.`;
+      const body = `<p style="margin:10px 0 0;color:#666;font-size:13px;line-height:1.55;">${checkMsg}</p>${confirmBtn}`;
       return card('check', body);
     }
 
