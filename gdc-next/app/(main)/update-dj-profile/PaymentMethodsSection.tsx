@@ -547,18 +547,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const isDirty = useCallback((t: PaymentMethodType): boolean => {
     const cur = byType[t];
     const saved = savedByType[t];
-    // Present now but not saved: only a real change if the rail actually has
-    // content save() would keep. An opened-but-empty handle tile (Venmo, Cash
-    // App, Zelle, PayPal Option 2…) that the DJ walked away from is a no-op —
-    // save() drops it — so it must NOT count as unsaved, or it traps the page
-    // behind the leave guard forever. Handle-less rails (cash / check) are a
-    // real selection the moment they're present.
-    if (cur && !saved) {
-      return METHOD_TYPES[cur.type].handleLabel === '' ? true : !!cleanHandle(cur);
-    }
-    // Saved but now gone = a removal (removeType persists it immediately, so
-    // this only shows transiently).
-    if (!cur || !saved) return !!cur !== !!saved;
     const norm = (m: PaymentMethod) => [
       cleanHandle(m),
       (m.note || '').trim(),
@@ -577,6 +565,24 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       m.checkMeet === false ? '0' : '1',
       m.checkOffice === false ? '0' : '1',
     ].join('\u0000');
+    // Present now but not saved: only a real change if the rail actually has
+    // content save() would keep. An opened-but-empty handle tile (Venmo, Cash
+    // App, Zelle, PayPal Option 2…) that the DJ walked away from is a no-op —
+    // save() drops it — so it must NOT count as unsaved, or it traps the page
+    // behind the leave guard forever.
+    if (cur && !saved) {
+      // Check / Cash carry many fields beyond the handle (balance answer,
+      // accept-method toggles, mailing/office address, phone…). ANY of them
+      // populated or changed from the default is a real edit the DJ must save —
+      // not just the "payable to" / handle. Compare against a blank tile.
+      if (cur.type === 'check' || cur.type === 'cash') {
+        return norm(cur) !== norm({ id: cur.id, type: cur.type, handle: '' } as PaymentMethod);
+      }
+      return METHOD_TYPES[cur.type].handleLabel === '' ? true : !!cleanHandle(cur);
+    }
+    // Saved but now gone = a removal (removeType persists it immediately, so
+    // this only shows transiently).
+    if (!cur || !saved) return !!cur !== !!saved;
     return norm(cur) !== norm(saved);
   }, [byType, savedByType]);
 
