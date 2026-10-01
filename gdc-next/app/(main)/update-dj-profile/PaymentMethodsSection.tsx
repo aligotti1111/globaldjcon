@@ -2134,20 +2134,33 @@ function PaymentReminderBox() {
     color: '#aeb4bc', marginBottom: '.5rem',
   };
 
-  const picker = (value: string, onChange: (v: string) => void, id: string) => (
+  // `exclude` is the sibling reminder's value — the two reminders for one kind
+  // can't fire on the same day, so that option is disabled here.
+  const picker = (value: string, onChange: (v: string) => void, id: string, exclude: string) => (
     <select id={id} value={value} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
       <option value="">None</option>
       {PR_DAY_OPTIONS.map((n) => (
-        <option key={n} value={String(n)}>{n} day{n === 1 ? '' : 's'} after request</option>
+        <option key={n} value={String(n)} disabled={exclude !== '' && String(n) === exclude}>
+          {n} day{n === 1 ? '' : 's'} after request
+        </option>
       ))}
     </select>
   );
 
   return (
-    <div style={{ marginTop: '1.4rem', padding: '1.1rem 1.1rem 1.2rem', border: '1px solid var(--border)', borderRadius: 10, background: 'rgba(255,255,255,.02)' }}>
-      <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.35rem', letterSpacing: '.03em', color: '#f4f6f8', marginBottom: '.25rem' }}>
-        Send Automatic Payment Reminder
+    <div style={{ marginTop: '1.4rem', border: '1px solid var(--border)', borderRadius: 10, background: 'rgba(255,255,255,.02)', overflow: 'hidden' }}>
+      {/* Hero banner — full-width gradient strip, same language as the
+          Balance/Deposit heads above. */}
+      <div style={{
+        background: 'linear-gradient(90deg, rgba(0,245,196,.9), rgba(0,245,196,.12))',
+        padding: '.75rem 1.1rem',
+      }}>
+        <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.6rem', letterSpacing: '.04em', color: '#04121a', lineHeight: 1 }}>
+          Automatic Payment Reminder
+        </div>
       </div>
+
+      <div style={{ padding: '1.1rem 1.1rem 1.2rem' }}>
       <p style={{ margin: '0 0 1.1rem', fontSize: '.78rem', color: '#8d95a0', lineHeight: 1.55 }}>
         Nudge a host who hasn&rsquo;t paid yet. Pick when to remind them — up to two reminders each for the deposit and the balance. Every email has a one-tap link to stop reminders for that payment.
       </p>
@@ -2160,15 +2173,15 @@ function PaymentReminderBox() {
             <div>
               <div style={groupTitle}>Deposit</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-                {picker(d1, setD1, 'pr-d1')}
-                {picker(d2, setD2, 'pr-d2')}
+                {picker(d1, setD1, 'pr-d1', d2)}
+                {picker(d2, setD2, 'pr-d2', d1)}
               </div>
             </div>
             <div>
               <div style={groupTitle}>Balance</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-                {picker(b1, setB1, 'pr-b1')}
-                {picker(b2, setB2, 'pr-b2')}
+                {picker(b1, setB1, 'pr-b1', b2)}
+                {picker(b2, setB2, 'pr-b2', b1)}
               </div>
             </div>
           </div>
@@ -2196,6 +2209,7 @@ function PaymentReminderBox() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }
