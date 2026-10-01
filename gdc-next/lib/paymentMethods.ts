@@ -126,6 +126,16 @@ export interface PaymentMethod {
   checkMail?: boolean;
   checkMeet?: boolean;
   checkOffice?: boolean;
+  /**
+   * Cash only: which ways the DJ will accept the cash. Cash can't be mailed, so
+   * there's no mail option — just meet-up and office. Defaults: Exchange In
+   * Person is ON (undefined === on, off only when false); Office is OFF
+   * (undefined === off, on only when true).
+   *   cashMeet    — host calls/texts `handle` (the cash phone) to arrange it
+   *   cashOffice  — host drops it at the office (`dropoffAddress` + `dropoffHours`)
+   */
+  cashMeet?: boolean;
+  cashOffice?: boolean;
 }
 
 /** The host-facing verb for the check drop-off phone, per the DJ's toggles. */
