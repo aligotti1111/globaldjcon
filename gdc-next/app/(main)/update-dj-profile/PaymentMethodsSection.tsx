@@ -1553,7 +1553,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         there's no night-of choice: mail or drop off, full stop. */}
                     <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
                       <div style={depHead}>Deposit</div>
-                      <p style={{ ...qLabel, margin: 0 }}>Host will have the option to mail the deposit or arrange a drop-off.</p>
+                      <p style={{ ...qLabel, margin: 0 }}>Host will choose one of the options below to get you the deposit.</p>
                     </div>
                   </div>
                 </div>
@@ -1767,7 +1767,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           <label style={cardHead}>
                             <input type="checkbox" checked={m.checkMail !== false} onChange={(e) => patchType(t, { checkMail: e.target.checked ? undefined : false })} style={{ accentColor: '#00f5c4' }} />
                             {numBadge('#00f5c4', 1)}
-                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail it to me</span>
+                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Mail It</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>📭</span>
                           </label>
                           {(
@@ -1785,7 +1785,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           <label style={cardHead}>
                             <input type="checkbox" checked={m.checkMeet !== false} onChange={(e) => patchType(t, { checkMeet: e.target.checked ? undefined : false })} style={{ accentColor: '#14c9a4' }} />
                             {numBadge('#14c9a4', 2)}
-                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Arrange a meet-up</span>
+                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Exchange In Person</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🤝</span>
                           </label>
                           {(
@@ -1810,7 +1810,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           <label style={cardHead}>
                             <input type="checkbox" checked={m.checkOffice !== false} onChange={(e) => patchType(t, { checkOffice: e.target.checked ? undefined : false })} style={{ accentColor: '#0a9b86' }} />
                             {numBadge('#0a9b86', 3)}
-                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop off at my office</span>
+                            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--white)' }}>Drop Off At Office</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.65rem', lineHeight: 1 }}>🏠</span>
                           </label>
                           {(
