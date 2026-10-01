@@ -64,7 +64,7 @@ import styles from './updateDjProfile.module.css';
 import SectionBanner from './SectionBanner';
 import PaypalConnectSection from './PaypalConnectSection';
 import {
-  CardNetworksMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark,
+  CardNetworksMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, VENMO_HEX,
 } from './BrandMarks';
 import {
   METHOD_TYPES,
@@ -1537,7 +1537,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
               {/* Hero header — the method you're editing reads big, in the
                   display font, so it's obvious which rail this panel is for. */}
-              <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, color: 'var(--white)', fontSize: '1.75rem', letterSpacing: '.03em', lineHeight: 1, marginBottom: '.7rem', paddingBottom: '.55rem', borderBottom: '1px solid rgba(255,255,255,.5)' }}>{cfg.label}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.7rem', paddingBottom: '.55rem', borderBottom: '1px solid rgba(255,255,255,.5)' }}>
+                {t === 'venmo'
+                  ? <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '2.1rem', lineHeight: 1, color: VENMO_HEX }}>V</span>
+                  : (() => { const Mark = TILE_MARK[t as TileKey]; return Mark ? <Mark size={34} /> : null; })()}
+                <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, color: 'var(--white)', fontSize: '2.4rem', letterSpacing: '.03em', lineHeight: 1 }}>{cfg.label}</span>
+              </div>
               {/* White, not muted: this is the rail's actual behaviour — what
                   the client will have to do, what it costs, what it can't do.
                   Greying it made the one paragraph that answers "should I use
