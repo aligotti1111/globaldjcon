@@ -1813,7 +1813,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           </div>
                           {(
                             <div style={bodyPad}>
-                              <label style={label}>Mailing address</label>
+                              <label style={{ ...label, color: '#6b727b' }}>Mailing address</label>
                               {addressField({ value: m.contact || '', onChange: (v) => patchType(t, { contact: v }), placeholder: '', invalid: !!contactErr })}
                               {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
                               {accountAddress && (m.contact || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { contact: accountAddress }))}
@@ -1831,7 +1831,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           </div>
                           {(
                             <div style={bodyPad}>
-                              <label style={label}>Phone for the host to call or text to arrange drop-off (optional)</label>
+                              <label style={{ ...label, color: '#6b727b' }}>Phone for the host to call or text to arrange drop-off (optional)</label>
                               <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
                               {accountPhone && (m.checkPhone || '').trim() !== accountPhone && applyLink(accountPhone, () => patchType(t, { checkPhone: accountPhone }))}
                               <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.55rem' }}>
@@ -1856,7 +1856,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                           </div>
                           {(
                             <div style={bodyPad}>
-                              <label style={label}>Office address</label>
+                              <label style={{ ...label, color: '#6b727b' }}>Office address</label>
                               {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
                               {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { dropoffAddress: accountAddress }))}
                               <label style={{ ...label, marginTop: '.7rem' }}>Open hours</label>
