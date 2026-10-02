@@ -205,7 +205,7 @@ ${body}${showAmount ? amountTag : ''}
       const confirmBtn = hasId
         ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="display:block;margin:12px 0 0;background:#2E7D32;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Cash As Payment Choice</a>`
         : '';
-      const cashMsg = `Please choose how you would like to get the cash ${isBalance ? 'balance' : 'deposit'} to ${djName}.`;
+      const cashMsg = `Please click confirm below if you plan to ${isBalance ? 'settle the balance' : 'pay the deposit'} in cash, further instruction can be found on the link.`;
       // The cash hand-offs the DJ enabled, listed so the host knows their choices
       // before opening the confirm page. Day-of only applies to the balance.
       const mc = m as PaymentMethod & { cashMeet?: boolean; cashOffice?: boolean; cashNightOf?: boolean };
