@@ -26,6 +26,26 @@ function money(n: number, currency = 'USD'): string {
   } catch { return `$${n.toFixed(2)}`; }
 }
 
+// "Saturday, May 31, 2028" from a YYYY-MM-DD (noon-anchored so no TZ drift).
+function fmtEventDate(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// "7:00 PM" from a "HH:MM" (or "HH:MM:SS") 24-hour string.
+function fmtTime(t: string | null): string {
+  if (!t) return '';
+  const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
+  if (!m) return '';
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${min} ${ampm}`;
+}
+
 function shell(content: string): string {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
 <tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -97,10 +117,10 @@ export async function POST(req: Request) {
   // Tell the DJ a check is coming.
   const { data: bData } = await admin
     .from('bookings')
-    .select('dj_id, requester_name, event_date, venue_name, host_email, requester_id')
+    .select('dj_id, requester_name, event_date, start_time, end_time, venue_name, host_email, requester_id')
     .eq('id', p.booking_id)
     .maybeSingle();
-  const b = bData as { dj_id: string | null; requester_name: string | null; event_date: string | null; venue_name: string | null; host_email: string | null; requester_id: string | null } | null;
+  const b = bData as { dj_id: string | null; requester_name: string | null; event_date: string | null; start_time: string | null; end_time: string | null; venue_name: string | null; host_email: string | null; requester_id: string | null } | null;
 
   if (b?.dj_id && process.env.RESEND_API_KEY) {
     const djEmail = await resolveUserEmail(b.dj_id);
@@ -108,8 +128,22 @@ export async function POST(req: Request) {
       const who = b.requester_name || 'Your client';
       const amt = money(Number(p.amount), p.currency || 'USD');
       const kindLabel = p.kind === 'balance' ? 'balance' : p.kind === 'deposit' ? 'deposit' : 'payment';
-      const forWhen = b.event_date ? ` for the ${b.event_date} event` : '';
-      const atVenue = b.venue_name ? ` at ${b.venue_name}` : '';
+      // Event date/place/time now live in a details block at the top, so the
+      // sentences no longer repeat the raw date and venue inline.
+      const forWhen = '';
+      const atVenue = '';
+      // A clean "Event details" card: Date, Place, Time — only the rows we have.
+      const evDate = fmtEventDate(b.event_date);
+      const evStart = fmtTime(b.start_time);
+      const evEnd = fmtTime(b.end_time);
+      const evTime = evStart && evEnd ? `${evStart} – ${evEnd}` : evStart || '';
+      const detailRow = (label: string, val: string) => val
+        ? `<tr><td style="padding:4px 0;color:#888;font-size:12px;width:70px;vertical-align:top;">${label}</td><td style="padding:4px 0;color:#111;font-size:14px;font-weight:600;">${val}</td></tr>`
+        : '';
+      const detailsRows = `${detailRow('Date', evDate)}${detailRow('Place', b.venue_name || '')}${detailRow('Time', evTime)}`;
+      const detailsBlock = detailsRows
+        ? `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 18px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailsRows}</table></td></tr></table>`
+        : '';
       // A deposit is paid AHEAD of the event, so an at-event confirm for a
       // deposit reads "before the event", not "at the event".
       const depositAhead = mode === 'at-event' && p.kind === 'deposit';
@@ -135,8 +169,8 @@ export async function POST(req: Request) {
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Arrange the hand-off — it isn't marked paid until you receive it and confirm.</p>`
         : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
-      const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">${heading}</h1>
-${bodyLines}
+      const content = `<h1 style="margin:0 0 14px;font-size:20px;color:#111;">${heading}</h1>
+${detailsBlock}${bodyLines}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;">
 <a href="${SITE_URL}/upcoming-bookings" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review booking</a>
 </td></tr></table>`;
@@ -158,7 +192,7 @@ ${bodyLines}
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string }>) : [];
       const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string } | undefined;
       if (chk?.handle) {
-        const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
+        const who = b.requester_name?.trim() || 'there';
         const memo = checkMemo(b.event_date, b.venue_name, referenceCode(p.booking_id, p.kind));
         const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];
         const chkPhone = chk.checkPhone?.trim() || null;
@@ -199,11 +233,12 @@ ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail 
   if (method === 'cash' && (handoff === 'meet' || handoff === 'office') && b?.dj_id && process.env.RESEND_API_KEY) {
     const to = b.host_email?.trim() || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
     if (to) {
-      const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
+      const { data: uData } = await admin.from('users').select('name, payment_methods').eq('id', b.dj_id).maybeSingle();
+      const djName = (uData as { name?: string | null } | null)?.name?.trim() || null;
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string }>) : [];
       const csh = methods.find((x) => x?.type === 'cash');
-      const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
+      const who = b.requester_name?.trim() || 'there';
       const amt = money(Number(p.amount), p.currency || 'USD');
       const kindLabel = kindLabelFor(p.kind);
       const amountBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Amount due:</p>
@@ -226,12 +261,12 @@ ${phone
       } else {
         const addrLines = csh?.dropoffAddress ? splitMailAddress(csh.dropoffAddress) : [];
         const hours = csh?.dropoffHours?.trim() || null;
-        subject = `Where to drop off your cash ${kindLabel}`;
-        content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your cash</h1>
-<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please drop your cash off at the office below.</p>
+        subject = `Where to drop off your ${kindLabel}`;
+        content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your ${kindLabel}</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please drop the ${kindLabel} at the office address below.</p>
 ${amountBlock}
 ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Drop-off location:</p>
-<p style="margin:0 0 ${hours ? '6' : '14'}px;font-size:15px;color:#111;line-height:1.45;">${addrLines.join('<br>')}</p>` : ''}
+<p style="margin:0 0 ${hours ? '6' : '14'}px;font-size:15px;color:#111;line-height:1.45;">${djName ? `<strong>${djName}</strong><br>` : ''}${addrLines.join('<br>')}</p>` : ''}
 ${hours ? `<p style="margin:0 0 14px;font-size:14px;color:#333;">${hours}</p>` : ''}
 <p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabel} is marked paid once your DJ receives and confirms the cash.</p>`;
       }
