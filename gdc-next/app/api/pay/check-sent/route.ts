@@ -277,9 +277,10 @@ ${phone
       } else {
         const addrLines = csh?.dropoffAddress ? splitMailAddress(csh.dropoffAddress) : [];
         const hours = csh?.dropoffHours?.trim() || null;
-        content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your ${kindLabel}</h1>
-<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please drop the ${kindLabel} at the office address below.</p>
+        content = `<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please bring the ${kindLabel} to the office address below.</p>
 ${amountBlock}
+<p style="margin:0 0 2px;color:#666;font-size:13px;">Payment method:</p>
+<p style="margin:0 0 14px;font-size:15px;color:#111;font-weight:700;">Cash</p>
 ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Drop-off location:</p>
 <p style="margin:0 0 ${hours ? '6' : '14'}px;font-size:15px;color:#111;line-height:1.45;">${djName ? `<strong>${djName}</strong><br>` : ''}${addrLines.join('<br>')}</p>` : ''}
 ${hours ? `<p style="margin:0 0 14px;font-size:14px;color:#333;">${hours}</p>` : ''}
