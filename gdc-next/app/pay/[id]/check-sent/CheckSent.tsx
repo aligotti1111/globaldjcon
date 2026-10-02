@@ -286,14 +286,15 @@ export default function CheckSent(props: Props) {
     );
   }
 
-  // ─────────────── BALANCE paid by CASH — interactive ───────────────
-  // Mirrors the check balance flow, minus mail: cash is either brought the day
-  // of the event (when the DJ allows it) or dropped off in person, by a deadline
-  // when the DJ requires it ahead of time.
+  // ─────────────── CASH (deposit or balance) — radios + one Confirm ───────
+  // The host sees ONLY the hand-off options the DJ enabled on the cash tile, as
+  // radio buttons. Day-of only applies to the balance, and only when the DJ
+  // allows it. Picking "day of" needs nothing arranged; picking in-person or
+  // office shows the number/address and, on confirm, emails the host the details.
   const cashVerb = cashCanText ? 'call or text' : 'call';
   // Exchange-in-person detail: the number the host calls/texts to arrange it.
   const MeetDetail = () => (
-    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
       {cashPhone
         ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{cashVerb.charAt(0).toUpperCase() + cashVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> to arrange handing your cash to {dj} in person.</p>
         : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange handing over your cash in person.</p>}
@@ -301,7 +302,7 @@ export default function CheckSent(props: Props) {
   );
   // Drop-off-at-office detail: the office address + hours.
   const CashOfficeDetail = () => (
-    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
+    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
       {dropoffAddressLines.length > 0 ? (
         <>
           <div style={{ color: '#8a8a98', fontSize: 12 }}>Drop your cash off at</div>
@@ -314,14 +315,40 @@ export default function CheckSent(props: Props) {
     </div>
   );
 
-  // The cash options the DJ turned on, only. Each is one selectable button.
+  // The cash options the DJ turned on, only.
   const cashMeetOn = cashMeet && !!cashPhone;
   const cashOfficeOn = cashOffice && dropoffAddressLines.length > 0;
 
-  const isBalanceCash = !isDeposit && method === 'cash';
-  if (isBalanceCash) {
-    const mustPrior = cashNightOf === false;
-    const bannerDeadline = cashDeadline || (cashLeadWeeks ? `${cashLeadWeeks} week${cashLeadWeeks === 1 ? '' : 's'} before the event` : 'the deadline');
+  const isCash = method === 'cash';
+  if (isCash) {
+    const kindWord = isDeposit ? 'deposit' : 'balance';
+    // Day-of cash is a balance-only option, shown only when the DJ allows it.
+    const nightOfOn = !isDeposit && cashNightOf;
+    // The cash must arrive ahead of time when there's no day-of option to fall
+    // back on (always true for a deposit; for a balance, when day-of is off).
+    const mustPrior = !nightOfOn;
+    const bannerDeadline = cashDeadline || (cashLeadWeeks ? `${cashLeadWeeks} week${cashLeadWeeks === 1 ? '' : 's'} before the event` : 'before the event');
+
+    type OptKey = 'nightof' | 'meet' | 'office';
+    const opts: { key: OptKey; label: string }[] = [];
+    if (nightOfOn) opts.push({ key: 'nightof', label: `Pay with cash the day of the event${when}` });
+    if (cashMeetOn) opts.push({ key: 'meet', label: 'Hand it over in person' });
+    if (cashOfficeOn) opts.push({ key: 'office', label: 'Drop it off at the office' });
+
+    const selected: OptKey | null = (choice === 'nightof' || choice === 'meet' || choice === 'office') ? choice : null;
+
+    const confirm = () => {
+      if (selected === 'nightof') {
+        return notify('at-event', <>We let {dj} know you&apos;ll pay your {kindWord} of <strong style={{ color: '#fff' }}>{amt}</strong> in cash the day of the event{when}. Thanks!</>);
+      }
+      if (selected === 'meet') {
+        return notify('sent', <>We let {dj} know you&apos;ll hand over your {kindWord} of <strong style={{ color: '#fff' }}>{amt}</strong> in cash in person{mustPrior ? ` — by ${bannerDeadline}` : ''}. They&apos;ll confirm it once received. We&apos;ve emailed you the details. Thanks!</>, 'meet');
+      }
+      if (selected === 'office') {
+        return notify('sent', <>We let {dj} know you&apos;ll drop off your {kindWord} of <strong style={{ color: '#fff' }}>{amt}</strong> in cash at the office{mustPrior ? ` — by ${bannerDeadline}` : ''}. They&apos;ll confirm it once received. We&apos;ve emailed you the details. Thanks!</>, 'office');
+      }
+    };
+
     return (
       <div style={WRAP}>
         <div style={CARD}>
@@ -331,58 +358,38 @@ export default function CheckSent(props: Props) {
               <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
               <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
               <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                {doneMsg || <>We let {dj} know about your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash{forVenue}. They&apos;ll confirm it once received. Thanks!</>}
+                {doneMsg || <>We let {dj} know about your {kindWord} of <strong style={{ color: '#fff' }}>{amt}</strong> in cash{forVenue}. They&apos;ll confirm it once received. Thanks!</>}
               </p>
             </>
           ) : (
             <>
               <Hero />
-              {/* Only warn about a deadline when the DJ does NOT allow day-of cash
-                  AND there's a drop-off/meet option to meet it. */}
+              {/* Deadline note — only when the cash must arrive ahead AND there's a
+                  hand-off option to meet it. Reads as a helpful heads-up. */}
               {mustPrior && (cashMeetOn || cashOfficeOn) && (
                 <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
-                  <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your cash by {bannerDeadline}, not the day of the event.</p>
+                  <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>Please get your cash to {dj} by {bannerDeadline}, ahead of the event day.</p>
                 </div>
               )}
-              {choice === 'none' ? (
-                <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>How will you get your cash to {dj}?</p>
-                  {cashNightOf && (
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('nightof')}>I&apos;ll pay the day of the event{when}</button>
-                  )}
-                  {cashMeetOn && (
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('meet')}>I&apos;ll exchange it in person (arrange with {dj})</button>
-                  )}
-                  {cashOfficeOn && (
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('office')}>I&apos;ll drop it off at the office{mustPrior ? ` — by ${bannerDeadline}` : ''}</button>
-                  )}
-                </>
-              ) : choice === 'nightof' ? (
-                <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 18px' }}>You&apos;ll pay your cash balance of <strong style={{ color: '#fff' }}>{amt}</strong> the day of the event{when} — nothing to arrange ahead of time. It&apos;s only marked received once {dj} confirms it.</p>
-                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                    onClick={() => notify('at-event', <>We let {dj} know you&apos;ll pay your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash the day of the event{when}. Thanks!</>)}>
-                    {state === 'sending' ? 'Confirming…' : 'Confirm — paying the day of'}
-                  </button>
-                  <BackLink onClick={() => setChoice('none')} />
-                </>
-              ) : choice === 'meet' ? (
-                <>
-                  <MeetDetail />
-                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll exchange your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash, in person{mustPrior ? ` — by ${bannerDeadline}` : ''}. They&apos;ll confirm it once received. Thanks!</>, 'meet')}>
-                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll exchange it in person"}
-                  </button>
-                  <BackLink onClick={() => setChoice('none')} />
-                </>
+              {opts.length === 0 ? (
+                <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange handing over your cash.</p>
               ) : (
                 <>
-                  <CashOfficeDetail />
-                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll drop off your balance of <strong style={{ color: '#fff' }}>{amt}</strong> in cash at the office{mustPrior ? ` — by ${bannerDeadline}` : ''}. They&apos;ll confirm it once received. Thanks!</>, 'office')}>
-                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll drop it off"}
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>How will you get your cash to {dj}?</p>
+                  {opts.map((o) => (
+                    <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
+                  ))}
+                  {/* Detail for the picked option. Day-of needs nothing arranged. */}
+                  {selected === 'meet' && <div style={{ marginTop: 14 }}><MeetDetail /></div>}
+                  {selected === 'office' && <div style={{ marginTop: 14 }}><CashOfficeDetail /></div>}
+                  {selected === 'nightof' && (
+                    <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Nothing to arrange ahead of time — just have it ready the day of. It&apos;s only marked received once {dj} confirms it.</p>
+                  )}
+                  <button type="button" disabled={!selected || state === 'sending'}
+                    style={{ ...PRIMARY_BTN, marginTop: 18, opacity: (!selected || state === 'sending') ? 0.5 : 1, cursor: (!selected || state === 'sending') ? 'default' : 'pointer' }}
+                    onClick={() => void confirm()}>
+                    {state === 'sending' ? 'Confirming…' : 'Confirm'}
                   </button>
-                  <BackLink onClick={() => setChoice('none')} />
                 </>
               )}
               {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
@@ -393,106 +400,22 @@ export default function CheckSent(props: Props) {
     );
   }
 
-  // ─────────────── DEPOSIT paid by CASH — meet / office only ───────────────
-  // A cash deposit is paid ahead of the event (never day-of), so it only ever
-  // shows the in-person and office options the DJ enabled.
-  const isDepositCash = isDeposit && method === 'cash';
-  if (isDepositCash) {
-    return (
-      <div style={WRAP}>
-        <div style={CARD}>
-          <Brand />
-          {state === 'done' ? (
-            <>
-              <div style={{ fontSize: 44, marginBottom: 10 }}>✓</div>
-              <h1 style={{ fontSize: 20, margin: '0 0 10px' }}>Your DJ has been notified</h1>
-              <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                {doneMsg || <>We let {dj} know you&apos;ll pay your deposit of <strong style={{ color: '#fff' }}>{amt}</strong> in cash. They&apos;ll confirm it once received. Thanks!</>}
-              </p>
-            </>
-          ) : (
-            <>
-              <Hero />
-              {choice === 'none' ? (
-                <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>How will you get your cash to {dj}?</p>
-                  {cashMeetOn && (
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('meet')}>I&apos;ll exchange it in person (arrange with {dj})</button>
-                  )}
-                  {cashOfficeOn && (
-                    <button type="button" style={CHOICE_BTN} onClick={() => setChoice('office')}>I&apos;ll drop it off at the office</button>
-                  )}
-                  {!cashMeetOn && !cashOfficeOn && (
-                    <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '8px 0 0' }}>Reach out to {dj} to arrange handing over your cash.</p>
-                  )}
-                </>
-              ) : choice === 'meet' ? (
-                <>
-                  <MeetDetail />
-                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll exchange your deposit of <strong style={{ color: '#fff' }}>{amt}</strong> in cash, in person. They&apos;ll confirm it once received. Thanks!</>, 'meet')}>
-                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll exchange it in person"}
-                  </button>
-                  <BackLink onClick={() => setChoice('none')} />
-                </>
-              ) : (
-                <>
-                  <CashOfficeDetail />
-                  <button type="button" style={{ ...PRIMARY_BTN, opacity: state === 'sending' ? 0.7 : 1 }} disabled={state === 'sending'}
-                    onClick={() => notify('sent', <>We let {dj} know you&apos;ll drop off your deposit of <strong style={{ color: '#fff' }}>{amt}</strong> in cash at the office. They&apos;ll confirm it once received. Thanks!</>, 'office')}>
-                    {state === 'sending' ? 'Confirming…' : "Confirm — I'll drop it off"}
-                  </button>
-                  <BackLink onClick={() => setChoice('none')} />
-                </>
-              )}
-              {state === 'error' && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '12px 0 0' }}>Something went wrong — please try again.</p>}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ─────────────── Everything else — simple per-combo copy ───────────────
+  // ─────────────── Generic (method-less) link — simple copy ───────────────
+  // Cash and check are both fully handled by the interactive flows above, so
+  // this only runs for a generic at-event link with no method specified.
   type Copy = { prompt: React.ReactNode; button: string; footnote: React.ReactNode | null; done: React.ReactNode };
   const bold = (s: string) => <strong style={{ color: '#fff' }}>{s}</strong>;
-  const phoneEl = cashPhone ? <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> : null;
-
-  let copy: Copy;
-  if (isDeposit && method === 'cash') {
-    copy = {
-      prompt: <>Let {dj} know you&apos;ll pay your deposit of {bold(amt)} in cash before the event{when}, so they can arrange to collect it ahead of time.</>,
-      button: 'Confirm cash deposit',
-      footnote: <>This just gives {dj} a heads-up you&apos;ll pay your deposit in cash. It&apos;s only marked received once {dj} confirms it.{phoneEl ? <> Please arrange a drop-off time — call or text {phoneEl}.</> : <> Please arrange a drop-off time with them.</>}</>,
-      done: <>We let {dj} know you&apos;ll pay your deposit of {bold(amt)} in cash before the event{when}. They&apos;ll confirm it once received. Thanks!</>,
-    };
-  } else if (isDeposit && method === 'check') {
-    copy = {
-      prompt: <>Let {dj} know your deposit check of {bold(amt)} is on the way, so they can watch for it before the event{when}.</>,
-      button: 'Confirm check deposit',
-      footnote: <>This just gives {dj} a heads-up you&apos;ll pay your deposit by check. It&apos;s only marked received once {dj} confirms the check has arrived.</>,
-      done: <>We let {dj} know your deposit check of {bold(amt)} is on the way{forVenue}. They&apos;ll confirm it once it arrives. Thanks!</>,
-    };
-  } else if (!isDeposit && method === 'cash') {
-    copy = {
-      prompt: <>This just gives {dj} a heads-up you&apos;ll be paying in cash. Your payment is only marked received once {dj} confirms it. Balance can be paid day of event{phoneEl ? <> or arrange a drop-off time — call or text {phoneEl}.</> : ' or arrange a drop-off time with them.'}</>,
-      button: 'Confirm Cash As Payment Of Choice',
-      footnote: null,
-      done: <>We let {dj} know you&apos;ll pay your balance of {bold(amt)} in cash at the event{when}. They&apos;ll collect it on the day. Thanks!</>,
-    };
-  } else {
-    const kindWord = isDeposit ? 'deposit' : 'balance';
-    copy = {
-      prompt: isDeposit
-        ? <>Let {dj} know you&apos;ll pay your deposit of {bold(amt)} before the event{when}, so they can arrange to collect it ahead of time.</>
-        : <>Let {dj} know you&apos;ll pay your balance of {bold(amt)} in person at the event{when}, so they know to expect it on the day.</>,
-      button: isDeposit ? "Let my DJ know I'll pay before the event" : "Let my DJ know I'll pay at the event",
-      footnote: <>This just gives {dj} a heads-up. Your {kindWord} is only marked received once {dj} confirms it{isDeposit ? '' : ' at the event'}.</>,
-      done: isDeposit
-        ? <>We let {dj} know you&apos;ll pay your deposit of {bold(amt)} before the event{when}. They&apos;ll confirm it once received. Thanks!</>
-        : <>We let {dj} know you&apos;ll pay {bold(amt)} at the event{when}. They&apos;ll collect it on the day. Thanks!</>,
-    };
-  }
+  const kindWord = isDeposit ? 'deposit' : 'balance';
+  const copy: Copy = {
+    prompt: isDeposit
+      ? <>Let {dj} know you&apos;ll pay your deposit of {bold(amt)} before the event{when}, so they can arrange to collect it ahead of time.</>
+      : <>Let {dj} know you&apos;ll pay your balance of {bold(amt)} in person at the event{when}, so they know to expect it on the day.</>,
+    button: isDeposit ? "Let my DJ know I'll pay before the event" : "Let my DJ know I'll pay at the event",
+    footnote: <>This just gives {dj} a heads-up. Your {kindWord} is only marked received once {dj} confirms it{isDeposit ? '' : ' at the event'}.</>,
+    done: isDeposit
+      ? <>We let {dj} know you&apos;ll pay your deposit of {bold(amt)} before the event{when}. They&apos;ll confirm it once received. Thanks!</>
+      : <>We let {dj} know you&apos;ll pay {bold(amt)} at the event{when}. They&apos;ll collect it on the day. Thanks!</>,
+  };
 
   return (
     <div style={WRAP}>
@@ -526,6 +449,31 @@ export default function CheckSent(props: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+// A single radio option row — circle + label, the whole row is clickable.
+function RadioRow({ label, checked, onClick }: { label: string; checked: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 11, width: '100%',
+        background: checked ? 'rgba(0,224,164,.08)' : 'transparent',
+        border: `1px solid ${checked ? '#00e0a4' : 'rgba(255,255,255,.22)'}`,
+        borderRadius: 10, padding: '13px 16px', cursor: 'pointer', marginTop: 10, textAlign: 'left',
+      }}
+    >
+      <span style={{
+        flex: '0 0 auto', width: 18, height: 18, borderRadius: '50%',
+        border: `2px solid ${checked ? '#00e0a4' : 'rgba(255,255,255,.4)'}`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {checked && <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#00e0a4' }} />}
+      </span>
+      <span style={{ color: '#fff', fontSize: 14, fontWeight: 600, lineHeight: 1.35 }}>{label}</span>
+    </button>
   );
 }
 
