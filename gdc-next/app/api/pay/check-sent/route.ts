@@ -85,16 +85,23 @@ export async function POST(req: Request) {
 
   const { data: pData } = await db
     .from('booking_payments')
-    .select('id, booking_id, kind, amount, currency, status')
+    .select('id, booking_id, kind, amount, currency, status, marked_sent_at, client_handoff')
     .eq('id', paymentId)
     .maybeSingle();
-  const p = pData as unknown as { id: string; booking_id: string; kind: string; amount: number; currency: string | null; status: string } | null;
+  const p = pData as unknown as { id: string; booking_id: string; kind: string; amount: number; currency: string | null; status: string; marked_sent_at: string | null; client_handoff: string | null } | null;
   if (!p) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
 
   // Already settled — nothing to claim.
   if (p.status === 'paid' || p.status === 'waived') {
     return NextResponse.json({ ok: true, alreadySettled: true });
   }
+
+  // The host already picked once → this is a CHANGE. Both the DJ heads-up and
+  // the host's instructions go out again, flagged as an update.
+  const isUpdate = !!p.marked_sent_at;
+  // The exact hand-off the host chose, stored so returning to the link
+  // pre-selects it. Day-of cash/check has no hand-off, so store 'nightof'.
+  const clientHandoff = mode === 'at-event' ? 'nightof' : handoff;
 
   // Record the claim. 'at-event' is an INTENT only (nothing sent yet — the DJ
   // collects on the day); 'sent' flags a mailed check as claimed-sent. Neither
@@ -104,10 +111,10 @@ export async function POST(req: Request) {
     // DJ's dashboard can show "Pending/Cash" (or /Check) and the confirmation
     // date under pricing. Method is only stored when the client's link told us
     // which — a generic at-event link leaves it null.
-    ? { client_intent: 'pay_at_event', marked_sent_at: new Date().toISOString(), ...(method ? { method } : {}) }
+    ? { client_intent: 'pay_at_event', marked_sent_at: new Date().toISOString(), client_handoff: clientHandoff, ...(method ? { method } : {}) }
     // A 'sent' claim is a check mailed ahead OR cash dropped off ahead — store
     // the rail the client actually chose (fall back to check for older links).
-    : { status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: method || 'check', client_intent: 'pay_now' };
+    : { status: 'pending_confirmation', marked_sent_at: new Date().toISOString(), method: method || 'check', client_intent: 'pay_now', client_handoff: clientHandoff };
   const { error: upErr } = await db
     .from('booking_payments')
     .update(patch as unknown as never)
@@ -184,14 +191,19 @@ export async function POST(req: Request) {
         : mode === 'at-event'
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed payment will be paid ${payWord} at the event${forWhen}${atVenue}. Nothing to do now; collect it at the event and <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : `${claimSummary}${claimClosing}`;
+      // A changed choice leads with an "Updated" note so the DJ knows it moved.
+      const updatedNote = isUpdate
+        ? `<p style="margin:0 0 14px;color:#0a6f61;font-size:13px;font-weight:700;">Updated — ${who} changed how they'll pay.</p>`
+        : '';
       const content = `<h1 style="margin:0 0 14px;font-size:20px;color:#111;">${heading}</h1>
-${detailsBlock}${bodyLines}
+${updatedNote}${detailsBlock}${bodyLines}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;">
 <a href="${SITE_URL}/upcoming-bookings" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;">Review booking</a>
 </td></tr></table>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to: djEmail, subject: depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : isMail ? `${who} is mailing a check — ${amt}` : isCheck ? `${who} will drop off a check — ${amt}` : `${who} will pay their ${kindLabel} in cash — ${amt}`, html: shell(content) });
+        const djSubject = depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : isMail ? `${who} is mailing a check — ${amt}` : isCheck ? `${who} will drop off a check — ${amt}` : `${who} will pay their ${kindLabel} in cash — ${amt}`;
+        await resend.emails.send({ from: FROM, to: djEmail, subject: isUpdate ? `Updated — ${djSubject}` : djSubject, html: shell(content) });
       } catch { /* non-fatal */ }
     }
   }
@@ -217,7 +229,7 @@ ${memo ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Include with your
 <p style="margin:0 0 14px;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}`;
         // Drop-off → give them the call/text number. Mail → give the address.
         const isDropoff = handoff === 'dropoff';
-        const subject = isDropoff ? 'Dropping off your check' : 'Where to send your check';
+        const subject = `${isUpdate ? 'Updated — ' : ''}${isDropoff ? 'Dropping off your check' : 'Where to send your check'}`;
         const content = isDropoff
           ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Dropping off your check</h1>
 <p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, here are the details for your check.</p>
@@ -260,7 +272,7 @@ ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail 
 <p style="margin:0 0 14px;font-size:18px;color:#111;font-weight:700;">${amt}</p>`;
       // Subject: "Payment Instructions | <event date>".
       const subjDate = fmtEventDate(b.event_date);
-      const subject = `Payment Instructions${subjDate ? ` | ${subjDate}` : ''}`;
+      const subject = `${isUpdate ? 'Updated ' : ''}Payment Instructions${subjDate ? ` | ${subjDate}` : ''}`;
 
       let content: string;
       if (handoff === 'meet') {
