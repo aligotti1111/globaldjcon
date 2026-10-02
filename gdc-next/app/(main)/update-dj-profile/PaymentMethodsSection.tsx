@@ -216,7 +216,7 @@ const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
 };
 const DEFAULT_MARK_SIZE = 24;
 
-export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean }) {
+export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
   // edits). The two are equal right after a load or a save; the moment the DJ
@@ -2054,7 +2054,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           </p>
         )}
 
-        <PaymentReminderBox />
+        {showPaymentReminder && <PaymentReminderBox />}
       </div>
     </div>
   );
