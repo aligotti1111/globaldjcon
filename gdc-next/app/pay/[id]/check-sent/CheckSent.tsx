@@ -376,7 +376,7 @@ export default function CheckSent(props: Props) {
                 <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange handing over your cash.</p>
               ) : (
                 <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>How will you get the cash {kindWord} to {dj}?</p>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Please choose how you would like to get the cash {kindWord} to {dj}.</p>
                   {opts.map((o) => (
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
