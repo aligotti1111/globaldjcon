@@ -45,6 +45,10 @@ interface Props {
   // Which ways the DJ accepts a check (default both true).
   checkCanMail?: boolean;
   checkCanDropoff?: boolean;
+  // The host's previously-saved choice (so returning to the link pre-selects it)
+  // and whether they've chosen before (so the button reads "Update").
+  initialChoice?: 'nightof' | 'meet' | 'office' | 'dropoff' | 'mail' | null;
+  alreadyChosen?: boolean;
 }
 
 const WRAP: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
@@ -66,6 +70,7 @@ export default function CheckSent(props: Props) {
     checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
     checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '', checkContactVerb = 'call or text',
     checkCanMail = true, checkCanDropoff = true,
+    initialChoice = null, alreadyChosen = false,
   } = props;
 
   const dj = djName?.trim() || 'your DJ';
@@ -77,8 +82,9 @@ export default function CheckSent(props: Props) {
 
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
   // Check/cash flows: which arrangement the host picked. 'meet' = exchange in
-  // person, 'office' = drop off at the DJ's office.
-  const [choice, setChoice] = useState<'none' | 'nightof' | 'early' | 'dropoff' | 'mail' | 'meet' | 'office'>('none');
+  // person, 'office' = drop off at the DJ's office. Seeded from their saved
+  // choice so returning to the link pre-selects it.
+  const [choice, setChoice] = useState<'none' | 'nightof' | 'early' | 'dropoff' | 'mail' | 'meet' | 'office'>(initialChoice ?? 'none');
   const [doneMsg, setDoneMsg] = useState<React.ReactNode>(null);
 
   async function notify(mode: 'at-event' | 'sent', done: React.ReactNode, handoff?: 'dropoff' | 'mail' | 'meet' | 'office') {
@@ -376,7 +382,7 @@ export default function CheckSent(props: Props) {
                 <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange handing over your cash.</p>
               ) : (
                 <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Please choose how you would like to get the cash {kindWord} to {dj}.</p>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>{alreadyChosen ? `You chose how you'd pay — you can change it below and we'll let ${dj} know.` : `Please choose how you would like to get the cash ${kindWord} to ${dj}.`}</p>
                   {opts.map((o) => (
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
@@ -389,7 +395,7 @@ export default function CheckSent(props: Props) {
                   <button type="button" disabled={!selected || state === 'sending'}
                     style={{ ...PRIMARY_BTN, marginTop: 18, opacity: (!selected || state === 'sending') ? 0.5 : 1, cursor: (!selected || state === 'sending') ? 'default' : 'pointer' }}
                     onClick={() => void confirm()}>
-                    {state === 'sending' ? 'Confirming…' : 'Confirm'}
+                    {state === 'sending' ? 'Saving…' : alreadyChosen ? 'Update' : 'Confirm'}
                   </button>
                 </>
               )}
