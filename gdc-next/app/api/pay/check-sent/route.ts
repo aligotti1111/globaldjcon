@@ -163,11 +163,10 @@ export async function POST(req: Request) {
       // The host's own contact details, so the DJ can reach out to set a time.
       const hostPhone = b.phone?.trim() || null;
       const hostEmail = b.host_email?.trim() || null;
-      const hostContact = [hostPhone, hostEmail].filter(Boolean).join(' · ');
       // How the host chose to hand the cash over.
       const howLabel = handoff === 'office' ? 'Drop Off At Office' : 'Exchange In Person Prior To Event';
       // A clean summary list for the cash hand-off.
-      const cashSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', 'Cash')}${detailRow('How', howLabel)}${detailRow('Contact Info', hostContact)}</table></td></tr></table>`;
+      const cashSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', 'Cash')}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '')}${detailRow('Email', hostEmail || '')}</table></td></tr></table>`;
       const bodyLines = depositAhead
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll pay their deposit of <strong>${amt}</strong> ${payWord} before the event${forWhen}${atVenue}. Arrange to collect it ahead of time, then <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : mode === 'at-event'
