@@ -211,10 +211,20 @@ export default function CheckSent(props: Props) {
                   {opts.map((o) => (
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
-                  {selected === 'dropoff' && <div style={{ marginTop: 14 }}><DropoffDetail /></div>}
-                  {selected === 'mail' && <div style={{ marginTop: 14 }}><MailDetail /></div>}
+                  {selected === 'dropoff' && (
+                    <div style={{ marginTop: 14 }}>
+                      <DropoffDetail />
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the contact info to arrange drop-off will be emailed to you once you click confirm.</p>
+                    </div>
+                  )}
+                  {selected === 'mail' && (
+                    <div style={{ marginTop: 14 }}>
+                      <MailDetail />
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the mailing address will be emailed to you once you click confirm.</p>
+                    </div>
+                  )}
                   {selected === 'nightof' && (
-                    <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Nothing to arrange ahead of time — just bring your check the day of. It&apos;s only marked received once {dj} confirms it.</p>
+                    <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Information to include on your check will be emailed to you once you click confirm.</p>
                   )}
                   <button type="button" disabled={!selected || state === 'sending'}
                     style={{ ...PRIMARY_BTN, marginTop: 18, opacity: (!selected || state === 'sending') ? 0.5 : 1, cursor: (!selected || state === 'sending') ? 'default' : 'pointer' }}
@@ -326,8 +336,18 @@ export default function CheckSent(props: Props) {
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
                   {/* Detail for the picked option. Day-of needs nothing arranged. */}
-                  {selected === 'meet' && <div style={{ marginTop: 14 }}><MeetDetail /></div>}
-                  {selected === 'office' && <div style={{ marginTop: 14 }}><CashOfficeDetail /></div>}
+                  {selected === 'meet' && (
+                    <div style={{ marginTop: 14 }}>
+                      <MeetDetail />
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>The contact info to arrange the exchange will be emailed to you once you click confirm.</p>
+                    </div>
+                  )}
+                  {selected === 'office' && (
+                    <div style={{ marginTop: 14 }}>
+                      <CashOfficeDetail />
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>The office address will be emailed to you once you click confirm.</p>
+                    </div>
+                  )}
                   {selected === 'nightof' && (
                     <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Nothing to arrange ahead of time — the {kindWord} will be settled at the event{when}.</p>
                   )}
