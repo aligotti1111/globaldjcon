@@ -243,13 +243,14 @@ ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail 
       const kindLabel = kindLabelFor(p.kind);
       const amountBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Amount due:</p>
 <p style="margin:0 0 14px;font-size:18px;color:#111;font-weight:700;">${amt}</p>`;
+      // Subject: "Payment Instructions | <event date>".
+      const subjDate = fmtEventDate(b.event_date);
+      const subject = `Payment Instructions${subjDate ? ` | ${subjDate}` : ''}`;
 
-      let subject: string;
       let content: string;
       if (handoff === 'meet') {
         const phone = csh?.handle?.trim() || null;
         const verb = csh?.smsOk ? 'Call or text' : 'Call';
-        subject = `Paying your ${kindLabel} in cash`;
         content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Paying your ${kindLabel} in cash</h1>
 <p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, you&rsquo;ll hand your cash to your DJ in person. Here are the details.</p>
 ${amountBlock}
@@ -261,7 +262,6 @@ ${phone
       } else {
         const addrLines = csh?.dropoffAddress ? splitMailAddress(csh.dropoffAddress) : [];
         const hours = csh?.dropoffHours?.trim() || null;
-        subject = `Where to drop off your ${kindLabel}`;
         content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your ${kindLabel}</h1>
 <p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please drop the ${kindLabel} at the office address below.</p>
 ${amountBlock}
