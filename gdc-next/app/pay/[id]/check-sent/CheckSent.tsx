@@ -329,11 +329,12 @@ export default function CheckSent(props: Props) {
     const mustPrior = !nightOfOn;
     const bannerDeadline = cashDeadline || (cashLeadWeeks ? `${cashLeadWeeks} week${cashLeadWeeks === 1 ? '' : 's'} before the event` : 'before the event');
 
+    // Labels match the wording of the options on the DJ's cash tab.
     type OptKey = 'nightof' | 'meet' | 'office';
     const opts: { key: OptKey; label: string }[] = [];
-    if (nightOfOn) opts.push({ key: 'nightof', label: `Pay with cash the day of the event${when}` });
-    if (cashMeetOn) opts.push({ key: 'meet', label: 'Hand it over in person' });
-    if (cashOfficeOn) opts.push({ key: 'office', label: 'Drop it off at the office' });
+    if (nightOfOn) opts.push({ key: 'nightof', label: `Pay The Day Of The Event${when}` });
+    if (cashMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person' });
+    if (cashOfficeOn) opts.push({ key: 'office', label: 'Drop Off At Office' });
 
     const selected: OptKey | null = (choice === 'nightof' || choice === 'meet' || choice === 'office') ? choice : null;
 
