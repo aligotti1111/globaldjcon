@@ -94,8 +94,14 @@ export default function BookingLog({ booking, payments, changes }: Props) {
   // ── Payments ledger (deposit / balance) ──
   for (const p of payments) {
     const k = kindLabel(p.kind);
-    add(p.requested_at, `${k} invoice sent`, 'dj');
-    if (p.marked_sent_at) add(p.marked_sent_at, `${k}: host said they'd pay`, 'host');
+    add(p.requested_at, `${k} requested`, 'dj');
+    if (p.marked_sent_at) {
+      // When the host picks a trackable option (cash / check) on the confirm
+      // page, record which one — and whether it's at the event — in the log.
+      const m = p.method === 'cash' ? ' in cash' : p.method === 'check' ? ' by check' : '';
+      const when = p.client_intent === 'pay_at_event' ? ' at the event' : '';
+      add(p.marked_sent_at, `${k}: host chose to pay${m}${when}`, 'host');
+    }
     if (p.status === 'paid' || p.status === 'waived') {
       add(p.confirmed_at ?? p.marked_sent_at ?? p.requested_at, `${k} received · receipt sent`, 'dj');
     }
