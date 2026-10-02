@@ -296,8 +296,8 @@ export default function CheckSent(props: Props) {
   const MeetDetail = () => (
     <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
       {cashPhone
-        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{cashVerb.charAt(0).toUpperCase() + cashVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> to arrange handing your cash to {dj} in person.</p>
-        : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange handing over your cash in person.</p>}
+        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{cashVerb.charAt(0).toUpperCase() + cashVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{cashPhone}</strong> to arrange a time to exchange the {isDeposit ? 'deposit' : 'balance'} in person, or <a href="/login?redirect=/inbox" style={{ color: '#00e0a4', fontWeight: 600 }}>message {dj} via the app</a>.</p>
+        : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange a time to exchange the {isDeposit ? 'deposit' : 'balance'} in person, or <a href="/login?redirect=/inbox" style={{ color: '#00e0a4', fontWeight: 600 }}>message via the app</a>.</p>}
     </div>
   );
   // Drop-off-at-office detail: the office address + hours.
