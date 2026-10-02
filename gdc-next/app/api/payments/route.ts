@@ -206,16 +206,7 @@ ${body}${showAmount ? amountTag : ''}
         ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="display:block;margin:12px 0 0;background:#2E7D32;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Cash</a>`
         : '';
       const cashMsg = `Please click confirm below if you plan to ${isBalance ? 'settle the balance' : 'pay the deposit'} in cash, further instruction can be found on the link.`;
-      // The cash hand-offs the DJ enabled, listed so the host knows their choices
-      // before opening the confirm page. Day-of only applies to the balance.
-      const mc = m as PaymentMethod & { cashMeet?: boolean; cashOffice?: boolean; cashNightOf?: boolean };
-      const cashOpts: string[] = [];
-      if (mc.cashMeet !== false) cashOpts.push('Exchange In Person Prior To Event');
-      if (mc.cashOffice === true) cashOpts.push('Drop Off At Office');
-      const cashList = cashOpts.length
-        ? `<ul style="margin:10px 0 0;padding-left:20px;color:#111;font-size:13px;line-height:1.6;">${cashOpts.map((o) => `<li>${o}</li>`).join('')}</ul>`
-        : '';
-      const body = `<p style="margin:10px 0 0;color:#111;font-size:13px;line-height:1.55;">${cashMsg}</p>${cashList}${confirmBtn}`;
+      const body = `<p style="margin:10px 0 0;color:#111;font-size:13px;line-height:1.55;">${cashMsg}</p>${confirmBtn}`;
       return card('cash', body);
     }
 
@@ -1136,7 +1127,7 @@ ${optionsBlock}`
           const amt = money(Number(p.amount), p.currency || b.currency || 'USD');
           const when = b.event_date ? ` for your ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} event` : '';
           const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Your ${kindLabel} request was cancelled</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, the ${kindLabel} of <strong>${amt}</strong>${when} has been cancelled by ${djName} — there's nothing to pay right now.</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, the ${kindLabel} request of <strong>${amt}</strong>${when} has been cancelled by ${djName} — there's nothing to pay right now.</p>`;
           try {
             const resend = new Resend(process.env.RESEND_API_KEY);
             await resend.emails.send({ from: FROM, to, subject: `Your ${kindLabel} request was cancelled`, html: shell(content) });
