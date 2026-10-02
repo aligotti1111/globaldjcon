@@ -147,35 +147,43 @@ export async function POST(req: Request) {
       // A deposit is paid AHEAD of the event, so an at-event confirm for a
       // deposit reads "before the event", not "at the event".
       const depositAhead = mode === 'at-event' && p.kind === 'deposit';
-      // A 'sent' claim for cash is a drop-off (cash can't be mailed); for check
-      // it's a mailed/handed-over check.
-      const sentCash = mode !== 'at-event' && method === 'cash';
-      const heading = depositAhead
-        ? `${who} will pay their deposit before the event`
-        : mode === 'at-event'
-        ? `${who} will pay at the event`
-        : sentCash
-        ? `${who} will pay their ${kindLabel} in cash`
-        : `${who} is mailing a check`;
+      // A 'sent' claim (not an at-event one): the host chose cash in person /
+      // office, or a check mailed / dropped off. Both kinds (deposit & balance)
+      // and both methods (cash & check) share ONE summary-list template below.
       // "in cash" / "by check" when the client's link told us which; otherwise
       // the generic "by cash or check".
       const payWord = method === 'cash' ? 'in cash' : method === 'check' ? 'by check' : 'by cash or check';
       // The host's own contact details, so the DJ can reach out to set a time.
       const hostPhone = b.phone?.trim() || null;
       const hostEmail = b.host_email?.trim() || null;
-      // How the host chose to hand the cash over.
-      const howLabel = handoff === 'office' ? 'Drop Off At Office' : 'Exchange In Person Prior To Event';
-      // A clean summary list for the cash hand-off.
-      const cashSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', 'Cash')}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '')}${detailRow('Email', hostEmail || '')}</table></td></tr></table>`;
+      // Payment method + how, worded to the host's actual choice.
+      const isCheck = method === 'check';
+      const isMail = isCheck && handoff === 'mail';
+      const payMethodLabel = isCheck ? 'Check' : 'Cash';
+      const howLabel = isCheck
+        ? (isMail ? 'Mail It' : 'Drop Off In Person')
+        : (handoff === 'office' ? 'Drop Off At Office' : 'Exchange In Person Prior To Event');
+      // The shared summary list — same template for every sent claim.
+      const claimSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', payMethodLabel)}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '')}${detailRow('Email', hostEmail || '')}</table></td></tr></table>`;
+      // Closing line: a mailed check just needs watching; everything else is
+      // arranged directly with the host.
+      const claimClosing = isMail
+        ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the check in the mail — it isn't marked paid until it arrives and you confirm.</p>`
+        : `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has been given your contact info to arrange a time that works for both of you.</p>`;
+      const heading = depositAhead
+        ? `${who} will pay their deposit before the event`
+        : mode === 'at-event'
+        ? `${who} will pay at the event`
+        : isMail
+        ? `${who} is mailing a check`
+        : isCheck
+        ? `${who} will drop off a check`
+        : `${who} will pay their ${kindLabel} in cash`;
       const bodyLines = depositAhead
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll pay their deposit of <strong>${amt}</strong> ${payWord} before the event${forWhen}${atVenue}. Arrange to collect it ahead of time, then <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : mode === 'at-event'
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed payment will be paid ${payWord} at the event${forWhen}${atVenue}. Nothing to do now; collect it at the event and <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
-        : sentCash
-        ? `${cashSummary}
-<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has been given your contact info to arrange a time that works for both of you.</p>`
-        : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
-<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
+        : `${claimSummary}${claimClosing}`;
       const content = `<h1 style="margin:0 0 14px;font-size:20px;color:#111;">${heading}</h1>
 ${detailsBlock}${bodyLines}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;">
@@ -183,7 +191,7 @@ ${detailsBlock}${bodyLines}
 </td></tr></table>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({ from: FROM, to: djEmail, subject: depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : sentCash ? `${who} will pay their ${kindLabel} in cash — ${amt}` : `${who} is mailing a check — ${amt}`, html: shell(content) });
+        await resend.emails.send({ from: FROM, to: djEmail, subject: depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : isMail ? `${who} is mailing a check — ${amt}` : isCheck ? `${who} will drop off a check — ${amt}` : `${who} will pay their ${kindLabel} in cash — ${amt}`, html: shell(content) });
       } catch { /* non-fatal */ }
     }
   }
