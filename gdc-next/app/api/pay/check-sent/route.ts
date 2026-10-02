@@ -281,10 +281,10 @@ ${phone
 ${amountBlock}
 <p style="margin:0 0 2px;color:#666;font-size:13px;">Payment method:</p>
 <p style="margin:0 0 14px;font-size:15px;color:#111;font-weight:700;">Cash</p>
-${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Drop-off location:</p>
+${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Office Address:</p>
 <p style="margin:0 0 ${hours ? '6' : '14'}px;font-size:15px;color:#111;line-height:1.45;">${djName ? `<strong>${djName}</strong><br>` : ''}${addrLines.join('<br>')}</p>` : ''}
 ${hours ? `<p style="margin:0 0 14px;font-size:14px;color:#333;">${hours}</p>` : ''}
-<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabel} is marked paid once your DJ receives and confirms the cash.</p>`;
+<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Please do not leave cash in a mailbox or unattended.</p>`;
       }
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
