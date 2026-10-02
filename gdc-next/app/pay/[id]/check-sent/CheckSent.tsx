@@ -384,7 +384,7 @@ export default function CheckSent(props: Props) {
                   {selected === 'meet' && <div style={{ marginTop: 14 }}><MeetDetail /></div>}
                   {selected === 'office' && <div style={{ marginTop: 14 }}><CashOfficeDetail /></div>}
                   {selected === 'nightof' && (
-                    <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Nothing to arrange ahead of time — just have it ready the day of. It&apos;s only marked received once {dj} confirms it.</p>
+                    <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Nothing to arrange ahead of time — the {kindWord} will be settled at the event{when}.</p>
                   )}
                   <button type="button" disabled={!selected || state === 'sending'}
                     style={{ ...PRIMARY_BTN, marginTop: 18, opacity: (!selected || state === 'sending') ? 0.5 : 1, cursor: (!selected || state === 'sending') ? 'default' : 'pointer' }}
