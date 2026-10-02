@@ -25,6 +25,8 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { usableMethods, referenceCode, type PaymentMethod } from '@/lib/paymentMethods';
+import { buildPayEmailBlocks } from '@/lib/payEmailOptions';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -77,6 +79,9 @@ function daysSince(fromYmd: string, todayYmd: string): number {
 interface DjRow extends AccessFields {
   id: string;
   name: string | null;
+  payment_methods: unknown;
+  stripe_connect_ready: boolean | null;
+  paypal_connect_ready: boolean | null;
   payment_reminder_deposit_days: number | null;
   payment_reminder_deposit_days_2: number | null;
   payment_reminder_balance_days: number | null;
@@ -86,6 +91,7 @@ interface DjRow extends AccessFields {
 interface BookingRow {
   id: string;
   status: string | null;
+  event_date: string | null;
   venue_name: string | null;
   requester_name: string | null;
   host_email: string | null;
@@ -134,7 +140,7 @@ export async function GET(req: Request) {
   // DJs with at least one reminder set. Pro feature — a lapsed DJ sends nothing.
   const { data: djRows, error: djErr } = await db
     .from('users')
-    .select('id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_reminder_deposit_days, payment_reminder_deposit_days_2, payment_reminder_balance_days, payment_reminder_balance_days_2')
+    .select('id, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, name, payment_methods, stripe_connect_ready, paypal_connect_ready, payment_reminder_deposit_days, payment_reminder_deposit_days_2, payment_reminder_balance_days, payment_reminder_balance_days_2')
     .eq('role', 'dj')
     .or('payment_reminder_deposit_days.not.is.null,payment_reminder_deposit_days_2.not.is.null,payment_reminder_balance_days.not.is.null,payment_reminder_balance_days_2.not.is.null')
     .limit(5000);
@@ -160,7 +166,7 @@ export async function GET(req: Request) {
     // This DJ's bookings (for host contact), then their payment requests.
     const { data: bRows } = await db
       .from('bookings')
-      .select('id, status, venue_name, requester_name, host_email, requester_id')
+      .select('id, status, event_date, venue_name, requester_name, host_email, requester_id')
       .eq('dj_id', dj.id)
       .is('deleted_at', null)
       .limit(3000);
@@ -185,6 +191,11 @@ export async function GET(req: Request) {
     scanned += 1;
 
     const djName = dj.name?.trim() || 'Your DJ';
+    // The DJ's usable rails — so the reminder can offer every way to pay, just
+    // like the original request email.
+    const djMethods = usableMethods((Array.isArray(dj.payment_methods) ? dj.payment_methods : []) as PaymentMethod[]);
+    const stripeReady = !!dj.stripe_connect_ready;
+    const paypalReady = !!dj.paypal_connect_ready;
 
     for (const p of payments) {
       const [day1, day2] = daysFor(p.kind);
@@ -215,17 +226,33 @@ export async function GET(req: Request) {
       const link = `${SITE_URL}/pay/${p.id}`;
       const stopLink = `${SITE_URL}/api/pay/${p.id}/stop-reminders`;
       const venue = b.venue_name?.trim() ? ` for your event at ${esc(b.venue_name.trim())}` : '';
+      // Every way to pay — the same card set as the request email.
+      const reference = referenceCode(p.booking_id, p.kind || 'balance');
+      const payBlocks = buildPayEmailBlocks({
+        methods: djMethods,
+        amount: typeof p.amount === 'number' ? p.amount : 0,
+        currency: p.currency || 'USD',
+        reference,
+        djName,
+        paymentId: p.id,
+        eventDate: b.event_date,
+        venueName: b.venue_name,
+        isBalance: p.kind === 'balance',
+        stripeReady,
+        paypalReady,
+      });
 
       const content = `<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, a friendly payment reminder</h1>
-<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Just a reminder from ${esc(djName)} — your ${kindLabel}${amt ? ` of <strong>${amt}</strong>` : ''}${venue} hasn&rsquo;t been paid yet. You can take care of it with the button below.</p>
-<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;">
-<tr><td style="background:#000000;border-radius:8px;">
-<a href="${link}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Pay your ${kindLabel}</a>
-</td></tr></table>
-<p style="margin:0 0 14px;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">
-Or paste this into your browser:<br/><a href="${link}" style="color:#999;">${link}</a>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Just a reminder from ${esc(djName)} — your ${kindLabel}${amt ? ` of <strong>${amt}</strong>` : ''}${venue} hasn&rsquo;t been paid yet. Choose any option below to take care of it.</p>
+${payBlocks}
+<div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
+<p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p>
+<p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
+</div>
+<p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">
+Prefer one link with every option? <a href="${link}" style="color:#999;">${link}</a>
 </p>
-<p style="margin:0;padding-top:14px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">
+<p style="margin:0;padding-top:14px;margin-top:14px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">
 Already paid this ${kindLabel}? <a href="${stopLink}" style="color:#666;">Stop reminders for this ${kindLabel}</a> — it won&rsquo;t affect any other payment.
 </p>`;
 
