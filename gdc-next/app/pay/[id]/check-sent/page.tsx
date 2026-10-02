@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
 
 interface PayRow {
   id: string; booking_id: string; kind: string; amount: number; currency: string | null; status: string;
+  marked_sent_at: string | null; client_handoff: string | null;
 }
 
 export default async function CheckSentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mode?: string; method?: string }> }) {
@@ -29,7 +30,7 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
 
   const { data: payData } = await db
     .from('booking_payments')
-    .select('id, booking_id, kind, amount, currency, status')
+    .select('id, booking_id, kind, amount, currency, status, marked_sent_at, client_handoff')
     .eq('id', id)
     .maybeSingle();
   const pay = payData as unknown as PayRow | null;
@@ -144,6 +145,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       venueName={booking?.venue_name || null}
       atEvent={atEvent}
       method={payMethod}
+      initialChoice={pay.client_handoff as 'nightof' | 'meet' | 'office' | 'dropoff' | 'mail' | null}
+      alreadyChosen={!!pay.marked_sent_at}
       djName={djName}
       cashPhone={cashPhone}
       cashNightOf={cashNightOf}
