@@ -203,7 +203,7 @@ ${body}${showAmount ? amountTag : ''}
 
     if (m.type === 'cash') {
       const confirmBtn = hasId
-        ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="display:block;margin:12px 0 0;background:#2E7D32;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Cash As Payment Choice</a>`
+        ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=cash" style="display:block;margin:12px 0 0;background:#2E7D32;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Cash</a>`
         : '';
       const cashMsg = `Please click confirm below if you plan to ${isBalance ? 'settle the balance' : 'pay the deposit'} in cash, further instruction can be found on the link.`;
       // The cash hand-offs the DJ enabled, listed so the host knows their choices
@@ -221,7 +221,7 @@ ${body}${showAmount ? amountTag : ''}
 
     if (m.type === 'check') {
       const confirmBtn = hasId
-        ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=check" style="display:block;margin:12px 0 0;background:#37474F;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Check As Payment Choice</a>`
+        ? `\n<a href="${SITE_URL}/pay/${paymentId}/check-sent?mode=at-event&method=check" style="display:block;margin:12px 0 0;background:#37474F;border-radius:8px;padding:13px 20px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;text-align:center;">Confirm Check</a>`
         : '';
       // The DJ's check rules (from their payment settings) decide the wording.
       // The full details — who it's payable to, the mailing address, the memo,
