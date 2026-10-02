@@ -871,23 +871,28 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
 
     // Deposit — off when the DJ takes no deposit on this booking.
     if (!has('deposit')) {
+      // Once the balance has been requested, a deposit no longer makes sense —
+      // drop the "Request deposit" action from the Not-Required dropdown.
+      const balanceRequested = payments.some((p) => p.kind === 'balance') || !!overrides.invoice;
       steps.push({
         key: 'deposit', label: 'Deposit — not required for this booking',
         state: 'todo', icon: 'money', overridable: false, done: false,
         color: MUTED, caption: 'Not Required',
         actions: blockedNoHost
           ? (addHost ? [{ label: 'Add host details…', run: addHost as () => void }] : [])
-          : canRequestDeposit
+          : (canRequestDeposit && !balanceRequested)
             ? [
                 { label: 'Request deposit', run: () => openRequest('deposit') },
                 { label: 'Payment options', run: () => setMethodsOpen(true) },
               ]
-            : [],
+            : [{ label: 'Payment options', run: () => setMethodsOpen(true) }],
         hint: blockedNoHost
           ? 'Add host email and name to request a deposit.'
-          : !canRequestDeposit
-            ? 'Contract must be signed to request a deposit.'
-            : undefined,
+          : balanceRequested
+            ? undefined
+            : !canRequestDeposit
+              ? 'Contract must be signed to request a deposit.'
+              : undefined,
       });
     }
 
