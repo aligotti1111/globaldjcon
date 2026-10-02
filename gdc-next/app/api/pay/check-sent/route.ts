@@ -138,9 +138,9 @@ export async function POST(req: Request) {
       const evEnd = fmtTime(b.end_time);
       const evTime = evStart && evEnd ? `${evStart} – ${evEnd}` : evStart || '';
       const detailRow = (label: string, val: string) => val
-        ? `<tr><td style="padding:4px 0;color:#888;font-size:12px;width:70px;vertical-align:top;">${label}</td><td style="padding:4px 0;color:#111;font-size:14px;font-weight:600;">${val}</td></tr>`
+        ? `<tr><td style="padding:5px 12px 5px 0;color:#888;font-size:12px;width:120px;white-space:nowrap;vertical-align:middle;">${label}</td><td style="padding:5px 0;color:#111;font-size:14px;font-weight:600;vertical-align:middle;word-break:break-word;">${val}</td></tr>`
         : '';
-      const detailsRows = `${detailRow('Date', evDate)}${detailRow('Place', b.venue_name || '')}${detailRow('Time', evTime)}`;
+      const detailsRows = `${detailRow('Date', evDate)}${detailRow('Place', b.venue_name || '')}${detailRow('Time', evTime)}${detailRow(kindLabel === 'deposit' ? 'Deposit' : 'Balance', amt)}`;
       const detailsBlock = detailsRows
         ? `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 18px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailsRows}</table></td></tr></table>`
         : '';
@@ -173,8 +173,7 @@ export async function POST(req: Request) {
         : mode === 'at-event'
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed payment will be paid ${payWord} at the event${forWhen}${atVenue}. Nothing to do now; collect it at the event and <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : sentCash
-        ? `<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll pay the ${kindLabel} of <strong>${amt}</strong> in cash prior to the event.</p>
-${cashSummary}
+        ? `${cashSummary}
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has been given your contact info to arrange a time that works for both of you.</p>`
         : `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.6;">They've marked their ${kindLabel} of <strong>${amt}</strong> as sent by check${forWhen}${atVenue}.</p>
 <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">Watch for the envelope — it isn't marked paid until you confirm what actually arrives.</p>`;
