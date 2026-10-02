@@ -333,7 +333,7 @@ export default function CheckSent(props: Props) {
     type OptKey = 'nightof' | 'meet' | 'office';
     const opts: { key: OptKey; label: string }[] = [];
     if (nightOfOn) opts.push({ key: 'nightof', label: `Pay The Day Of The Event${when}` });
-    if (cashMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person' });
+    if (cashMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person Prior To Event Date' });
     if (cashOfficeOn) opts.push({ key: 'office', label: 'Drop Off At Office' });
 
     const selected: OptKey | null = (choice === 'nightof' || choice === 'meet' || choice === 'office') ? choice : null;
