@@ -396,7 +396,12 @@ function EventRow({
   const showMobilePipeline = !expanded && hasPipeline;
 
   return (
-    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''} ${showMobilePipeline ? styles.hasMobilePipeline : ''}`}>
+    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''} ${showMobilePipeline ? styles.hasMobilePipeline : ''}`} style={{ position: 'relative' }}>
+      {event.depositLeadWeeks ? (
+        <span style={{ position: 'absolute', top: 6, right: 10, zIndex: 2, fontSize: '.62rem', fontWeight: 600, letterSpacing: '.02em', color: 'var(--gold, #c08a3e)', pointerEvents: 'none' }}>
+          Deposit due in {event.depositLeadWeeks} week{event.depositLeadWeeks === 1 ? '' : 's'}
+        </span>
+      ) : null}
       <div className={styles.row}>
         {/* Date pill — first element in the row. Clickable: toggles
             expansion just like the middle area, so the date acts as part
