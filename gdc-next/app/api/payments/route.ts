@@ -697,6 +697,8 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
     if (to && process.env.RESEND_API_KEY) {
       const cur = p.currency || 'USD';
       const outstanding = round2(Math.max(0, Number(p.amount) - nextPaid));
+      const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
       const content = status === 'paid'
         ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Payment received — ${money(nextPaid, cur)}</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${p.kind === 'balance' ? 'balance' : 'deposit'} is settled${b.event_date ? ` for ${b.event_date}` : ''}. A receipt is attached.</p>`
@@ -747,7 +749,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         await resend.emails.send({
           from: FROM,
           to,
-          subject: status === 'paid' ? `Payment received — ${money(nextPaid, cur)}` : `Partial payment received — ${money(outstanding, cur)} still due`,
+          subject: `${status === 'paid' ? `Payment received — ${money(nextPaid, cur)}` : `Partial payment received — ${money(outstanding, cur)} still due`}${subjTail ? ` | ${subjTail}` : ''}`,
           html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
           attachments: receiptAtt ? [receiptAtt] : undefined,
         });
@@ -824,6 +826,8 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       clientEmail: to,
     });
 
+    const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
     const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — ${money(received, cur)}</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! A receipt for your ${kind === 'deposit' ? 'deposit' : 'payment'} is attached${b.event_date ? ` for ${b.event_date}` : ''}.</p>`;
     try {
@@ -831,7 +835,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       await resend.emails.send({
         from: FROM,
         to,
-        subject: `Receipt — ${money(received, cur)}`,
+        subject: `Receipt — ${money(received, cur)}${subjTail ? ` | ${subjTail}` : ''}`,
         html: shell(content),
         attachments: receiptAtt ? [receiptAtt] : undefined,
       });
@@ -1126,11 +1130,13 @@ ${optionsBlock}`
           const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
           const amt = money(Number(p.amount), p.currency || b.currency || 'USD');
           const when = b.event_date ? ` for your ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} event` : '';
+          const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
           const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Your ${kindLabel} request was cancelled</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, the ${kindLabel} request of <strong>${amt}</strong>${when} has been cancelled by ${djName} — there's nothing to pay right now.</p>`;
           try {
             const resend = new Resend(process.env.RESEND_API_KEY);
-            await resend.emails.send({ from: FROM, to, subject: `Your ${kindLabel} request was cancelled`, html: shell(content) });
+            await resend.emails.send({ from: FROM, to, subject: `Your ${kindLabel} request was cancelled${subjTail ? ` | ${subjTail}` : ''}`, html: shell(content) });
           } catch { /* non-fatal — the cancellation itself already succeeded */ }
         }
       }
