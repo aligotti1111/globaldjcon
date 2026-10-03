@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Item = { bookingId: string; slot: string; at: string; eventDate: string | null; label: string };
+type Item = { bookingId: string; slot: string; at: string; eventDate: string | null; label: string; method?: string | null };
 
 // The stage icon that represents each kind of update — same vocabulary as the
 // booking pipeline (contract / deposit / balance / planner-or-rider / guests).
@@ -17,6 +17,8 @@ const EMOJI: Record<string, string> = {
   contract: '\u{1F4DD}',  // 📝
   deposit: '\u{1F4B5}',   // 💵
   invoice: '\u{1F9FE}',   // 🧾
+  deposit_pending: '\u{23F3}', // ⏳
+  invoice_pending: '\u{23F3}', // ⏳
   song_list: '\u{1F3B5}', // 🎵
   guestlist: '\u{1F465}', // 👥
   change: '\u{2705}',     // ✅
@@ -25,10 +27,22 @@ const WHAT: Record<string, string> = {
   contract: 'Contract signed',
   deposit: 'Deposit paid',
   invoice: 'Balance paid',
+  deposit_pending: 'Deposit pending',
+  invoice_pending: 'Balance pending',
   song_list: 'Planner submitted',
   guestlist: 'Guest list confirmed',
   change: 'Change approved',
 };
+
+// For a pending cash/check hand-off, append the method so the DJ sees what to
+// expect: "Balance pending — check".
+function whatLabel(it: Item): string {
+  const base = WHAT[it.slot] || 'Update';
+  if ((it.slot === 'invoice_pending' || it.slot === 'deposit_pending') && it.method) {
+    return `${base} — ${it.method === 'cash' ? 'cash' : 'check'}`;
+  }
+  return base;
+}
 
 function fmtDate(d: string | null): string {
   if (!d) return '';
@@ -190,7 +204,7 @@ export default function NotificationBell() {
                     {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
                   </span>
                   <span style={{ display: 'block', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
-                    {WHAT[it.slot] || 'Update'}
+                    {whatLabel(it)}
                   </span>
                   {timeAgo(it.at) && (
                     <span style={{ display: 'block', color: 'rgba(255,255,255,.45)', fontSize: '.68rem', marginTop: 2 }}>
