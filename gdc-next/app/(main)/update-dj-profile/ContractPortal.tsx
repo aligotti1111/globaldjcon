@@ -513,7 +513,7 @@ export default function ContractPortal({
   );
 
   const usageHeader = usage ? (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '.5rem', marginBottom: '1rem', padding: '.6rem .9rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '.55rem', marginBottom: '1rem', padding: '.6rem .9rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
       <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>Contracts sent this billing cycle on your plan</span>
       <span style={{ fontSize: '1.3rem', fontWeight: 800, color: usage.used >= usage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{usage.used}/{usage.quota}</span>
     </div>
