@@ -1181,19 +1181,19 @@ export default function BookingDetails({
               </div>
             ))}
             {g.key === 'EVENT' && scheduleBlock}
-            {g.key === 'EVENT' && overtimeControl && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                <span className={styles.detailLabel}>Overtime</span>
-                {overtimeControl}
-              </div>
-            )}
-            {/* Booking reference — bottom-right of the Event box, so the DJ and
+            {/* Booking reference — sits on the line above Overtime, so the DJ and
                 host can quote the same booking by a short id. */}
             {g.key === 'EVENT' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
                 <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', color: '#6f6f80', textTransform: 'uppercase' }}>
-                  Ref: {refCode}
+                  Reference: {refCode}
                 </span>
+              </div>
+            )}
+            {g.key === 'EVENT' && overtimeControl && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                <span className={styles.detailLabel}>Overtime</span>
+                {overtimeControl}
               </div>
             )}
             {/* The host opted in to text updates on the booking form — so the DJ
