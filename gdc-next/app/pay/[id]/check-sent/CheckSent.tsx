@@ -227,12 +227,13 @@ export default function CheckSent(props: Props) {
                   ))}
                   {selected === 'meet' && (
                     <div style={{ marginTop: 14 }}>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Information to include on your check and the contact info to arrange the exchange will be emailed to you once you click confirm.</p>
                       <DropoffDetail />
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the contact info to arrange the exchange will be emailed to you once you click confirm.</p>
                     </div>
                   )}
                   {selected === 'office' && (
                     <div style={{ marginTop: 14 }}>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Information to include on your check and the office address will be emailed to you once you click confirm.</p>
                       <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
                         {dropoffAddressLines.length > 0 ? (
                           <>
@@ -244,7 +245,6 @@ export default function CheckSent(props: Props) {
                           <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} for the office address.</p>
                         )}
                       </div>
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the office address will be emailed to you once you click confirm.</p>
                     </div>
                   )}
                   {selected === 'mail' && (
@@ -369,14 +369,14 @@ export default function CheckSent(props: Props) {
                   {/* Detail for the picked option. Day-of needs nothing arranged. */}
                   {selected === 'meet' && (
                     <div style={{ marginTop: 14 }}>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>The contact info to arrange the exchange will be emailed to you once you click confirm.</p>
                       <MeetDetail />
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>The contact info to arrange the exchange will be emailed to you once you click confirm.</p>
                     </div>
                   )}
                   {selected === 'office' && (
                     <div style={{ marginTop: 14 }}>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>The office address will be emailed to you once you click confirm.</p>
                       <CashOfficeDetail />
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>The office address will be emailed to you once you click confirm.</p>
                     </div>
                   )}
                   {selected === 'nightof' && (
