@@ -755,7 +755,7 @@ const LANDING_BODY = String.raw`
 </section>
 
 <section id="dashsample" style="padding:56px 0 24px">
-  <link rel="stylesheet" href="/booking-dashboard.css?v=13">
+  <link rel="stylesheet" href="/booking-dashboard.css?v=14">
   <div class="wrap">
     <div class="shead reveal">
       <span class="brstep3">Steps 3 &ndash; 7</span>
