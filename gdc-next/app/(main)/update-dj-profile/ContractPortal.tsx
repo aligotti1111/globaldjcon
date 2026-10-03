@@ -130,6 +130,8 @@ export default function ContractPortal({
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  // Styled delete-confirm (replaces the browser's native confirm() box).
+  const [pendingDelete, setPendingDelete] = useState<Contract | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -318,7 +320,14 @@ export default function ContractPortal({
   }
 
   async function deleteContract(c: Contract) {
-    if (!confirm(`Delete "${c.name}"? Contracts already sent or signed with it stay intact on those bookings.`)) return;
+    // Open the styled confirm modal instead of the browser's native confirm().
+    setPendingDelete(c);
+  }
+
+  async function confirmDelete() {
+    const c = pendingDelete;
+    setPendingDelete(null);
+    if (!c) return;
     try {
       await fetch(`/api/contracts?id=${encodeURIComponent(c.id)}`, { method: 'DELETE' });
       await load();
@@ -613,6 +622,22 @@ export default function ContractPortal({
     </div>
   );
 
-  if (inline) return gridInner;
-  return wrap(gridInner, false, bookingMode ? 'Send a contract' : 'Contract Portal');
+  // Styled delete confirmation — shown over whichever view is active.
+  const deleteModal = pendingDelete ? (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) setPendingDelete(null); }}>
+      <div style={{ background: 'var(--bg-card,#14141f)', border: '1px solid var(--border,rgba(255,255,255,.14))', borderRadius: 14, width: '100%', maxWidth: 420, padding: '1.4rem', boxShadow: '0 24px 70px rgba(0,0,0,.6)' }}>
+        <div style={{ color: 'var(--white,#fff)', fontWeight: 800, fontSize: '1.02rem', marginBottom: '.5rem' }}>Delete this contract?</div>
+        <div style={{ color: 'var(--muted,#b4b4c6)', fontSize: '.86rem', lineHeight: 1.5 }}>
+          Delete <strong style={{ color: 'var(--white,#fff)' }}>“{pendingDelete.name}”</strong>? Contracts already sent or signed with it stay intact on those bookings.
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1.3rem' }}>
+          <button type="button" onClick={() => setPendingDelete(null)} style={{ background: 'transparent', border: '1px solid var(--border,rgba(255,255,255,.22))', color: 'var(--white,#fff)', fontWeight: 600, borderRadius: 8, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
+          <button type="button" onClick={confirmDelete} style={{ background: '#e5484d', border: 'none', color: '#fff', fontWeight: 700, borderRadius: 8, padding: '.55rem 1.3rem', cursor: 'pointer' }}>Delete</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  if (inline) return <>{gridInner}{deleteModal}</>;
+  return <>{wrap(gridInner, false, bookingMode ? 'Send a contract' : 'Contract Portal')}{deleteModal}</>;
 }
