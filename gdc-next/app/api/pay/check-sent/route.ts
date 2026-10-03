@@ -215,7 +215,8 @@ ${updatedNote}${detailsBlock}${bodyLines}
   if (method === 'check' && b?.dj_id && process.env.RESEND_API_KEY) {
     const to = b.host_email?.trim() || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
     if (to) {
-      const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
+      const { data: uData } = await admin.from('users').select('name, payment_methods').eq('id', b.dj_id).maybeSingle();
+      const djName = (uData as { name?: string | null } | null)?.name?.trim() || 'your DJ';
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string; dropoffAddress?: string; dropoffHours?: string }>) : [];
       const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string; dropoffAddress?: string; dropoffHours?: string } | undefined;
@@ -259,7 +260,7 @@ ${paidNote}`;
         } else if (handoff === 'meet' || handoff === 'dropoff') {
           subject = `${isUpdate ? 'Updated — ' : ''}Exchanging your check in person`;
           content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Exchanging your check in person</h1>
-<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, here are the details for your check.</p>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please arrange a time that works for you and ${djName} to exchange the ${kindLabelFor(p.kind)}.</p>
 ${payableBlock}
 ${chkPhone
   ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange a time:</p>
@@ -312,7 +313,7 @@ ${paidNote}`;
         const phone = csh?.handle?.trim() || null;
         const verb = csh?.smsOk ? 'Call or text' : 'Call';
         content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Paying your ${kindLabel} in cash</h1>
-<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please arrange a mutual time to exchange the ${kindLabel} with ${djName || 'your DJ'}. Here are the details.</p>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please arrange a time that works for you and ${djName || 'your DJ'} to exchange the ${kindLabel}.</p>
 ${amountBlock}
 ${phone
   ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange the hand-off:</p>
