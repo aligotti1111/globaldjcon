@@ -186,7 +186,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
+  booking, djType, depositLeadWeeks = null, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
 }: {
   booking: UpcomingBooking;
   /** Only the "New activity" sort highlights the changed stage; By Date and
@@ -196,6 +196,7 @@ export default function BookingRow({
    *  Used by the header notification bell when an item is clicked. */
   defaultOpen?: boolean;
   djType: 'club' | 'mobile';
+  depositLeadWeeks?: number | null;
   userId: string;
   actingRole?: ActingRole;
   clubDepositPct: number;
@@ -834,12 +835,19 @@ export default function BookingRow({
       style={
         isCancelled
           ? {
+              position: 'relative',
               background: 'rgba(192,57,43,.10)',
               boxShadow: 'inset 3px 0 0 #ff5f5f',
             }
-          : undefined
+          : { position: 'relative' }
       }
     >
+      {/* Deposit lead time the DJ set — a small reminder top-right of the card. */}
+      {depositLeadWeeks && !isCancelled && (
+        <span style={{ position: 'absolute', top: 6, right: 10, zIndex: 2, fontSize: '.62rem', fontWeight: 600, letterSpacing: '.02em', color: 'var(--gold, #c08a3e)', pointerEvents: 'none' }}>
+          Deposit due in {depositLeadWeeks} week{depositLeadWeeks === 1 ? '' : 's'}
+        </span>
+      )}
       {/*
         THE ROW IS A GRID, AND EVERY CHILD MUST OWN A TRACK.
         There are exactly as many direct children here as there are tracks in
