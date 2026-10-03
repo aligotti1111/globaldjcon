@@ -69,6 +69,9 @@ export interface UpcomingBooking {
   requester_name?: string | null;
   requester_id?: string | null;
   phone?: string | null;
+  // The host ticked "text me updates" on the booking form. Surfaced on the
+  // host details block so the DJ knows they can send SMS.
+  sms_opt_in?: boolean | null;
   package_title?: string | null;
   package_details?: string | null;
   package_category?: string | null;
@@ -232,6 +235,7 @@ interface ProfileRow extends AccessFields {
   city: string | null;
   state: string | null;
   travel_distance: string | null;
+  payment_methods: unknown;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -248,7 +252,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, payment_methods')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -276,6 +280,16 @@ export default async function UpcomingBookingsPage() {
   // silently came back false/unset, telling a teammate the OWNER's Pro planner
   // was "a Pro feature." The owner's real standing is only knowable server-side.
   const canPro = !!profile && canUsePro(profile);
+  // Deposit lead time the DJ set on their cash/check payment method (prefer
+  // cash, then check). Shown top-right on each booking card.
+  const depositLeadWeeks: number | null = (() => {
+    const pm = Array.isArray(profile?.payment_methods)
+      ? (profile!.payment_methods as Array<{ type?: string; depositLeadWeeks?: number }>)
+      : [];
+    const pick = pm.find((m) => m?.type === 'cash' && typeof m.depositLeadWeeks === 'number')
+      || pm.find((m) => m?.type === 'check' && typeof m.depositLeadWeeks === 'number');
+    return typeof pick?.depositLeadWeeks === 'number' ? pick.depositLeadWeeks : null;
+  })();
   const isPaid = profile?.sub_status === 'active' || profile?.sub_status === 'grace';
   const s = (settings || {}) as BookingSettings & {
     rate_currency?: string; require_contract?: boolean;
@@ -303,7 +317,7 @@ export default async function UpcomingBookingsPage() {
   // RLS client returns nothing for a teammate. Scoped hard to djId below.
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, balance_settled_total, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, deposit_request_cancelled_at, balance_request_cancelled_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at, planner_status, field_edits')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, sms_opt_in, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, balance_settled_total, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, deposit_request_cancelled_at, balance_request_cancelled_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at, planner_status, field_edits')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
@@ -507,6 +521,7 @@ export default async function UpcomingBookingsPage() {
       initialPayments={paymentsByBooking}
       initialPlanners={plannersByBooking}
       canPro={canPro}
+      depositLeadWeeks={depositLeadWeeks}
       isPaid={isPaid}
       settingsCurrency={settingsCurrency}
       requireContract={requireContract}
