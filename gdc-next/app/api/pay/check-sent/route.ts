@@ -220,11 +220,12 @@ ${updatedNote}${detailsBlock}${bodyLines}
       const djName = (uData as { name?: string | null } | null)?.name?.trim() || 'your DJ';
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string; dropoffAddress?: string; dropoffHours?: string }>) : [];
-      const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string; dropoffAddress?: string; dropoffHours?: string; depositLeadWeeks?: number } | undefined;
+      const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string; dropoffAddress?: string; dropoffHours?: string; depositLeadLabel?: string; depositLeadWeeks?: number } | undefined;
+      const chkLead = chk?.depositLeadLabel || (typeof chk?.depositLeadWeeks === 'number' ? `${chk.depositLeadWeeks} week${chk.depositLeadWeeks === 1 ? '' : 's'}` : '');
       // Deposit lead time (set by the DJ): how long the host has to get the
       // deposit over. Shown only on deposit emails.
-      const depLeadNote = (p.kind === 'deposit' && chk?.depositLeadWeeks)
-        ? `<p style="margin:0 0 14px;color:#8a500b;background:#fdf2dd;border:1px solid #f0d79a;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;">Please get the deposit to your DJ within ${chk.depositLeadWeeks} week${chk.depositLeadWeeks === 1 ? '' : 's'}.</p>`
+      const depLeadNote = (p.kind === 'deposit' && chkLead)
+        ? `<p style="margin:0 0 14px;color:#8a500b;background:#fdf2dd;border:1px solid #f0d79a;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;">Please get the deposit to your DJ within ${chkLead}.</p>`
         : '';
       // The DJ has one office — address/hours may be filled on either tile.
       const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
@@ -328,10 +329,11 @@ ${paidNote}`;
       const { data: uData } = await admin.from('users').select('name, payment_methods').eq('id', b.dj_id).maybeSingle();
       const djName = (uData as { name?: string | null } | null)?.name?.trim() || null;
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
-      const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; depositLeadWeeks?: number }>) : [];
+      const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; depositLeadLabel?: string; depositLeadWeeks?: number }>) : [];
       const csh = methods.find((x) => x?.type === 'cash');
-      const depLeadNote = (p.kind === 'deposit' && csh?.depositLeadWeeks)
-        ? `<p style="margin:0 0 14px;color:#8a500b;background:#fdf2dd;border:1px solid #f0d79a;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;">Please get the deposit to your DJ within ${csh.depositLeadWeeks} week${csh.depositLeadWeeks === 1 ? '' : 's'}.</p>`
+      const cshLead = csh?.depositLeadLabel || (typeof csh?.depositLeadWeeks === 'number' ? `${csh.depositLeadWeeks} week${csh.depositLeadWeeks === 1 ? '' : 's'}` : '');
+      const depLeadNote = (p.kind === 'deposit' && cshLead)
+        ? `<p style="margin:0 0 14px;color:#8a500b;background:#fdf2dd;border:1px solid #f0d79a;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;">Please get the deposit to your DJ within ${cshLead}.</p>`
         : '';
       // The DJ has one office — address/hours may be filled on either tile.
       const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
