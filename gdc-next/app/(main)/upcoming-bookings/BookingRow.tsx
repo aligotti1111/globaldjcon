@@ -842,12 +842,6 @@ export default function BookingRow({
           : { position: 'relative' }
       }
     >
-      {/* Deposit lead time the DJ set — a small reminder top-right of the card. */}
-      {depositLeadWeeks && !isCancelled && (
-        <span style={{ position: 'absolute', top: 6, right: 10, zIndex: 2, fontSize: '.62rem', fontWeight: 600, letterSpacing: '.02em', color: 'var(--gold, #c08a3e)', pointerEvents: 'none' }}>
-          Deposit due in {depositLeadWeeks} week{depositLeadWeeks === 1 ? '' : 's'}
-        </span>
-      )}
       {/*
         THE ROW IS A GRID, AND EVERY CHILD MUST OWN A TRACK.
         There are exactly as many direct children here as there are tracks in
