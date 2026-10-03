@@ -49,7 +49,7 @@ interface Contract {
 type View = 'grid' | 'builder' | 'standard' | 'paste';
 
 export default function ContractPortal({
-  userId, djType, bookingId, eventType, controlledOpen, onUseContract, onRequestClose,
+  userId, djType, bookingId, eventType, controlledOpen, onUseContract, onRequestClose, inline,
 }: {
   userId: string;
   djType?: string | null;
@@ -61,6 +61,9 @@ export default function ContractPortal({
   controlledOpen?: boolean;
   onUseContract?: (contractId: string) => void;
   onRequestClose?: () => void;
+  // Inline mode: render the library straight on the page (no launcher button,
+  // no modal for the grid) with a usage counter. Create/edit still open overlays.
+  inline?: boolean;
 }) {
   const bookingMode = !!bookingId && !!onUseContract;
   // Wedding contract is only offerable for a wedding booking. Outside booking
@@ -74,6 +77,8 @@ export default function ContractPortal({
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
+  // Monthly contract quota for the inline header ("Used 25 / 30 this cycle").
+  const [usage, setUsage] = useState<{ quota: number; used: number } | null>(null);
   const [view, setView] = useState<View>('grid');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -151,8 +156,16 @@ export default function ContractPortal({
       setContracts((j?.contracts as Contract[]) || []);
     } catch { /* ignore */ }
     setLoading(false);
+    // Monthly quota/usage — only needed for the inline header.
+    if (inline) {
+      try {
+        const ur = await fetch('/api/contracts/usage');
+        const uj = (await ur.json().catch(() => ({}))) as { quota?: number; used?: number };
+        if (typeof uj.quota === 'number' && typeof uj.used === 'number') setUsage({ quota: uj.quota, used: uj.used });
+      } catch { /* ignore */ }
+    }
   }
-  useEffect(() => { if (open || controlledOpen) load(); /* eslint-disable-next-line */ }, [open, controlledOpen, userId]);
+  useEffect(() => { if (open || controlledOpen || inline) load(); /* eslint-disable-next-line */ }, [open, controlledOpen, inline, userId]);
 
   async function uploadFile(file: File) {
     setError(null); setUploading(true);
@@ -315,7 +328,7 @@ export default function ContractPortal({
   // ---------- UI ----------
   // In booking mode the portal is opened by the parent (controlledOpen) — no
   // launcher button. Otherwise it shows its own "Open Contract Portal" button.
-  if (!controlledOpen && !open) {
+  if (!inline && !controlledOpen && !open) {
     return (
       <button type="button" onClick={() => setOpen(true)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 8, padding: '.75rem 1.4rem', cursor: 'pointer', fontSize: '.9rem' }}>
         Open Contract Portal
@@ -451,9 +464,57 @@ export default function ContractPortal({
 
   // grid
   const sectionLabel: React.CSSProperties = { color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.7rem' };
-  return wrap(
-    <div style={{ padding: '1.25rem', overflow: 'auto' }}>
+
+  // Inline mode renders the DJ's contracts as a compact list with an action on
+  // each row, under a monthly-usage header — rather than the modal card grid.
+  const contractsList = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+      {contracts.map((c) => {
+        const cType = c.is_standard
+          ? { label: 'Standard', color: '#e8e2d0' }
+          : c.body_text != null
+            ? { label: 'Written', color: '#f5c451' }
+            : { label: 'Uploaded', color: 'var(--neon,#00e0a4)' };
+        const edited = c.updated_at ? new Date(c.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+        return (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '.8rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, padding: '.7rem .9rem', background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
+            <div style={{ fontSize: 20 }}>📄</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {renaming === c.id ? (
+                <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} style={{ width: '100%', boxSizing: 'border-box', padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
+              ) : (
+                <div style={{ color: 'var(--white,#fff)', fontWeight: 700, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} <span style={{ opacity: .6, fontWeight: 400 }}>✎</span></div>
+              )}
+              <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', marginTop: 3 }}>
+                <span style={{ fontSize: '.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: cType.color }}>{cType.label}</span>
+                {edited && <span style={{ fontSize: '.68rem', color: 'var(--muted,#8a8aa0)' }}>Edited {edited}</span>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
+              <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openCard(c) : openCard(c))} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Open' : c.body_text != null ? 'Place fields' : 'Open'}</button>
+              {c.body_text != null && !c.is_standard && (
+                <button type="button" onClick={() => openTextEditor(c)} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit text</button>
+              )}
+              <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const usageHeader = usage ? (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem', marginBottom: '1rem', padding: '.6rem .9rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
+      <span style={{ fontSize: '1.3rem', fontWeight: 800, color: usage.used >= usage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{usage.used}/{usage.quota}</span>
+      <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>contracts sent this billing cycle on your plan</span>
+    </div>
+  ) : null;
+
+  const gridInner = (
+    <div style={{ padding: inline ? 0 : '1.25rem', overflow: inline ? 'visible' : 'auto' }}>
       <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
+
+      {inline && usageHeader}
 
       {bookingMode && (
         <div style={{ marginBottom: '1.1rem', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', lineHeight: 1.45 }}>
@@ -505,6 +566,7 @@ export default function ContractPortal({
         <div style={sectionLabel}>Your contracts</div>
         {loading ? <div style={{ color: 'var(--muted,#8a8aa0)' }}>Loading…</div>
           : contracts.length === 0 ? <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No contracts yet. Create one above.</div>
+          : inline ? contractsList
           : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
             {contracts.map((c) => {
@@ -548,6 +610,9 @@ export default function ContractPortal({
           </div>
         )}
       </div>
-    </div>, false, bookingMode ? 'Send a contract' : 'Contract Portal',
+    </div>
   );
+
+  if (inline) return gridInner;
+  return wrap(gridInner, false, bookingMode ? 'Send a contract' : 'Contract Portal');
 }
