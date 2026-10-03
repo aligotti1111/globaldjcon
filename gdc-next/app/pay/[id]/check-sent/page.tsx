@@ -166,6 +166,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkContactVerb={checkVerb}
       checkCanMail={checkMail}
       checkCanDropoff={checkMeet || checkOffice}
+      checkMeet={checkMeet}
+      checkOffice={checkOffice}
       checkMemoLine={payMethod === 'check' ? checkMemo(booking?.event_date ?? null, booking?.venue_name ?? null, referenceCode(pay.booking_id, pay.kind)) : ''}
     />
   );
