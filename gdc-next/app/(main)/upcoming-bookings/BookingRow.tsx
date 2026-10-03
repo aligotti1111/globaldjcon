@@ -930,7 +930,7 @@ export default function BookingRow({
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
             {context && <span className={styles.rowEventType} style={djType !== 'club' ? { textTransform: 'uppercase' } : undefined}>{context}</span>}
             {djType !== 'club' && (booking.venue_name || booking.venue_type_desc) && (
-              <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.6rem', letterSpacing: '.03em', color: 'var(--gold, #c08a3e)', textTransform: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+              <span style={{ fontFamily: 'inherit', fontSize: '.82rem', fontWeight: 500, letterSpacing: 0, color: '#9b9baa', textTransform: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 3 }}>
                 {booking.venue_name || booking.venue_type_desc}
               </span>
             )}
