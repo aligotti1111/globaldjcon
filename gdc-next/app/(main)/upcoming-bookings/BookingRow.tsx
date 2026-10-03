@@ -186,7 +186,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, depositLeadWeeks = null, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
 }: {
   booking: UpcomingBooking;
   /** Only the "New activity" sort highlights the changed stage; By Date and
@@ -196,7 +196,6 @@ export default function BookingRow({
    *  Used by the header notification bell when an item is clicked. */
   defaultOpen?: boolean;
   djType: 'club' | 'mobile';
-  depositLeadWeeks?: number | null;
   userId: string;
   actingRole?: ActingRole;
   clubDepositPct: number;
