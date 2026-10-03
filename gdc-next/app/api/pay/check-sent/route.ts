@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         ? (isMail ? 'Mail It' : 'Drop Off In Person')
         : (handoff === 'office' ? 'Drop Off At Office' : 'Exchange In Person Prior To Event');
       // The shared summary list — same template for every sent claim.
-      const claimSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', payMethodLabel)}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '')}${detailRow('Email', hostEmail || '')}</table></td></tr></table>`;
+      const claimSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', payMethodLabel)}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '—')}${detailRow('Email', hostEmail || '—')}</table></td></tr></table>`;
       // Closing line: a mailed check just needs watching; everything else is
       // arranged directly with the host.
       const claimClosing = isMail
