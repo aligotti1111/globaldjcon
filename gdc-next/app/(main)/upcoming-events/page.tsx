@@ -41,7 +41,6 @@ export interface UpcomingEvent {
   dj_name?: string | null;
   dj_slug?: string | null;
   dj_email?: string | null;
-  depositLeadWeeks?: number | null;
   flyer_url?: string | null;
   link_url?: string | null;
   link_label?: string | null;
@@ -131,20 +130,15 @@ export default async function UpcomingEventsPage() {
   const djIds = Array.from(
     new Set(events.map((e) => e.dj_id).filter((id): id is string => !!id)),
   );
-  let djInfoById: Record<string, { name: string; slug: string | null; depositLeadWeeks: number | null }> = {};
+  let djInfoById: Record<string, { name: string; slug: string | null }> = {};
   if (djIds.length > 0) {
     const { data: djs } = await supabase
       .from('users')
-      .select('id, name, slug, payment_methods')
+      .select('id, name, slug')
       .in('id', djIds);
     djInfoById = (djs || []).reduce(
-      (acc: Record<string, { name: string; slug: string | null; depositLeadWeeks: number | null }>, row: { id: string; name: string | null; slug: string | null; payment_methods?: unknown }) => {
-        const pm = Array.isArray(row.payment_methods)
-          ? (row.payment_methods as Array<{ type?: string; depositLeadWeeks?: number }>)
-          : [];
-        const pick = pm.find((m) => m?.type === 'cash' && typeof m.depositLeadWeeks === 'number')
-          || pm.find((m) => m?.type === 'check' && typeof m.depositLeadWeeks === 'number');
-        acc[row.id] = { name: row.name || '', slug: row.slug, depositLeadWeeks: typeof pick?.depositLeadWeeks === 'number' ? pick.depositLeadWeeks : null };
+      (acc: Record<string, { name: string; slug: string | null }>, row: { id: string; name: string | null; slug: string | null }) => {
+        acc[row.id] = { name: row.name || '', slug: row.slug };
         return acc;
       },
       {},
@@ -160,7 +154,6 @@ export default async function UpcomingEventsPage() {
       e.dj_name = djInfoById[e.dj_id].name || null;
       e.dj_slug = djInfoById[e.dj_id].slug || null;
       e.dj_email = djEmailById[e.dj_id] || null;
-      e.depositLeadWeeks = djInfoById[e.dj_id].depositLeadWeeks;
     }
   }
 
