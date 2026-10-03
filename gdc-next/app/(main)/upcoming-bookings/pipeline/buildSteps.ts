@@ -441,11 +441,14 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // the menu is otherwise empty (no actions) — so this note is the only thing
       // that explains WHY the stage says "Skipped". Otherwise, once money has
       // been asked for, report received/asked.
+      // Payments are always whole-or-none, so the "$X of $Y received" figure
+      // added nothing. Instead, when the host has confirmed a trackable rail,
+      // name it ("Payment Method: Cash/Check"); otherwise show nothing.
       info: (depositSkipped && balanceRequested)
         ? 'Skipped — the full balance is being collected, so no separate deposit is taken.'
-        : depositRow
-          ? `${fmtMoney(paidSoFar, currency)} of ${fmtMoney(askedFor, currency)} received`
-          : undefined,
+        : confirmedRail(depositRow) === 'cash' ? 'Payment Method: Cash'
+        : confirmedRail(depositRow) === 'check' ? 'Payment Method: Check'
+        : undefined,
       // The gate, said out loud — and there are TWO of them now, so it has to
       // say the right one. Telling a DJ to sign a contract on a manual booking
       // that has no contract is worse than saying nothing.
@@ -777,11 +780,9 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             : 'Not Sent',
         info: hasNewBalance
           ? `${fmtMoney(collected, currency)} paid · ${fmtMoney(newBalanceDue, currency)} new balance due`
-          : balanceRow
-          ? `${fmtMoney(Number(balanceRow.amount_paid || 0), currency)} of ${fmtMoney(Number(balanceRow.amount || 0), currency)} received`
-          : depositSettled
-            ? undefined
-            : undefined,
+          : confirmedRail(balanceRow) === 'cash' ? 'Payment Method: Cash'
+          : confirmedRail(balanceRow) === 'check' ? 'Payment Method: Check'
+          : undefined,
         // New balance takes over the whole action list when present: Request New
         // Balance → (once sent) Mark New Balance Paid + copy link + cancel. When
         // it's marked paid the payments route auto-sends a receipt reflecting the
