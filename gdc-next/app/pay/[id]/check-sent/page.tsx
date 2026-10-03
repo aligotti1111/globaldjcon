@@ -61,6 +61,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
   // Optional office where the host can drop off cash / a check, with open hours.
   let dropoffAddress: string | null = null;
   let dropoffHours: string | null = null;
+  // Deposit only: how many weeks the host has to get the deposit to the DJ.
+  let depositLeadWeeks: number | null = null;
   // Check-specific: the DJ's rules (night-of allowed? how far ahead?) plus the
   // payable-to name, mailing address, and a call/text number — all relayed to
   // the host when they're paying the BALANCE by check.
@@ -84,8 +86,11 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     const dj = djData as { name?: string | null; payment_methods?: unknown } | null;
     djName = dj?.name?.trim() || null;
     const methods = Array.isArray(dj?.payment_methods)
-      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; checkMail?: boolean; checkMeet?: boolean; checkOffice?: boolean; cashMeet?: boolean; cashOffice?: boolean }>)
+      ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; checkMail?: boolean; checkMeet?: boolean; checkOffice?: boolean; cashMeet?: boolean; cashOffice?: boolean; depositLeadWeeks?: number }>)
       : [];
+    // Deposit lead applies to the chosen rail (cash or check).
+    const payMethodEntry = methods.find((m) => m?.type === payMethod);
+    depositLeadWeeks = typeof payMethodEntry?.depositLeadWeeks === 'number' ? payMethodEntry.depositLeadWeeks : null;
     // The DJ has one physical office — the address and open hours may have been
     // filled on either the cash or the check tile. Use whichever has them so the
     // hours always appear under the office address, no matter which rail the host
@@ -161,6 +166,7 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       cashCanText={cashCanText}
       cashMeet={cashMeet}
       cashOffice={cashOffice}
+      depositLeadWeeks={depositLeadWeeks}
       dropoffAddressLines={dropoffAddress ? splitMailAddress(dropoffAddress) : []}
       dropoffHours={dropoffHours}
       checkNightOf={checkNightOf}
