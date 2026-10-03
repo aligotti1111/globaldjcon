@@ -184,8 +184,8 @@ export async function POST(req: Request) {
         : isMail
         ? `${who} is mailing a check`
         : isCheck
-        ? `${who} will drop off a check`
-        : `${who} will pay their ${kindLabel} in cash`;
+        ? `${who} will pay ${kindLabel} with a check`
+        : `${who} will pay ${kindLabel} with cash`;
       const bodyLines = depositAhead
         ? `<p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">${who} has confirmed they'll pay their deposit of <strong>${amt}</strong> ${payWord} before the event${forWhen}${atVenue}. Arrange to collect it ahead of time, then <strong>Mark Paid</strong> in your dashboard to auto-send the receipt.</p>`
         : mode === 'at-event'
@@ -202,7 +202,8 @@ ${updatedNote}${detailsBlock}${bodyLines}
 </td></tr></table>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const djSubject = depositAhead ? `${who} will pay their deposit before the event — ${amt}` : mode === 'at-event' ? `${who} will pay at the event — ${amt}` : isMail ? `${who} is mailing a check — ${amt}` : isCheck ? `${who} will drop off a check — ${amt}` : `${who} will pay their ${kindLabel} in cash — ${amt}`;
+        const subjTail = [evDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
+        const djSubject = `${heading} — ${amt}${subjTail ? ` | ${subjTail}` : ''}`;
         await resend.emails.send({ from: FROM, to: djEmail, subject: isUpdate ? `Updated — ${djSubject}` : djSubject, html: shell(content) });
       } catch { /* non-fatal */ }
     }
