@@ -77,6 +77,9 @@ export async function sendPaypalPaidEmails(db: SupabaseClient, args: PaypalPaidA
 
   const hostEmail = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
 
+  const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
+
   // ── Receipt to the host (best-effort) ──
   if (hostEmail) {
     try {
@@ -100,7 +103,7 @@ export async function sendPaypalPaidEmails(db: SupabaseClient, args: PaypalPaidA
       await resend.emails.send({
         from: FROM,
         to: hostEmail,
-        subject: `Receipt — ${money(args.receivedNow, cur)}`,
+        subject: `Receipt — ${money(args.receivedNow, cur)}${subjTail ? ` | ${subjTail}` : ''}`,
         html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
         attachments: receiptAtt ? [receiptAtt] : undefined,
       });
