@@ -208,7 +208,7 @@ export default function CheckSent(props: Props) {
                   ))}
                   {selected === 'meet' && (
                     <div style={{ marginTop: 14 }}>
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Information to include on your check and the contact info to arrange the exchange will be emailed to you once you click confirm.</p>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>The contact information below to arrange the exchange will be emailed to you once you click confirm.</p>
                       <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
                         {checkPhone
                           ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange handing your check to {dj} in person.</p>
@@ -225,6 +225,7 @@ export default function CheckSent(props: Props) {
                             <div style={{ color: '#8a8a98', fontSize: 12 }}>Drop your check off at</div>
                             {dropoffAddressLines.map((l, i) => <div key={i} style={{ color: '#fff', fontSize: 14, lineHeight: 1.45 }}>{l}</div>)}
                             {dropoffHours && <div style={{ color: '#d5d5df', fontSize: 13, marginTop: 4 }}>{dropoffHours}</div>}
+                            {checkPhone && <div style={{ color: '#d5d5df', fontSize: 13, marginTop: 8 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong></div>}
                           </>
                         ) : (
                           <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} for the office address.</p>
@@ -276,7 +277,7 @@ export default function CheckSent(props: Props) {
     <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
       {dropoffAddressLines.length > 0 ? (
         <>
-          <div style={{ color: '#8a8a98', fontSize: 12 }}>Drop your cash off at</div>
+          <div style={{ color: '#8a8a98', fontSize: 12 }}>Drop your cash {isDeposit ? 'deposit' : 'balance'} off at</div>
           {dropoffAddressLines.map((l, i) => <div key={i} style={{ color: '#fff', fontSize: 14, lineHeight: 1.45 }}>{l}</div>)}
           {dropoffHours && <div style={{ color: '#d5d5df', fontSize: 13, marginTop: 4 }}>{dropoffHours}</div>}
         </>
@@ -304,7 +305,7 @@ export default function CheckSent(props: Props) {
     type OptKey = 'nightof' | 'meet' | 'office';
     const opts: { key: OptKey; label: string }[] = [];
     if (nightOfOn) opts.push({ key: 'nightof', label: 'Pay The Day Of The Event' });
-    if (cashMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person Prior To Event' });
+    if (cashMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person Prior To Event Date' });
     if (cashOfficeOn) opts.push({ key: 'office', label: 'Drop Off At Office' });
 
     const selected: OptKey | null = (choice === 'nightof' || choice === 'meet' || choice === 'office') ? choice : null;
