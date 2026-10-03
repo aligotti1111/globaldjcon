@@ -26,10 +26,6 @@ import {
   referenceCode,
   displayHandle,
   copyInstruction,
-  cashLine,
-  cashDropoff,
-  checkMemo,
-  splitMailAddress,
   isLinkable,
   METHOD_TYPES,
   type PaymentMethod,
@@ -186,13 +182,11 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
       // No inline logistics here — the host taps Confirm and the arrangement
       // details (phone / office address) are shown + emailed on the next page,
       // exactly like the email flow. Keeps this page a clean list of choices.
-      const cashLines = [cashLine(m, m.smsOk === true && pay.kind === 'deposit')];
-      const drop = cashDropoff(m);
-      if (drop) cashLines.push(`Or drop it at: ${drop}`);
+      const isBal = pay.kind === 'balance';
       options.push({
         type: 'cash',
         label: 'Cash',
-        lines: cashLines,
+        lines: [`Please click confirm below if you plan to ${isBal ? 'settle the balance' : 'pay the deposit'} in cash, further instruction can be found on the link.`],
         href: `/pay/${pay.id}/check-sent?method=cash`,
         linkLabel: 'Confirm Cash',
         accent,
@@ -200,15 +194,11 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
       continue;
     }
     if (m.type === 'check') {
-      const checkLines: string[] = [];
-      if (m.contact) { checkLines.push('Mail to:'); for (const ln of splitMailAddress(m.contact)) checkLines.push(ln); }
-      checkLines.push(`Include: ${checkMemo(booking.event_date, booking.venue_name, reference)}`);
+      const isBal = pay.kind === 'balance';
       options.push({
         type: 'check',
         label: 'Check',
-        instruction: copyInstruction(m),
-        copy: m.handle,
-        lines: checkLines,
+        lines: [`Please click confirm below if you plan to ${isBal ? 'settle the balance' : 'pay the deposit'} with a check, further instruction can be found on the link.`],
         href: `/pay/${pay.id}/check-sent?method=check`,
         linkLabel: 'Confirm Check',
         accent,
