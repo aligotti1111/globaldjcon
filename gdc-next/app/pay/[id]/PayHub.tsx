@@ -79,8 +79,8 @@ export default function PayHub({
     background: 'var(--card,#14141f)',
     border: '1px solid var(--border,rgba(255,255,255,.12))',
     borderRadius: 14,
-    padding: '1.6rem 1.4rem',
-    maxWidth: 440,
+    padding: '2rem 1.8rem',
+    maxWidth: 600,
     width: '100%',
   };
 
