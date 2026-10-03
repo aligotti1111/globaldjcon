@@ -32,7 +32,7 @@ const DEP='$600';
 function capColor(cls,cap){ if(cls==='done')return 'var(--neon)'; if(cls==='skipped')return '#f2f2f7'; if(cls==='muted')return '#7a7a8c'; if(/^not sent$/i.test(cap||''))return '#ff6b6b'; return 'var(--gold)'; }
 
 function stContract(){return{icon:'doc',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[{label:'Review & send contract',to:'notsent'}]},
+  notsent:{cap:'Not Sent',cls:'waiting',actions:[{label:'Review & send contract',to:'notsent'}]},
   pending:{cap:'Pending',cls:'waiting',info:'Sent — waiting on the client to sign.',actions:[
     {label:'Resend contract',to:'pending'},{label:'🔗 Copy link to contract',to:'pending'},
     {label:'Cancel contract',to:'notsent',cls:'danger'},{label:'✓ Mark Complete',to:'done'}]},
@@ -41,7 +41,7 @@ function stContract(){return{icon:'doc',state:'notsent',S:{
     {label:'✕ Mark Not Complete',to:'notsent',cls:'danger'}]},
 }};}
 function stDeposit(){return{icon:'money',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[
+  notsent:{cap:'Not Sent',cls:'waiting',actions:[
     {label:'Request deposit',to:'requested'},{label:'Skip deposit',to:'skipped',cls:'muted'},
     {label:'Payment options',to:'notsent',cls:'muted'},{label:'✓ Mark Paid',to:'done'}]},
   requested:{cap:'Pending',cls:'waiting',info:'$0 of '+DEP+' received',actions:[
@@ -57,7 +57,7 @@ function stDepositNR(){return{icon:'money',state:'notreq',S:{
     {label:'Request deposit',to:'notreq'},{label:'Payment options',to:'notreq',cls:'muted'}]},
 }};}
 function stPlanner(){return{icon:'music',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[
+  notsent:{cap:'Not Sent',cls:'waiting',actions:[
     {label:'Select – Send Planner/Playlist',to:'notsent',note:'When clicked on your dashboard, the planners & playlists stored in your account will show for you to select one to send.'},{label:'✓ Mark Complete',to:'done'}]},
   sent:{cap:'60%',cls:'waiting',info:'60% complete',actions:[
     {label:'Open Planner & Playlist',to:'sent'},{label:'Download Planner & Playlist',to:'sent'},
@@ -67,14 +67,14 @@ function stPlanner(){return{icon:'music',state:'notsent',S:{
     {label:'✕ Mark Not Complete',to:'notsent',cls:'danger'}]},
 }};}
 function stRider(){return{icon:'music',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[
+  notsent:{cap:'Not Sent',cls:'waiting',actions:[
     {label:'Send "Club Standard"',to:'sent'},{label:'Rider Portal',to:'sent'}]},
   sent:{cap:'Sent',cls:'done',info:'Rider Sent To The Host.',actions:[
     {label:'Rider Portal',to:'sent'},{label:'Resend Rider',to:'sent'}]},
 }};}
 function stInvoice(){return{icon:'receipt',state:'locked',S:{
   locked:{cap:'',cls:'locked',hint:'Collect the deposit first — the balance receipt reacts to it.',actions:[]},
-  notsent:{cap:'Not sent',cls:'waiting',actions:[
+  notsent:{cap:'Not Sent',cls:'waiting',actions:[
     {label:'Request balance',to:'requested'},{label:'Payment options',to:'notsent',cls:'muted'},
     {label:'✓ Mark Paid',to:'done'}]},
   requested:{cap:'Pending',cls:'waiting',info:'Balance sent — waiting on payment.',actions:[
@@ -83,7 +83,7 @@ function stInvoice(){return{icon:'receipt',state:'locked',S:{
     {label:'Resend Receipt',to:'done'},{label:'Download Receipt',to:'done'}]},
 }};}
 function stGuest(){return{icon:'doc',state:'notsent',S:{
-  notsent:{cap:'Not sent',cls:'waiting',actions:[{label:'Open Guest List',to:'sent'}]},
+  notsent:{cap:'Not Sent',cls:'waiting',actions:[{label:'Open Guest List',to:'sent'}]},
   sent:{cap:'Sent',cls:'done',info:'Guest list started & shared with the host.',actions:[
     {label:'Open Guest List',to:'sent'}]},
 }};}
