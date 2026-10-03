@@ -54,7 +54,7 @@ interface Props {
   initialChoice?: 'nightof' | 'meet' | 'office' | 'dropoff' | 'mail' | null;
   alreadyChosen?: boolean;
   // Deposit only: how many weeks the host has to get the deposit to the DJ.
-  depositLeadWeeks?: number | null;
+  depositLeadLabel?: string | null;
 }
 
 const WRAP: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
@@ -77,7 +77,7 @@ export default function CheckSent(props: Props) {
     checkCanMail = true, checkCanDropoff = true,
     checkMeet = false, checkOffice = false,
     initialChoice = null, alreadyChosen = false,
-    depositLeadWeeks = null,
+    depositLeadLabel = null,
   } = props;
   void checkCanDropoff;
 
@@ -90,9 +90,9 @@ export default function CheckSent(props: Props) {
 
   // Deposit lead-time note (set by the DJ): how long the host has to get the
   // deposit to them. Shown on the deposit confirmation page only.
-  const depositLeadNote = (isDeposit && depositLeadWeeks) ? (
+  const depositLeadNote = (isDeposit && depositLeadLabel) ? (
     <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
-      <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>Please get the deposit to {dj} within {depositLeadWeeks} week{depositLeadWeeks === 1 ? '' : 's'}.</p>
+      <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>Please get the deposit to {dj} within {depositLeadLabel}.</p>
     </div>
   ) : null;
 
