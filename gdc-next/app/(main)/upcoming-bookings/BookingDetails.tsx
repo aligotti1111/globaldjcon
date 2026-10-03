@@ -1138,6 +1138,14 @@ export default function BookingDetails({
     __currency: booking.currency || 'USD',
   };
 
+  // Booking reference — deterministic short code from the id, shown bottom-right
+  // of the Event box so the DJ and host can quote the same booking.
+  const refCode = (() => {
+    const hex = (booking.id || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (hex.length < 5) return `GDC-${hex}`;
+    return `GDC-${hex.slice(0, 4)}-${hex.slice(4, 5)}`;
+  })();
+
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
       {typeMismatchNote && (
@@ -1177,6 +1185,15 @@ export default function BookingDetails({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
                 <span className={styles.detailLabel}>Overtime</span>
                 {overtimeControl}
+              </div>
+            )}
+            {/* Booking reference — bottom-right of the Event box, so the DJ and
+                host can quote the same booking by a short id. */}
+            {g.key === 'EVENT' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', color: '#6f6f80', textTransform: 'uppercase' }}>
+                  Ref: {refCode}
+                </span>
               </div>
             )}
             {/* The host opted in to text updates on the booking form — so the DJ
