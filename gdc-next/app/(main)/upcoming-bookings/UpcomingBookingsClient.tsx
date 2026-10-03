@@ -231,13 +231,8 @@ export default function UpcomingBookingsClient({
   // (most recent HOST action first — see last_activity_at from the server).
   const [sortMode, setSortMode] = useState<'date' | 'recent' | 'activity'>('date');
   // Deep link: /upcoming-bookings?filter=activity opens straight into the New
-  // activity view — used by the header notification bell's item + "View more".
-  useEffect(() => {
-    if (typeof window !== 'undefined'
-      && new URLSearchParams(window.location.search).get('filter') === 'activity') {
-      setSortMode('activity');
-    }
-  }, []);
+  // activity view — handled by a searchParams-watching effect below so it fires
+  // on every URL change (including re-taps while already on this page).
   // Deep link: /upcoming-bookings?open=<bookingId> expands that booking's card
   // and scrolls to it (from the header notification bell). Read after mount to
   // avoid an SSR/client mismatch; the matching row opens once this is set.
@@ -337,6 +332,21 @@ export default function UpcomingBookingsClient({
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('add');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, [searchParams]);
+
+  // Switch to the New activity view whenever ?filter=activity appears — fires on
+  // EVERY URL change (via useSearchParams), so the bell's "View more" works even
+  // when the DJ is already on /upcoming-bookings (no remount). The param is then
+  // stripped so re-sorting by date later isn't overridden on the next render.
+  useEffect(() => {
+    if (searchParams?.get('filter') === 'activity') {
+      setSortMode('activity');
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('filter');
         window.history.replaceState(null, '', url.toString());
       }
     }
