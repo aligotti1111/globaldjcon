@@ -222,7 +222,7 @@ ${updatedNote}${detailsBlock}${bodyLines}
       const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
       const sharedOfficeHours = methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours?.trim() || null;
       if (chk?.handle) {
-        const who = b.requester_name?.trim() || 'there';
+        const who = b.requester_name?.trim().split(' ')[0] || 'there';
         const memo = checkMemo(b.event_date, b.venue_name, referenceCode(p.booking_id, p.kind));
         const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];        // mailing address
         const officeLines = (chk.dropoffAddress?.trim() || sharedOfficeAddr) ? splitMailAddress(chk.dropoffAddress?.trim() || sharedOfficeAddr!) : []; // office address
@@ -234,12 +234,22 @@ ${updatedNote}${detailsBlock}${bodyLines}
 ${memo ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Include with your check:</p>
 <p style="margin:0 0 14px;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}`;
 
+        // Event date + venue, shown under the greeting so the host knows which
+        // booking this check is for.
+        const evtDate = fmtEventDate(b.event_date);
+        const evtVenue = b.venue_name?.trim() || '';
+        const eventBlock = (evtDate || evtVenue)
+          ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Event:</p>
+<p style="margin:0 0 14px;font-size:15px;color:#111;line-height:1.45;">${[evtDate, evtVenue].filter(Boolean).join(' · ')}</p>`
+          : '';
+
         let subject: string;
         let content: string;
         if (handoff === 'office') {
           subject = `${isUpdate ? 'Updated — ' : ''}Where to drop off your check`;
           content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your check</h1>
 <p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please bring your check to the office below.</p>
+${eventBlock}
 ${payableBlock}
 ${officeLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Office address:</p>
 <p style="margin:0 0 ${officeHours ? '6' : '12'}px;font-size:15px;color:#111;line-height:1.45;">${officeLines.join('<br>')}</p>` : ''}
@@ -287,7 +297,7 @@ ${paidNote}`;
       // The DJ has one office — address/hours may be filled on either tile.
       const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
       const sharedOfficeHours = methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours?.trim() || null;
-      const who = b.requester_name?.trim() || 'there';
+      const who = b.requester_name?.trim().split(' ')[0] || 'there';
       const amt = money(Number(p.amount), p.currency || 'USD');
       const kindLabel = kindLabelFor(p.kind);
       const amountBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Amount due:</p>
