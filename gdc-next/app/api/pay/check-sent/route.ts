@@ -312,7 +312,7 @@ ${paidNote}`;
         const phone = csh?.handle?.trim() || null;
         const verb = csh?.smsOk ? 'Call or text' : 'Call';
         content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Paying your ${kindLabel} in cash</h1>
-<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, you&rsquo;ll hand your cash to your DJ in person. Here are the details.</p>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please arrange a mutual time to exchange the ${kindLabel} with ${djName || 'your DJ'}. Here are the details.</p>
 ${amountBlock}
 ${phone
   ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange the hand-off:</p>
