@@ -337,18 +337,11 @@ export default function CheckSent(props: Props) {
           ) : (
             <>
               <Hero />
-              {/* Deadline note — only when the cash must arrive ahead AND there's a
-                  hand-off option to meet it. Reads as a helpful heads-up. */}
-              {mustPrior && (cashMeetOn || cashOfficeOn) && (
-                <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
-                  <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>Please get your cash to {dj} by {bannerDeadline}, ahead of the event day.</p>
-                </div>
-              )}
               {opts.length === 0 ? (
                 <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange handing over your cash.</p>
               ) : (
                 <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>{alreadyChosen ? `You chose how you'd pay — you can change it below and we'll let ${dj} know.` : `Please choose how you would like to get the cash ${kindWord} to ${dj}.`}</p>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>{alreadyChosen ? `You chose how you'd pay — you can change it below and we'll let ${dj} know.` : `How would you like to get the cash ${kindWord} to ${dj}?`}</p>
                   {opts.map((o) => (
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
