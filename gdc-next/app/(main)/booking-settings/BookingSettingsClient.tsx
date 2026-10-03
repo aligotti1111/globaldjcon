@@ -540,7 +540,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             agreement or your own. When a booking is approved, the details fill in for
             you to review and send.
           </div>
-          <ContractPortal userId={initialProfile.id} djType={djType} />
+          <ContractPortal userId={initialProfile.id} djType={djType} inline />
         </div>
       )}
     </div>
