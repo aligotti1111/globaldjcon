@@ -86,6 +86,12 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
     const methods = Array.isArray(dj?.payment_methods)
       ? (dj!.payment_methods as Array<{ type?: string; handle?: string; contact?: string; checkNightOf?: boolean; checkLeadWeeks?: number; checkPhone?: string; checkCall?: boolean; checkText?: boolean; cashNightOf?: boolean; cashLeadWeeks?: number; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string; checkMail?: boolean; checkMeet?: boolean; checkOffice?: boolean; cashMeet?: boolean; cashOffice?: boolean }>)
       : [];
+    // The DJ has one physical office — the address and open hours may have been
+    // filled on either the cash or the check tile. Use whichever has them so the
+    // hours always appear under the office address, no matter which rail the host
+    // is on.
+    const officeFallbackAddress = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
+    const officeFallbackHours = methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours?.trim() || null;
     if (payMethod === 'cash') {
       const csh = methods.find((m) => m?.type === 'cash');
       // Which ways the DJ accepts cash: meet-up (default on) and office (default off).
@@ -95,8 +101,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       cashNightOf = csh?.cashNightOf === true;
       cashLeadWeeks = typeof csh?.cashLeadWeeks === 'number' ? csh.cashLeadWeeks : null;
       cashCanText = cashMeet && csh?.smsOk === true;
-      dropoffAddress = cashOffice ? (csh?.dropoffAddress?.trim() || null) : null;
-      dropoffHours = cashOffice ? (csh?.dropoffHours?.trim() || null) : null;
+      dropoffAddress = cashOffice ? (csh?.dropoffAddress?.trim() || officeFallbackAddress) : null;
+      dropoffHours = cashOffice ? (csh?.dropoffHours?.trim() || officeFallbackHours) : null;
     }
     if (payMethod === 'check') {
       const chk = methods.find((m) => m?.type === 'check');
@@ -109,8 +115,8 @@ export default async function CheckSentPage({ params, searchParams }: { params: 
       checkMail = chk?.checkMail !== false;
       checkMeet = chk?.checkMeet === true;
       checkOffice = chk?.checkOffice === true;
-      dropoffAddress = chk?.dropoffAddress?.trim() || null;
-      dropoffHours = chk?.dropoffHours?.trim() || null;
+      dropoffAddress = chk?.dropoffAddress?.trim() || officeFallbackAddress;
+      dropoffHours = chk?.dropoffHours?.trim() || officeFallbackHours;
     }
   }
 
