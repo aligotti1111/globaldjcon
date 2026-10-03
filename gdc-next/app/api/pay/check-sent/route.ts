@@ -216,14 +216,17 @@ ${updatedNote}${detailsBlock}${bodyLines}
     if (to) {
       const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
-      const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string }>) : [];
+      const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string; dropoffAddress?: string; dropoffHours?: string }>) : [];
       const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string; dropoffAddress?: string; dropoffHours?: string } | undefined;
+      // The DJ has one office — address/hours may be filled on either tile.
+      const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
+      const sharedOfficeHours = methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours?.trim() || null;
       if (chk?.handle) {
         const who = b.requester_name?.trim() || 'there';
         const memo = checkMemo(b.event_date, b.venue_name, referenceCode(p.booking_id, p.kind));
         const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];        // mailing address
-        const officeLines = chk.dropoffAddress ? splitMailAddress(chk.dropoffAddress) : []; // office address
-        const officeHours = chk.dropoffHours?.trim() || null;
+        const officeLines = (chk.dropoffAddress?.trim() || sharedOfficeAddr) ? splitMailAddress(chk.dropoffAddress?.trim() || sharedOfficeAddr!) : []; // office address
+        const officeHours = chk.dropoffHours?.trim() || sharedOfficeHours;
         const chkPhone = chk.checkPhone?.trim() || null;
         const paidNote = `<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`;
         const payableBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Make it payable to:</p>
@@ -281,6 +284,9 @@ ${paidNote}`;
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; smsOk?: boolean; dropoffAddress?: string; dropoffHours?: string }>) : [];
       const csh = methods.find((x) => x?.type === 'cash');
+      // The DJ has one office — address/hours may be filled on either tile.
+      const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
+      const sharedOfficeHours = methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours?.trim() || null;
       const who = b.requester_name?.trim() || 'there';
       const amt = money(Number(p.amount), p.currency || 'USD');
       const kindLabel = kindLabelFor(p.kind);
@@ -303,8 +309,8 @@ ${phone
   : `<p style="margin:0 0 14px;color:#333;font-size:14px;">Reach out to your DJ to arrange handing it over.</p>`}
 <p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabel} is marked paid once your DJ receives and confirms the cash.</p>`;
       } else {
-        const addrLines = csh?.dropoffAddress ? splitMailAddress(csh.dropoffAddress) : [];
-        const hours = csh?.dropoffHours?.trim() || null;
+        const addrLines = (csh?.dropoffAddress?.trim() || sharedOfficeAddr) ? splitMailAddress(csh?.dropoffAddress?.trim() || sharedOfficeAddr!) : [];
+        const hours = csh?.dropoffHours?.trim() || sharedOfficeHours;
         content = `<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please bring the ${kindLabel} to the office address below.</p>
 ${amountBlock}
 <p style="margin:0 0 2px;color:#666;font-size:13px;">Payment method:</p>
