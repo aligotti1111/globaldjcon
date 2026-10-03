@@ -235,7 +235,6 @@ interface ProfileRow extends AccessFields {
   city: string | null;
   state: string | null;
   travel_distance: string | null;
-  payment_methods: unknown;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -252,7 +251,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, payment_methods')
+    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -280,16 +279,6 @@ export default async function UpcomingBookingsPage() {
   // silently came back false/unset, telling a teammate the OWNER's Pro planner
   // was "a Pro feature." The owner's real standing is only knowable server-side.
   const canPro = !!profile && canUsePro(profile);
-  // Deposit lead time the DJ set on their cash/check payment method (prefer
-  // cash, then check). Shown top-right on each booking card.
-  const depositLeadWeeks: number | null = (() => {
-    const pm = Array.isArray(profile?.payment_methods)
-      ? (profile!.payment_methods as Array<{ type?: string; depositLeadWeeks?: number }>)
-      : [];
-    const pick = pm.find((m) => m?.type === 'cash' && typeof m.depositLeadWeeks === 'number')
-      || pm.find((m) => m?.type === 'check' && typeof m.depositLeadWeeks === 'number');
-    return typeof pick?.depositLeadWeeks === 'number' ? pick.depositLeadWeeks : null;
-  })();
   const isPaid = profile?.sub_status === 'active' || profile?.sub_status === 'grace';
   const s = (settings || {}) as BookingSettings & {
     rate_currency?: string; require_contract?: boolean;
@@ -521,7 +510,6 @@ export default async function UpcomingBookingsPage() {
       initialPayments={paymentsByBooking}
       initialPlanners={plannersByBooking}
       canPro={canPro}
-      depositLeadWeeks={depositLeadWeeks}
       isPaid={isPaid}
       settingsCurrency={settingsCurrency}
       requireContract={requireContract}
