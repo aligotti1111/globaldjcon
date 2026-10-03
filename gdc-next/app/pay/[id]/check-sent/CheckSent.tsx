@@ -53,6 +53,8 @@ interface Props {
   // and whether they've chosen before (so the button reads "Update").
   initialChoice?: 'nightof' | 'meet' | 'office' | 'dropoff' | 'mail' | null;
   alreadyChosen?: boolean;
+  // Deposit only: how many weeks the host has to get the deposit to the DJ.
+  depositLeadWeeks?: number | null;
 }
 
 const WRAP: React.CSSProperties = { minHeight: '100vh', background: '#0b0b0f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" };
@@ -75,6 +77,7 @@ export default function CheckSent(props: Props) {
     checkCanMail = true, checkCanDropoff = true,
     checkMeet = false, checkOffice = false,
     initialChoice = null, alreadyChosen = false,
+    depositLeadWeeks = null,
   } = props;
   void checkCanDropoff;
 
@@ -84,6 +87,14 @@ export default function CheckSent(props: Props) {
   const when = dateSuffix(eventDate);
   const forVenue = venueName ? ` for ${venueName}` : '';
   const subject = isDeposit ? 'Deposit' : 'Balance';
+
+  // Deposit lead-time note (set by the DJ): how long the host has to get the
+  // deposit to them. Shown on the deposit confirmation page only.
+  const depositLeadNote = (isDeposit && depositLeadWeeks) ? (
+    <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
+      <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>Please get the deposit to {dj} within {depositLeadWeeks} week{depositLeadWeeks === 1 ? '' : 's'}.</p>
+    </div>
+  ) : null;
 
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>(alreadySettled ? 'done' : 'idle');
   // Check/cash flows: which arrangement the host picked. 'meet' = exchange in
@@ -196,6 +207,7 @@ export default function CheckSent(props: Props) {
           ) : (
             <>
               <Hero />
+              {depositLeadNote}
               {mustPrior && opts.length > 0 && (
                 <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
                   <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your check received {weeksPhrase || 'before the event'}{checkDeadline ? ` (by ${checkDeadline})` : ''} — not the day of the event.</p>
@@ -340,6 +352,7 @@ export default function CheckSent(props: Props) {
           ) : (
             <>
               <Hero />
+              {depositLeadNote}
               {opts.length === 0 ? (
                 <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange handing over your cash.</p>
               ) : (
