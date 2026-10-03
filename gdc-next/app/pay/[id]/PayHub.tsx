@@ -111,7 +111,7 @@ export default function PayHub({
             style={{ display: 'block', maxHeight: 56, maxWidth: 180, objectFit: 'contain', marginBottom: '.7rem' }}
           />
         ) : (
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon,#00e0a4)', marginBottom: '.6rem' }}>
+          <div style={{ fontFamily: "'Bebas Neue', Impact, Arial, sans-serif", fontSize: '1.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--neon,#00f5c4)', marginBottom: '.8rem', lineHeight: 1 }}>
             Global DJ Connect
           </div>
         )}
