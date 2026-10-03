@@ -175,10 +175,10 @@ export default function CheckSent(props: Props) {
     const checkOfficeOn = checkOffice && dropoffAddressLines.length > 0;
     type OptKey = 'nightof' | 'meet' | 'office' | 'mail';
     const opts: { key: OptKey; label: string }[] = [];
+    if (checkCanMail) opts.push({ key: 'mail', label: 'Mail It' });
     if (nightOfOn) opts.push({ key: 'nightof', label: 'Bring It The Day Of The Event' });
     if (checkMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person' });
     if (checkOfficeOn) opts.push({ key: 'office', label: 'Drop Off At Office' });
-    if (checkCanMail) opts.push({ key: 'mail', label: 'Mail It' });
 
     const selected: OptKey | null = (choice === 'nightof' || choice === 'meet' || choice === 'office' || choice === 'mail') ? choice : null;
 
@@ -256,7 +256,7 @@ export default function CheckSent(props: Props) {
                   {selected === 'nightof' && (
                     <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Information to include on your check will be emailed to you once you click confirm.</p>
                   )}
-                  {selected && <div style={{ marginTop: 16 }}><PayableMemo /></div>}
+                  <div style={{ marginTop: 16 }}><PayableMemo /></div>
                   <button type="button" disabled={!selected || state === 'sending'}
                     style={{ ...PRIMARY_BTN, marginTop: 18, opacity: (!selected || state === 'sending') ? 0.5 : 1, cursor: (!selected || state === 'sending') ? 'default' : 'pointer' }}
                     onClick={() => void confirm()}>
