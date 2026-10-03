@@ -129,8 +129,8 @@ export default function PayHub({
           {eventDate ? ` · ${new Date(eventDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
         </p>
 
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.7rem' }}>
-          Choose how to pay
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--white,#fff)', marginBottom: '.7rem' }}>
+          {kind === 'deposit' ? 'Choose how to deposit' : kind === 'balance' ? 'Choose how to pay the balance' : 'Choose how to pay'}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
