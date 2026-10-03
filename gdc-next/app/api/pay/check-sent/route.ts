@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { checkMemo, referenceCode, splitMailAddress } from '@/lib/paymentMethods';
+import { sendBookingSms } from '@/lib/supabase/sms';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -280,6 +281,34 @@ ${paidNote}`;
           const resend = new Resend(process.env.RESEND_API_KEY);
           await resend.emails.send({ from: FROM, to, subject, html: shell(content) });
         } catch { /* non-fatal */ }
+
+        // Text the host their instructions too when they opted into SMS on the
+        // booking — the mailing details for a mailed check, or the contact number
+        // to arrange an in-person exchange / office drop-off.
+        const evtWord = fmtEventDate(b.event_date) || 'upcoming';
+        if (handoff === 'mail' && chk?.handle) {
+          const smsLines = [
+            `Mail your ${kindLabelFor(p.kind)} check for your ${evtWord} booking.`,
+            `Payable to: ${chk.handle}`,
+            addrLines.length ? `Mail to: ${addrLines.join(', ')}` : '',
+            memo ? `Memo: ${memo}` : '',
+          ].filter(Boolean).join('\n');
+          await sendBookingSms(p.booking_id, smsLines, 'check_mail_instructions');
+        } else if (handoff === 'office') {
+          const smsLines = [
+            `Drop off your ${kindLabelFor(p.kind)} check for your ${evtWord} booking${chk?.handle ? `, payable to ${chk.handle}` : ''}.`,
+            officeLines.length ? `Office: ${officeLines.join(', ')}` : '',
+            officeHours ? `Hours: ${officeHours}` : '',
+            chkPhone ? `Call or text ${chkPhone} to arrange.` : '',
+          ].filter(Boolean).join('\n');
+          await sendBookingSms(p.booking_id, smsLines, 'check_office_instructions');
+        } else if (handoff === 'meet' || handoff === 'dropoff') {
+          const smsLines = [
+            `Exchange your ${kindLabelFor(p.kind)} check in person for your ${evtWord} booking${chk?.handle ? `, payable to ${chk.handle}` : ''}.`,
+            chkPhone ? `Call or text ${chkPhone} to arrange a time.` : `Reach out to ${djName} to arrange a time.`,
+          ].filter(Boolean).join('\n');
+          await sendBookingSms(p.booking_id, smsLines, 'check_meet_instructions');
+        }
       }
     }
   }
@@ -308,7 +337,9 @@ ${paidNote}`;
       const subjDate = fmtEventDate(b.event_date);
       const subject = `${isUpdate ? 'Updated ' : ''}Payment Instructions${subjDate ? ` | ${subjDate}` : ''}`;
 
+      const evtWord = subjDate || 'upcoming';
       let content: string;
+      let smsBody = '';
       if (handoff === 'meet') {
         const phone = csh?.handle?.trim() || null;
         const verb = csh?.smsOk ? 'Call or text' : 'Call';
@@ -320,6 +351,10 @@ ${phone
 <p style="margin:0 0 14px;font-size:15px;color:#111;">${verb} <strong>${phone}</strong></p>`
   : `<p style="margin:0 0 14px;color:#333;font-size:14px;">Reach out to your DJ to arrange handing it over.</p>`}
 <p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabel} is marked paid once your DJ receives and confirms the cash.</p>`;
+        smsBody = [
+          `Pay your ${kindLabel} in cash (${amt}) in person for your ${evtWord} booking.`,
+          phone ? `${verb} ${phone} to arrange a time.` : `Reach out to ${djName || 'your DJ'} to arrange a time.`,
+        ].filter(Boolean).join('\n');
       } else {
         const addrLines = (csh?.dropoffAddress?.trim() || sharedOfficeAddr) ? splitMailAddress(csh?.dropoffAddress?.trim() || sharedOfficeAddr!) : [];
         const hours = csh?.dropoffHours?.trim() || sharedOfficeHours;
@@ -331,11 +366,20 @@ ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Offic
 <p style="margin:0 0 ${hours ? '6' : '14'}px;font-size:15px;color:#111;line-height:1.45;">${djName ? `<strong>${djName}</strong><br>` : ''}${addrLines.join('<br>')}</p>` : ''}
 ${hours ? `<p style="margin:0 0 14px;font-size:14px;color:#333;">${hours}</p>` : ''}
 <p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Please do not leave cash in a mailbox or unattended.</p>`;
+        smsBody = [
+          `Drop off your ${kindLabel} in cash (${amt}) for your ${evtWord} booking.`,
+          addrLines.length ? `Office: ${addrLines.join(', ')}` : '',
+          hours ? `Hours: ${hours}` : '',
+        ].filter(Boolean).join('\n');
       }
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({ from: FROM, to, subject, html: shell(content) });
       } catch { /* non-fatal */ }
+
+      // Text the cash instructions too when the host opted into SMS (both the
+      // deposit and the balance — kindLabel reflects whichever this is).
+      if (smsBody) await sendBookingSms(p.booking_id, smsBody, `cash_${handoff}_instructions`);
     }
   }
 
