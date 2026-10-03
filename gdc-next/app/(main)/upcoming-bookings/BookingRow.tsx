@@ -1,1384 +1,2253 @@
-'use client';
+/* No connecting lines between the pipeline nodes. */
+.rowWrap .stCell::after { display: none !important; }
 
-// BookingRow — lifted out of UpcomingBookingsClient unchanged.
-//
-// One line in the month list: date, time, event, value, the four pipeline
-// columns, the actions menu, and the chevron that expands BookingDetails
-// underneath it. The request/payment-options modals live here too, because
-// this is the component that already holds userId, payments and the
-// onPaymentsChange callback.
-//
-// ColumnHeaders and PIPE_SLOTS ship alongside it on purpose: the header cells
-// and the row cells share one track list, and separating them is how a column
-// ends up existing in one and not the other.
-
-import { useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
-import styles from './upcomingBookings.module.css';
-import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
-import ContractPortal from '../update-dj-profile/ContractPortal';
-import { ConfirmDialog, PaymentMethodsModal } from './RowModals';
-import RequestPaymentModal from './RequestPaymentModal';
-import type { PaymentMethod } from '@/lib/paymentMethods';
-import PlannerSendModal from './PlannerSendModal';
-import RiderSendModal from './RiderSendModal';
-import { useSendActions } from './hooks/useSendActions';
-import FlyerSlot from './FlyerSlot';
-import BookingDetails from './BookingDetails';
-import {
-  MOBILE_EVENT_TYPES, NEON,
-  fmtMoney, getDateParts, formatTimeRange,
-  type ContractAction,
-} from './shared';
-import PipelineStrip from './pipeline/PipelineStrip';
-import PipelineHero from './pipeline/PipelineHero';
-import { buildBookingSteps } from './pipeline/buildSteps';
-
-// Capitalize the first letter of each word for menu labels, WITHOUT lowercasing
-// the rest — so acronyms like "DJ" survive. "Request balance" -> "Request Balance".
-
-// The small brand glyph for each manual rail — the same marks the settings
-// grid and the invoice use, so a DJ sees the exact icons the client will.
-// ───────────────────────────────────────────────────────────────────────
-// BookingRow — single-line summary for one booking in the month list.
-// ───────────────────────────────────────────────────────────────────────
-
-
-/**
- * What a booking is worth, tax included — the number the client actually owes.
- *
- * WHY THIS EXISTS RATHER THAN JUST READING total_with_tax:
- * total_with_tax is a FROZEN SNAPSHOT written when the booking was created. If
- * the price changed afterwards — an accepted counter, an edited manual rate —
- * the snapshot still describes the OLD price and is simply wrong.
- *
- * The expanded details panel already knows this and recomputes when the
- * snapshot has gone stale. The row header did not: it read total_with_tax
- * blindly, so a renegotiated booking would show one total on the row and a
- * different one in the panel that opens directly underneath it. Two numbers,
- * same booking, six pixels apart.
- *
- * This is that same logic, extracted, so the two cannot drift.
- *
- * The freeze rule still holds throughout: a stale snapshot is recomputed using
- * the booking's OWN frozen tax_pct, never the DJ's current tax settings.
- * Changing your tax rate today must never re-price a booking you agreed in
- * March. Only legacy rows with no snapshot at all (tax_pct null) fall back to
- * the live settings pct, with the old whole-dollar rounding they were made with.
- *
- * Returns null when there's no agreed price at all (a manual add with no rate).
- * Null renders as empty — zero is a price, "we never said" isn't.
- */
-function bookingTotalWithTax(
-  booking: UpcomingBooking,
-  liveTaxPct: number,
-): number | null {
-  const round2 = (n: number) => Math.round(n * 100) / 100;
-  const agreed = booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
-  if (agreed == null) return null;
-
-  const snapTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : null;
-  const snapTaxAmount = booking.tax_amount != null ? Number(booking.tax_amount) : null;
-  const snapTotal = booking.total_with_tax != null ? Number(booking.total_with_tax) : null;
-
-  // The pre-tax base the snapshot was computed on. "Fresh" = it still matches
-  // the current agreed price, so the stored amounts are the truth.
-  const snapBase = (snapTaxAmount != null && snapTotal != null)
-    ? round2(snapTotal - snapTaxAmount)
-    : null;
-  const snapshotFresh =
-    snapBase != null && Math.abs(Number(agreed) - snapBase) < 0.005;
-  if (snapshotFresh) return snapTotal;
-
-  const effTaxPct = snapTaxPct ?? liveTaxPct;
-  if (!(effTaxPct > 0)) return round2(Number(agreed));
-  const tax = snapTaxPct != null
-    ? round2((Number(agreed) * effTaxPct) / 100)
-    : Math.round((Number(agreed) * effTaxPct) / 100);
-  return round2(Number(agreed) + tax);
+/* Pipeline cell: stage name on top, node in the middle, status caption below.
+   Higher-specificity + !important so it beats the earlier card rules. */
+@media (min-width: 601px) {
+  .rowWrap .stCell { flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; }
+  .rowWrap .stLabel { order: 0 !important; margin: 0 0 6px 0 !important; }
+  .rowWrap .stCell > div { order: 1 !important; }
+  .rowWrap .stBtn { flex-direction: column !important; align-items: center !important; }
+  .rowWrap .stCap { display: block !important; order: 2 !important; margin-top: 5px !important; text-align: center !important; }
+  .rowWrap .stCell::after { top: 35px !important; }
 }
 
-/**
- * The status columns, left to right — the order a booking actually moves
- * through, and the reason every row lines up with the one above it.
- *
- * This is the layout contract: the header cells and the row cells both read
- * it, so a column can't exist in one and not the other. Each key must match a
- * step key exactly; a typo here silently blanks that column for every booking
- * on the page, which reads as "no contracts exist" rather than as a bug.
- *
- * WHY 'accepted' IS GONE: it was the first column and it was green on every
- * single row, because a booking can't be on this page without being booked. A
- * column that never varies isn't information — it was spending a quarter of the
- * width to tell you nothing.
- *
- * WHY 'invoice' IS LAST: it's a receipt. It cannot do anything until money has
- * actually landed, so it can only ever react to the deposit column to its left.
- * Its position is the sequence.
- *
- * 'deposit' (not 'payment') and 'song_list' (not 'playlist') because
- * /api/bookings/status-override whitelists ['contract','deposit','song_list']
- * server-side and rejects anything else. The key is what the server already
- * trusts; the column header is what the DJ reads. They don't have to match.
- */
-const PIPE_SLOTS = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'] as const;
+/* Hide the big Booking-progress hero on ALL screen sizes (mobile included). */
+.detailsPanelTop { display: none !important; }
 
-/**
- * Column headings, in PIPE_SLOTS order. Rendered by ColumnHeaders.
- *
- * "Planner & Playlist" is 18 characters against a 96px track, so it wraps —
- * deliberately, and it breaks at the ampersand's space, which is the break you'd
- * choose anyway. No <br> needed: .colHeads is align-items:end, so the two-line
- * heading bottom-aligns with the single-line ones and the row of headings still
- * sits on one baseline.
- */
-const PIPE_HEADS: Record<(typeof PIPE_SLOTS)[number], string> = {
-  contract: 'Contract',
-  deposit: 'Deposit',
-  song_list: 'Planner & Playlist',
-  invoice: 'Balance',
-  guestlist: 'Guest List',
-};
-
-
-// Column order per DJ type. Club/bar puts the Rider (song_list slot) BEFORE
-// Deposit; mobile keeps Planner & Playlist in its original position.
-function pipeSlotsFor(djType: 'club' | 'mobile'): readonly (typeof PIPE_SLOTS)[number][] {
-  return djType === 'club'
-    ? (['contract', 'song_list', 'deposit', 'invoice', 'guestlist'] as const)
-    : (['contract', 'deposit', 'song_list', 'invoice'] as const);
+/* Expanded booking body: Event full-width, Venue + Host side by side, Pricing
+   full-width (desktop) — matches the booking-card layout. */
+@media (min-width: 601px) {
+  .detailsSections {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+  .detailSection:nth-child(1) { grid-column: 1 / -1 !important; }
+  .detailSectionPricing { grid-column: 1 / -1 !important; }
 }
 
-/**
- * The column headers, repeated under every month heading.
+/* Pipeline stage labels (Contract / Deposit / Planner & Playlist / Balance) in white. */
+@media (min-width: 601px) {
+  .rowWrap .stLabel { color: #ffffff !important; }
+}
+
+/* Big Booking-progress hero removed — the small pipeline in each row header
+   is the only pipeline, shown whether the card is open or closed. */
+@media (min-width: 601px) {
+  .detailsPanelTop { display: none !important; }
+}
+
+/* Booking list rows as cards with a connected, labelled mini-pipeline (desktop
+   only; the mobile card layout below is untouched). !important so it overrides
+   the flush-table rules further down regardless of cascade order. */
+@media (min-width: 601px) {
+  /* Column headers show on desktop, aligned over their columns via --row-cols. */
+  .rowWrap {
+    border: 1px solid rgba(255, 255, 255, .12) !important;
+    border-radius: 14px !important;
+    margin-bottom: 10px !important;
+    background: #0b0b12 !important;
+  }
+  .rowWrap:hover { border-color: rgba(34, 227, 173, .4) !important; }
+  .row {
+    border-top: none !important;
+    height: auto !important;
+    padding: 16px !important;
+  }
+  .stCell {
+    position: relative !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+  .stCap { display: none !important; }
+  .stLabel {
+    order: 1 !important;
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    color: #8b8da3 !important;
+    letter-spacing: .04em !important;
+    text-transform: uppercase !important;
+    margin-top: 6px !important;
+    text-align: center !important;
+  }
+  .stCell::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 15px !important;
+    left: calc(50% + 16px) !important;
+    right: -13px !important;
+    height: 2px !important;
+    background: rgba(255, 255, 255, .14) !important;
+    z-index: 0 !important;
+  }
+  .stCell:last-child::after { display: none !important; }
+  .stIcon { position: relative !important; z-index: 1 !important; }
+}
+
+/* Booking progress hero — the connected-node pipeline bar at the top of the
+   expanded card. detailsPanelTop is its wrapper; hero* style the bar itself. */
+.detailsPanelTop {
+  background: #0d0d14;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  padding: 1.2rem 1.25rem 0 1.5rem;
+}
+.heroWrap {
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(34, 227, 173, .05), transparent);
+  margin-bottom: 14px;
+}
+.heroHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 16px; border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.heroTitle {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-weight: 800; font-size: 12.5px; letter-spacing: .04em;
+  text-transform: uppercase; color: #f1f2f6;
+}
+.heroBar { width: 4px; height: 14px; border-radius: 2px; background: linear-gradient(100deg, #22e3ad, #31d0ff); }
+.heroStep { font-size: 11px; font-weight: 700; color: var(--neon, #22e3ad); }
+.heroPipe { display: flex; padding: 16px 16px 14px; }
+.heroStepCell { flex: 1 1 0; min-width: 0; position: relative; padding-right: 8px; }
+.heroConn { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.heroNode {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid #3a3a4c; background: #0b0b12;
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+}
+.heroNode svg { width: 10px; height: 10px; }
+.heroNodeDone { border-color: var(--neon, #22e3ad); background: var(--neon, #22e3ad); }
+.heroNodeNow { border-color: var(--amber, #eaa94a); box-shadow: 0 0 0 4px rgba(234, 169, 74, .14); }
+.heroNodeNow::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--amber, #eaa94a); }
+.heroLine { flex: 1; height: 2px; background: rgba(255, 255, 255, .12); border-radius: 2px; }
+.heroLineDone { background: var(--neon, #22e3ad); }
+.heroName {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: none; padding: 0; font-family: inherit;
+  font-size: 12.5px; font-weight: 600; color: #f1f2f6; cursor: pointer;
+}
+.heroCaret { color: #7d7d92; }
+.heroCap { display: block; font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Upcoming Bookings page — DJ schedule view */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  color: var(--white);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  line-height: 1;
+  margin: 0 0 .35rem;
+}
+.backLink {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.backLink:hover { color: var(--white); }
+
+.addBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: .7rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background .15s, transform .1s;
+}
+.addBtn:hover { background: #00d4a9; }
+.addBtn:active { transform: scale(0.97); }
+
+/* ── Sort bar ───────────────────────────────────────────────────────── */
+.sortBar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 1.5rem;
+}
+.sortLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: .15rem;
+}
+.sortBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .4rem .75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sortBtn:hover {
+  color: var(--white);
+  border-color: var(--muted);
+}
+.sortBtnActive {
+  background: var(--neon, #00f5c4);
+  border-color: var(--neon, #00f5c4);
+  color: #050507;
+}
+.sortBtnActive:hover {
+  color: #050507;
+}
+/* The three sort options as a button group (desktop) OR a native dropdown
+   (mobile). Only one is visible at a time — see the mobile media query, where
+   .sortBtns hides and .sortSelect shows. */
+.sortBtns {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.sortSelect {
+  display: none;
+  background: var(--deep, #0a0a10);
+  color: var(--white, #fff);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .5rem .7rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sortSelect:focus { outline: none; border-color: var(--neon); }
+/* Count badge on the "New activity" sort button — how many bookings have a
+   fresh host action waiting. Dark pill + neon text reads on both the inactive
+   (transparent) and active (neon) button states. */
+.sortCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #050507;
+  color: var(--neon, #00f5c4);
+  font-size: .58rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty {
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+}
+.empty p { margin: 0 0 .5rem; }
+.emptyHint { font-size: .85rem; max-width: 480px; margin: .5rem auto 0; }
+
+/* ── Month groups ───────────────────────────────────────────────────── */
+/*
+ * --row-cols is THE column definition for this page. The header row and every
+ * booking row both read it, so they cannot drift apart — which they would
+ * within a week if the same nine track widths were typed out in two places.
  *
- * Repeated, not rendered once at the top: a month of bookings is taller than a
- * viewport, and headers you've scrolled past are headers that aren't doing
- * their job. Costs one row per month.
+ *   date · time · event · value · contract · deposit · playlist · invoice · ⋯ · ⌄
  *
- * Shares .row's grid via the --row-cols custom property rather than repeating
- * the track list, because two copies of nine widths drift apart the first time
- * anyone touches one of them.
+ * The four status tracks are 96px — enough for their longest caption
+ * ("Requested") under a 36px icon. Event is minmax(0,1fr): it takes whatever
+ * is left and ellipsizes rather than pushing the status columns out of
+ * alignment. minmax(0,…) not plain 1fr — a bare 1fr floors at min-content and
+ * refuses to shrink below the longest event name.
+ *
+ * THE 84px ACTIONS TRACK (second from the end) is new. The MANUAL pill and the
+ * edit/delete buttons used to live inside the event cell, because when this was
+ * a flex row they could just sit at the end. In a grid they had nowhere to go —
+ * and event is the ONLY track that flexes, so they ate it: "Birthday party"
+ * rendered as "Birthday …" purely to make room for a pill.
+ *
+ * It costs 84px on every row to hold space that only manual bookings use. That
+ * is what a table costs. The alternative — letting the cluster overlay the
+ * invoice column on hover — breaks the moment a manual booking has a deposit.
+ *
+ * The budget only balances because Sweet 16 / Quinceañera is being split in
+ * two: the longest event label drops from ~200px to "Bar/Bat Mitzvah" at ~118.
+ * Time gave up 10px (the cocktail note still fits at 9px) and each status
+ * column gave up 4px to pay the rest.
  */
-export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
-  return (
-    <div className={styles.colHeads} aria-hidden="true">
-      <span>Date</span>
-      {djType === 'club' && <span />}
-      <span>Time</span>
-      <span>Event</span>
-      {/* Status columns are labelled INSIDE each cell (Contract / Deposit / …),
-          so the header leaves those tracks blank — no duplicate labels. The
-          empty spans keep the header aligned to the row's track list. */}
-      {pipeSlotsFor(djType).map((k) => <span key={k} />)}
-      {/* Two empty cells: the actions track and the chevron track. Unlabelled
-          on purpose — "Actions" over a column that's blank on most rows is
-          noise — but they MUST be here. The header shares .row's track list,
-          so a missing cell doesn't leave a gap at the end, it shifts every
-          heading one column left and silently mislabels the whole table. */}
-      <span />
-      <span />
-    </div>
-  );
+.monthList {
+  /* Value is 88px, not 74 — the extra 14 is breathing room, not text space.
+     See .rowValue: it's right-aligned, so its last character sat 13px (one grid
+     gap) from the Contract icon and the two read as one lump. The padding-right
+     there pushes the number back off the icon; widening the track by the same
+     amount means the number itself didn't lose any room to do it. */
+  /* Value no longer gets its own column — like club/bar, the price drops to a
+     full-width "Total Value" band on a second row (see .monthList .rowValue in
+     the min-width:601px block), so the top line is date/time/venue/status/
+     actions only. */
+  --row-cols: 86px 168px minmax(0, 1fr) 96px 96px 96px 96px 84px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+/* Second row (the price band) manages its own spacing; kill the grid row-gap so
+   the band butts flush to the row above — same as club. */
+.monthList .row { row-gap: 0; }
+/* Club/bar DJs get a flyer thumbnail after the date; mobile DJs have no flyer
+   at all. One extra track rather than a 0-width column that still eats a gap. */
+/* 56px because that is what .flyerBoxRow actually is. A narrower track would
+   not shrink the flyer — a fixed-px grid track doesn't clip its contents, so
+   the thumbnail would simply overhang into the time column. Time gives up the
+   10px to pay for it. */
+.monthListClub {
+  /* Club/bar has TWO more tracks than a mobile DJ (a 56px flyer AND a 5th
+     status column — Guests), which at the page's 1100px cap (~1020px of row
+     content) overran the row and pushed the actions cell and chevron off the
+     card. The fix: the price does NOT get a column here. Instead it drops to a
+     full-width band on a SECOND row (see .monthListClub .rowValue below), the
+     same treatment it gets on mobile. That frees the whole value track, so the
+     top line — date, flyer, time, venue, five status columns, actions, chevron
+     (11 tracks, no value) — fits comfortably with ~95px left for the venue.
+     The flyer stays 56px: it's a real 56px thumbnail and a narrower track would
+     let it overhang the time column rather than shrink it. */
+  --row-cols: 80px 56px 132px minmax(0, 1fr) 92px 92px 92px 92px 92px 84px 22px;
+}
+/* Club rows are the widest layout; the tighter gap buys a few more pixels.
+   Desktop table only — the mobile card lays .row out with named areas, so
+   --row-cols and this gap have no effect there. */
+.monthListClub .row { column-gap: 9px; row-gap: 0; }
+/* Header must use the same column-gap as the club row so it stays aligned. */
+.monthListClub .colHeads { column-gap: 9px; }
+
+/* Desktop: the club price rides a full-width band on a second grid row, pinned
+   flush to the card's side and bottom edges (the .row has 16px padding, so the
+   negative margins reach the borders; .rowWrap's overflow:hidden clips it to
+   the rounded corners). Everything else auto-places into row 1; .rowValue is
+   the only item explicitly on row 2. A booking with no agreed price renders an
+   empty .rowValue, which :empty hides — so those rows stay a single line. */
+@media (min-width: 601px) {
+  .monthListClub .rowValue,
+  .monthList .rowValue {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 12px -16px -16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2b2b2b;
+    padding: 9px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--neon, #00e0a4);
+  }
+  .monthListClub .rowValue::before,
+  .monthList .rowValue::before {
+    content: "Total Value";
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #c9c9d3;
+  }
+  .monthListClub .rowValue:empty,
+  .monthList .rowValue:empty { display: none; }
+}
+.month { }
+.monthLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .08em;
+  color: var(--white);
+  margin: 0 0 .85rem;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid var(--border);
+}
+/* gap: 0 — this is a table, not a stack of cards.
+   The 4px gap (plus a border and an 8px radius on every row) is what made the
+   list read as a pile of separate boxes rather than one scannable set of
+   records. Rows are flush now; a single hairline divides them. */
+.monthItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
-
-export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
-}: {
-  booking: UpcomingBooking;
-  /** Only the "New activity" sort highlights the changed stage; By Date and
-   *  Recently Booked show the row plainly. */
-  showNewActivity?: boolean;
-  /** Deep link (?open=<bookingId>) — expand this row and scroll to it on load.
-   *  Used by the header notification bell when an item is clicked. */
-  defaultOpen?: boolean;
-  djType: 'club' | 'mobile';
-  userId: string;
-  actingRole?: ActingRole;
-  clubDepositPct: number;
-  taxPct: number;
-  djZip?: string | null;
-  djCity?: string | null;
-  djState?: string | null;
-  requireContract: boolean;
-  archive?: boolean;
-  payments: BookingPayment[];
-  onPaymentsChange: (bookingId: string, rows: BookingPayment[]) => void;
-  /** Ask the server page to re-read this booking so the booking LOG (derived
-   *  from server-stamped timestamps) reflects the action just taken. Optimistic
-   *  state updates the badges; only a refresh brings the new timestamps. */
-  onMutated?: () => void;
-  /** Tier 2. A courtesy so the row doesn't offer what the server will refuse. */
-  canPro: boolean;
-  /** The booking's planner, or undefined if one was never requested. */
-  planner?: BookingPlannerSummary;
-  onPlannerChange: (bookingId: string, row: BookingPlannerSummary) => void;
-  overlaps?: boolean;
-  onDelete?: () => void;
-  onEdit?: () => void;
-  /**
-   * Opens the SAME modal as onEdit, but scrolled to Host Details with the name
-   * field focused and the block called out.
-   *
-   * A separate prop rather than a flag on onEdit because the two are different
-   * intents that happen to share a form: the pencil means "change something",
-   * this means "the thing blocking me is in there somewhere".
-   */
-  onAddHost?: () => void;
-  /** Club/bar: the DJ has enabled the rider — show its pipeline step. */
-  riderEnabled?: boolean;
-  /** Club/bar: the DJ has enabled the guest list. */
-  guestlistEnabled?: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  // Deep link from the notification bell: open this booking's card and scroll
-  // it into view when defaultOpen turns true (set once the ?open= param is read).
-  const wrapRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!defaultOpen) return;
-    setExpanded(true);
-    const t = setTimeout(() => {
-      wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [defaultOpen]);
-  // Set true when the details panel's live DocuSeal check confirms the contract
-  // is actually signed (covers rows whose stored status is still 'awaiting').
-  const [signedOverride, setSignedOverride] = useState(false);
-  // Manual step overrides (booking.status_overrides) — DJ can mark a step done
-  // when it was handled outside the app. Optimistic UI + persisted via the API.
-  const [overrides, setOverrides] = useState<Record<string, boolean>>(() => {
-    const o = (booking as { status_overrides?: unknown }).status_overrides;
-    return o && typeof o === 'object' ? { ...(o as Record<string, boolean>) } : {};
-  });
-  // Which step's mark-complete dropdown is open (by key), or null — plus the
-  // viewport position to render it at (fixed, so the card's overflow can't clip it).
-  const [menuOpenKey, setMenuOpenKey] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-  /**
-   * The button the open menu belongs to.
-   *
-   * The menu is position:fixed — i.e. positioned in VIEWPORT coordinates — from
-   * a getBoundingClientRect() taken at the moment of the click. That rect is a
-   * photograph, not a subscription: scroll one pixel and the row moves while
-   * the menu stays exactly where it was, until it's floating in the middle of
-   * somebody else's booking with no visible relationship to the icon it
-   * belongs to.
-   *
-   * Fixed IS the right choice here — the menu has to escape .rowWrap's
-   * `overflow: hidden` — but it has to re-anchor. Keeping the element lets the
-   * effect below recompute against the live rect. Same pattern HeaderDjMenu
-   * already uses, and for the same reason.
-   */
-  const menuBtnRef = useRef<HTMLElement | null>(null);
-
-  // ── Cancellation request ───────────────────────────────────────────
-  // A booked date belongs to two people. Either can ASK to cancel; only the
-  // other one can agree to it. Until they do, nothing about this booking
-  // changes — which is why this state is separate from booking.status.
-  const [cancelState, setCancelState] = useState<{
-    status: string | null;
-    requestedBy: string | null;
-    reason: string | null;
-  }>(() => ({
-    status: (booking as { cancel_status?: string | null }).cancel_status ?? null,
-    requestedBy: (booking as { cancel_requested_by?: string | null }).cancel_requested_by ?? null,
-    reason: (booking as { cancel_reason?: string | null }).cancel_reason ?? null,
-  }));
-  const [cancelFormOpen, setCancelFormOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
-  const [cancelBusy, setCancelBusy] = useState(false);
-  const [cancelErr, setCancelErr] = useState<string | null>(null);
-  const [cancelConfirming, setCancelConfirming] = useState(false);
-  // Set after declining, so the DJ is pointed at the phone rather than the app.
-  const [declinedJustNow, setDeclinedJustNow] = useState(false);
-
-  /**
-   * Cancelled per the server row, OR cancelled by the DJ a moment ago in this
-   * session. The second half matters: after accepting, `booking.status` is
-   * still 'approved' until the next page load, and a row that keeps offering
-   * "Send contract" on a booking you just cancelled is how you send one.
-   */
-  const isCancelled = booking.status === 'cancelled' || cancelState.status === 'accepted';
-
-  /**
-   * A cancelled booking is read-only, and "read-only" already exists in this
-   * component: it's what `archive` means. Rather than add a second flag and
-   * then chase every button that forgot to check it, a cancelled row simply IS
-   * archive here — every `actions: archive ? [] : [...]`, every hint, every
-   * override toggle goes quiet for free.
-   *
-   * There is nothing to do about a night that isn't happening. Sending a
-   * contract for it, or chasing a deposit on it, is worse than useless.
-   */
-  const archive = archiveProp || isCancelled;
-
-  async function postCancel(payload: Record<string, unknown>) {
-    setCancelBusy(true);
-    setCancelErr(null);
-    try {
-      const res = await fetch('/api/bookings/cancel-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, ...payload }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Something went wrong.');
-      onMutated?.();
-      return json as { cancel_status: string };
-    } catch (e) {
-      setCancelErr(e instanceof Error ? e.message : 'Something went wrong.');
-      return null;
-    } finally {
-      setCancelBusy(false);
-    }
+/* ── Column headers ─────────────────────────────────────────────────────
+   Repeated under every month heading, not just once at the top. That costs a
+   row per month and means you can never scroll to a point where you've lost
+   track of which column is which.
+   MUST share .row's grid-template-columns exactly — see .row. Any edit to one
+   is an edit to both, or the headers stop sitting above their columns. */
+.colHeads {
+  display: grid;
+  grid-template-columns: var(--row-cols);
+  gap: 13px;
+  /* Match the desktop row's 16px side padding so the headings sit directly over
+     their column content instead of 4px to the left of it. */
+  padding: 2px 16px 9px;
+  align-items: end;
+  font-family: var(--font-inter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #5e5e77;
+  line-height: 1.3;
+}
+/* Matches .rowValue's padding-right exactly. The heading is right-aligned over
+   a right-aligned column, so if it doesn't take the same inset it stops sitting
+   above its own numbers. */
+.headRight {
+  text-align: right;
+  padding-right: 14px;
+}
+/* Desktop: give the header the same framed card look as the booking rows so
+   the labels sit INSIDE a frame aligned with the cards below, not floating in
+   the dead space above them. */
+@media (min-width: 601px) {
+  .colHeads {
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    background: #0b0b12;
+    margin-bottom: 10px;
+    padding: 11px 16px;
   }
-
-  // Re-anchor the open menu to its button on scroll and resize.
-  // Capture phase (the `true`) matters: a scroll inside any ancestor container
-  // doesn't bubble, so a listener on window without it never fires and the menu
-  // silently detaches again in exactly the case that's hardest to notice.
-  useEffect(() => {
-    if (!menuOpenKey) return;
-    function compute() {
-      const el = menuBtnRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      {
-          const MENU_W = 210;
-          const left = Math.min(Math.max(8, r.left), window.innerWidth - MENU_W - 8);
-          setMenuPos({ top: r.bottom + 6, left });
-        }
-    }
-    compute();
-    window.addEventListener('scroll', compute, true);
-    window.addEventListener('resize', compute);
-    return () => {
-      window.removeEventListener('scroll', compute, true);
-      window.removeEventListener('resize', compute);
-    };
-  }, [menuOpenKey]);
-  // The pipeline's contract actions live here (BookingRow), but the portal and
-  // the send/resend/cancel/download handlers are all owned by BookingDetails,
-  // which only exists while the row is expanded.
-  //
-  // Rather than duplicate any of it up here — two copies of ContractPortal, or
-  // a second cancelContract(), is two sources of truth and two places to fix a
-  // bug — expand the row and hand Details a ONE-SHOT action. Details runs it
-  // and clears the flag immediately, so closing the portal doesn't bounce it
-  // straight back open.
-  const [contractAction, setContractAction] = useState<ContractAction | null>(null);
-  const roleCanContract = canSendContracts(actingRole);
-  const roleCanMoney = roleCanRequestDeposit(actingRole); // request/cancel deposit
-  // Editing the DJ's saved payment options (Venmo/Cash App/PayPal accounts) is
-  // OWNER-ONLY \u2014 no teammate, not even admin/manager, may change where money
-  // lands. Money ACTIONS (request/cancel) stay manager+.
-  const roleCanEditPaymentOptions = actingRole === 'owner';
-  // SENDING a cancellation request is OWNER-ONLY (it can end a committed
-  // booking). Teammates never see the "Request cancellation" button; the server
-  // also rejects the request action for non-owners.
-  const roleCanRequestCancel = actingRole === 'owner';
-  // Role-locking for the step dropdowns: show every option an admin would see,
-  // but grey out (disable) the ones this role can't use, with a hover tooltip.
-  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Skip deposit', 'Request balance', 'Cancel request']);
-  const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
-  function actionLocked(label: string): boolean {
-    if (label === 'Payment options') return !roleCanEditPaymentOptions;
-    if (MONEY_LOCK_LABELS.has(label)) return !roleCanMoney;
-    // Copy link is a read-only convenience (it copies a URL, changes nothing),
-    // so every role — including Assistant — may use it.
-    if (CONTRACT_LOCK_LABELS.has(label)) return !roleCanContract;
-    return false;
-  }
-  function overrideLockedFor(key: string): boolean {
-    if (key === 'contract') return !roleCanContract;
-    if (key === 'deposit' || key === 'invoice') {
-      if (!roleCanMoney) return true;
-      // Once a price change is submitted (awaiting the host), the deposit can't be
-      // marked unpaid — the amounts are in flux until the host confirms the new
-      // price. Unlocks again once there's no pending price change.
-      if (key === 'deposit' && (booking.pending_change_cols || []).includes('price')) return true;
-      return false;
-    }
-    return false;
-  }
-  function runContract(a: ContractAction) {
-    if (!roleCanContract) return;
-    setExpanded(true);
-    setContractAction(a);
-  }
-
-  // ── Deposit dropdown ──────────────────────────────────────────────────
-  // Both modals live here rather than in PaymentsBlock (two components down)
-  // because BookingRow already holds userId, payments and onPaymentsChange —
-  // everything needed to post the request and fold the new row into state.
-  const [reqOpen, setReqOpen] = useState(false);
-  // Themed confirm dialog (replaces window.confirm so it matches the site).
-  const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; cancelLabel?: string; danger?: boolean; onOk: () => void } | null>(null);
-  const [reqAmount, setReqAmount] = useState('');
-  const [reqBusy, setReqBusy] = useState(false);
-  const [reqErr, setReqErr] = useState<string | null>(null);
-  const [methodsOpen, setMethodsOpen] = useState(false); const [reqKind, setReqKind] = useState<'deposit' | 'balance'>('deposit');
-  // The rails the client will actually be offered — shown as icons in the
-  // request box so the DJ sees what they're sending before they send it.
-  const [reqMethods, setReqMethods] = useState<PaymentMethod[]>([]);
-  const [reqCardReady, setReqCardReady] = useState(false);
-  useEffect(() => {
-    // Load when the box opens, and RELOAD whenever the payment-methods editor
-    // closes on top of it — so hitting Edit, changing rails, and coming back
-    // shows the updated icons without reopening the box.
-    if (!reqOpen || methodsOpen) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('users')
-          .select('payment_methods, stripe_connect_ready')
-          .eq('id', userId)
-          .maybeSingle();
-        if (cancelled) return;
-        const row = (data || {}) as { payment_methods?: unknown; stripe_connect_ready?: boolean };
-        setReqMethods(Array.isArray(row.payment_methods) ? (row.payment_methods as PaymentMethod[]) : []);
-        setReqCardReady(!!row.stripe_connect_ready);
-      } catch { /* icons are a courtesy — a failed fetch just shows none */ }
-    })();
-    return () => { cancelled = true; };
-  }, [reqOpen, methodsOpen, userId]);
-
-  // The booking's OWN frozen deposit — never recomputed from today's settings.
-  const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
-  const depositRow = payments.find((p) => p.kind === 'deposit') || null;
-  // OVERPAYMENT FLAG. The classic case: the DJ skipped an unpaid deposit and
-  // billed the whole balance, the host paid that balance, THEN saw the older
-  // deposit email and paid that too. Money collected now exceeds the event
-  // total. We can't stop it (the deposit link is live in an email already
-  // sent), but we surface it so the DJ refunds or credits the difference.
-  const bookingTotalForFlag = Number(
-    (booking as { total_with_tax?: number | null }).total_with_tax
-    ?? (booking as { counter_rate?: number | null }).counter_rate
-    ?? (booking as { quoted_rate?: number | null }).quoted_rate
-    ?? 0,
-  );
-  const totalCollected = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-  const overpaid = bookingTotalForFlag > 0 && totalCollected > bookingTotalForFlag + 0.01;
-  const overpaidBy = overpaid ? Math.round((totalCollected - bookingTotalForFlag) * 100) / 100 : 0;
-
-  // Email OPEN hints (soft signal — see the Resend webhook). Maps a pipeline
-  // step's key to the stage its client email was tagged with, then shows when
-  // that email was likely opened. song_list is the rider on club, planner on
-  // mobile.
-  const emailOpens = ((booking as { email_opens?: Record<string, string> | null }).email_opens) || {};
-  // New-activity highlight. The server stamps last_activity_slot with the
-  // pipeline cell of the booking's most recent HOST action (contract signed,
-  // host paid, planner submitted, rider / guest list confirmed). That cell gets
-  // a neon glow so the DJ sees WHAT changed, not just that something did.
-  const newSlot = showNewActivity
-    ? (((booking as { last_activity_slot?: string | null }).last_activity_slot) || null)
-    : null;
-  const stageForKey = (key: string): string | null => {
-    // Only stages whose client email links to one of OUR pages, where we can
-    // record a real page view with no email pixel. song_list is rider on club,
-    // planner on mobile. (Contract will join via DocuSeal-viewed later.)
-    if (key === 'contract') return 'contract';
-    if (key === 'guestlist') return 'guestlist';
-    if (key === 'song_list') return booking.booking_type === 'club' ? 'rider' : 'planner';
-    return null;
-  };
-  const openedLabel = (key: string): string | null => {
-    const stage = stageForKey(key);
-    const iso = stage ? emailOpens[stage] : null;
-    if (!iso) return null;
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return null;
-    return `Viewed ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-  };
-
-
-  function openRequest(kind: 'deposit' | 'balance' = 'deposit') {
-    setReqErr(null);
-    setReqKind(kind);
-    if (kind === 'balance') {
-      const total = Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0);
-      // Everything actually confirmed through the app (amount_paid on any row).
-      const paid = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
-      // A deposit MARKED COMPLETE BY HAND (cash / off-app) records no payment
-      // row, so it isn't in `paid` — but it IS money collected. Deduct the
-      // deposit amount so the balance we ask for isn't the deposit all over
-      // again. Guarded on the deposit having no real payment, so a deposit paid
-      // through the app (already in `paid`) is never double-counted.
-      const depositRealPaid = payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + Number(p.amount_paid || 0), 0);
-      // The DJ requesting a balance is billing the WHOLE remaining amount —
-      // when a deposit went unpaid, they're overriding it, not netting it out.
-      // So the balance is the full total minus what actually came in. The only
-      // deduction is a deposit collected OFF-APP (marked complete, no payment
-      // row) — that money is real, it just isn't in `paid`.
-      const depositMarked = !!overrides.deposit && depositRealPaid <= 0 ? Number(booking.deposit_amount || 0) : 0;
-      // A balance already settled BY HAND (mark-paid, no ledger row) records no
-      // amount_paid either — the total it was paid-in-full at lives in
-      // balance_settled_total. A "New Balance" after a price increase must bill
-      // only the DIFFERENCE (new total − what was already collected), not the
-      // whole thing again. Use the snapshot as the collected floor.
-      const settledSnap = Number((booking as { balance_settled_total?: number | null }).balance_settled_total ?? 0);
-      const collected = Math.max(paid + depositMarked, settledSnap);
-      const remaining = Math.max(0, Math.round((total - collected) * 100) / 100);
-      setReqAmount(remaining > 0 ? remaining.toFixed(2) : '');
-    } else {
-      setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
-    }
-    setReqOpen(true);
-  }
-
-  // Mark a specific balance payment row PAID IN FULL (used by "Mark New Balance
-  // Paid" — the row created to collect a post-price-change remainder). Confirms
-  // the outstanding amount, which settles the row and makes the payments route
-  // auto-send a receipt reflecting the NEW total.
-  function markBalancePaid(paymentId: string) {
-    const row = payments.find((p) => p.id === paymentId);
-    if (!row) return;
-    const outstanding = Math.max(0, Math.round((Number(row.amount || 0) - Number(row.amount_paid || 0)) * 100) / 100);
-    if (outstanding <= 0) return;
-    setConfirmModal({
-      title: 'Mark the new balance paid?',
-      body: `This records ${fmtMoney(outstanding, booking.currency || 'USD')} as received and sends the client an updated receipt for the new total.`,
-      okLabel: 'Mark paid',
-      cancelLabel: 'Not yet',
-      onOk: async () => {
-        try {
-          const res = await fetch('/api/payments', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'confirm', paymentId, amountReceived: outstanding }),
-          });
-          if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not mark it paid.'); return; }
-          onPaymentsChange(booking.id, payments.map((pp) => pp.id === paymentId ? { ...pp, amount_paid: Number(pp.amount || 0), status: 'paid' } : pp));
-          onMutated?.();
-        } catch { alert('Could not mark it paid.'); }
-      },
-    });
-  }
-
-  function cancelRequest(paymentId: string) {
-    setConfirmModal({
-      title: 'Cancel this payment request?',
-      body: 'This removes the request from the booking. You can request it again later.',
-      okLabel: 'Cancel request',
-      cancelLabel: 'Keep it',
-      danger: true,
-      onOk: async () => {
-        try {
-          const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-request', paymentId }) });
-          if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not cancel the request.'); return; }
-          onPaymentsChange(booking.id, payments.filter((pp) => pp.id !== paymentId));
-          onMutated?.();
-        } catch { alert('Could not cancel the request.'); }
-      },
-    });
-  } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); onMutated?.(); } } catch { alert('Could not send the receipt.'); } }
-  async function downloadReceipt(kind: 'deposit' | 'balance') {
-    try {
-      const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download-receipt', bookingId: booking.id, kind }) });
-      if (!res.ok) { const raw = await res.text(); alert(raw.slice(0, 160) || 'Could not build the receipt.'); return; }
-      const blob = await res.blob();
-      const cd = res.headers.get('Content-Disposition') || '';
-      const m = /filename="?([^"]+)"?/.exec(cd);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = m ? m[1] : `Receipt-${booking.id.slice(0, 6)}.pdf`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch { alert('Could not build the receipt.'); }
-  } async function submitRequest() {
-    const amount = Number(reqAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setReqErr('Enter an amount greater than zero.');
-      return;
-    }
-    setReqBusy(true);
-    setReqErr(null);
-    try {
-      const res = await fetch('/api/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'request',
-          bookingId: booking.id,
-          kind: reqKind,
-          amount: Math.round(amount * 100) / 100,
-        }),
-      });
-      // .text() first: a non-JSON body (a platform error page) would otherwise
-      // become {} and surface as a shrug. Same lesson as the Stripe 502.
-      const raw = await res.text();
-      let json: { payment?: BookingPayment; error?: string } = {};
-      try { json = JSON.parse(raw); } catch { /* handled below */ }
-      if (!res.ok || !json.payment) {
-        throw new Error(json.error || `HTTP ${res.status} — ${raw.slice(0, 120) || 'no response'}`);
-      }
-      onPaymentsChange(booking.id, [...payments, json.payment]);
-      // Requesting the balance auto-skips the deposit stage (the server also
-      // persists this). Only when no deposit was actually collected.
-      if (reqKind === 'balance' && !overrides.deposit_skipped) {
-        // Billing the whole balance means the deposit is being skipped — even
-        // if a deposit request went out unpaid (the DJ is overriding it). Only
-        // when NOTHING was actually collected: a paid or part-paid deposit
-        // stays, since the balance already nets out real payments.
-        const depPaid = payments.filter((p) => p.kind === 'deposit').reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-        const depSettled = payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived'));
-        if (depPaid <= 0 && !depSettled) {
-          setOverrides((prev) => ({ ...prev, deposit_skipped: true }));
-        }
-      }
-      setReqOpen(false);
-    } catch (e) {
-      setReqErr(e instanceof Error ? e.message : 'Could not request the deposit.');
-    } finally {
-      setReqBusy(false);
-    }
-  }
-  async function toggleStep(key: string, next: boolean) {
-    setMenuOpenKey(null);
-    setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
-    try {
-      const res = await fetch('/api/bookings/status-override', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, key, done: next }),
-      });
-      // Refresh so the booking LOG picks up the timestamp the server just
-      // stamped (contract/deposit complete, skip, etc.).
-      if (res.ok) onMutated?.();
-    } catch { /* keep optimistic UI; will reconcile on next load */ }
-  }
-  // "Mark complete" on a MONEY step has downstream impact, so confirm it and
-  // spell out what happens next — a deposit gets deducted from the balance you
-  // later bill; a balance send the client their final receipt. `done` is the
-  // new state (true = marking complete). Only the deposit/balance steps carry
-  // a warning; contract/playlist just toggle.
-  function confirmAndToggleStep(key: string, done: boolean) {
-    const proceed = () => {
-      toggleStep(key, done);
-      // Marking the balance complete sends the final receipt automatically.
-      if (done && key === 'invoice') { sendReceipt('balance'); }
-    };
-    if (done && key === 'deposit') {
-      setConfirmModal({
-        title: 'Mark deposit as paid?',
-        body: 'Marking this deposit paid will deduct it from the balance owed when you request the balance.',
-        okLabel: 'Mark deposit paid',
-        onOk: proceed,
-      });
-      return;
-    }
-    if (done && key === 'invoice') {
-      // If no deposit was ever collected, marking the balance paid bills the
-      // whole thing — the deposit stage reads "Skipped". Say so up front.
-      const depositCollected = payments.some((p) => p.kind === 'deposit'
-        && ((p.status === 'paid' || p.status === 'waived') || Number(p.amount_paid || 0) > 0))
-        || !!overrides.deposit;
-      const alreadySkipped = !!overrides.deposit_skipped;
-      const skipNote = (!depositCollected && !alreadySkipped)
-        ? ' Since no deposit was collected, the deposit will be marked skipped.'
-        : '';
-      setConfirmModal({
-        title: 'Mark balance as paid?',
-        body: `Marking the balance paid outside the app will send the client their final receipt.${skipNote}`,
-        okLabel: 'Mark balance paid',
-        onOk: proceed,
-      });
-      return;
-    }
-    proceed();
-  }
-  // Flyer URL owned here so the row slot and the in-card thumbnail
-  // (both rendered for the same booking) stay in sync.
-  const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
-  const { day, dow, mo } = getDateParts(booking.event_date);
-  // Edit status of the DATE, surfaced on the collapsed row near the date pill:
-  // amber while the host hasn't approved yet, teal once they have.
-  const dateChangePending = (booking.pending_change_cols || []).includes('event_date');
-  const dateEditMark = booking.field_edits?.event_date;
-  const dateChangeApproved = typeof dateEditMark === 'string' && dateEditMark.startsWith('approved');
-  // Header time range. When the booker added a cocktail hour, the row's
-  // start reflects the cocktail-hour start (the DJ is engaged from then),
-  // running through the event end. Otherwise it's the plain event window.
-  // Ceremony music, when present, starts earlier still and takes precedence.
-  const headerStart =
-    booking.ceremony_needed && booking.ceremony_start_time
-      ? booking.ceremony_start_time
-      : booking.cocktail_needed && booking.cocktail_start_time
-      ? booking.cocktail_start_time
-      : booking.start_time;
-  const timeRange = formatTimeRange(headerStart, booking.end_time);
-
-  let context = '';
-  if (djType === 'club') {
-    // Club DJ rows: show the venue name next to the time (falls back to the
-    // custom venue-type description, then blank).
-    context = booking.venue_name || booking.venue_type_desc || '';
-  } else {
-    // Mobile DJ rows: show the event type only (e.g. "Wedding"). Venue
-    // is shown in the expanded details panel.
-    const ev = booking.event_type || '';
-    const label = MOB_EVENT_TYPE_LABELS[ev] || MOBILE_EVENT_TYPES.find((e) => e.value === ev)?.label;
-    context = label || (ev || 'Event');
-  }
-
-  // Booking readiness pipeline — compact icon steps driven by the DJ's settings.
-  // Accepted always shows; Contract shows when the DJ requires it (or a contract
-  // already exists). Deposit / Song-list steps slot in here later. Manual
-  // add-ins (no counterparty) only ever show Accepted.
-  const cstatus = (booking.contract_status as string | null | undefined) || null;
-  // Use the booking's OWN snapshot of the requirement (frozen at creation) so
-  // changing the DJ's setting later never re-shapes existing bookings. Falls
-  // back to the live setting only for rows created before the snapshot existed.
-  const needsContract = (booking as { requires_contract?: boolean | null }).requires_contract ?? requireContract;
-  // Belt-and-braces for the disappearing contract stage. /api/contracts/cancel
-  // now records 'cancelled' rather than nulling contract_status, so cstatus
-  // stays truthy and the gate below passes on its own — but bookings cancelled
-  // BEFORE that fix already have null in the column, and this keeps their stage
-  // visible for the session rather than silently swallowing "Send contract".
-  const [everHadContract, setEverHadContract] = useState(!!cstatus);
-  useEffect(() => {
-    if (cstatus) setEverHadContract(true);
-  }, [cstatus]);
-  // Contract-step completeness — the SAME rule the status strip uses:
-  // genuinely signed (stored status or the panel's live DocuSeal check) OR
-  // manually overridden via status_overrides (DJs often paper contracts
-  // off-platform; never trap them behind a step the system can't observe).
-  // Gates the Request Deposit action in the details panel below.
-  const contractStepComplete = cstatus === 'signed' || signedOverride || !!overrides.contract;
-  /**
-   * Does this booking have somebody to send things TO?
-   *
-   * A booking that came through the app has a requester — an account, an email,
-   * a name. A MANUAL booking has whatever the DJ typed, which may be nothing:
-   * Host Name and Host Email are marked "(optional)" on the add form, and a DJ
-   * adding a gig they already agreed over the phone has no reason to fill them.
-   *
-   * Both fields, not just the email. The email is who it goes to; the name is
-   * who the contract is made out to. `prepare` falls back to the part of the
-   * address before the @ when there's no name, so a contract with no host name
-   * gets addressed to "jordan91" — which is nobody.
-   */
-  const hasHostContact =
-    !!String((booking as { host_email?: string | null }).host_email || '').trim() &&
-    !!String((booking as { requester_name?: string | null }).requester_name || '').trim();
-
-  // Defined once, used by BOTH the pipeline's Request-deposit item and the
-  // panel's Request Deposit button — they must never disagree about whether
-  // asking for money is allowed yet.
-  //
-  // `is_manual` used to be the first clause on its own, which meant a manual
-  // booking could ALWAYS request a deposit — gated on nothing. Including the
-  // ones with no host email, where the request had no recipient and went
-  // nowhere. The DJ clicked Request deposit, the UI said it was requested, and
-  // nothing was ever sent.
-  //
-  // Manual bookings now need host contact instead of the contract gate (they
-  // have no contract requirement to satisfy). The other two clauses are
-  // untouched, so a real booking's path through here is exactly what it was.
-  const canRequestDeposit = booking.is_manual
-    ? hasHostContact
-    : (!needsContract || contractStepComplete);
-  // `color` is per-step, not derived from state alone: Contract goes YELLOW
-  // when it's waiting on someone (an action the DJ can take), while Deposit
-  // stays grey until it lands. Same state, different urgency — one shared
-  // stepColor() couldn't say that.
-  // `actions` are the dropdown's items for that step, in its current state.
-  // `actions` are the dropdown's real options, and they change with the state:
-  // an unsent contract offers "Review & send", a sent one offers resend/cancel,
-  // a signed one offers download. Offering "Review & send" on a signed contract
-  // — as it did — invites a DJ to overwrite an agreement both parties signed.
-  // ── Planner: request / resend ─────────────────────────────────────────────
-  //
-  // One call for both. The server decides which it is — a planner that already
-  // exists is never rebuilt, only re-emailed, because `fields` is a snapshot
-  // and `responses` is keyed to it. Resending is most likely exactly when the
-  // client is halfway through, and recomposing would orphan their answers.
-  const {
-    plannerBusy, plannerErr, setPlannerErr,
-    sendOpen, setSendOpen,
-    riderChooserOpen, setRiderChooserOpen,
-    savedRiders, riderSent,
-    requestPlanner, resendRider, sendNamedRider,
-  } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
-
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
-
-  // The type-mismatch info is now shown only in the expanded details
-  // panel's callout banner (see BookingDetails below) — keeping the row
-  // header clean. The row no longer renders a CLUB/BAR pill.
-
-  // Both edit and delete must stop propagation so they don't also toggle
-  // the row's expand/collapse state (the row is itself a <button>).
-  function handleEdit(e: React.MouseEvent) {
-    e.stopPropagation();
-    onEdit && onEdit();
-  }
-  function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    onDelete && onDelete();
-  }
-
-  return (
-    <div
-      ref={wrapRef} data-booking-id={booking.id}
-      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}
-      // A cancelled row is LIT, not dimmed. Fading it treats the news as less
-      // important than the rows around it, when it's the one thing on this
-      // screen the DJ most needs to notice — a night they'd otherwise still be
-      // planning for. Red wash + a red edge, at full opacity.
-      style={
-        isCancelled
-          ? {
-              background: 'rgba(192,57,43,.10)',
-              boxShadow: 'inset 3px 0 0 #ff5f5f',
-            }
-          : undefined
-      }
-    >
-      {/*
-        THE ROW IS A GRID, AND EVERY CHILD MUST OWN A TRACK.
-        There are exactly as many direct children here as there are tracks in
-        --row-cols. Anything extra doesn't overflow — it gets auto-placed into
-        an implicit SECOND row, silently, under the date. That's why the manual
-        pill and the edit/delete buttons now live inside the event cell rather
-        than floating as siblings the way they did when this was a flex row.
-
-        A click anywhere toggles expand; interactive children stopPropagation so
-        they run their own action instead.
-      */}
-      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer' }}>
-        {/* 1 — Date pill. Kept as-is: it's what you look for first. */}
-        <div className={styles.rowDate} style={(dateChangePending || dateChangeApproved) ? { flexDirection: 'column', alignItems: 'flex-start', gap: 4 } : undefined}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <div className={styles.dayNum}>{day}</div>
-            <div className={styles.dayMeta}>
-              <div className={styles.dow}>{dow}</div>
-              <div className={styles.mo}>{mo}</div>
-            </div>
-          </div>
-          {(dateChangePending || dateChangeApproved) && (
-            <div
-              title={dateChangePending ? 'A new date is pending the host’s approval' : 'The host approved a date change'}
-              style={{
-                whiteSpace: 'nowrap', lineHeight: 1,
-                fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.5rem', fontWeight: 700,
-                letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 6px', borderRadius: 5,
-                color: dateChangePending ? '#f5e642' : NEON,
-                background: dateChangePending ? 'rgba(245,230,66,.12)' : 'rgba(0,245,196,.12)',
-                border: `1px solid ${dateChangePending ? 'rgba(245,230,66,.4)' : 'rgba(0,245,196,.4)'}`,
-              }}
-            >
-              {dateChangePending ? 'Pending host approval' : 'Host approved change'}
-            </div>
-          )}
-        </div>
-        {/* 2 — Flyer. Club/bar only, which is why --row-cols has a club
-            variant with an extra track rather than a 0-width column that would
-            still eat a gap. display:contents on the wrapper so FlyerSlot itself
-            is the grid item. */}
-        {djType === 'club' && (
-          archive && !flyerUrl ? (
-            /* Archive with no flyer: FlyerSlot renders null. Without a stand-in,
-               the flyer grid item disappears and every column shifts one track
-               left — the venue slides under the time and the status headers stop
-               sitting over their icons. An empty cell keeps the flyer track
-               reserved so the row stays aligned. */
-            <span className={styles.flyerInline} aria-hidden="true" />
-          ) : (
-            <span style={{ display: 'contents' }} onClick={(e) => e.stopPropagation()}>
-              <FlyerSlot
-                bookingId={booking.id}
-                userId={userId}
-                flyerUrl={flyerUrl}
-                onChange={setFlyerUrl}
-                size="row"
-                readOnly={archive}
-              />
-            </span>
-          )
-        )}
-        {/* 3 — Time. Its own track now; it used to be half of a nested grid
-            that ate the whole row's spare width. */}
-        <button
-          type="button"
-          className={styles.rowToggle}
-          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-          aria-expanded={expanded}
-        >
-          {booking.cocktail_needed && (
-            <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
-          )}
-          {booking.ceremony_needed && (
-            <div className={styles.rowCocktailNote}>Includes ceremony music</div>
-          )}
-          <div className={styles.rowTime}>{timeRange}</div>
-        </button>
-        {/* 4 — Event. minmax(0,1fr): takes what's left and ellipsizes, so a
-            long name can never push the status columns out of alignment.
-            The manual pill and edit/delete USED to ride along in here, which is
-            exactly why "Birthday party" was rendering as "Birthday …" — this is
-            the only track that flexes, so they ate it. They have their own
-            track now. */}
-        <div className={styles.rowContext}>
-          {/* Mobile rows show the event type; put the venue name under it (club
-              rows already lead with the venue, so no second line there). */}
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-            {context && <span className={styles.rowEventType} style={djType !== 'club' ? { textTransform: 'uppercase' } : undefined}>{context}</span>}
-            {djType !== 'club' && booking.venue_name && (
-              <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.6rem', letterSpacing: '.03em', color: 'var(--gold, #c08a3e)', textTransform: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
-                {booking.venue_name}
-              </span>
-            )}
-          </div>
-          {overlaps && (
-            <span
-              className={styles.overlapPill}
-              title="This booking's time overlaps another booking on the same day"
-            >
-              ⚠
-            </span>
-          )}
-          {overpaid && (
-            <span
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                border: '1px solid #ff6b6b', color: '#ff6b6b', borderRadius: 999,
-                padding: '.08rem .5rem', fontSize: '.66rem', fontWeight: 800,
-                letterSpacing: '.03em', whiteSpace: 'nowrap',
-              }}
-              title={`Overpaid by ${fmtMoney(overpaidBy, booking.currency || 'USD')} — collected ${fmtMoney(totalCollected, booking.currency || 'USD')} of a ${fmtMoney(bookingTotalForFlag, booking.currency || 'USD')} total. A deposit was likely paid after the full balance. Refund or credit the client.`}
-            >
-              ⚠ Overpaid {fmtMoney(overpaidBy, booking.currency || 'USD')}
-            </span>
-          )}
-        </div>
-        {/* 5 — Value. The agreed total, right-aligned on tabular figures.
-            Same fallback chain the details panel uses, so the row and the panel
-            can't quote different numbers. */}
-        <div className={styles.rowValue}>
-          {rowValue != null ? fmtMoney(rowValue, booking.currency || 'USD') : ''}
-        </div>
-        {/*
-          6–9 — THE STATUS COLUMNS: contract · deposit · playlist · invoice.
-
-          display:contents on this wrapper — it generates no box, so the four
-          cells below become direct grid items of .row and land in tracks 6–9.
-          On mobile it becomes a real grid and claims a full-width band. One
-          element, two layouts, no duplicated markup. See .statusStrip.
-
-          FIXED SLOTS, NOT steps.map. `steps` is variable-length — contract only
-          if one is required, deposit only if one exists, invoice only once
-          money has landed. Mapping it laid icons out in whatever order they
-          happened to exist, so a booking with no contract put its DEPOSIT icon
-          exactly where the row above put its CONTRACT icon: same emoji column,
-          different meaning. Nothing lined up down the page.
-
-          Now each stage owns a column whether or not this booking has it. A
-          missing one leaves a dash. That's information too — "no deposit
-          requested" is a real state, and the gap says it.
-        */}
-        {/*
-          NO stopPropagation ON THIS WRAPPER.
-
-          It had one, and `display: contents` is why that was a bug rather than
-          a convenience: contents removes the element's BOX, not the element.
-          It's still in the DOM and clicks still bubble through it — so the
-          handler swallowed every click landing anywhere in the four status
-          columns. Roughly 400px of row: the gaps around the icons, the space
-          under the captions, and every dash. All of it dead.
-
-          The things that genuinely must not toggle the row — the icon buttons —
-          stop their own clicks now, which is where that belongs. Everything
-          else in these columns is inert and should toggle like the rest of the
-          row does.
-        */}
-        <PipelineStrip
-          steps={steps}
-          slots={pipeSlotsFor(djType)}
-          djType={djType}
-          newSlot={newSlot}
-          menuOpenKey={menuOpenKey}
-          setMenuOpenKey={setMenuOpenKey}
-          menuPos={menuPos}
-          setMenuPos={setMenuPos}
-          menuBtnRef={menuBtnRef}
-          openedLabel={openedLabel}
-          actionLocked={actionLocked}
-          overrideLockedFor={overrideLockedFor}
-          onToggleOverride={confirmAndToggleStep}
-        />
-        {/* 10 — Actions. Right corner, its own track, so nothing it contains
-            can squeeze the event name.
-            The pill and the buttons occupy the SAME space: pill at rest,
-            buttons on hover. You don't need telling it's a manual booking at
-            the moment you've reached over to edit it — and showing all three
-            at once cost ~106px and gave the event cell nothing back.
-            Empty on non-manual rows, which is what keeps every chevron on the
-            same x. */}
-        {/* No stopPropagation here either — handleEdit and handleDelete already
-            stop their own, so this only ever blocked the empty part of the
-            cell (and, on a non-manual booking, the entire 84px of it). */}
-        <div className={styles.rowActionsCell}>
-          {/* A cancelled date stays on the list — it's still a fact about this
-              night — but it says so, loudly, before anything else in the cell. */}
-          {isCancelled && (
-            <span
-              title="This booking was cancelled"
-              style={{
-                background: '#c0392b',
-                border: '1px solid #ff7676',
-                color: '#fff',
-                fontWeight: 800,
-                fontSize: '.58rem',
-                letterSpacing: '.06em',
-                padding: '.15rem .4rem',
-                borderRadius: 4,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              CANCELLED
-            </span>
-          )}
-          {booking.is_manual && !isCancelled && (
-            <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
-          )}
-          {/* Edit + delete are handed down by the parent, which only knows about
-              the page-level archive — so they need the cancelled check here. */}
-          {onEdit && !isCancelled && (
-            <span
-              onClick={handleEdit}
-              className={styles.editBtn}
-              role="button"
-              aria-label="Edit manual booking"
-              title="Edit"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </span>
-          )}
-          {onDelete && !isCancelled && (
-            <span
-              onClick={handleDelete}
-              className={styles.deleteBtn}
-              role="button"
-              aria-label="Delete manual booking"
-              title="Delete"
-            >
-              ✕
-            </span>
-          )}
-        </div>
-        {/* 11 — Chevron. Last track, last thing on the row. */}
-        <button
-          type="button"
-          className={styles.rowChevronBtn}
-          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
-        >
-          <svg
-            className={`${styles.rowChevron} ${expanded ? styles.rowChevronOpen : ''}`}
-            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-      </div>
-      {/* Request deposit — the amount, before it goes out, in something you can
-          read. It replaced a window.prompt(), which showed the number with no
-          currency, no context, and no way to see what it was a deposit ON. */}
-      {confirmModal && (
-        <ConfirmDialog confirm={confirmModal} onClose={() => setConfirmModal(null)} />
-      )}
-      {reqOpen && (
-        <RequestPaymentModal
-          reqKind={reqKind}
-          reqAmount={reqAmount}
-          setReqAmount={setReqAmount}
-          reqErr={reqErr}
-          setReqErr={setReqErr}
-          reqBusy={reqBusy}
-          reqMethods={reqMethods}
-          reqCardReady={reqCardReady}
-          suggestedDeposit={suggestedDeposit}
-          currency={booking.currency || 'USD'}
-          depositPct={booking.deposit_pct ?? null}
-          onClose={() => setReqOpen(false)}
-          onEditMethods={roleCanEditPaymentOptions ? () => setMethodsOpen(true) : undefined}
-          onSubmit={() => void submitRequest()}
-        />
-      )}
-
-      {/* Payment options — the real editor, not a copy of it. Same component
-          as Booking Settings, so a rail added here is added everywhere and
-          there's one place for this logic to be wrong. */}
-      {methodsOpen && (
-        <PaymentMethodsModal userId={userId} ownerHint={roleCanEditPaymentOptions} onClose={() => setMethodsOpen(false)} />
-      )}
-
-      {expanded && (
-        <div className={styles.detailsPanelTop}>
-          <PipelineHero
-            steps={steps}
-            slots={pipeSlotsFor(djType)}
-            djType={djType}
-            openedLabel={openedLabel}
-            actionLocked={actionLocked}
-            overrideLockedFor={overrideLockedFor}
-            onToggleOverride={confirmAndToggleStep}
-          />
-        </div>
-      )}
-      {expanded && (
-        <BookingDetails
-          booking={booking}
-          djType={djType}
-          userId={userId}
-          clubDepositPct={clubDepositPct}
-          taxPct={taxPct}
-          djZip={djZip} djCity={djCity} djState={djState}
-          flyerUrl={flyerUrl}
-          onFlyerChange={setFlyerUrl}
-          onContractSigned={() => setSignedOverride(true)}
-          archive={archive}
-          contractAction={contractAction}
-          onContractActionHandled={() => setContractAction(null)}
-          payments={payments}
-          onPaymentsChange={onPaymentsChange}
-          onMutated={onMutated}
-          canRequestDeposit={canRequestDeposit && roleCanMoney}
-          canManageMoney={roleCanMoney}
-          canManageContract={roleCanContract}
-          hasHostContact={hasHostContact}
-          onEdit={onAddHost || onEdit}
-          isOwner={actingRole === 'owner'}
-        />
-      )}
-
-      {/* ── Cancellation ────────────────────────────────────────────────
-          Only inside an expanded row, never in the archive (a night that
-          already happened can't be called off), never on a booking that's
-          already cancelled, and never on a manual add-in — there's no second
-          party to ask. Deliberately the last thing in the panel and styled
-          quietly: it should be findable, not tempting. */}
-      {expanded && !archive && !booking.is_manual && booking.status !== 'cancelled' && (
-        <div
-          style={{
-            padding: '.9rem 1.1rem',
-            borderTop: '1px solid rgba(255,255,255,.08)',
-            background: 'rgba(255,255,255,.015)',
-          }}
-        >
-          {cancelErr && (
-            <div style={{ color: '#ff7676', fontSize: '.75rem', fontWeight: 600, marginBottom: '.5rem' }}>
-              {cancelErr}
-            </div>
-          )}
-
-          {/* Someone asked, and it's still open. Who asked decides what the DJ
-              sees: their own request is a waiting room, the other side's is a
-              decision. */}
-          {cancelState.status === 'requested' ? (
-            cancelState.requestedBy === 'dj' ? (
-              <div style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5 }}>
-                <strong style={{ color: '#ffb020' }}>Cancellation requested by you.</strong>{' '}
-                Waiting on {booking.requester_name || 'the host'} to accept or decline.
-                This booking is still on until they answer.
-                {cancelState.reason && (
-                  <div style={{ marginTop: '.4rem', whiteSpace: 'pre-wrap' }}>
-                    Your reason: {cancelState.reason}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: '.78rem', color: 'var(--white,#fff)', fontWeight: 700, marginBottom: '.3rem' }}>
-                  {booking.requester_name || 'The host'} has asked to cancel this booking.
-                </div>
-                <div style={{ fontSize: '.75rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5, marginBottom: '.6rem' }}>
-                  {cancelState.reason ? (
-                    <>Reason given: <span style={{ whiteSpace: 'pre-wrap' }}>{cancelState.reason}</span></>
-                  ) : (
-                    <>
-                      No reason was given.
-                      {/* Only offer the phone when we actually have one. */}
-                      {booking.phone
-                        ? <> If you&apos;re unsure why, call them on <a href={`tel:${String(booking.phone).replace(/[^\d+]/g, '')}`} style={{ color: NEON, fontWeight: 700 }}>{booking.phone}</a> before you answer.</>
-                        : <> If you&apos;re unsure why, reach out before you answer.</>}
-                    </>
-                  )}
-                </div>
-                {!cancelConfirming ? (
-                  <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      disabled={cancelBusy}
-                      onClick={() => setCancelConfirming(true)}
-                      style={{ background: 'transparent', border: '1px solid rgba(255,118,118,.5)', color: '#ff7676', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                      Accept — cancel booking
-                    </button>
-                    <button
-                      type="button"
-                      disabled={cancelBusy}
-                      onClick={async () => {
-                        const r = await postCancel({ action: 'decline' });
-                        if (r) {
-                          setCancelState((s) => ({ ...s, status: 'declined' }));
-                          setDeclinedJustNow(true);
-                        }
-                      }}
-                      style={{ background: 'transparent', border: `1px solid ${NEON}`, color: NEON, fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                      {cancelBusy ? 'Saving…' : 'Decline — keep booking'}
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ fontSize: '.75rem', color: 'var(--white,#fff)', fontWeight: 700, marginBottom: '.5rem' }}>
-                      Are you sure? This cancels the booking.
-                    </div>
-                    <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        disabled={cancelBusy}
-                        onClick={async () => {
-                          const r = await postCancel({ action: 'accept' });
-                          if (r) setCancelState((s) => ({ ...s, status: 'accepted' }));
-                        }}
-                        style={{ background: '#c0392b', border: 'none', color: '#fff', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
-                      >
-                        {cancelBusy ? 'Cancelling…' : 'Yes, cancel it'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={cancelBusy}
-                        onClick={() => setCancelConfirming(false)}
-                        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
-                      >
-                        Go back
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          ) : cancelState.status === 'accepted' ? (
-            <div style={{ fontSize: '.78rem', color: '#ff7676', fontWeight: 700 }}>
-              This booking has been cancelled.
-            </div>
-          ) : declinedJustNow || cancelState.status === 'declined' ? (
-            <div style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5 }}>
-              <strong style={{ color: NEON }}>Cancellation declined — this booking still stands.</strong>
-              {booking.phone ? (
-                <> The next step is a conversation, not the app. Call {booking.requester_name || 'the host'} on{' '}
-                  <a href={`tel:${String(booking.phone).replace(/[^\d+]/g, '')}`} style={{ color: NEON, fontWeight: 700 }}>{booking.phone}</a>.
-                </>
-              ) : (
-                <> The next step is a conversation, not the app — reach out to {booking.requester_name || 'the host'} directly.</>
-              )}
-            </div>
-          ) : !cancelFormOpen ? (
-            /* Bottom-right of the panel, in an outlined box rather than a bare
-               underlined link — findable, but sitting apart from the actions
-               a DJ actually wants to click. OWNER-ONLY: teammates don't get to
-               start a cancellation. */
-            roleCanRequestCancel ? (
-              <button
-                type="button"
-                onClick={() => setCancelFormOpen(true)}
-                style={{
-                  display: 'block',
-                  marginLeft: 'auto',
-                  background: 'transparent',
-                  border: '1px solid rgba(255,255,255,.18)',
-                  borderRadius: 6,
-                  padding: '.4rem .7rem',
-                  color: 'var(--muted,#8a8aa0)',
-                  fontSize: '.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Request cancellation
-              </button>
-            ) : null
-          ) : (
-            <div>
-              <div style={{ fontSize: '.75rem', color: 'var(--muted,#8a8aa0)', lineHeight: 1.5, marginBottom: '.5rem' }}>
-                {booking.requester_name || 'The host'} will be emailed and can accept or
-                decline. The booking stays on until they answer.
-              </div>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Reason (optional) — telling them why saves a phone call"
-                rows={2}
-                style={{ width: '100%', background: 'rgba(0,0,0,.25)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6, color: 'var(--white,#fff)', fontSize: '.78rem', padding: '.5rem .6rem', marginBottom: '.55rem', resize: 'vertical', fontFamily: 'inherit' }}
-              />
-              <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  disabled={cancelBusy}
-                  onClick={async () => {
-                    const r = await postCancel({ action: 'request', reason: cancelReason });
-                    if (r) {
-                      setCancelState({ status: 'requested', requestedBy: 'dj', reason: cancelReason.trim() || null });
-                      setCancelFormOpen(false);
-                    }
-                  }}
-                  style={{ background: 'transparent', border: '1px solid rgba(255,118,118,.5)', color: '#ff7676', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
-                >
-                  {cancelBusy ? 'Sending…' : 'Send cancellation request'}
-                </button>
-                <button
-                  type="button"
-                  disabled={cancelBusy}
-                  onClick={() => { setCancelFormOpen(false); setCancelReason(''); setCancelErr(null); }}
-                  style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
-                >
-                  Never mind
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {riderChooserOpen && (
-        <RiderSendModal bookingId={booking.id} onClose={() => setRiderChooserOpen(false)} />
-      )}
-      {sendOpen && (
-        <PlannerSendModal
-          bookingId={booking.id}
-          onClose={() => setSendOpen(false)}
-          onSent={(r) => {
-            setSendOpen(false);
-            onPlannerChange(booking.id, {
-              id: r.id,
-              status: r.status,
-              // A fresh planner is prefilled, so it is NOT 0 answered — but the
-              // count lives on the server. 0/0 makes the fraction fall back to
-              // "Pending" (see the caption), which is honest until the next
-              // load rather than a number invented here.
-              answered: 0,
-              total: 0,
-            });
-            // Created but not emailed (dead Resend key). The link works; say so.
-            if (r.warning) setPlannerErr(r.warning);
-            // Refresh so the log's "Planner & Playlist sent" entry appears now.
-            onMutated?.();
-          }}
-        />
-      )}
-    </div>
-  );
 }
 
+/* ── Row content cells (used by the new clickable .row in expand section) ── */
+/* Stacked date pill: big day number with day-of-week + month stacked
+   beside it. Mirrors the public profile event-list aesthetic. */
+/* The date pill — kept, because it's the thing you look for first and the one
+   part of the old row that was working. Retyped in Inter: Bebas is a condensed
+   poster face with one weight, and a poster face inside a data row is most of
+   what read as amateur. It stays the loudest element on the line. */
+.rowDate {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.dayNum {
+  font-family: var(--font-inter);
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: -.035em;
+  color: var(--neon);
+  line-height: 1;
+}
+.dayMeta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+/* Both DOW and MONTH are muted now. The old .dow was neon on top of a neon day
+   number — two greens stacked, so neither meant anything. The number carries
+   the colour; these two are its footnote. */
+.dow,
+.mo {
+  font-family: var(--font-inter);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #75758d;
+}
+/* Inter, not Space Mono. Space Mono is a display monospace — the quirks that
+   make it good on a poster (that curly $, the wide 2) read as amateur at 13px
+   in a data column. Inter's tabular figures, inherited from .row, do the
+   alignment job the mono was there for. */
+.rowTime {
+  font-family: var(--font-inter);
+  font-size: 14.5px;
+  color: #9d9db5;
+  white-space: nowrap;
+}
+/* .rowTimeWrap is gone — it wrapped the cocktail note above the time inside
+   the old nested toggle grid. .rowToggle IS that column now, so the wrapper
+   had nothing left to wrap. */
+/* "INCLUDES COCKTAIL HOUR" — the full phrase, no abbreviation. 9px with tight
+   tracking is what makes 22 characters fit the 142px time track; the time
+   column took the 10px it needed off the four status columns, which had it
+   spare. If this ever has to say more, the column moves, not the words. */
+.rowCocktailNote {
+  font-family: var(--font-inter);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+  color: #4ddcb4;
+  white-space: nowrap;
+}
+/* The event name — its own grid track now, so it can't push anything.
+   The pipe separator that used to sit before it is gone: a column header says
+   "Event", and a divider between two labelled columns is just debris. */
+.rowContext {
+  font-size: 16px;
+  font-weight: 450;
+  color: #f2f2f7;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+/* Event type is no longer a separate face at a separate size — it IS the
+   event cell. Bebas at 14px made "SWEET 16 / QUINCEAÑERA" a movie title
+   sitting in a table.
+   min-width: 0 is what lets it actually ellipsize. A flex item's default
+   min-width is auto, i.e. "never shrink below your longest word" — without
+   this the name would refuse to shrink and would instead push the pill and the
+   edit/delete buttons out of the cell. */
+.rowEventType {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Oswald: a condensed display face so long event names ("QUINCEAÑERA
+     CELEBRATION") fit on one line without shrinking, and reads like an event
+     marquee rather than body text. Only the mobile (uppercase) event type gets
+     it — the club venue name keeps the inherited Inter. */
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: .02em;
+}
+/* The overlap warning stays in the event cell and never shrinks — the name
+   gives way first. It's about the event, and it's one glyph. */
+.rowContext .overlapPill {
+  flex-shrink: 0;
+}
 
+/*
+ * THE ACTIONS CELL — second-to-last track, right-aligned.
+ *
+ * The MANUAL pill and the edit/delete buttons swap places in the SAME 84px:
+ * at rest you see the pill, on hover you see the buttons. Never both.
+ *
+ * That's deliberate, not a trick to save space. The pill is a fact about the
+ * booking ("you typed this in yourself") and the buttons are things you do to
+ * it — you don't need to be told it's manual at the moment you've reached over
+ * to edit it. Showing all three at once needed ~106px and gave the event cell
+ * nothing back.
+ *
+ * Non-manual rows leave the cell empty. That's the track doing its job: every
+ * row's chevron lands at the same x whether or not it has actions.
+ */
+.rowActionsCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+/* At rest: the pill. On hover: gone, and the buttons take its place. */
+.row:hover .rowActionsCell .manualPill { display: none; }
+.rowActionsCell .editBtn,
+.rowActionsCell .deleteBtn { display: none; }
+.row:hover .rowActionsCell .editBtn,
+.row:hover .rowActionsCell .deleteBtn { display: inline-flex; }
+/* The agreed total. Right-aligned so the dollar amounts stack on their commas;
+   tabular figures are inherited from .row, which is what makes that work.
+   Reads the same fallback chain the details panel already uses — the tax-
+   inclusive snapshot first, then the agreed rate. */
+.rowValue {
+  font-size: 13px;
+  color: var(--neon, #00e0a4);
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  /* The only thing separating "$544.38" from the Contract icon was the 13px
+     grid gap — and because this cell is right-aligned, the number's last digit
+     sat right on the edge of it. Money and a status icon aren't related and
+     shouldn't touch. The track grew by the same 14px, so this is pure spacing
+     and costs the number nothing. */
+  padding-right: 14px;
+}
+.overlapPill {
+  margin-left: .6rem;
+  color: var(--amber, #ffb347);
+  font-size: .8rem;
+}
+/* Retyped in Inter with the rest of the row — Space Mono at .55rem was one of
+   the things reading as amateur, and it's the only mono left on the line.
+   Sized to fit the 84px actions track alongside nothing else. */
+.manualPill {
+  font-family: var(--font-inter);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border: 1px solid rgba(247, 201, 72, .35);
+  background: rgba(247, 201, 72, .08);
+  color: var(--amber, #f7c948);
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Inline pill shown next to the booking context when the booking type
+   doesn't match the DJ's registered type (e.g. a club/bar booking on a
+   mobile DJ's account). */
+.typeMismatchPill {
+  display: inline-block;
+  margin-left: .5rem;
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .2rem .45rem;
+  border: 1px solid rgba(247, 201, 72, .45);
+  background: rgba(247, 201, 72, .1);
+  color: var(--amber, #f7c948);
+  border-radius: 4px;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Yellow callout shown at the top of the expanded details panel when the
+   booking type doesn't match the DJ's profile type. Explains that the
+   booking is still valid but won't appear on the public profile. */
+.typeMismatchNote {
+  margin: 0 0 1rem;
+  padding: .65rem .85rem;
+  background: rgba(247, 201, 72, .08);
+  border-left: 3px solid var(--amber, #f7c948);
+  border-radius: 4px;
+  color: var(--white);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.typeMismatchNote strong {
+  color: var(--amber, #f7c948);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.modal {
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, .6);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: .06em;
+  color: var(--neon);
+  margin: 0;
+}
+.modalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 .3rem;
+}
+.modalClose:hover { color: var(--white); }
+
+.modalBody {
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+/* Venue Name (flexible) + Rate (narrow, fixed) on one line. The venue
+   field shrinks to fill the remaining width rather than wrapping. */
+.venueRateRow {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+}
+.venueRateRow > label:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.venueRateRow > label:last-child {
+  flex: 0 0 auto;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+.fieldRow3 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: .45rem;
+}
+.fieldRow3 > .field {
+  min-width: 0;
+}
+.fieldHint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-top: 4px;
+  font-family: inherit;
+}
+/* Snug, small note directly under the rate box. */
+.rateNote {
+  display: block;
+  margin-top: .25rem;
+  font-size: .62rem;
+  line-height: 1.3;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.fieldRow3 .input,
+.fieldRow3 .dateInput,
+.fieldRow3 .dateWrap {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 420px) {
+  .fieldRow3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fieldRow3 > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+.fieldLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+/* Address row — input grows; country chip takes its natural width. */
+.addrRow {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+}
+.addrRow .addrWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.countrySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 0 .55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 88px;
+  flex-shrink: 0;
+}
+.countrySelect:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.input {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .42rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+}
+/* Native <select> renders taller than <input> for the same padding;
+   the explicit height + border-box above normalizes them. This keeps
+   vertical centering of the select's text. */
+select.input {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Date field: wrap the native input in a clickable box so any click on
+   the field surface opens the system date picker. The native input is
+   stretched to fill the wrapper so clicks don't fall through. */
+.dateWrap {
+  position: relative;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  height: 36px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+.dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
+.dateWrap:focus-within { border-color: var(--neon); }
+.dateInput {
+  background: transparent;
+  border: none;
+  padding: .42rem .8rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+  width: 100%;
+  cursor: pointer;
+  /* On webkit, the native picker icon takes a small area on the right; we
+     want the entire input area to be clickable, so suppress the icon styling. */
+  appearance: none;
+}
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(1);
+}
+.datePlaceholder {
+  position: absolute;
+  left: .8rem;
+  pointer-events: none;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* Address autocomplete dropdown — same UX as the booking forms. */
+.addrWrap { position: relative; }
+.addrSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.addrSuggestion {
+  padding: .65rem .85rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.addrSuggestion:last-child { border-bottom: none; }
+.addrSuggestion:hover {
+  background: var(--deep);
+  color: var(--neon);
+}
+.errorBox {
+  padding: .65rem .8rem;
+  border-radius: 6px;
+  background: rgba(255, 85, 119, .08);
+  border: 1px solid rgba(255, 85, 119, .4);
+  color: var(--error, #ff5577);
+  font-size: .82rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: .65rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--deep);
+}
+.cancelBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .65rem 1rem;
+  cursor: pointer;
+}
+.cancelBtn:hover { color: var(--white); border-color: rgba(255, 255, 255, .25); }
+.saveBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--neon);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: .65rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.saveBtn:hover:not(:disabled) { background: #00d4a9; }
+.saveBtn:disabled { opacity: .6; cursor: wait; }
+
+/* ── Mobile (header / addBtn only — row mobile rules are below in the
+       expand block) ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .header { flex-direction: column; align-items: stretch; }
+  .addBtn { width: 100%; }
+  /* Sort options become a dropdown on mobile: the button group wraps onto two
+     rows on a narrow screen, so swap it for a native select. */
+  .sortBtns { display: none; }
+  .sortSelect { display: block; }
+}
+
+/* ── Inline expand on click ────────────────────────────────────────── */
+/* Wrap around each row + its (conditional) details panel. Lets us
+   reset the row's border-radius so the panel reads as joined. */
+/* No radius: a table row has no corners. The radius, the 1px border and the
+   4px gap between rows were the three things that made this read as cards. */
+.rowWrap {
+  overflow: hidden;
+}
+
+/*
+ * ── THE ELEVATION LADDER ────────────────────────────────────────────────
+ *
+ * The page body is --black: #000000. Pure black. Against that, the expanded
+ * row was rgba(255,255,255,.05) — which composites to #0d0d0d — and the details
+ * panel was --deep: #0a0a10. So the page, the open row and its panel were
+ * #000000 / #0d0d0d / #0a0a10: three surfaces within four percent lightness of
+ * each other. They weren't blending by accident, they were the same colour.
+ *
+ * Four distinct steps now, each one clearly above the last:
+ *
+ *   page             #000000   --black
+ *   row (hover)      #0a0a0a   a hint, so hover reads without shouting
+ *   row (expanded)   #16161f   the HEADER of the open thing — the lightest
+ *   panel            #0d0d14   above the page, below its own header
+ *
+ * The header is deliberately lighter than the body it heads. That's what makes
+ * it read as a header rather than as more page.
+ *
+ * The neon left edge binds the two together: without it an expanded row and its
+ * panel are just two stacked rectangles, and in a flush table with no gaps
+ * there's nothing else to say they're one unit — or which row it belongs to.
+ */
+.rowWrapExpanded {
+  box-shadow: inset 3px 0 0 var(--neon);
+}
+
+/*
+ * The clickable summary row — one record in a table.
+ *
+ * Was: display:flex, a card with its own border, an 8px radius, a --card fill
+ * and a gap to the next one. Every row was a little box, which is what made a
+ * page of them look like a pile rather than a list, and left the status strip
+ * floating in whatever space the flex run happened to leave.
+ *
+ * Now: a grid on the shared --row-cols track list, flush against its
+ * neighbours, divided by a single hairline. Nothing is positioned by "whatever
+ * is left over" any more — every cell has a named track and lands at the same
+ * x on every row.
+ *
+ * Height is fixed at 62px rather than derived from padding: the caption line
+ * under the status icons only exists on some cells, and left to itself a row
+ * with a caption would stand taller than one without.
+ */
+.row {
+  display: grid;
+  grid-template-columns: var(--row-cols);
+  gap: 13px;
+  align-items: center;
+  height: 66px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 0;
+  width: 100%;
+  font-family: var(--font-inter);
+  /* Digits all one width. Without this a column of dates and dollar amounts
+     jitters, because a 1 is narrower than a 4 in proportional Inter — it is
+     most of what separates "looks like software" from "looks like a webpage". */
+  font-variant-numeric: tabular-nums;
+  transition: background .12s;
+}
+.row:hover {
+  background: rgba(255, 255, 255, .04);
+}
+/*
+ * Expanded = the header of the open block, and the LIGHTEST surface on screen.
+ * It was rgba(255,255,255,.05) — #0d0d0d against a #000000 page, a 5% lift that
+ * you could not see. A solid value, not an alpha: alphas over pure black are
+ * where the whole no-contrast problem started, and this needs to be a step, not
+ * a hint.
+ */
+.rowWrapExpanded .row,
+.rowWrapExpanded .row:hover {
+  background: #16161f;
+  border-top-color: transparent;
+}
+/*
+ * .rowToggle is now just the TIME cell.
+ *
+ * It used to be a nested 2-column grid holding time AND event, sized
+ * flex: 1 1 auto — which meant it ate every spare pixel on the row, and that
+ * is what stranded the status strip against the far right edge. The strip
+ * wasn't positioned there; it was pushed there.
+ *
+ * Time and event are now separate tracks in .row's own grid, so nothing nests
+ * and nothing grows. Everything left here is the button reset — it still
+ * toggles the row, so it still has to look like the row and not like a button.
+ */
+.rowToggle {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: .15rem;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+/* Chevron button at the end of the row. */
+.rowChevronBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  /* Last thing on the row, always. DOM order still has it before the
+     pipeline; order puts it after without moving the markup, which matters
+     because mobile places everything by named grid area and would ignore a
+     reshuffle anyway. */
+  order: 4;
+}
+
+/* ── Status cells: contract · deposit · playlist · invoice ──────────────
+ *
+ * THESE RULES MUST STAY ABOVE THE @media (max-width: 600px) BLOCK.
+ * They lived below it once and that was a bug: a media query adds no
+ * specificity, so two rules of equal weight are settled by source order alone
+ * — the desktop one, being last, silently beat the mobile override it was
+ * meant to defer to. It looked fine only by luck. The check at the bottom of
+ * the build script exists because of that.
+ *
+ * WHAT'S GONE: the Booked step. It was green on every row in the list — a
+ * column that never varies is not information, and it was paying for a quarter
+ * of the width. If it's on this page, it's booked.
+ *
+ * WHAT'S GONE: the connectors. They sold the four icons as a sequence. The
+ * column headers do that now, and a connector into an empty column had nothing
+ * to connect to — it drew a dash hanging off nothing.
+ */
+
+/*
+ * The four status cells need to be four separate grid items on desktop (one
+ * per track) and one full-width band on mobile. Those are different parents,
+ * and an element can't have two.
+ *
+ * display: contents is the way out: the wrapper stops generating a box of its
+ * own and its children are promoted to grid items of .row, exactly as if the
+ * wrapper weren't in the markup. On mobile it becomes a real grid again and
+ * claims the "stat" area. One element, both jobs, no duplicated JSX.
+ */
+.statusStrip {
+  display: contents;
+}
+
+/* One status column. Fixed-width by its grid track, so a booking with no
+   deposit leaves its column empty rather than letting the next icon slide
+   left — that raggedness is what made the list unscannable. */
+.stCell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+/* Per-icon stage name shown ABOVE the icon on the mobile framed cards. Hidden
+   on desktop, which already carries column headers across the whole table. */
+.stLabel {
+  display: none;
+}
+
+/* New-activity highlight. A tight neon box that hugs JUST the stage ICON that
+   the host acted on (last_activity_slot) — not the whole wide column cell — so
+   the DJ sees exactly WHAT changed. Small padding gives the icon breathing
+   room; box-shadow draws the ring + glow. */
+/* A clean, tight neon box hugging just the stage ICON the host acted on. In the
+   New-activity view a boxed stage IS the "what changed" signal, so no text tag
+   is needed. margin-left keeps the neon edge off the Value column. */
+/* No box — just a NEW chip on the stage icon the host acted on. It anchors to
+   the icon wrapper (position:relative) and sits at the top-right corner. */
+.stIconBox { position: relative; }
+.stNewTag {
+  position: absolute;
+  top: -1px;
+  right: -12px;
+  z-index: 3;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--neon, #00f5c4);
+  color: #050507;
+  font-family: 'Space Mono', monospace;
+  font-size: .52rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 1.5;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* The clickable unit: icon + chevron on top, caption underneath.
+   A <button>, not a div — this opens a menu, and it should be reachable by
+   keyboard and announce itself as pressable. */
+.stBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 3px 4px 2px 2px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.stBtn:hover { background: rgba(255, 255, 255, .07); }
+.stBtnOpen {
+  background: rgba(255, 255, 255, .09);
+  border-color: rgba(255, 255, 255, .18);
+}
+.stTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The stage icon. 36px with room around it — the old 28px square was carrying
+   three jobs at once (which stage, what state, is it clickable) under a
+   grayscale filter with a badge on the corner and a label beneath. */
+.stIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  line-height: 1;
+  /* The stage icon now sits inside a tidy circular node. The ring colour is set
+     per-state inline by PipelineStrip (teal = done, amber = your move, grey =
+     later); border-box keeps the outer size fixed so columns stay aligned. */
+  border-radius: 50%;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+/* .stIconOff (grayscale + 28% opacity for any not-done step) is GONE.
+   It made a contract that had been sent and was sitting with the client look
+   identical to one nobody had touched — both drained and dim — while the
+   caption underneath said "Sent". The picture contradicted the word.
+   The icon now only ever answers "which stage is this". Done is the badge,
+   everything else is the caption. */
+
+/* Done. An SVG stroke, not a ✓ character: at 19px the text glyph renders
+   soft, and differently on every OS. */
+/* 16px, down from 19. It's a confirmation, not an announcement — at 19 it was
+   competing with the emoji it sits on rather than annotating it.
+   The ring is the ROW's background, not --card: it's a knockout, so it has to
+   match whatever is actually behind it or it draws a grey halo. #16161f is the
+   expanded-row surface; on a collapsed row the page is black and the ring
+   reads as a dark outline either way. */
+.stBadge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--neon, #00e0a4);
+  border: 2px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stBadge svg { width: 8px; height: 8px; }
+.rowWrapExpanded .stBadge { border-color: #16161f; }
+
+/* In flight — out there, waiting on someone. The amber node RING now carries
+   this signal (set inline by PipelineStrip), so the old corner dot is hidden to
+   avoid doubling up. Kept in the DOM/markup untouched; only not shown. */
+.stDot {
+  display: none;
+  position: absolute;
+  right: -1px;
+  bottom: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--amber, #eaa94a);
+  border: 2.5px solid var(--card, #14141f);
+}
+
+.stChev {
+  color: #6c6c86;
+  font-size: 11px;
+}
+
+/*
+ * The caption — "Sent", "Requested". Only for states the icon alone can't
+ * distinguish: a contract that's been sent but not signed looks exactly like
+ * one that's signed if all you have is a dot.
+ *
+ * Fixed 36px wide and centred, matching the icon above it, so "Sent" (4 chars)
+ * and "Requested" (9) share the same axis instead of both starting at the left
+ * edge and looking accidental. Overflows its box on purpose — the 100px track
+ * has the room.
+ *
+ * The height is reserved even when the caption is EMPTY. Otherwise a cell with
+ * text stands taller than one without and the icons stop lining up across the
+ * row, which is the whole thing this page was rebuilt for.
+ */
+/*
+ * min-width, NOT width: 36px.
+ *
+ * A fixed 36px box with centred nowrap text overflows equally both ways. That
+ * was invisible while the longest caption was "Not sent" (~44px, 4px of spill
+ * each side). "$544.38/$544.38" is ~78px — it would have hung 21px off the LEFT
+ * edge, into the Playlist column next door.
+ *
+ * min-width keeps short captions ("Sent", "Pending") centred on the 36px icon
+ * above them, which is the alignment that took three rounds to get right. Long
+ * ones grow the button instead and centre on that — still under their own icon,
+ * still inside their own 96px track, and nothing lands in a neighbour's column.
+ *
+ * Colour is applied inline, per step — neon when settled, amber when it's your
+ * move, grey when nothing can be done yet. See capColor in
+ * UpcomingBookingsClient.
+ */
+.stCap {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  line-height: 1;
+  height: 10px;
+  min-width: 36px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Nothing to do here and nothing to open — no contract required, no deposit
+   set. A dash, not a dimmed icon: a dimmed icon implies a stage that exists
+   and hasn't been done. */
+.stDash {
+  color: #3a3a4c;
+  font-size: 15px;
+  padding-left: 12px;
+  /* Match the icon ring's box so the dash sits on the same line as the
+     neighboring stage icons instead of floating above them. */
+  height: 32px;
+  line-height: 32px;
+  margin-bottom: 12px;
+}
+
+/* Down chevron at the end of the row; rotates 180° when expanded. */
+.rowChevron {
+  color: var(--muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.rowChevronOpen { transform: rotate(180deg); }
+
+/* The details panel that drops down below the row when expanded. */
+/*
+ * The panel body. --deep (#0a0a10) against a #000000 page was a 4% lift — it
+ * read as "the page continues", not as a panel.
+ *
+ * The border and `border-radius: 0 0 8px 8px` were vestigial: they existed to
+ * join the bottom of a rounded CARD. There is no card any more, so the rounded
+ * bottom corners were floating under a square row, and `border-top: none` was
+ * removing a join to an edge that no longer exists.
+ *
+ * Now: a real surface, square, with one hairline separating it from its own
+ * header. The neon left edge comes from .rowWrapExpanded and runs through both.
+ */
+/* Top slice of the expanded panel — holds the pipeline hero. Owns the border
+   that separates the open panel from the row above; the details panel below it
+   no longer repeats that border so the two read as one continuous surface. */
+.detailsPanelTop {
+  background: #0d0d14;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  padding: 1.2rem 1.25rem 0 1.5rem;
+}
+.detailsPanel {
+  background: #0d0d14;
+  border: none;
+  border-radius: 0;
+  padding: 0 1.25rem 1.4rem 1.5rem;
+}
+.detailsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+/* Pipeline hero — the "Booking progress" bar at the top of the expanded card. */
+.heroWrap {
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(34, 227, 173, .05), transparent);
+  margin-bottom: 14px;
+}
+.heroHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.heroTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  font-size: 12.5px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #f1f2f6;
+}
+.heroBar {
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(100deg, #22e3ad, #31d0ff);
+}
+.heroStep { font-size: 11px; font-weight: 700; color: var(--neon, #22e3ad); }
+.heroPipe { display: flex; padding: 16px 16px 14px; }
+.heroStepCell { flex: 1 1 0; min-width: 0; position: relative; padding-right: 8px; }
+.heroConn { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.heroNode {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid #3a3a4c;
+  background: #0b0b12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.heroNode svg { width: 10px; height: 10px; }
+.heroNodeDone { border-color: var(--neon, #22e3ad); background: var(--neon, #22e3ad); }
+.heroNodeNow { border-color: var(--amber, #eaa94a); box-shadow: 0 0 0 4px rgba(234, 169, 74, .14); }
+.heroNodeNow::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--amber, #eaa94a); }
+.heroLine { flex: 1; height: 2px; background: rgba(255, 255, 255, .12); border-radius: 2px; }
+.heroLineDone { background: var(--neon, #22e3ad); }
+.heroName {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f1f2f6;
+  cursor: pointer;
+}
+.heroCaret { color: #7d7d92; }
+.heroCap { display: block; font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Grouped detail cards — Event / Venue / Host / Pricing. */
+.detailsSections {
+  display: flex;
+  flex-direction: column;
+}
+.detailSection {
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  background: #0a0a0f;
+  padding: 14px 16px 8px;
+  margin-bottom: 12px;
+}
+.detailSectionPricing {
+  background: linear-gradient(180deg, rgba(34, 227, 173, .06), transparent);
+  border-color: rgba(255, 255, 255, .16);
+}
+/* Gradient chip header stamped on each section. */
+.detailChip {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  background: linear-gradient(100deg, #22e3ad, #31d0ff);
+  box-shadow: 0 3px 14px rgba(34, 227, 173, .22);
+}
+.detailChip span {
+  font-weight: 800;
+  font-size: 11.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #04241b;
+}
+/* First data row sits right under the chip — no divider above it. */
+.detailChip + .detailPairRow { border-top: none; }
+
+/* Pricing receipt: label left, amount right; total emphasised. */
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 4px 0;
+}
+.priceKey { color: var(--muted); font-size: .88rem; }
+.priceVal {
+  color: var(--white);
+  font-size: .9rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.priceRowTotal {
+  border-top: 1px solid rgba(255, 255, 255, .16);
+  margin-top: 5px;
+  padding-top: 9px;
+}
+.priceRowTotal .priceKey { color: var(--white); font-weight: 700; }
+.priceRowTotal .priceVal { font-size: 1rem; font-weight: 700; }
+/* Deposit + balance, set apart in their own shaded band. */
+.paySched {
+  margin-top: 9px;
+  padding: 10px 12px 5px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid rgba(255, 255, 255, .07);
+}
+.schedLbl {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #7d7d92;
+  margin-bottom: 4px;
+}
+/* Each label/value pair-row sits on its own line separated by a hairline, so
+   the panel reads like a tidy spec sheet instead of one cramped block. */
+.detailPairRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  padding: .7rem 0;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+}
+.detailPairRow:first-child { border-top: none; }
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  min-width: 0;
+}
+.detailLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #7d7d92;
+}
+.detailValue {
+  margin: 0;
+  font-size: .95rem;
+  color: var(--white);
+  word-break: break-word;
+}
+.addressLink {
+  color: var(--neon);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 245, 196, .35);
+  text-underline-offset: 3px;
+}
+.addressLink:hover {
+  text-decoration-color: var(--neon);
+}
+.detailLongBlock {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.bookedOnFooter {
+  margin-top: 1rem;
+  text-align: right;
+}
+.bookedOnLabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bookedOnValue {
+  font-family: 'Space Mono', monospace;
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* Package block — the booked package pulled out as a highlighted teal-tinted
+   panel so it reads as a distinct thing, not just another notes paragraph. */
+.packageBlock {
+  margin-top: 1rem;
+  padding: .8rem .95rem .9rem;
+  border-radius: 12px;
+  background: rgba(34, 227, 173, .07);
+  border: 1px solid rgba(34, 227, 173, .22);
+}
+.packageBlockLabel {
+  color: var(--neon, #22e3ad);
+}
+.packageName {
+  margin-top: .35rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: .03em;
+  color: var(--white);
+}
+.cocktailHighlight {
+  color: var(--neon);
+}
+.detailLongValue {
+  margin-top: .35rem;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--white);
+  word-break: break-word;
+}
+.detailLongValue :global(p) { margin: 0 0 .5rem; }
+.detailLongValue :global(p:last-child) { margin-bottom: 0; }
+.detailLongValue :global(ul),
+.detailLongValue :global(ol) { margin: 0 0 .5rem; padding-left: 1.5rem; }
+.detailLongValue :global(ul:last-child),
+.detailLongValue :global(ol:last-child) { margin-bottom: 0; }
+.detailLongValue :global(li) { margin: 0 0 .25rem; }
+.notesFeedWrap {
+  margin-top: 1rem;
+}
+
+/* Delete button inside the clickable row — needs to look like a button
+   even though it's a <span> (avoid nesting button-in-button). */
+.deleteBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .5);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+  user-select: none;
+  order: 3;
+}
+.deleteBtn:hover {
+  color: var(--error, #ff5577);
+  border-color: rgba(255, 85, 119, .5);
+  background: rgba(255, 85, 119, .08);
+}
+
+/* Edit pencil button — same shape as delete, neon hover color. */
+.editBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .5);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+  user-select: none;
+  order: 3;
+}
+.editBtn:hover {
+  color: var(--neon);
+  border-color: rgba(0, 245, 196, .5);
+  background: rgba(0, 245, 196, .08);
+}
+
+/* Mobile — collapse details to single column. */
+@media (max-width: 600px) {
+  .detailPairRow {
+    grid-template-columns: 1fr;
+    gap: .75rem;
+  }
+  /*
+   * MOBILE IS A CARD, NOT A TABLE.
+   *
+   * The desktop layout is ten tracks totalling ~1000px. A 390px phone gives
+   * the content about 350px. There is no font size or gap that makes ten
+   * columns fit that — and .row has no horizontal scroll, so it wouldn't be
+   * squeezed, it would simply be cut off at the right edge. The value, the
+   * invoice and the chevron would be gone with no indication they existed.
+   *
+   * So below 600px the whole thing goes back to being a card and stacks:
+   *
+   *     date · flyer · time+event ·············· ⌄
+   *     [edit] [delete] ················ MANUAL ADD
+   *     📝  💵  🎵  🧾   ← full width, its own line
+   *     ································· $1,400
+   *
+   * Named areas, not tracks, because at this size the arrangement is a shape
+   * rather than a set of columns. Every child needs an area: anything without
+   * one gets auto-placed into the implicit grid at row 1 column 1 — the 64px
+   * date cell — which is how the status strip once ended up stacked inside the
+   * date pill.
+   */
+  .row {
+    display: grid;
+    /* Top line holds date, time, event type and price together (with the
+       chevron); the status icons and actions get their own full-width bands
+       below. */
+    grid-template-columns: 64px auto minmax(0, 1fr) 22px;
+    grid-template-areas:
+      "date  toggle  event  chev"
+      "stat  stat    stat   stat"
+      "val   val     val    val"
+      "acts  acts    acts   acts";
+    column-gap: .5rem;
+    /* row-gap 0: the bands manage their OWN vertical spacing (icon band has
+       margin-top, price band butts flush against it). A uniform grid row-gap
+       used to drop .4rem BELOW the price band too — which, together with the
+       1rem bottom padding, left a dead black gap between the price strip and
+       the details panel on an expanded card (the actions row below is empty on
+       non-manual bookings). Zeroed here; spacing is added back only where a
+       band needs it. */
+    row-gap: 0;
+    /* Height is fixed on desktop to keep the caption line from making rows
+       uneven. Here the row genuinely has four bands, so it has to grow. */
+    height: auto;
+    /* No bottom padding: the price strip is the last band and should meet the
+       details panel directly. Top/side padding unchanged. */
+    padding: 1rem .7rem 0;
+    align-items: center;
+    /* No top divider — each card is now enclosed by its own frame (see
+       .rowWrap below), so the row-to-row hairline is redundant. */
+    border-top: none;
+  }
+  /* Each booking is a FRAMED CARD on mobile: a rounded hairline border around
+     the whole thing (date line + icon band + price strip, and the details
+     panel when expanded), with a gap between cards. overflow:hidden clips the
+     full-width bands to the rounded corners. */
+  .rowWrap {
+    border: 1px solid rgba(255, 255, 255, .22);
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+  /* On mobile the expanded row must NOT take the desktop #16161f "open header"
+     surface. If it does, the card's whole top (date line + the gaps around the
+     icon/price bands) lightens, so an OPEN card reads a different shade than a
+     CLOSED one even though the bands themselves are now solid. Keeping it black
+     means the bands sit on the same background open or closed — identical
+     shades. The expand is still obvious from the details panel + neon edge.
+     Same selector + later source order beats the desktop rule (media queries
+     add no specificity). */
+  .rowWrapExpanded .row,
+  .rowWrapExpanded .row:hover {
+    background: transparent;
+  }
+  /* The column headers are the one thing that cannot survive the trip. They
+     label tracks, and there are no tracks down here. */
+  .colHeads { display: none; }
+
+  /* The four status cells share one full-width band, evenly split.
+     minmax(0, 1fr) rather than 1fr: a bare 1fr floors at min-content, and
+     min-content for a nowrap caption is the entire word — the track would
+     refuse to shrink, which is the exact overflow this is preventing. */
+  .statusStrip {
+    grid-area: stat;
+    display: grid;
+    /* One clean row of EQUAL columns that adapts to how many stages this
+       account has: 4 for a mobile DJ (contract·deposit·playlist·balance),
+       5 for a club/bar DJ (contract·rider·deposit·balance·guests). auto-flow
+       column keeps them all on a single line instead of wrapping the 5th. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    margin-top: .5rem;
+    /* Clean mockup layout: the strip sits INSIDE the card padding (no full-bleed
+       band, no lighter grey surface), separated from the date line by one thin
+       hairline. Each stage is label → icon → caption in normal flow, with a
+       small gap between columns. */
+    /* Full-width gray band behind the icons, matching the mockup shade, edge to
+       edge of the framed card. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
+    padding: 12px 1rem 14px;
+    gap: 4px;
+    background: #16161c;
+    border-radius: 0;
+  }
+  /* Each stage: label on top, icon in the middle, caption below — no ledge,
+     no knockout. */
+  .stCell {
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: column;
+    gap: 5px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+  .stBtn { align-items: center; width: 100%; }
+  .stCap { width: 100%; text-align: center; }
+  /* Centre the ICON under its label, not the icon+chevron pair. The chevron is
+     taken out of the row's flow (absolutely placed just to the right of the
+     icon) so only the icon counts toward centering — nudging it right onto the
+     label's axis while the ▾ still sits beside it. */
+  .stTop { position: relative; }
+  .stChev {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 1px;
+  }
+  /* The "not applicable" dash: drop the desktop-table left padding (which shoved
+     it off-centre) and centre it in its cell, under the label, like every other
+     stage. */
+  .stDash {
+    padding-left: 0;
+    width: 100%;
+    text-align: center;
+    /* desktop icon-line alignment doesn't apply to the framed mobile cards */
+    height: auto;
+    line-height: normal;
+    margin-bottom: 0;
+  }
+  .stLabel {
+    display: block;
+    position: static;
+    transform: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font-size: 9px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #f0f0f8;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .rowDate {
+    grid-area: date;
+    align-self: center;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+  /* Flyer: hidden by default on mobile. Only club/bar rows render a FlyerSlot,
+     so it's re-enabled below as a small thumb on the RIGHT of the top line,
+     next to the venue name. The extra grid column is added on .monthListClub
+     ONLY, so mobile-DJ rows keep their 4-area grid with no empty gap. */
+  .flyerInline { display: none; }
+  .monthListClub .row {
+    grid-template-columns: 64px auto minmax(0, 1fr) 44px 22px;
+    grid-template-areas:
+      "date  toggle  event  flyer  chev"
+      "stat  stat    stat   stat   stat"
+      "val   val     val    val    val"
+      "acts  acts    acts   acts   acts";
+  }
+  .monthListClub .flyerInline {
+    display: block;
+    grid-area: flyer;
+    align-self: center;
+    justify-self: end;
+  }
+  .monthListClub .flyerBoxRow { width: 44px; height: 44px; }
+  .rowToggle {
+    grid-area: toggle;
+    min-width: 0;
+  }
+  .rowTime {
+    justify-self: start;
+    font-size: 12px;
+  }
+  .rowContext {
+    grid-area: event;
+    justify-self: start;
+    /* Sit between the time and price, spaced off the time but still leaning
+       toward it (left-aligned with a gap) rather than glued to it. A thin
+       vertical divider separates the time from the event/venue name. */
+    border-left: 1px solid rgba(255, 255, 255, .18);
+    padding-left: .7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: left;
+    gap: .4rem;
+  }
+  /* No event/venue name → no lone divider line. */
+  .rowContext:empty { border-left: none; padding-left: 0; }
+  /* Bottom band: value on the left, actions on the right. Value is the least
+     urgent thing on a phone — you're looking for what's next, not what it pays
+     — so it goes last and stays quiet. */
+  /* Price gets its OWN full-bleed strip directly under the icon band, in a
+     LIGHTER shade than the icons so it reads as a distinct band. "TOTAL VALUE"
+     label on the left, amount on the right. margin-top cancels the grid row-gap
+     so it butts flush against the icon band above. */
+  .rowValue {
+    grid-area: val;
+    /* Match the icon band: pull out to the card's side borders. */
+    margin-left: -.7rem;
+    margin-right: -.7rem;
+    /* row-gap is 0, so the price band already butts against the icon band with
+       no negative pull needed. */
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* SOLID for the same reason as the icon band above — a translucent value
+       shifts when the card expands onto a lighter surface. #2b2b2b ≈ the old
+       .16 white over black, keeping the price strip a touch lighter than the
+       icon band so the two still read as distinct. */
+    background: #2b2b2b;
+    padding: 6px 1rem;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--neon, #00e0a4);
+  }
+  .rowValue::before {
+    content: "Total Value";
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #c9c9d3;
+  }
+  /* No agreed value on this booking → no strip at all, rather than a bare
+     "Total Value" label with nothing beside it. */
+  .rowValue:empty { display: none; }
+  /*
+   * There is no hover on a phone, so the pill/buttons swap can't work — a
+   * touch device would show the pill and never the buttons, and editing a
+   * manual booking would become impossible. Show all three, always.
+   * That's what the desktop swap buys back: down here there's a full-width
+   * band for them and nothing to compete with.
+   */
+  .rowActionsCell {
+    grid-area: acts;
+    justify-content: flex-end;
+  }
+  /* Non-manual bookings render an EMPTY actions cell. Left in place it still
+     reserves its grid row, re-opening the very gap under the price strip we
+     just closed. Drop it entirely when empty. When it DOES hold the
+     edit/delete/MANUAL controls, give them breathing room above and below so
+     they don't kiss the price strip or the details panel (row-gap is 0 now). */
+  .rowActionsCell:empty { display: none; }
+  .rowActionsCell:not(:empty) { padding: .6rem 0; }
+  .row .rowActionsCell .manualPill,
+  .row:hover .rowActionsCell .manualPill { display: inline-block; }
+  .row .rowActionsCell .editBtn,
+  .row .rowActionsCell .deleteBtn { display: inline-flex; }
+  .rowChevronBtn {
+    grid-area: chev;
+    justify-self: end;
+    align-self: center;
+  }
+  /* No grid-area on the pill/buttons any more, and no translateX(36px) to fake
+     a second button beside the first — they're flex children of .rowActionsCell
+     now and simply sit next to each other. The transform moved the delete
+     button visually without moving its layout box, so it overlapped whatever
+     came after it. */
+
+  /* Bigger, prominent date pill on mobile. */
+  .dayNum { font-size: 28px; }
+  .dow    { font-size: 10px; }
+  .mo     { font-size: 10px; }
+  .rowDate { gap: 6px; }
+}
+
+/* ── Host invite block in modal ─────────────────────────────────────── */
+/* Rate row: currency prefix + numeric input + currency selector. */
+.rateRow {
+  display: flex;
+  align-items: stretch;
+  gap: .35rem;
+}
+/* Currency symbol sits INSIDE the rate input — saves horizontal space. */
+.rateInputWrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.rateSymbol {
+  position: absolute;
+  left: .6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  pointer-events: none;
+}
+.rateInput {
+  width: 5.5rem;
+  min-width: 0;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .42rem .8rem .42rem 1.5rem;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .9rem;
+}
+.rateInput:focus { outline: none; border-color: var(--neon); }
+.rateInput::-webkit-outer-spin-button,
+.rateInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rateInput {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.rateCurrencySelect {
+  background: var(--deep);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 0 .55rem;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  min-width: 64px;
+}
+.rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
+
+.hostInviteBlock {
+  margin-top: .5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+}
+.inviteCheckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  font-size: .82rem;
+  color: var(--white);
+  cursor: pointer;
+  user-select: none;
+}
+.inviteCheckRow input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--neon);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.inviteCheckRow input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+.checkHint {
+  color: var(--muted);
+  font-size: .75rem;
+}
+/* Banner shown when the email has already been sent — locks the input
+   from triggering a double-send and offers an explicit Resend button. */
+.sentBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .65rem .8rem;
+  background: rgba(0, 245, 196, .06);
+  border: 1px solid rgba(0, 245, 196, .25);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+.sentBannerText {
+  font-size: .8rem;
+  color: var(--white);
+  flex: 1 1 auto;
+}
+.resendBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neon);
+  border: 1px solid var(--neon);
+  border-radius: 6px;
+  padding: .45rem .75rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.resendBtn:hover:not(:disabled) {
+  background: var(--neon);
+  color: #000;
+}
+.resendBtn:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+/* ── Event flyer (club bookings — row slot + in-card thumbnail) ──────── */
+.flyerInline {
+  flex-shrink: 0;
+}
+/* Size variants — applied to both the dashed empty box and the thumb. */
+.flyerBoxRow  { width: 56px; height: 56px; }
+.flyerBoxCard { width: 48px; height: 48px; }
+
+.flyerWithActions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+/* Thumbnail wrapper — positioning context for the overlay controls. */
+.flyerThumbWrap {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.flyerThumbBtn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--deep);
+  cursor: pointer;
+  overflow: hidden;
+}
+.flyerThumbImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Overlay ✕ / pencil on the flyer thumbnail. */
+.flyerOverlayBtn {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .72);
+  color: #fff;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.flyerOverlayEdit   { top: 2px; left: 2px; }
+.flyerOverlayDelete { top: 2px; right: 2px; }
+.flyerOverlayEdit:hover   { background: var(--neon); color: #050507; }
+.flyerOverlayDelete:hover { background: #ff5f5f; }
+.flyerOverlayBtn:disabled { opacity: .5; cursor: wait; }
+/* Download icon next to the thumbnail. */
+.flyerDownloadIcon {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--neon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.flyerDownloadIcon:hover { color: #00d4a9; }
+/* In-card flyer section. */
+.flyerCardSection {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.flyerLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--neon);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+.flyerLink:hover { color: #00d4a9; }
+.flyerLinkMuted {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+.flyerLinkMuted:hover { color: var(--white); }
+.flyerAddBtn {
+  flex-shrink: 0;
+  border: 1px dashed rgba(255, 255, 255, .5);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 4px;
+  transition: color .15s, border-color .15s;
+}
+.flyerAddBtn:hover:not(:disabled) {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+.flyerAddBtn:disabled { opacity: .6; cursor: wait; }
+/* Flyer lightbox */
+.flyerLightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(0, 0, 0, .85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.flyerLightboxInner {
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  align-items: center;
+}
+.flyerLightboxImg {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.flyerLightboxActions {
+  display: flex;
+  gap: 1.25rem;
+}
