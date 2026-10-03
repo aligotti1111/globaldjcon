@@ -115,11 +115,12 @@ export interface PaymentMethod {
    */
   cashLeadWeeks?: number;
   /**
-   * Cash + check, deposit: how many WEEKS the host has to get the DEPOSIT to the
-   * DJ after it's requested, 1–10. Shown on the deposit email and deposit
-   * confirmation page. Optional.
+   * Cash + check, deposit: how long the host has to get the DEPOSIT to the DJ
+   * after it's requested, stored as the chosen label verbatim — e.g. "3 days"
+   * or "2 weeks" (options run 2–7 days, then 1–6 weeks). Shown on the deposit
+   * email and deposit confirmation page. Optional.
    */
-  depositLeadWeeks?: number;
+  depositLeadLabel?: string;
   /**
    * Check only: which ways the DJ will ACCEPT the check. Each is an independent
    * on/off toggle. Defaults: Mail is ON (undefined === on, off only when false);
