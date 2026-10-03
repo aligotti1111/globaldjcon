@@ -106,7 +106,10 @@ export default function CheckSent(props: Props) {
   const Hero = () => (
     <>
       <h1 style={{ fontFamily: 'Impact,Arial,sans-serif', fontSize: 34, letterSpacing: '.04em', textTransform: 'uppercase', margin: '0 0 2px', lineHeight: 1.05 }}>{subject}</h1>
-      <div style={{ fontSize: 26, fontWeight: 700, color: '#00f5c4', margin: '0 0 16px' }}>{amt}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#00f5c4', margin: '0 0 6px' }}>{amt}</div>
+      {method && (
+        <div style={{ fontSize: 14, color: '#b7b7c6', margin: '0 0 16px' }}>Payment method: <strong style={{ color: '#fff' }}>{method === 'cash' ? 'Cash' : 'Check'}</strong></div>
+      )}
     </>
   );
 
@@ -202,7 +205,7 @@ export default function CheckSent(props: Props) {
                 <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange getting your check to them.</p>
               ) : (
                 <>
-                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>{alreadyChosen ? `You chose how you'd get your check to ${dj} — you can change it below and we'll let them know.` : `How will you get your check to ${dj}?`}</p>
+                  <p style={{ color: '#b7b7c6', fontSize: 14, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>{alreadyChosen ? `You chose how you'd get your check to ${dj} — you can change it below and we'll let them know.` : `How would you like to get your ${kWord} to ${dj}?`}</p>
                   {opts.map((o) => (
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
