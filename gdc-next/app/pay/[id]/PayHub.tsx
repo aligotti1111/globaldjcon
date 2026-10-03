@@ -192,6 +192,7 @@ export default function PayHub({
                   {...(o.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                   style={{
                     display: 'block', textAlign: 'center', marginTop: '.7rem',
+                    width: '50%', marginLeft: 'auto', marginRight: 'auto',
                     background: o.accent, color: '#fff', textDecoration: 'none',
                     fontWeight: 800, padding: '.75rem 1rem', borderRadius: 9, fontSize: '.9rem',
                   }}
