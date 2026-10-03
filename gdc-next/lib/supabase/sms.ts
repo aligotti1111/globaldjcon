@@ -191,6 +191,30 @@ export async function notifyBookingSms(
   }
 }
 
+// Send a one-off, custom-bodied SMS to a booking's host — respecting the
+// per-booking sms_opt_in flag and the stored phone, exactly like
+// notifyBookingSms, but with a message the caller composes (e.g. check mailing
+// instructions). The STOP footer is appended automatically.
+export async function sendBookingSms(
+  bookingId: string | null | undefined,
+  body: string,
+  tag = 'booking_custom',
+): Promise<void> {
+  if (!bookingId || !body.trim()) return;
+  try {
+    const admin = createAdminClient();
+    const { data: b } = await admin
+      .from('bookings')
+      .select('phone, sms_opt_in')
+      .eq('id', bookingId)
+      .maybeSingle<{ phone: string | null; sms_opt_in: boolean | null }>();
+    if (!b || !b.sms_opt_in || !b.phone) return;
+    await dispatchSms(b.phone, withSmsFooter(body), tag);
+  } catch (e) {
+    console.error('[sms] sendBookingSms failed:', e);
+  }
+}
+
 // Compose the standard "Reply STOP to unsubscribe" footer.
 // Append to every outbound SMS. Twilio + Supabase auto-handle STOP/HELP/START
 // keywords at the carrier level — this footer is just the disclosure.
