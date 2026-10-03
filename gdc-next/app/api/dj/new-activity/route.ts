@@ -18,7 +18,7 @@ import { MOB_EVENT_LABELS } from '@/lib/constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Slot = 'contract' | 'deposit' | 'invoice' | 'song_list' | 'guestlist' | 'change';
+type Slot = 'contract' | 'deposit' | 'invoice' | 'deposit_pending' | 'invoice_pending' | 'song_list' | 'guestlist' | 'change';
 
 export async function GET() {
   const supabase = await createClient();
@@ -48,25 +48,33 @@ export async function GET() {
   }[];
   const ids = bookings.map((b) => b.id);
 
-  const activity: Record<string, { ts: string; t: number; slot: Slot }> = {};
-  const note = (bid: string, ts: string | null | undefined, slot: Slot) => {
+  const activity: Record<string, { ts: string; t: number; slot: Slot; method?: string | null }> = {};
+  const note = (bid: string, ts: string | null | undefined, slot: Slot, method?: string | null) => {
     if (!ts) return;
     const t = Date.parse(ts);
     if (Number.isNaN(t)) return;
     const cur = activity[bid];
-    if (!cur || t > cur.t) activity[bid] = { ts, t, slot };
+    if (!cur || t > cur.t) activity[bid] = { ts, t, slot, method };
   };
 
   if (ids.length > 0) {
     const [{ data: pay }, { data: plan }, { data: riders }, { data: gls }, { data: changes }] = await Promise.all([
-      admin.from('booking_payments').select('booking_id, kind, marked_sent_at').in('booking_id', ids),
+      admin.from('booking_payments').select('booking_id, kind, marked_sent_at, status, method, confirmed_at').in('booking_id', ids),
       admin.from('booking_planners').select('booking_id, submitted_at').in('booking_id', ids),
       admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', ids),
       admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', ids),
       admin.from('booking_change_requests').select('booking_id, responded_at, status').in('booking_id', ids).eq('status', 'approved'),
     ]);
-    for (const p of ((pay as { booking_id: string; kind: string | null; marked_sent_at: string | null }[] | null) || [])) {
-      note(p.booking_id, p.marked_sent_at, p.kind === 'deposit' ? 'deposit' : 'invoice');
+    for (const p of ((pay as { booking_id: string; kind: string | null; marked_sent_at: string | null; status: string | null; method: string | null; confirmed_at: string | null }[] | null) || [])) {
+      // A cash/check hand-off the host flagged is only PENDING until the DJ
+      // confirms it. Treat it as paid only once settled (status paid/partial/
+      // waived or a confirmation timestamp). Otherwise it's "pending check/cash".
+      const settled = p.status === 'paid' || p.status === 'partial' || p.status === 'waived' || !!p.confirmed_at;
+      const isDeposit = p.kind === 'deposit';
+      const slot: Slot = settled
+        ? (isDeposit ? 'deposit' : 'invoice')
+        : (isDeposit ? 'deposit_pending' : 'invoice_pending');
+      note(p.booking_id, p.marked_sent_at, slot, settled ? null : (p.method || null));
     }
     for (const p of ((plan as { booking_id: string; submitted_at: string | null }[] | null) || [])) {
       note(p.booking_id, p.submitted_at, 'song_list');
@@ -96,7 +104,7 @@ export async function GET() {
       const label = b?.event_type
         ? (MOB_EVENT_LABELS[b.event_type] || b.event_type)
         : (b?.venue_type || 'Booking');
-      return { bookingId: bid, slot: a.slot, at: a.ts, eventDate: b?.event_date || null, label };
+      return { bookingId: bid, slot: a.slot, at: a.ts, eventDate: b?.event_date || null, label, method: a.method || null };
     })
     .sort((x, y) => Date.parse(y.at) - Date.parse(x.at));
 
