@@ -30,7 +30,7 @@
 .gdc-dash .top{display:inline-flex;align-items:center;gap:2px}
 .gdc-dash .ring{position:relative;width:40px;height:40px;border-radius:50%;border:3px solid #3a3a4c;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#c2c2ce;transition:.15s}
 .gdc-dash .ring svg{width:20px;height:20px}
-.gdc-dash .dvvenue{display:block;font-family:'Space Mono',ui-monospace,monospace;font-size:.6rem;letter-spacing:.03em;color:#c08a3e;text-transform:none;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gdc-dash .dvvenue{display:block;font-family:inherit;font-size:.72rem;font-weight:500;letter-spacing:0;color:#c08a3e;text-transform:none;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gdc-dash .st.waiting .ring{border-color:rgba(255,255,255,.16);color:#b9b9c6}
 .gdc-dash .st.done .ring{border-color:var(--neon);background:rgba(0,245,196,.14);color:var(--neon)}
 .gdc-dash .st.skipped .ring{border-color:rgba(255,255,255,.28);color:#f2f2f7}
