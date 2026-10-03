@@ -142,6 +142,10 @@ export default function PayHub({
                 borderRadius: 11,
                 padding: '.85rem .9rem',
                 background: 'var(--deep,#0b0b12)',
+                minHeight: 128,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
