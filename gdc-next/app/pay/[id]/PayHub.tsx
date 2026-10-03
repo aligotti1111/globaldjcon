@@ -22,6 +22,7 @@ export interface HubOption {
   href?: string;                // tappable → renders as a button
   external?: boolean;           // href leaves the site (e.g. paypal.me)
   linkLabel?: string;           // button text for href options
+  compact?: boolean;            // render a smaller button (cash/check confirm)
   copy?: string;                // value to copy (no link exists for this rail)
   instruction?: string;         // one-line "how to" above a copy value
   lines?: string[];             // extra info lines (cash / check / other)
@@ -186,6 +187,18 @@ export default function PayHub({
               )}
 
               {o.href && (
+                o.compact ? (
+                  <a
+                    href={o.href}
+                    style={{
+                      display: 'inline-block', textAlign: 'center', marginTop: '.7rem',
+                      background: o.accent, color: '#fff', textDecoration: 'none',
+                      fontWeight: 700, padding: '.5rem .9rem', borderRadius: 8, fontSize: '.8rem',
+                    }}
+                  >
+                    {o.linkLabel || 'Confirm'} →
+                  </a>
+                ) : (
                 <a
                   href={o.href}
                   {...(o.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
@@ -197,6 +210,7 @@ export default function PayHub({
                 >
                   {o.linkLabel || 'Pay'} →
                 </a>
+                )
               )}
 
               {o.secondary && (
