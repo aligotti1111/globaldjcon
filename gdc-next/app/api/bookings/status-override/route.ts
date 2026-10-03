@@ -141,6 +141,23 @@ export async function POST(req: Request) {
     } catch { /* non-fatal — the override already saved */ }
   }
 
+  // Marking the BALANCE paid by hand ("handled outside the app") means any
+  // still-unpaid balance REQUEST is no longer live — drop it, exactly like the
+  // deposit above. That way un-marking returns the Balance column to "Not Sent"
+  // instead of resurrecting the stale "Pending" request. A real
+  // paid/part-paid/waived balance in the ledger is left untouched.
+  if (key === 'invoice' && done) {
+    try {
+      const db = admin as unknown as { from: (t: string) => { delete: () => { eq: (c: string, v: unknown) => unknown } } };
+      let q = db.from('booking_payments').delete() as unknown as {
+        eq: (c: string, v: unknown) => typeof q; not: (c: string, o: string, v: string) => typeof q; lte: (c: string, v: number) => Promise<unknown>;
+      };
+      await q.eq('booking_id', bookingId).eq('kind', 'balance')
+        .not('status', 'in', '("paid","waived","partial")')
+        .lte('amount_paid', 0);
+    } catch { /* non-fatal — the override already saved */ }
+  }
+
   // Activity log — one line naming the step and whether it was set or undone.
   const stepLabel: Record<string, string> = {
     contract: 'Contract', deposit: 'Deposit', deposit_skipped: 'Deposit skip',
