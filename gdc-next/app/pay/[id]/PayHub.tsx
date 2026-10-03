@@ -187,18 +187,6 @@ export default function PayHub({
               )}
 
               {o.href && (
-                o.compact ? (
-                  <a
-                    href={o.href}
-                    style={{
-                      display: 'inline-block', textAlign: 'center', marginTop: '.7rem',
-                      background: o.accent, color: '#fff', textDecoration: 'none',
-                      fontWeight: 700, padding: '.5rem .9rem', borderRadius: 8, fontSize: '.8rem',
-                    }}
-                  >
-                    {o.linkLabel || 'Confirm'} →
-                  </a>
-                ) : (
                 <a
                   href={o.href}
                   {...(o.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
@@ -210,7 +198,6 @@ export default function PayHub({
                 >
                   {o.linkLabel || 'Pay'} →
                 </a>
-                )
               )}
 
               {o.secondary && (
