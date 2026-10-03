@@ -168,7 +168,7 @@ export async function POST(req: Request) {
       const isMail = isCheck && handoff === 'mail';
       const payMethodLabel = isCheck ? 'Check' : 'Cash';
       const howLabel = isCheck
-        ? (isMail ? 'Mail It' : 'Drop Off In Person')
+        ? (isMail ? 'Mail It' : handoff === 'meet' ? 'Exchange In Person' : handoff === 'office' ? 'Drop Off At Office' : 'Drop Off In Person')
         : (handoff === 'office' ? 'Drop Off At Office' : 'Exchange In Person Prior To Event');
       // The shared summary list — same template for every sent claim.
       const claimSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', payMethodLabel)}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '—')}${detailRow('Email', hostEmail || '—')}</table></td></tr></table>`;
@@ -217,34 +217,50 @@ ${updatedNote}${detailsBlock}${bodyLines}
       const { data: uData } = await admin.from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
       const raw = (uData as { payment_methods?: unknown } | null)?.payment_methods;
       const methods = Array.isArray(raw) ? (raw as Array<{ type?: string; handle?: string; contact?: string }>) : [];
-      const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string } | undefined;
+      const chk = methods.find((x) => x?.type === 'check') as { handle?: string; contact?: string; checkPhone?: string; dropoffAddress?: string; dropoffHours?: string } | undefined;
       if (chk?.handle) {
         const who = b.requester_name?.trim() || 'there';
         const memo = checkMemo(b.event_date, b.venue_name, referenceCode(p.booking_id, p.kind));
-        const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];
+        const addrLines = chk.contact ? splitMailAddress(chk.contact) : [];        // mailing address
+        const officeLines = chk.dropoffAddress ? splitMailAddress(chk.dropoffAddress) : []; // office address
+        const officeHours = chk.dropoffHours?.trim() || null;
         const chkPhone = chk.checkPhone?.trim() || null;
+        const paidNote = `<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`;
         const payableBlock = `<p style="margin:0 0 2px;color:#666;font-size:13px;">Make it payable to:</p>
 <p style="margin:0 0 12px;font-size:16px;color:#111;">${chk.handle}</p>
 ${memo ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Include with your check:</p>
 <p style="margin:0 0 14px;font-family:monospace;font-size:14px;color:#111;">${memo}</p>` : ''}`;
-        // Drop-off → give them the call/text number. Mail → give the address.
-        const isDropoff = handoff === 'dropoff';
-        const subject = `${isUpdate ? 'Updated — ' : ''}${isDropoff ? 'Dropping off your check' : 'Where to send your check'}`;
-        const content = isDropoff
-          ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Dropping off your check</h1>
+
+        let subject: string;
+        let content: string;
+        if (handoff === 'office') {
+          subject = `${isUpdate ? 'Updated — ' : ''}Where to drop off your check`;
+          content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to drop off your check</h1>
+<p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please bring your check to the office below.</p>
+${payableBlock}
+${officeLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Office address:</p>
+<p style="margin:0 0 ${officeHours ? '6' : '12'}px;font-size:15px;color:#111;line-height:1.45;">${officeLines.join('<br>')}</p>` : ''}
+${officeHours ? `<p style="margin:0 0 14px;font-size:14px;color:#333;">${officeHours}</p>` : ''}
+${paidNote}`;
+        } else if (handoff === 'meet' || handoff === 'dropoff') {
+          subject = `${isUpdate ? 'Updated — ' : ''}Exchanging your check in person`;
+          content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Exchanging your check in person</h1>
 <p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, here are the details for your check.</p>
 ${payableBlock}
 ${chkPhone
-  ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange the drop-off:</p>
+  ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Arrange a time:</p>
 <p style="margin:0 0 14px;font-size:15px;color:#111;">Call or text <strong>${chkPhone}</strong></p>`
-  : `<p style="margin:0 0 14px;color:#333;font-size:14px;">Reach out to your DJ to arrange dropping it off.</p>`}
-<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`
-          : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to send your check</h1>
+  : `<p style="margin:0 0 14px;color:#333;font-size:14px;">Reach out to your DJ to arrange handing it over.</p>`}
+${paidNote}`;
+        } else {
+          subject = `${isUpdate ? 'Updated — ' : ''}Where to send your check`;
+          content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Where to send your check</h1>
 <p style="margin:0 0 14px;color:#333;font-size:15px;line-height:1.6;">Hi ${who}, please mail your check to the address below.</p>
 ${payableBlock}
 ${addrLines.length ? `<p style="margin:0 0 2px;color:#666;font-size:13px;">Mail to:</p>
 <p style="margin:0 0 12px;font-size:15px;color:#111;line-height:1.45;">${addrLines.join('<br>')}</p>` : ''}
-<p style="margin:0;color:#888;font-size:13px;line-height:1.6;">Your ${kindLabelFor(p.kind)} is marked paid once your DJ receives and confirms the check.</p>`;
+${paidNote}`;
+        }
         try {
           const resend = new Resend(process.env.RESEND_API_KEY);
           await resend.emails.send({ from: FROM, to, subject, html: shell(content) });
