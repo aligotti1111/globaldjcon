@@ -61,6 +61,7 @@ interface Props {
   // hidden from a teammate by RLS. All optional — the /past-bookings archive
   // mount doesn't pass them and doesn't gate on them.
   canPro?: boolean;
+  depositLeadWeeks?: number | null;
   isPaid?: boolean;
   settingsCurrency?: string;
   requireContract?: boolean;
@@ -79,7 +80,7 @@ interface Props {
 export default function UpcomingBookingsClient({
   userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
   initialPayments, initialPlanners,
-  canPro: canProProp, isPaid: isPaidProp, settingsCurrency: settingsCurrencyProp,
+  canPro: canProProp, depositLeadWeeks: depositLeadWeeksProp = null, isPaid: isPaidProp, settingsCurrency: settingsCurrencyProp,
   requireContract: requireContractProp, riderEnabled: riderEnabledProp,
   guestlistEnabled: guestlistEnabledProp, clubDepositPct: clubDepositPctProp,
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
@@ -651,6 +652,7 @@ export default function UpcomingBookingsClient({
                 onPaymentsChange={handlePaymentsChange}
                 onMutated={refresh}
                 canPro={canPro}
+                depositLeadWeeks={depositLeadWeeksProp}
                 planner={plannerMap[b.id]}
                 onPlannerChange={handlePlannerChange}
                 overlaps={overlapIds.has(b.id)}
@@ -688,6 +690,7 @@ export default function UpcomingBookingsClient({
                     onPaymentsChange={handlePaymentsChange}
                     onMutated={refresh}
                     canPro={canPro}
+                    depositLeadWeeks={depositLeadWeeksProp}
                 planner={plannerMap[b.id]}
                     onPlannerChange={handlePlannerChange}
                     overlaps={overlapIds.has(b.id)}
