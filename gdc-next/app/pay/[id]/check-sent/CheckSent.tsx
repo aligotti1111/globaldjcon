@@ -127,25 +127,6 @@ export default function CheckSent(props: Props) {
       )}
     </div>
   );
-  // Optional office where the host can bring cash / a check, with hours.
-  const OfficeBlock = () => (
-    dropoffAddressLines.length > 0 ? (
-      <>
-        <div style={{ color: '#8a8a98', fontSize: 12, marginTop: 12 }}>Drop-off location</div>
-        {dropoffAddressLines.map((l, i) => <div key={i} style={{ color: '#fff', fontSize: 14, lineHeight: 1.45 }}>{l}</div>)}
-        {dropoffHours && <div style={{ color: '#d5d5df', fontSize: 13, marginTop: 4 }}>{dropoffHours}</div>}
-      </>
-    ) : null
-  );
-  // Detail shown after the host picks how they'll get the check to the DJ.
-  const DropoffDetail = () => (
-    <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
-      {checkPhone
-        ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange dropping off your check to {dj}.</p>
-        : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange dropping off your check.</p>}
-      <OfficeBlock />
-    </div>
-  );
   const MailDetail = () => (
     <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14, margin: '0 0 18px' }}>
       <div style={{ color: '#8a8a98', fontSize: 12 }}>Mail your check to</div>
@@ -228,7 +209,11 @@ export default function CheckSent(props: Props) {
                   {selected === 'meet' && (
                     <div style={{ marginTop: 14 }}>
                       <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Information to include on your check and the contact info to arrange the exchange will be emailed to you once you click confirm.</p>
-                      <DropoffDetail />
+                      <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
+                        {checkPhone
+                          ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange handing your check to {dj} in person.</p>
+                          : <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} to arrange handing over your check in person.</p>}
+                      </div>
                     </div>
                   )}
                   {selected === 'office' && (
