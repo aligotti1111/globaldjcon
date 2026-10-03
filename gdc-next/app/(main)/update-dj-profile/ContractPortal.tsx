@@ -229,6 +229,14 @@ export default function ContractPortal({
     setError(null); setEditingId(c.id); setName(c.name); setPasteText(c.body_text || ''); setView('paste');
   }
 
+  // Edit the WORDING of a standard contract — opens the standard text editor
+  // (the fields builder is a separate "Edit data fields" action).
+  function openStandardText(c: Contract) {
+    setError(null); setEditingId(c.id); setName(c.name);
+    setText(defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null);
+    setView('standard');
+  }
+
   // Lock the text in: (re)build the contract from the text, then hand off to the
   // drag builder to place fields. Passes contractId when editing (re-lock).
   async function submitPastedText() {
@@ -499,11 +507,14 @@ export default function ContractPortal({
                 {edited && <span style={{ fontSize: '.68rem', color: 'var(--muted,#8a8aa0)' }}>Edited {edited}</span>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
-              <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openCard(c) : openCard(c))} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Open' : c.body_text != null ? 'Place fields' : 'Open'}</button>
-              {c.body_text != null && !c.is_standard && (
-                <button type="button" onClick={() => openTextEditor(c)} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit text</button>
+            <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0, alignItems: 'center' }}>
+              {/* Edit text — only for contracts whose wording lives in our system
+                  (the standard contracts and written/pasted ones). Uploaded PDFs
+                  and images have no editable text, so they only get data fields. */}
+              {(c.is_standard || c.body_text != null) && (
+                <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit text</button>
               )}
+              <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit data fields</button>
               <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
             </div>
           </div>
