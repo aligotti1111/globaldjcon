@@ -697,15 +697,6 @@ export default function BookingRow({
   // (both rendered for the same booking) stay in sync.
   const [flyerUrl, setFlyerUrl] = useState<string | null>(booking.flyer_url ?? null);
   const { day, dow, mo } = getDateParts(booking.event_date);
-
-  // Human-readable reference code shown on every card. Derived deterministically
-  // from the booking id (a uuid) so the same booking always shows the same code
-  // — no DB column needed. Format: GDC-XXXX-X.
-  const refCode = (() => {
-    const hex = (booking.id || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (hex.length < 5) return `GDC-${hex}`;
-    return `GDC-${hex.slice(0, 4)}-${hex.slice(4, 5)}`;
-  })();
   // Edit status of the DATE, surfaced on the collapsed row near the date pill:
   // amber while the host hasn't approved yet, teal once they have.
   const dateChangePending = (booking.pending_change_cols || []).includes('event_date');
@@ -951,11 +942,6 @@ export default function BookingRow({
                 {booking.venue_name || booking.venue_type_desc}
               </span>
             )}
-            {/* Reference code — shown on every card so the DJ and host can quote
-                the same booking by a short id. */}
-            <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.6rem', fontWeight: 700, letterSpacing: '.04em', color: '#6f6f80', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 3 }}>
-              {refCode}
-            </span>
           </div>
           {overlaps && (
             <span
