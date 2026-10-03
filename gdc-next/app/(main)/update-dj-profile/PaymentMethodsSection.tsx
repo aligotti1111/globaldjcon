@@ -216,6 +216,13 @@ const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
 };
 const DEFAULT_MARK_SIZE = 24;
 
+// Deposit lead-time choices, shown in order: short day options, then weeks.
+// Stored verbatim as the label so "7 days" and "1 week" stay distinct.
+const DEPOSIT_LEAD_OPTIONS = [
+  '2 days', '3 days', '4 days', '5 days', '6 days', '7 days',
+  '1 week', '2 weeks', '3 weeks', '4 weeks', '5 weeks', '6 weeks',
+];
+
 export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
@@ -506,7 +513,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             checkText: o.checkText === false ? false : undefined,
             cashNightOf: typeof o.cashNightOf === 'boolean' ? o.cashNightOf : undefined,
             cashLeadWeeks: typeof o.cashLeadWeeks === 'number' ? o.cashLeadWeeks : undefined,
-            depositLeadWeeks: typeof o.depositLeadWeeks === 'number' ? o.depositLeadWeeks : undefined,
+            depositLeadLabel: typeof o.depositLeadLabel === 'string'
+              ? o.depositLeadLabel
+              : (typeof (o as { depositLeadWeeks?: number }).depositLeadWeeks === 'number'
+                  ? `${(o as { depositLeadWeeks?: number }).depositLeadWeeks} week${(o as { depositLeadWeeks?: number }).depositLeadWeeks === 1 ? '' : 's'}`
+                  : undefined),
             checkMail: o.checkMail === false ? false : undefined,
             checkMeet: o.checkMeet === true ? true : undefined,
             checkOffice: o.checkOffice === true ? true : undefined,
@@ -565,7 +576,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       m.checkText === false ? '0' : '1',
       m.cashNightOf === undefined ? '' : (m.cashNightOf ? '1' : '0'),
       String(m.cashLeadWeeks ?? ''),
-      String(m.depositLeadWeeks ?? ''),
+      String(m.depositLeadLabel ?? ''),
       m.checkMail === false ? '0' : '1',
       m.checkMeet === true ? '1' : '0',
       m.checkOffice === true ? '1' : '0',
@@ -830,8 +841,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           : {}),
         // Deposit lead time (cash + check): how long the host has to get the
         // deposit to the DJ once it's requested. Stored when the DJ picked one.
-        ...((m.type === 'cash' || m.type === 'check') && m.depositLeadWeeks != null
-          ? { depositLeadWeeks: m.depositLeadWeeks }
+        ...((m.type === 'cash' || m.type === 'check') && m.depositLeadLabel != null
+          ? { depositLeadLabel: m.depositLeadLabel }
           : {}),
         // Check: whether the host may pay the night of the event, and (if not)
         // how many weeks ahead they must pay. checkNightOf is stored explicitly
@@ -934,8 +945,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 ...(m.cashNightOf ? {} : { cashLeadWeeks: m.cashLeadWeeks ?? 2 }),
               }
             : {}),
-          ...((m.type === 'cash' || m.type === 'check') && m.depositLeadWeeks != null
-            ? { depositLeadWeeks: m.depositLeadWeeks }
+          ...((m.type === 'cash' || m.type === 'check') && m.depositLeadLabel != null
+            ? { depositLeadLabel: m.depositLeadLabel }
             : {}),
           ...(m.type === 'check'
             ? {
@@ -1631,13 +1642,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       <div style={{ marginTop: '.6rem' }}>
                         <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
-                          value={m.depositLeadWeeks != null ? String(m.depositLeadWeeks) : ''}
-                          onChange={(e) => { const v = e.target.value; patchType(t, { depositLeadWeeks: v ? Number(v) : undefined }); }}
+                          value={m.depositLeadLabel ?? ''}
+                          onChange={(e) => { const v = e.target.value; patchType(t, { depositLeadLabel: v || undefined }); }}
                           style={{ ...field, marginTop: 0, width: 'auto', minWidth: 140 }}
                         >
                           <option value="">Select…</option>
-                          {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
+                          {DEPOSIT_LEAD_OPTIONS.map((o) => (
+                            <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
                       </div>
@@ -1706,13 +1717,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       <div style={{ marginTop: '.6rem' }}>
                         <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
-                          value={m.depositLeadWeeks != null ? String(m.depositLeadWeeks) : ''}
-                          onChange={(e) => { const v = e.target.value; patchType(t, { depositLeadWeeks: v ? Number(v) : undefined }); }}
+                          value={m.depositLeadLabel ?? ''}
+                          onChange={(e) => { const v = e.target.value; patchType(t, { depositLeadLabel: v || undefined }); }}
                           style={{ ...field, marginTop: 0, width: 'auto', minWidth: 140 }}
                         >
                           <option value="">Select…</option>
-                          {Array.from({ length: 10 }, (_, i) => i + 1).map((w) => (
-                            <option key={w} value={w}>{w} week{w === 1 ? '' : 's'}</option>
+                          {DEPOSIT_LEAD_OPTIONS.map((o) => (
+                            <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
                       </div>
