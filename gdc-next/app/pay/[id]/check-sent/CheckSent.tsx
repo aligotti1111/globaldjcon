@@ -45,6 +45,10 @@ interface Props {
   // Which ways the DJ accepts a check (default both true).
   checkCanMail?: boolean;
   checkCanDropoff?: boolean;
+  // The check hand-offs the DJ enabled, split out: exchange in person (meet,
+  // with a phone) and drop off at the office (with the office address).
+  checkMeet?: boolean;
+  checkOffice?: boolean;
   // The host's previously-saved choice (so returning to the link pre-selects it)
   // and whether they've chosen before (so the button reads "Update").
   initialChoice?: 'nightof' | 'meet' | 'office' | 'dropoff' | 'mail' | null;
@@ -69,8 +73,10 @@ export default function CheckSent(props: Props) {
     checkNightOf = false, checkDeadline = null, checkLeadWeeks = null,
     checkPhone = null, checkPayTo = null, checkAddressLines = [], checkMemoLine = '', checkContactVerb = 'call or text',
     checkCanMail = true, checkCanDropoff = true,
+    checkMeet = false, checkOffice = false,
     initialChoice = null, alreadyChosen = false,
   } = props;
+  void checkCanDropoff;
 
   const dj = djName?.trim() || 'your DJ';
   const isDeposit = kind === 'deposit';
@@ -162,20 +168,29 @@ export default function CheckSent(props: Props) {
     const weeksPhrase = checkLeadWeeks ? `at least ${checkLeadWeeks} week${checkLeadWeeks === 1 ? '' : 's'} before the event` : '';
     const bannerDeadline = checkDeadline || weeksPhrase || 'before the event';
 
-    type OptKey = 'nightof' | 'dropoff' | 'mail';
+    // The check hand-offs the DJ turned on — shown as distinct options, exactly
+    // mirroring the DJ's check tile (Mail It / Exchange In Person / Drop Off At
+    // Office), plus day-of when allowed.
+    const checkMeetOn = checkMeet && !!checkPhone;
+    const checkOfficeOn = checkOffice && dropoffAddressLines.length > 0;
+    type OptKey = 'nightof' | 'meet' | 'office' | 'mail';
     const opts: { key: OptKey; label: string }[] = [];
     if (nightOfOn) opts.push({ key: 'nightof', label: 'Bring It The Day Of The Event' });
-    if (checkCanDropoff) opts.push({ key: 'dropoff', label: 'Drop It Off In Person' });
+    if (checkMeetOn) opts.push({ key: 'meet', label: 'Exchange In Person' });
+    if (checkOfficeOn) opts.push({ key: 'office', label: 'Drop Off At Office' });
     if (checkCanMail) opts.push({ key: 'mail', label: 'Mail It' });
 
-    const selected: OptKey | null = (choice === 'nightof' || choice === 'dropoff' || choice === 'mail') ? choice : null;
+    const selected: OptKey | null = (choice === 'nightof' || choice === 'meet' || choice === 'office' || choice === 'mail') ? choice : null;
 
     const confirm = () => {
       if (selected === 'nightof') {
         return notify('at-event', <>We let {dj} know you&apos;ll pay your {kWord} of <strong style={{ color: '#fff' }}>{amt}</strong> by check the day of the event{when}. Thanks!</>);
       }
-      if (selected === 'dropoff') {
-        return notify('sent', <>We let {dj} know you&apos;ll drop off your {kWord} check of <strong style={{ color: '#fff' }}>{amt}</strong>. They&apos;ll confirm it once received. We&apos;ve emailed you the details. Thanks!</>, 'dropoff');
+      if (selected === 'meet') {
+        return notify('sent', <>We let {dj} know you&apos;ll hand over your {kWord} check of <strong style={{ color: '#fff' }}>{amt}</strong> in person. They&apos;ll confirm it once received. We&apos;ve emailed you the details. Thanks!</>, 'meet');
+      }
+      if (selected === 'office') {
+        return notify('sent', <>We let {dj} know you&apos;ll drop off your {kWord} check of <strong style={{ color: '#fff' }}>{amt}</strong> at the office. They&apos;ll confirm it once received. We&apos;ve emailed you the details. Thanks!</>, 'office');
       }
       if (selected === 'mail') {
         return notify('sent', <>We let {dj} know your {kWord} check of <strong style={{ color: '#fff' }}>{amt}</strong> is in the mail{mustPrior ? ` — to arrive by ${bannerDeadline}` : ''}. They&apos;ll confirm it once it arrives. We&apos;ve emailed you the details. Thanks!</>, 'mail');
@@ -197,7 +212,6 @@ export default function CheckSent(props: Props) {
           ) : (
             <>
               <Hero />
-              <PayableMemo />
               {mustPrior && opts.length > 0 && (
                 <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
                   <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your check received {weeksPhrase || 'before the event'}{checkDeadline ? ` (by ${checkDeadline})` : ''} — not the day of the event.</p>
@@ -211,10 +225,26 @@ export default function CheckSent(props: Props) {
                   {opts.map((o) => (
                     <RadioRow key={o.key} label={o.label} checked={selected === o.key} onClick={() => setChoice(o.key)} />
                   ))}
-                  {selected === 'dropoff' && (
+                  {selected === 'meet' && (
                     <div style={{ marginTop: 14 }}>
                       <DropoffDetail />
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the contact info to arrange drop-off will be emailed to you once you click confirm.</p>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the contact info to arrange the exchange will be emailed to you once you click confirm.</p>
+                    </div>
+                  )}
+                  {selected === 'office' && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
+                        {dropoffAddressLines.length > 0 ? (
+                          <>
+                            <div style={{ color: '#8a8a98', fontSize: 12 }}>Drop your check off at</div>
+                            {dropoffAddressLines.map((l, i) => <div key={i} style={{ color: '#fff', fontSize: 14, lineHeight: 1.45 }}>{l}</div>)}
+                            {dropoffHours && <div style={{ color: '#d5d5df', fontSize: 13, marginTop: 4 }}>{dropoffHours}</div>}
+                          </>
+                        ) : (
+                          <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>Reach out to {dj} for the office address.</p>
+                        )}
+                      </div>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the office address will be emailed to you once you click confirm.</p>
                     </div>
                   )}
                   {selected === 'mail' && (
@@ -226,6 +256,7 @@ export default function CheckSent(props: Props) {
                   {selected === 'nightof' && (
                     <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '14px 0 0', textAlign: 'left' }}>Information to include on your check will be emailed to you once you click confirm.</p>
                   )}
+                  {selected && <div style={{ marginTop: 16 }}><PayableMemo /></div>}
                   <button type="button" disabled={!selected || state === 'sending'}
                     style={{ ...PRIMARY_BTN, marginTop: 18, opacity: (!selected || state === 'sending') ? 0.5 : 1, cursor: (!selected || state === 'sending') ? 'default' : 'pointer' }}
                     onClick={() => void confirm()}>
