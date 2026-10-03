@@ -249,8 +249,8 @@ export default function CheckSent(props: Props) {
                   )}
                   {selected === 'mail' && (
                     <div style={{ marginTop: 14 }}>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Information to include on your check and the mailing address will be emailed to you once you click confirm.</p>
                       <MailDetail />
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0', textAlign: 'left' }}>Information to include on your check and the mailing address will be emailed to you once you click confirm.</p>
                     </div>
                   )}
                   {selected === 'nightof' && (
