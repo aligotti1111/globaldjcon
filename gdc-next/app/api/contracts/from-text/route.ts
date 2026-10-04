@@ -116,26 +116,27 @@ export async function POST(req: Request) {
     } catch { existingTemplateId = null; }
   }
 
-  // 1. Build/refresh the DocuSeal template from the text. New contracts get the
-  //    signature block guaranteed; edits keep the existing (transferred) fields.
+  // 1. Build the DocuSeal template from the text. We ALWAYS create a fresh
+  //    template — even when editing — because updateTemplateDocuments keeps the
+  //    previously-placed fields and does NOT re-scan the replaced HTML for new
+  //    ones, so edited/old contracts would never pick up the anchor-tag fields.
+  //    Creating fresh re-extracts every {{tag}} field (and the signatures) from
+  //    the current text, so the fields always match the document.
   let templateId: string | number | undefined;
   try {
     const docuseal = getDocuseal();
     // Always guarantee DJ + Client signature spots — on create AND edit — so a
     // contract can never end up without somewhere for the client to sign.
     const html = wrapContractHtml(text, logoUrl, true);
-    if (existingTemplateId) {
-      await docuseal.updateTemplateDocuments(Number(existingTemplateId), {
-        documents: [{ html, position: 0, replace: true }],
-      });
-      templateId = existingTemplateId;
-    } else {
-      const template = await docuseal.createTemplateFromHtml({
-        name: `${name} — ${acting.djId}`,
-        html,
-        external_id: `dj_${acting.djId}_${Date.now()}`,
-      });
-      templateId = (template as { id?: string | number }).id;
+    const template = await docuseal.createTemplateFromHtml({
+      name: `${name} — ${acting.djId}`,
+      html,
+      external_id: `dj_${acting.djId}_${Date.now()}`,
+    });
+    templateId = (template as { id?: string | number }).id;
+    // Best-effort cleanup of the old template on an edit (never block on it).
+    if (existingTemplateId && String(templateId) !== String(existingTemplateId)) {
+      try { await (docuseal as unknown as { archiveTemplate?: (id: number) => Promise<unknown> }).archiveTemplate?.(Number(existingTemplateId)); } catch { /* ignore */ }
     }
     if (templateId == null) throw new Error('No template id returned');
   } catch (e) {
