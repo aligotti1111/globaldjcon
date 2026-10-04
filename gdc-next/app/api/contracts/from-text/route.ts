@@ -37,7 +37,7 @@ function translateTags(html: string): string {
   for (const f of CONTRACT_DATA_FIELDS) {
     out = out.replace(
       new RegExp(`\\{\\{\\s*${f}\\s*\\}\\}`, 'gi'),
-      `<text-field name="${f}" role="DJ" required="false" readonly="true" style="min-width:120px;height:16px;display:inline-block;"></text-field>`,
+      `<text-field name="${f}" role="DJ" required="false" readonly="true" style="width:160px;height:16px;display:inline-block;"></text-field>`,
     );
   }
   return out;
