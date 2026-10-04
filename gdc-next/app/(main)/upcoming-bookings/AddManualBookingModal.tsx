@@ -206,7 +206,11 @@ export default function AddManualBookingModal({
   // the checkbox to prevent accidental double-sends.
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
   const [hostName, setHostName] = useState<string>(existing?.requester_name || '');
-  const [sendInvite, setSendInvite] = useState<boolean>(false);
+  // Default ON for a NEW booking so entering a valid host email just sends the
+  // details on save — no hidden toggle to remember. It only fires when a valid
+  // email is actually present (shouldSend gates on that), and the DJ can still
+  // untick it. For an EDIT it starts OFF, so fixing a typo doesn't re-email.
+  const [sendInvite, setSendInvite] = useState<boolean>(!existing);
   const hostEmailAlreadySent = !!existing?.host_email_sent_at;
 
   /**
@@ -849,7 +853,16 @@ export default function AddManualBookingModal({
       };
 
       // Decide whether to send the invite email after save.
-      const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
+      // Decide whether to send the host invite. A NEW booking sends whenever a
+      // valid host email is present UNLESS the DJ explicitly unticked the box —
+      // so it no longer depends on the auto-tick having fired in time (which was
+      // the silent "it just didn't send" bug: no Resend log, no error). An EDIT
+      // only sends when the box is actually ticked, so fixing a typo never
+      // re-emails. Uses the full email regex, not a bare "@" check.
+      const wantSend = isEdit
+        ? sendInvite
+        : (inviteTouched.current ? sendInvite : true);
+      const shouldSend = wantSend && hostEmailValid && !hostEmailAlreadySent;
 
       // Manual booking writes go through the gated server route (manager+ only,
       // scoped to the OWNER). A browser insert/update is rejected by RLS for a
