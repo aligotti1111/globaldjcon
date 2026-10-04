@@ -61,9 +61,9 @@ export async function GET() {
     const { data: djTz } = await admin
       .from('users').select('timezone').eq('id', acting.djId).maybeSingle();
     const today = todayInTz(effectiveTimezone((djTz as { timezone?: string | null } | null)?.timezone ?? null, null));
-    const { count } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
+    const { data: rows } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
       .from('bookings')
-      .select('id', { count: 'exact', head: true })
+      .select('id, status_overrides')
       .eq('dj_id', acting.djId)
       .is('deleted_at', null)
       .eq('contract_status', 'awaiting_client')
@@ -74,7 +74,19 @@ export async function GET() {
       // sit on a still-'approved' row, so filter that out explicitly. The null
       // branch keeps every normal (never-cancelled) booking in.
       .or('cancel_status.is.null,cancel_status.neq.accepted');
-    pending = count ?? 0;
+
+    // A contract the DJ MARKED COMPLETE by hand (papered the deal off-platform)
+    // reads "Complete" on the dashboard even though contract_status is still
+    // 'awaiting_client' in the DB — the manual flag lives in status_overrides.
+    // Those must NOT count as pending, or the meter shows a contract still in
+    // flight that the DJ has already settled. Filter them out here.
+    const pendingRows = ((rows as { id: string; status_overrides: unknown }[] | null) || [])
+      .filter((r) => {
+        const o = r.status_overrides;
+        const done = o && typeof o === 'object' && (o as Record<string, unknown>).contract === true;
+        return !done;
+      });
+    pending = pendingRows.length;
   } catch { /* non-fatal */ }
 
   return NextResponse.json({
