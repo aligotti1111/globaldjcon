@@ -1,27 +1,24 @@
 // Monthly signed-contract quota — the usage side of the tier system.
 //
 // Each paid tier allows N contracts per BILLING CYCLE (see CONTRACT_QUOTA in
-// lib/access.ts). A contract occupies a slot the moment the DJ SENDS it, and
-// the slot is FREED if the contract falls through (declined / voided /
-// cancelled). We don't keep a counter column — the count is derived live from
-// the bookings table, so it can never drift out of sync with reality.
+// lib/access.ts). A contract occupies a slot only once it is COMPLETED — i.e.
+// signed by BOTH parties — because that's when it actually counts against the
+// plan (sending/drafting a contract is free; nothing is consumed until it's
+// fully executed). We don't keep a counter column — the count is derived live
+// from the bookings table, so it can never drift out of sync with reality.
 //
 // Window: the DJ's own Stripe billing period [sub_period_start, sub_period_end)
 // — persisted by the webhook. If a DJ has no period on file (e.g. an admin
 // comp, or before the first webhook backfills it), we fall back to the current
 // CALENDAR month so the count is always bounded to ~one cycle.
 //
-// A contract "occupies a slot" when the booking has a contract_sent_at inside
-// the window AND its contract_status is not one of the dead states. Re-sending
-// the SAME booking's contract does not consume a second slot: it's one booking
-// row, and the enforcement call excludes the current booking when it checks
-// whether there's room.
+// A contract "occupies a slot" when the booking's contract_status is 'signed'
+// (set by the DocuSeal completion webhook once both parties have signed) and
+// its contract_signed_at falls inside the window. One booking = one slot; the
+// enforcement call excludes the current booking so a re-check isn't off by one.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { type AccessFields, contractQuotaFor } from './access';
-
-// Statuses where the contract fell through — the slot is returned.
-const DEAD_STATUSES = ['cancelled', 'declined', 'voided'];
 
 function monthWindow(now: Date): { start: string; end: string } {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -56,14 +53,17 @@ export async function getContractUsage(
   const cycleStart = access.sub_period_start || fallback.start;
   const cycleEnd = access.sub_period_end || fallback.end;
 
+  // Only fully-completed contracts count: contract_status === 'signed' (both
+  // parties signed, set by the completion webhook) with a signed timestamp in
+  // this cycle. Sent-but-unsigned and cancelled/declined contracts don't count.
   let q = admin
     .from('bookings')
     .select('id', { count: 'exact', head: true })
     .eq('dj_id', djId)
-    .not('contract_sent_at', 'is', null)
-    .gte('contract_sent_at', cycleStart)
-    .lt('contract_sent_at', cycleEnd)
-    .not('contract_status', 'in', `(${DEAD_STATUSES.join(',')})`);
+    .eq('contract_status', 'signed')
+    .not('contract_signed_at', 'is', null)
+    .gte('contract_signed_at', cycleStart)
+    .lt('contract_signed_at', cycleEnd);
   if (opts.excludeBookingId) q = q.neq('id', opts.excludeBookingId);
 
   const { count } = await q;
