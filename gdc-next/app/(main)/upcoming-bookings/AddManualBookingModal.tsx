@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   searchAddresses, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory,
-  hoursBetween, durationLabel, resolvePackage,
+  hoursBetween, durationLabel, resolvePackage, calcPrice,
 } from '../[slug]/mobileBookingForm';
 import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
@@ -89,6 +89,10 @@ export default function AddManualBookingModal({
     initBirthday ? /surprise party:\s*yes/i.test(initEd) : false
   );
   const eventTypeMounted = useRef(false);
+  // Skips the first run of the "recompute rate when hours change" effect, so
+  // opening an existing booking keeps its saved rate until the DJ actually
+  // changes the times or the package.
+  const pkgPriceMounted = useRef(false);
   // Selected package index (as a string; '' = none) within the category that
   // matches the chosen event type. Pre-fill from an existing booking.
   const [selectedPkgIdx, setSelectedPkgIdx] = useState<string>(
@@ -161,7 +165,7 @@ export default function AddManualBookingModal({
       // Partial/empty packages stay hidden until completed. Completeness is
       // per-package, so a finished one shows even if others are still empty.
       if (!pkg || !title || !plainDetails || !hasPrice) return null;
-      return { idx, title, details, price4, reqAll, overtime: (pkg?.overtime ?? fallback.overtime) ?? null };
+      return { idx, title, details, price4, reqAll, overtime: (pkg?.overtime ?? fallback.overtime) ?? null, full: eff };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
   // Clear sub-fields + package selection when the user switches event type
@@ -179,6 +183,23 @@ export default function AddManualBookingModal({
     setShowOvertime(false);
     setOvertimeRate('');
   }, [eventType]);
+  // Recompute the Rate whenever the event's hours (or the selected package)
+  // change AND a real package is selected — so changing the start/end time
+  // reprices the booking off the package's tiers + overtime, matching the
+  // public booking form. Price-on-request packages and "no package" are left
+  // alone (the DJ's typed rate stands). First run is skipped so an existing
+  // booking keeps its saved rate on open.
+  useEffect(() => {
+    if (!pkgPriceMounted.current) { pkgPriceMounted.current = true; return; }
+    if (djType !== 'mobile' || !selectedPkgIdx) return;
+    const p = usablePkgs.find((u) => String(u.idx) === selectedPkgIdx);
+    if (!p || p.reqAll) return;
+    const r = calcPrice(p.full, startTime, endTime, 0, false, '', false);
+    if (!r.isQuote && r.price != null) setRate(String(r.price));
+    // usablePkgs intentionally omitted — it's rebuilt every render; we only want
+    // to reprice on an actual time/package change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startTime, endTime, selectedPkgIdx]);
   // Host invite — only relevant for manual bookings. If editing a row that
   // already has an email saved, prefill it. If the email was already sent
   // (host_email_sent_at populated), the UI shows a "sent" state instead of
@@ -1272,11 +1293,19 @@ export default function AddManualBookingModal({
                       // New selection starts from the package's saved details.
                       setEditedDetails(p ? (p.details || '') : null);
                       if (p) {
-                        // Pre-fill the rate with the package's base (4hr) price;
-                        // skip for price-on-request packages. The DJ can still
-                        // edit the Rate box afterward.
-                        if (!p.reqAll && p.price4 != null && String(p.price4) !== '') {
-                          setRate(String(p.price4));
+                        // Pre-fill the rate with the package's price FOR THE
+                        // CHOSEN DURATION (tier + overtime for hours beyond it),
+                        // exactly as the public booking form prices it — not just
+                        // the base tier. Falls back to the base tier when times
+                        // aren't set yet; skips price-on-request packages. The DJ
+                        // can still edit the Rate box afterward.
+                        if (!p.reqAll) {
+                          const r = calcPrice(p.full, startTime, endTime, 0, false, '', false);
+                          if (!r.isQuote && r.price != null) {
+                            setRate(String(r.price));
+                          } else if (p.price4 != null && String(p.price4) !== '') {
+                            setRate(String(p.price4));
+                          }
                         }
                         // If the package carries an overtime rate, surface it
                         // (editable); otherwise leave the overtime field as-is.
