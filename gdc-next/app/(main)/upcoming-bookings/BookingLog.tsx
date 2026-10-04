@@ -90,6 +90,8 @@ export default function BookingLog({ booking, payments, changes }: Props) {
   add(booking.contract_completed_at, 'Contract marked complete', 'dj');
   add(booking.contract_completion_undone_at, 'Contract completion undone', 'dj');
   add(booking.contract_cancelled_at, 'Contract cancelled', 'dj');
+  // A party declined to sign on DocuSeal (both sides were emailed).
+  add(booking.contract_declined_at, 'Contract declined', 'dj');
 
   // ── Payments ledger (deposit / balance) ──
   for (const p of payments) {
