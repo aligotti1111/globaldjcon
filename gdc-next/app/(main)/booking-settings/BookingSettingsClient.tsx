@@ -555,11 +555,11 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
               </div>
             ) : undefined}
           />
-          <div className={styles.settingHint} style={{ margin: '1rem 0 1rem' }}>
-            Upload or customize your contracts here. Set the Anchor Tags so information
-            from your booking auto-populates on the contract. When a booking is approved,
-            the details fill in for you to review and send.
-          </div>
+          <ul className={styles.settingHint} style={{ margin: '1rem 0 1rem', paddingLeft: '1.2rem', listStyle: 'disc' }}>
+            <li>Upload or customize your contracts here.</li>
+            <li>Set the Anchor Tags on the contract so information from your booking auto-populates on the contract.</li>
+            <li>When a booking is approved, the details fill in for you to review and send.</li>
+          </ul>
           <ContractPortal userId={initialProfile.id} djType={djType} inline />
         </div>
       )}
