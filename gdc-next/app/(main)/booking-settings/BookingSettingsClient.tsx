@@ -55,15 +55,15 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
   // Monthly contract quota, shown on the "Your Contracts" banner.
-  const [contractUsage, setContractUsage] = useState<{ quota: number; used: number } | null>(null);
+  const [contractUsage, setContractUsage] = useState<{ quota: number; used: number; pending: number } | null>(null);
   useEffect(() => {
     if (secTab !== 'contracts') return;
     let alive = true;
     (async () => {
       try {
         const r = await fetch('/api/contracts/usage');
-        const j = (await r.json().catch(() => ({}))) as { quota?: number; used?: number };
-        if (alive && typeof j.quota === 'number' && typeof j.used === 'number') setContractUsage({ quota: j.quota, used: j.used });
+        const j = (await r.json().catch(() => ({}))) as { quota?: number; used?: number; pending?: number };
+        if (alive && typeof j.quota === 'number' && typeof j.used === 'number') setContractUsage({ quota: j.quota, used: j.used, pending: typeof j.pending === 'number' ? j.pending : 0 });
       } catch { /* ignore */ }
     })();
     return () => { alive = false; };
@@ -549,9 +549,15 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             title="Your Contracts"
             subtitle="Upload or customize your contracts here. Set the Anchor Tags so information from your booking auto-populates on the contract."
             right={contractUsage ? (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Contracts completed this billing cycle</span>
-                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: contractUsage.used >= contractUsage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{contractUsage.used}/{contractUsage.quota}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.2rem', whiteSpace: 'nowrap' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem' }}>
+                  <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Contracts completed this billing cycle</span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, color: contractUsage.used >= contractUsage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{contractUsage.used}/{contractUsage.quota}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '.4rem' }}>
+                  <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Pending (awaiting signature)</span>
+                  <span style={{ fontSize: '.95rem', fontWeight: 800, color: 'var(--gold,#f0b64a)' }}>{contractUsage.pending}</span>
+                </div>
               </div>
             ) : undefined}
           />
