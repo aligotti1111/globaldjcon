@@ -39,11 +39,25 @@ export async function GET() {
   }
 
   const usage = await getContractUsage(admin, acting.djId, access);
+
+  // Pending contracts: sent and awaiting a signature (the DJ's or the client's)
+  // — currently in flight, not yet completed. Shown next to the completed count.
+  let pending = 0;
+  try {
+    const { count } = await admin
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('dj_id', acting.djId)
+      .in('contract_status', ['awaiting_dj', 'awaiting_client']);
+    pending = count ?? 0;
+  } catch { /* non-fatal */ }
+
   return NextResponse.json({
     quota: usage.quota,
     used: usage.used,
     remaining: usage.remaining,
     atLimit: usage.atLimit,
     cycleEnd: usage.cycleEnd,
+    pending,
   });
 }
