@@ -15,6 +15,7 @@ type Item = { bookingId: string; slot: string; at: string; eventDate: string | n
 // booking pipeline (contract / deposit / balance / planner-or-rider / guests).
 const EMOJI: Record<string, string> = {
   contract: '\u{1F4DD}',  // 📝
+  contract_declined: '\u{274C}', // ❌
   deposit: '\u{1F4B5}',   // 💵
   invoice: '\u{1F9FE}',   // 🧾
   deposit_pending: '\u{23F3}', // ⏳
@@ -25,6 +26,7 @@ const EMOJI: Record<string, string> = {
 };
 const WHAT: Record<string, string> = {
   contract: 'Contract signed',
+  contract_declined: 'Contract declined',
   deposit: 'Deposit paid',
   invoice: 'Balance paid',
   deposit_pending: 'Deposit pending',
