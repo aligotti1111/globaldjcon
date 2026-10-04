@@ -40,15 +40,22 @@ export async function GET() {
 
   const usage = await getContractUsage(admin, acting.djId, access);
 
-  // Pending contracts: sent and awaiting a signature (the DJ's or the client's)
-  // — currently in flight, not yet completed. Shown next to the completed count.
+  // Pending contracts: SENT and awaiting the client's signature — i.e. actually
+  // out in the world, in flight, not yet completed. This mirrors exactly what
+  // the booking dashboard labels "Pending": only awaiting_client.
+  //
+  // awaiting_dj is deliberately EXCLUDED — the contract exists but the DJ hasn't
+  // signed it yet, so it has NOT gone out. The dashboard reads that as "Not Sent",
+  // not "Pending", so counting it here would overstate what's in flight. Deleted
+  // bookings are excluded too so stale rows don't inflate the number.
   let pending = 0;
   try {
-    const { count } = await admin
+    const { count } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
       .from('bookings')
       .select('id', { count: 'exact', head: true })
       .eq('dj_id', acting.djId)
-      .in('contract_status', ['awaiting_dj', 'awaiting_client']);
+      .is('deleted_at', null)
+      .eq('contract_status', 'awaiting_client');
     pending = count ?? 0;
   } catch { /* non-fatal */ }
 
