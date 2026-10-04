@@ -32,7 +32,7 @@ const BUILDER_FIELDS = [
   { name: 'price', type: 'text', role: 'DJ', title: 'Agreed price' },
   { name: 'deposit', type: 'text', role: 'DJ', title: 'Deposit' },
   { name: 'DJ Signature', type: 'signature', role: 'DJ', title: 'Your signature' },
-  { name: 'Client Signature', type: 'signature', role: 'Client', title: 'Client signature' },
+  { name: 'Client Signature', type: 'signature', role: 'Client/Host', title: 'Client signature' },
 ];
 
 const STANDARD_TEXT = `DJ SERVICES AGREEMENT
@@ -330,7 +330,7 @@ export default function ContractSendModal({
   if (phase === 'setup_builder') {
     return shell('Set up your contract', (
       error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-        : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
+        : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
         : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>
     ), (
       <>
@@ -348,7 +348,7 @@ export default function ContractSendModal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening…</div>}
         </div>
       </div>
