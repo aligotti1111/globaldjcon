@@ -90,7 +90,7 @@ export default function SectionBanner({
       >
         <Icon name={icon} />
       </span>
-      <div>
+      <div style={{ flex: '1 1 auto', minWidth: 0 }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.55rem', letterSpacing: '.04em', lineHeight: 1, color: '#fff' }}>
           {title}
         </div>
@@ -100,7 +100,14 @@ export default function SectionBanner({
           </div>
         )}
       </div>
-      {right && <span style={{ marginLeft: 'auto', alignSelf: 'flex-start', marginTop: 2 }}>{right}</span>}
+      {/* The right slot spans the banner's full height and splits top↔bottom, so
+          a caller can anchor one thing to the top-right and another to the
+          bottom-right (e.g. the completed counter up top, "Pending" below). */}
+      {right && (
+        <span style={{ marginLeft: 16, alignSelf: 'stretch', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flexShrink: 0 }}>
+          {right}
+        </span>
+      )}
     </div>
   );
 }
