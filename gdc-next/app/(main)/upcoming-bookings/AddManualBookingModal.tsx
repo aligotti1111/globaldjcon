@@ -687,7 +687,8 @@ export default function AddManualBookingModal({
     if (!eventDate) { setError('Pick a date.'); return; }
     if (!startTime) { setError('Pick a start time.'); return; }
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
-    if (djType === 'club' && !venueName.trim()) { setError('Venue name is required.'); return; }
+    if (!venueName.trim()) { setError('Venue name is required.'); return; }
+    if (!venueAddress.trim()) { setError('Venue location is required.'); return; }
 
     // Backstop. The Add Booking button is already disabled while either of
     // these holds, and the reason is printed under the tax/deposit box, so in
@@ -1173,7 +1174,7 @@ export default function AddManualBookingModal({
           <div className={styles.venueRateRow}>
             <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
               <span className={styles.fieldLabel}>
-                Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+                Venue Name
               </span>
               <input
                 type="text"
@@ -1181,7 +1182,7 @@ export default function AddManualBookingModal({
                 onChange={(e) => setVenueName(e.target.value)}
                 placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
                 className={styles.input}
-                style={{ width: '100%', ...errRing(error === 'Venue name is required.' && djType === 'club' && !venueName.trim()) }}
+                style={{ width: '100%', ...errRing(error === 'Venue name is required.' && !venueName.trim()) }}
               />
             </label>
             {djType === 'club' && (
@@ -1239,6 +1240,7 @@ export default function AddManualBookingModal({
                 onFocus={() => { if (addrSuggestions.length > 0) setShowAddrSuggestions(true); }}
                 placeholder="Start typing address…"
                 className={styles.input}
+                style={errRing(error === 'Venue location is required.' && !venueAddress.trim())}
                 autoComplete="off"
               />
               {showAddrSuggestions && addrSuggestions.length > 0 && (
