@@ -29,7 +29,7 @@ const BUILDER_FIELDS = [
   { name: 'price', type: 'text', role: 'DJ', title: 'Agreed price' },
   { name: 'deposit', type: 'text', role: 'DJ', title: 'Deposit' },
   { name: 'DJ Signature', type: 'signature', role: 'DJ', title: 'Your signature' },
-  { name: 'Client Signature', type: 'signature', role: 'Client', title: 'Client signature' },
+  { name: 'Client Signature', type: 'signature', role: 'Client/Host', title: 'Client signature' },
 ];
 
 // Editable standard contract (mirrors lib/docuseal STANDARD_CONTRACT_TEXT).
@@ -258,7 +258,7 @@ export default function ContractSection({ userId }: { userId: string }) {
                 ) : tokenErr ? (
                   <div style={{ padding: '2rem', color: '#c00' }}>{tokenErr}</div>
                 ) : token ? (
-                  <DocusealBuilder token={token} roles={['DJ', 'Client']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
+                  <DocusealBuilder token={token} roles={['DJ', 'Client/Host']} fields={BUILDER_FIELDS} withSendButton={false} withTitle={false} onSave={handleBuilderSave} />
                 ) : (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>
                 )}
