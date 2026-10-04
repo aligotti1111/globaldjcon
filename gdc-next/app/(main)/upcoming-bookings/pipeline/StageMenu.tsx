@@ -97,7 +97,9 @@ export default function StageMenu({
               disabled={locked}
               title={a.title || (roleLocked ? NO_ACCESS : undefined)}
               onClick={() => { if (locked) return; onRunAction(a.run); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1 }}
+              onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1, transition: 'background .12s' }}
             >
               {titleCase(a.label)}{roleLocked ? '  \u{1F512}' : ''}
             </button>
@@ -113,7 +115,9 @@ export default function StageMenu({
               disabled={overrideLocked}
               title={overrideLocked ? NO_ACCESS : undefined}
               onClick={() => { if (overrideLocked) return; onToggleOverride(); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1 }}
+              onMouseEnter={(e) => { if (!overrideLocked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
             >
               {st.done ? (payStage ? '✕ Mark Not Paid' : '✕ Mark Not Complete') : (payStage ? '✓ Mark Paid' : '✓ Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}
             </button>
