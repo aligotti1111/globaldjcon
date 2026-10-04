@@ -95,7 +95,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     const isDone = trulySigned || !!overrides.contract;
     const cState: StepState =
       isDone ? 'done'
-      : (cstatus === 'cancelled' || cstatus === 'voided') ? 'void'
+      : (cstatus === 'cancelled' || cstatus === 'voided' || cstatus === 'declined') ? 'void'
       : (cstatus === 'awaiting_client' || cstatus === 'awaiting_dj') ? 'pending'
       : 'todo';
     // Contract is the one step the DJ can ACT on, so its label is a verb until
