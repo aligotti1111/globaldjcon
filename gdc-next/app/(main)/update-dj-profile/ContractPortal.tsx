@@ -49,6 +49,51 @@ interface Contract {
 }
 type View = 'grid' | 'builder' | 'standard' | 'paste';
 
+// ── Merge-tag chips for the "Edit Contract Text" view ───────────────────────
+// Instead of showing raw {{event_type}} tokens, the standard editor renders each
+// tag as a small non-editable chip sitting exactly where the tag is. On save we
+// serialize the editor back to text, turning each chip back into its {{tag}} so
+// the field builder still auto-places everything in the same spot.
+const TAG_LABELS: Record<string, string> = {
+  dj_name: 'Company / DJ name', client_name: 'Client name', event_date: 'Event date',
+  event_type: 'Event type', venue_name: 'Venue name', event_address: 'Event address',
+  start_time: 'Start time', end_time: 'End time', package: 'Package', set_type: 'Set type',
+  equipment: 'Equipment', duration: 'Duration', overtime_rate: 'Overtime rate', price: 'Price',
+  deposit: 'Deposit', payment_terms: 'Payment breakdown', cocktail_hour: 'Cocktail hour',
+  ceremony: 'Ceremony', tax: 'Tax', grand_total: 'Total', agreement_date: 'Agreement date',
+  todays_date: 'Today’s date', client_signature: 'Client signature',
+};
+function escChip(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function chipHtml(tag: string): string {
+  const label = TAG_LABELS[tag] || tag.replace(/_/g, ' ');
+  return `<span contenteditable="false" data-tag="${escChip(tag)}" style="display:inline-block;background:#e8f7f0;border:1px solid #9fe3c8;color:#0a7a52;border-radius:4px;padding:0 6px;font-size:.78rem;font-weight:700;margin:0 1px;white-space:nowrap;">${escChip(label)}</span>`;
+}
+// text (with {{tags}}) → HTML with chips. Newlines preserved via pre-wrap.
+function textToChipsHtml(t: string): string {
+  return escChip(t).replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_m, tag) => chipHtml(String(tag).trim()));
+}
+// editor DOM → text, turning chips back into {{tag}} and block/<br> into newlines.
+function serializeChips(root: HTMLElement): string {
+  const parts: string[] = [];
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) { parts.push(child.textContent || ''); return; }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const el = child as HTMLElement;
+      if (el.dataset && el.dataset.tag) { parts.push(`{{${el.dataset.tag}}}`); return; }
+      if (el.tagName === 'BR') { parts.push('\n'); return; }
+      const isBlock = /^(DIV|P)$/.test(el.tagName);
+      if (isBlock && parts.length && !parts[parts.length - 1].endsWith('\n')) parts.push('\n');
+      walk(el);
+      if (isBlock) parts.push('\n');
+    });
+  };
+  walk(root);
+  return parts.join('').replace(/\n{3,}/g, '\n\n');
+}
+
 export default function ContractPortal({
   userId, djType, bookingId, eventType, controlledOpen, onUseContract, onRequestClose, inline,
 }: {
@@ -139,12 +184,17 @@ export default function ContractPortal({
   const [pendingDelete, setPendingDelete] = useState<Contract | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  // The standard-contract "Edit Contract Text" editor (chips for {{tags}}).
+  const stdRef = useRef<HTMLDivElement>(null);
 
   // Seed the rich-text editor with the contract content when the write/edit
   // screen opens (uncontrolled contenteditable, read back on save).
   useEffect(() => {
     if (view === 'paste' && editorRef.current) {
       editorRef.current.innerHTML = pasteText || '';
+    }
+    if (view === 'standard' && stdRef.current) {
+      stdRef.current.innerHTML = textToChipsHtml(text || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, editingId]);
@@ -292,13 +342,18 @@ export default function ContractPortal({
   }
 
   async function saveStandard(overrideLogo?: string | null) {
-    if (!text.trim()) { setError('Contract text is empty.'); return; }
+    // When the chip editor is open, read the latest wording back from it
+    // (chips → {{tags}}). Keep `text` state in sync so later saves (e.g. adding
+    // a logo from the fields page) don't lose these edits.
+    const latest = (view === 'standard' && stdRef.current) ? serializeChips(stdRef.current) : text;
+    if (latest !== text) setText(latest);
+    if (!latest.trim()) { setError('Contract text is empty.'); return; }
     const lg = overrideLogo !== undefined ? overrideLogo : logoUrl;
     setError(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, name: name || 'Standard contract', contractId: editingId, logoUrl: lg }),
+        body: JSON.stringify({ text: latest, name: name || 'Standard contract', contractId: editingId, logoUrl: lg }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
@@ -463,7 +518,7 @@ export default function ContractPortal({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: '#f3f4f6' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
-          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Edit the wording. Keep the {'{{tags}}'} — the signature and detail fields fill in from them automatically. Next you can review and adjust where the fields sit. Have a lawyer review before use.</div>
+          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Edit the wording. The green chips mark where the booking details and signatures fill in automatically — leave them in place (you can delete one to remove that field). Next you can review and adjust where the fields sit. Have a lawyer review before use.</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginTop: '.6rem', flexWrap: 'wrap' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 38, maxWidth: 110, borderRadius: 4 }} />}
@@ -474,7 +529,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', background: '#f3f4f6' }}>
           <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', boxShadow: '0 1px 5px rgba(0,0,0,.15)', borderRadius: 2 }}>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', border: 'none', outline: 'none', resize: 'none', minHeight: 560, padding: '2.5rem', color: '#111', background: 'transparent', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '.9rem', lineHeight: 1.7 }} />
+            <div ref={stdRef} contentEditable suppressContentEditableWarning style={{ width: '100%', boxSizing: 'border-box', outline: 'none', minHeight: 560, padding: '2.5rem', color: '#111', background: 'transparent', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '.9rem', lineHeight: 1.7, whiteSpace: 'pre-wrap' }} />
           </div>
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
