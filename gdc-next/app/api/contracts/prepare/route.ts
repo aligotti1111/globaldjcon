@@ -378,6 +378,9 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   let submissionId: string | number | undefined;
   let hasClientSig = false;
   let hasDjSig = false;
+  // The client signer role to put on the submission. New templates use
+  // "Client/Host"; detected per-template below so older "Client" ones still bind.
+  let clientRole = 'Client/Host';
   try {
     const docuseal = getDocuseal();
 
@@ -418,7 +421,13 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       const subs = tpl?.submitters || [];
       const roleOf = (uuid?: string) => subs.find((s) => s.uuid === uuid)?.name || '';
       const sigFields = (tpl?.fields || []).filter((f) => (f.type || '').toLowerCase() === 'signature');
-      hasClientSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'Client');
+      // The client signer role is "Client/Host" on new templates, "Client" on
+      // ones built before the rename — accept either, and mirror whatever this
+      // template actually uses when we create the submission below.
+      const isClientRole = (r: string) => r === 'Client/Host' || r === 'Client';
+      const detected = sigFields.map((f) => roleOf(f.submitter_uuid)).find(isClientRole);
+      if (detected) clientRole = detected;
+      hasClientSig = sigFields.some((f) => isClientRole(roleOf(f.submitter_uuid)));
       hasDjSig = sigFields.some((f) => roleOf(f.submitter_uuid) === 'DJ');
       if (!hasClientSig) {
         return NextResponse.json(
@@ -495,7 +504,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
           // The client is not emailed at creation either; they're only emailed after
           // the DJ reviews, signs, and sends via /api/contracts/send-client.
           { role: 'DJ', email: djEmail, name: dj?.name || 'DJ', values, send_email: false },
-          { role: 'Client', email: clientEmail, name: clientName, send_email: false },
+          { role: clientRole, email: clientEmail, name: clientName, send_email: false },
         ],
       } as unknown as Parameters<typeof docuseal.createSubmission>[0]),
       12000, 'createSubmission',
