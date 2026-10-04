@@ -308,6 +308,10 @@ export default function ContractPortal({
     const html = editorRef.current ? serializeChipsPreserveHtml(editorRef.current) : '';
     const plain = (editorRef.current?.textContent ?? '').trim();
     if (!plain) { setError('Contract text is empty.'); return; }
+    // Editing an EXISTING contract's text (re-lock) is a save, not a create — the
+    // builder's button must say "Save changes", not "Create Contract". editingId
+    // is set only when we came in from an existing contract, so it's the tell.
+    const wasEdit = !!editingId;
     setError(null); setSubmittingPaste(true);
     try {
       const res = await fetch('/api/contracts/from-text', {
@@ -317,7 +321,7 @@ export default function ContractPortal({
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string; name?: string };
       if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not build the contract.');
       await load();
-      openCard({ id: json.contractId, name: json.name || name || 'My contract', docuseal_template_id: json.templateId || null, is_standard: false }, true);
+      openCard({ id: json.contractId, name: json.name || name || 'My contract', docuseal_template_id: json.templateId || null, is_standard: false }, !wasEdit);
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not build the contract.'); }
     finally { setSubmittingPaste(false); }
   }
