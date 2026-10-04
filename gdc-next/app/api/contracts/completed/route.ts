@@ -112,6 +112,94 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, viewed: true });
   }
 
+  // Contract DECLINED — a party refused to sign on DocuSeal. Mark the booking's
+  // contract as declined (so the dashboard/pipeline + booking log register it)
+  // and email BOTH parties a confirmation.
+  if (eventType === 'form.declined' || eventType === 'submission.declined') {
+    const ddata = (payload.data || {}) as Record<string, unknown>;
+    const dnested = (ddata.submission || {}) as Record<string, unknown>;
+    const dSubId = ddata.submission_id ?? dnested.id ?? ddata.id;
+    if (dSubId == null) return NextResponse.json({ ok: true });
+    try {
+      const admin = createAdminClient();
+      const { data: bookingRow } = await admin
+        .from('bookings')
+        .select('id, dj_id, contract_status, event_date, venue_name, host_email, requester_id, requester_name')
+        .eq('contract_submission_id' as never, String(dSubId) as never)
+        .maybeSingle();
+      const booking = bookingRow as {
+        id: string; dj_id: string | null; contract_status: string | null;
+        event_date: string | null; venue_name: string | null;
+        host_email: string | null; requester_id: string | null; requester_name: string | null;
+      } | null;
+      if (!booking) return NextResponse.json({ ok: true, noBooking: true });
+      if (booking.contract_status === 'declined') return NextResponse.json({ ok: true, already: true });
+
+      // Claim once (dedupe simultaneous form./submission.declined events).
+      const { data: rows } = await admin
+        .from('bookings')
+        .update({ contract_status: 'declined', contract_declined_at: new Date().toISOString() } as unknown as never)
+        .eq('id', booking.id)
+        .neq('contract_status' as never, 'declined' as never)
+        .select('id');
+      if (!(Array.isArray(rows) && rows.length > 0)) return NextResponse.json({ ok: true, already: true });
+
+      const dateStr = fmtDate(booking.event_date);
+      const where = [booking.venue_name, dateStr].filter(Boolean).join(' — ');
+      const whereHtml = where ? ` for <strong>${escHtml(where)}</strong>` : '';
+
+      if (process.env.RESEND_API_KEY) {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        // DJ email.
+        const djEmail = booking.dj_id ? await resolveUserEmail(booking.dj_id) : null;
+        let djName = 'there';
+        if (booking.dj_id) {
+          const { data: p } = await admin.from('users').select('name').eq('id', booking.dj_id).maybeSingle();
+          const n = (p as { name?: string | null } | null)?.name;
+          if (n) djName = n;
+        }
+        if (djEmail) {
+          try {
+            await resend.emails.send({
+              from: FROM, replyTo: REPLY_TO, to: [djEmail],
+              subject: `Contract declined${where ? ` — ${where}` : ''}`,
+              html: emailTemplate(`
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Declined</h2>
+                <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName)}, the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
+                <p style="color:#666;margin-bottom:24px;">You can review the booking and send a new contract when you're ready.</p>
+                ${ctaButton(`${SITE_URL}/upcoming-bookings`, 'View Booking')}
+              `),
+            } as unknown as Parameters<typeof resend.emails.send>[0]);
+          } catch (e) { console.error('[contracts/declined] DJ email failed:', e); }
+        }
+
+        // Client email.
+        let clientEmail = (booking.host_email || '').trim();
+        if (!clientEmail && booking.requester_id) clientEmail = (await resolveUserEmail(String(booking.requester_id))) || '';
+        if (clientEmail) {
+          const clientName = (booking.requester_name || '').trim() || 'there';
+          try {
+            await resend.emails.send({
+              from: FROM, replyTo: REPLY_TO, to: [clientEmail],
+              subject: `Contract declined${where ? ` — ${where}` : ''}`,
+              html: emailTemplate(`
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Declined</h2>
+                <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, this confirms the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
+                <p style="color:#666;margin-bottom:24px;">If this was a mistake, please reach out to your DJ to have a new contract sent.</p>
+                ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
+              `),
+            } as unknown as Parameters<typeof resend.emails.send>[0]);
+          } catch (e) { console.error('[contracts/declined] client email failed:', e); }
+        }
+      }
+      return NextResponse.json({ ok: true, declined: true });
+    } catch (e) {
+      console.error('[contracts/declined] error:', e);
+      return NextResponse.json({ ok: true, error: e instanceof Error ? e.message : 'error' });
+    }
+  }
+
   // Only react to completion-type events; ack everything else so DocuSeal
   // doesn't keep retrying.
   if (eventType !== 'submission.completed' && eventType !== 'form.completed') {
