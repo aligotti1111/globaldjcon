@@ -533,12 +533,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           <SectionBanner
             icon="contracts"
             title="Your Contracts"
-            subtitle="Build and name the contracts clients sign when they book you."
+            subtitle="Upload or customize your contracts here. Set the Anchor Tags so information from your booking auto-populates on the contract."
           />
           <div className={styles.settingHint} style={{ margin: '1rem 0 1rem' }}>
-            Build and name the contracts clients sign when they book you — a standard
-            agreement or your own. When a booking is approved, the details fill in for
-            you to review and send.
+            Upload or customize your contracts here. Set the Anchor Tags so information
+            from your booking auto-populates on the contract. When a booking is approved,
+            the details fill in for you to review and send.
           </div>
           <ContractPortal userId={initialProfile.id} djType={djType} inline />
         </div>
