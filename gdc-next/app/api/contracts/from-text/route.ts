@@ -24,7 +24,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 26;
 
 const DJ_SIGNATURE_FIELD = '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>';
-const CLIENT_SIGNATURE_FIELD = '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>';
+const CLIENT_SIGNATURE_FIELD = '<signature-field name="Client Signature" role="Client/Host" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>';
 
 // Convert friendly {{tags}} typed/pasted in the editor into DocuSeal field
 // elements, so booking details (set_type, equipment, price, date…) auto-fill
@@ -54,7 +54,7 @@ function wrapContractHtml(bodyHtml: string, logoUrl?: string | null, ensureSigna
     // contract that only has a DJ signature still gets a Client one — the
     // client MUST have somewhere to sign. (DJ may have pre-signed in the text.)
     const hasDjSig = /<signature-field[^>]*role="DJ"/i.test(body);
-    const hasClientSig = /<signature-field[^>]*role="Client"/i.test(body);
+    const hasClientSig = /<signature-field[^>]*role="Client(\/Host)?"/i.test(body);
     if (!hasDjSig || !hasClientSig) {
       let block = '<div style="margin-top:40px">';
       if (!hasDjSig) block += `<div style="margin-bottom:22px">DJ signature: ${DJ_SIGNATURE_FIELD}</div>`;
