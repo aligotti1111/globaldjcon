@@ -428,7 +428,7 @@ export default function ContractPortal({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
+            style={{ width: '50%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
           <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. {bookingMode ? 'Then Lock it in.' : 'Then save your changes.'}</div>
           {isStdBuilder && (
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
