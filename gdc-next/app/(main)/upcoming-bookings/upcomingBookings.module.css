@@ -894,6 +894,13 @@ select.input {
   opacity: 0.7;
   filter: invert(1);
 }
+/* Before a date is chosen, hide the native field ENTIRELY (its mm/dd/yyyy
+   segments and any ghosted "today" preview Safari paints) so only the
+   "Select date" overlay shows. The input stays in the DOM and clickable — the
+   whole .dateWrap opens the picker — so this is purely visual. */
+.dateInput.dateInputEmpty {
+  opacity: 0;
+}
 .datePlaceholder {
   position: absolute;
   left: .8rem;
