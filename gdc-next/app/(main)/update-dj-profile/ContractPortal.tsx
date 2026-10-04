@@ -74,6 +74,21 @@ function chipHtml(tag: string): string {
 function textToChipsHtml(t: string): string {
   return escChip(t).replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_m, tag) => chipHtml(String(tag).trim()));
 }
+// For the rich (HTML) paste editor: turn {{tags}} already in the HTML into chips
+// WITHOUT escaping the surrounding markup (it's already HTML, with formatting).
+function htmlToChipsHtml(html: string): string {
+  return html.replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_m, tag) => chipHtml(String(tag).trim()));
+}
+// Read the paste editor back as HTML with chips turned back into {{tags}},
+// preserving the DJ's formatting (bold, lists, etc.).
+function serializeChipsPreserveHtml(root: HTMLElement): string {
+  const clone = root.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('[data-tag]').forEach((el) => {
+    const tag = (el as HTMLElement).dataset.tag || '';
+    el.replaceWith(document.createTextNode(`{{${tag}}}`));
+  });
+  return clone.innerHTML;
+}
 // editor DOM → text, turning chips back into {{tag}} and block/<br> into newlines.
 function serializeChips(root: HTMLElement): string {
   const parts: string[] = [];
@@ -189,7 +204,7 @@ export default function ContractPortal({
   // screen opens (uncontrolled contenteditable, read back on save).
   useEffect(() => {
     if (view === 'paste' && editorRef.current) {
-      editorRef.current.innerHTML = pasteText || '';
+      editorRef.current.innerHTML = htmlToChipsHtml(pasteText || '');
     }
     if (view === 'standard' && stdRef.current) {
       stdRef.current.innerHTML = textToChipsHtml(text || '');
@@ -286,7 +301,8 @@ export default function ContractPortal({
   // Lock the text in: (re)build the contract from the text, then hand off to the
   // drag builder to place fields. Passes contractId when editing (re-lock).
   async function submitPastedText() {
-    const html = editorRef.current?.innerHTML ?? '';
+    // Turn chips back into {{tags}} (keeping the DJ's formatting) before building.
+    const html = editorRef.current ? serializeChipsPreserveHtml(editorRef.current) : '';
     const plain = (editorRef.current?.textContent ?? '').trim();
     if (!plain) { setError('Contract text is empty.'); return; }
     setError(null); setSubmittingPaste(true);
