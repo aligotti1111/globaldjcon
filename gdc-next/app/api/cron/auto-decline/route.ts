@@ -25,7 +25,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { responseDeadlineMs, effectiveTimezone } from '@/lib/bookingExpiry';
+import { responseDeadlineMs, effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -154,5 +154,62 @@ export async function GET(req: Request) {
     } catch { /* email is best-effort — the decline itself already stuck */ }
   }
 
-  return NextResponse.json({ ok: true, checked: rows.length, declined });
+  // ── PAST-DATED PENDING CONTRACTS → AUTO-CANCEL ──────────────────────────
+  //
+  // A contract that's been SENT but never signed turns stale once the event is
+  // over: it can't be signed for a gig that already happened, and it has no
+  // business still reading "Pending" on the dashboard or counting against the
+  // pending meter. So any contract still awaiting a signature (the client's or
+  // the DJ's) on a booking whose event date has already passed — in that DJ's
+  // own timezone — is voided: contract_status → 'cancelled', stamped with
+  // contract_cancelled_at. The pipeline already treats 'cancelled' as a void
+  // step, so the stage drops out of "Pending" automatically. No email — this is
+  // housekeeping on a gig that's over, not a decision anyone needs to hear about.
+  let contractsVoided = 0;
+  try {
+    const { data: stale } = await db
+      .from('bookings')
+      .select('id, dj_id, event_date')
+      .in('contract_status', ['awaiting_client', 'awaiting_dj'])
+      .is('deleted_at', null)
+      .limit(2000);
+    const staleRows = (stale as unknown as { id: string; dj_id: string | null; event_date: string | null }[] | null) || [];
+
+    // Timezone per DJ (reuse what we already looked up; fetch any we're missing).
+    const extraIds = Array.from(new Set(
+      staleRows.map((r) => r.dj_id).filter((id): id is string => !!id && !tzById.has(id)),
+    ));
+    if (extraIds.length > 0) {
+      const { data: extraDjs } = await db
+        .from('users').select('id, timezone, zip').in('id', extraIds);
+      for (const u of (extraDjs as unknown as { id: string; timezone: string | null; zip: string | null }[] | null) || []) {
+        tzById.set(u.id, effectiveTimezone(u.timezone, u.zip));
+      }
+    }
+
+    const past = staleRows.filter((b) => {
+      if (!b.event_date) return false;
+      const tz = (b.dj_id && tzById.get(b.dj_id)) || effectiveTimezone(null, null);
+      // event_date is a plain YYYY-MM-DD; both sides are that same shape, so a
+      // lexical compare is a correct date compare. Strictly BEFORE today — a
+      // same-day gig stays live until the DJ's local midnight.
+      return b.event_date < todayInTz(tz);
+    });
+
+    if (!dry) {
+      for (const b of past) {
+        const { data: upData } = await db
+          .from('bookings')
+          .update({ contract_status: 'cancelled', contract_cancelled_at: nowIso } as unknown as never)
+          .eq('id', b.id)
+          .in('contract_status', ['awaiting_client', 'awaiting_dj'])
+          .select('id');
+        if (upData && (upData as unknown[]).length > 0) contractsVoided += 1;
+      }
+    } else {
+      contractsVoided = past.length;
+    }
+  } catch { /* non-fatal — the request auto-decline above already ran */ }
+
+  return NextResponse.json({ ok: true, checked: rows.length, declined, contractsVoided });
 }
