@@ -18,7 +18,7 @@ export function getDocuseal() {
 }
 
 export const ROLE_DJ = 'DJ';
-export const ROLE_CLIENT = 'Client';
+export const ROLE_CLIENT = 'Client/Host';
 
 // Booking-data fields the standard contract can auto-fill per booking.
 // MUST match lib/contractText.ts CONTRACT_DATA_FIELDS — including the club-only
@@ -94,7 +94,7 @@ function translateTags(escaped: string): string {
   );
   out = out.replace(
     /\{\{\s*client_signature\s*\}\}/gi,
-    '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
+    '<signature-field name="Client Signature" role="Client/Host" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>',
   );
   // Size each auto-fill field to the KIND of value it holds so short values
   // (times, price) don't leave big gaps and long ones (address) don't overflow.
@@ -121,7 +121,7 @@ function translateTags(escaped: string): string {
 // (the SIGNATURES lines are intentionally not in the contract text).
 // Single line, no whitespace between tags (body CSS is white-space:pre-wrap,
 // which would render indentation/newlines as big visible gaps).
-const SIGNATURE_BLOCK = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:4px">DJ Name:</div><div style="margin-bottom:14px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:4px">Client Name:</div><div style="margin-bottom:14px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
+const SIGNATURE_BLOCK = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:4px">DJ Name:</div><div style="margin-bottom:14px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:4px">Client Name:</div><div style="margin-bottom:14px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client/Host" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
 
 // Build the full HTML document for the contract from the DJ's edited text,
 // optionally with a logo at the top. Field tags are left intact for DocuSeal,
@@ -180,7 +180,7 @@ export function buildBookedContractHtml(
   // Any signature tags left in the body become fields.
   esc = esc
     .replace(/\{\{\s*dj_signature\s*\}\}/gi, '<signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>')
-    .replace(/\{\{\s*client_signature\s*\}\}/gi, '<signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>');
+    .replace(/\{\{\s*client_signature\s*\}\}/gi, '<signature-field name="Client Signature" role="Client/Host" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field>');
 
   const body = esc
     .split('\n')
@@ -195,7 +195,7 @@ export function buildBookedContractHtml(
   const clientName = escapeHtml(values.client_name || 'Client');
   // Single line, no whitespace between tags — the body's white-space:pre-wrap
   // would otherwise render the indentation/newlines as big visible gaps.
-  const sigBlock = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:10px">DJ Name: ${djName}</div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:10px">Client Name: ${clientName}</div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
+  const sigBlock = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:10px">DJ Name: ${djName}</div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:10px">Client Name: ${clientName}</div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client/Host" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;padding:40px}
