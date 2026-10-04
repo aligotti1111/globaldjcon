@@ -36,7 +36,7 @@ const BUILDER_FIELDS = [
   { name: 'deposit', type: 'text', role: 'DJ', title: 'Deposit' },
   { name: 'payment_terms', type: 'text', role: 'DJ', title: 'Payment breakdown (deposit & balance)' },
   { name: 'DJ Signature', type: 'signature', role: 'DJ', title: 'Your signature' },
-  { name: 'Client Signature', type: 'signature', role: 'Client', title: 'Client signature' },
+  { name: 'Client Signature', type: 'signature', role: 'Client/Host', title: 'Client signature' },
 ];
 
 interface Contract {
@@ -440,7 +440,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client']} fields={builderFields} onlyDefinedFields={true} withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={builderFields} onlyDefinedFields={true} withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ borderTop: '1px solid #eee', padding: '.6rem 1rem', background: '#fff' }}>
