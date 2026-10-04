@@ -503,6 +503,11 @@ export default function AddManualBookingModal({
 
   const dateInputRef = useRef<HTMLInputElement>(null);
   const todayStr = new Date().toISOString().slice(0, 10);
+  // When a "required field" validation fires, ring the field it refers to in red
+  // so the message points at its cause. `errRing(active)` returns the red style
+  // when its field is the one the current error is about, else undefined.
+  const ERR_RING = { borderColor: '#ff6b6b', boxShadow: '0 0 0 1px #ff6b6b' } as const;
+  const errRing = (active: boolean) => (active ? ERR_RING : undefined);
 
   useEffect(() => () => { if (addrTimerRef.current) clearTimeout(addrTimerRef.current); }, []);
 
@@ -1007,9 +1012,7 @@ export default function AddManualBookingModal({
                 tabIndex={0}
                 // When the "Pick a date." validation fires and no date is set,
                 // flag the field itself in red so the error points at its cause.
-                style={(error === 'Pick a date.' && !eventDate)
-                  ? { borderColor: '#ff6b6b', boxShadow: '0 0 0 1px #ff6b6b' }
-                  : undefined}
+                style={errRing(error === 'Pick a date.' && !eventDate)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
               >
                 <input
@@ -1024,7 +1027,7 @@ export default function AddManualBookingModal({
             </div>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : 'Set Start Time'}</span>
-              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
+              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input} style={errRing(error === 'Pick a start time.' && !startTime)}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -1035,7 +1038,7 @@ export default function AddManualBookingModal({
               <span className={styles.fieldLabel}>
                 {isWedding ? 'Reception End' : <>Set End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}</>}
               </span>
-              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
+              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input} style={errRing(error === 'Pick an end time.' && !endTime)}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -1101,7 +1104,7 @@ export default function AddManualBookingModal({
                 onChange={(e) => setVenueName(e.target.value)}
                 placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
                 className={styles.input}
-                style={{ width: '100%' }}
+                style={{ width: '100%', ...errRing(error === 'Venue name is required.' && djType === 'club' && !venueName.trim()) }}
               />
             </label>
             {djType === 'club' && (
@@ -1110,7 +1113,7 @@ export default function AddManualBookingModal({
                   Rate <span className={styles.optional}>(optional)</span>
                 </span>
                 <div className={styles.rateRow}>
-                  <div className={styles.rateInputWrap}>
+                  <div className={styles.rateInputWrap} style={errRing(error === 'Rate must be a positive number.')}>
                     <span className={styles.rateSymbol}>
                       {currencySymbol(rateCurrency)}
                     </span>
@@ -1302,7 +1305,7 @@ export default function AddManualBookingModal({
                 <div className={styles.field} style={{ flex: '0 0 auto' }}>
                   <span className={styles.fieldLabel}>Rate <span className={styles.optional}>(optional)</span></span>
                   <div className={styles.rateRow}>
-                    <div className={styles.rateInputWrap}>
+                    <div className={styles.rateInputWrap} style={errRing(error === 'Rate must be a positive number.')}>
                       <span className={styles.rateSymbol}>
                         {currencySymbol(rateCurrency)}
                       </span>
