@@ -607,13 +607,13 @@ export default function ContractPortal({
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>✍️</div>
-            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Write or paste contract text</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Write or Paste Contract</div>
           </div>
         </div>
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: uploading ? 'wait' : 'pointer' }} onClick={() => !uploading && fileInput.current?.click()}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>{uploading ? '…' : '+'}</div>
-            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>{uploading ? 'Uploading…' : 'Upload contract'}</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>{uploading ? 'Uploading…' : 'Upload Contract'}</div>
             {!uploading && <div style={{ fontSize: '.68rem', marginTop: 3, color: 'var(--muted,#8a8aa0)' }}>PDF, Word, image</div>}
           </div>
         </div>
