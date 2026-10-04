@@ -512,6 +512,10 @@ export default function AddManualBookingModal({
   const [error, setError] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  // After a save that ALSO sent the host email, hold the Resend result so the
+  // modal can confirm it (message id, or a suppressed notice) instead of closing
+  // silently — makes "did it actually send?" visible without the Resend dashboard.
+  const [sendInfo, setSendInfo] = useState<{ id?: string; suppressed?: boolean; done: () => void } | null>(null);
 
   const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
@@ -573,7 +577,7 @@ export default function AddManualBookingModal({
       rate: number | null;
       currency: string;
     };
-  }): Promise<{ ok: boolean; error?: string }> {
+  }): Promise<{ ok: boolean; error?: string; id?: string; suppressed?: boolean }> {
     try {
       const res = await fetch('/api/send-email', {
         method: 'POST',
@@ -602,7 +606,7 @@ export default function AddManualBookingModal({
       });
       const data = await res.json();
       if (!res.ok) return { ok: false, error: data.error || 'Email send failed' };
-      return { ok: true };
+      return { ok: true, id: data.id as string | undefined, suppressed: data.emailSuppressed === true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Network error' };
     }
@@ -880,6 +884,12 @@ export default function AddManualBookingModal({
             });
             updated = { ...updated, host_email_sent_at: nowIso };
             setHostEmailSentAt(nowIso);
+            // Confirm the send in-modal (message id / suppressed) rather than
+            // closing silently. "Done" applies the update and closes.
+            const savedRow = updated;
+            setSaving(false);
+            setSendInfo({ id: result.id, suppressed: result.suppressed, done: () => onUpdated(savedRow) });
+            return;
           } else {
             // Save succeeded but email failed — surface the error and bail
             // so the user can decide what to do. Booking is already updated.
@@ -918,6 +928,10 @@ export default function AddManualBookingModal({
               body: JSON.stringify({ id: inserted.id, payload: { host_email_sent_at: nowIso } }),
             });
             inserted = { ...inserted, host_email_sent_at: nowIso };
+            const savedRow = inserted;
+            setSaving(false);
+            setSendInfo({ id: result.id, suppressed: result.suppressed, done: () => onAdded(savedRow) });
+            return;
           } else {
             setError('Booking saved, but email failed: ' + (result.error || 'unknown'));
             setSaving(false);
@@ -940,6 +954,45 @@ export default function AddManualBookingModal({
     } finally {
       setSaving(false);
     }
+  }
+
+  // After a save that sent the host email, confirm the result in-modal with the
+  // Resend message id (or a suppressed notice) so a silent "accepted but never
+  // delivered" is visible without opening the Resend dashboard.
+  if (sendInfo) {
+    return (
+      <div className={styles.modalBackdrop} onClick={() => sendInfo.done()}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+          <div className={styles.modalHeader}>
+            <h2 className={styles.modalTitle}>{sendInfo.suppressed ? 'Booking Saved' : 'Booking Details Sent'}</h2>
+            <button type="button" onClick={() => sendInfo.done()} className={styles.modalClose} aria-label="Close">✕</button>
+          </div>
+          <div className={styles.modalBody} style={{ display: 'flex', flexDirection: 'column', gap: '.8rem' }}>
+            {sendInfo.suppressed ? (
+              <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.88rem', lineHeight: 1.5 }}>
+                The booking saved, but the email was <strong>suppressed</strong> — this recipient is on the email-provider suppression list (usually from a prior bounce or an unsubscribe). It will not deliver until that&rsquo;s cleared in the Resend dashboard.
+              </p>
+            ) : (
+              <>
+                <p style={{ color: '#3fd6ab', fontSize: '.92rem', fontWeight: 700 }}>✓ Email accepted by the mail provider.</p>
+                {sendInfo.id && (
+                  <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.82rem', lineHeight: 1.5 }}>
+                    Resend message id:<br />
+                    <code style={{ color: '#fff', fontSize: '.8rem', wordBreak: 'break-all' }}>{sendInfo.id}</code>
+                  </p>
+                )}
+                <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.78rem', lineHeight: 1.5 }}>
+                  If the host doesn&rsquo;t receive it, look this id up in the Resend dashboard for its delivery status, and check the host&rsquo;s spam folder.
+                </p>
+              </>
+            )}
+          </div>
+          <div className={styles.modalFooter}>
+            <button type="button" onClick={() => sendInfo.done()} className={styles.saveBtn}>Done</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -1042,8 +1095,11 @@ export default function AddManualBookingModal({
                   min={todayStr}
                   value={eventDate}
                   onChange={(e) => setEventDate(e.target.value)}
-                  className={styles.dateInput}
+                  // Until a date is picked, hide the native "mm/dd/yyyy" segments
+                  // (dateInputEmpty) so the "Select date" prompt shows cleanly.
+                  className={`${styles.dateInput}${!eventDate ? ' ' + styles.dateInputEmpty : ''}`}
                 />
+                {!eventDate && <span className={styles.datePlaceholder}>Select date</span>}
               </div>
             </div>
             <label className={styles.field}>
