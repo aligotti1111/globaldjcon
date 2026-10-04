@@ -11,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { type AccessFields, contractQuotaFor } from '@/lib/access';
 import { getContractUsage } from '@/lib/contractQuota';
 import { getActingContext } from '@/lib/acting';
+import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 
 export const runtime = 'nodejs';
 
@@ -40,22 +41,34 @@ export async function GET() {
 
   const usage = await getContractUsage(admin, acting.djId, access);
 
-  // Pending contracts: SENT and awaiting the client's signature — i.e. actually
-  // out in the world, in flight, not yet completed. This mirrors exactly what
-  // the booking dashboard labels "Pending": only awaiting_client.
+  // Pending contracts: SENT and awaiting the client's signature on a booking that
+  // is actually SHOWN on the Upcoming Bookings dashboard. This has to match that
+  // dashboard's "Pending" caption exactly, so it mirrors the dashboard's own
+  // filters — not "every awaiting_client row anywhere in the table":
   //
-  // awaiting_dj is deliberately EXCLUDED — the contract exists but the DJ hasn't
-  // signed it yet, so it has NOT gone out. The dashboard reads that as "Not Sent",
-  // not "Pending", so counting it here would overstate what's in flight. Deleted
-  // bookings are excluded too so stale rows don't inflate the number.
+  //   • contract_status = 'awaiting_client' only. awaiting_dj is EXCLUDED — the
+  //     contract exists but the DJ hasn't signed it yet, so it has NOT gone out;
+  //     the dashboard reads that as "Not Sent", not "Pending".
+  //   • not deleted.
+  //   • event is still upcoming (event_date >= today in the DJ's timezone) — a
+  //     past gig's stale contract isn't on the dashboard, so it isn't counted.
+  //   • approved or manual — the only statuses the Upcoming dashboard lists.
+  //
+  // Without the date/status filters this counted old and off-dashboard rows and
+  // overstated the number (e.g. showed 4 when only one booking reads "Pending").
   let pending = 0;
   try {
+    const { data: djTz } = await admin
+      .from('users').select('timezone').eq('id', acting.djId).maybeSingle();
+    const today = todayInTz(effectiveTimezone((djTz as { timezone?: string | null } | null)?.timezone ?? null, null));
     const { count } = await (admin as unknown as import('@supabase/supabase-js').SupabaseClient)
       .from('bookings')
       .select('id', { count: 'exact', head: true })
       .eq('dj_id', acting.djId)
       .is('deleted_at', null)
-      .eq('contract_status', 'awaiting_client');
+      .eq('contract_status', 'awaiting_client')
+      .gte('event_date', today)
+      .or('status.eq.approved,is_manual.eq.true');
     pending = count ?? 0;
   } catch { /* non-fatal */ }
 
