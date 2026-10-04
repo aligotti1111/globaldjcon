@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     const submission = await docuseal.getSubmission(Number(submissionId));
     type Sub = { role?: string; embed_src?: string | null; slug?: string | null; completed_at?: string | null };
     const submitters = ((submission as { submitters?: Sub[] })?.submitters) || [];
-    const client = submitters.find((s) => s.role === 'Client');
+    const client = submitters.find((s) => s.role === 'Client/Host' || s.role === 'Client');
     if (!client) return NextResponse.json({ error: 'Client signer not found on the contract.' }, { status: 404 });
     if (client.completed_at) {
       return NextResponse.json({ error: 'The client has already signed this contract.', signed: true }, { status: 409 });
