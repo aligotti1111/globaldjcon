@@ -148,6 +148,18 @@ export async function POST(req: Request) {
       const where = [booking.venue_name, dateStr].filter(Boolean).join(' — ');
       const whereHtml = where ? ` for <strong>${escHtml(where)}</strong>` : '';
 
+      // DocuSeal requires a reason to decline — pull it from the payload. It can
+      // live in a few places depending on the event/version, so check them all.
+      const dsubmitter = (ddata.submitter || {}) as Record<string, unknown>;
+      const declineReason = String(
+        (ddata.decline_reason ?? ddata.declined_reason ?? ddata.reason ??
+         dnested.decline_reason ?? dnested.declined_reason ??
+         dsubmitter.decline_reason ?? dsubmitter.declined_reason ?? '') as string,
+      ).trim();
+      const reasonBlock = declineReason
+        ? `<p style="color:#666;margin:0 0 16px;padding:12px 14px;background:#fdf2f2;border:1px solid #f3c9c9;border-radius:8px;"><strong>Reason given:</strong> ${escHtml(declineReason)}</p>`
+        : '';
+
       if (process.env.RESEND_API_KEY) {
         const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -167,6 +179,7 @@ export async function POST(req: Request) {
               html: emailTemplate(`
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Declined</h2>
                 <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName)}, the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
+                ${reasonBlock}
                 <p style="color:#666;margin-bottom:24px;">You can review the booking and send a new contract when you're ready.</p>
                 ${ctaButton(`${SITE_URL}/upcoming-bookings`, 'View Booking')}
               `),
@@ -186,6 +199,7 @@ export async function POST(req: Request) {
               html: emailTemplate(`
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Declined</h2>
                 <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, this confirms the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
+                ${reasonBlock}
                 <p style="color:#666;margin-bottom:24px;">If this was a mistake, please reach out to your DJ to have a new contract sent.</p>
                 ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
               `),
