@@ -68,7 +68,12 @@ export async function GET() {
       .is('deleted_at', null)
       .eq('contract_status', 'awaiting_client')
       .gte('event_date', today)
-      .or('status.eq.approved,is_manual.eq.true');
+      .or('status.eq.approved,is_manual.eq.true')
+      // Exclude cancelled bookings — status 'cancelled' is dropped by the OR
+      // above unless the row is manual, and an ACCEPTED cancellation request can
+      // sit on a still-'approved' row, so filter that out explicitly. The null
+      // branch keeps every normal (never-cancelled) booking in.
+      .or('cancel_status.is.null,cancel_status.neq.accepted');
     pending = count ?? 0;
   } catch { /* non-fatal */ }
 
