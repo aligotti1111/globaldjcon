@@ -1005,6 +1005,11 @@ export default function AddManualBookingModal({
                 onClick={openDatePicker}
                 role="button"
                 tabIndex={0}
+                // When the "Pick a date." validation fires and no date is set,
+                // flag the field itself in red so the error points at its cause.
+                style={(error === 'Pick a date.' && !eventDate)
+                  ? { borderColor: '#ff6b6b', boxShadow: '0 0 0 1px #ff6b6b' }
+                  : undefined}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDatePicker(); } }}
               >
                 <input
