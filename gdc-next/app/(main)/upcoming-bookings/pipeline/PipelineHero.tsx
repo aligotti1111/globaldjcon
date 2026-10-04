@@ -61,7 +61,10 @@ export default function PipelineHero({
           const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
           const open = openKey === st.key;
           const cap = st.done && st.caption === 'Pending' ? undefined : st.caption;
-          const capColor = done ? 'var(--neon,#22e3ad)' : isNow ? 'var(--amber,#eaa94a)' : '#7d7d92';
+          // A declined contract reads RED and ALL CAPS — same as the strip — so
+          // it can't be mistaken for an in-flight "Pending".
+          const isDeclined = /^declined$/i.test(cap || '');
+          const capColor = isDeclined ? '#ff6b6b' : done ? 'var(--neon,#22e3ad)' : isNow ? 'var(--amber,#eaa94a)' : '#7d7d92';
           const nodeCls = `${styles.heroNode}${done ? ' ' + styles.heroNodeDone : ''}${isNow ? ' ' + styles.heroNodeNow : ''}`;
           return (
             <div key={st.key} className={styles.heroStepCell}>
@@ -95,7 +98,7 @@ export default function PipelineHero({
               ) : (
                 <span className={styles.heroName}>{name(st.key)}</span>
               )}
-              <span className={styles.heroCap} style={{ color: capColor }}>{cap || ''}</span>
+              <span className={styles.heroCap} style={{ color: capColor }}>{isDeclined ? 'DECLINED' : (cap || '')}</span>
               {open && hasMenu && pos && (
                 <StageMenu
                   st={st}
