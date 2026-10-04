@@ -100,7 +100,7 @@ export default function SectionBanner({
           </div>
         )}
       </div>
-      {right && <span style={{ marginLeft: 'auto' }}>{right}</span>}
+      {right && <span style={{ marginLeft: 'auto', alignSelf: 'flex-start', marginTop: 2 }}>{right}</span>}
     </div>
   );
 }
