@@ -206,45 +206,13 @@ export default function AddManualBookingModal({
   // the checkbox to prevent accidental double-sends.
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
   const [hostName, setHostName] = useState<string>(existing?.requester_name || '');
-  // Default ON for a NEW booking so entering a valid host email just sends the
-  // details on save — no hidden toggle to remember. It only fires when a valid
-  // email is actually present (shouldSend gates on that), and the DJ can still
-  // untick it. For an EDIT it starts OFF, so fixing a typo doesn't re-email.
-  const [sendInvite, setSendInvite] = useState<boolean>(!existing);
   const hostEmailAlreadySent = !!existing?.host_email_sent_at;
 
-  /**
-   * Tick "Send booking details to host" by itself once a valid email is typed.
-   *
-   * WHY IT ISN'T JUST `sendInvite = hostEmailValid`:
-   *
-   * 1. ONLY ON THE TRANSITION invalid -> valid. If it keyed off "the email is
-   *    valid" it would arm itself the instant you opened an existing booking
-   *    that already has an address — you'd click the pencil to fix a typo in
-   *    the end time, hit Save, and a booking-details email would go out that
-   *    you never asked for. prevValid starts at the email's validity AT MOUNT,
-   *    so a booking that arrives with an address is already "valid" and never
-   *    triggers. Only actually typing one does.
-   *
-   * 2. A MANUAL UNTICK STICKS. Once you've touched the checkbox you've made a
-   *    decision; the next keystroke in the email field must not overrule it.
-   *    Without this, unticking and then fixing a typo in the address silently
-   *    re-arms the send.
-   *
-   * 3. NOT ONCE IT'S ALREADY SENT — that path renders the "sent on X" banner
-   *    with a Resend button instead of a checkbox, and re-arming a control that
-   *    isn't on screen is how you double-fire.
-   */
+  // There's no opt-in toggle anymore: the booking details are emailed to the
+  // host automatically on save whenever a valid host email is present and they
+  // haven't already been sent (an already-sent booking offers a Resend button
+  // instead). A valid email is required for the send to fire.
   const hostEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail.trim());
-  const inviteTouched = useRef(false);
-  const prevEmailValid = useRef(hostEmailValid);
-  useEffect(() => {
-    const wasValid = prevEmailValid.current;
-    prevEmailValid.current = hostEmailValid;
-    if (hostEmailAlreadySent) return;
-    if (inviteTouched.current) return;
-    if (!wasValid && hostEmailValid) setSendInvite(true);
-  }, [hostEmailValid, hostEmailAlreadySent]);
   const [hostEmailSentAt, setHostEmailSentAt] = useState<string | null>(
     existing?.host_email_sent_at || null,
   );
@@ -512,6 +480,12 @@ export default function AddManualBookingModal({
 
     </>
   );
+  // "2026-10-30" → "Fri, Oct 30, 2026" for the confirmation box.
+  const fmtEventDateLong = (d: string): string => {
+    if (!d) return '';
+    try { return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
+    catch { return d; }
+  };
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
@@ -519,7 +493,12 @@ export default function AddManualBookingModal({
   // After a save that ALSO sent the host email, hold the Resend result so the
   // modal can confirm it (message id, or a suppressed notice) instead of closing
   // silently — makes "did it actually send?" visible without the Resend dashboard.
-  const [sendInfo, setSendInfo] = useState<{ id?: string; suppressed?: boolean; done: () => void } | null>(null);
+  const [sendInfo, setSendInfo] = useState<{
+    title: string;
+    dateStr: string;
+    email: { sent: boolean; to: string; id?: string; suppressed?: boolean; error?: string } | null;
+    done: () => void;
+  } | null>(null);
 
   const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
@@ -853,16 +832,11 @@ export default function AddManualBookingModal({
       };
 
       // Decide whether to send the invite email after save.
-      // Decide whether to send the host invite. A NEW booking sends whenever a
-      // valid host email is present UNLESS the DJ explicitly unticked the box —
-      // so it no longer depends on the auto-tick having fired in time (which was
-      // the silent "it just didn't send" bug: no Resend log, no error). An EDIT
-      // only sends when the box is actually ticked, so fixing a typo never
-      // re-emails. Uses the full email regex, not a bare "@" check.
-      const wantSend = isEdit
-        ? sendInvite
-        : (inviteTouched.current ? sendInvite : true);
-      const shouldSend = wantSend && hostEmailValid && !hostEmailAlreadySent;
+      // No opt-in toggle: whenever there's a valid host email and the details
+      // haven't already been sent, we email them on save. (Already-sent bookings
+      // show the "Resend Email" button instead, so a typo-fix edit never
+      // silently re-emails.)
+      const shouldSend = hostEmailValid && !hostEmailAlreadySent;
 
       // Manual booking writes go through the gated server route (manager+ only,
       // scoped to the OWNER). A browser insert/update is rejected by RLS for a
@@ -877,7 +851,7 @@ export default function AddManualBookingModal({
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j?.error || 'Could not save.');
         let updated = { ...(j.booking as unknown as UpcomingBooking), is_manual: true };
-        // Fire email if requested.
+        let emailOutcome: { sent: boolean; to: string; id?: string; suppressed?: boolean; error?: string } | null = null;
         if (shouldSend) {
           const result = await sendHostInviteEmail({
             bookingId: existing.id,
@@ -898,22 +872,15 @@ export default function AddManualBookingModal({
             });
             updated = { ...updated, host_email_sent_at: nowIso };
             setHostEmailSentAt(nowIso);
-            // Confirm the send in-modal (message id / suppressed) rather than
-            // closing silently. "Done" applies the update and closes.
-            const savedRow = updated;
-            setSaving(false);
-            setSendInfo({ id: result.id, suppressed: result.suppressed, done: () => onUpdated(savedRow) });
-            return;
+            emailOutcome = { sent: true, to: trimmedEmail, id: result.id, suppressed: result.suppressed };
           } else {
-            // Save succeeded but email failed — surface the error and bail
-            // so the user can decide what to do. Booking is already updated.
-            setError('Booking saved, but email failed: ' + (result.error || 'unknown'));
-            setSaving(false);
-            onUpdated(updated);
-            return;
+            emailOutcome = { sent: false, to: trimmedEmail, error: result.error };
           }
         }
-        onUpdated(updated);
+        const savedRow = updated;
+        setSaving(false);
+        setSendInfo({ title: 'Booking Updated', dateStr: fmtEventDateLong(eventDate), email: emailOutcome, done: () => onUpdated(savedRow) });
+        return;
       } else {
         const res = await fetch('/api/bookings/manual', {
           method: 'POST',
@@ -923,6 +890,7 @@ export default function AddManualBookingModal({
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j?.error || 'Could not save.');
         let inserted = { ...(j.booking as unknown as UpcomingBooking), is_manual: true };
+        let emailOutcome: { sent: boolean; to: string; id?: string; suppressed?: boolean; error?: string } | null = null;
         if (shouldSend) {
           const result = await sendHostInviteEmail({
             bookingId: inserted.id,
@@ -942,18 +910,15 @@ export default function AddManualBookingModal({
               body: JSON.stringify({ id: inserted.id, payload: { host_email_sent_at: nowIso } }),
             });
             inserted = { ...inserted, host_email_sent_at: nowIso };
-            const savedRow = inserted;
-            setSaving(false);
-            setSendInfo({ id: result.id, suppressed: result.suppressed, done: () => onAdded(savedRow) });
-            return;
+            emailOutcome = { sent: true, to: trimmedEmail, id: result.id, suppressed: result.suppressed };
           } else {
-            setError('Booking saved, but email failed: ' + (result.error || 'unknown'));
-            setSaving(false);
-            onAdded(inserted);
-            return;
+            emailOutcome = { sent: false, to: trimmedEmail, error: result.error };
           }
         }
-        onAdded(inserted);
+        const savedRow = inserted;
+        setSaving(false);
+        setSendInfo({ title: 'Booking Created', dateStr: fmtEventDateLong(eventDate), email: emailOutcome, done: () => onAdded(savedRow) });
+        return;
       }
     } catch (e) {
       // Supabase/PostgREST errors are plain objects ({ message, details, hint,
@@ -970,35 +935,43 @@ export default function AddManualBookingModal({
     }
   }
 
-  // After a save that sent the host email, confirm the result in-modal with the
-  // Resend message id (or a suppressed notice) so a silent "accepted but never
-  // delivered" is visible without opening the Resend dashboard.
+  // A small confirmation box after a save: "Booking created", the event date,
+  // and — when a host email was sent — confirmation that the details went out.
   if (sendInfo) {
+    const em = sendInfo.email;
     return (
       <div className={styles.modalBackdrop} onClick={() => sendInfo.done()}>
-        <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
           <div className={styles.modalHeader}>
-            <h2 className={styles.modalTitle}>{sendInfo.suppressed ? 'Booking Saved' : 'Booking Details Sent'}</h2>
+            <h2 className={styles.modalTitle}>{sendInfo.title}</h2>
             <button type="button" onClick={() => sendInfo.done()} className={styles.modalClose} aria-label="Close">✕</button>
           </div>
-          <div className={styles.modalBody} style={{ display: 'flex', flexDirection: 'column', gap: '.8rem' }}>
-            {sendInfo.suppressed ? (
-              <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.88rem', lineHeight: 1.5 }}>
-                The booking saved, but the email was <strong>suppressed</strong> — this recipient is on the email-provider suppression list (usually from a prior bounce or an unsubscribe). It will not deliver until that&rsquo;s cleared in the Resend dashboard.
+          <div className={styles.modalBody} style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
+            <p style={{ color: '#3fd6ab', fontSize: '1rem', fontWeight: 700, margin: 0 }}>
+              ✓ {sendInfo.title === 'Booking Updated' ? 'Booking updated' : 'Booking created'}
+            </p>
+            {sendInfo.dateStr && (
+              <p style={{ color: '#fff', fontSize: '.9rem', margin: 0 }}>
+                <span style={{ color: 'var(--muted,#9a9ab0)' }}>Event date: </span>{sendInfo.dateStr}
+              </p>
+            )}
+            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '.1rem 0' }} />
+            {em === null ? (
+              <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.82rem', lineHeight: 1.5, margin: 0 }}>
+                No host email was added, so booking details weren&rsquo;t emailed.
+              </p>
+            ) : em.sent && em.suppressed ? (
+              <p style={{ color: '#ffb44a', fontSize: '.82rem', lineHeight: 1.5, margin: 0 }}>
+                Booking details to <strong>{em.to}</strong> were <strong>suppressed</strong> by the mail provider (prior bounce/unsubscribe) and won&rsquo;t deliver until cleared in the Resend dashboard.
+              </p>
+            ) : em.sent ? (
+              <p style={{ color: '#3fd6ab', fontSize: '.86rem', lineHeight: 1.5, margin: 0, fontWeight: 600 }}>
+                ✓ Booking details emailed to {em.to}.
               </p>
             ) : (
-              <>
-                <p style={{ color: '#3fd6ab', fontSize: '.92rem', fontWeight: 700 }}>✓ Email accepted by the mail provider.</p>
-                {sendInfo.id && (
-                  <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.82rem', lineHeight: 1.5 }}>
-                    Resend message id:<br />
-                    <code style={{ color: '#fff', fontSize: '.8rem', wordBreak: 'break-all' }}>{sendInfo.id}</code>
-                  </p>
-                )}
-                <p style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.78rem', lineHeight: 1.5 }}>
-                  If the host doesn&rsquo;t receive it, look this id up in the Resend dashboard for its delivery status, and check the host&rsquo;s spam folder.
-                </p>
-              </>
+              <p style={{ color: '#ff7676', fontSize: '.82rem', lineHeight: 1.5, margin: 0 }}>
+                Booking saved, but the email to {em.to} failed: {em.error || 'unknown error'}.
+              </p>
             )}
           </div>
           <div className={styles.modalFooter}>
@@ -1650,28 +1623,13 @@ export default function AddManualBookingModal({
                 </button>
               </div>
             ) : (
-              <label className={styles.inviteCheckRow}>
-                <input
-                  type="checkbox"
-                  checked={sendInvite}
-                  // inviteTouched, not just setSendInvite: this is the DJ making
-                  // a decision, and it has to outrank the auto-tick. Without it,
-                  // unticking and then fixing a typo in the address silently
-                  // re-arms the send.
-                  onChange={(e) => { inviteTouched.current = true; setSendInvite(e.target.checked); }}
-                  // The same regex the auto-tick uses. It was `includes('@')`,
-                  // which called "a@" valid — so the box could be ticked on an
-                  // address that can't receive anything, and the two rules would
-                  // have disagreed about what "valid" means.
-                  disabled={!hostEmailValid}
-                />
-                <span>
-                  Send booking details to host
-                  {!hostEmailValid && (
-                    <span className={styles.checkHint}> · enter a valid email first</span>
-                  )}
+              <div className={styles.inviteCheckRow}>
+                <span style={{ color: hostEmailValid ? 'var(--muted,#9a9ab0)' : 'var(--muted,#6a6a80)', fontSize: '.8rem' }}>
+                  {hostEmailValid
+                    ? 'Booking details will be emailed to the host when you save.'
+                    : 'Enter a valid host email to email them the booking details.'}
                 </span>
-              </label>
+              </div>
             )}
           </div>
 
