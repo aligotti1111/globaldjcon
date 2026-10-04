@@ -867,7 +867,8 @@ select.input {
   background: transparent;
   border: none;
   padding: .42rem .8rem;
-  color: var(--white);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   font-family: inherit;
   font-size: .9rem;
   width: 100%;
@@ -875,6 +876,18 @@ select.input {
   /* On webkit, the native picker icon takes a small area on the right; we
      want the entire input area to be clickable, so suppress the icon styling. */
   appearance: none;
+}
+/* Safari/WebKit renders the MM / DD / YYYY segments with their own color that
+   does NOT inherit the input's `color`, so they came out muted/purple. Force
+   every segment white. */
+.dateInput::-webkit-datetime-edit,
+.dateInput::-webkit-datetime-edit-fields-wrapper,
+.dateInput::-webkit-datetime-edit-text,
+.dateInput::-webkit-datetime-edit-month-field,
+.dateInput::-webkit-datetime-edit-day-field,
+.dateInput::-webkit-datetime-edit-year-field {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 .dateInput::-webkit-calendar-picker-indicator {
   cursor: pointer;
