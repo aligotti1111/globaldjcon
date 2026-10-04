@@ -123,8 +123,6 @@ export default function ContractPortal({
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
-  // Monthly contract quota for the inline header ("Used 25 / 30 this cycle").
-  const [usage, setUsage] = useState<{ quota: number; used: number } | null>(null);
   const [view, setView] = useState<View>('grid');
   // True while the builder is part of CREATING a new contract (upload / write /
   // standard), false when editing an existing one from the list — drives the
@@ -213,14 +211,6 @@ export default function ContractPortal({
       setContracts((j?.contracts as Contract[]) || []);
     } catch { /* ignore */ }
     setLoading(false);
-    // Monthly quota/usage — only needed for the inline header.
-    if (inline) {
-      try {
-        const ur = await fetch('/api/contracts/usage');
-        const uj = (await ur.json().catch(() => ({}))) as { quota?: number; used?: number };
-        if (typeof uj.quota === 'number' && typeof uj.used === 'number') setUsage({ quota: uj.quota, used: uj.used });
-      } catch { /* ignore */ }
-    }
   }
   useEffect(() => { if (open || controlledOpen || inline) load(); /* eslint-disable-next-line */ }, [open, controlledOpen, inline, userId]);
 
@@ -585,18 +575,9 @@ export default function ContractPortal({
     </div>
   );
 
-  const usageHeader = usage ? (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '.55rem', marginBottom: '1rem', padding: '.6rem .9rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
-      <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>Contracts sent this billing cycle on your plan</span>
-      <span style={{ fontSize: '1.3rem', fontWeight: 800, color: usage.used >= usage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{usage.used}/{usage.quota}</span>
-    </div>
-  ) : null;
-
   const gridInner = (
     <div style={{ padding: inline ? 0 : '1.25rem', overflow: inline ? 'visible' : 'auto' }}>
       <input ref={fileInput} type="file" accept=".pdf,.docx,image/*" style={{ display: 'none' }} onChange={onFile} />
-
-      {inline && usageHeader}
 
       {bookingMode && (
         <div style={{ marginBottom: '1.1rem', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', lineHeight: 1.45 }}>
