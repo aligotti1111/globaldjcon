@@ -206,7 +206,7 @@ export default function ContractPortal({
   async function openStandardTemplate(variant?: 'wedding') {
     setError(null);
     const defText = variant === 'wedding' ? WEDDING_CONTRACT_TEXT : defaultContractText(djType);
-    const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect standard contract';
+    const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect Standard Contract';
     setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
     setBuilderNew(true);
     setView('builder'); setBuilderToken(null); setSavingStd(true);
@@ -482,7 +482,7 @@ export default function ContractPortal({
           <button type="button" onClick={() => setView(editingId ? 'builder' : 'grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId ? 'Back to fields' : 'Cancel'}</button>
           <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
         </div>
-      </div>, true, 'Global DJ Connect standard contract',
+      </div>, true, 'Global DJ Connect Standard Contract',
     );
   }
 
@@ -568,7 +568,7 @@ export default function ContractPortal({
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={() => openStandardTemplate()}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>📃</div>
-            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect standard contract</div>
+            <div style={{ fontSize: '.82rem', marginTop: 6, fontWeight: 700 }}>Global DJ Connect Standard Contract</div>
           </div>
         </div>
         {djType !== 'club' && (
