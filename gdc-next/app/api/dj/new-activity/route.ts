@@ -18,7 +18,7 @@ import { MOB_EVENT_LABELS } from '@/lib/constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Slot = 'contract' | 'deposit' | 'invoice' | 'deposit_pending' | 'invoice_pending' | 'song_list' | 'guestlist' | 'change';
+type Slot = 'contract' | 'contract_declined' | 'deposit' | 'invoice' | 'deposit_pending' | 'invoice_pending' | 'song_list' | 'guestlist' | 'change';
 
 export async function GET() {
   const supabase = await createClient();
@@ -36,7 +36,7 @@ export async function GET() {
 
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, event_type, venue_type, contract_status, contract_signed_at, contract_sent_at')
+    .select('id, event_date, event_type, venue_type, contract_status, contract_signed_at, contract_sent_at, contract_declined_at')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
@@ -45,6 +45,7 @@ export async function GET() {
   const bookings = (rows || []) as {
     id: string; event_date: string | null; event_type: string | null; venue_type: string | null;
     contract_status: string | null; contract_signed_at: string | null; contract_sent_at: string | null;
+    contract_declined_at: string | null;
   }[];
   const ids = bookings.map((b) => b.id);
 
@@ -95,6 +96,8 @@ export async function GET() {
       ? (b.contract_signed_at || b.contract_sent_at || null)
       : (b.contract_signed_at || null);
     note(b.id, signedAt, 'contract');
+    // A declined contract is a host action the DJ should see in the bell too.
+    if (b.contract_status === 'declined') note(b.id, b.contract_declined_at, 'contract_declined');
   }
 
   const byId = Object.fromEntries(bookings.map((b) => [b.id, b]));
