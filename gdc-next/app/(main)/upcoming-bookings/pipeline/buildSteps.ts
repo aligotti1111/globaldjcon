@@ -141,7 +141,10 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // Contract shows the word "Complete" under the icon once it's done (the
       // other columns let the green check speak for itself, but the DJ asked for
       // the contract to say it outright).
-      caption: isDone ? 'Complete' : awaiting ? 'Pending' : 'Not Sent',
+      // A declined contract reads "Declined" under the icon (not "Not Sent"),
+      // until the DJ sends a new one — at which point contract_status moves to
+      // awaiting_* and the caption follows.
+      caption: isDone ? 'Complete' : cstatus === 'declined' ? 'Declined' : awaiting ? 'Pending' : 'Not Sent',
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
