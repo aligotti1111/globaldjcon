@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     const submission = await docuseal.getSubmission(Number(submissionId));
     type Submitter = { id?: number | string; role?: string; slug?: string; email?: string };
     const submitters = ((submission as { submitters?: Submitter[] })?.submitters) || [];
-    const client = submitters.find((s) => s.role === 'Client');
+    const client = submitters.find((s) => s.role === 'Client/Host' || s.role === 'Client');
     if (!client?.slug) throw new Error('Client signer not found on the contract.');
     signUrl = `https://docuseal.com/s/${client.slug}`;
     if (!clientEmail) clientEmail = (client.email || '').trim();
