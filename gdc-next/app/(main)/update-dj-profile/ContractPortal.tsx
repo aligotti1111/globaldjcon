@@ -34,6 +34,7 @@ const BUILDER_FIELDS = [
   { name: 'overtime_rate', type: 'text', role: 'DJ', title: 'Overtime rate', only: 'mobile' },
   { name: 'price', type: 'text', role: 'DJ', title: 'Price' },
   { name: 'deposit', type: 'text', role: 'DJ', title: 'Deposit' },
+  { name: 'payment_terms', type: 'text', role: 'DJ', title: 'Payment breakdown (deposit & balance)' },
   { name: 'DJ Signature', type: 'signature', role: 'DJ', title: 'Your signature' },
   { name: 'Client Signature', type: 'signature', role: 'Client', title: 'Client signature' },
 ];
@@ -80,6 +81,10 @@ export default function ContractPortal({
   // Monthly contract quota for the inline header ("Used 25 / 30 this cycle").
   const [usage, setUsage] = useState<{ quota: number; used: number } | null>(null);
   const [view, setView] = useState<View>('grid');
+  // True while the builder is part of CREATING a new contract (upload / write /
+  // standard), false when editing an existing one from the list — drives the
+  // primary button label ("Create contract" vs "Save changes").
+  const [builderNew, setBuilderNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [builderToken, setBuilderToken] = useState<string | null>(null);
@@ -179,7 +184,7 @@ export default function ContractPortal({
       await load();
       // Take them straight into the new contract to place the fields.
       if (json.contractId) {
-        openCard({ id: json.contractId, name: json.name || 'Contract', docuseal_template_id: json.templateId || null, is_standard: false });
+        openCard({ id: json.contractId, name: json.name || 'Contract', docuseal_template_id: json.templateId || null, is_standard: false }, true);
       }
     } catch (err) { setError(err instanceof Error ? err.message : 'Upload failed.'); }
     finally { setUploading(false); }
@@ -203,6 +208,7 @@ export default function ContractPortal({
     const defText = variant === 'wedding' ? WEDDING_CONTRACT_TEXT : defaultContractText(djType);
     const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect standard contract';
     setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
+    setBuilderNew(true);
     setView('builder'); setBuilderToken(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
@@ -232,7 +238,7 @@ export default function ContractPortal({
   // Edit the WORDING of a standard contract — opens the standard text editor
   // (the fields builder is a separate "Edit data fields" action).
   function openStandardText(c: Contract) {
-    setError(null); setEditingId(c.id); setName(c.name);
+    setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name);
     setText(defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null);
     setView('standard');
   }
@@ -252,12 +258,13 @@ export default function ContractPortal({
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string; name?: string };
       if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not build the contract.');
       await load();
-      openCard({ id: json.contractId, name: json.name || name || 'My contract', docuseal_template_id: json.templateId || null, is_standard: false });
+      openCard({ id: json.contractId, name: json.name || name || 'My contract', docuseal_template_id: json.templateId || null, is_standard: false }, true);
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not build the contract.'); }
     finally { setSubmittingPaste(false); }
   }
 
-  async function openCard(c: Contract) {
+  async function openCard(c: Contract, isNew = false) {
+    setBuilderNew(isNew);
     setEditingId(c.id); setName(c.name); setError(null);
     // Standard contracts open straight to the fields builder (which has the
     // "Edit text" button + disclaimer); preload wording so Edit text is ready.
@@ -444,7 +451,7 @@ export default function ContractPortal({
             </label>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : 'Save changes'}</button>
+            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : (builderNew ? 'Create contract' : 'Save changes')}</button>
           </div>
         </div>
       </div>, true, 'Add fields',
