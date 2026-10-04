@@ -547,18 +547,20 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
           <SectionBanner
             icon="contracts"
             title="Your Contracts"
-            subtitle="Upload or customize your contracts here. Set the Anchor Tags so information from your booking auto-populates on the contract."
+            subtitle="Upload or customize your contracts here."
             right={contractUsage ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.2rem', whiteSpace: 'nowrap' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem' }}>
+              <>
+                {/* Top-right: completed-this-cycle meter. */}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '.5rem', whiteSpace: 'nowrap' }}>
                   <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Contracts completed this billing cycle</span>
                   <span style={{ fontSize: '1.2rem', fontWeight: 800, color: contractUsage.used >= contractUsage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{contractUsage.used}/{contractUsage.quota}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '.4rem' }}>
+                {/* Bottom-right: pending (awaiting signature). */}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '.4rem', whiteSpace: 'nowrap' }}>
                   <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Pending (awaiting signature)</span>
                   <span style={{ fontSize: '.95rem', fontWeight: 800, color: 'var(--gold,#f0b64a)' }}>{contractUsage.pending}</span>
                 </div>
-              </div>
+              </>
             ) : undefined}
           />
           <ul className={styles.settingHint} style={{ margin: '1rem 0 1rem', paddingLeft: '1.2rem', listStyle: 'disc' }}>
