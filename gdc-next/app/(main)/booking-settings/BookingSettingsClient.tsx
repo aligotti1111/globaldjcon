@@ -550,7 +550,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             subtitle="Upload or customize your contracts here. Set the Anchor Tags so information from your booking auto-populates on the contract."
             right={contractUsage ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Contracts sent this billing cycle</span>
+                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Contracts completed this billing cycle</span>
                 <span style={{ fontSize: '1.2rem', fontWeight: 800, color: contractUsage.used >= contractUsage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{contractUsage.used}/{contractUsage.quota}</span>
               </div>
             ) : undefined}
