@@ -54,6 +54,20 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     : ['mob_booking_window', 'mob_bookings_per_day', 'mob_deposit_pct', 'rate_currency', 'tax_enabled', 'tax_pct', 'require_contract'];
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
   const [secTab, setSecTab] = useState<SecTab>('settings');
+  // Monthly contract quota, shown on the "Your Contracts" banner.
+  const [contractUsage, setContractUsage] = useState<{ quota: number; used: number } | null>(null);
+  useEffect(() => {
+    if (secTab !== 'contracts') return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/contracts/usage');
+        const j = (await r.json().catch(() => ({}))) as { quota?: number; used?: number };
+        if (alive && typeof j.quota === 'number' && typeof j.used === 'number') setContractUsage({ quota: j.quota, used: j.used });
+      } catch { /* ignore */ }
+    })();
+    return () => { alive = false; };
+  }, [secTab]);
 
   // Returning from PayPal's Connect onboarding, PayPal sends the DJ back to
   // /booking-settings?paypal=connected. Land them straight on the Payments tab
@@ -534,6 +548,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             icon="contracts"
             title="Your Contracts"
             subtitle="Upload or customize your contracts here. Set the Anchor Tags so information from your booking auto-populates on the contract."
+            right={contractUsage ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>Contracts sent this billing cycle</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: contractUsage.used >= contractUsage.quota ? '#ff7676' : 'var(--neon,#00e0a4)' }}>{contractUsage.used}/{contractUsage.quota}</span>
+              </div>
+            ) : undefined}
           />
           <div className={styles.settingHint} style={{ margin: '1rem 0 1rem' }}>
             Upload or customize your contracts here. Set the Anchor Tags so information
