@@ -493,7 +493,7 @@ export default function AddManualBookingModal({
         <div style={{ marginTop: '.6rem', paddingTop: '.55rem', borderTop: '1px solid rgba(255,255,255,.1)', fontSize: '.75rem' }}>
           {/* Named sections mirror the emailed bill: PRICE (rate → tax → total)
               then PAYMENT SCHEDULE (deposit → balance). */}
-          <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--white,#fff)', marginBottom: '.3rem' }}>Price</div>
+          <div style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.09em', textTransform: 'uppercase', padding: '.13rem .55rem', borderRadius: 5, marginBottom: '.35rem' }}>Price</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
             <span>Rate</span>
             <span>{money(moneyPreview.base)}</span>
@@ -513,7 +513,7 @@ export default function AddManualBookingModal({
               into the total above. Mirrors the emailed bill. */}
           {moneyPreview.depositAmount > 0 && (
             <div style={{ marginTop: '.5rem', paddingTop: '.45rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
-              <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--white,#fff)', marginBottom: '.3rem' }}>Payment Schedule</div>
+              <div style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.09em', textTransform: 'uppercase', padding: '.13rem .55rem', borderRadius: 5, marginBottom: '.35rem' }}>Payment Schedule</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
                 <span>Deposit ({moneyPreview.dPct}%)</span>
                 <span>{money(moneyPreview.depositAmount)}</span>
