@@ -334,7 +334,7 @@ export default function MobilePackagesEditor({
           {cat === 'general' ? (
             <button type="button" onClick={() => setGenCoversOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}>
               <span>{labelFor(cat)}</span>
-              <span style={{ fontSize: '.9rem', lineHeight: 1 }}>{genCoversOpen ? '▾' : '▸'}</span>
+              <span style={{ fontSize: '.9rem', lineHeight: 1 }}>▾</span>
             </button>
           ) : (
             <span>{labelFor(cat)}</span>
