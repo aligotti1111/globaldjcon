@@ -493,6 +493,13 @@ export default function AddManualBookingModal({
     try { return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
     catch { return d; }
   };
+  // Thin gradient section pill — matches the booking card's section badges, so
+  // the modal reads as grouped sections (Event / Venue / Package) at a glance.
+  const sectionPill = (label: string, first = false) => (
+    <div style={{ margin: first ? '0 0 .1rem' : '.55rem 0 .1rem' }}>
+      <span style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.09em', textTransform: 'uppercase', padding: '.13rem .55rem', borderRadius: 5 }}>{label}</span>
+    </div>
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
@@ -1020,6 +1027,7 @@ export default function AddManualBookingModal({
         </div>
 
         <div className={styles.modalBody}>
+          {sectionPill('Event Details', true)}
           {/* Event Type (+ secondary field) at the top, so the rest of the
               form (package/rate, reception labels, cocktail hour) keys off it. */}
           {djType === 'mobile' && (
@@ -1110,7 +1118,9 @@ export default function AddManualBookingModal({
                   type="date"
                   min={todayStr}
                   value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
+                  // Blur on pick so the native calendar popup closes immediately
+                  // once a date is chosen, instead of lingering open.
+                  onChange={(e) => { setEventDate(e.target.value); e.target.blur(); }}
                   // Until a date is picked, hide the native "mm/dd/yyyy" segments
                   // (dateInputEmpty) so the "Select date" prompt shows cleanly.
                   className={`${styles.dateInput}${!eventDate ? ' ' + styles.dateInputEmpty : ''}`}
@@ -1161,7 +1171,9 @@ export default function AddManualBookingModal({
                         style={{ width: 'auto' }}
                       >
                         <option value="">Select…</option>
-                        {TIME_OPTIONS.map((t) => (
+                        {/* Only times BEFORE the reception start — a cocktail hour
+                            runs ahead of the reception. */}
+                        {TIME_OPTIONS.filter((t) => !startTime || t.value < startTime).map((t) => (
                           <option key={t.value} value={t.value}>{t.label}</option>
                         ))}
                       </select>
@@ -1194,7 +1206,8 @@ export default function AddManualBookingModal({
                         style={{ width: 'auto' }}
                       >
                         <option value="">Select…</option>
-                        {TIME_OPTIONS.map((t) => (
+                        {/* Only times BEFORE the reception start. */}
+                        {TIME_OPTIONS.filter((t) => !startTime || t.value < startTime).map((t) => (
                           <option key={t.value} value={t.value}>{t.label}</option>
                         ))}
                       </select>
@@ -1217,6 +1230,7 @@ export default function AddManualBookingModal({
             </div>
           )}
 
+          {sectionPill('Venue Details')}
           {/* Venue name + Rate on one line. Venue name takes the
               remaining width; the rate box is narrow (~5 chars). */}
           <div className={styles.venueRateRow}>
@@ -1379,6 +1393,7 @@ export default function AddManualBookingModal({
               selected package's saved details show indented below. */}
           {djType === 'mobile' && (
             <>
+              {sectionPill('Package & Rate')}
               <div className={styles.venueRateRow} style={{ opacity: eventChosen ? 1 : 0.5 }}>
                 {/* Package gives up width once Overtime appears, so Rate and
                     Overtime can sit side by side instead of Overtime dropping
