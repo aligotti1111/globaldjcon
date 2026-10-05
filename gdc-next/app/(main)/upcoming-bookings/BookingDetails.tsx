@@ -23,6 +23,7 @@ import OvertimeSection from './OvertimeSection';
 import BookingLog, { type ChangeLogItem } from './BookingLog';
 import BookingEditModal, { type EditSection, type ContractState } from './BookingEditModal';
 import VenueDistance from './VenueDistance';
+import { useConfirm } from '@/components/ConfirmModal';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
   type ContractAction,
@@ -83,6 +84,7 @@ export default function BookingDetails({
   /** Account owner only — gates the Booking log (owner-only feature). */
   isOwner?: boolean;
 }) {
+  const { confirm, confirmDialog } = useConfirm();
   const [contractOpen, setContractOpen] = useState(false);
   const [riderChooserOpen, setRiderChooserOpen] = useState(false);
   // Message host — starts a new thread in the DJ↔host inbox, mirroring the
@@ -480,7 +482,12 @@ export default function BookingDetails({
 
   // Void the sent contract and clear it so a new one can be sent.
   async function cancelContract() {
-    if (!confirm('Cancel this sent contract? The client’s copy will be voided and you can review and send a new one.')) return;
+    if (!(await confirm({
+      title: 'Cancel this sent contract?',
+      message: 'The client’s copy will be voided and you can review and send a new one.',
+      confirmLabel: 'Cancel contract',
+      variant: 'danger',
+    }))) return;
     setCancelBusy(true);
     try {
       const res = await fetch('/api/contracts/cancel', {
@@ -1148,6 +1155,7 @@ export default function BookingDetails({
 
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
+      {confirmDialog}
       {typeMismatchNote && (
         <div className={styles.typeMismatchNote}>
           <strong>Note:</strong> {typeMismatchNote}
