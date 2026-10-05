@@ -2346,9 +2346,19 @@ export async function POST(req: Request) {
       ? `${escHtml(djName)} has updated the details for your upcoming booking. Here's the latest info on file:`
       : `${escHtml(djName)} is your DJ for an upcoming event and wants to share the booking details with you. Here's everything on file:`;
 
-    const subject = isResend
-      ? `Updated booking details from ${djName}`
-      : `Booking details from ${djName}`;
+    // Add a scannable tail to the subject: date first, then the venue — except
+    // on a mobile booking, where the event type is more useful than the venue,
+    // so swap it in there. Either way the date leads and the second piece trails.
+    let subjDate = '';
+    if (eventDate) {
+      try { subjDate = new Date(`${eventDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+      catch { subjDate = eventDate; }
+    }
+    const subjSecond = djType === 'mobile'
+      ? eventTypeLabel(eventType || undefined)
+      : venueName;
+    const subjTail = [subjDate || null, subjSecond || null].filter(Boolean).join(' · ');
+    const subject = `${isResend ? 'Updated booking details' : 'Booking details'} from ${djName}${subjTail ? ` — ${subjTail}` : ''}`;
 
     emailPayload = {
       from: FROM,
