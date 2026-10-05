@@ -91,7 +91,6 @@ export default function MobilePackagesEditor({
   const [selCat, setSelCat] = useState<string>('general');
   const [selIdx, setSelIdx] = useState(0);
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeIndependent(startMob)));
-  const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [errCat, setErrCat] = useState<string | null>(null);
   const [errIdx, setErrIdx] = useState<number | null>(null);
@@ -175,7 +174,7 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesIndependent) { setMob(next); setSaved(false); setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); }
+  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); }
 
   // Clamp the selected pointer if the list it points at shrank.
   const selList = listFor(mob, selCat);
@@ -193,7 +192,7 @@ export default function MobilePackagesEditor({
 
   function addPackageTo(cat: string) {
     const n = addPkg(mob, cat);
-    setMob(n); setSaved(false); setErr(null);
+    setMob(n); setErr(null);
     const list = listFor(n, cat);
     setSelCat(cat); setSelIdx(list.length - 1);
     requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
@@ -211,7 +210,7 @@ export default function MobilePackagesEditor({
     });
     if (!ok) return;
     const n = removePkg(mob, selCat, safeIdx);
-    setMob(n); setSaved(false); setSelIdx(Math.max(0, safeIdx - 1));
+    setMob(n); setSelIdx(Math.max(0, safeIdx - 1));
   }
 
   function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelCat(type); setSelIdx(0); }
@@ -260,7 +259,7 @@ export default function MobilePackagesEditor({
     }
     setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]);
     const ser = serializeIndependent(mob);
-    onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
+    onSave(ser); setSavedSnapshot(JSON.stringify(ser));
   }
   saveRef.current = save;
 
@@ -396,9 +395,8 @@ export default function MobilePackagesEditor({
             <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
           )}
           <span style={{ flex: 1 }} />
-          {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
           <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
-          <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+          <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>{dirty ? 'Save Packages' : 'All Changes Saved'}</button>
         </div>
       </div>
     </>
