@@ -426,7 +426,7 @@ export default function MobilePackagesEditor({
             onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
             style={{ width: '100%', marginTop: 2, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 7, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
           >
-            <option value="">+ Add Event Type</option>
+            <option value="">+ Custom Pricing For Event Type</option>
             {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
           </select>
         )}
