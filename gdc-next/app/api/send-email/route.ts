@@ -2321,16 +2321,14 @@ export async function POST(req: Request) {
       `<tr><td style="padding:4px 0;font-size:14px;color:${muted ? '#888888' : '#333333'};${bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:4px 0;font-size:14px;text-align:right;color:${muted ? '#888888' : '#1a1a2e'};${bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
     const priceBlock = hasPrice
       ? `<div style="border:1px solid #eeeeee;border-radius:8px;padding:16px 18px;margin:0 0 20px;">
-           <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Price</div>
+           <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;">Price</div>
            <table style="width:100%;border-collapse:collapse;">
              ${row('Rate', fmtAmt(rate as number))}
              ${taxAmount > 0 ? row(`Sales tax (${taxPct}%)`, fmtAmt(taxAmount)) : ''}
-             <tr><td colspan="2" style="border-top:1px solid #eeeeee;padding:4px 0 0;"></td></tr>
              ${row('Total', fmtAmt(total != null ? total : (rate as number) + taxAmount), true)}
            </table>
            ${depositAmount > 0 ? `
-           <div style="border-top:1px solid #eeeeee;margin:14px 0 0;"></div>
-           <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em;">Payment Schedule</div>
+           <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin:22px 0 10px;text-transform:uppercase;letter-spacing:.04em;">Payment Schedule</div>
            <table style="width:100%;border-collapse:collapse;">
              ${row(`Deposit${depositPct > 0 ? ` (${depositPct}%)` : ''} to reserve the date`, fmtAmt(depositAmount))}
              ${row('Balance due on event day', fmtAmt(balanceDue != null ? balanceDue : ((total != null ? total : (rate as number) + taxAmount) - depositAmount)), true)}
@@ -2364,8 +2362,7 @@ export async function POST(req: Request) {
     // optional link. An existing account keeps the click-to-add button.
     const accountBlock = existingUserId
       ? `<p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>${ctaButton(ctaHref, ctaLabel)}`
-      : `<p style="color:#666666;margin-bottom:12px;">${escHtml(djName)} will email anything that needs your attention (like a contract to sign or a deposit, if required) to this address, so just keep an eye on your inbox.</p>
-         ${ctaButton(ctaHref, 'Create a Free Account')}
+      : `${ctaButton(ctaHref, 'Create a Free Account')}
          <p style="color:#999999;margin-bottom:20px;font-size:13px;line-height:1.6;text-align:center;">Manage your booking and all the details within the account. The account is optional — details will continue to be emailed to this address with or without an account.</p>`;
 
     const intro = isResend
