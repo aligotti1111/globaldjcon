@@ -1689,7 +1689,7 @@ export default function AddManualBookingModal({
                 <span style={{ color: hostEmailValid ? 'var(--muted,#9a9ab0)' : 'var(--muted,#6a6a80)', fontSize: '.8rem' }}>
                   {hostEmailValid
                     ? 'Booking details will be emailed to the host when you save.'
-                    : 'Enter a valid host email to email them the booking details.'}
+                    : 'Enter a valid email to send the host the booking details, contract, payment request etc.'}
                 </span>
               </div>
             )}
