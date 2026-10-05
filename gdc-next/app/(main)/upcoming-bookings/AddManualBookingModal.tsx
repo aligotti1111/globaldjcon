@@ -1258,11 +1258,6 @@ export default function AddManualBookingModal({
                             <option key={t.value} value={t.value}>{t.label}</option>
                           ))}
                         </select>
-                        {cocktailStart && startTime && durationLabel(hoursBetween(cocktailStart, startTime)) && (
-                          <span style={{ fontSize: '.68rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
-                            Cocktail Hour Duration: {durationLabel(hoursBetween(cocktailStart, startTime))}
-                          </span>
-                        )}
                       </div>
                       <button
                         type="button"
@@ -1299,11 +1294,6 @@ export default function AddManualBookingModal({
                             <option key={t.value} value={t.value}>{t.label}</option>
                           ))}
                         </select>
-                        {ceremonyStart && durationLabel(hoursBetween(ceremonyStart, (showCocktail && cocktailStart) ? cocktailStart : startTime)) && (
-                          <span style={{ fontSize: '.68rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
-                            Ceremony Duration: {durationLabel(hoursBetween(ceremonyStart, (showCocktail && cocktailStart) ? cocktailStart : startTime))}
-                          </span>
-                        )}
                       </div>
                       <button
                         type="button"
