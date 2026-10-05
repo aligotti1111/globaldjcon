@@ -1622,10 +1622,10 @@ export default function AddManualBookingModal({
               padding: '.9rem',
             } : undefined}
           >
-            <div className={styles.fieldLabel} style={{ textAlign: 'left', opacity: flagHost ? 1 : 0.55, marginBottom: '.3rem' }}>
-              Host Details{' '}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.35rem' }}>
+              {sectionPill('Host Details', true)}
               {flagHost
-                ? <span style={{ color: '#ff5656', fontWeight: 700 }}>(required)</span>
+                ? <span style={{ color: '#ff5656', fontWeight: 700, fontSize: '.68rem' }}>(required)</span>
                 : <span className={styles.optional}>(optional)</span>}
             </div>
             {/*
