@@ -753,11 +753,9 @@ export default function BookingTab({
 
                 {activeCats.length > 0 && selectedEventTypes.length > 1 && (
                   <p className={styles.packageIntro}>
-                    Start building each package by adding the package title and description under{' '}
-                    <span className={styles.packageIntroHi}>General events</span> first. The text you add will
-                    carry over to all the other event types listed under Customize pricing and details — it&rsquo;s
-                    copied over to speed up the process. Each event within a package can still be completely
-                    customized: package name, details, pricing, and photos.
+                    <span className={styles.packageIntroHi}>General events</span> is the default list every booker
+                    sees. Use &ldquo;Add Event Type&rdquo; to give an event type its own packages, pricing and
+                    photos — each one is fully independent, so nothing you set on one event type affects another.
                   </p>
                 )}
 
