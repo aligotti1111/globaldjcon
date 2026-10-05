@@ -116,6 +116,9 @@ export default function MobilePackagesEditor({
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // General Events expands to list every event type its pricing currently
+  // covers (the offered types that haven't been pulled out for their own).
+  const [genCoversOpen, setGenCoversOpen] = useState(false);
   // On a narrow screen the sidebar + side editor becomes an accordion: tapping
   // a package opens its editor inline, right under that package in the tree.
   const [isNarrow, setIsNarrow] = useState(false);
@@ -296,7 +299,7 @@ export default function MobilePackagesEditor({
   }
 
   // ── Sidebar styling ──
-  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: '#04241b', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', padding: '.3rem .65rem', borderRadius: 6, margin: '0 0 .6rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
+  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
   const pkgItem = (active: boolean, isDirty: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', width: '100%',
     padding: active ? '.5rem .7rem' : '.38rem .6rem', marginBottom: 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
@@ -318,11 +321,28 @@ export default function MobilePackagesEditor({
     return (
       <div key={cat} style={{ marginBottom: 16 }}>
         <div style={catLabel}>
-          <span>{labelFor(cat)}</span>
+          {cat === 'general' ? (
+            <button type="button" onClick={() => setGenCoversOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}>
+              <span>{labelFor(cat)}</span>
+              <span style={{ fontSize: '.9rem', lineHeight: 1 }}>{genCoversOpen ? '▾' : '▸'}</span>
+            </button>
+          ) : (
+            <span>{labelFor(cat)}</span>
+          )}
           {cat !== 'general' && (
-            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: '#04241b', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0, opacity: 0.7 }}>&times;</span>
+            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
           )}
         </div>
+        {cat === 'general' && genCoversOpen && (
+          <div style={{ margin: '-.1rem 0 .55rem', padding: '.5rem .65rem', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 7 }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.3rem' }}>Pricing covers</div>
+            {addableTypes.length ? addableTypes.map((t) => (
+              <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff', padding: '.14rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelFor(t)}</div>
+            )) : (
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.1rem 0' }}>Every event uses its own pricing.</div>
+            )}
+          </div>
+        )}
         {list.map((_, i) => {
           const active = selCat === cat && safeIdx === i;
           return (
