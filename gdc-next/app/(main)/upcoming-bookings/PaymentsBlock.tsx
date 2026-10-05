@@ -7,6 +7,7 @@
 // over fetch and styles itself inline.
 
 import { useState } from 'react';
+import { useConfirm } from '@/components/ConfirmModal';
 import type { BookingPayment } from './page';
 
 // ───────────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ export default function PaymentsBlock({
 }) {
   // Which action is in flight: 'request-deposit' | 'request-balance' | a paymentId.
   const [busy, setBusy] = useState<string | null>(null);
+  const { confirm, confirmDialog } = useConfirm();
 
   function money(n: number): string {
     try {
@@ -148,7 +150,13 @@ export default function PaymentsBlock({
   }
 
   async function waive(p: BookingPayment) {
-    if (!confirm(`Waive this ${p.kind === 'balance' ? 'invoice' : 'deposit'}? The client won\u2019t owe it through the app anymore.`)) return;
+    const label = p.kind === 'balance' ? 'invoice' : 'deposit';
+    if (!(await confirm({
+      title: `Waive this ${label}?`,
+      message: `The client won\u2019t owe it through the app anymore.`,
+      confirmLabel: 'Waive',
+      variant: 'danger',
+    }))) return;
     setBusy(p.id);
     try {
       const json = await post({ action: 'waive', paymentId: p.id });
@@ -195,6 +203,7 @@ export default function PaymentsBlock({
 
   return (
     <div style={{ marginTop: 8 }}>
+      {confirmDialog}
       {payments.length === 0 && (
         <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.82rem' }}>
           {archive ? 'No payments were recorded for this booking.' : 'No payments requested yet.'}
