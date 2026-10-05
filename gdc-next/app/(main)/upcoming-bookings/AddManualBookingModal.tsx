@@ -1118,7 +1118,7 @@ export default function AddManualBookingModal({
                   value={eventType}
                   onChange={(e) => setEventType(e.target.value)}
                   className={styles.input}
-                  style={{ width: '210px', maxWidth: '100%' }}
+                  style={{ width: '210px', maxWidth: '100%', color: eventType ? undefined : 'var(--muted)' }}
                 >
                   <option value="">Select event type…</option>
                   {MOBILE_EVENT_TYPES.map((v) => (
@@ -1202,7 +1202,7 @@ export default function AddManualBookingModal({
             </div>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : 'Set Start Time'}</span>
-              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input} style={errRing(error === 'Pick a start time.' && !startTime)}>
+              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input} style={{ ...(errRing(error === 'Pick a start time.' && !startTime) || {}), color: startTime ? undefined : 'var(--muted)' }}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -1213,7 +1213,7 @@ export default function AddManualBookingModal({
               <span className={styles.fieldLabel}>
                 {isWedding ? 'Reception End' : <>Set End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}</>}
               </span>
-              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input} style={errRing(error === 'Pick an end time.' && !endTime)}>
+              <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input} style={{ ...(errRing(error === 'Pick an end time.' && !endTime) || {}), color: endTime ? undefined : 'var(--muted)' }}>
                 <option value="">Select…</option>
                 {endTimeOptions.map((t) => (
                   <option key={t.key} value={t.value}>{t.label}</option>
