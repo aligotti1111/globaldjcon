@@ -116,6 +116,18 @@ export default function MobilePackagesEditor({
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // On a narrow screen the sidebar + side editor becomes an accordion: tapping
+  // a package opens its editor inline, right under that package in the tree.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 760px)');
+    const apply = () => setIsNarrow(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
   // Pulled-out types that are still offered (shown as their own rail branch).
   const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
   // Types that could be pulled out (offered, not already pulled, not General).
@@ -311,15 +323,58 @@ export default function MobilePackagesEditor({
             {pkgDirty(cat, i) && <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.1em', color: '#ffd60a' }}>•</span>}
           </button>
         ))}
+        {/* On mobile, the selected package's editor opens inline here. */}
+        {isNarrow && selCat === cat && list.length > 0 && (
+          <div ref={cardRef} style={{ margin: '2px 0 12px', scrollMarginTop: 80 }}>{renderEditor()}</div>
+        )}
         <button type="button" style={addPkgBtn} onClick={() => addPackageTo(cat)}>+ Add Package</button>
       </div>
     );
   };
 
+  const renderEditor = () => (
+    <>
+      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', marginBottom: '.6rem' }}>
+        {labelFor(selCat)} &mdash; Package {safeIdx + 1}
+      </div>
+      {err && errCat === selCat && errIdx === safeIdx && (
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          <span>{err}</span>
+        </div>
+      )}
+      <div className={styles.pkgCard}>
+        <PackageEditor
+          key={`${selCat}-${safeIdx}`}
+          cat={catFor(selCat)}
+          idx={safeIdx}
+          pkg={currentPkg}
+          totalCount={selList.length}
+          userId={userId}
+          currency={currency}
+          onChange={onEditPkg}
+          onRemove={() => {}}
+          hideOwnHeader
+          generalPhotos={selCat === 'general' ? undefined : generalPhotos}
+          errorFields={errCat === selCat && errIdx === safeIdx ? errFields : undefined}
+        />
+        <div className={styles.pkgSaveRow}>
+          {selList.length > 1 && (
+            <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
+          )}
+          <span style={{ flex: 1 }} />
+          {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
+          <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
+          <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-      {/* ── SIDEBAR ── */}
-      <aside style={{ flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
+      {/* ── SIDEBAR (full-width accordion on mobile) ── */}
+      <aside style={isNarrow ? { flex: '1 1 100%', width: '100%' } : { flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
         {renderCategory('general')}
         {railTypes.map((t) => renderCategory(t))}
         {addableTypes.length > 0 && (
@@ -343,43 +398,12 @@ export default function MobilePackagesEditor({
         )}
       </aside>
 
-      {/* ── EDITOR ── */}
-      <main ref={cardRef} style={{ flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', marginBottom: '.6rem' }}>
-          {labelFor(selCat)} &mdash; Package {safeIdx + 1}
-        </div>
-        {err && errCat === selCat && errIdx === safeIdx && (
-          <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-            <span>{err}</span>
-          </div>
-        )}
-        <div className={styles.pkgCard}>
-          <PackageEditor
-            key={`${selCat}-${safeIdx}`}
-            cat={catFor(selCat)}
-            idx={safeIdx}
-            pkg={currentPkg}
-            totalCount={selList.length}
-            userId={userId}
-            currency={currency}
-            onChange={onEditPkg}
-            onRemove={() => {}}
-            hideOwnHeader
-            generalPhotos={selCat === 'general' ? undefined : generalPhotos}
-            errorFields={errCat === selCat && errIdx === safeIdx ? errFields : undefined}
-          />
-          <div className={styles.pkgSaveRow}>
-            {selList.length > 1 && (
-              <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
-            )}
-            <span style={{ flex: 1 }} />
-            {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
-            <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
-            <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
-          </div>
-        </div>
-      </main>
+      {/* ── EDITOR (right pane on desktop; inline in the tree on mobile) ── */}
+      {!isNarrow && (
+        <main ref={cardRef} style={{ flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
+          {renderEditor()}
+        </main>
+      )}
 
       {/* ── Event types popup ── */}
       {etOpen && (() => {
