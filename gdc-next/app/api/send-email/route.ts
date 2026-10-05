@@ -273,6 +273,7 @@ function bookingInfoBox(opts: {
   rateLabel?: string;           // e.g. "Quoted Rate" / "Counter Offer"
   rateValue?: string;           // e.g. "$300 USD"
   rateBreakdown?: string;       // optional hourly breakdown, e.g. "$330/hr × 3 hr"
+  isWedding?: boolean;          // relabels the Time row as "Reception Time"
   ceremonyStart?: string | null; // weddings — pre-trimmed "HH:MM", shown as a row
   cocktailStart?: string | null; // weddings — pre-trimmed "HH:MM", shown as a row
   message?: string;
@@ -280,13 +281,15 @@ function bookingInfoBox(opts: {
   const dateStr = opts.date ? fmtDate(opts.date) : '';
   const rows: string[] = [];
   if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
-  if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
+  // Ceremony → Cocktail hour come BEFORE the main time, in event order.
   {
     const ceStart = fmtTime(opts.ceremonyStart);
     if (ceStart) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Ceremony Start:</strong> ${escHtml(ceStart)}</p>`);
     const ckStart = fmtTime(opts.cocktailStart);
     if (ckStart) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour Start:</strong> ${escHtml(ckStart)}</p>`);
   }
+  // Weddings label the main slot "Reception Time"; everything else is "Time".
+  if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${opts.isWedding ? 'Reception Time' : 'Time'}:</strong> ${escHtml(opts.timeRange)}</p>`);
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
   if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}${opts.eventDetails ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>` : ''}</p>`);
   if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
@@ -2402,6 +2405,7 @@ export async function POST(req: Request) {
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
           // Cocktail-hour / ceremony start times (weddings) — surfaced in the box.
+          isWedding: djType === 'mobile' && eventType === 'weddings',
           ceremonyStart: (djType === 'mobile' && ceremonyNeeded) ? (ceremonyStart || undefined) : undefined,
           cocktailStart: (djType === 'mobile' && cocktailNeeded) ? (cocktailStart || undefined) : undefined,
           // Price moved into its own breakdown block below (rate + tax +
