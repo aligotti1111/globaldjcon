@@ -1,4 +1,4 @@
-\'use client';
+'use client';
 
 // MobilePackagesEditor — INDEPENDENT packages, sidebar-tree layout.
 //
