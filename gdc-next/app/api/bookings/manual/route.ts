@@ -27,6 +27,7 @@ const WRITABLE = new Set([
   'booking_type', 'event_date', 'start_time', 'end_time',
   'venue_name', 'venue_address', 'venue_lat', 'venue_lon', 'venue_type', 'venue_type_desc',
   'set_type', 'equipment', 'event_type', 'event_details', 'cocktail_needed', 'cocktail_start_time',
+  'ceremony_needed', 'ceremony_start_time',
   'package_title', 'package_details', 'package_category', 'package_index', 'overtime_rate',
   'host_email', 'host_email_sent_at', 'requester_name', 'offer_amount', 'currency',
   'tax_pct', 'tax_amount', 'total_with_tax', 'deposit_pct', 'deposit_amount',
