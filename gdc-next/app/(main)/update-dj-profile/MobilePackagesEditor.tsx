@@ -303,13 +303,13 @@ export default function MobilePackagesEditor({
     fontFamily: "'Bebas Neue', sans-serif", fontSize: active ? '1.3rem' : '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
     // The package being edited is spotlighted: brighter gradient fill, a thick
     // neon left bar, and a glow so it clearly reads as "this is open".
-    background: active ? 'linear-gradient(100deg, rgba(34,227,173,.3), rgba(49,208,255,.16))' : 'transparent',
+    background: active ? 'linear-gradient(100deg, rgba(34,227,173,.34), rgba(49,208,255,.18))' : 'transparent',
     color: active ? 'var(--neon)' : (isDirty ? '#ffd60a' : '#fff'),
-    // No border on resting items; the open one gets a neon left bar + glow.
-    border: 'none',
-    borderLeft: active ? '4px solid var(--neon)' : undefined,
-    boxShadow: active ? '0 0 0 1px var(--neon), 0 6px 20px rgba(0,245,196,.22)' : undefined,
-    transition: 'background .12s, box-shadow .12s',
+    // Open package: a full neon frame (all four sides) + gradient fill. Resting
+    // packages have no border — a partial/left-only border is what rendered as a
+    // stray "(" bracket, so it's a complete frame or nothing.
+    border: active ? '1px solid var(--neon)' : '1px solid transparent',
+    transition: 'background .12s',
   });
   // Plain, centered "add" link — no frame, no underline.
   const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: 'none', color: 'var(--neon)', padding: '.3rem .1rem .5rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', display: 'block' };
