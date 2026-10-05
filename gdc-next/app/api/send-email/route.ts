@@ -2365,7 +2365,8 @@ export async function POST(req: Request) {
     const accountBlock = existingUserId
       ? `<p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>${ctaButton(ctaHref, ctaLabel)}`
       : `<p style="color:#666666;margin-bottom:12px;">${escHtml(djName)} will email anything that needs your attention (like a contract to sign or a deposit, if required) to this address, so just keep an eye on your inbox.</p>
-         <p style="color:#999999;margin-bottom:20px;font-size:13px;line-height:1.6;"><a href="${ctaHref}" style="color:#00a37a;">Create a free account</a> to manage your booking and all the details. The account is optional — details will continue to be emailed to this address.</p>`;
+         ${ctaButton(ctaHref, 'Create a Free Account')}
+         <p style="color:#999999;margin-bottom:20px;font-size:13px;line-height:1.6;text-align:center;">Manage your booking and all the details within the account. The account is optional — details will continue to be emailed to this address with or without an account.</p>`;
 
     const intro = isResend
       ? `${escHtml(djName)} has updated the details for your upcoming booking. Here's the latest info on file:`
