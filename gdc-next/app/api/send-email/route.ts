@@ -2287,6 +2287,35 @@ export async function POST(req: Request) {
     const rate = body.rate as number | null | undefined;
     const currency = (body.currency as string | undefined) || 'USD';
     const isResend = body.isResend === true;
+    // Price breakdown (optional). Rate + sales tax = total, then the payment
+    // schedule (deposit now, balance on the event day).
+    const taxPct = Number(body.taxPct) || 0;
+    const taxAmount = Number(body.taxAmount) || 0;
+    const total = body.total != null && Number.isFinite(Number(body.total)) ? Number(body.total) : null;
+    const depositPct = Number(body.depositPct) || 0;
+    const depositAmount = Number(body.depositAmount) || 0;
+    const balanceDue = body.balanceDue != null && Number.isFinite(Number(body.balanceDue)) ? Number(body.balanceDue) : null;
+    const hasPrice = rate != null && Number.isFinite(rate) && rate > 0;
+    const fmtAmt = (n: number) => `${currency} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const row = (label: string, val: string, bold = false, muted = false) =>
+      `<tr><td style="padding:4px 0;font-size:14px;color:${muted ? '#888888' : '#333333'};${bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:4px 0;font-size:14px;text-align:right;color:${muted ? '#888888' : '#1a1a2e'};${bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
+    const priceBlock = hasPrice
+      ? `<div style="border:1px solid #eeeeee;border-radius:8px;padding:16px 18px;margin:0 0 20px;">
+           <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Price</div>
+           <table style="width:100%;border-collapse:collapse;">
+             ${row('Rate', fmtAmt(rate as number))}
+             ${taxAmount > 0 ? row(`Sales tax (${taxPct}%)`, fmtAmt(taxAmount)) : ''}
+             <tr><td colspan="2" style="border-top:1px solid #eeeeee;padding:4px 0 0;"></td></tr>
+             ${row('Total', fmtAmt(total != null ? total : (rate as number) + taxAmount), true)}
+           </table>
+           ${depositAmount > 0 ? `
+           <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em;">Payment Schedule</div>
+           <table style="width:100%;border-collapse:collapse;">
+             ${row(`Deposit${depositPct > 0 ? ` (${depositPct}%)` : ''} to reserve the date`, fmtAmt(depositAmount))}
+             ${row('Balance due on event day', fmtAmt(balanceDue != null ? balanceDue : ((total != null ? total : (rate as number) + taxAmount) - depositAmount)), true)}
+           </table>` : ''}
+         </div>`
+      : '';
 
     // Build the CTA. If the host's email already has an account, send them
     // to a dedicated claim landing page (which requires login + email match);
@@ -2309,8 +2338,8 @@ export async function POST(req: Request) {
     // optional link. An existing account keeps the click-to-add button.
     const accountBlock = existingUserId
       ? `<p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>${ctaButton(ctaHref, ctaLabel)}`
-      : `<p style="color:#666666;margin-bottom:12px;">You're all set — no account needed. ${escHtml(djName)} will email anything that needs your attention (like a contract to sign or a deposit) to this address, so just keep an eye on your inbox.</p>
-         <p style="color:#999999;margin-bottom:20px;font-size:13px;line-height:1.6;">Prefer to see this booking in one place? <a href="${ctaHref}" style="color:#00a37a;">Create a free account</a> — it's optional, and you can do it anytime.</p>`;
+      : `<p style="color:#666666;margin-bottom:12px;">${escHtml(djName)} will email anything that needs your attention (like a contract to sign or a deposit, if required) to this address, so just keep an eye on your inbox.</p>
+         <p style="color:#999999;margin-bottom:20px;font-size:13px;line-height:1.6;">Prefer to see this booking in one place? <a href="${ctaHref}" style="color:#00a37a;">Create a free account</a> to manage your booking and all the details. The account is optional — details will continue to be emailed to this address.</p>`;
 
     const intro = isResend
       ? `${escHtml(djName)} has updated the details for your upcoming booking. Here's the latest info on file:`
@@ -2339,9 +2368,10 @@ export async function POST(req: Request) {
           packageDetails: djType === 'mobile' ? (packageDetails || undefined) : undefined,
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
-          rateLabel: (rate != null && Number.isFinite(rate) && rate > 0) ? 'Rate' : undefined,
-          rateValue: (rate != null && Number.isFinite(rate) && rate > 0) ? `${currency} ${rate.toLocaleString()}` : undefined,
+          // Price moved into its own breakdown block below (rate + tax +
+          // payment schedule), so it's not duplicated as a bare "Rate" line here.
         })}
+        ${priceBlock}
         ${accountBlock}
         <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
       `),
