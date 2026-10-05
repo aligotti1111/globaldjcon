@@ -296,20 +296,19 @@ export default function MobilePackagesEditor({
   }
 
   // ── Sidebar styling ──
-  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.7rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
+  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: '#04241b', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', padding: '.3rem .65rem', borderRadius: 6, margin: '0 0 .6rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
   const pkgItem = (active: boolean, isDirty: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', width: '100%',
     padding: active ? '.5rem .7rem' : '.38rem .6rem', marginBottom: 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
     fontFamily: "'Bebas Neue', sans-serif", fontSize: active ? '1.3rem' : '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
     // The package being edited is spotlighted: brighter gradient fill, a thick
     // neon left bar, and a glow so it clearly reads as "this is open".
-    background: active ? 'linear-gradient(100deg, rgba(34,227,173,.34), rgba(49,208,255,.18))' : 'transparent',
+    background: 'transparent',
     color: active ? 'var(--neon)' : (isDirty ? '#ffd60a' : '#fff'),
-    // Open package: a full neon frame (all four sides) + gradient fill. Resting
-    // packages have no border — a partial/left-only border is what rendered as a
-    // stray "(" bracket, so it's a complete frame or nothing.
+    // Open package: a full neon frame only (no fill). Resting packages have a
+    // transparent border so spacing stays even and no stray bracket shows.
     border: active ? '1px solid var(--neon)' : '1px solid transparent',
-    transition: 'background .12s',
+    transition: 'border-color .12s',
   });
   // Plain, centered "add" link — no frame, no underline.
   const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: 'none', color: 'var(--neon)', padding: '.3rem .1rem .5rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', display: 'block' };
@@ -321,15 +320,22 @@ export default function MobilePackagesEditor({
         <div style={catLabel}>
           <span>{labelFor(cat)}</span>
           {cat !== 'general' && (
-            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
+            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: '#04241b', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0, opacity: 0.7 }}>&times;</span>
           )}
         </div>
-        {list.map((_, i) => (
-          <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(selCat === cat && safeIdx === i, pkgDirty(cat, i))}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
-            {pkgDirty(cat, i) && <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.1em', color: '#ffd60a' }}>•</span>}
-          </button>
-        ))}
+        {list.map((_, i) => {
+          const active = selCat === cat && safeIdx === i;
+          return (
+            <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i))}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
+              {active ? (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
+              ) : pkgDirty(cat, i) ? (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.1em', color: '#ffd60a' }}>•</span>
+              ) : null}
+            </button>
+          );
+        })}
         {/* On mobile, the selected package's editor opens inline here. */}
         {isNarrow && selCat === cat && list.length > 0 && (
           <div ref={cardRef} style={{ margin: '2px 0 12px', scrollMarginTop: 80 }}>{renderEditor()}</div>
