@@ -273,12 +273,20 @@ function bookingInfoBox(opts: {
   rateLabel?: string;           // e.g. "Quoted Rate" / "Counter Offer"
   rateValue?: string;           // e.g. "$300 USD"
   rateBreakdown?: string;       // optional hourly breakdown, e.g. "$330/hr × 3 hr"
+  ceremonyStart?: string | null; // weddings — pre-trimmed "HH:MM", shown as a row
+  cocktailStart?: string | null; // weddings — pre-trimmed "HH:MM", shown as a row
   message?: string;
 }): string {
   const dateStr = opts.date ? fmtDate(opts.date) : '';
   const rows: string[] = [];
   if (dateStr) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>`);
   if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Time:</strong> ${escHtml(opts.timeRange)}</p>`);
+  {
+    const ceStart = fmtTime(opts.ceremonyStart);
+    if (ceStart) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Ceremony Start:</strong> ${escHtml(ceStart)}</p>`);
+    const ckStart = fmtTime(opts.cocktailStart);
+    if (ckStart) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Cocktail Hour Start:</strong> ${escHtml(ckStart)}</p>`);
+  }
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
   if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}${opts.eventDetails ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>` : ''}</p>`);
   if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
@@ -2295,6 +2303,15 @@ export async function POST(req: Request) {
     const depositPct = Number(body.depositPct) || 0;
     const depositAmount = Number(body.depositAmount) || 0;
     const balanceDue = body.balanceDue != null && Number.isFinite(Number(body.balanceDue)) ? Number(body.balanceDue) : null;
+    // Per-hour overtime rate (optional) — shown as its own line at the bottom
+    // of the price box, below the payment schedule.
+    const overtimeRate = body.overtimeRate != null && Number.isFinite(Number(body.overtimeRate)) && Number(body.overtimeRate) > 0
+      ? Number(body.overtimeRate) : null;
+    // Cocktail-hour / ceremony start times (weddings) for the details box.
+    const cocktailNeeded = body.cocktailNeeded === true;
+    const cocktailStart = body.cocktailStart as string | null | undefined;
+    const ceremonyNeeded = body.ceremonyNeeded === true;
+    const ceremonyStart = body.ceremonyStart as string | null | undefined;
     const hasPrice = rate != null && Number.isFinite(rate) && rate > 0;
     const fmtAmt = (n: number) => `${currency} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const row = (label: string, val: string, bold = false, muted = false) =>
@@ -2314,6 +2331,11 @@ export async function POST(req: Request) {
            <table style="width:100%;border-collapse:collapse;">
              ${row(`Deposit${depositPct > 0 ? ` (${depositPct}%)` : ''} to reserve the date`, fmtAmt(depositAmount))}
              ${row('Balance due on event day', fmtAmt(balanceDue != null ? balanceDue : ((total != null ? total : (rate as number) + taxAmount) - depositAmount)), true)}
+           </table>` : ''}
+           ${overtimeRate != null ? `
+           <div style="border-top:1px solid #eeeeee;margin:14px 0 0;"></div>
+           <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+             ${row('Overtime rate', `${fmtAmt(overtimeRate)} / hr`, false, true)}
            </table>` : ''}
          </div>`
       : '';
@@ -2379,6 +2401,9 @@ export async function POST(req: Request) {
           packageDetails: djType === 'mobile' ? (packageDetails || undefined) : undefined,
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
+          // Cocktail-hour / ceremony start times (weddings) — surfaced in the box.
+          ceremonyStart: (djType === 'mobile' && ceremonyNeeded) ? (ceremonyStart || undefined) : undefined,
+          cocktailStart: (djType === 'mobile' && cocktailNeeded) ? (cocktailStart || undefined) : undefined,
           // Price moved into its own breakdown block below (rate + tax +
           // payment schedule), so it's not duplicated as a bare "Rate" line here.
         })}
