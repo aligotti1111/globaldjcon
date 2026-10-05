@@ -1,4 +1,4 @@
-'use client';
+\'use client';
 
 // MobilePackagesEditor — INDEPENDENT packages, sidebar-tree layout.
 //
@@ -296,11 +296,11 @@ export default function MobilePackagesEditor({
   }
 
   // ── Sidebar styling ──
-  const catLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .4rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' };
+  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.7rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
   const pkgItem = (active: boolean, isDirty: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', width: '100%',
-    padding: '.4rem .6rem', marginBottom: 4, borderRadius: 7, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
+    padding: '.38rem .6rem', marginBottom: 4, borderRadius: 7, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
     background: active ? 'var(--neon-dim)' : 'rgba(10,10,16,.5)',
     color: active ? 'var(--neon)' : '#fff',
     border: active ? '1px solid var(--neon)' : `1px solid ${isDirty ? 'rgba(255,214,10,.7)' : 'var(--border)'}`,
@@ -314,7 +314,7 @@ export default function MobilePackagesEditor({
         <div style={catLabel}>
           <span>{labelFor(cat)}</span>
           {cat !== 'general' && (
-            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '.9rem', lineHeight: 1 }}>&times;</span>
+            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
           )}
         </div>
         {list.map((_, i) => (
