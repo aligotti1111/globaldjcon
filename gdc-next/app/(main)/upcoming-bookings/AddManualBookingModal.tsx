@@ -493,7 +493,7 @@ export default function AddManualBookingModal({
         <div style={{ marginTop: '.6rem', paddingTop: '.55rem', borderTop: '1px solid rgba(255,255,255,.1)', fontSize: '.75rem' }}>
           {/* Named sections mirror the emailed bill: PRICE (rate → tax → total)
               then PAYMENT SCHEDULE (deposit → balance). */}
-          <div style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.09em', textTransform: 'uppercase', padding: '.13rem .55rem', borderRadius: 5, marginBottom: '.35rem' }}>Price</div>
+          <div style={{ display: 'block', background: 'linear-gradient(100deg, rgba(34,227,173,.16), rgba(49,208,255,.16))', borderLeft: '3px solid #22e3ad', color: '#7ef3d0', fontWeight: 800, fontSize: '.62rem', letterSpacing: '.1em', textTransform: 'uppercase', padding: '.28rem .6rem', borderRadius: 4, marginBottom: '.4rem' }}>Price</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
             <span>Rate</span>
             <span>{money(moneyPreview.base)}</span>
@@ -513,7 +513,7 @@ export default function AddManualBookingModal({
               into the total above. Mirrors the emailed bill. */}
           {moneyPreview.depositAmount > 0 && (
             <div style={{ marginTop: '.5rem', paddingTop: '.45rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
-              <div style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.09em', textTransform: 'uppercase', padding: '.13rem .55rem', borderRadius: 5, marginBottom: '.35rem' }}>Payment Schedule</div>
+              <div style={{ display: 'block', background: 'linear-gradient(100deg, rgba(34,227,173,.16), rgba(49,208,255,.16))', borderLeft: '3px solid #22e3ad', color: '#7ef3d0', fontWeight: 800, fontSize: '.62rem', letterSpacing: '.1em', textTransform: 'uppercase', padding: '.28rem .6rem', borderRadius: 4, marginBottom: '.4rem' }}>Payment Schedule</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
                 <span>Deposit ({moneyPreview.dPct}%)</span>
                 <span>{money(moneyPreview.depositAmount)}</span>
@@ -1297,11 +1297,34 @@ export default function AddManualBookingModal({
                   )
                 )}
               </div>
-              {durationLabel(hoursBetween(startTime, endTime)) && (
-                <div style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
-                  Event Duration: {durationLabel(hoursBetween(startTime, endTime))}
-                </div>
-              )}
+              {(() => {
+                // Durations stack in event order (ceremony → cocktail hour →
+                // reception). Ceremony/cocktail run up to whatever starts next;
+                // the main slot is "Reception Duration" for weddings, else
+                // "Event Duration".
+                const lines: Array<{ label: string; value: string }> = [];
+                if (isWedding && showCeremony && ceremonyStart) {
+                  const nextStart = (showCocktail && cocktailStart) ? cocktailStart : startTime;
+                  const d = durationLabel(hoursBetween(ceremonyStart, nextStart));
+                  if (d) lines.push({ label: 'Ceremony Duration', value: d });
+                }
+                if (isWedding && showCocktail && cocktailStart && startTime) {
+                  const d = durationLabel(hoursBetween(cocktailStart, startTime));
+                  if (d) lines.push({ label: 'Cocktail Hour Duration', value: d });
+                }
+                const main = durationLabel(hoursBetween(startTime, endTime));
+                if (main) lines.push({ label: isWedding ? 'Reception Duration' : 'Event Duration', value: main });
+                if (!lines.length) return null;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem', alignItems: 'flex-end' }}>
+                    {lines.map((l) => (
+                      <div key={l.label} style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                        {l.label}: {l.value}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
