@@ -1222,6 +1222,11 @@ export default function AddManualBookingModal({
                   <option key={t.key} value={t.value}>{t.label}</option>
                 ))}
               </select>
+              {durationLabel(hoursBetween(startTime, endTime)) && (
+                <span style={{ fontSize: '.68rem', color: '#ffd24a', whiteSpace: 'nowrap', marginTop: '.2rem' }}>
+                  {isWedding ? 'Reception' : 'Event'} Duration: {durationLabel(hoursBetween(startTime, endTime))}
+                </span>
+              )}
             </label>
           </div>
           {(isWedding || durationLabel(hoursBetween(startTime, endTime))) && (
@@ -1237,25 +1242,32 @@ export default function AddManualBookingModal({
                       + Add Cocktail Hour
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
-                      <span className={styles.fieldLabel} style={{ margin: 0, color: 'var(--neon)' }}>Cocktail Hour Start</span>
-                      <select
-                        value={cocktailStart}
-                        onChange={(e) => setCocktailStart(e.target.value)}
-                        className={styles.input}
-                        style={{ width: 'auto' }}
-                      >
-                        <option value="">Select…</option>
-                        {/* Only times BEFORE the reception start — a cocktail hour
-                            runs ahead of the reception. */}
-                        {TIME_OPTIONS.filter((t) => !startTime || t.value < startTime).map((t) => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '.55rem', flexWrap: 'wrap' }}>
+                      <span className={styles.fieldLabel} style={{ margin: '.35rem 0 0', color: 'var(--neon)' }}>Cocktail Hour Start</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
+                        <select
+                          value={cocktailStart}
+                          onChange={(e) => setCocktailStart(e.target.value)}
+                          className={styles.input}
+                          style={{ width: 'auto' }}
+                        >
+                          <option value="">Select…</option>
+                          {/* Only times BEFORE the reception start — a cocktail hour
+                              runs ahead of the reception. */}
+                          {TIME_OPTIONS.filter((t) => !startTime || t.value < startTime).map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                        {cocktailStart && startTime && durationLabel(hoursBetween(cocktailStart, startTime)) && (
+                          <span style={{ fontSize: '.68rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                            Cocktail Hour Duration: {durationLabel(hoursBetween(cocktailStart, startTime))}
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => { setShowCocktail(false); setCocktailStart(''); }}
-                        style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                        style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginTop: '.35rem' }}
                       >
                         Remove
                       </button>
@@ -1272,24 +1284,31 @@ export default function AddManualBookingModal({
                       + Add Ceremony
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
-                      <span className={styles.fieldLabel} style={{ margin: 0, color: 'var(--neon)' }}>Ceremony Start</span>
-                      <select
-                        value={ceremonyStart}
-                        onChange={(e) => setCeremonyStart(e.target.value)}
-                        className={styles.input}
-                        style={{ width: 'auto' }}
-                      >
-                        <option value="">Select…</option>
-                        {/* Only times BEFORE the reception start. */}
-                        {TIME_OPTIONS.filter((t) => !startTime || t.value < startTime).map((t) => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '.55rem', flexWrap: 'wrap' }}>
+                      <span className={styles.fieldLabel} style={{ margin: '.35rem 0 0', color: 'var(--neon)' }}>Ceremony Start</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
+                        <select
+                          value={ceremonyStart}
+                          onChange={(e) => setCeremonyStart(e.target.value)}
+                          className={styles.input}
+                          style={{ width: 'auto' }}
+                        >
+                          <option value="">Select…</option>
+                          {/* Only times BEFORE the reception start. */}
+                          {TIME_OPTIONS.filter((t) => !startTime || t.value < startTime).map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                        {ceremonyStart && durationLabel(hoursBetween(ceremonyStart, (showCocktail && cocktailStart) ? cocktailStart : startTime)) && (
+                          <span style={{ fontSize: '.68rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                            Ceremony Duration: {durationLabel(hoursBetween(ceremonyStart, (showCocktail && cocktailStart) ? cocktailStart : startTime))}
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => { setShowCeremony(false); setCeremonyStart(''); }}
-                        style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                        style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginTop: '.35rem' }}
                       >
                         Remove
                       </button>
@@ -1297,29 +1316,6 @@ export default function AddManualBookingModal({
                   )
                 )}
               </div>
-              {(() => {
-                // All durations on ONE row, in event order: ceremony → cocktail
-                // hour → reception. Ceremony/cocktail run up to whatever starts
-                // next; the main slot is "Reception" for weddings, else "Event".
-                const parts: string[] = [];
-                if (isWedding && showCeremony && ceremonyStart) {
-                  const nextStart = (showCocktail && cocktailStart) ? cocktailStart : startTime;
-                  const d = durationLabel(hoursBetween(ceremonyStart, nextStart));
-                  if (d) parts.push(`Ceremony: ${d}`);
-                }
-                if (isWedding && showCocktail && cocktailStart && startTime) {
-                  const d = durationLabel(hoursBetween(cocktailStart, startTime));
-                  if (d) parts.push(`Cocktail Hour: ${d}`);
-                }
-                const main = durationLabel(hoursBetween(startTime, endTime));
-                if (main) parts.push(`${isWedding ? 'Reception' : 'Event'}: ${main}`);
-                if (!parts.length) return null;
-                return (
-                  <div style={{ fontSize: '.72rem', color: '#ffd24a' }}>
-                    {parts.join('  ·  ')}
-                  </div>
-                );
-              })()}
             </div>
           )}
 
