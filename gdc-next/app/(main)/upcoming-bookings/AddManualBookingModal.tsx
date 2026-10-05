@@ -138,6 +138,36 @@ export default function AddManualBookingModal({
   // event type is actually selected.
   const eventChosen = eventType !== '';
   const isWedding = eventType === 'weddings';
+
+  // End-time options run from the start time through the evening and into the
+  // next morning up to 5:30 AM, so late-night events can end after midnight.
+  // Those early-morning slots are labeled with the NEXT day's date (e.g.
+  // "2:00 AM (Sat, Oct 17)") so it's clear they roll over. Stored value stays
+  // HH:MM — hoursBetween/calcPrice already treat an end <= start as overnight.
+  const endTimeOptions = (() => {
+    const nextDayLabel = (() => {
+      if (!eventDate) return '';
+      try {
+        const d = new Date(`${eventDate}T12:00:00`);
+        d.setDate(d.getDate() + 1);
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      } catch { return ''; }
+    })();
+    const out: Array<{ value: string; label: string; key: string }> = [];
+    // Same-day: every slot strictly after the start (or all slots if no start yet).
+    for (const t of TIME_OPTIONS) {
+      if (!startTime || t.value > startTime) out.push({ value: t.value, label: t.label, key: `sd-${t.value}` });
+    }
+    // Next day: 12:00 AM → 5:30 AM, tagged with the next day's date. Only added
+    // once a start time is set, so values can't collide with the same-day list.
+    if (startTime) {
+      for (const t of TIME_OPTIONS) {
+        if (t.value > '05:30') break;
+        out.push({ value: t.value, label: nextDayLabel ? `${t.label} (${nextDayLabel})` : `${t.label} (next day)`, key: `nd-${t.value}` });
+      }
+    }
+    return out;
+  })();
   const pkgCategory = getPackageCategory(eventType);
   const generalPkgs: MobilePackage[] = mobPackages?.['general'] || [];
   // Resolve packages for the chosen event type via resolvePackage so both the
@@ -1185,8 +1215,8 @@ export default function AddManualBookingModal({
               </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input} style={errRing(error === 'Pick an end time.' && !endTime)}>
                 <option value="">Select…</option>
-                {TIME_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                {endTimeOptions.map((t) => (
+                  <option key={t.key} value={t.value}>{t.label}</option>
                 ))}
               </select>
             </label>
