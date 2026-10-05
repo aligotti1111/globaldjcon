@@ -497,7 +497,7 @@ export default function AddManualBookingModal({
   // the modal reads as grouped sections (Event / Venue / Package) at a glance.
   const sectionPill = (label: string, first = false) => (
     <div style={{ margin: first ? '0 0 .1rem' : '.55rem 0 .1rem' }}>
-      <span style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.68rem', letterSpacing: '.01em', padding: '.14rem .6rem', borderRadius: 5 }}>{label}</span>
+      <span style={{ display: 'inline-block', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', color: '#04241b', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.09em', textTransform: 'uppercase', padding: '.13rem .55rem', borderRadius: 5 }}>{label}</span>
     </div>
   );
   const [saving, setSaving] = useState(false);
