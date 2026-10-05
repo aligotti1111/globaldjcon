@@ -783,10 +783,11 @@
   }
 }
 .fieldLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  font-family: inherit;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  text-transform: none;
   color: var(--white);
 }
 /* Address row — input grows; country chip takes its natural width. */
