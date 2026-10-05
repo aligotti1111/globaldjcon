@@ -348,10 +348,10 @@ export default function MobilePackagesEditor({
           return (
             <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i))}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
-              {active ? (
+              {pkgDirty(cat, i) ? (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04121a', background: '#ffd60a', borderRadius: 4, padding: '.12rem .4rem' }}>Unsaved</span>
+              ) : active ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
-              ) : pkgDirty(cat, i) ? (
-                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.1em', color: '#ffd60a' }}>•</span>
               ) : null}
             </button>
           );
