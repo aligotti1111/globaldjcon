@@ -491,6 +491,13 @@ export default function AddManualBookingModal({
           having to infer it from an absent box. */}
       {moneyPreview && (
         <div style={{ marginTop: '.6rem', paddingTop: '.55rem', borderTop: '1px solid rgba(255,255,255,.1)', fontSize: '.75rem' }}>
+          {/* Named sections mirror the emailed bill: PRICE (rate → tax → total)
+              then PAYMENT SCHEDULE (deposit → balance). */}
+          <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--white,#fff)', marginBottom: '.3rem' }}>Price</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
+            <span>Rate</span>
+            <span>{money(moneyPreview.base)}</span>
+          </div>
           {moneyPreview.taxAmount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
               <span>Sales tax ({moneyPreview.tPct}%)</span>
@@ -506,6 +513,7 @@ export default function AddManualBookingModal({
               into the total above. Mirrors the emailed bill. */}
           {moneyPreview.depositAmount > 0 && (
             <div style={{ marginTop: '.5rem', paddingTop: '.45rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
+              <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--white,#fff)', marginBottom: '.3rem' }}>Payment Schedule</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
                 <span>Deposit ({moneyPreview.dPct}%)</span>
                 <span>{money(moneyPreview.depositAmount)}</span>
@@ -767,7 +775,7 @@ export default function AddManualBookingModal({
     // The host's name prints on the contract, so require a full name (first +
     // last) whenever one is entered — a single word is rejected with a prompt.
     if (hostName.trim() && hostName.trim().split(/\s+/).length < 2) {
-      setError('Two names needed — the full name displays on the contract.');
+      setError('Two names needed — the full name displays on the contract, if required.');
       hostNameRef.current?.focus();
       return;
     }
@@ -1738,7 +1746,7 @@ export default function AddManualBookingModal({
                   onChange={(e) => setHostName(e.target.value)}
                   placeholder="e.g. Jordan Smith"
                   className={styles.input}
-                  style={{ width: '100%', ...((flagHost && !hostName.trim()) || error === 'Two names needed — the full name displays on the contract.' ? { borderColor: 'rgba(255,86,86,.55)' } : {}) }}
+                  style={{ width: '100%', ...((flagHost && !hostName.trim()) || error === 'Two names needed — the full name displays on the contract, if required.' ? { borderColor: 'rgba(255,86,86,.55)' } : {}) }}
                   autoComplete="off"
                 />
               </label>
