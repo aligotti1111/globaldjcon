@@ -119,11 +119,6 @@ export default function AddManualBookingModal({
   // Optional overtime rate (per hour), added via a link under the rate box.
   const [showOvertime, setShowOvertime] = useState<boolean>(existing?.overtime_rate != null);
   const [overtimeRate, setOvertimeRate] = useState<string>(existing?.overtime_rate != null ? String(existing.overtime_rate) : '');
-  // When a wedding package's cocktail-hour / ceremony add-ons are priced by the
-  // DJ, calcPrice folds them INTO the rate. We keep the split here so the DJ
-  // sees a small base + add-ons breakdown on this page. It is never emailed —
-  // the host only ever sees the single combined Rate / Total.
-  const [addonBreakdown, setAddonBreakdown] = useState<{ base: number; cocktail: number; ceremony: number } | null>(null);
   const detailsEditRef = useRef<HTMLDivElement>(null);
   // Seed the editable area's content when edit mode opens (uncontrolled, so
   // typing doesn't reset the caret).
@@ -242,14 +237,7 @@ export default function AddManualBookingModal({
     const wantsCk = isW && showCocktail;
     const wantsCe = isW && showCeremony;
     const r = calcPrice(p.full, startTime, endTime, 0, wantsCk, cocktailStart, wantsCe);
-    if (!r.isQuote && r.price != null) {
-      setRate(String(r.price));
-      const ck = r.cocktailAddon || 0;
-      const ce = r.ceremonyAddon || 0;
-      setAddonBreakdown((ck > 0 || ce > 0)
-        ? { base: Number((r.price - ck - ce).toFixed(2)), cocktail: ck, ceremony: ce }
-        : null);
-    }
+    if (!r.isQuote && r.price != null) setRate(String(r.price));
     // usablePkgs intentionally omitted — it's rebuilt every render; we only want
     // to reprice on an actual time/package/add-on change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1499,14 +1487,8 @@ export default function AddManualBookingModal({
                           const r = calcPrice(p.full, startTime, endTime, 0, wantsCk, cocktailStart, wantsCe);
                           if (!r.isQuote && r.price != null) {
                             setRate(String(r.price));
-                            const ck = r.cocktailAddon || 0;
-                            const ce = r.ceremonyAddon || 0;
-                            setAddonBreakdown((ck > 0 || ce > 0)
-                              ? { base: Number((r.price - ck - ce).toFixed(2)), cocktail: ck, ceremony: ce }
-                              : null);
                           } else if (p.price4 != null && String(p.price4) !== '') {
                             setRate(String(p.price4));
-                            setAddonBreakdown(null);
                           }
                         }
                         // If the package carries an overtime rate, surface it
@@ -1546,39 +1528,13 @@ export default function AddManualBookingModal({
                         inputMode="decimal"
                         min="0"
                         value={rate}
-                        onChange={(e) => { setRate(e.target.value); setAddonBreakdown(null); }}
+                        onChange={(e) => setRate(e.target.value)}
                         placeholder="0"
                         className={styles.rateInput}
                         disabled={!eventChosen}
                       />
                     </div>
                   </div>
-                  {/* DJ-only rate breakdown when the package's cocktail-hour /
-                      ceremony add-ons were folded into the rate. Never emailed —
-                      the host just sees the single Rate / Total. */}
-                  {addonBreakdown && (addonBreakdown.cocktail > 0 || addonBreakdown.ceremony > 0) && (
-                    <div style={{ marginTop: '.4rem', fontSize: '.7rem', color: 'var(--muted,#9a9ab0)', lineHeight: 1.6 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Package</span><span>{money(addonBreakdown.base)}</span>
-                      </div>
-                      {addonBreakdown.cocktail > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Cocktail hour</span><span>+{money(addonBreakdown.cocktail)}</span>
-                        </div>
-                      )}
-                      {addonBreakdown.ceremony > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Ceremony music</span><span>+{money(addonBreakdown.ceremony)}</span>
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--white)', fontWeight: 600, borderTop: '1px solid rgba(255,255,255,.1)', marginTop: '.25rem', paddingTop: '.25rem' }}>
-                        <span>Rate</span><span>{money(addonBreakdown.base + addonBreakdown.cocktail + addonBreakdown.ceremony)}</span>
-                      </div>
-                      <div style={{ fontSize: '.64rem', fontStyle: 'italic', marginTop: '.2rem' }}>
-                        Add-ons are folded into the rate — the host only sees the total.
-                      </div>
-                    </div>
-                  )}
                   {/* The link stays under Rate; the FIELD it opens moves out of
                       this column into its own (below), so the two money boxes
                       end up on one line. */}
