@@ -764,6 +764,13 @@ export default function AddManualBookingModal({
     if (djType === 'mobile' && !endTime) { setError('Pick an end time.'); return; }
     if (!venueName.trim()) { setError('Venue name is required.'); return; }
     if (!venueAddress.trim()) { setError('Venue location is required.'); return; }
+    // The host's name prints on the contract, so require a full name (first +
+    // last) whenever one is entered — a single word is rejected with a prompt.
+    if (hostName.trim() && hostName.trim().split(/\s+/).length < 2) {
+      setError('Two names needed — the full name displays on the contract.');
+      hostNameRef.current?.focus();
+      return;
+    }
 
     // Backstop. The Add Booking button is already disabled while either of
     // these holds, and the reason is printed under the tax/deposit box, so in
@@ -1731,7 +1738,7 @@ export default function AddManualBookingModal({
                   onChange={(e) => setHostName(e.target.value)}
                   placeholder="e.g. Jordan Smith"
                   className={styles.input}
-                  style={{ width: '100%', ...(flagHost && !hostName.trim() ? { borderColor: 'rgba(255,86,86,.55)' } : {}) }}
+                  style={{ width: '100%', ...((flagHost && !hostName.trim()) || error === 'Two names needed — the full name displays on the contract.' ? { borderColor: 'rgba(255,86,86,.55)' } : {}) }}
                   autoComplete="off"
                 />
               </label>
