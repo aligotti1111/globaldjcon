@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirm } from '@/components/ConfirmModal';
 import {
   searchAddresses, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory,
   hoursBetween, durationLabel, resolvePackage, calcPrice,
@@ -514,6 +515,10 @@ export default function AddManualBookingModal({
     done: () => void;
   } | null>(null);
 
+  // Site-uniform confirm dialog (same as the rest of the app) — replaces the
+  // OS window.confirm() for the daily-cap / overbook prompts.
+  const { confirm: askConfirm, confirmDialog } = useConfirm();
+
   const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const addrTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -768,10 +773,10 @@ export default function AddManualBookingModal({
       const msg = djType === 'club'
         ? `You already have a booking on ${eventDate}. Club/bar DJs can only have one booking per day. Save anyway?`
         : `You already have ${confirmedSameDay} booking(s) on ${eventDate} (your daily cap is ${cap}). Save anyway?`;
-      if (!confirm(msg)) return;
+      if (!(await askConfirm({ title: 'Daily booking cap reached', message: msg, confirmLabel: 'Save anyway', variant: 'danger' }))) return;
     } else if (openSameDay > 0 && confirmedSameDay + 1 + openSameDay > cap) {
       const msg = `Heads up: you have ${openSameDay} active offer/counter(s) out on ${eventDate}. They don't count toward your daily cap of ${cap} yet — but if you accept them along with this booking, you'd be over. Consider withdrawing or declining those offers first so you don't overbook. Add this booking anyway?`;
-      if (!confirm(msg)) return;
+      if (!(await askConfirm({ title: 'Possible overbooking', message: msg, confirmLabel: 'Add anyway', variant: 'danger' }))) return;
     }
 
     setSaving(true);
@@ -1038,6 +1043,8 @@ export default function AddManualBookingModal({
   }
 
   return (
+    <>
+    {confirmDialog}
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
@@ -1751,5 +1758,6 @@ export default function AddManualBookingModal({
         </div>
       </div>
     </div>
+    </>
   );
 }
