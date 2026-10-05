@@ -911,11 +911,13 @@ export default function BookingRow({
           onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
           aria-expanded={expanded}
         >
-          {booking.cocktail_needed && (
-            <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
-          )}
+          {/* Ceremony comes before cocktail hour in the evening, so it leads
+              when both are present. */}
           {booking.ceremony_needed && (
             <div className={styles.rowCocktailNote}>Includes ceremony music</div>
+          )}
+          {booking.cocktail_needed && (
+            <div className={styles.rowCocktailNote}>Includes cocktail hour</div>
           )}
           <div className={styles.rowTime}>{timeRange}</div>
         </button>
