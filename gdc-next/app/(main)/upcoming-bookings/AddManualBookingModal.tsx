@@ -556,6 +556,15 @@ export default function AddManualBookingModal({
       depositPct: moneyPreview ? moneyPreview.dPct : 0,
       depositAmount: moneyPreview ? moneyPreview.depositAmount : 0,
       balanceDue: moneyPreview ? moneyPreview.balance : null,
+      // Per-hour overtime rate (mobile only, when set) — shown separately at
+      // the bottom of the email's price box.
+      overtimeRate: (djType === 'mobile' && showOvertime && overtimeRate.trim() !== '' && Number(overtimeRate) > 0)
+        ? Number(overtimeRate) : null,
+      // Cocktail-hour / ceremony start times (weddings only) for the email box.
+      cocktailNeeded: (djType === 'mobile' && isWedding && showCocktail) ? true : false,
+      cocktailStart: (djType === 'mobile' && isWedding && showCocktail && cocktailStart) ? cocktailStart : null,
+      ceremonyNeeded: (djType === 'mobile' && isWedding && showCeremony) ? true : false,
+      ceremonyStart: (djType === 'mobile' && isWedding && showCeremony && ceremonyStart) ? ceremonyStart : null,
     };
   }
 
@@ -587,6 +596,11 @@ export default function AddManualBookingModal({
       depositPct?: number;
       depositAmount?: number;
       balanceDue?: number | null;
+      overtimeRate?: number | null;
+      cocktailNeeded?: boolean;
+      cocktailStart?: string | null;
+      ceremonyNeeded?: boolean;
+      ceremonyStart?: string | null;
     };
   }): Promise<{ ok: boolean; error?: string; id?: string; suppressed?: boolean }> {
     try {
@@ -618,6 +632,11 @@ export default function AddManualBookingModal({
           depositPct: opts.snapshot.depositPct ?? 0,
           depositAmount: opts.snapshot.depositAmount ?? 0,
           balanceDue: opts.snapshot.balanceDue ?? null,
+          overtimeRate: opts.snapshot.overtimeRate ?? null,
+          cocktailNeeded: opts.snapshot.cocktailNeeded ?? false,
+          cocktailStart: opts.snapshot.cocktailStart ?? null,
+          ceremonyNeeded: opts.snapshot.ceremonyNeeded ?? false,
+          ceremonyStart: opts.snapshot.ceremonyStart ?? null,
           isResend: opts.isResend,
         }),
       });
