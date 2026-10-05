@@ -110,6 +110,11 @@ export default function AddManualBookingModal({
     !!existing?.cocktail_start_time || existing?.cocktail_needed === true
   );
   const [cocktailStart, setCocktailStart] = useState<string>(trimTime(existing?.cocktail_start_time || null));
+  // Ceremony (weddings only) — optional add via a link under cocktail hour.
+  const [showCeremony, setShowCeremony] = useState<boolean>(
+    !!existing?.ceremony_start_time || existing?.ceremony_needed === true
+  );
+  const [ceremonyStart, setCeremonyStart] = useState<string>(trimTime(existing?.ceremony_start_time || null));
   // Optional overtime rate (per hour), added via a link under the rate box.
   const [showOvertime, setShowOvertime] = useState<boolean>(existing?.overtime_rate != null);
   const [overtimeRate, setOvertimeRate] = useState<string>(existing?.overtime_rate != null ? String(existing.overtime_rate) : '');
@@ -180,6 +185,8 @@ export default function AddManualBookingModal({
     setEditingDetails(false);
     setShowCocktail(false);
     setCocktailStart('');
+    setShowCeremony(false);
+    setCeremonyStart('');
     setShowOvertime(false);
     setOvertimeRate('');
   }, [eventType]);
@@ -814,6 +821,8 @@ export default function AddManualBookingModal({
           : null,
         cocktail_needed: (djType === 'mobile' && isWedding && showCocktail) ? true : null,
         cocktail_start_time: (djType === 'mobile' && isWedding && showCocktail && cocktailStart) ? cocktailStart : null,
+        ceremony_needed: (djType === 'mobile' && isWedding && showCeremony) ? true : null,
+        ceremony_start_time: (djType === 'mobile' && isWedding && showCeremony && ceremonyStart) ? ceremonyStart : null,
         package_title: selectedUsable ? selectedUsable.title : null,
         package_details: instanceDetails,
         package_category: (selectedUsable || instanceDetails) ? pkgCategory : null,
@@ -1131,14 +1140,14 @@ export default function AddManualBookingModal({
             </label>
           </div>
           {(isWedding || durationLabel(hoursBetween(startTime, endTime))) && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginTop: '-.3rem', marginBottom: '.35rem' }}>
-              <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '.5rem', flexWrap: 'wrap', marginTop: '-.3rem', marginBottom: '.35rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                 {isWedding && (
                   !showCocktail ? (
                     <button
                       type="button"
                       onClick={() => setShowCocktail(true)}
-                      style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', alignSelf: 'flex-start' }}
                     >
                       + Add Cocktail Hour
                     </button>
@@ -1159,6 +1168,39 @@ export default function AddManualBookingModal({
                       <button
                         type="button"
                         onClick={() => { setShowCocktail(false); setCocktailStart(''); }}
+                        style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )
+                )}
+                {isWedding && (
+                  !showCeremony ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCeremony(true)}
+                      style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', alignSelf: 'flex-start' }}
+                    >
+                      + Add Ceremony
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', flexWrap: 'wrap' }}>
+                      <span className={styles.fieldLabel} style={{ margin: 0, color: 'var(--neon)' }}>Ceremony Start</span>
+                      <select
+                        value={ceremonyStart}
+                        onChange={(e) => setCeremonyStart(e.target.value)}
+                        className={styles.input}
+                        style={{ width: 'auto' }}
+                      >
+                        <option value="">Select…</option>
+                        {TIME_OPTIONS.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCeremony(false); setCeremonyStart(''); }}
                         style={{ background: 'none', border: 'none', color: '#ff5f5f', fontSize: '.72rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                       >
                         Remove
