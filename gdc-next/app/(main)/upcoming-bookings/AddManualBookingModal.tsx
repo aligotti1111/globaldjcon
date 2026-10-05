@@ -534,6 +534,14 @@ export default function AddManualBookingModal({
       packageDetails: djType === 'mobile' ? ((editedDetails ?? sel?.details) || '') : '',
       rate: rateNum,
       currency: rateCurrency,
+      // Full price breakdown so the email can show tax + the payment schedule
+      // (deposit now, balance later), not just the bare rate.
+      taxPct: moneyPreview ? moneyPreview.tPct : 0,
+      taxAmount: moneyPreview ? moneyPreview.taxAmount : 0,
+      total: moneyPreview ? moneyPreview.total : null,
+      depositPct: moneyPreview ? moneyPreview.dPct : 0,
+      depositAmount: moneyPreview ? moneyPreview.depositAmount : 0,
+      balanceDue: moneyPreview ? moneyPreview.balance : null,
     };
   }
 
@@ -559,6 +567,12 @@ export default function AddManualBookingModal({
       packageDetails: string;
       rate: number | null;
       currency: string;
+      taxPct?: number;
+      taxAmount?: number;
+      total?: number | null;
+      depositPct?: number;
+      depositAmount?: number;
+      balanceDue?: number | null;
     };
   }): Promise<{ ok: boolean; error?: string; id?: string; suppressed?: boolean }> {
     try {
@@ -584,6 +598,12 @@ export default function AddManualBookingModal({
           packageDetails: opts.snapshot.packageDetails || null,
           rate: opts.snapshot.rate,
           currency: opts.snapshot.currency,
+          taxPct: opts.snapshot.taxPct ?? 0,
+          taxAmount: opts.snapshot.taxAmount ?? 0,
+          total: opts.snapshot.total ?? null,
+          depositPct: opts.snapshot.depositPct ?? 0,
+          depositAmount: opts.snapshot.depositAmount ?? 0,
+          balanceDue: opts.snapshot.balanceDue ?? null,
           isResend: opts.isResend,
         }),
       });
