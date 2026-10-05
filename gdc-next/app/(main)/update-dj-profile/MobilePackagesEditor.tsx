@@ -1,12 +1,19 @@
 'use client';
 
-// MobilePackagesEditor — per-event-type package editor, desktop sidebar layout.
+// MobilePackagesEditor — INDEPENDENT packages, sidebar-tree layout.
 //
-// LEFT: event-type rail (General = base, then any types pulled out for their
-// own price, then "+ Add event type"). RIGHT: package flipper + the selected
-// type's package card (reuses PackageEditor). General is the base; every other
-// type inherits its title/description/photos until changed. Reads any stored
-// shape via normalizeMobPackages, writes the new { general, overrides } shape.
+// LEFT (sidebar, desktop): a tree of categories. General first with its own
+// packages + "Add Package"; then each pulled-out event type below with its own
+// packages + "Add Package"; then "+ Add Event Type" / "Edit event types".
+// RIGHT: the one selected package's editor (reuses PackageEditor).
+//
+// Each category owns a fully INDEPENDENT list of packages (title, description,
+// photos, prices) — nothing is shared or copied across event types. A booker
+// sees a pulled-out type's own packages; every other type uses General.
+//
+// Reads any stored shape via normalizeToIndependent (old buckets / v1 /
+// already-v2) and writes the v2 `{ model:'independent', general, overrides }`
+// shape on save. Migration is byte-safe: an existing DJ's page is identical.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
@@ -14,27 +21,29 @@ import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import { type MobilePackage, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
-import { resolvePackage, calcPrice, MOB_TIME_OPTIONS, MOB_END_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
+import { calcPrice, MOB_TIME_OPTIONS, MOB_END_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
 import bookingStyles from '@/app/(main)/[slug]/mobileBookingForm.module.css';
 import { MOB_EVENT_LABELS, mobEventLabel, makeCustomEventKey, currencySymbol, type CustomEventType } from '@/lib/constants';
 import {
-  normalizeMobPackages,
-  serializeMobPackages,
-  setGeneral,
-  setOverride,
-  addPackageSlot,
-  removePackageSlot,
+  normalizeToIndependent,
+  serializeIndependent,
+  resolveIndependent,
+  listFor,
+  addPackage as addPkg,
+  removePackage as removePkg,
+  setPackageAt,
   pullTypeOut,
   putTypeBack,
-  type MobPackagesNew,
+  type MobPackagesIndependent,
   type Pkg,
-} from '@/app/(main)/[slug]/packageModel';
+} from '@/app/(main)/[slug]/packageModelIndependent';
 
 function catFor(eventType: string): 'general' | 'wedding' | 'mitzvah' {
   if (eventType === 'weddings') return 'wedding';
   if (eventType === 'mitzvah') return 'mitzvah';
   return 'general';
 }
+
 export default function MobilePackagesEditor({
   mobPackages,
   selectedEventTypes,
@@ -56,7 +65,7 @@ export default function MobilePackagesEditor({
   specialtyTypes?: string[];
   userId: string;
   currency: string;
-  onSave: (next: MobPackagesNew) => void;
+  onSave: (next: MobPackagesIndependent) => void;
   onEventTypesSave?: (selected: string[], custom: CustomEventType[], specialty: string[]) => void | Promise<void>;
   depositPct?: number;
   taxEnabled?: boolean;
@@ -64,38 +73,30 @@ export default function MobilePackagesEditor({
   onDirtyChange?: (dirty: boolean) => void;
   masterSaveTrigger?: number;
 }) {
-  // Prop-aware label resolver (built-in + custom event types).
   const labelFor = (eventType: string): string =>
-    eventType === 'general' ? 'General' : mobEventLabel(eventType, customEventTypes);
+    eventType === 'general' ? 'General events' : mobEventLabel(eventType, customEventTypes);
+
+  // ── Initial model: migrate to independent, auto-pull specialty types ──
   const initial = useMemo(() => {
-    let m = normalizeMobPackages(mobPackages);
-    // Specialty types (set on the profile) auto-appear in "Customize pricing
-    // and details" so they get their own price by default.
+    let m = normalizeToIndependent(mobPackages);
     for (const t of specialtyTypes) {
-      if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) {
-        m = pullTypeOut(m, t);
-      }
+      if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) m = pullTypeOut(m, t);
     }
     return m;
   }, [mobPackages, specialtyTypes, selectedEventTypes]);
-  // Always start with at least one package OPEN — a DJ with none saved should
-  // still land on an expanded, ready-to-fill package rather than a bare "Add a
-  // package" button. The seeded blank is treated as the clean baseline below,
-  // so it doesn't register as an unsaved change and never reaches the database
-  // until the DJ fills it in and saves (save still blocks an empty package).
-  const startMob = initial.general.length === 0 ? addPackageSlot(initial) : initial;
-  const [mob, setMob] = useState<MobPackagesNew>(startMob);
-  const [pkgIdx, setPkgIdx] = useState(0);
-  const [selType, setSelType] = useState<string>('general');
-  // Baseline = the normalized+auto-pulled shape the editor actually starts in,
-  // so a clean load is NOT dirty (specialty types are pulled in by `initial`,
-  // and the seeded first package counts as clean, not a pending edit).
-  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeMobPackages(startMob)));
+  // Always land on at least one General package ready to fill.
+  const startMob = initial.general.length === 0 ? addPkg(initial, 'general') : initial;
+
+  const [mob, setMob] = useState<MobPackagesIndependent>(startMob);
+  const [selCat, setSelCat] = useState<string>('general');
+  const [selIdx, setSelIdx] = useState(0);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeIndependent(startMob)));
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [errCat, setErrCat] = useState<string | null>(null);
   const [errIdx, setErrIdx] = useState<number | null>(null);
   const [errFields, setErrFields] = useState<string[]>([]);
-  const [genOpen, setGenOpen] = useState(false);
+
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
   const [etCustom, setEtCustom] = useState<CustomEventType[]>(customEventTypes);
@@ -103,98 +104,51 @@ export default function MobilePackagesEditor({
   const [etNewGen, setEtNewGen] = useState('');
   const [etNewSpec, setEtNewSpec] = useState('');
   const [etErr, setEtErr] = useState<string | null>(null);
+
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewEvent, setPreviewEvent] = useState('');
   const [previewSel, setPreviewSel] = useState(0);
+  const [previewStart, setPreviewStart] = useState('18:00');
+  const [previewEnd, setPreviewEnd] = useState('23:00');
+  const [pvLb, setPvLb] = useState<{ photos: string[]; details: string; active: number } | null>(null);
+  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
+
+  const { confirm, confirmDialog } = useConfirm();
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Pulled-out types that are still offered (shown as their own rail branch).
+  const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
+  // Types that could be pulled out (offered, not already pulled, not General).
+  const addableTypes = selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]);
+
   const hasAnyPrice = (() => {
     const has = (arr?: Pkg[]) => Array.isArray(arr) && arr.some((pk) => packageTiers(pk as unknown as MobilePackage).length > 0);
     if (has(mob.general)) return true;
     return Object.keys(mob.overrides).some((k) => has(mob.overrides[k]));
   })();
-  const [pvLb, setPvLb] = useState<{ photos: string[]; details: string; active: number } | null>(null);
-  const [previewStart, setPreviewStart] = useState('18:00');
-  const [previewEnd, setPreviewEnd] = useState('23:00');
-  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
-  const { confirm, confirmDialog } = useConfirm();
-  const cardRef = useRef<HTMLDivElement>(null);
-  const genRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!genOpen) return;
-    function onDown(e: MouseEvent) {
-      if (genRef.current && !genRef.current.contains(e.target as Node)) setGenOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [genOpen]);
 
-  const count = mob.general.length;
-  const idx = pkgIdx < 0 ? -1 : Math.min(pkgIdx, Math.max(0, count - 1));
-
-  // The first package is expanded by default. Packages can load in after the
-  // first render (count starts at 0), so open it once they're actually here —
-  // and only once, so a DJ who deliberately collapses it isn't re-opened.
-  const didInitOpen = useRef(false);
-  useEffect(() => {
-    if (!didInitOpen.current && count > 0) {
-      didInitOpen.current = true;
-      setPkgIdx(0);
-    }
-  }, [count]);
-
-  // The list of customized event types is SHARED across all packages; each
-  // package still holds its own prices for them (override array by index).
-  const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
-  const typesForPkg = (_i: number) => railTypes;
-  const addableForPkg = (_i: number) =>
-    selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]);
-  // When specialty types change (e.g. added from the Edit Event Types popup),
-  // pull any newly-added ones into the live overrides so they show in the
-  // "Customize pricing and details" rail immediately — no page refresh needed.
+  // Keep newly-added specialty types pulled out live (no refresh needed).
   useEffect(() => {
     setMob((prev) => {
       let m = prev;
       for (const t of specialtyTypes) {
-        if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) {
-          m = pullTypeOut(m, t);
-        }
+        if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) m = pullTypeOut(m, t);
       }
       return m;
     });
   }, [specialtyTypes, selectedEventTypes]);
 
-  const dirty = JSON.stringify(serializeMobPackages(mob)) !== savedSnapshot;
-
-  // Per-package / per-event-type unsaved detection: compare against the last
-  // saved snapshot so a folded package (and each event type inside it) can flag
-  // its own unsaved edits.
-  const curSer = useMemo(() => serializeMobPackages(mob), [mob]);
+  const curSer = useMemo(() => serializeIndependent(mob), [mob]);
+  const dirty = JSON.stringify(curSer) !== savedSnapshot;
   const savedParsed = useMemo(() => {
-    try { return JSON.parse(savedSnapshot) as MobPackagesNew; } catch { return null; }
+    try { return JSON.parse(savedSnapshot) as MobPackagesIndependent; } catch { return null; }
   }, [savedSnapshot]);
-  // General slot at index i changed?
-  const genDirtyAt = (i: number) =>
-    JSON.stringify(curSer.general[i]) !== JSON.stringify(savedParsed?.general?.[i]);
-  // A specific event type's override slot at index i changed?
-  const typeDirtyAt = (t: string, i: number) =>
-    JSON.stringify(curSer.overrides[t]?.[i]) !== JSON.stringify(savedParsed?.overrides?.[t]?.[i]);
-  const dirtyIdxSet = useMemo(() => {
-    const set = new Set<number>();
-    const saved = savedParsed;
-    for (let i = 0; i < curSer.general.length; i++) {
-      let d = JSON.stringify(curSer.general[i]) !== JSON.stringify(saved?.general?.[i]);
-      if (!d) {
-        const keys = new Set([...Object.keys(curSer.overrides), ...Object.keys(saved?.overrides || {})]);
-        for (const k of keys) {
-          if (JSON.stringify(curSer.overrides[k]?.[i]) !== JSON.stringify(saved?.overrides?.[k]?.[i])) { d = true; break; }
-        }
-      }
-      if (d) set.add(i);
-    }
-    return set;
-  }, [curSer, savedParsed]);
-  const pkgDirty = (i: number) => dirtyIdxSet.has(i);
+  const pkgDirty = (cat: string, i: number) => {
+    const cur = cat === 'general' ? curSer.general[i] : curSer.overrides[cat]?.[i];
+    const sav = cat === 'general' ? savedParsed?.general?.[i] : savedParsed?.overrides?.[cat]?.[i];
+    return JSON.stringify(cur ?? null) !== JSON.stringify(sav ?? null);
+  };
 
-  // Report dirty upward + honor the page-level master Save.
   const onDirtyRef = useRef(onDirtyChange);
   onDirtyRef.current = onDirtyChange;
   useEffect(() => { onDirtyRef.current?.(dirty); }, [dirty]);
@@ -206,54 +160,61 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesNew) { setMob(next); setSaved(false); setErr(null); setErrIdx(null); setErrFields([]); }
+  function update(next: MobPackagesIndependent) { setMob(next); setSaved(false); setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); }
 
-  const currentPkg: MobilePackage = (() => {
-    if (selType === 'general') return (mob.general[idx] || {}) as MobilePackage;
-    const base = (mob.general[idx] || {}) as Record<string, unknown>;
-    const ov = (mob.overrides[selType]?.[idx] || {}) as Record<string, unknown>;
-    const merged: Record<string, unknown> = { ...ov };
-    // Title & details carry over from General while the override leaves them
-    // blank — so each event type starts filled in and can be customized.
-    for (const fld of ['title', 'details'] as const) {
-      const v = merged[fld];
-      if (v == null || (typeof v === 'string' && v.replace(/<[^>]*>/g, '').trim() === '')) merged[fld] = base[fld];
-    }
-    // Photos inherit from General ONLY when the override has never touched them
-    // (key absent). Once the DJ edits or DELETES photos on this event type, the
-    // override owns them — an empty value means "no photo", not "inherit".
-    for (const fld of ['photo', 'photos'] as const) {
-      if (!(fld in ov)) merged[fld] = base[fld];
-    }
-    return merged as MobilePackage;
-  })();
-
+  // Clamp the selected pointer if the list it points at shrank.
+  const selList = listFor(mob, selCat);
+  const safeIdx = Math.min(selIdx, Math.max(0, selList.length - 1));
+  const currentPkg = (selList[safeIdx] || {}) as MobilePackage;
+  // One-time copy source for the "use General's photos" helper in PackageEditor.
   const generalPhotos = useMemo(() => {
-    const g = (mob.general[idx] || {}) as { photo?: string; photos?: string[] };
+    const g = (mob.general[safeIdx] || {}) as { photo?: string; photos?: string[] };
     return { photo: g.photo || '', photos: Array.isArray(g.photos) ? g.photos : [] };
-  }, [mob.general, idx]);
+  }, [mob.general, safeIdx]);
 
-  // Base is "complete" when General has a title + description for this package.
-  function txtEmpty(v: unknown): boolean {
-    return v == null || String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
-  }
-  const generalComplete = (() => {
-    const g0 = (mob.general[idx] || {}) as { title?: string; details?: string };
-    return !txtEmpty(g0.title) && !txtEmpty(g0.details);
-  })();
-  // An event type still needs a price when it has no tier/legacy price entered
-  // and isn't set to require-a-quote.
-  function typeNeedsPrice(t: string): boolean {
-    const ov = (mob.overrides[t]?.[idx] || {}) as Record<string, unknown>;
-    if (ov.reqAll) return false;
-    const tiers = Array.isArray(ov.priceTiers) ? (ov.priceTiers as Array<{ price?: unknown }>) : [];
-    const hasTier = tiers.some((x) => x && String(x.price ?? '').trim() !== '');
-    const hasLegacy = ['price4', 'price5', 'price6'].some((k) => String((ov)[k] ?? '').trim() !== '');
-    return !hasTier && !hasLegacy;
+  function onEditPkg(next: MobilePackage) { update(setPackageAt(mob, selCat, safeIdx, next as Pkg)); }
+
+  function selectPkg(cat: string, i: number) { setSelCat(cat); setSelIdx(i); setErr(null); }
+
+  function addPackageTo(cat: string) {
+    const n = addPkg(mob, cat);
+    setMob(n); setSaved(false); setErr(null);
+    const list = listFor(n, cat);
+    setSelCat(cat); setSelIdx(list.length - 1);
+    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   }
 
-  // A package needs at least one real price (> 0) unless the DJ set it to
-  // "require the host to request a price" (reqAll = quote).
+  async function removePackage() {
+    const list = listFor(mob, selCat);
+    // Keep at least one General package. A pulled-out type must keep one too;
+    // to drop a type entirely, use the × (put back under General).
+    if (list.length <= 1) return;
+    const ok = await confirm({
+      title: `Remove Package ${safeIdx + 1}?`,
+      message: `This deletes this package and its pricing for ${labelFor(selCat)}. This cannot be undone.`,
+      confirmLabel: 'Remove package', variant: 'danger',
+    });
+    if (!ok) return;
+    const n = removePkg(mob, selCat, safeIdx);
+    setMob(n); setSaved(false); setSelIdx(Math.max(0, safeIdx - 1));
+  }
+
+  function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelCat(type); setSelIdx(0); }
+  async function removeEventType(type: string) {
+    const ok = await confirm({
+      title: `Put ${labelFor(type)} back under General events?`,
+      message: `${labelFor(type)} will lose its own packages and use your General events pricing instead.`,
+      confirmLabel: 'Put back under General', variant: 'danger',
+    });
+    if (!ok) return;
+    update(putTypeBack(mob, type));
+    if (selCat === type) { setSelCat('general'); setSelIdx(0); }
+  }
+
+  function textEmpty(v: unknown): boolean {
+    if (v == null) return true;
+    return String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
+  }
   function priceMissing(pkg: Record<string, unknown>): boolean {
     if (pkg.reqAll) return false;
     const tiers = Array.isArray(pkg.priceTiers) ? (pkg.priceTiers as Array<{ price?: unknown }>) : [];
@@ -262,88 +223,40 @@ export default function MobilePackagesEditor({
     return !hasTier && !hasLegacy;
   }
 
-  function onEditPkg(next: MobilePackage) {
-    if (selType === 'general') { update(setGeneral(mob, idx, next as Pkg)); return; }
-    const base = (mob.general[idx] || {}) as Record<string, unknown>;
-    const ov = { ...(next as unknown as Record<string, unknown>) };
-    for (const fld of ['title', 'details', 'photo', 'photos'] as const) {
-      if (JSON.stringify(ov[fld] ?? '') === JSON.stringify(base[fld] ?? '')) delete ov[fld];
-    }
-    update(setOverride(mob, selType, idx, ov as Pkg));
-  }
-  function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelType(type); }
-  async function removeEventType(type: string) {
-    const ok = await confirm({
-      title: `Put ${labelFor(type)} back under General events?`,
-      message: `${labelFor(type)} will be removed from every package's list and use your General events pricing instead.`,
-      confirmLabel: 'Put back under General',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    update(putTypeBack(mob, type));
-    if (selType === type) setSelType('general');
-  }
-  function addPackage() {
-    const n = addPackageSlot(mob);
-    setMob(n); setSaved(false); setErr(null); setPkgIdx(n.general.length - 1); setSelType('general');
-    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-  }
-  async function removePackage() {
-    if (count <= 1 || idx <= 0) return;
-    const ok = await confirm({
-      title: `Remove Package ${idx + 1}?`,
-      message: 'This deletes the package and all of its pricing for every event type. This cannot be undone.',
-      confirmLabel: 'Remove package',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    const n = removePackageSlot(mob, idx);
-    setMob(n); setSaved(false); setPkgIdx(Math.max(0, idx - 1)); setSelType('general');
-  }
-  // Details is rich-text HTML — strip tags to tell "real content" from an
-  // empty editor (<br>, <div></div>, whitespace).
-  function textEmpty(v: unknown): boolean {
-    if (v == null) return true;
-    return String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
-  }
   function save() {
-    for (let i = 0; i < mob.general.length; i++) {
-      const g = (mob.general[i] || {}) as { title?: string; details?: string };
-      const missing: string[] = [];
-      const labels: string[] = [];
-      if (textEmpty(g.title)) { missing.push('title'); labels.push('a title'); }
-      if (textEmpty(g.details)) { missing.push('details'); labels.push('a description'); }
-      if (priceMissing(g as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('at least one price'); }
-      if (missing.length) {
-        setErr(`Package ${i + 1} needs ${labels.join(' and ')} before you can save.`);
-        setErrFields(missing); setErrIdx(i); setPkgIdx(i); setSelType('general');
-        setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-        return;
+    // Every package in every category is self-contained — each needs its own
+    // title, description and at least one price (unless set to request a quote).
+    const cats = ['general', ...Object.keys(mob.overrides)];
+    for (const cat of cats) {
+      const list = listFor(mob, cat);
+      for (let i = 0; i < list.length; i++) {
+        const p = (list[i] || {}) as { title?: string; details?: string };
+        const missing: string[] = []; const labels: string[] = [];
+        if (textEmpty(p.title)) { missing.push('title'); labels.push('a title'); }
+        if (textEmpty(p.details)) { missing.push('details'); labels.push('a description'); }
+        if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('at least one price'); }
+        if (missing.length) {
+          setErr(`${labelFor(cat)} — Package ${i + 1} needs ${labels.join(' and ')} before you can save.`);
+          setErrFields(missing); setErrCat(cat); setErrIdx(i); setSelCat(cat); setSelIdx(i);
+          setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+          return;
+        }
       }
     }
-    setErr(null); setErrIdx(null); setErrFields([]);
-    const ser = serializeMobPackages(mob);
+    setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]);
+    const ser = serializeIndependent(mob);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser)); setSaved(true);
   }
-
   saveRef.current = save;
 
-  // ── Event-types editor popup (edits the DJ's offered + custom types) ──
+  // ── Event-types editor popup ──
   function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtSpec(Array.from(new Set([...specialtyTypes, ...railTypes]))); setEtNewGen(''); setEtNewSpec(''); setEtErr(null); setEtOpen(true); }
-  function etToggle(key: string, on: boolean) {
-    setEtSel((prev) => (on ? Array.from(new Set([...prev, key])) : prev.filter((k) => k !== key)));
-  }
+  function etToggle(key: string, on: boolean) { setEtSel((prev) => (on ? Array.from(new Set([...prev, key])) : prev.filter((k) => k !== key))); }
   function etAddCustom(label: string, toSpecialty: boolean) {
     const trimmed = label.trim(); if (!trimmed) return;
     const lc = trimmed.toLowerCase();
-    const existingNames = [
-      ...Object.values(MOB_EVENT_LABELS).map((v) => v.toLowerCase()),
-      ...etCustom.map((c) => c.label.toLowerCase()),
-    ];
-    if (existingNames.includes(lc)) {
-      setEtErr(`“${trimmed}” already exists.`);
-      return;
-    }
+    const existingNames = [...Object.values(MOB_EVENT_LABELS).map((v) => v.toLowerCase()), ...etCustom.map((c) => c.label.toLowerCase())];
+    if (existingNames.includes(lc)) { setEtErr(`“${trimmed}” already exists.`); return; }
     const key = makeCustomEventKey(trimmed);
     setEtCustom((prev) => [...prev, { key, label: trimmed }]);
     setEtSel((prev) => Array.from(new Set([...prev, key])));
@@ -352,15 +265,8 @@ export default function MobilePackagesEditor({
     if (toSpecialty) setEtNewSpec(''); else setEtNewGen('');
   }
   async function etRemoveCustom(key: string) {
-    // A custom event type is one the DJ typed in themselves — deleting it drops
-    // it (and any pricing tied to it) for good, so confirm first.
     const label = etCustom.find((c) => c.key === key)?.label || 'this event type';
-    const ok = await confirm({
-      title: `Delete ${label}?`,
-      message: `${label} will be removed from your event types, along with any pricing you set for it. This can't be undone.`,
-      confirmLabel: 'Delete',
-      variant: 'danger',
-    });
+    const ok = await confirm({ title: `Delete ${label}?`, message: `${label} will be removed from your event types, along with any pricing you set for it. This can't be undone.`, confirmLabel: 'Delete', variant: 'danger' });
     if (!ok) return;
     setEtCustom((prev) => prev.filter((c) => c.key !== key));
     setEtSel((prev) => prev.filter((k) => k !== key));
@@ -369,205 +275,113 @@ export default function MobilePackagesEditor({
   function etSaveClose() { onEventTypesSave?.(etSel, etCustom, etSpec); setEtOpen(false); }
   async function closeEtEditor() {
     const baseSpec = Array.from(new Set([...specialtyTypes, ...railTypes])).sort();
-    const dirty = JSON.stringify([[...etSel].sort(), etCustom, [...etSpec].sort()])
-      !== JSON.stringify([[...selectedEventTypes].sort(), customEventTypes, baseSpec]);
-    if (dirty) {
-      const ok = await confirm({
-        title: 'Discard event type changes?',
-        message: 'You changed your event types but didn\'t save. Discard these changes?',
-        confirmLabel: 'Discard',
-        cancelLabel: 'Keep editing',
-        variant: 'danger',
-      });
+    const etDirty = JSON.stringify([[...etSel].sort(), etCustom, [...etSpec].sort()]) !== JSON.stringify([[...selectedEventTypes].sort(), customEventTypes, baseSpec]);
+    if (etDirty) {
+      const ok = await confirm({ title: 'Discard event type changes?', message: 'You changed your event types but didn\'t save. Discard these changes?', confirmLabel: 'Discard', cancelLabel: 'Keep editing', variant: 'danger' });
       if (!ok) return;
     }
-    setEtErr(null);
-    setEtOpen(false);
+    setEtErr(null); setEtOpen(false);
   }
 
-  if (count === 0) {
-    return <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add a package</button>;
-  }
-
-  const railLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.52rem', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .15rem' };
-  const sideItem = (active: boolean): CSSProperties => ({
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-    padding: '.34rem .55rem', marginBottom: 4, borderRadius: 6, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.12rem', lineHeight: 1.0, letterSpacing: '.05em', textTransform: 'uppercase',
-    background: active ? 'var(--neon-dim)' : 'transparent',
+  // ── Sidebar styling ──
+  const catLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .4rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' };
+  const pkgItem = (active: boolean, isDirty: boolean): CSSProperties => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', width: '100%',
+    padding: '.4rem .6rem', marginBottom: 4, borderRadius: 7, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
+    background: active ? 'var(--neon-dim)' : 'rgba(10,10,16,.5)',
     color: active ? 'var(--neon)' : '#fff',
-    border: active ? '1px solid var(--neon)' : '1px solid var(--border)',
+    border: active ? '1px solid var(--neon)' : `1px solid ${isDirty ? 'rgba(255,214,10,.7)' : 'var(--border)'}`,
   });
+  const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: '1px dashed var(--neon)', color: 'var(--neon)', borderRadius: 7, padding: '.4rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' };
 
-  const myTypes = typesForPkg(idx);
-  const addable = addableForPkg(idx);
+  const renderCategory = (cat: string) => {
+    const list = listFor(mob, cat);
+    return (
+      <div key={cat} style={{ marginBottom: 16 }}>
+        <div style={catLabel}>
+          <span>{labelFor(cat)}</span>
+          {cat !== 'general' && (
+            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={() => removeEventType(cat)} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '.9rem', lineHeight: 1 }}>&times;</span>
+          )}
+        </div>
+        {list.map((_, i) => (
+          <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(selCat === cat && safeIdx === i, pkgDirty(cat, i))}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
+            {pkgDirty(cat, i) && <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', fontWeight: 700, letterSpacing: '.1em', color: '#ffd60a' }}>•</span>}
+          </button>
+        ))}
+        <button type="button" style={addPkgBtn} onClick={() => addPackageTo(cat)}>+ Add Package</button>
+      </div>
+    );
+  };
 
   return (
-    <div>
-      {mob.general.map((_, i) => {
-        const open = i === idx;
-        // Header name: when open on an event type that gave itself its own title,
-        // show that; otherwise fall back to the General (base) title. Collapsed
-        // always shows General, since selType resets to 'general' on collapse.
-        const strip = (v: unknown) => String(v || '').replace(/<[^>]*>/g, '').trim();
-        const baseTitle = strip((mob.general[i] as { title?: string })?.title);
-        const ovForHeader = open && selType !== 'general'
-          ? (mob.overrides[selType]?.[i] as { title?: string } | null | undefined) : null;
-        const rawTitle = strip(ovForHeader?.title) || baseTitle;
-        return (
-          <div key={i} ref={open ? cardRef : undefined} style={{ marginBottom: 12, scrollMarginTop: 90 }}>
-            {/* FOLD HEADER — prominent package number */}
-            <button
-              type="button"
-              onClick={() => { if (i === idx) { setPkgIdx(-1); } else { setPkgIdx(i); setSelType('general'); } }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '.85rem', width: '100%',
-                background: open ? 'rgba(0,240,255,.06)' : 'rgba(10,10,16,.5)',
-                border: `1px solid ${open ? 'var(--neon)' : (pkgDirty(i) ? 'rgba(255,214,10,.75)' : 'rgba(0,245,196,.35)')}`,
-                borderRadius: open ? '10px 10px 0 0' : 10, padding: '.85rem 1rem', cursor: 'pointer', textAlign: 'left',
-              }}
-            >
-              <span style={{
-                flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                minWidth: 40, height: 40, padding: '0 .5rem', borderRadius: 9, background: 'var(--neon)', color: '#04121a',
-                fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.02em',
-              }}>{i + 1}</span>
-              <span style={{ flex: 1, minWidth: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.7rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Package {i + 1}</span>
-              {pkgDirty(i) && (
-                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.56rem', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#ffd60a', border: '1px solid rgba(255,214,10,.6)', borderRadius: 5, padding: '.2rem .4rem', background: 'rgba(255,214,10,.12)' }}>Unsaved</span>
-              )}
-              <span style={{ color: open ? 'var(--neon)' : (pkgDirty(i) ? '#ffd60a' : 'var(--muted)'), fontSize: '1.15rem', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
-            </button>
+    <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {/* ── SIDEBAR ── */}
+      <aside style={{ flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
+        {renderCategory('general')}
+        {railTypes.map((t) => renderCategory(t))}
+        {addableTypes.length > 0 && (
+          <select
+            aria-label="Add an event type with its own packages"
+            value=""
+            onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
+            style={{ width: '100%', marginTop: 2, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 7, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          >
+            <option value="">+ Add Event Type</option>
+            {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
+          </select>
+        )}
+        {onEventTypesSave && (
+          <button type="button" onClick={openEtEditor} style={{ width: '100%', marginTop: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 7, padding: '.5rem', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Edit event types</button>
+        )}
+        {addableTypes.length > 0 && (
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: '#9a9ab0', margin: '.5rem .1rem 0' }}>
+            &ldquo;Add Event Type&rdquo; gives that event its own packages, pricing &amp; photos, separate from General.
+          </p>
+        )}
+      </aside>
 
-            {open && (
-              <div className={styles.pkgCard} style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: -1 }}>
-                {err && errIdx === i && (
-                  <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                    <span>{err}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  {/* LEFT — event-type rail, inside the fold, for THIS package */}
-                  <div style={{ flex: '1 1 210px', maxWidth: 300 }}>
-                    <div style={{ ...railLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
-                      <span>Event types</span>
-                      {onEventTypesSave && i === 0 && (
-                        <button type="button" onClick={openEtEditor} style={{ background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.06em', textTransform: 'uppercase', textDecoration: 'underline', padding: 0 }}>Edit</button>
-                      )}
-                    </div>
-                    <div ref={genRef} style={{ position: 'relative' }}>
-                      <button type="button" onClick={() => setSelType('general')} style={{ ...sideItem(selType === 'general'), ...(genDirtyAt(i) ? { border: '1px solid #ffd60a' } : {}) }}>
-                        <span>General events</span>
-                        <span
-                          role="button"
-                          aria-label="Show the events General covers"
-                          onClick={(e) => { e.stopPropagation(); setGenOpen((o) => !o); }}
-                          style={{ color: selType === 'general' ? 'var(--neon)' : 'var(--muted)', fontSize: '.85rem', cursor: 'pointer', padding: '0 .15rem' }}
-                        >{genOpen ? '▾' : '▸'}</span>
-                      </button>
-                      {genOpen && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 2, background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 8, padding: '.5rem .65rem', boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
-                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 .3rem' }}>Covers</div>
-                          {addable.length ? addable.map((t) => (
-                            <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff', padding: '.18rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelFor(t)}</div>
-                          )) : (
-                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.15rem 0' }}>No events under General</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ ...railLabel, marginTop: 12 }}>Customize pricing and details</div>
-                    {myTypes.map((t) => {
-                      const active = selType === t;
-                      const tDirty = typeDirtyAt(t, i);
-                      return (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => { setSelType(t); setGenOpen(false); }}
-                          style={{ ...sideItem(active), display: 'block', position: 'relative', overflow: 'visible', boxSizing: 'border-box', height: 36, paddingTop: '.25rem', paddingBottom: 0, paddingRight: '1.1rem', ...(tDirty ? { border: '1px solid #ffd60a' } : {}) }}
-                        >
-                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.05 }}>{labelFor(t)}</span>
-                          <span
-                            role="button"
-                            aria-label={`Put ${labelFor(t)} back under General`}
-                            title="Back under General"
-                            onClick={(e) => { e.stopPropagation(); removeEventType(t); }}
-                            style={{ position: 'absolute', top: 2, right: 4, color: active ? 'var(--neon)' : 'var(--muted)', cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 .1rem' }}
-                          >&times;</span>
-                          {generalComplete && typeNeedsPrice(t) && (
-                            <span style={{ position: 'absolute', bottom: 3, right: 6, fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#f5c451', whiteSpace: 'nowrap' }}>Add price</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                    {addable.length > 0 && (
-                      <select
-                        aria-label="Add an event type with its own price"
-                        value=""
-                        onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
-                        style={{ width: '100%', marginTop: 4, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 6, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-                      >
-                        <option value="">+ Add event type</option>
-                        {addable.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
-                      </select>
-                    )}
-                    {addable.length > 0 && (
-                      <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff', margin: '.4rem .1rem 0' }}>
-                        &ldquo;Add Event Type&rdquo; removes that event from General Events pricing and lets you customize its package name, description, pricing, and photos.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* RIGHT — the selected type's price card */}
-                  <div style={{ flex: '1000 1 280px', minWidth: 0 }}>
-                    {selType !== 'general' && (
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.75rem', lineHeight: 1.55, color: '#c7c7d6', marginBottom: '.85rem' }}>
-                        Title, description &amp; photos are inherited from <span style={{ color: 'var(--neon)', fontWeight: 600 }}>General Events</span>. Once you begin customizing the details here, your changes act independently and only apply to this event.
-                      </div>
-                    )}
-
-                    <PackageEditor
-                      key={`${i}-${selType}`}
-                      cat={catFor(selType)}
-                      idx={idx}
-                      pkg={currentPkg}
-                      totalCount={count}
-                      userId={userId}
-                      currency={currency}
-                      onChange={onEditPkg}
-                      onRemove={() => {}}
-                      hideOwnHeader
-                      generalPhotos={generalPhotos}
-                      errorFields={errIdx === i && selType === 'general' ? errFields : undefined}
-                    />
-
-                    <div className={styles.pkgSaveRow}>
-                      {count > 1 && idx > 0 && (
-                        <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
-                      )}
-                      <span style={{ flex: 1 }} />
-                      {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
-                      <button
-                        type="button"
-                        onClick={openPreview}
-                        disabled={!hasAnyPrice}
-                        title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'}
-                        style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}
-                      >Preview how a host sees this</button>
-                      <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+      {/* ── EDITOR ── */}
+      <main ref={cardRef} style={{ flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', marginBottom: '.6rem' }}>
+          {labelFor(selCat)} &mdash; Package {safeIdx + 1}
+        </div>
+        {err && errCat === selCat && errIdx === safeIdx && (
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            <span>{err}</span>
           </div>
-        );
-      })}
+        )}
+        <div className={styles.pkgCard}>
+          <PackageEditor
+            key={`${selCat}-${safeIdx}`}
+            cat={catFor(selCat)}
+            idx={safeIdx}
+            pkg={currentPkg}
+            totalCount={selList.length}
+            userId={userId}
+            currency={currency}
+            onChange={onEditPkg}
+            onRemove={() => {}}
+            hideOwnHeader
+            generalPhotos={selCat === 'general' ? undefined : generalPhotos}
+            errorFields={errCat === selCat && errIdx === safeIdx ? errFields : undefined}
+          />
+          <div className={styles.pkgSaveRow}>
+            {selList.length > 1 && (
+              <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
+            )}
+            <span style={{ flex: 1 }} />
+            {saved && !dirty && <span style={{ color: 'var(--neon)', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase' }}>&#10003; Saved</span>}
+            <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
+            <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>Save Packages</button>
+          </div>
+        </div>
+      </main>
 
-      <button type="button" className={styles.addPkgBtn} onClick={addPackage}>+ Add Package</button>
-
+      {/* ── Event types popup ── */}
       {etOpen && (() => {
         const builtIns = Object.entries(MOB_EVENT_LABELS).filter(([k]) => k !== 'other').map(([key, label]) => ({ key, label }));
         const allOpts = [...builtIns, ...etCustom.map((c) => ({ key: c.key, label: c.label }))];
@@ -578,9 +392,7 @@ export default function MobilePackagesEditor({
           <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', color: '#fff', fontSize: '.85rem', cursor: 'pointer' }}>
             <input type="checkbox" checked={etSel.includes(o.key)} onChange={(e) => etToggle(o.key, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }} />
             <span style={{ flex: 1 }}>{o.label}</span>
-            {isCustom(o.key) && (
-              <span role="button" aria-label={`Remove ${o.label}`} title="Remove" onClick={(e) => { e.preventDefault(); void etRemoveCustom(o.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>
-            )}
+            {isCustom(o.key) && (<span role="button" aria-label={`Remove ${o.label}`} title="Remove" onClick={(e) => { e.preventDefault(); void etRemoveCustom(o.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>)}
           </label>
         );
         const groupLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem' };
@@ -598,32 +410,28 @@ export default function MobilePackagesEditor({
                 <button type="button" onClick={() => closeEtEditor()} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
               </div>
               <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.75rem', lineHeight: 1.5 }}>Check the event types you offer, or add your own. These appear on your public booking form and here for pricing.</p>
-
               <div style={groupLabel}>General events</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>{genOpts.map(cbRow)}</div>
               {addRow(etNewGen, setEtNewGen, false)}
-
               <div style={{ ...groupLabel, marginTop: '1.25rem' }}>Specialty / Custom</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
-                {specOpts.length > 0 ? specOpts.map(cbRow) : <span style={{ color: 'var(--muted)', fontSize: '.75rem' }}>None yet.</span>}
-              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>{specOpts.length > 0 ? specOpts.map(cbRow) : <span style={{ color: 'var(--muted)', fontSize: '.75rem' }}>None yet.</span>}</div>
               {addRow(etNewSpec, setEtNewSpec, true)}
-
               {etErr && <p style={{ color: '#ff8f8f', fontSize: '.75rem', margin: '1rem 0 0' }}>{etErr}</p>}
               <button type="button" onClick={etSaveClose} style={{ width: '100%', marginTop: etErr ? '.5rem' : '1.25rem', background: 'var(--neon)', border: '1px solid var(--neon)', color: '#04121a', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Save event types</button>
             </div>
           </div>
         );
       })()}
+
+      {/* ── Host preview ── */}
       {previewOpen && (() => {
         const cur = currencySymbol(currency);
-        const fmt = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-        const ser = serializeMobPackages(mob);
-        const hrs = hoursBetween(previewStart, previewEnd);
+        const ser = serializeIndependent(mob);
         type Card = { i: number; pkg: MobilePackage; title: string; details: string; photo: string; photos: string[]; reqAll: boolean; tiers: { hours: number; price: number }[] };
+        const list = resolveListFor(ser, previewEvent || 'general');
         const cards: Card[] = [];
-        mob.general.forEach((_, i) => {
-          const rp = resolvePackage(ser as unknown as Record<string, unknown>, previewEvent || 'general', i) as unknown as MobilePackage | null;
+        list.forEach((_, i) => {
+          const rp = resolveIndependent(ser, previewEvent || 'general', i) as unknown as MobilePackage | null;
           if (!rp) return;
           const title = String((rp as { title?: string }).title || '').trim();
           if (!title) return;
@@ -665,35 +473,25 @@ export default function MobilePackagesEditor({
               <div style={{ padding: '1.1rem 1.25rem 1.25rem' }}>
                 <h3 style={{ margin: '0 0 .2rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.04em', color: '#fff' }}>How a host books you</h3>
                 <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.5 }}>Change the <span style={{ color: 'var(--neon)' }}>event type</span> and <span style={{ color: 'var(--neon)' }}>times</span> below to see how your price moves. The greyed-out fields are just sample data.</p>
-
                 <div style={{ marginBottom: '.55rem' }}>
                   <div style={editLabel}>Type of event</div>
                   <select value={previewEvent} onChange={(e) => { setPreviewEvent(e.target.value); setPreviewSel(0); }} style={selStyle}>
                     {selectedEventTypes.map((k) => <option key={k} value={k} style={{ background: '#0c0c12' }}>{labelFor(k)}</option>)}
                   </select>
                 </div>
-
                 <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.55rem' }}>
                   <div style={{ flex: 1 }}>
                     <div style={editLabel}>Start time</div>
-                    <select value={previewStart} onChange={(e) => setPreviewStart(e.target.value)} style={selStyle}>
-                      {MOB_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}
-                    </select>
+                    <select value={previewStart} onChange={(e) => setPreviewStart(e.target.value)} style={selStyle}>{MOB_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}</select>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={editLabel}>End time</div>
-                    <select value={previewEnd} onChange={(e) => setPreviewEnd(e.target.value)} style={selStyle}>
-                      {MOB_END_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}
-                    </select>
+                    <select value={previewEnd} onChange={(e) => setPreviewEnd(e.target.value)} style={selStyle}>{MOB_END_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}</select>
                   </div>
                 </div>
-
                 {lockField('Date', 'Saturday, August 15, 2026')}
                 {lockField('Venue', '123 Celebration Ave, Your City')}
                 {lockField('Your name', 'Jane Doe')}
-                {lockField('Email', 'jane@example.com')}
-                {lockField('Phone', '(555) 123-4567')}
-
                 {cards.length > 0 && (
                   <div style={{ marginTop: '.8rem' }}>
                     <div className={bookingStyles.packagesLabel}>Select a Package</div>
@@ -702,15 +500,11 @@ export default function MobilePackagesEditor({
                         const isSel = previewSel === c.i;
                         const hasBody = !!(c.details || c.photos.length);
                         let priceEl: React.ReactNode = null;
-                        if (c.reqAll) {
-                          priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
-                        } else {
+                        if (c.reqAll) priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
+                        else {
                           const cp = calcPrice(c.pkg, previewStart, previewEnd, depositPct, false, '', false);
-                          if (cp.isQuote || cp.price == null) {
-                            if (c.tiers.length > 0) priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
-                          } else {
-                            priceEl = <div className={bookingStyles.packagePrice}>{cur}{cp.price.toLocaleString()}</div>;
-                          }
+                          if (cp.isQuote || cp.price == null) { if (c.tiers.length > 0) priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>; }
+                          else priceEl = <div className={bookingStyles.packagePrice}>{cur}{cp.price.toLocaleString()}</div>;
                         }
                         return (
                           <div key={c.i} className={`${bookingStyles.packageCard} ${isSel ? bookingStyles.packageCardSelected : ''}`} onClick={() => setPreviewSel(c.i)} role="button">
@@ -721,9 +515,7 @@ export default function MobilePackagesEditor({
                             </div>
                             {hasBody && (
                               <div className={`${bookingStyles.packageBody} ${isSel ? bookingStyles.packageBodySelected : ''}`}>
-                                <div className={bookingStyles.packageDetails}>
-                                  {c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}
-                                </div>
+                                <div className={bookingStyles.packageDetails}>{c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}</div>
                                 {c.photos.length > 0 && (
                                   <div className={bookingStyles.packageThumb} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setPvLb({ photos: c.photos, details: c.details || '', active: 0 }); }}>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -740,50 +532,33 @@ export default function MobilePackagesEditor({
                     </div>
                   </div>
                 )}
-
                 {summary && (
                   <div className={bookingStyles.priceDisplay}>
                     <div className={bookingStyles.priceLabel}>Estimated Price</div>
-                    <div className={summary.quote ? `${bookingStyles.priceValue} ${bookingStyles.priceValueQuote}` : bookingStyles.priceValue}>
-                      {summary.quote ? 'Price on Request' : `${cur}${summary.rate.toLocaleString()}`}
-                    </div>
+                    <div className={summary.quote ? `${bookingStyles.priceValue} ${bookingStyles.priceValueQuote}` : bookingStyles.priceValue}>{summary.quote ? 'Price on Request' : `${cur}${summary.rate.toLocaleString()}`}</div>
                     {!summary.quote && (taxEnabled || depositPct > 0) && (
                       <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
-                        {taxEnabled && (
-                          <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                              <span>Subtotal</span><span>{cur}{summary.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                              <span>Tax ({taxPct}%)</span><span>{cur}{summary.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          </>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
-                          <span>Total</span><span>{cur}{summary.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        {depositPct > 0 && (
-                          <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                              <span>Deposit ({depositPct}%)</span><span>{cur}{summary.deposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                              <span>Balance due day of event</span><span>{cur}{(summary.total - summary.deposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          </>
-                        )}
+                        {taxEnabled && (<>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Subtotal</span><span>{cur}{summary.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Tax ({taxPct}%)</span><span>{cur}{summary.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        </>)}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}><span>Total</span><span>{cur}{summary.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        {depositPct > 0 && (<>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Deposit ({depositPct}%)</span><span>{cur}{summary.deposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Balance due day of event</span><span>{cur}{(summary.total - summary.deposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        </>)}
                       </div>
                     )}
                     {!summary.quote && depositPct === 0 && !taxEnabled && <div className={bookingStyles.depositText}>No deposit required</div>}
                   </div>
                 )}
-
                 <button type="button" onClick={() => setPreviewOpen(false)} style={{ width: '100%', marginTop: '1.25rem', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Close preview</button>
               </div>
             </div>
           </div>
         );
       })()}
+
       {pvLb && (
         <div className={bookingStyles.photoLightbox} onClick={() => setPvLb(null)}>
           <div className={bookingStyles.photoLightboxInner} onClick={(e) => e.stopPropagation()}>
@@ -795,7 +570,7 @@ export default function MobilePackagesEditor({
               {pvLb.photos.length > 1 && (
                 <div className={bookingStyles.photoLightboxThumbs}>
                   {pvLb.photos.map((u, i) => (
-                    <button key={i} type="button" className={`${bookingStyles.photoLightboxThumb} ${i === pvLb.active ? bookingStyles.photoLightboxThumbActive : ''}`} onClick={() => setPvLb((cur) => cur ? { ...cur, active: i } : cur)}>
+                    <button key={i} type="button" className={`${bookingStyles.photoLightboxThumb} ${i === pvLb.active ? bookingStyles.photoLightboxThumbActive : ''}`} onClick={() => setPvLb((c) => c ? { ...c, active: i } : c)}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={u} alt={`Photo ${i + 1}`} />
                     </button>
@@ -803,10 +578,7 @@ export default function MobilePackagesEditor({
                 </div>
               )}
             </div>
-            {pvLb.details && (
-              // eslint-disable-next-line react/no-danger
-              <div className={bookingStyles.photoLightboxDetails} dangerouslySetInnerHTML={{ __html: pvLb.details }} />
-            )}
+            {pvLb.details && (<div className={bookingStyles.photoLightboxDetails} dangerouslySetInnerHTML={{ __html: pvLb.details }} />)}
             <button type="button" onClick={() => setPvLb(null)} className={bookingStyles.photoLightboxClose} aria-label="Close">&times;</button>
           </div>
         </div>
@@ -814,4 +586,10 @@ export default function MobilePackagesEditor({
       {confirmDialog}
     </div>
   );
+}
+
+// The package list a type offers in the resolved (serialized) model — a
+// pulled-out type's own list, else General.
+function resolveListFor(ser: MobPackagesIndependent, eventType: string): Pkg[] {
+  return ser.overrides[eventType] ?? ser.general;
 }
