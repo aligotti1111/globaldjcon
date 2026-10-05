@@ -1259,6 +1259,11 @@ export default function AddManualBookingModal({
                       >
                         Remove
                       </button>
+                      {cocktailStart && startTime && durationLabel(hoursBetween(cocktailStart, startTime)) && (
+                        <span style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                          Cocktail Hour Duration: {durationLabel(hoursBetween(cocktailStart, startTime))}
+                        </span>
+                      )}
                     </div>
                   )
                 )}
@@ -1293,38 +1298,22 @@ export default function AddManualBookingModal({
                       >
                         Remove
                       </button>
+                      {ceremonyStart && durationLabel(hoursBetween(ceremonyStart, (showCocktail && cocktailStart) ? cocktailStart : startTime)) && (
+                        <span style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                          Ceremony Duration: {durationLabel(hoursBetween(ceremonyStart, (showCocktail && cocktailStart) ? cocktailStart : startTime))}
+                        </span>
+                      )}
                     </div>
                   )
                 )}
               </div>
-              {(() => {
-                // Durations stack in event order (ceremony → cocktail hour →
-                // reception). Ceremony/cocktail run up to whatever starts next;
-                // the main slot is "Reception Duration" for weddings, else
-                // "Event Duration".
-                const lines: Array<{ label: string; value: string }> = [];
-                if (isWedding && showCeremony && ceremonyStart) {
-                  const nextStart = (showCocktail && cocktailStart) ? cocktailStart : startTime;
-                  const d = durationLabel(hoursBetween(ceremonyStart, nextStart));
-                  if (d) lines.push({ label: 'Ceremony Duration', value: d });
-                }
-                if (isWedding && showCocktail && cocktailStart && startTime) {
-                  const d = durationLabel(hoursBetween(cocktailStart, startTime));
-                  if (d) lines.push({ label: 'Cocktail Hour Duration', value: d });
-                }
-                const main = durationLabel(hoursBetween(startTime, endTime));
-                if (main) lines.push({ label: isWedding ? 'Reception Duration' : 'Event Duration', value: main });
-                if (!lines.length) return null;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem', alignItems: 'flex-end' }}>
-                    {lines.map((l) => (
-                      <div key={l.label} style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
-                        {l.label}: {l.value}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+              {/* Main slot duration only — the cocktail / ceremony durations sit
+                  inline next to their own start dropdowns on the left. */}
+              {durationLabel(hoursBetween(startTime, endTime)) && (
+                <div style={{ fontSize: '.72rem', color: '#ffd24a', whiteSpace: 'nowrap' }}>
+                  {isWedding ? 'Reception Duration' : 'Event Duration'}: {durationLabel(hoursBetween(startTime, endTime))}
+                </div>
+              )}
             </div>
           )}
 
