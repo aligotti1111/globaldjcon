@@ -317,7 +317,7 @@ export default function MobilePackagesEditor({
     // The package being edited is spotlighted: brighter gradient fill, a thick
     // neon left bar, and a glow so it clearly reads as "this is open".
     background: 'transparent',
-    color: active ? 'var(--neon)' : (isDirty ? '#ffd60a' : '#fff'),
+    color: active ? '#fff' : (isDirty ? '#ffd60a' : '#fff'),
     // Open package: a full neon frame only (no fill). Resting packages have a
     // transparent border so spacing stays even and no stray bracket shows.
     border: active ? '1px solid var(--neon)' : '1px solid transparent',
