@@ -61,6 +61,19 @@ export function resolvePackage(
   const general = (mob.general as Pkg[] | undefined) || [];
   const base = general[index] || null;
 
+  // ── v2 INDEPENDENT shape ──
+  // { model: 'independent', general: Pkg[], overrides: { [type]: Pkg[] } }
+  // Each category owns a dense, self-contained list. A pulled-out type uses its
+  // OWN list wholesale; everything else uses General. No field is borrowed from
+  // General at read time — each package carries its own title/details/photos/
+  // prices. (Checked BEFORE isNewShape because v2 also has an `overrides` key.)
+  if (mob.model === 'independent') {
+    const overrides = (mob.overrides as Record<string, Pkg[]> | undefined) || {};
+    const list = overrides[eventType] ?? general;
+    const pkg = list[index];
+    return pkg ? { ...pkg } : null;
+  }
+
   if (isNewShape(mob)) {
     const overrides = (mob.overrides as Record<string, Pkg[]> | undefined) || {};
     const ov = overrides[eventType]?.[index] || null;
