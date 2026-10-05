@@ -238,11 +238,21 @@ export default function MobilePackagesEditor({
   }
 
   function save() {
-    // Every package in every category is self-contained — each needs its own
-    // title, description and at least one price (unless set to request a quote).
-    const cats = ['general', ...Object.keys(mob.overrides)];
+    // Drop orphaned overrides — event types that are no longer offered. They
+    // aren't shown in the sidebar, so validating them would surface a "needs a
+    // price" error the DJ can't reach or fix. Pruning them cleans stored data.
+    const live: MobPackagesIndependent = {
+      ...mob,
+      overrides: Object.fromEntries(
+        Object.entries(mob.overrides).filter(([t]) => selectedEventTypes.includes(t)),
+      ),
+    };
+    // Every package in every LIVE category is self-contained — each needs its
+    // own title, description and at least one price (unless set to request a
+    // quote). Only validate the categories actually shown in the sidebar.
+    const cats = ['general', ...Object.keys(live.overrides)];
     for (const cat of cats) {
-      const list = listFor(mob, cat);
+      const list = listFor(live, cat);
       for (let i = 0; i < list.length; i++) {
         const p = (list[i] || {}) as { title?: string; details?: string };
         const missing: string[] = []; const labels: string[] = [];
@@ -258,7 +268,8 @@ export default function MobilePackagesEditor({
       }
     }
     setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]);
-    const ser = serializeIndependent(mob);
+    if (Object.keys(live.overrides).length !== Object.keys(mob.overrides).length) setMob(live);
+    const ser = serializeIndependent(live);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser));
   }
   saveRef.current = save;
