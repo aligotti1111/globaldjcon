@@ -1466,13 +1466,13 @@ export default function AddManualBookingModal({
           {djType === 'mobile' && (
             <>
               {sectionPill('Package & Rate')}
-              <div className={styles.venueRateRow} style={{ opacity: eventChosen ? 1 : 0.5, flexWrap: 'wrap' }}>
-                {/* Package gives up width once Overtime appears, but keeps a real
-                    minimum so it can't collapse under its own label. If all three
-                    no longer fit, the row wraps instead of deforming the boxes. */}
+              <div className={styles.venueRateRow} style={{ opacity: eventChosen ? 1 : 0.5 }}>
+                {/* Package gives up width once Overtime appears, so Rate and
+                    Overtime can sit side by side instead of Overtime dropping
+                    to its own line and pushing the form taller. */}
                 <label
                   className={styles.field}
-                  style={{ flex: '1 1 140px', minWidth: '130px' }}
+                  style={{ flex: showOvertime ? '1 1 90px' : '1 1 160px', minWidth: 0 }}
                 >
                   <span className={styles.fieldLabel}>Package</span>
                   <select
