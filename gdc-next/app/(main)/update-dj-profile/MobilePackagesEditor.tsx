@@ -280,7 +280,7 @@ export default function MobilePackagesEditor({
       const first = invalids[0];
       setErr(
         invalids.length === 1
-          ? `${labelFor(first.cat)} — Package ${first.i + 1} needs ${first.labels.join(' and ')} before you can save.`
+          ? 'One package still needs a title, a description, or a price — the one marked in red needs attention.'
           : `${invalids.length} packages still need a title, a description, or a price — the ones marked in red need attention.`,
       );
       setErrFields(first.missing); setErrCat(first.cat); setErrIdx(first.i); setShowInvalid(true);
@@ -399,12 +399,20 @@ export default function MobilePackagesEditor({
   };
 
   const renderEditor = () => (
-    <>
-      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', marginBottom: '.6rem' }}>
-        {labelFor(selCat)} &mdash; Package {safeIdx + 1}
+    <div style={{ position: 'relative', border: '1px solid var(--neon)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem' }}>
+      {/* A small neon notch on the left edge points back at the highlighted
+          package in the tree, so the open editor reads as its expansion. */}
+      {!isNarrow && (
+        <span aria-hidden="true" style={{ position: 'absolute', left: -7, top: 22, width: 12, height: 12, background: '#07070b', borderLeft: '1px solid var(--neon)', borderBottom: '1px solid var(--neon)', transform: 'rotate(45deg)' }} />
+      )}
+      {/* Breadcrumb header: which event type + package this editor belongs to. */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.1rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>
+        <span style={{ color: 'var(--neon)' }}>{labelFor(selCat)}</span>
+        <span style={{ color: '#555', margin: '0 .5rem', fontSize: '1.1rem' }}>&rsaquo;</span>
+        <span style={{ color: '#fff' }}>Package {safeIdx + 1}</span>
       </div>
       {err && showInvalid && (
-        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '0 0 .4rem', marginBottom: 14, color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           <span>{err}</span>
         </div>
@@ -433,7 +441,7 @@ export default function MobilePackagesEditor({
           <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>{dirty ? 'Save Packages' : 'All Changes Saved'}</button>
         </div>
       </div>
-    </>
+    </div>
   );
 
   return (
