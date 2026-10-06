@@ -44,7 +44,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96
 });
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, admin = false, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -63,6 +63,9 @@ export default function BookingEditModal({
   /** Manual booking with no host recipient: nothing to approve or notify, so
    *  every change applies immediately and no approval/notify copy shows. */
   noHostRecipient?: boolean;
+  /** ADMIN edit: changes apply immediately and NO email is sent to the host. The
+   *  request is posted with { admin:true }; the server enforces admin access. */
+  admin?: boolean;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
   /** Called after a pending request is cancelled so the parent re-reads badges. */
@@ -93,6 +96,9 @@ export default function BookingEditModal({
   // Locked fields (pending approval) don't count as editable changes.
   const changed = fields.filter((f) => !isPending(f) && (form[f.key] ?? '') !== (values[f.key] ?? ''));
   const hasApprove = changed.some((f) => f.tier === 'approve');
+  // Admin edits behave like a no-host booking: everything applies immediately and
+  // no approval/notify copy shows (the host is never emailed).
+  const noHost = noHostRecipient || admin;
 
   async function cancelRequest(f: EditFieldDef) { await cancelByKey(f.key); }
   async function cancelByKey(key: string) {
@@ -117,6 +123,7 @@ export default function BookingEditModal({
       const changes: Record<string, string> = {};
       changed.forEach((f) => { changes[f.key] = form[f.key] ?? ''; });
       const payload: Record<string, unknown> = { bookingId: values.__id, changes };
+      if (admin) payload.admin = true; // server applies immediately, emails no one
       const res = await fetch('/api/bookings/edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -139,13 +146,15 @@ export default function BookingEditModal({
     <div style={scrim} onClick={() => { if (!busy) onClose(); }}>
       <div style={box} onClick={(e) => e.stopPropagation()}>
         {step === 'ack' ? (
-          contractState === 'none' ? (
+          (admin || contractState === 'none') ? (
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Edit {SECTION_TITLE[section].toLowerCase()} details</h3>
               <p style={{ color: '#c9c9d6', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>
-                {noHostRecipient
-                  ? 'This booking has no host contact on file, so changes apply right away.'
-                  : SECTION_ACK[section]}
+                {admin
+                  ? 'Admin edit — changes apply immediately and the host is NOT emailed.'
+                  : noHostRecipient
+                    ? 'This booking has no host contact on file, so changes apply right away.'
+                    : SECTION_ACK[section]}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
@@ -156,7 +165,6 @@ export default function BookingEditModal({
             <>
               <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Before you make this change</h3>
               <p style={{ color: '#d6d6e0', fontSize: '.9rem', lineHeight: 1.55, margin: '0 0 4px' }}>{LEGAL}</p>
-              <p style={{ color: '#d6d6e0', fontSize: '.9rem', lineHeight: 1.55, margin: '8px 0 4px' }}>New contract available to be sent if agreed.</p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <button style={btnGhost} onClick={onClose}>Cancel</button>
                 <button style={btnPrimary} onClick={() => setStep('form')}>I understand — Proceed</button>
@@ -168,7 +176,7 @@ export default function BookingEditModal({
             <h3 style={{ margin: '0 0 14px', fontSize: '1rem' }}>Edit {SECTION_TITLE[section].toLowerCase()} details</h3>
             {fields.map((f: EditFieldDef) => (
               <div key={f.key} style={{ marginBottom: 11 }}>
-                <label style={label}>{f.label}{f.tier === 'approve' && !noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
+                <label style={label}>{f.label}{f.tier === 'approve' && !noHost && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
                 {isPending(f) ? (
                   <div style={{ background: 'rgba(245,230,66,.08)', border: '1px solid rgba(245,230,66,.3)', borderRadius: 7, padding: '9px 10px' }}>
                     <div style={{ color: '#f5e642', fontSize: '.74rem', fontWeight: 700, letterSpacing: '.04em' }}>PENDING HOST APPROVAL</div>
@@ -250,17 +258,17 @@ export default function BookingEditModal({
               </div>
             ))}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
-            {!noHostRecipient && changed.some((f) => f.tier === 'notify') && (
+            {!noHost && changed.some((f) => f.tier === 'notify') && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
             )}
-            {!noHostRecipient && hasApprove && changed.length > 0 && (
+            {!noHost && hasApprove && changed.length > 0 && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Submit Change Request, the host is emailed to approve the change — the altered field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             {(() => {
               // Any dirty change that needs the host's sign-off (an approval-tier
               // field) turns Save into "Submit Change Request". With no host to
               // approve, or notify-only fields, it stays "Save Change".
-              const requiresApproval = !noHostRecipient && hasApprove && changed.length > 0;
+              const requiresApproval = !noHost && hasApprove && changed.length > 0;
               const disabled = busy || changed.length === 0;
               return (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
