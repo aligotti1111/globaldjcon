@@ -1,17 +1,56 @@
 'use client';
 
 // Admin → Bookings. See ALL bookings across every DJ, search by DJ or host
-// (name/email), expand one to view its read-only pipeline + details, and edit
-// its fields (price/tax excluded). Admin edits apply immediately and NEVER email
-// the host — the edit modal is launched with admin mode, which posts
-// { admin:true } to /api/bookings/edit.
+// (name/email), expand one to view its pipeline + details, and edit its fields
+// (price/tax excluded). Admin edits apply immediately and NEVER email the host —
+// the edit modal is launched with admin mode, which posts { admin:true } to
+// /api/bookings/edit.
+//
+// THE PIPELINE IS THE DJ'S OWN. This renders the exact same "Booking progress"
+// bar the DJ sees on their Upcoming Bookings card — PipelineHero fed by
+// buildBookingSteps — not the lighter host-facing one. buildBookingSteps carries
+// action handlers (send contract, request deposit, …) that can't cross a
+// server→client boundary, so the server action hands back raw booking data and
+// the steps are built HERE, with no-op handlers, and rendered read-only
+// (every action locked, no override toggles).
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import HostPipelineHero from '@/app/(main)/upcoming-events/HostPipelineHero';
+import PipelineHero from '@/app/(main)/upcoming-bookings/pipeline/PipelineHero';
+import { buildBookingSteps } from '@/app/(main)/upcoming-bookings/pipeline/buildSteps';
+import type { UpcomingBooking, BookingPayment } from '@/app/(main)/upcoming-bookings/page';
 import BookingEditModal, { type EditSection } from '@/app/(main)/upcoming-bookings/BookingEditModal';
 import { searchAdminBookings, getAdminBookingDetail, type AdminBookingRow, type AdminBookingDetail } from './admin-bookings';
 
 const NEON = '#00e0a4';
+
+// ── Pipeline column order (copied from BookingRow — the server-side whitelist
+//    keys, not the headings). Club puts the Rider before Deposit; mobile keeps
+//    Planner & Playlist in place and has no guest-list column.
+const pipeSlotsFor = (djType: 'club' | 'mobile'): readonly string[] =>
+  djType === 'club'
+    ? ['contract', 'song_list', 'deposit', 'invoice', 'guestlist']
+    : ['contract', 'deposit', 'song_list', 'invoice'];
+
+// Tax-inclusive booking value — the same computation BookingRow passes into the
+// builder, copied verbatim so the admin pipeline's Value can't drift from the
+// DJ's. Reads the booking's OWN frozen tax snapshot, never live settings.
+function bookingTotalWithTax(booking: UpcomingBooking, liveTaxPct: number): number | null {
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const agreed = booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? null;
+  if (agreed == null) return null;
+  const snapTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : null;
+  const snapTaxAmount = booking.tax_amount != null ? Number(booking.tax_amount) : null;
+  const snapTotal = booking.total_with_tax != null ? Number(booking.total_with_tax) : null;
+  const snapBase = (snapTaxAmount != null && snapTotal != null) ? round2(snapTotal - snapTaxAmount) : null;
+  const snapshotFresh = snapBase != null && Math.abs(Number(agreed) - snapBase) < 0.005;
+  if (snapshotFresh) return snapTotal;
+  const effTaxPct = snapTaxPct ?? liveTaxPct;
+  if (!(effTaxPct > 0)) return round2(Number(agreed));
+  const tax = snapTaxPct != null ? round2((Number(agreed) * effTaxPct) / 100) : Math.round((Number(agreed) * effTaxPct) / 100);
+  return round2(Number(agreed) + tax);
+}
+
+const noop = () => {};
 
 function fmtDate(d: string | null): string {
   if (!d) return '—';
@@ -36,6 +75,72 @@ const SECTIONS: { key: EditSection; label: string }[] = [
   { key: 'HOST', label: 'Host' },
   { key: 'PACKAGE', label: 'Package' },
 ];
+
+// Build the DJ's real pipeline steps from the raw server data. No-op handlers:
+// the admin view is read-only, so nothing here ever fires (actions are also
+// locked at the PipelineHero level).
+function buildAdminSteps(detail: AdminBookingDetail) {
+  const b = detail.rawBooking as unknown as UpcomingBooking & { __riderSent?: boolean; status_overrides?: Record<string, boolean> | null };
+  const { canPro, riderEnabled, guestlistEnabled, needsContract, taxPct } = detail.flags;
+  const payments = detail.payments as BookingPayment[];
+
+  const isCancelled = b.status === 'cancelled' || (b as { cancel_status?: string | null }).cancel_status === 'accepted';
+  // Past the event date → read-only archive, same as the DJ's Past Bookings.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const archive = isCancelled || (!!b.event_date && String(b.event_date).slice(0, 10) < todayStr);
+
+  const overrides = (b.status_overrides as Record<string, boolean> | null) || {};
+  const depositRow = payments.find((p) => p.kind === 'deposit') || null;
+  const cstatus = (b.contract_status as string | null | undefined) || null;
+  const everHadContract = !!cstatus;
+  const contractStepComplete = cstatus === 'signed' || !!overrides.contract;
+  const hasHostContact =
+    !!String((b as { host_email?: string | null }).host_email || '').trim() &&
+    !!String((b as { requester_name?: string | null }).requester_name || '').trim();
+  const canRequestDeposit = b.is_manual ? hasHostContact : (!needsContract || contractStepComplete);
+
+  const { steps } = buildBookingSteps({
+    booking: b,
+    taxPct,
+    archive,
+    payments,
+    canPro,
+    planner: detail.planner || undefined,
+    riderEnabled,
+    guestlistEnabled,
+    onAddHost: undefined,
+    onEdit: undefined,
+    overrides,
+    signedOverride: false,
+    isCancelled,
+    depositRow,
+    cstatus,
+    needsContract,
+    hasHostContact,
+    canRequestDeposit,
+    everHadContract,
+    runContract: noop,
+    openRequest: noop,
+    cancelRequest: noop,
+    markBalancePaid: noop,
+    sendReceipt: noop,
+    downloadReceipt: noop,
+    toggleStep: noop,
+    setMethodsOpen: noop,
+    plannerBusy: false,
+    plannerErr: null,
+    setPlannerErr: noop,
+    setSendOpen: noop,
+    setRiderChooserOpen: noop,
+    savedRiders: [],
+    riderSent: !!b.__riderSent,
+    requestPlanner: noop,
+    resendRider: noop,
+    sendNamedRider: noop,
+    bookingTotalWithTax,
+  });
+  return steps;
+}
 
 export default function BookingsTab() {
   const [query, setQuery] = useState('');
@@ -135,9 +240,17 @@ export default function BookingsTab() {
                 {detailLoading && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>Loading booking…</div>}
                 {!detailLoading && detail && detail.id === r.id && (
                   <>
-                    {/* Read-only pipeline */}
+                    {/* The DJ's real pipeline, read-only (all actions locked). */}
                     <div style={{ marginBottom: 14 }}>
-                      <HostPipelineHero steps={detail.pipeline} djType={detail.pipelineDjType} />
+                      <PipelineHero
+                        steps={buildAdminSteps(detail)}
+                        slots={pipeSlotsFor(detail.djType)}
+                        djType={detail.djType}
+                        openedLabel={() => null}
+                        actionLocked={() => true}
+                        overrideLockedFor={() => true}
+                        onToggleOverride={noop}
+                      />
                     </div>
 
                     {/* Editable sections */}
@@ -158,7 +271,7 @@ export default function BookingsTab() {
                     {editSection && (
                       <BookingEditModal
                         section={editSection}
-                        djType={detail.pipelineDjType}
+                        djType={detail.djType}
                         contractState={contractState(detail.contractStatus)}
                         values={detail.editValues}
                         lockEmail={detail.hasHostAccount}
