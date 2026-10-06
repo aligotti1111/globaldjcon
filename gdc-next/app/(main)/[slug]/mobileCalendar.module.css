@@ -426,9 +426,10 @@
   outline-offset: -1px;
 }
 .cellBooked {
-  /* Solid red fill (matches embed) */
+  /* Solid red fill (matches embed). Dark divider so flush, adjacent booked days
+     stay framed as separate cells instead of merging into one red block. */
   background: #ff5f5f;
-  border-color: #ff5f5f;
+  border-color: rgba(0, 0, 0, .35);
   cursor: not-allowed;
 }
 .cellUnavail {
