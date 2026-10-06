@@ -21,6 +21,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getActingContext, canBilling } from '@/lib/acting';
+import { isAdminUser } from '@/lib/supabase/admin-auth';
 import { EDIT_FIELD_BY_KEY } from '@/lib/bookingEditFields';
 import { notifyBookingSms } from '@/lib/supabase/sms';
 import { Resend } from 'resend';
@@ -163,21 +164,30 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  // OWNER ONLY.
-  const acting = await getActingContext(user.id);
-  if (!canBilling(acting.role)) return NextResponse.json({ error: 'Only the account owner can edit booking details.' }, { status: 403 });
-  const djId = acting.djId;
-
   const body = (await req.json().catch(() => ({}))) as {
     bookingId?: string; changes?: Record<string, string>; cancelField?: string;
     // Per-booking pricing terms — applied immediately (DJ's own billing config),
     // host emailed an FYI. taxPct null/removeTax:true → no tax on this booking.
     // skipDeposit → mark the deposit skipped on the booking card.
     pricing?: { taxPct?: number | null; removeTax?: boolean; depositPct?: number | null; skipDeposit?: boolean };
+    // ADMIN mode: a platform admin editing any DJ's booking. Changes apply
+    // immediately and NO email/SMS is ever sent to the host.
+    admin?: boolean;
   };
   const bookingId = body.bookingId;
   const changes = body.changes || {};
   if (!bookingId || typeof changes !== 'object') return NextResponse.json({ error: 'Bad request' }, { status: 400 });
+
+  // Admin may edit ANY booking (bypasses the owner check); otherwise OWNER ONLY.
+  const isAdmin = body.admin === true && (await isAdminUser());
+  let djId: string;
+  if (isAdmin) {
+    djId = ''; // resolved from the booking row below
+  } else {
+    const acting = await getActingContext(user.id);
+    if (!canBilling(acting.role)) return NextResponse.json({ error: 'Only the account owner can edit booking details.' }, { status: 403 });
+    djId = acting.djId;
+  }
 
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: bData } = await admin
@@ -185,8 +195,11 @@ export async function POST(req: Request) {
     .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, status_overrides, contract_status, field_edits')
     .eq('id', bookingId)
     .maybeSingle<BookingRow>();
-  if (!bData || bData.dj_id !== djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+  if (!bData) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+  if (!isAdmin && bData.dj_id !== djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   const booking = bData;
+  if (isAdmin && !booking.dj_id) return NextResponse.json({ error: 'Booking has no DJ' }, { status: 404 });
+  if (isAdmin) djId = booking.dj_id as string; // admin acts on the booking's own DJ
 
   // ── Cancel a still-pending request ──
   // The DJ can't send a second request for a field while one is pending; instead
@@ -205,7 +218,8 @@ export async function POST(req: Request) {
       .eq('booking_id', booking.id).eq('target_col', col).eq('status', 'pending');
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     // Notify the host that the request they were asked to approve is withdrawn.
-    const hostEmail = booking.requester_id ? await resolveUserEmail(booking.requester_id) : (booking.host_email || null);
+    // Admin actions never email the host.
+    const hostEmail = isAdmin ? null : (booking.requester_id ? await resolveUserEmail(booking.requester_id) : (booking.host_email || null));
     if (cancelled && hostEmail && process.env.RESEND_API_KEY) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
@@ -246,8 +260,9 @@ export async function POST(req: Request) {
   for (const [key, rawVal] of Object.entries(changes)) {
     const def = EDIT_FIELD_BY_KEY[key];
     if (!def) continue;
-    // When there's no host recipient, approval fields apply immediately.
-    const tier: 'notify' | 'approve' = (def.tier === 'approve' && noHostRecipient) ? 'notify' : def.tier;
+    // When there's no host recipient — or an admin is editing — approval fields
+    // apply immediately (admin edits never go to the host for approval).
+    const tier: 'notify' | 'approve' = (def.tier === 'approve' && (noHostRecipient || isAdmin)) ? 'notify' : def.tier;
     // Approval field that's already awaiting the host — block the duplicate.
     if (tier === 'approve' && alreadyPending.has(def.col)) {
       blocked.push({ field: key, label: def.label });
@@ -277,6 +292,15 @@ export async function POST(req: Request) {
       });
       pendingReturn.push({ field: key, label: def.label });
     }
+  }
+
+  // Admin overwrote a field that had a pending host request — supersede that
+  // pending request so a later host approval can't clobber the admin's value.
+  if (isAdmin && Object.keys(applyObj).length > 0) {
+    await admin.from('booking_change_requests')
+      .update({ status: 'cancelled', responded_at: nowISO } as unknown as never)
+      .eq('booking_id', booking.id).eq('status', 'pending')
+      .in('target_col', Object.keys(applyObj));
   }
 
   // ── Per-booking pricing terms (tax % / deposit % / remove tax) ──
@@ -337,7 +361,8 @@ export async function POST(req: Request) {
   }
 
   // ── Email the host ──
-  const hostEmail = booking.requester_id ? await resolveUserEmail(booking.requester_id) : (booking.host_email || null);
+  // Admin edits NEVER email the host — resolve to null so the block is skipped.
+  const hostEmail = isAdmin ? null : (booking.requester_id ? await resolveUserEmail(booking.requester_id) : (booking.host_email || null));
   if (hostEmail && process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
