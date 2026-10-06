@@ -20,12 +20,13 @@ import UsersTab from './UsersTab';
 import CompCodesTab from './CompCodesTab';
 import DiscountCodesTab from './DiscountCodesTab';
 import SiteSalesTab from './SiteSalesTab';
+import BookingsTab from './BookingsTab';
 import EditUserModal from './EditUserModal';
 import CredsModal from './CredsModal';
 import type { AdminUserRow, AdminClaimRow } from './page';
 import type { CompCodeRow, DiscountCodeRow, SiteSaleRow } from './actions';
 
-type TabKey = 'create' | 'claims' | 'djs' | 'hosts' | 'venues' | 'promos';
+type TabKey = 'create' | 'claims' | 'djs' | 'hosts' | 'venues' | 'promos' | 'bookings';
 
 interface Props {
   initialDjs: AdminUserRow[];
@@ -215,6 +216,9 @@ export default function AdminClient({
             <TabBtn active={activeTab === 'promos'} onClick={() => setActiveTab('promos')}>
               🏷 Promotions
             </TabBtn>
+            <TabBtn active={activeTab === 'bookings'} onClick={() => setActiveTab('bookings')}>
+              📅 Bookings
+            </TabBtn>
           </div>
         </div>
 
@@ -237,6 +241,7 @@ export default function AdminClient({
             <SiteSalesTab initialSales={initialSiteSales} />
           </>
         )}
+        {activeTab === 'bookings' && <BookingsTab />}
         {activeTab === 'djs' && (
           <UsersTab
             role="dj"
