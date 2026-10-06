@@ -7,6 +7,8 @@
 //     name/email (empty query → most recent bookings).
 //   getAdminBookingDetail(id)  — one booking + DJ/host info + a read-only pipeline
 //     and the field values the admin edit modal needs.
+//   updateWeddingExtras(id, …) — admin-only edit of a wedding's ceremony &
+//     cocktail-hour fields. Does NOT touch the locked price/total.
 //
 // Editing itself is NOT done here — the admin UI posts to /api/bookings/edit with
 // { admin:true }, which applies changes immediately and emails NO ONE.
@@ -160,46 +162,56 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
     .maybeSingle<Record<string, unknown>>();
   if (!b) return null;
 
-  // The DJ owning this booking — name/email/slug for the row header, plus the
-  // subscription + settings fields the pipeline needs (canPro, tax, deposit,
-  // contract requirement, rider/guestlist enabled). parseBookingSettings reads
-  // the same JSON string the DJ's own page does.
-  const dj = b.dj_id
-    ? (await admin
-        .from('users')
-        .select('name, email, slug, dj_type, booking_settings, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
-        .eq('id', b.dj_id)
-        .maybeSingle<Record<string, unknown>>()).data
-    : null;
-
-  const djType: 'club' | 'mobile' = dj?.dj_type === 'club' ? 'club' : 'mobile';
-  const settings = (() => {
-    const raw = dj?.booking_settings as unknown;
-    if (typeof raw === 'string') return parseBookingSettings(raw);
-    return (raw as ReturnType<typeof parseBookingSettings> | null) || null;
-  })();
-  const s = (settings || {}) as Record<string, unknown>;
-  const canPro = dj ? canUsePro(dj as unknown as Parameters<typeof canUsePro>[0]) : false;
-  const riderEnabled = !!s.rider_enabled;
-  const guestlistEnabled = !!s.guestlist_enabled;
-  const needsContract = (b.requires_contract as boolean | null) ?? !!s.require_contract;
-  const taxPct = (() => { if (!s.tax_enabled) return 0; const t = Number(s.tax_pct); return Number.isFinite(t) && t > 0 ? t : 0; })();
-
-  // Full payment rows — buildBookingSteps needs amount/amount_paid/method/
-  // client_intent, not just kind/status, to compute partials and the rails.
-  const { data: pays } = await admin
-    .from('booking_payments')
-    .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at, marked_sent_at, confirmed_at')
-    .eq('booking_id', bookingId)
-    .order('requested_at', { ascending: true });
-  const payments = (pays as unknown as BookingPayment[] | null) || [];
-
-  // Planner summary (mobile) — same fraction the DJ's row shows.
-  // NOT maybeSingle: a booking can have more than one planner row, and
-  // maybeSingle THROWS on >1, which would null the whole detail ("Could not
-  // load this booking"). Take the first row instead.
+  // Everything past the core booking row is ENRICHMENT — the DJ profile, the
+  // parsed settings, the payment/planner/rider reads. Any one of them failing
+  // (a malformed settings blob, a transient read error, an unexpected row shape)
+  // must NOT null the whole detail and show "Could not load this booking." Wrap
+  // it all and fall back to safe defaults so the booking always opens.
+  let dj: Record<string, unknown> | null = null;
+  let djType: 'club' | 'mobile' = b.booking_type === 'club' ? 'club' : 'mobile';
+  let canPro = false;
+  let riderEnabled = false;
+  let guestlistEnabled = false;
+  let needsContract = (b.requires_contract as boolean | null) ?? false;
+  let taxPct = 0;
+  let payments: BookingPayment[] = [];
   let planner: BookingPlannerSummary | null = null;
-  {
+  try {
+    dj = b.dj_id
+      ? (await admin
+          .from('users')
+          .select('name, email, slug, dj_type, booking_settings, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+          .eq('id', b.dj_id)
+          .maybeSingle<Record<string, unknown>>()).data
+      : null;
+
+    djType = dj?.dj_type === 'club' ? 'club' : 'mobile';
+    const settings = (() => {
+      try {
+        const raw = dj?.booking_settings as unknown;
+        if (typeof raw === 'string') return parseBookingSettings(raw);
+        return (raw as ReturnType<typeof parseBookingSettings> | null) || null;
+      } catch { return null; }
+    })();
+    const s = (settings || {}) as Record<string, unknown>;
+    canPro = dj ? canUsePro(dj as unknown as Parameters<typeof canUsePro>[0]) : false;
+    riderEnabled = !!s.rider_enabled;
+    guestlistEnabled = !!s.guestlist_enabled;
+    needsContract = (b.requires_contract as boolean | null) ?? !!s.require_contract;
+    taxPct = (() => { if (!s.tax_enabled) return 0; const t = Number(s.tax_pct); return Number.isFinite(t) && t > 0 ? t : 0; })();
+
+    // Full payment rows — buildBookingSteps needs amount/amount_paid/method/
+    // client_intent, not just kind/status, to compute partials and the rails.
+    const { data: pays } = await admin
+      .from('booking_payments')
+      .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at, marked_sent_at, confirmed_at')
+      .eq('booking_id', bookingId)
+      .order('requested_at', { ascending: true });
+    payments = (pays as unknown as BookingPayment[] | null) || [];
+
+    // Planner summary (mobile) — same fraction the DJ's row shows. limit(1), not
+    // maybeSingle: a booking can have >1 planner row, and maybeSingle THROWS on
+    // >1. Take the first row.
     const { data: pls } = await admin
       .from('booking_planners')
       .select('id, status, fields, responses')
@@ -213,20 +225,18 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
       );
       planner = { id: pl.id, status: pl.status, answered, total };
     }
-  }
 
-  // Club rider "sent" + guest-list confirmation, read straight from their
-  // tables (the DJ's row gets riderSent from send-state it tracks live; here we
-  // approximate it from whether a rider row exists, which is read-only-correct).
-  // limit(1) not maybeSingle for the same throw-on-duplicate reason as above.
-  if (djType === 'club') {
-    const { data: rds } = await admin.from('booking_riders').select('id, confirmed_at').eq('booking_id', bookingId).limit(1);
-    // riderSent rides along on rawBooking so the client needn't re-query — the
-    // DJ's row gets this from live send-state; here it's whether a rider exists.
-    (b as Record<string, unknown>).__riderSent = (((rds as unknown[] | null) || []).length > 0);
-    const { data: gls } = await admin.from('booking_guestlists').select('confirmed_at').eq('booking_id', bookingId).limit(1);
-    const gl = ((gls as { confirmed_at: string | null }[] | null) || [])[0];
-    if (gl?.confirmed_at) (b as Record<string, unknown>).guestlist_confirmed_at = gl.confirmed_at;
+    // Club rider "sent" + guest-list confirmation. limit(1) for the same
+    // throw-on-duplicate reason as the planner read above.
+    if (djType === 'club') {
+      const { data: rds } = await admin.from('booking_riders').select('id, confirmed_at').eq('booking_id', bookingId).limit(1);
+      (b as Record<string, unknown>).__riderSent = (((rds as unknown[] | null) || []).length > 0);
+      const { data: gls } = await admin.from('booking_guestlists').select('confirmed_at').eq('booking_id', bookingId).limit(1);
+      const gl = ((gls as { confirmed_at: string | null }[] | null) || [])[0];
+      if (gl?.confirmed_at) (b as Record<string, unknown>).guestlist_confirmed_at = gl.confirmed_at;
+    }
+  } catch {
+    // Enrichment failed — the booking still opens with safe defaults above.
   }
 
   const str = (v: unknown) => (v == null ? '' : String(v));
@@ -263,4 +273,47 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
     flags: { canPro, riderEnabled, guestlistEnabled, needsContract, taxPct },
     editValues,
   };
+}
+
+// What the admin ceremony/cocktail editor sends. All optional — only the fields
+// the admin touched. Times are "HH:MM" (or ''), prices numbers (or null).
+export interface WeddingExtrasInput {
+  ceremony_needed?: boolean;
+  ceremony_start_time?: string | null;
+  ceremony_same_room?: boolean;
+  ceremony_price?: number | null;
+  ceremony_included?: boolean;
+  cocktail_needed?: boolean;
+  cocktail_start_time?: string | null;
+  cocktail_same_room?: boolean;
+  cocktail_price?: number | null;
+  cocktail_included?: boolean;
+}
+
+// Admin-only: update a wedding's ceremony + cocktail-hour fields. Does NOT touch
+// the locked price/total (ceremony/cocktail prices are stored as the per-item
+// snapshot only). Applies immediately, emails NO ONE.
+export async function updateWeddingExtras(bookingId: string, input: WeddingExtrasInput): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient() as unknown as SupabaseClient;
+
+  const { data: b } = await admin.from('bookings').select('id, event_type').eq('id', bookingId).maybeSingle<{ id: string; event_type: string | null }>();
+  if (!b) return { ok: false, error: 'Booking not found.' };
+
+  // Build the update from only the keys provided. Normalize empty strings to
+  // null for the time/price columns so a cleared field clears the column.
+  const upd: Record<string, unknown> = {};
+  const setBool = (k: keyof WeddingExtrasInput) => { if (input[k] !== undefined) upd[k] = !!input[k]; };
+  const setTime = (k: keyof WeddingExtrasInput) => { if (input[k] !== undefined) { const v = String(input[k] ?? '').trim(); upd[k] = v || null; } };
+  const setPrice = (k: keyof WeddingExtrasInput) => {
+    if (input[k] !== undefined) { const n = Number(input[k]); upd[k] = Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; }
+  };
+  setBool('ceremony_needed'); setTime('ceremony_start_time'); setBool('ceremony_same_room'); setPrice('ceremony_price'); setBool('ceremony_included');
+  setBool('cocktail_needed'); setTime('cocktail_start_time'); setBool('cocktail_same_room'); setPrice('cocktail_price'); setBool('cocktail_included');
+
+  if (Object.keys(upd).length === 0) return { ok: true };
+
+  const { error } = await admin.from('bookings').update(upd as never).eq('id', bookingId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
