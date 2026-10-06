@@ -32,6 +32,9 @@ export interface AdminBookingRow {
   startTime: string | null;
   endTime: string | null;
   venueName: string | null;
+  // Club/bar bookings carry a venue_type ('bar' | 'club' | 'other'); used by the
+  // admin list's Club/Bar sub-filter. Null/absent on mobile bookings.
+  venueType: string | null;
   packageTitle: string | null;
   bookingType: 'club' | 'mobile' | null;
   status: string | null;
@@ -41,7 +44,6 @@ export interface AdminBookingRow {
 
 export interface AdminBookingDetail extends AdminBookingRow {
   guestCount: string;
-  venueType: string | null;
   roomDetails: string | null;
   venueAddress: string | null;
   packageDetails: string | null;
@@ -84,6 +86,7 @@ function toRow(
     startTime: (b.start_time as string) ?? null,
     endTime: (b.end_time as string) ?? null,
     venueName: (b.venue_name as string) ?? null,
+    venueType: (b.venue_type as string) ?? null,
     packageTitle: (b.package_title as string) ?? null,
     bookingType: bt,
     status: (b.status as string) ?? null,
@@ -93,7 +96,7 @@ function toRow(
 }
 
 const LIST_COLS =
-  'id, dj_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, package_title, booking_type, status, contract_status, created_at';
+  'id, dj_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, status, contract_status, created_at';
 
 export async function searchAdminBookings(query: string): Promise<AdminBookingRow[]> {
   await requireAdmin();
