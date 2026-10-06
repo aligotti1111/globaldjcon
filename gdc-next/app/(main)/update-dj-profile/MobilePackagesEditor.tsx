@@ -92,9 +92,6 @@ export default function MobilePackagesEditor({
   const [selIdx, setSelIdx] = useState(0);
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeIndependent(startMob)));
   const [err, setErr] = useState<string | null>(null);
-  const [errCat, setErrCat] = useState<string | null>(null);
-  const [errIdx, setErrIdx] = useState<number | null>(null);
-  const [errFields, setErrFields] = useState<string[]>([]);
   // After a failed save we flag the invalid packages in red in the sidebar
   // (instead of jumping to one), so the DJ can see which ones need attention
   // without the view yanking away from where they were.
@@ -201,7 +198,7 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setNotice(null); }
+  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); setNotice(null); }
 
   // Clamp the selected pointer if the list it points at shrank.
   const selList = listFor(mob, selCat);
@@ -220,7 +217,7 @@ export default function MobilePackagesEditor({
   // validation — point the field highlights at the one we're carrying over to.
   function goToInvalid(it: { cat: string; i: number; missing: string[] }) {
     setSelCat(it.cat); setSelIdx(it.i);
-    setErrCat(it.cat); setErrIdx(it.i); setErrFields(it.missing);
+   
     requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
@@ -360,10 +357,10 @@ export default function MobilePackagesEditor({
       setNotice(null);
       setErr(invalids.length === 1 ? 'Fix this before you can save:' : `Fix these ${invalids.length} packages before you can save:`);
       setInvalidList(invalids.map(({ cat, i, labels, missing }) => ({ cat, i, labels, missing })));
-      setErrFields(first.missing); setErrCat(first.cat); setErrIdx(first.i); setShowInvalid(true);
+      setShowInvalid(true);
       return;
     }
-    setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setShowInvalid(false); setInvalidList([]);
+    setErr(null); setShowInvalid(false); setInvalidList([]);
     if (emptyCustoms.length) {
       const names = emptyCustoms.map(labelFor).join(', ');
       const one = emptyCustoms.length === 1;
@@ -539,7 +536,16 @@ export default function MobilePackagesEditor({
           onRemove={() => {}}
           hideOwnHeader
           generalPhotos={selCat === 'general' ? undefined : generalPhotos}
-          errorFields={errCat === selCat && errIdx === safeIdx ? errFields : undefined}
+          errorFields={showInvalid ? (() => {
+            // Highlight the missing fields of WHATEVER package is open, not just
+            // the first invalid one — so the red boxes follow the DJ around.
+            const p = currentPkg as unknown as Record<string, unknown>;
+            const m: string[] = [];
+            if (textEmpty(p.title)) m.push('title');
+            if (textEmpty(p.details)) m.push('details');
+            if (priceMissing(p)) m.push('priceTiers');
+            return m.length ? m : undefined;
+          })() : undefined}
         />
         <div className={styles.pkgSaveRow}>
           {selList.length > 1 && (
