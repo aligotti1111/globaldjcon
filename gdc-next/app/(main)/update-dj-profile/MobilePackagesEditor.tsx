@@ -97,9 +97,6 @@ export default function MobilePackagesEditor({
   // without the view yanking away from where they were.
   const [showInvalid, setShowInvalid] = useState(false);
   const [invalidList, setInvalidList] = useState<Array<{ cat: string; i: number; labels: string[]; missing: string[] }>>([]);
-  // A neutral (non-blocking) note shown after a save — e.g. an empty custom
-  // event type that was dropped back to General pricing.
-  const [notice, setNotice] = useState<string | null>(null);
 
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -198,7 +195,7 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); setNotice(null); }
+  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); }
 
   // Clamp the selected pointer if the list it points at shrank.
   const selList = listFor(mob, selCat);
@@ -289,28 +286,10 @@ export default function MobilePackagesEditor({
     const p = (listFor(mob, cat)[i] || {}) as { title?: string; details?: string };
     return textEmpty(p.title) || textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>);
   }
-  function hasPositivePrice(pkg: Record<string, unknown>): boolean {
-    const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
-    const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length ? (pkg.priceTiers as Array<{ price?: unknown }>) : null;
-    if (tiers) return tiers.some((x) => pos(x?.price));
-    return ['price4', 'price5', 'price6'].some((k) => pos((pkg)[k]));
+  // Is this a custom (pulled-out) event type that still has an incomplete package?
+  function catIncomplete(cat: string): boolean {
+    return listFor(mob, cat).some((_, i) => pkgInvalid(cat, i));
   }
-  // A package the DJ never touched: no title, no description, no price, not set
-  // to request-a-quote.
-  function pkgUntouched(p: Record<string, unknown>): boolean {
-    return !p.reqAll && textEmpty(p.title) && textEmpty(p.details) && !hasPositivePrice(p);
-  }
-  // Pulled-out event types that are completely empty — on save they're dropped
-  // back to General pricing, so they're never flagged as needing info.
-  const emptyCustomSet = useMemo(() => {
-    const s = new Set<string>();
-    for (const t of Object.keys(mob.overrides)) {
-      const list = mob.overrides[t];
-      if (Array.isArray(list) && list.length > 0 && list.every((p) => pkgUntouched(p as Record<string, unknown>))) s.add(t);
-    }
-    return s;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mob]);
 
   function save() {
     // Drop orphaned overrides — event types that are no longer offered. They
@@ -322,24 +301,14 @@ export default function MobilePackagesEditor({
         Object.entries(mob.overrides).filter(([t]) => selectedEventTypes.includes(t)),
       ),
     };
-    // An event type that was pulled out for custom pricing but left completely
-    // empty (every package untouched) isn't really custom — don't save it as
-    // such. Drop it back to General pricing and tell the DJ.
-    const emptyCustoms = Object.keys(live.overrides).filter((t) => {
-      const list = live.overrides[t];
-      return Array.isArray(list) && list.length > 0 && list.every((p) => pkgUntouched(p as Record<string, unknown>));
-    });
-    const pruned: MobPackagesIndependent = {
-      ...live,
-      overrides: Object.fromEntries(Object.entries(live.overrides).filter(([t]) => !emptyCustoms.includes(t))),
-    };
-    // Every package in every remaining category is self-contained — each needs
-    // its own title, description and a price in every box (unless request-a-
-    // quote). Only validate the categories actually kept.
-    const cats = ['general', ...Object.keys(pruned.overrides)];
+    // Every package in every offered category is self-contained — each needs its
+    // own title, description and a price in every box (unless request-a-quote).
+    // A custom event type that's missing anything is PROMPTED (flagged below),
+    // never silently dropped — the DJ added it on purpose, so ask them to finish.
+    const cats = ['general', ...Object.keys(live.overrides)];
     const invalids: Array<{ cat: string; i: number; labels: string[]; missing: string[] }> = [];
     for (const cat of cats) {
-      const list = listFor(pruned, cat);
+      const list = listFor(live, cat);
       for (let i = 0; i < list.length; i++) {
         const p = (list[i] || {}) as { title?: string; details?: string };
         const missing: string[] = []; const labels: string[] = [];
@@ -353,25 +322,42 @@ export default function MobilePackagesEditor({
       // Don't jump — flag every invalid package in red in the sidebar and show an
       // itemized, clickable list (event type › package → what's missing) so the
       // DJ knows exactly where to go.
-      const first = invalids[0];
-      setNotice(null);
       setErr(invalids.length === 1 ? 'Fix this before you can save:' : `Fix these ${invalids.length} packages before you can save:`);
       setInvalidList(invalids.map(({ cat, i, labels, missing }) => ({ cat, i, labels, missing })));
       setShowInvalid(true);
       return;
     }
     setErr(null); setShowInvalid(false); setInvalidList([]);
-    if (emptyCustoms.length) {
-      const names = emptyCustoms.map(labelFor).join(', ');
-      const one = emptyCustoms.length === 1;
-      setNotice(`${names} ${one ? 'wasn’t' : 'weren’t'} saved as custom — no info was added, so ${one ? 'it uses' : 'they use'} your General events pricing. Add packages there anytime to make ${one ? 'it' : 'them'} custom.`);
-      if (emptyCustoms.includes(selCat)) { setSelCat('general'); setSelIdx(0); }
-    } else setNotice(null);
-    setMob(pruned);
-    const ser = serializeIndependent(pruned);
+    if (Object.keys(live.overrides).length !== Object.keys(mob.overrides).length) setMob(live);
+    const ser = serializeIndependent(live);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser));
   }
   saveRef.current = save;
+
+  // ── Clean up incomplete custom event types when the DJ leaves ──
+  // If they added a custom event type but left it unfinished and navigate away
+  // (switch tabs / leave the page) without completing + saving it, we drop it
+  // back to General pricing on unmount so a half-built type never lingers.
+  const leaveRef = useRef<() => void>(() => {});
+  leaveRef.current = () => {
+    const bad = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t) && catIncomplete(t));
+    const orphan = Object.keys(mob.overrides).filter((t) => !selectedEventTypes.includes(t));
+    if (!bad.length && !orphan.length) return;
+    let m = mob;
+    for (const t of bad) m = putTypeBack(m, t);
+    const cleaned: MobPackagesIndependent = {
+      ...m,
+      overrides: Object.fromEntries(Object.entries(m.overrides).filter(([t]) => selectedEventTypes.includes(t))),
+    };
+    onSave(serializeIndependent(cleaned));
+    // A specialty type is auto-pulled on load, so also drop it from the specialty
+    // list — otherwise it would reappear blank next time.
+    const badSpecialty = bad.filter((t) => specialtyTypes.includes(t));
+    if (onEventTypesSave && badSpecialty.length) {
+      void onEventTypesSave(selectedEventTypes, customEventTypes, specialtyTypes.filter((t) => !badSpecialty.includes(t)));
+    }
+  };
+  useEffect(() => () => { leaveRef.current(); }, []);
 
   // ── Event-types editor popup ──
   function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtSpec(Array.from(new Set([...specialtyTypes, ...railTypes]))); setEtNewGen(''); setEtNewSpec(''); setEtErr(null); setEtOpen(true); }
@@ -455,9 +441,7 @@ export default function MobilePackagesEditor({
         )}
         {list.map((_, i) => {
           const active = selCat === cat && safeIdx === i;
-          // A fully-empty custom event type isn't flagged — on save it's dropped
-          // back to General pricing, so it never needs info.
-          const invalid = showInvalid && !emptyCustomSet.has(cat) && pkgInvalid(cat, i);
+          const invalid = showInvalid && pkgInvalid(cat, i);
           return (
             <button key={i} ref={active ? selPkgRef : undefined} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
@@ -493,12 +477,6 @@ export default function MobilePackagesEditor({
         <span style={{ color: '#555', margin: '0 .5rem', fontSize: '1.1rem' }}>&rsaquo;</span>
         <span style={{ color: '#fff' }}>Package {safeIdx + 1}</span>
       </div>
-      {notice && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginBottom: 14, color: '#ffd60a', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.02em', lineHeight: 1.5 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffd60a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-          <span>{notice}</span>
-        </div>
-      )}
       {err && showInvalid && invalidList.length > 0 && (
         <div role="alert" style={{ position: 'sticky', top: 8, zIndex: 5, marginBottom: 14, padding: '.6rem .7rem', background: 'rgba(8,8,12,.96)', border: '1px solid var(--border)', borderRadius: 8, backdropFilter: 'blur(2px)', color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem', fontWeight: 700 }}>
