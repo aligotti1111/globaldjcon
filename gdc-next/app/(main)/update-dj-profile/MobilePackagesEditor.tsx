@@ -265,16 +265,14 @@ export default function MobilePackagesEditor({
   }
   function priceMissing(pkg: Record<string, unknown>): boolean {
     if (pkg.reqAll) return false;
+    // A box left at 0/blank simply means "I don't offer that length" — it's
+    // ignored, not an error. The package only needs AT LEAST ONE priced box.
     const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
     const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
       ? (pkg.priceTiers as Array<{ price?: unknown }>)
       : null;
-    // EVERY shown price box must hold a positive amount. A box left at 0/blank
-    // blocks save — the DJ should fill it or remove it with the × button.
-    if (tiers) return tiers.some((x) => !pos(x?.price));
-    // Legacy trio (no priceTiers yet): each of the three default boxes is shown,
-    // so each must be priced.
-    return ['price4', 'price5', 'price6'].some((k) => !pos((pkg)[k]));
+    if (tiers) return !tiers.some((x) => pos(x?.price));
+    return !['price4', 'price5', 'price6'].some((k) => pos((pkg)[k]));
   }
   // Live validity of one package — recomputed as the DJ types, so a red flag in
   // the sidebar clears itself the moment that package is filled in.
@@ -293,6 +291,17 @@ export default function MobilePackagesEditor({
   function pkgUntouched(p: Record<string, unknown>): boolean {
     return !p.reqAll && textEmpty(p.title) && textEmpty(p.details) && !hasPositivePrice(p);
   }
+  // Pulled-out event types that are completely empty — on save they're dropped
+  // back to General pricing, so they're never flagged as needing info.
+  const emptyCustomSet = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of Object.keys(mob.overrides)) {
+      const list = mob.overrides[t];
+      if (Array.isArray(list) && list.length > 0 && list.every((p) => pkgUntouched(p as Record<string, unknown>))) s.add(t);
+    }
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mob]);
 
   function save() {
     // Drop orphaned overrides — event types that are no longer offered. They
@@ -437,7 +446,9 @@ export default function MobilePackagesEditor({
         )}
         {list.map((_, i) => {
           const active = selCat === cat && safeIdx === i;
-          const invalid = showInvalid && pkgInvalid(cat, i);
+          // A fully-empty custom event type isn't flagged — on save it's dropped
+          // back to General pricing, so it never needs info.
+          const invalid = showInvalid && !emptyCustomSet.has(cat) && pkgInvalid(cat, i);
           return (
             <button key={i} ref={active ? selPkgRef : undefined} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
