@@ -82,7 +82,10 @@ export default function BookingEditModal({
     return true;
   }), [section, djType, lockEmail]);
 
-  const [step, setStep] = useState<'ack' | 'form'>('ack');
+  // Admin edits skip the acknowledgment screen entirely — go straight to the
+  // form (admin edits apply immediately and never email the host, so there's
+  // nothing to warn about).
+  const [step, setStep] = useState<'ack' | 'form'>(admin ? 'form' : 'ack');
   const [form, setForm] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? ''])));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
