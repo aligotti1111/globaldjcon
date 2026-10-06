@@ -254,10 +254,16 @@ export default function MobilePackagesEditor({
   }
   function priceMissing(pkg: Record<string, unknown>): boolean {
     if (pkg.reqAll) return false;
-    const tiers = Array.isArray(pkg.priceTiers) ? (pkg.priceTiers as Array<{ price?: unknown }>) : [];
-    const hasTier = tiers.some((x) => x && Number(String(x.price ?? '').trim()) > 0);
-    const hasLegacy = ['price4', 'price5', 'price6'].some((k) => Number(String((pkg)[k] ?? '').trim()) > 0);
-    return !hasTier && !hasLegacy;
+    const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
+    const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
+      ? (pkg.priceTiers as Array<{ price?: unknown }>)
+      : null;
+    // EVERY shown price box must hold a positive amount. A box left at 0/blank
+    // blocks save — the DJ should fill it or remove it with the × button.
+    if (tiers) return tiers.some((x) => !pos(x?.price));
+    // Legacy trio (no priceTiers yet): each of the three default boxes is shown,
+    // so each must be priced.
+    return ['price4', 'price5', 'price6'].some((k) => !pos((pkg)[k]));
   }
   // Live validity of one package — recomputed as the DJ types, so a red flag in
   // the sidebar clears itself the moment that package is filled in.
