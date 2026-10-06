@@ -239,16 +239,9 @@ export async function POST(req: Request) {
   // has no one to approve or be notified — so every change just applies now.
   const noHostRecipient = !booking.requester_id && !(booking.host_email && booking.host_email.trim());
 
-  // A deposit/balance request that's out (sent, unpaid) locks the price: the DJ
-  // must cancel it before changing the price so the amounts can't drift.
-  let pendingPayment = false;
-  if ('price' in changes) {
-    const { data: payRows } = await admin.from('booking_payments')
-      .select('kind, status').eq('booking_id', booking.id);
-    pendingPayment = ((payRows as { kind: string; status: string }[] | null) || [])
-      .some((p) => (p.kind === 'deposit' || p.kind === 'balance') && (p.status === 'requested' || p.status === 'pending_confirmation'));
-    if (pendingPayment) return NextResponse.json({ error: 'Cancel the pending deposit or balance request before changing the price.' }, { status: 409 });
-  }
+  // Price is no longer editable from the booking card — any `price` in the
+  // payload is ignored (the field is absent from EDIT_FIELD_BY_KEY, so the loop
+  // below skips it). The base rate is locked once a booking exists.
 
   for (const [key, rawVal] of Object.entries(changes)) {
     const def = EDIT_FIELD_BY_KEY[key];
@@ -270,24 +263,11 @@ export async function POST(req: Request) {
     if (oldDisp === newDisp) continue; // no real change
 
     if (tier === 'notify') {
-      if (def.col === 'price') {
-        // Price applied directly (no-host-recipient case): set the agreed rate and
-        // recompute the frozen tax snapshot, mirroring the host-approve path.
-        const price = Number(val);
-        if (Number.isFinite(price)) {
-          applyObj.counter_rate = price;
-          const tp = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
-          if (tp > 0) { const t = round2((price * tp) / 100); applyObj.tax_amount = t; applyObj.total_with_tax = round2(price + t); }
-          else { applyObj.tax_amount = 0; applyObj.total_with_tax = price; }
-          editStamp.price = nowISO;
-          appliedLines.push({ label: def.label, old: oldDisp, neu: newDisp, col: def.col });
-        }
-      } else {
-        // guest_count is numeric; everything else stores as text/null.
-        applyObj[def.col] = def.kind === 'number' ? (val === '' ? null : Number(val)) : (val === '' ? null : val);
-        editStamp[def.col] = nowISO;
-        appliedLines.push({ label: def.label, old: oldDisp, neu: newDisp, col: def.col });
-      }
+      // guest_count is numeric; everything else stores as text/null.
+      // (Price is not an editable field anymore, so there's no price branch.)
+      applyObj[def.col] = def.kind === 'number' ? (val === '' ? null : Number(val)) : (val === '' ? null : val);
+      editStamp[def.col] = nowISO;
+      appliedLines.push({ label: def.label, old: oldDisp, neu: newDisp, col: def.col });
     } else {
       pendingRows.push({
         booking_id: booking.id, dj_id: djId, field: def.label,
