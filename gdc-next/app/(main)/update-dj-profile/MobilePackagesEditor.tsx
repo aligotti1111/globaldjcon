@@ -277,14 +277,14 @@ export default function MobilePackagesEditor({
   }
   function priceMissing(pkg: Record<string, unknown>): boolean {
     if (pkg.reqAll) return false;
-    // A box left at 0/blank simply means "I don't offer that length" — it's
-    // ignored, not an error. The package only needs AT LEAST ONE priced box.
+    // EVERY price box shown must have a price. A box left at 0/blank blocks save —
+    // the DJ fills it, or removes that length with the × button.
     const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
     const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
       ? (pkg.priceTiers as Array<{ price?: unknown }>)
       : null;
-    if (tiers) return !tiers.some((x) => pos(x?.price));
-    return !['price4', 'price5', 'price6'].some((k) => pos((pkg)[k]));
+    if (tiers) return tiers.some((x) => !pos(x?.price));
+    return ['price4', 'price5', 'price6'].some((k) => !pos((pkg)[k]));
   }
   // Live validity of one package — recomputed as the DJ types, so a red flag in
   // the sidebar clears itself the moment that package is filled in.
