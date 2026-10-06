@@ -204,9 +204,14 @@ export default function BookingsTab() {
       return types.map((t) => ({ value: t, label: t }));
     }
     if (djTypeFilter === 'club') {
-      const vts = Array.from(new Set(rows.filter((r) => r.bookingType === 'club' && r.venueType).map((r) => (r.venueType as string).toLowerCase())));
+      // Only three buckets: Club, Bar, and a single "Other" that absorbs every
+      // custom venue type (festival, private, …). The distinct raw values are
+      // normalized before dedupe so "Other - festival" / "Other - private" don't
+      // each become their own option.
+      const norm = (v: string) => { const l = v.toLowerCase(); return l === 'club' ? 'club' : l === 'bar' ? 'bar' : 'other'; };
+      const cats = Array.from(new Set(rows.filter((r) => r.bookingType === 'club' && r.venueType).map((r) => norm(r.venueType as string))));
       const order = ['club', 'bar', 'other'];
-      return vts.sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
+      return cats.sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
     }
     return [];
   })();
@@ -214,7 +219,11 @@ export default function BookingsTab() {
   const shown = rows.filter((r) => {
     if (djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
     if (djTypeFilter === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
-    if (djTypeFilter === 'club' && subFilter !== 'all' && (r.venueType || '').toLowerCase() !== subFilter) return false;
+    if (djTypeFilter === 'club' && subFilter !== 'all') {
+      const vt = (r.venueType || '').toLowerCase();
+      const cat = vt === 'club' ? 'club' : vt === 'bar' ? 'bar' : 'other';
+      if (cat !== subFilter) return false;
+    }
     return true;
   });
 
