@@ -378,6 +378,11 @@ export default function BookingsTab() {
     return [];
   })();
 
+  // When the results are all for ONE DJ account (a DJ search), the DJ-type sort
+  // is meaningless — a DJ account is a single type — so it's hidden and ignored.
+  const distinctDjEmails = new Set(rows.map((r) => r.djEmail).filter((e) => e && e !== '—'));
+  const singleDj = rows.length > 0 && distinctDjEmails.size === 1;
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const shown = rows.filter((r) => {
     if (whenFilter !== 'all') {
@@ -385,6 +390,8 @@ export default function BookingsTab() {
       if (whenFilter === 'upcoming' && !(d && d >= todayStr)) return false;
       if (whenFilter === 'past' && !(d && d < todayStr)) return false;
     }
+    // Skip DJ-type / sub filtering entirely for a single-DJ result set.
+    if (singleDj) return true;
     if (djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
     if (djTypeFilter === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
     if (djTypeFilter === 'club' && subFilter !== 'all') {
@@ -419,17 +426,19 @@ export default function BookingsTab() {
           <option value="upcoming">Upcoming</option>
           <option value="past">Past</option>
         </select>
-        <select
-          style={selectStyle}
-          value={djTypeFilter}
-          onChange={(e) => { setDjTypeFilter(e.target.value as 'all' | 'mobile' | 'club'); setSubFilter('all'); }}
-        >
-          <option value="all">All DJ types</option>
-          <option value="mobile">Mobile</option>
-          <option value="club">Club / Bar</option>
-        </select>
+        {!singleDj && (
+          <select
+            style={selectStyle}
+            value={djTypeFilter}
+            onChange={(e) => { setDjTypeFilter(e.target.value as 'all' | 'mobile' | 'club'); setSubFilter('all'); }}
+          >
+            <option value="all">All DJ types</option>
+            <option value="mobile">Mobile</option>
+            <option value="club">Club / Bar</option>
+          </select>
+        )}
 
-        {djTypeFilter === 'mobile' && (
+        {!singleDj && djTypeFilter === 'mobile' && (
           <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
             <option value="all">All event types</option>
             {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
