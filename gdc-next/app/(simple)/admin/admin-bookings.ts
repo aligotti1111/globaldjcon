@@ -13,7 +13,10 @@
 
 import { requireAdmin } from '@/lib/supabase/admin-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { buildHostPipeline, type HostStep } from '@/lib/hostPipeline';
+import { canUsePro } from '@/lib/access';
+import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
+import { plannerProgress } from '@/lib/planner';
+import type { BookingPayment, BookingPlannerSummary } from '@/app/(main)/upcoming-bookings/page';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface AdminBookingRow {
@@ -43,8 +46,15 @@ export interface AdminBookingDetail extends AdminBookingRow {
   venueAddress: string | null;
   packageDetails: string | null;
   hasHostAccount: boolean; // requester_id present → host email is their login
-  pipeline: HostStep[];
-  pipelineDjType: 'club' | 'mobile';
+  djType: 'club' | 'mobile';
+  // Everything the DJ's own pipeline builder (buildBookingSteps) needs. The
+  // steps themselves are built CLIENT-SIDE (they carry action handlers that
+  // can't cross the server boundary), so the admin view renders the exact same
+  // pipeline the DJ sees — read-only.
+  rawBooking: Record<string, unknown>;
+  payments: BookingPayment[];
+  planner: BookingPlannerSummary | null;
+  flags: { canPro: boolean; riderEnabled: boolean; guestlistEnabled: boolean; needsContract: boolean; taxPct: number };
   // Field values keyed exactly as the edit modal expects (EDIT_FIELDS keys + __id).
   editValues: Record<string, string>;
 }
@@ -133,48 +143,79 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
   await requireAdmin();
   const admin = createAdminClient() as unknown as SupabaseClient;
 
+  // The FULL booking row — the DJ's own pipeline builder (buildBookingSteps)
+  // reads ~40 columns off it (deposit snapshot, contract stamps, overrides,
+  // tax snapshot, overtime, cancel state…). Selecting '*' is simpler and
+  // safer than trying to enumerate every column the builder might touch.
   const { data: b } = await admin
     .from('bookings')
-    .select(
-      'id, dj_id, requester_id, requester_name, host_email, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, booking_type, status, contract_status, deposit_pct, deposit_amount, planner_status, status_overrides, created_at',
-    )
+    .select('*')
     .eq('id', bookingId)
     .maybeSingle<Record<string, unknown>>();
   if (!b) return null;
 
+  // The DJ owning this booking — name/email/slug for the row header, plus the
+  // subscription + settings fields the pipeline needs (canPro, tax, deposit,
+  // contract requirement, rider/guestlist enabled). parseBookingSettings reads
+  // the same JSON string the DJ's own page does.
   const dj = b.dj_id
-    ? (await admin.from('users').select('name, email, slug').eq('id', b.dj_id).maybeSingle<{ name: string | null; email: string | null; slug: string | null }>()).data
+    ? (await admin
+        .from('users')
+        .select('name, email, slug, dj_type, booking_settings, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+        .eq('id', b.dj_id)
+        .maybeSingle<Record<string, unknown>>()).data
     : null;
 
-  // ── Pipeline signals (read-only) ──
-  const { data: pays } = await admin.from('booking_payments').select('kind, status').eq('booking_id', bookingId);
-  const payments = (pays as { kind: string; status: string }[] | null) || [];
-  const settled = (s: string) => s === 'paid' || s === 'waived' || s === 'confirmed';
-  const deposits = payments.filter((p) => p.kind === 'deposit');
-  const balances = payments.filter((p) => p.kind === 'balance');
-  const overrides = (b.status_overrides as Record<string, boolean> | null) || {};
-  const bt = b.booking_type === 'club' ? 'club' : b.booking_type === 'mobile' ? 'mobile' : null;
+  const djType: 'club' | 'mobile' = dj?.dj_type === 'club' ? 'club' : 'mobile';
+  const settings = (() => {
+    const raw = dj?.booking_settings as unknown;
+    if (typeof raw === 'string') return parseBookingSettings(raw);
+    return (raw as ReturnType<typeof parseBookingSettings> | null) || null;
+  })();
+  const s = (settings || {}) as Record<string, unknown>;
+  const canPro = dj ? canUsePro(dj as unknown as Parameters<typeof canUsePro>[0]) : false;
+  const riderEnabled = !!s.rider_enabled;
+  const guestlistEnabled = !!s.guestlist_enabled;
+  const needsContract = (b.requires_contract as boolean | null) ?? !!s.require_contract;
+  const taxPct = (() => { if (!s.tax_enabled) return 0; const t = Number(s.tax_pct); return Number.isFinite(t) && t > 0 ? t : 0; })();
 
-  let riderConfirmed = false;
-  let guestlistConfirmed = false;
-  if (bt === 'club') {
-    const { data: rd } = await admin.from('booking_riders').select('confirmed_at').eq('booking_id', bookingId).maybeSingle<{ confirmed_at: string | null }>();
-    riderConfirmed = !!rd?.confirmed_at;
-    const { data: gl } = await admin.from('booking_guestlists').select('confirmed_at').eq('booking_id', bookingId).maybeSingle<{ confirmed_at: string | null }>();
-    guestlistConfirmed = !!gl?.confirmed_at;
+  // Full payment rows — buildBookingSteps needs amount/amount_paid/method/
+  // client_intent, not just kind/status, to compute partials and the rails.
+  const { data: pays } = await admin
+    .from('booking_payments')
+    .select('id, booking_id, kind, label, amount, amount_paid, currency, status, method, client_intent, due_date, requested_at, marked_sent_at, confirmed_at')
+    .eq('booking_id', bookingId)
+    .order('requested_at', { ascending: true });
+  const payments = (pays as unknown as BookingPayment[] | null) || [];
+
+  // Planner summary (mobile) — same fraction the DJ's row shows.
+  let planner: BookingPlannerSummary | null = null;
+  {
+    const { data: pl } = await admin
+      .from('booking_planners')
+      .select('id, status, fields, responses')
+      .eq('booking_id', bookingId)
+      .maybeSingle<{ id: string; status: 'sent' | 'partial' | 'submitted'; fields: unknown; responses: unknown }>();
+    if (pl) {
+      const { answered, total } = plannerProgress(
+        (pl.fields as Parameters<typeof plannerProgress>[0]) || [],
+        (pl.responses as Parameters<typeof plannerProgress>[1]) || {},
+      );
+      planner = { id: pl.id, status: pl.status, answered, total };
+    }
   }
 
-  const pipeline = buildHostPipeline({
-    bookingType: bt,
-    contractStatus: overrides.contract ? 'signed' : ((b.contract_status as string) ?? null),
-    hasDeposit: b.deposit_pct != null || b.deposit_amount != null || deposits.length > 0 || !!overrides.deposit,
-    depositPaid: (deposits.length > 0 && deposits.every((p) => settled(p.status))) || !!overrides.deposit,
-    plannerStatus: (b.planner_status as 'sent' | 'partial' | 'submitted' | null) ?? null,
-    riderConfirmed,
-    guestlistConfirmed,
-    hasBalance: balances.length > 0 || !!overrides.invoice,
-    balancePaid: (balances.length > 0 && balances.every((p) => settled(p.status))) || !!overrides.invoice,
-  });
+  // Club rider "sent" + guest-list confirmation, read straight from their
+  // tables (the DJ's row gets riderSent from send-state it tracks live; here we
+  // approximate it from whether a rider row exists, which is read-only-correct).
+  if (djType === 'club') {
+    const { data: rd } = await admin.from('booking_riders').select('id, confirmed_at').eq('booking_id', bookingId).maybeSingle<{ id: string; confirmed_at: string | null }>();
+    // riderSent rides along on rawBooking so the client needn't re-query — the
+    // DJ's row gets this from live send-state; here it's whether a rider exists.
+    (b as Record<string, unknown>).__riderSent = !!rd;
+    const { data: gl } = await admin.from('booking_guestlists').select('confirmed_at').eq('booking_id', bookingId).maybeSingle<{ confirmed_at: string | null }>();
+    if (gl?.confirmed_at) (b as Record<string, unknown>).guestlist_confirmed_at = gl.confirmed_at;
+  }
 
   const str = (v: unknown) => (v == null ? '' : String(v));
   const editValues: Record<string, string> = {
@@ -194,7 +235,7 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
     package_details: str(b.package_details),
   };
 
-  const row = toRow(b, dj || undefined);
+  const row = toRow(b, dj ? { name: dj.name as string | null, email: dj.email as string | null, slug: dj.slug as string | null } : undefined);
   return {
     ...row,
     guestCount: str(b.guest_count),
@@ -203,8 +244,11 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
     venueAddress: (b.venue_address as string) ?? null,
     packageDetails: (b.package_details as string) ?? null,
     hasHostAccount: !!b.requester_id,
-    pipeline,
-    pipelineDjType: bt === 'club' ? 'club' : 'mobile',
+    djType,
+    rawBooking: b,
+    payments,
+    planner,
+    flags: { canPro, riderEnabled, guestlistEnabled, needsContract, taxPct },
     editValues,
   };
 }
