@@ -480,7 +480,7 @@ export default function MobilePackagesEditor({
         </div>
       )}
       {err && showInvalid && invalidList.length > 0 && (
-        <div role="alert" style={{ marginBottom: 14, color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+        <div role="alert" style={{ position: 'sticky', top: 8, zIndex: 5, marginBottom: 14, padding: '.6rem .7rem', background: 'rgba(8,8,12,.96)', border: '1px solid var(--border)', borderRadius: 8, backdropFilter: 'blur(2px)', color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem', fontWeight: 700 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
             <span>{err}</span>
