@@ -95,6 +95,10 @@ export default function MobilePackagesEditor({
   const [errCat, setErrCat] = useState<string | null>(null);
   const [errIdx, setErrIdx] = useState<number | null>(null);
   const [errFields, setErrFields] = useState<string[]>([]);
+  // After a failed save we flag the invalid packages in red in the sidebar
+  // (instead of jumping to one), so the DJ can see which ones need attention
+  // without the view yanking away from where they were.
+  const [showInvalid, setShowInvalid] = useState(false);
 
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -236,6 +240,12 @@ export default function MobilePackagesEditor({
     const hasLegacy = ['price4', 'price5', 'price6'].some((k) => Number(String((pkg)[k] ?? '').trim()) > 0);
     return !hasTier && !hasLegacy;
   }
+  // Live validity of one package — recomputed as the DJ types, so a red flag in
+  // the sidebar clears itself the moment that package is filled in.
+  function pkgInvalid(cat: string, i: number): boolean {
+    const p = (listFor(mob, cat)[i] || {}) as { title?: string; details?: string };
+    return textEmpty(p.title) || textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>);
+  }
 
   function save() {
     // Drop orphaned overrides — event types that are no longer offered. They
@@ -251,6 +261,7 @@ export default function MobilePackagesEditor({
     // own title, description and at least one price (unless set to request a
     // quote). Only validate the categories actually shown in the sidebar.
     const cats = ['general', ...Object.keys(live.overrides)];
+    const invalids: Array<{ cat: string; i: number; labels: string[]; missing: string[] }> = [];
     for (const cat of cats) {
       const list = listFor(live, cat);
       for (let i = 0; i < list.length; i++) {
@@ -259,15 +270,23 @@ export default function MobilePackagesEditor({
         if (textEmpty(p.title)) { missing.push('title'); labels.push('a title'); }
         if (textEmpty(p.details)) { missing.push('details'); labels.push('a description'); }
         if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('at least one price'); }
-        if (missing.length) {
-          setErr(`${labelFor(cat)} — Package ${i + 1} needs ${labels.join(' and ')} before you can save.`);
-          setErrFields(missing); setErrCat(cat); setErrIdx(i); setSelCat(cat); setSelIdx(i);
-          setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-          return;
-        }
+        if (missing.length) invalids.push({ cat, i, labels, missing });
       }
     }
-    setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]);
+    if (invalids.length) {
+      // Don't jump to the offending package — just flag every invalid one in red
+      // in the sidebar and leave the DJ where they are. The banner names the
+      // first (or the count) so they know what to look for.
+      const first = invalids[0];
+      setErr(
+        invalids.length === 1
+          ? `${labelFor(first.cat)} — Package ${first.i + 1} needs ${first.labels.join(' and ')} before you can save.`
+          : `${invalids.length} packages still need a title, a description, or a price — the ones marked in red need attention.`,
+      );
+      setErrFields(first.missing); setErrCat(first.cat); setErrIdx(first.i); setShowInvalid(true);
+      return;
+    }
+    setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setShowInvalid(false);
     if (Object.keys(live.overrides).length !== Object.keys(mob.overrides).length) setMob(live);
     const ser = serializeIndependent(live);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser));
@@ -310,17 +329,18 @@ export default function MobilePackagesEditor({
 
   // ── Sidebar styling ──
   const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
-  const pkgItem = (active: boolean, isDirty: boolean): CSSProperties => ({
+  const pkgItem = (active: boolean, isDirty: boolean, invalid: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', width: '100%',
     padding: active ? '.5rem .7rem' : '.38rem .6rem', marginBottom: 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
     fontFamily: "'Bebas Neue', sans-serif", fontSize: active ? '1.3rem' : '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
     // The package being edited is spotlighted: brighter gradient fill, a thick
     // neon left bar, and a glow so it clearly reads as "this is open".
-    background: 'transparent',
-    color: active ? '#fff' : (isDirty ? '#ffd60a' : '#fff'),
+    background: invalid ? 'rgba(255,95,95,.08)' : 'transparent',
+    // Red flag wins so an invalid package stands out even while it's open.
+    color: invalid ? '#ff8f8f' : (active ? '#fff' : (isDirty ? '#ffd60a' : '#fff')),
     // Open package: a full neon frame only (no fill). Resting packages have a
     // transparent border so spacing stays even and no stray bracket shows.
-    border: active ? '1px solid var(--neon)' : '1px solid transparent',
+    border: invalid ? '1px solid rgba(255,95,95,.65)' : (active ? '1px solid var(--neon)' : '1px solid transparent'),
     transition: 'border-color .12s',
   });
   // Plain, centered "add" link — no frame, no underline.
@@ -355,10 +375,13 @@ export default function MobilePackagesEditor({
         )}
         {list.map((_, i) => {
           const active = selCat === cat && safeIdx === i;
+          const invalid = showInvalid && pkgInvalid(cat, i);
           return (
-            <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i))}>
+            <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
-              {pkgDirty(cat, i) ? (
+              {invalid ? (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#2a0b0b', background: '#ff8f8f', borderRadius: 4, padding: '.12rem .4rem' }}>Needs info</span>
+              ) : pkgDirty(cat, i) ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04121a', background: '#ffd60a', borderRadius: 4, padding: '.12rem .4rem' }}>Unsaved</span>
               ) : active ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
@@ -380,7 +403,7 @@ export default function MobilePackagesEditor({
       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.05em', textTransform: 'uppercase', color: '#fff', marginBottom: '.6rem' }}>
         {labelFor(selCat)} &mdash; Package {safeIdx + 1}
       </div>
-      {err && errCat === selCat && errIdx === safeIdx && (
+      {err && showInvalid && (
         <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(255,95,95,.12)', border: '1px solid rgba(255,95,95,.55)', borderRadius: 8, padding: '.6rem .8rem', marginBottom: 14, color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           <span>{err}</span>
