@@ -99,6 +99,7 @@ export default function MobilePackagesEditor({
   // (instead of jumping to one), so the DJ can see which ones need attention
   // without the view yanking away from where they were.
   const [showInvalid, setShowInvalid] = useState(false);
+  const [invalidList, setInvalidList] = useState<Array<{ cat: string; i: number; labels: string[] }>>([]);
 
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -294,24 +295,21 @@ export default function MobilePackagesEditor({
         const missing: string[] = []; const labels: string[] = [];
         if (textEmpty(p.title)) { missing.push('title'); labels.push('a title'); }
         if (textEmpty(p.details)) { missing.push('details'); labels.push('a description'); }
-        if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('at least one price'); }
+        if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('a price in every box'); }
         if (missing.length) invalids.push({ cat, i, labels, missing });
       }
     }
     if (invalids.length) {
-      // Don't jump to the offending package — just flag every invalid one in red
-      // in the sidebar and leave the DJ where they are. The banner names the
-      // first (or the count) so they know what to look for.
+      // Don't jump — flag every invalid package in red in the sidebar and show an
+      // itemized, clickable list (event type › package → what's missing) so the
+      // DJ knows exactly where to go.
       const first = invalids[0];
-      setErr(
-        invalids.length === 1
-          ? 'One package still needs a title, a description, or a price — the one marked in red needs attention.'
-          : `${invalids.length} packages still need a title, a description, or a price — the ones marked in red need attention.`,
-      );
+      setErr(invalids.length === 1 ? 'Fix this before you can save:' : `Fix these ${invalids.length} packages before you can save:`);
+      setInvalidList(invalids.map(({ cat, i, labels }) => ({ cat, i, labels })));
       setErrFields(first.missing); setErrCat(first.cat); setErrIdx(first.i); setShowInvalid(true);
       return;
     }
-    setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setShowInvalid(false);
+    setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setShowInvalid(false); setInvalidList([]);
     if (Object.keys(live.overrides).length !== Object.keys(mob.overrides).length) setMob(live);
     const ser = serializeIndependent(live);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser));
@@ -436,10 +434,28 @@ export default function MobilePackagesEditor({
         <span style={{ color: '#555', margin: '0 .5rem', fontSize: '1.1rem' }}>&rsaquo;</span>
         <span style={{ color: '#fff' }}>Package {safeIdx + 1}</span>
       </div>
-      {err && showInvalid && (
-        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '0 0 .4rem', marginBottom: 14, color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-          <span>{err}</span>
+      {err && showInvalid && invalidList.length > 0 && (
+        <div role="alert" style={{ marginBottom: 14, color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem', fontWeight: 700 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            <span>{err}</span>
+          </div>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+            {invalidList.map((it) => {
+              const here = it.cat === selCat && it.i === safeIdx;
+              return (
+                <li key={`${it.cat}-${it.i}`}>
+                  <button type="button" onClick={() => selectPkg(it.cat, it.i)} style={{ display: 'block', width: '100%', textAlign: 'left', background: here ? 'rgba(255,95,95,.08)' : 'transparent', border: 'none', borderLeft: here ? '2px solid #ff8f8f' : '2px solid transparent', borderRadius: 4, padding: '.2rem .5rem', color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.02em', lineHeight: 1.45, cursor: 'pointer' }}>
+                    <span style={{ color: '#fff', textTransform: 'uppercase' }}>{labelFor(it.cat)}</span>
+                    <span style={{ color: '#666', margin: '0 .35rem' }}>&rsaquo;</span>
+                    <span style={{ color: '#fff', textTransform: 'uppercase' }}>Package {it.i + 1}</span>
+                    <span style={{ color: '#888' }}> &mdash; needs </span>
+                    <span>{it.labels.join(', ')}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
       <div className={styles.pkgCard}>
