@@ -99,7 +99,7 @@ export default function MobilePackagesEditor({
   // (instead of jumping to one), so the DJ can see which ones need attention
   // without the view yanking away from where they were.
   const [showInvalid, setShowInvalid] = useState(false);
-  const [invalidList, setInvalidList] = useState<Array<{ cat: string; i: number; labels: string[] }>>([]);
+  const [invalidList, setInvalidList] = useState<Array<{ cat: string; i: number; labels: string[]; missing: string[] }>>([]);
 
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -213,6 +213,13 @@ export default function MobilePackagesEditor({
   function onEditPkg(next: MobilePackage) { update(setPackageAt(mob, selCat, safeIdx, next as Pkg)); }
 
   function selectPkg(cat: string, i: number) { setSelCat(cat); setSelIdx(i); setErr(null); }
+  // Jump to a package from the missing-items list WITHOUT clearing the red
+  // validation — point the field highlights at the one we're carrying over to.
+  function goToInvalid(it: { cat: string; i: number; missing: string[] }) {
+    setSelCat(it.cat); setSelIdx(it.i);
+    setErrCat(it.cat); setErrIdx(it.i); setErrFields(it.missing);
+    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
 
   function addPackageTo(cat: string) {
     const n = addPkg(mob, cat);
@@ -305,7 +312,7 @@ export default function MobilePackagesEditor({
       // DJ knows exactly where to go.
       const first = invalids[0];
       setErr(invalids.length === 1 ? 'Fix this before you can save:' : `Fix these ${invalids.length} packages before you can save:`);
-      setInvalidList(invalids.map(({ cat, i, labels }) => ({ cat, i, labels })));
+      setInvalidList(invalids.map(({ cat, i, labels, missing }) => ({ cat, i, labels, missing })));
       setErrFields(first.missing); setErrCat(first.cat); setErrIdx(first.i); setShowInvalid(true);
       return;
     }
@@ -445,7 +452,7 @@ export default function MobilePackagesEditor({
               const here = it.cat === selCat && it.i === safeIdx;
               return (
                 <li key={`${it.cat}-${it.i}`}>
-                  <button type="button" onClick={() => selectPkg(it.cat, it.i)} style={{ display: 'block', width: '100%', textAlign: 'left', background: here ? 'rgba(255,95,95,.08)' : 'transparent', border: 'none', borderLeft: here ? '2px solid #ff8f8f' : '2px solid transparent', borderRadius: 4, padding: '.2rem .5rem', color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.02em', lineHeight: 1.45, cursor: 'pointer' }}>
+                  <button type="button" onClick={() => goToInvalid(it)} style={{ display: 'block', width: '100%', textAlign: 'left', background: here ? 'rgba(255,95,95,.08)' : 'transparent', border: 'none', borderLeft: here ? '2px solid #ff8f8f' : '2px solid transparent', borderRadius: 4, padding: '.2rem .5rem', color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.02em', lineHeight: 1.45, cursor: 'pointer' }}>
                     <span style={{ color: '#fff', textTransform: 'uppercase' }}>{labelFor(it.cat)}</span>
                     <span style={{ color: '#666', margin: '0 .35rem' }}>&rsaquo;</span>
                     <span style={{ color: '#fff', textTransform: 'uppercase' }}>Package {it.i + 1}</span>
