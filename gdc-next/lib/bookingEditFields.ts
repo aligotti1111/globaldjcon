@@ -9,7 +9,7 @@ export type EditTier = 'notify' | 'approve';
 export interface EditFieldDef {
   key: string;          // stable id used in the payload + field_edits keys
   label: string;        // human label for badges + emails
-  col: string;          // bookings column it writes to ('price' is special)
+  col: string;          // bookings column it writes to
   tier: EditTier;       // notify = apply now + FYI; approve = host must approve
   section: 'EVENT' | 'VENUE' | 'HOST' | 'PACKAGE' | 'PRICING';
   kind?: 'text' | 'number' | 'date' | 'time' | 'select';
@@ -20,8 +20,8 @@ export interface EditFieldDef {
 //   Venue   — venue name, room          = notify · venue address          = approve
 //   Host    — host name, contact phone  = notify
 //   Package — package name              = notify · package details        = approve
-//   Pricing — price is NOT editable here (removed). Tax % is still adjustable
-//             via the separate pricing-terms payload; the base rate is locked.
+//   Pricing — NOT editable here. Rate and tax are locked once a booking exists;
+//             tax is set only in Booking Settings and applies to future bookings.
 export const EDIT_FIELDS: EditFieldDef[] = [
   { key: 'event_type',      label: 'Event type',      col: 'event_type',      tier: 'notify',  section: 'EVENT',   kind: 'select' },
   { key: 'guest_count',     label: 'Guest count',     col: 'guest_count',     tier: 'notify',  section: 'EVENT',   kind: 'number' },
@@ -43,8 +43,9 @@ export const EDIT_FIELDS: EditFieldDef[] = [
   { key: 'package_title',   label: 'Package name',    col: 'package_title',   tier: 'notify',  section: 'PACKAGE', kind: 'text' },
   { key: 'package_details', label: 'Package details', col: 'package_details', tier: 'approve', section: 'PACKAGE', kind: 'text' },
 
-  // Price is intentionally NOT editable from the booking card — the base rate is
-  // locked after a booking exists. (Tax % can still be adjusted separately.)
+  // Price and tax are intentionally NOT editable from the booking card — both are
+  // locked once a booking exists. Tax lives in Booking Settings and only affects
+  // bookings created after it changes.
 ];
 
 export const EDIT_FIELD_BY_KEY: Record<string, EditFieldDef> =
