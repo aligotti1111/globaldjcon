@@ -52,6 +52,43 @@ function bookingTotalWithTax(booking: UpcomingBooking, liveTaxPct: number): numb
 
 const noop = () => {};
 
+function fmtMoney(n: number | null | undefined, currency: string): string {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(Number(n)); }
+  catch { return `${currency || 'USD'} ${Number(n).toFixed(2)}`; }
+}
+
+// Read-only price / tax / deposit summary for the admin detail. All values come
+// from the booking's own frozen snapshot — never editable here.
+function PricingReadout({ detail }: { detail: AdminBookingDetail }) {
+  const b = detail.rawBooking as unknown as UpcomingBooking;
+  const currency = b.currency || 'USD';
+  const rate = b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
+  const taxPct = b.tax_pct != null ? Number(b.tax_pct) : (detail.flags.taxPct || 0);
+  const taxAmt = b.tax_amount != null ? Number(b.tax_amount) : (rate != null && taxPct > 0 ? Math.round(rate * taxPct) / 100 * 1 : null);
+  const total = bookingTotalWithTax(b, detail.flags.taxPct);
+  const depAmt = b.deposit_amount != null ? Number(b.deposit_amount)
+    : (b.deposit_pct != null && rate != null ? Math.round((rate * Number(b.deposit_pct)) ) / 100 : null);
+  const depLabel = b.deposit_amount != null
+    ? fmtMoney(Number(b.deposit_amount), currency)
+    : b.deposit_pct != null
+      ? `${Number(b.deposit_pct)}%${rate != null ? ` · ${fmtMoney(depAmt, currency)}` : ''}`
+      : '—';
+
+  const line: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: '.84rem' };
+  const lbl: React.CSSProperties = { color: '#9a9ab0' };
+  const val: React.CSSProperties = { color: '#fff', fontWeight: 600 };
+  return (
+    <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+      <div style={{ fontSize: '.68rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#9a9ab0', marginBottom: 4 }}>Pricing (locked)</div>
+      <div style={line}><span style={lbl}>Rate</span><span style={val}>{fmtMoney(rate, currency)}</span></div>
+      <div style={line}><span style={lbl}>Tax{taxPct > 0 ? ` (${taxPct}%)` : ''}</span><span style={val}>{taxPct > 0 ? fmtMoney(taxAmt, currency) : '—'}</span></div>
+      <div style={{ ...line, borderTop: '1px solid rgba(255,255,255,.08)' }}><span style={lbl}>Total</span><span style={val}>{fmtMoney(total, currency)}</span></div>
+      <div style={line}><span style={lbl}>Deposit</span><span style={val}>{depLabel}</span></div>
+    </div>
+  );
+}
+
 function fmtDate(d: string | null): string {
   if (!d) return '—';
   try { return new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return String(d); }
@@ -320,6 +357,9 @@ export default function BookingsTab() {
                       />
                     </div>
 
+                    {/* Price / tax / deposit — read-only. */}
+                    <PricingReadout detail={detail} />
+
                     {/* Editable sections */}
                     {SECTIONS.map((s) => (
                       <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
@@ -332,7 +372,7 @@ export default function BookingsTab() {
                     ))}
 
                     <div style={{ fontSize: '.72rem', color: '#9a9ab0', marginTop: 10, lineHeight: 1.5 }}>
-                      Pricing (rate & tax) is locked and not editable here. Admin edits apply immediately; the host is not emailed.
+                      Price, tax and deposit are shown for reference only and can’t be changed here. Admin edits apply immediately; the host is not emailed.
                     </div>
 
                     {editSection && (
