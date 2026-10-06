@@ -195,6 +195,8 @@ export default function BookingsTab() {
   // the already-fetched list (capped at 150), so no extra round-trips.
   const [djTypeFilter, setDjTypeFilter] = useState<'all' | 'mobile' | 'club'>('all');
   const [subFilter, setSubFilter] = useState<string>('all');
+  // When — upcoming (event date today or later) vs past.
+  const [whenFilter, setWhenFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
   const seq = useRef(0);
   const runSearch = useCallback(async (q: string) => {
@@ -223,8 +225,28 @@ export default function BookingsTab() {
     finally { setDetailLoading(false); }
   }, []);
 
+  // Signed-contract download — admins can grab any booking's signed PDF. Hits
+  // the same /api/contracts/signed-doc route the DJ uses (now admin-allowed),
+  // then opens the returned document URL.
+  const [contractBusy, setContractBusy] = useState(false);
+  const [contractErr, setContractErr] = useState<string | null>(null);
+  async function downloadContract(bookingId: string) {
+    setContractBusy(true); setContractErr(null);
+    try {
+      const res = await fetch('/api/contracts/signed-doc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.contract) { setContractErr(data.error || 'Could not get the signed contract.'); return; }
+      window.open(data.contract as string, '_blank', 'noopener,noreferrer');
+    } catch {
+      setContractErr('Could not get the signed contract.');
+    } finally { setContractBusy(false); }
+  }
+
   function toggle(id: string) {
     setEditSection(null); // never carry an open edit modal across bookings
+    setContractErr(null);
     if (openId === id) { setOpenId(null); setDetail(null); return; }
     setOpenId(id); setDetail(null); void loadDetail(id);
   }
@@ -253,7 +275,13 @@ export default function BookingsTab() {
     return [];
   })();
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const shown = rows.filter((r) => {
+    if (whenFilter !== 'all') {
+      const d = (r.eventDate || '').slice(0, 10);
+      if (whenFilter === 'upcoming' && !(d && d >= todayStr)) return false;
+      if (whenFilter === 'past' && !(d && d < todayStr)) return false;
+    }
     if (djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
     if (djTypeFilter === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
     if (djTypeFilter === 'club' && subFilter !== 'all') {
@@ -283,6 +311,11 @@ export default function BookingsTab() {
       {/* Sort/filter — DJ type, then a type-specific secondary filter. */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
         <label style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', color: '#9a9ab0' }}>Sort</label>
+        <select style={selectStyle} value={whenFilter} onChange={(e) => setWhenFilter(e.target.value as 'all' | 'upcoming' | 'past')}>
+          <option value="all">All dates</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="past">Past</option>
+        </select>
         <select
           style={selectStyle}
           value={djTypeFilter}
@@ -363,6 +396,21 @@ export default function BookingsTab() {
                         onToggleOverride={noop}
                       />
                     </div>
+
+                    {/* Signed contract — admin download. */}
+                    {detail.contractStatus === 'signed' && (
+                      <div style={{ marginBottom: 12 }}>
+                        <button
+                          type="button"
+                          style={{ ...pencilBtn, opacity: contractBusy ? 0.6 : 1 }}
+                          disabled={contractBusy}
+                          onClick={() => downloadContract(r.id)}
+                        >
+                          {contractBusy ? 'Preparing…' : '⬇ Download signed contract'}
+                        </button>
+                        {contractErr && <div style={{ color: '#ff6b6b', fontSize: '.78rem', marginTop: 6 }}>{contractErr}</div>}
+                      </div>
+                    )}
 
                     {/* Price / tax / deposit — read-only. */}
                     <PricingReadout detail={detail} />
