@@ -255,8 +255,20 @@ export default function MobilePackagesEditor({
       confirmLabel: 'Put back under General', variant: 'danger',
     });
     if (!ok) return;
-    update(putTypeBack(mob, type));
+    const next = putTypeBack(mob, type);
+    update(next);
     if (selCat === type) { setSelCat('general'); setSelIdx(0); }
+    // Persist the removal right away so it sticks on refresh — otherwise the
+    // change would only live in local state until the next Save Packages click.
+    const ser = serializeIndependent(next);
+    onSave(ser);
+    setSavedSnapshot(JSON.stringify(ser));
+    // CRITICAL: a specialty event type is auto-pulled on every load, so dropping
+    // just its packages isn't enough — it would reappear blank after a refresh.
+    // Also remove it from the specialty list so it stays under General.
+    if (onEventTypesSave && specialtyTypes.includes(type)) {
+      void onEventTypesSave(selectedEventTypes, customEventTypes, specialtyTypes.filter((t) => t !== type));
+    }
   }
 
   function textEmpty(v: unknown): boolean {
