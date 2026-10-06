@@ -453,7 +453,7 @@ export default function MobilePackagesEditor({
         />
         <div className={styles.pkgSaveRow}>
           {selList.length > 1 && (
-            <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package</button>
+            <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package {safeIdx + 1}</button>
           )}
           <span style={{ flex: 1 }} />
           <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
