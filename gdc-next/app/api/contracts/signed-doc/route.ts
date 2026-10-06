@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { getActingContext } from '@/lib/acting';
+import { isAdminUser } from '@/lib/supabase/admin-auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -28,6 +29,8 @@ export async function POST(req: Request) {
   // TEAM SEATS: teammate → owner's booking (dj_id === acting.djId); host → own
   // account (requester_id === user.id). Keying only to user.id 403'd teammates.
   const acting = await getActingContext(user.id);
+  // A platform admin can download any booking's signed contract (read-only).
+  const admin_ = await isAdminUser();
   const admin = createAdminClient();
   let submissionId: string | null = null;
   try {
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
       .maybeSingle();
     const row = data as { contract_submission_id?: string | null; dj_id?: string | null; requester_id?: string | null } | null;
     if (!row) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (row.dj_id !== acting.djId && row.requester_id !== user.id) {
+    if (!admin_ && row.dj_id !== acting.djId && row.requester_id !== user.id) {
       return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
     }
     submissionId = row.contract_submission_id || null;
