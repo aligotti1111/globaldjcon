@@ -192,13 +192,17 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
   const payments = (pays as unknown as BookingPayment[] | null) || [];
 
   // Planner summary (mobile) — same fraction the DJ's row shows.
+  // NOT maybeSingle: a booking can have more than one planner row, and
+  // maybeSingle THROWS on >1, which would null the whole detail ("Could not
+  // load this booking"). Take the first row instead.
   let planner: BookingPlannerSummary | null = null;
   {
-    const { data: pl } = await admin
+    const { data: pls } = await admin
       .from('booking_planners')
       .select('id, status, fields, responses')
       .eq('booking_id', bookingId)
-      .maybeSingle<{ id: string; status: 'sent' | 'partial' | 'submitted'; fields: unknown; responses: unknown }>();
+      .limit(1);
+    const pl = ((pls as { id: string; status: 'sent' | 'partial' | 'submitted'; fields: unknown; responses: unknown }[] | null) || [])[0];
     if (pl) {
       const { answered, total } = plannerProgress(
         (pl.fields as Parameters<typeof plannerProgress>[0]) || [],
@@ -211,12 +215,14 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
   // Club rider "sent" + guest-list confirmation, read straight from their
   // tables (the DJ's row gets riderSent from send-state it tracks live; here we
   // approximate it from whether a rider row exists, which is read-only-correct).
+  // limit(1) not maybeSingle for the same throw-on-duplicate reason as above.
   if (djType === 'club') {
-    const { data: rd } = await admin.from('booking_riders').select('id, confirmed_at').eq('booking_id', bookingId).maybeSingle<{ id: string; confirmed_at: string | null }>();
+    const { data: rds } = await admin.from('booking_riders').select('id, confirmed_at').eq('booking_id', bookingId).limit(1);
     // riderSent rides along on rawBooking so the client needn't re-query — the
     // DJ's row gets this from live send-state; here it's whether a rider exists.
-    (b as Record<string, unknown>).__riderSent = !!rd;
-    const { data: gl } = await admin.from('booking_guestlists').select('confirmed_at').eq('booking_id', bookingId).maybeSingle<{ confirmed_at: string | null }>();
+    (b as Record<string, unknown>).__riderSent = (((rds as unknown[] | null) || []).length > 0);
+    const { data: gls } = await admin.from('booking_guestlists').select('confirmed_at').eq('booking_id', bookingId).limit(1);
+    const gl = ((gls as { confirmed_at: string | null }[] | null) || [])[0];
     if (gl?.confirmed_at) (b as Record<string, unknown>).guestlist_confirmed_at = gl.confirmed_at;
   }
 
