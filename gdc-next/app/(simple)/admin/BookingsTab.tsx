@@ -336,7 +336,14 @@ export default function BookingsTab() {
                 </div>
                 {r.venueName && <div style={{ fontSize: '.8rem', color: '#9a9ab0' }}>{r.venueName}</div>}
               </div>
-              <span style={{ color: NEON, fontSize: '1.1rem', lineHeight: 1 }}>{open ? '▾' : '▸'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                {r.isManual && (
+                  <span style={{ fontSize: '.6rem', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 800, color: '#f5e642', border: '1px solid rgba(245,230,66,.5)', borderRadius: 5, padding: '.14rem .4rem' }}>
+                    Manual
+                  </span>
+                )}
+                <span style={{ color: NEON, fontSize: '1.1rem', lineHeight: 1 }}>{open ? '▾' : '▸'}</span>
+              </div>
             </button>
 
             {open && (
