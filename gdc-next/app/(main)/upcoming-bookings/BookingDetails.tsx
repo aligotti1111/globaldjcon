@@ -1170,7 +1170,9 @@ export default function BookingDetails({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div className={styles.detailChip}><span>{g.title}</span></div>
-              {sectionPencil(g.key as EditSection)}
+              {/* Pricing is read-only — the agreed rate and tax are locked once a
+                  booking exists, so no edit pencil on the Pricing section. */}
+              {g.key !== 'PRICING' && sectionPencil(g.key as EditSection)}
             </div>
             {g.key === 'EVENT' && eventHeaderBlock}
             {g.key === 'VENUE' && venueHeaderBlock}
