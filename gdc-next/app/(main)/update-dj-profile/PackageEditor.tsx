@@ -334,7 +334,7 @@ export default function PackageEditor({
                           value={t.price}
                           disabled={reqAll}
                           onChange={(e) => commit(tiers.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))}
-                          className={`${styles.priceInput} ${errSet.has('priceTiers') || errSet.has(`price${t.hours}`) ? styles.pkgFieldError : ''}`}
+                          className={`${styles.priceInput} ${(errSet.has('priceTiers') && !(Number(String(t.price ?? '').trim()) > 0)) || errSet.has(`price${t.hours}`) ? styles.pkgFieldError : ''}`}
                         />
                         {!reqAll && tiers.length > 1 && (
                           <button
