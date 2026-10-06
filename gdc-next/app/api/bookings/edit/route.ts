@@ -285,58 +285,10 @@ export async function POST(req: Request) {
   // pre-tax amount (frozen snapshot base when present, else the agreed rate).
   if (body.pricing) {
     const p = body.pricing;
-    const base = (booking.tax_amount != null && booking.total_with_tax != null)
-      ? round2(Number(booking.total_with_tax) - Number(booking.tax_amount))
-      : Number(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? 0);
-    const oldTaxPct = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
     const oldDepPct = booking.deposit_pct != null ? Number(booking.deposit_pct) : 0;
-    if (p.taxPct !== undefined || p.removeTax) {
-      const tp = p.removeTax ? 0 : Math.max(0, Number(p.taxPct) || 0);
-      if (tp !== oldTaxPct) {
-        // A prior still-pending tax request is replaced, not blocked, so the DJ
-        // can always re-request tax (there's no per-tax cancel UI).
-        if (alreadyPending.has('tax_pct')) {
-          await admin.from('booking_change_requests')
-            .update({ status: 'superseded', responded_at: nowISO } as unknown as never)
-            .eq('booking_id', booking.id).eq('target_col', 'tax_pct').eq('status', 'pending');
-        }
-        // Changing tax creates a new grand total — the host approves the new tax
-        // AND the resulting new price together, so both figures are shown.
-        const cur = booking.currency || 'USD';
-        const money = (n: number) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n); } catch { return `$${n.toFixed(2)}`; } };
-        const oldTaxAmt = round2((base * oldTaxPct) / 100);
-        const newTaxAmt = round2((base * tp) / 100);
-        const oldTotal = round2(base + oldTaxAmt);
-        const newTotal = round2(base + newTaxAmt);
-        // Full breakdown so the host sees WHAT the % is applied to and the dollar
-        // amount it works out to, not just the percentage:
-        //   "$400.00 + 5.75% tax ($23.00) = $423.00"  /  "$400.00 · no tax = $400.00"
-        const fmtBreakdown = (pct: number, taxAmt: number, total: number) =>
-          pct > 0
-            ? `${money(base)} + ${pct}% tax (${money(taxAmt)}) = ${money(total)}`
-            : `${money(base)} · no tax = ${money(total)}`;
-        const oldDisp = fmtBreakdown(oldTaxPct, oldTaxAmt, oldTotal);
-        const newDisp = fmtBreakdown(tp, newTaxAmt, newTotal);
-        if (noHostRecipient) {
-          // No one to approve → apply the tax change immediately.
-          const taxAmt = round2((base * tp) / 100);
-          applyObj.tax_pct = tp;
-          applyObj.tax_amount = taxAmt;
-          applyObj.total_with_tax = round2(base + taxAmt);
-          editStamp.tax_pct = nowISO;
-          appliedLines.push({ label: 'Tax & total', old: oldDisp, neu: newDisp, col: 'tax_pct' });
-        } else {
-          // Tax + new total need host approval — queued as one change request.
-          pendingRows.push({
-            booking_id: booking.id, dj_id: djId, field: 'Tax & total',
-            old_value: oldDisp, new_value: newDisp,
-            target_col: 'tax_pct', target_raw: String(tp),
-            token: randomBytes(24).toString('base64url'),
-          });
-          pendingReturn.push({ field: 'tax_pct', label: 'Tax & total' });
-        }
-      }
-    }
+    // Tax is no longer editable from the booking card — any tax change in the
+    // payload is ignored (the agreed rate and tax are both locked once a booking
+    // exists). Only the deposit %/skip terms below remain.
     if (p.depositPct !== undefined && p.depositPct !== null) {
       const dp = Math.max(0, Number(p.depositPct) || 0);
       if (dp !== oldDepPct) {
