@@ -30,7 +30,7 @@ const SECTION_ACK: Record<EditSection, string> = {
   VENUE: 'The host will be notified of anything you change here. A change to the venue address needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
   HOST: 'The host will be notified of anything you change here. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
   PACKAGE: 'The host will be notified of anything you change here. A change to the package needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
-  PRICING: 'The host will be notified of anything you change here. A change to the price or tax needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+  PRICING: 'The host will be notified of anything you change here. A change to the tax needs the host’s approval before it takes effect. The agreed rate is locked and can’t be changed here. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
 };
 
 // Time options every 15 minutes — value HH:MM (24h), label 12-hour AM/PM.
@@ -100,6 +100,15 @@ export default function BookingEditModal({
 
   // Per-booking pricing terms (PRICING section only): tax %, deposit %, no-tax.
   const isPricing = section === 'PRICING';
+  // Currency symbol for the price field prefix (e.g. $, £, €), from the booking's
+  // own currency snapshot. Extract just the symbol from a formatted zero.
+  const curSym = (() => {
+    try {
+      const cur = values.__currency || 'USD';
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: 0, maximumFractionDigits: 0 })
+        .formatToParts(0).find((p) => p.type === 'currency')?.value || '$';
+    } catch { return '$'; }
+  })();
   const initTaxPct = values.tax_pct ?? '0';
   // Deposit is NOT editable here — it stays as configured in Booking Settings.
   // We only read the stored value to show it in the breakdown.
@@ -139,7 +148,9 @@ export default function BookingEditModal({
     const tp0 = Number(values.tax_pct) || 0;
     const dp0 = (values.deposit_pct || '').trim() === '' ? 0 : (Number(values.deposit_pct) || 0);
     const o = calc(base0, tp0, dp0);
-    const n = calc(Number(form.price) || 0, applyTax ? (Number(taxPct) || 0) : 0, depPct.trim() === '' ? 0 : (Number(depPct) || 0));
+    // The agreed rate is locked (price is no longer editable here) — only tax %
+    // and deposit % can change, so the new column keeps the same base rate.
+    const n = calc(base0, applyTax ? (Number(taxPct) || 0) : 0, depPct.trim() === '' ? 0 : (Number(depPct) || 0));
     const Row = ({ label: lbl, oldV, newV, strong }: { label: string; oldV: string; newV: string; strong?: boolean }) => (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: strong ? '1px solid rgba(255,255,255,.16)' : '1px solid rgba(255,255,255,.06)' }}>
         <span style={{ fontSize: strong ? '.86rem' : '.8rem', color: strong ? '#fff' : '#c9c9d6', fontWeight: strong ? 700 : 400 }}>{lbl}</span>
@@ -170,7 +181,7 @@ export default function BookingEditModal({
               <Row label="Received (paid)" oldV={money(r2(collected - depositPaidAmount))} newV={money(r2(collected - depositPaidAmount))} />
             )}
             {r2(n.total - collected) >= 0
-              ? <Row label="Balance due" oldV={money(Math.max(0, r2(o.total - collected)))} newV={money(r2(n.total - collected))} strong />
+              ? <Row label="New balance due" oldV={money(Math.max(0, r2(o.total - collected)))} newV={money(r2(n.total - collected))} strong />
               : <Row label="Refund owed" oldV={o.total - collected < 0 ? money(r2(collected - o.total)) : money(0)} newV={money(r2(collected - n.total))} strong />}
           </>
         ) : (
@@ -340,6 +351,16 @@ export default function BookingEditModal({
                     )}
                     {TIME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
+                ) : f.key === 'price' ? (
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#8a8aa0', fontSize: '.9rem', pointerEvents: 'none' }}>{curSym}</span>
+                    <input
+                      style={{ ...input, paddingLeft: 24 }}
+                      type="number"
+                      value={form[f.key] ?? ''}
+                      onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                    />
+                  </div>
                 ) : (
                   <input
                     style={input}
