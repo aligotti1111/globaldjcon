@@ -100,6 +100,9 @@ export default function MobilePackagesEditor({
   // without the view yanking away from where they were.
   const [showInvalid, setShowInvalid] = useState(false);
   const [invalidList, setInvalidList] = useState<Array<{ cat: string; i: number; labels: string[]; missing: string[] }>>([]);
+  // A neutral (non-blocking) note shown after a save — e.g. an empty custom
+  // event type that was dropped back to General pricing.
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [etOpen, setEtOpen] = useState(false);
   const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
@@ -198,7 +201,7 @@ export default function MobilePackagesEditor({
     if (masterSaveTrigger > 0) saveRef.current();
   }, [masterSaveTrigger]);
 
-  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); }
+  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setNotice(null); }
 
   // Clamp the selected pointer if the list it points at shrank.
   const selList = listFor(mob, selCat);
@@ -279,6 +282,17 @@ export default function MobilePackagesEditor({
     const p = (listFor(mob, cat)[i] || {}) as { title?: string; details?: string };
     return textEmpty(p.title) || textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>);
   }
+  function hasPositivePrice(pkg: Record<string, unknown>): boolean {
+    const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
+    const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length ? (pkg.priceTiers as Array<{ price?: unknown }>) : null;
+    if (tiers) return tiers.some((x) => pos(x?.price));
+    return ['price4', 'price5', 'price6'].some((k) => pos((pkg)[k]));
+  }
+  // A package the DJ never touched: no title, no description, no price, not set
+  // to request-a-quote.
+  function pkgUntouched(p: Record<string, unknown>): boolean {
+    return !p.reqAll && textEmpty(p.title) && textEmpty(p.details) && !hasPositivePrice(p);
+  }
 
   function save() {
     // Drop orphaned overrides — event types that are no longer offered. They
@@ -290,13 +304,24 @@ export default function MobilePackagesEditor({
         Object.entries(mob.overrides).filter(([t]) => selectedEventTypes.includes(t)),
       ),
     };
-    // Every package in every LIVE category is self-contained — each needs its
-    // own title, description and at least one price (unless set to request a
-    // quote). Only validate the categories actually shown in the sidebar.
-    const cats = ['general', ...Object.keys(live.overrides)];
+    // An event type that was pulled out for custom pricing but left completely
+    // empty (every package untouched) isn't really custom — don't save it as
+    // such. Drop it back to General pricing and tell the DJ.
+    const emptyCustoms = Object.keys(live.overrides).filter((t) => {
+      const list = live.overrides[t];
+      return Array.isArray(list) && list.length > 0 && list.every((p) => pkgUntouched(p as Record<string, unknown>));
+    });
+    const pruned: MobPackagesIndependent = {
+      ...live,
+      overrides: Object.fromEntries(Object.entries(live.overrides).filter(([t]) => !emptyCustoms.includes(t))),
+    };
+    // Every package in every remaining category is self-contained — each needs
+    // its own title, description and a price in every box (unless request-a-
+    // quote). Only validate the categories actually kept.
+    const cats = ['general', ...Object.keys(pruned.overrides)];
     const invalids: Array<{ cat: string; i: number; labels: string[]; missing: string[] }> = [];
     for (const cat of cats) {
-      const list = listFor(live, cat);
+      const list = listFor(pruned, cat);
       for (let i = 0; i < list.length; i++) {
         const p = (list[i] || {}) as { title?: string; details?: string };
         const missing: string[] = []; const labels: string[] = [];
@@ -311,14 +336,21 @@ export default function MobilePackagesEditor({
       // itemized, clickable list (event type › package → what's missing) so the
       // DJ knows exactly where to go.
       const first = invalids[0];
+      setNotice(null);
       setErr(invalids.length === 1 ? 'Fix this before you can save:' : `Fix these ${invalids.length} packages before you can save:`);
       setInvalidList(invalids.map(({ cat, i, labels, missing }) => ({ cat, i, labels, missing })));
       setErrFields(first.missing); setErrCat(first.cat); setErrIdx(first.i); setShowInvalid(true);
       return;
     }
     setErr(null); setErrCat(null); setErrIdx(null); setErrFields([]); setShowInvalid(false); setInvalidList([]);
-    if (Object.keys(live.overrides).length !== Object.keys(mob.overrides).length) setMob(live);
-    const ser = serializeIndependent(live);
+    if (emptyCustoms.length) {
+      const names = emptyCustoms.map(labelFor).join(', ');
+      const one = emptyCustoms.length === 1;
+      setNotice(`${names} ${one ? 'wasn’t' : 'weren’t'} saved as custom — no info was added, so ${one ? 'it uses' : 'they use'} your General events pricing. Add packages there anytime to make ${one ? 'it' : 'them'} custom.`);
+      if (emptyCustoms.includes(selCat)) { setSelCat('general'); setSelIdx(0); }
+    } else setNotice(null);
+    setMob(pruned);
+    const ser = serializeIndependent(pruned);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser));
   }
   saveRef.current = save;
@@ -441,6 +473,12 @@ export default function MobilePackagesEditor({
         <span style={{ color: '#555', margin: '0 .5rem', fontSize: '1.1rem' }}>&rsaquo;</span>
         <span style={{ color: '#fff' }}>Package {safeIdx + 1}</span>
       </div>
+      {notice && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginBottom: 14, color: '#ffd60a', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.02em', lineHeight: 1.5 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffd60a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          <span>{notice}</span>
+        </div>
+      )}
       {err && showInvalid && invalidList.length > 0 && (
         <div role="alert" style={{ marginBottom: 14, color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem', fontWeight: 700 }}>
