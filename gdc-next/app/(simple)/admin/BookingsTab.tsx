@@ -153,6 +153,12 @@ export default function BookingsTab() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [editSection, setEditSection] = useState<EditSection | null>(null);
 
+  // Sort/filter: DJ type first, then a secondary filter that depends on it —
+  // event type for mobile, club/bar for club accounts. Applied client-side to
+  // the already-fetched list (capped at 150), so no extra round-trips.
+  const [djTypeFilter, setDjTypeFilter] = useState<'all' | 'mobile' | 'club'>('all');
+  const [subFilter, setSubFilter] = useState<string>('all');
+
   const seq = useRef(0);
   const runSearch = useCallback(async (q: string) => {
     const mine = ++seq.current;
@@ -189,6 +195,31 @@ export default function BookingsTab() {
   const contractState = (s: string | null): 'none' | 'sent' | 'signed' =>
     s === 'signed' ? 'signed' : s === 'sent' || s === 'viewed' ? 'sent' : 'none';
 
+  // Secondary-filter options, derived from the rows that match the chosen DJ
+  // type. Mobile → distinct event types present; Club → the venue types present
+  // (bar/club/other). Empty when "all" DJ types is selected (no sub-filter then).
+  const subOptions: { value: string; label: string }[] = (() => {
+    if (djTypeFilter === 'mobile') {
+      const types = Array.from(new Set(rows.filter((r) => r.bookingType === 'mobile' && r.eventType).map((r) => r.eventType as string))).sort();
+      return types.map((t) => ({ value: t, label: t }));
+    }
+    if (djTypeFilter === 'club') {
+      const vts = Array.from(new Set(rows.filter((r) => r.bookingType === 'club' && r.venueType).map((r) => (r.venueType as string).toLowerCase())));
+      const order = ['club', 'bar', 'other'];
+      return vts.sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
+    }
+    return [];
+  })();
+
+  const shown = rows.filter((r) => {
+    if (djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
+    if (djTypeFilter === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
+    if (djTypeFilter === 'club' && subFilter !== 'all' && (r.venueType || '').toLowerCase() !== subFilter) return false;
+    return true;
+  });
+
+  const selectStyle: React.CSSProperties = { ...input, width: 'auto', minWidth: 150, padding: '9px 12px', cursor: 'pointer' };
+
   return (
     <div style={{ maxWidth: 820 }}>
       <h2 style={{ fontSize: '1.1rem', margin: '0 0 4px' }}>All Bookings</h2>
@@ -197,17 +228,44 @@ export default function BookingsTab() {
       </p>
 
       <input
-        style={{ ...input, marginBottom: 14 }}
+        style={{ ...input, marginBottom: 10 }}
         placeholder="Search DJ name/email or host name/email…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
+      {/* Sort/filter — DJ type, then a type-specific secondary filter. */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+        <label style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', color: '#9a9ab0' }}>Sort</label>
+        <select
+          style={selectStyle}
+          value={djTypeFilter}
+          onChange={(e) => { setDjTypeFilter(e.target.value as 'all' | 'mobile' | 'club'); setSubFilter('all'); }}
+        >
+          <option value="all">All DJ types</option>
+          <option value="mobile">Mobile</option>
+          <option value="club">Club / Bar</option>
+        </select>
+
+        {djTypeFilter === 'mobile' && (
+          <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
+            <option value="all">All event types</option>
+            {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        )}
+        {djTypeFilter === 'club' && (
+          <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
+            <option value="all">Club &amp; Bar</option>
+            {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        )}
+      </div>
+
       {err && <div style={{ color: '#ff6b6b', fontSize: '.85rem', marginBottom: 10 }}>{err}</div>}
       {loading && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>Loading…</div>}
-      {!loading && rows.length === 0 && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>No bookings found.</div>}
+      {!loading && shown.length === 0 && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>No bookings found.</div>}
 
-      {rows.map((r) => {
+      {shown.map((r) => {
         const open = openId === r.id;
         return (
           <div key={r.id} style={card}>
