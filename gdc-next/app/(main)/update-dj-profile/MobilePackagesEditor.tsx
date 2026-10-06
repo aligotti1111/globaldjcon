@@ -134,6 +134,25 @@ export default function MobilePackagesEditor({
     return () => mq.removeEventListener('change', apply);
   }, []);
 
+  // Align the editor's left-edge notch with the open package in the tree, so the
+  // arrow follows whatever package is currently being edited.
+  const editorWrapRef = useRef<HTMLDivElement>(null);
+  const selPkgRef = useRef<HTMLButtonElement>(null);
+  const [notchTop, setNotchTop] = useState(22);
+  useEffect(() => {
+    if (isNarrow) return;
+    const measure = () => {
+      const wrap = editorWrapRef.current, btn = selPkgRef.current;
+      if (!wrap || !btn) return;
+      const w = wrap.getBoundingClientRect(), b = btn.getBoundingClientRect();
+      const center = b.top + b.height / 2 - w.top;
+      setNotchTop(Math.max(12, Math.min(center, w.height - 18)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [selCat, selIdx, isNarrow, mob]);
+
   // Pulled-out types that are still offered (shown as their own rail branch).
   const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
   // Types that could be pulled out (offered, not already pulled, not General).
@@ -377,7 +396,7 @@ export default function MobilePackagesEditor({
           const active = selCat === cat && safeIdx === i;
           const invalid = showInvalid && pkgInvalid(cat, i);
           return (
-            <button key={i} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
+            <button key={i} ref={active ? selPkgRef : undefined} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
               {invalid ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#2a0b0b', background: '#ff8f8f', borderRadius: 4, padding: '.12rem .4rem' }}>Needs info</span>
@@ -399,11 +418,11 @@ export default function MobilePackagesEditor({
   };
 
   const renderEditor = () => (
-    <div style={{ position: 'relative', border: '1px solid var(--neon)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem' }}>
+    <div ref={editorWrapRef} style={{ position: 'relative', border: '1px solid var(--neon)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem' }}>
       {/* A small neon notch on the left edge points back at the highlighted
           package in the tree, so the open editor reads as its expansion. */}
       {!isNarrow && (
-        <span aria-hidden="true" style={{ position: 'absolute', left: -7, top: 22, width: 12, height: 12, background: '#07070b', borderLeft: '1px solid var(--neon)', borderBottom: '1px solid var(--neon)', transform: 'rotate(45deg)' }} />
+        <span aria-hidden="true" style={{ position: 'absolute', left: -7, top: notchTop, width: 12, height: 12, background: '#07070b', borderLeft: '1px solid var(--neon)', borderBottom: '1px solid var(--neon)', transform: 'rotate(45deg)', transition: 'top .15s ease' }} />
       )}
       {/* Breadcrumb header: which event type + package this editor belongs to. */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.1rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>
