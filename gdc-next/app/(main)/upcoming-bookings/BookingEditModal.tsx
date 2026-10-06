@@ -199,13 +199,33 @@ export default function BookingEditModal({
                     >{cancelling === f.key ? 'Cancelling…' : 'Cancel requested change'}</button>
                   </div>
                 ) : f.key === 'event_type' ? (
-                  // Event type is fixed for a booking — show it, but don't let it change.
-                  <>
-                    <div style={{ ...input, opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
-                      {MOBILE_EVENT_TYPES.find((o) => o.value === (values[f.key] ?? ''))?.label || values[f.key] || '—'}
-                    </div>
-                    <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 4 }}>Event type can&rsquo;t be changed.</div>
-                  </>
+                  // Event type is fixed for a booking — EXCEPT an admin may change
+                  // it, and even then NOT on a wedding (weddings carry ceremony /
+                  // cocktail pricing tied to the type, so switching away would
+                  // orphan those terms).
+                  (admin && !/wedding/i.test(values[f.key] || '')) ? (
+                    <>
+                      <select style={input} value={form[f.key] ?? ''} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}>
+                        {/* Keep the stored value selectable even if it's a custom type. */}
+                        {form[f.key] && !MOBILE_EVENT_TYPES.some((o) => o.value === form[f.key]) && (
+                          <option value={form[f.key]}>{form[f.key]}</option>
+                        )}
+                        {MOBILE_EVENT_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 4 }}>Admin override — the host is not notified.</div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ ...input, opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
+                        {MOBILE_EVENT_TYPES.find((o) => o.value === (values[f.key] ?? ''))?.label || values[f.key] || '—'}
+                      </div>
+                      <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 4 }}>
+                        {admin && /wedding/i.test(values[f.key] || '')
+                          ? 'Event type can’t be changed for weddings.'
+                          : 'Event type can’t be changed.'}
+                      </div>
+                    </>
+                  )
                 ) : f.key === 'venue_address' ? (
                   <div style={{ position: 'relative' }}>
                     <input
