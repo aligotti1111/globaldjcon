@@ -63,10 +63,16 @@ function fmtMoney(n: number | null | undefined, currency: string): string {
 function PricingReadout({ detail }: { detail: AdminBookingDetail }) {
   const b = detail.rawBooking as unknown as UpcomingBooking;
   const currency = b.currency || 'USD';
-  const rate = b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
   const taxPct = b.tax_pct != null ? Number(b.tax_pct) : (detail.flags.taxPct || 0);
-  const taxAmt = b.tax_amount != null ? Number(b.tax_amount) : (rate != null && taxPct > 0 ? Math.round(rate * taxPct) / 100 * 1 : null);
-  const total = bookingTotalWithTax(b, detail.flags.taxPct);
+  const totalSnap = b.total_with_tax != null ? Number(b.total_with_tax) : null;
+  // Rate: the agreed price. If no rate column was stored (e.g. seeded/demo rows
+  // that carry only total + tax), derive it from the total snapshot minus tax.
+  const agreed = b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
+  const taxAmt = b.tax_amount != null ? Number(b.tax_amount)
+    : (agreed != null && taxPct > 0 ? Math.round(Number(agreed) * taxPct) / 100 : null);
+  const rate = agreed ?? (totalSnap != null ? Math.round((totalSnap - (taxAmt ?? 0)) * 100) / 100 : null);
+  // Total: computed from the agreed rate, else the stored snapshot.
+  const total = bookingTotalWithTax(b, detail.flags.taxPct) ?? totalSnap;
   const depAmt = b.deposit_amount != null ? Number(b.deposit_amount)
     : (b.deposit_pct != null && rate != null ? Math.round((rate * Number(b.deposit_pct)) ) / 100 : null);
   const depLabel = b.deposit_amount != null
