@@ -20,7 +20,8 @@ export interface EditFieldDef {
 //   Venue   — venue name, room          = notify · venue address          = approve
 //   Host    — host name, contact phone  = notify
 //   Package — package name              = notify · package details        = approve
-//   Pricing — price                     = approve
+//   Pricing — price is NOT editable here (removed). Tax % is still adjustable
+//             via the separate pricing-terms payload; the base rate is locked.
 export const EDIT_FIELDS: EditFieldDef[] = [
   { key: 'event_type',      label: 'Event type',      col: 'event_type',      tier: 'notify',  section: 'EVENT',   kind: 'select' },
   { key: 'guest_count',     label: 'Guest count',     col: 'guest_count',     tier: 'notify',  section: 'EVENT',   kind: 'number' },
@@ -42,7 +43,8 @@ export const EDIT_FIELDS: EditFieldDef[] = [
   { key: 'package_title',   label: 'Package name',    col: 'package_title',   tier: 'notify',  section: 'PACKAGE', kind: 'text' },
   { key: 'package_details', label: 'Package details', col: 'package_details', tier: 'approve', section: 'PACKAGE', kind: 'text' },
 
-  { key: 'price',           label: 'Price',           col: 'price',           tier: 'approve', section: 'PRICING', kind: 'number' },
+  // Price is intentionally NOT editable from the booking card — the base rate is
+  // locked after a booking exists. (Tax % can still be adjusted separately.)
 ];
 
 export const EDIT_FIELD_BY_KEY: Record<string, EditFieldDef> =
