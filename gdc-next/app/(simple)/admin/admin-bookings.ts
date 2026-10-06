@@ -37,6 +37,8 @@ export interface AdminBookingRow {
   venueType: string | null;
   packageTitle: string | null;
   bookingType: 'club' | 'mobile' | null;
+  // True when the DJ added this booking by hand (not a host-submitted request).
+  isManual: boolean;
   status: string | null;
   contractStatus: string | null;
   createdAt: string | null;
@@ -89,6 +91,7 @@ function toRow(
     venueType: (b.venue_type as string) ?? null,
     packageTitle: (b.package_title as string) ?? null,
     bookingType: bt,
+    isManual: b.is_manual === true,
     status: (b.status as string) ?? null,
     contractStatus: (b.contract_status as string) ?? null,
     createdAt: (b.created_at as string) ?? null,
@@ -96,7 +99,7 @@ function toRow(
 }
 
 const LIST_COLS =
-  'id, dj_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, status, contract_status, created_at';
+  'id, dj_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, is_manual, status, contract_status, created_at';
 
 export async function searchAdminBookings(query: string): Promise<AdminBookingRow[]> {
   await requireAdmin();
