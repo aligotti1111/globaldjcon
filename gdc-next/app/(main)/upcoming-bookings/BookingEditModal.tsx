@@ -30,7 +30,9 @@ const SECTION_ACK: Record<EditSection, string> = {
   VENUE: 'The host will be notified of anything you change here. A change to the venue address needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
   HOST: 'The host will be notified of anything you change here. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
   PACKAGE: 'The host will be notified of anything you change here. A change to the package needs the host’s approval before it takes effect. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
-  PRICING: 'The host will be notified of anything you change here. A change to the tax needs the host’s approval before it takes effect. The agreed rate is locked and can’t be changed here. Changes approved do NOT legally alter any binding contract. Make sure you’re both on the same page.',
+  // Pricing is read-only (no edit pencil) — the rate and tax are locked once a
+  // booking exists, so this copy never actually shows. Kept to satisfy the type.
+  PRICING: 'Pricing is set at booking time and can’t be changed here.',
 };
 
 // Time options every 15 minutes — value HH:MM (24h), label 12-hour AM/PM.
@@ -42,7 +44,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 96
 });
 
 export default function BookingEditModal({
-  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, collected = 0, depositPaidAmount = 0, depositSkipped = false, depositLocked = false, pendingPayment = false, onClose, onSaved, onCancelled,
+  section, djType, contractState, values, lockEmail = false, pendingCols, pendingInfo, noHostRecipient = false, onClose, onSaved, onCancelled,
 }: {
   section: EditSection;
   djType: 'club' | 'mobile';
@@ -61,17 +63,6 @@ export default function BookingEditModal({
   /** Manual booking with no host recipient: nothing to approve or notify, so
    *  every change applies immediately and no approval/notify copy shows. */
   noHostRecipient?: boolean;
-  /** Total money already received on this booking (deposit + balance payments). */
-  collected?: number;
-  /** Money already paid toward the deposit specifically — drives "ALREADY PAID". */
-  depositPaidAmount?: number;
-  /** The deposit was skipped or waived — don't factor a deposit into the breakdown. */
-  depositSkipped?: boolean;
-  /** A deposit was already received or skipped — the deposit % can't change. */
-  depositLocked?: boolean;
-  /** A deposit or balance request is out (sent, unpaid) — the DJ must cancel it
-   *  before changing the price so the amounts stay in sync. */
-  pendingPayment?: boolean;
   onClose: () => void;
   onSaved: (result: { applied: string[]; pending: { field: string; label: string }[]; field_edits: Record<string, string> }) => void;
   /** Called after a pending request is cancelled so the parent re-reads badges. */
@@ -98,101 +89,10 @@ export default function BookingEditModal({
   const [showAddr, setShowAddr] = useState(false);
   const addrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Per-booking pricing terms (PRICING section only): tax %, deposit %, no-tax.
-  const isPricing = section === 'PRICING';
-  // Currency symbol for the price field prefix (e.g. $, £, €), from the booking's
-  // own currency snapshot. Extract just the symbol from a formatted zero.
-  const curSym = (() => {
-    try {
-      const cur = values.__currency || 'USD';
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: 0, maximumFractionDigits: 0 })
-        .formatToParts(0).find((p) => p.type === 'currency')?.value || '$';
-    } catch { return '$'; }
-  })();
-  const initTaxPct = values.tax_pct ?? '0';
-  // Deposit is NOT editable here — it stays as configured in Booking Settings.
-  // We only read the stored value to show it in the breakdown.
-  const initDepPct = values.deposit_pct ?? '';
-  const depPct = initDepPct;
-  // "Apply tax" mirrors the manual-booking flow: checked = tax applies (rate
-  // field shows), unchecked = no tax (no field). Starts checked when the booking
-  // already carries a tax rate.
-  const [applyTax, setApplyTax] = useState((Number(initTaxPct) || 0) > 0);
-  const [taxPct, setTaxPct] = useState(initTaxPct === '0' ? '' : initTaxPct);
-
   const isPending = (f: EditFieldDef) => f.tier === 'approve' && !!pendingCols?.has(f.col);
   // Locked fields (pending approval) don't count as editable changes.
   const changed = fields.filter((f) => !isPending(f) && (form[f.key] ?? '') !== (values[f.key] ?? ''));
   const hasApprove = changed.some((f) => f.tier === 'approve');
-
-  // Tax edit or skipping the deposit makes the pricing terms dirty.
-  const newTaxPctNum = applyTax ? (Number(taxPct) || 0) : 0;
-  const taxDirty = isPricing && newTaxPctNum !== (Number(initTaxPct) || 0);
-  const pricingDirty = isPricing && taxDirty;
-
-  // Live price breakdown: the agreed rate, tax and deposit as they stand, and the
-  // new figures as the DJ edits price / tax % / deposit %. A line that changed
-  // shows the old value struck through next to the new one.
-  const priceBreakdown = (() => {
-    if (!isPricing) return null;
-    const r2 = (n: number) => Math.round(n * 100) / 100;
-    const cur = values.__currency || 'USD';
-    const money = (n: number) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(n); } catch { return `$${n.toFixed(2)}`; } };
-    const calc = (base: number, tp: number, dp: number) => {
-      const taxAmt = r2((base * tp) / 100);
-      const total = r2(base + taxAmt);
-      const depAmt = r2((total * dp) / 100);
-      return { base, tp, taxAmt, total, dp, depAmt, balance: r2(total - depAmt) };
-    };
-    const base0 = Number(values.price) || 0;
-    const tp0 = Number(values.tax_pct) || 0;
-    const dp0 = (values.deposit_pct || '').trim() === '' ? 0 : (Number(values.deposit_pct) || 0);
-    const o = calc(base0, tp0, dp0);
-    // The agreed rate is locked (price is no longer editable here) — only tax %
-    // and deposit % can change, so the new column keeps the same base rate.
-    const n = calc(base0, applyTax ? (Number(taxPct) || 0) : 0, depPct.trim() === '' ? 0 : (Number(depPct) || 0));
-    const Row = ({ label: lbl, oldV, newV, strong }: { label: string; oldV: string; newV: string; strong?: boolean }) => (
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: strong ? '1px solid rgba(255,255,255,.16)' : '1px solid rgba(255,255,255,.06)' }}>
-        <span style={{ fontSize: strong ? '.86rem' : '.8rem', color: strong ? '#fff' : '#c9c9d6', fontWeight: strong ? 700 : 400 }}>{lbl}</span>
-        <span style={{ fontSize: strong ? '.92rem' : '.85rem', fontWeight: strong ? 800 : 600 }}>
-          {oldV !== newV && <span style={{ color: '#8a8aa0', textDecoration: 'line-through', marginRight: 6, fontWeight: 400 }}>{oldV}</span>}
-          <span style={{ color: oldV !== newV ? NEON : '#fff' }}>{newV}</span>
-        </span>
-      </div>
-    );
-    return (
-      <div style={{ marginTop: 14, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: '4px 12px 10px' }}>
-        <div style={{ fontSize: '.62rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', padding: '8px 0 2px' }}>Price breakdown</div>
-        <Row label="Agreed rate" oldV={money(o.base)} newV={money(n.base)} />
-        <Row label={`Tax${n.tp > 0 ? ` (${n.tp}%)` : ''}`} oldV={o.tp > 0 ? money(o.taxAmt) : 'No tax'} newV={n.tp > 0 ? money(n.taxAmt) : 'No tax'} />
-        <Row label={n.tp > 0 ? 'Total (with tax)' : 'Total'} oldV={money(o.total)} newV={money(n.total)} strong />
-        {(collected > 0 || depositLocked || depositSkipped) ? (
-          // Money already changed hands (or the deposit was skipped): subtract what's
-          // been received from the new total. Negative remainder → refund owed.
-          // A skipped/waived deposit is never shown as a line — it doesn't factor in.
-          <>
-            {depositPaidAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                <span style={{ fontSize: '.8rem', color: '#c9c9d6' }}>Deposit{o.dp > 0 ? ` (${o.dp}%)` : ''}<span style={{ color: NEON, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', marginLeft: 6 }}>PAID</span></span>
-                <span style={{ fontSize: '.85rem', fontWeight: 700, color: '#fff' }}>{money(depositPaidAmount)}</span>
-              </div>
-            )}
-            {collected > depositPaidAmount && (
-              <Row label="Received (paid)" oldV={money(r2(collected - depositPaidAmount))} newV={money(r2(collected - depositPaidAmount))} />
-            )}
-            {r2(n.total - collected) >= 0
-              ? <Row label="New balance due" oldV={money(Math.max(0, r2(o.total - collected)))} newV={money(r2(n.total - collected))} strong />
-              : <Row label="Refund owed" oldV={o.total - collected < 0 ? money(r2(collected - o.total)) : money(0)} newV={money(r2(collected - n.total))} strong />}
-          </>
-        ) : (
-          <>
-            <Row label={`Deposit${n.dp > 0 ? ` (${n.dp}%)` : ''}`} oldV={o.dp > 0 ? money(o.depAmt) : '—'} newV={n.dp > 0 ? money(n.depAmt) : '—'} />
-            <Row label="Balance due" oldV={money(o.balance)} newV={money(n.balance)} />
-          </>
-        )}
-      </div>
-    );
-  })();
 
   async function cancelRequest(f: EditFieldDef) { await cancelByKey(f.key); }
   async function cancelByKey(key: string) {
@@ -211,18 +111,12 @@ export default function BookingEditModal({
   }
 
   async function save() {
-    if (changed.length === 0 && !pricingDirty) { onClose(); return; }
+    if (changed.length === 0) { onClose(); return; }
     setBusy(true); setErr(null);
     try {
       const changes: Record<string, string> = {};
       changed.forEach((f) => { changes[f.key] = form[f.key] ?? ''; });
       const payload: Record<string, unknown> = { bookingId: values.__id, changes };
-      if (pricingDirty) {
-        // Tax is editable; deposit can only be skipped (waived), not re-set.
-        const pricing: { taxPct?: number; removeTax?: boolean } = {};
-        if (applyTax) pricing.taxPct = newTaxPctNum; else pricing.removeTax = true;
-        payload.pricing = pricing;
-      }
       const res = await fetch('/api/bookings/edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -301,12 +195,6 @@ export default function BookingEditModal({
                     </div>
                     <div style={{ fontSize: '.72rem', color: '#8a8aa0', marginTop: 4 }}>Event type can&rsquo;t be changed.</div>
                   </>
-                ) : f.key === 'price' && pendingPayment ? (
-                  // A deposit/balance request is out — lock the price until it's cancelled.
-                  <>
-                    <div style={{ ...input, opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>{form[f.key] || '—'}</div>
-                    <div style={{ fontSize: '.72rem', color: '#f5e642', marginTop: 4, lineHeight: 1.45 }}>A deposit or balance request is still pending. Cancel it on the booking before changing the price.</div>
-                  </>
                 ) : f.key === 'venue_address' ? (
                   <div style={{ position: 'relative' }}>
                     <input
@@ -351,16 +239,6 @@ export default function BookingEditModal({
                     )}
                     {TIME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
-                ) : f.key === 'price' ? (
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#8a8aa0', fontSize: '.9rem', pointerEvents: 'none' }}>{curSym}</span>
-                    <input
-                      style={{ ...input, paddingLeft: 24 }}
-                      type="number"
-                      value={form[f.key] ?? ''}
-                      onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                    />
-                  </div>
                 ) : (
                   <input
                     style={input}
@@ -371,59 +249,19 @@ export default function BookingEditModal({
                 )}
               </div>
             ))}
-            {isPricing && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.1)' }}>
-                <div style={{ fontSize: '.66rem', letterSpacing: '.1em', color: '#8a8aa0', textTransform: 'uppercase', margin: '0 0 10px' }}>Tax &amp; deposit · this booking only</div>
-                {pendingCols?.has('tax_pct') ? (
-                  // A tax change is awaiting the host — lock the tax controls and
-                  // offer to cancel the pending request.
-                  <div style={{ background: 'rgba(245,230,66,.08)', border: '1px solid rgba(245,230,66,.3)', borderRadius: 7, padding: '9px 10px', marginBottom: 11 }}>
-                    <div style={{ color: '#f5e642', fontSize: '.74rem', fontWeight: 700, letterSpacing: '.04em' }}>TAX — PENDING HOST APPROVAL</div>
-                    {pendingInfo?.['tax_pct'] && (
-                      <div style={{ fontSize: '.86rem', margin: '5px 0 2px' }}>
-                        <span style={{ color: '#8a8aa0', textDecoration: 'line-through' }}>{pendingInfo['tax_pct'].old}</span>
-                        {' '}<span style={{ color: '#f5e642' }}>→</span>{' '}
-                        <span style={{ color: '#fff', fontWeight: 700 }}>{pendingInfo['tax_pct'].neu}</span>
-                      </div>
-                    )}
-                    <div style={{ color: '#c9c9d6', fontSize: '.78rem', margin: '3px 0 8px', lineHeight: 1.45 }}>This tax change is awaiting the host. Cancel it to request a different tax.</div>
-                    <button
-                      type="button"
-                      style={{ ...btnGhost, padding: '6px 12px', fontSize: '.78rem', borderColor: 'rgba(255,107,107,.5)', color: '#ff8a8a' }}
-                      disabled={cancelling === 'tax_pct'}
-                      onClick={() => cancelByKey('tax_pct')}
-                    >{cancelling === 'tax_pct' ? 'Cancelling…' : 'Cancel requested change'}</button>
-                  </div>
-                ) : (
-                  <>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 11 }}>
-                      <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} style={{ width: 16, height: 16, accentColor: NEON }} />
-                      <span style={{ fontSize: '.86rem', color: '#fff' }}>Apply tax to this booking{!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</span>
-                    </label>
-                    {applyTax && (
-                      <div style={{ marginBottom: 11 }}>
-                        <label style={label}>Tax rate (%){!noHostRecipient && <span style={{ color: '#f5e642', marginLeft: 6, fontSize: '.62rem', letterSpacing: '.08em' }}>NEEDS APPROVAL</span>}</label>
-                        <input style={input} type="number" step="0.001" min="0" value={taxPct} placeholder="e.g. 8.875" onChange={(e) => setTaxPct(e.target.value)} />
-                      </div>
-                    )}
-                  </>
-                )}
-                {priceBreakdown}
-              </div>
-            )}
             {err && <div style={{ color: '#ff6b6b', fontSize: '.82rem', marginTop: 6 }}>{err}</div>}
             {!noHostRecipient && changed.some((f) => f.tier === 'notify') && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>Host will be notified of the change.</div>
             )}
-            {!noHostRecipient && ((hasApprove && changed.length > 0) || taxDirty) && (
+            {!noHostRecipient && hasApprove && changed.length > 0 && (
               <div style={{ fontSize: '.76rem', color: '#fff', marginTop: 8 }}>When you click Submit Change Request, the host is emailed to approve the change — the altered field shows as &ldquo;Pending Host Approval&rdquo; until approved.</div>
             )}
             {(() => {
               // Any dirty change that needs the host's sign-off (an approval-tier
-              // field, or a tax edit) turns Save into "Submit Change Request".
-              // With no host to approve, or notify-only fields, it stays "Save Change".
-              const requiresApproval = !noHostRecipient && ((hasApprove && changed.length > 0) || taxDirty);
-              const disabled = busy || (changed.length === 0 && !pricingDirty);
+              // field) turns Save into "Submit Change Request". With no host to
+              // approve, or notify-only fields, it stays "Save Change".
+              const requiresApproval = !noHostRecipient && hasApprove && changed.length > 0;
+              const disabled = busy || changed.length === 0;
               return (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                   <button style={btnGhost} disabled={busy} onClick={onClose}>Cancel</button>
