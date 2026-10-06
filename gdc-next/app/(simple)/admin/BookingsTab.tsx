@@ -19,7 +19,7 @@ import PipelineHero from '@/app/(main)/upcoming-bookings/pipeline/PipelineHero';
 import { buildBookingSteps } from '@/app/(main)/upcoming-bookings/pipeline/buildSteps';
 import type { UpcomingBooking, BookingPayment } from '@/app/(main)/upcoming-bookings/page';
 import BookingEditModal, { type EditSection } from '@/app/(main)/upcoming-bookings/BookingEditModal';
-import { searchAdminBookings, getAdminBookingDetail, type AdminBookingRow, type AdminBookingDetail } from './admin-bookings';
+import { searchAdminBookings, getAdminBookingDetail, updateWeddingExtras, type AdminBookingRow, type AdminBookingDetail, type WeddingExtrasInput } from './admin-bookings';
 
 const NEON = '#00e0a4';
 
@@ -91,6 +91,103 @@ function PricingReadout({ detail }: { detail: AdminBookingDetail }) {
       <div style={line}><span style={lbl}>Tax{taxPct > 0 ? ` (${taxPct}%)` : ''}</span><span style={val}>{taxPct > 0 ? fmtMoney(taxAmt, currency) : '—'}</span></div>
       <div style={{ ...line, borderTop: '1px solid rgba(255,255,255,.08)' }}><span style={lbl}>Total</span><span style={val}>{fmtMoney(total, currency)}</span></div>
       <div style={line}><span style={lbl}>Deposit</span><span style={val}>{depLabel}</span></div>
+    </div>
+  );
+}
+
+// Admin-only ceremony & cocktail editor for weddings. Saves the ceremony/
+// cocktail fields; does NOT change the locked total. Host is not emailed.
+function WeddingExtrasEditor({ detail, onSaved }: { detail: AdminBookingDetail; onSaved: () => void }) {
+  const b = detail.rawBooking as Record<string, unknown>;
+  const bool = (k: string) => b[k] === true;
+  const str = (k: string) => (b[k] == null ? '' : String(b[k]));
+  const num = (k: string) => (b[k] == null ? '' : String(b[k]));
+
+  const [cerNeeded, setCerNeeded] = useState(bool('ceremony_needed'));
+  const [cerTime, setCerTime] = useState(str('ceremony_start_time').slice(0, 5));
+  const [cerRoom, setCerRoom] = useState(bool('ceremony_same_room'));
+  const [cerPrice, setCerPrice] = useState(num('ceremony_price'));
+  const [cerIncl, setCerIncl] = useState(bool('ceremony_included'));
+  const [cokNeeded, setCokNeeded] = useState(bool('cocktail_needed'));
+  const [cokTime, setCokTime] = useState(str('cocktail_start_time').slice(0, 5));
+  const [cokRoom, setCokRoom] = useState(bool('cocktail_same_room'));
+  const [cokPrice, setCokPrice] = useState(num('cocktail_price'));
+  const [cokIncl, setCokIncl] = useState(bool('cocktail_included'));
+
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true); setMsg(null);
+    const payload: WeddingExtrasInput = {
+      ceremony_needed: cerNeeded,
+      ceremony_start_time: cerNeeded ? (cerTime || null) : null,
+      ceremony_same_room: cerRoom,
+      ceremony_price: cerNeeded && cerPrice !== '' ? Number(cerPrice) : null,
+      ceremony_included: cerIncl,
+      cocktail_needed: cokNeeded,
+      cocktail_start_time: cokNeeded ? (cokTime || null) : null,
+      cocktail_same_room: cokRoom,
+      cocktail_price: cokNeeded && cokPrice !== '' ? Number(cokPrice) : null,
+      cocktail_included: cokIncl,
+    };
+    try {
+      const res = await updateWeddingExtras(detail.id, payload);
+      if (!res.ok) { setMsg(res.error || 'Could not save.'); return; }
+      setMsg('Saved.');
+      onSaved();
+    } catch { setMsg('Could not save.'); }
+    finally { setBusy(false); }
+  }
+
+  const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 };
+  const smallLabel: React.CSSProperties = { fontSize: '.72rem', color: '#9a9ab0' };
+  const checkRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, fontSize: '.84rem', color: '#fff', marginBottom: 8, cursor: 'pointer' };
+  const sm: React.CSSProperties = { ...input, padding: '8px 10px', fontSize: '.86rem' };
+  const half: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 };
+
+  const block = (
+    title: string,
+    needed: boolean, setNeeded: (v: boolean) => void,
+    time: string, setTime: (v: string) => void,
+    room: boolean, setRoom: (v: boolean) => void,
+    price: string, setPrice: (v: string) => void,
+    incl: boolean, setIncl: (v: boolean) => void,
+  ) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontWeight: 700, fontSize: '.86rem', marginBottom: 6 }}>{title}</div>
+      <label style={checkRow}><input type="checkbox" checked={needed} onChange={(e) => setNeeded(e.target.checked)} /> Needed</label>
+      {needed && (
+        <>
+          <div style={half}>
+            <div style={fieldWrap}>
+              <span style={smallLabel}>Start time</span>
+              <input type="time" style={sm} value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
+            <div style={fieldWrap}>
+              <span style={smallLabel}>Price (add-on)</span>
+              <input type="number" min="0" step="0.01" style={sm} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+            </div>
+          </div>
+          <label style={checkRow}><input type="checkbox" checked={room} onChange={(e) => setRoom(e.target.checked)} /> Same room as reception</label>
+          <label style={checkRow}><input type="checkbox" checked={incl} onChange={(e) => setIncl(e.target.checked)} /> Included in package</label>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ background: 'rgba(245,230,66,.04)', border: '1px solid rgba(245,230,66,.25)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+      <div style={{ fontSize: '.68rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#f5e642', marginBottom: 8 }}>Ceremony &amp; Cocktail Hour (wedding)</div>
+      {block('Ceremony', cerNeeded, setCerNeeded, cerTime, setCerTime, cerRoom, setCerRoom, cerPrice, setCerPrice, cerIncl, setCerIncl)}
+      {block('Cocktail Hour', cokNeeded, setCokNeeded, cokTime, setCokTime, cokRoom, setCokRoom, cokPrice, setCokPrice, cokIncl, setCokIncl)}
+      <div style={{ fontSize: '.7rem', color: '#9a9ab0', margin: '2px 0 8px' }}>Prices are stored for reference — the booking total stays locked. Host is not emailed.</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button type="button" style={{ ...pencilBtn, background: '#00e0a4', color: '#06231b', border: 'none', opacity: busy ? 0.6 : 1 }} disabled={busy} onClick={save}>
+          {busy ? 'Saving…' : 'Save ceremony & cocktail'}
+        </button>
+        {msg && <span style={{ fontSize: '.78rem', color: msg === 'Saved.' ? '#00e0a4' : '#ff6b6b' }}>{msg}</span>}
+      </div>
     </div>
   );
 }
@@ -420,6 +517,11 @@ export default function BookingsTab() {
 
                     {/* Price / tax / deposit — read-only. */}
                     <PricingReadout detail={detail} />
+
+                    {/* Ceremony & cocktail — admin editor, weddings only. */}
+                    {detail.djType === 'mobile' && /wedding/i.test(detail.eventType || '') && (
+                      <WeddingExtrasEditor detail={detail} onSaved={() => { void loadDetail(r.id); void runSearch(query); }} />
+                    )}
 
                     {/* Editable sections */}
                     {SECTIONS.map((s) => (
