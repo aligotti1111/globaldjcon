@@ -1431,19 +1431,6 @@ export default function BookingDetails({
           lockEmail={!!hostUserId}
           pendingCols={pendingCols}
           pendingInfo={pendingInfo}
-          collected={(() => {
-            const base = payments.reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0);
-            // A hand-paid balance settles the whole booking. Prefer the snapshot
-            // total stamped when the balance settled (accurate even after a price
-            // change); fall back to the current total for legacy rows with no snap.
-            const snap = (booking as { balance_settled_total?: number | null }).balance_settled_total;
-            if (snap != null) return Math.max(base, round2(Number(snap)));
-            return balanceManualPaid && cardTotal != null ? Math.max(base, round2(Number(cardTotal))) : base;
-          })()}
-          depositPaidAmount={payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + (Number(p.amount_paid) || 0), 0) + (depositManualPaid ? (depositAmountNum ?? 0) : 0)}
-          depositSkipped={!!(booking as { status_overrides?: Record<string, boolean> | null }).status_overrides?.deposit_skipped || payments.some((p) => p.kind === 'deposit' && p.status === 'waived')}
-          pendingPayment={payments.some((p) => (p.kind === 'deposit' || p.kind === 'balance') && (p.status === 'requested' || p.status === 'pending_confirmation'))}
-          depositLocked={payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived')) || depositManualPaid || !!(booking as { status_overrides?: Record<string, boolean> | null }).status_overrides?.deposit_skipped}
           noHostRecipient={!hostUserId && !((booking as { host_email?: string | null }).host_email || '').trim() && !((booking as { account_email?: string | null }).account_email || '').trim()}
           onCancelled={() => { void loadBadges(); onMutated?.(); }}
           onClose={() => setEditSection(null)}
