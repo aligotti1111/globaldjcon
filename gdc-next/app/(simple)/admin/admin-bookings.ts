@@ -103,14 +103,39 @@ function toRow(
 const LIST_COLS =
   'id, dj_id, requester_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, is_manual, status, contract_status, created_at';
 
-export async function searchAdminBookings(query: string): Promise<AdminBookingRow[]> {
+// Filters + pagination the admin booking list accepts. All optional. Filtering
+// and paging happen IN THE QUERY (server-side), so the result is unlimited and
+// stable — nothing is capped or dropped client-side.
+export interface AdminBookingSearch {
+  query?: string;
+  page?: number;                          // 0-based page index
+  pageSize?: number;                      // default 50
+  djType?: 'all' | 'mobile' | 'club';
+  eventType?: string;                     // mobile only; 'all' | a stored event_type
+  venueBucket?: 'all' | 'club' | 'bar' | 'other'; // club only
+  when?: 'all' | 'upcoming' | 'past';
+}
+
+export interface AdminBookingPage {
+  rows: AdminBookingRow[];
+  total: number;      // total matching the filters, across all pages
+  page: number;       // 0-based page returned
+  pageSize: number;
+}
+
+export async function searchAdminBookings(args: AdminBookingSearch = {}): Promise<AdminBookingPage> {
   await requireAdmin();
   const admin = createAdminClient() as unknown as SupabaseClient;
-  const q = (query || '').trim();
+  const q = (args.query || '').trim();
+  const pageSize = Math.max(1, Math.min(200, args.pageSize ?? 50));
+  const page = Math.max(0, args.page ?? 0);
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Users whose name/email matches the term — these can be the booking's DJ
-  // (dj_id) OR an account host (requester_id). Capped so the id list stays a
-  // sane URL length.
+  // Users whose name/email matches the search term — the booking's DJ (dj_id)
+  // OR its account host (requester_id). Capped so the id list stays a sane
+  // length for the .or() filter.
   let matchedUserIds: string[] = [];
   if (q) {
     const term = likeValue(q);
@@ -118,49 +143,51 @@ export async function searchAdminBookings(query: string): Promise<AdminBookingRo
       .from('users')
       .select('id')
       .or(`name.ilike.${term},email.ilike.${term},contact_email.ilike.${term}`)
-      .limit(120);
+      .limit(200);
     matchedUserIds = ((us as { id: string }[] | null) || []).map((u) => u.id);
   }
 
-  // Fetch a large window so the client-side Mobile/Wedding/date filters see the
-  // WHOLE set, not just the newest N. With a small cap, older bookings fall
-  // outside the fetch and silently disappear from the filtered view even though
-  // they exist. The table is small enough (hundreds of rows) that 1000 is safe.
-  let qb = admin.from('bookings').select(LIST_COLS).order('created_at', { ascending: false }).limit(1000);
+  // count:'exact' returns the TOTAL matching rows (ignoring the page range), so
+  // the client can show "Page X of Y" without a second query.
+  let qb = admin
+    .from('bookings')
+    .select(LIST_COLS, { count: 'exact' })
+    // Stable ordering: created_at desc, id as a deterministic tiebreaker so a row
+    // never jumps between pages when two share a created_at.
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+
   if (q) {
     const term = likeValue(q);
     const ors = [`requester_name.ilike.${term}`, `host_email.ilike.${term}`];
     if (matchedUserIds.length) {
-      ors.push(`dj_id.in.(${matchedUserIds.join(',')})`); // DJ name/email match
-      ors.push(`requester_id.in.(${matchedUserIds.join(',')})`); // account-host match
+      ors.push(`dj_id.in.(${matchedUserIds.join(',')})`);
+      ors.push(`requester_id.in.(${matchedUserIds.join(',')})`);
     }
     qb = qb.or(ors.join(','));
   }
-  const { data: rows } = await qb;
-  let bookings = (rows as Record<string, unknown>[] | null) || [];
 
-  // Exclude bookings where a DJ is the HOST on a DIFFERENT DJ's booking — those
-  // are DJs booking each other, which cluttered the admin list and made a DJ
-  // show up as a "host" under another DJ's type.
-  //
-  // CRITICAL: a DJ's OWN manual booking has requester_id === dj_id (the DJ is
-  // logged in when they add it), so we must NOT exclude those — only when the
-  // requester is a DJ who is NOT this booking's own DJ. Keep every booking with
-  // no requester, a non-DJ host, or a self-requester.
-  {
-    const { data: djUsers } = await admin.from('users').select('id').eq('role', 'dj').limit(2000);
-    const djIdSet = new Set(((djUsers as { id: string }[] | null) || []).map((u) => u.id));
-    if (djIdSet.size) {
-      bookings = bookings.filter((b) => {
-        const rid = b.requester_id as string | null | undefined;
-        if (!rid) return true;                       // manual / no booker
-        if (rid === (b.dj_id as string)) return true; // the DJ's OWN booking
-        return !djIdSet.has(rid);                     // drop only DJ-as-host-on-another-DJ
-      });
-    }
+  // ── Filters, all applied in the query ──
+  if (args.djType === 'mobile' || args.djType === 'club') {
+    qb = qb.eq('booking_type', args.djType);
   }
+  if (args.djType === 'mobile' && args.eventType && args.eventType !== 'all') {
+    qb = qb.eq('event_type', args.eventType);
+  }
+  if (args.djType === 'club' && args.venueBucket && args.venueBucket !== 'all') {
+    if (args.venueBucket === 'club') qb = qb.eq('venue_type', 'club');
+    else if (args.venueBucket === 'bar') qb = qb.eq('venue_type', 'bar');
+    else qb = qb.not('venue_type', 'in', '("club","bar")'); // "other" = anything else
+  }
+  if (args.when === 'upcoming') qb = qb.gte('event_date', todayStr);
+  else if (args.when === 'past') qb = qb.lt('event_date', todayStr);
 
-  // Fetch the DJ user rows for the bookings in one query, then map.
+  qb = qb.range(from, to);
+
+  const { data: rows, count } = await qb;
+  const bookings = (rows as Record<string, unknown>[] | null) || [];
+
+  // DJ user rows for just this page, mapped.
   const ids = Array.from(new Set(bookings.map((b) => b.dj_id).filter(Boolean))) as string[];
   const djMap = new Map<string, { name: string | null; email: string | null; slug: string | null }>();
   if (ids.length) {
@@ -169,7 +196,31 @@ export async function searchAdminBookings(query: string): Promise<AdminBookingRo
       djMap.set(u.id, { name: u.name, email: u.email, slug: u.slug });
     }
   }
-  return bookings.map((b) => toRow(b, djMap.get(String(b.dj_id))));
+  return {
+    rows: bookings.map((b) => toRow(b, djMap.get(String(b.dj_id)))),
+    total: count ?? bookings.length,
+    page,
+    pageSize,
+  };
+}
+
+// Distinct mobile event types present across ALL bookings — used to populate the
+// admin "event type" sub-filter completely (not just from one page). Reads a
+// single tiny column; deduped server-side.
+export async function getAdminEventTypes(): Promise<string[]> {
+  await requireAdmin();
+  const admin = createAdminClient() as unknown as SupabaseClient;
+  const { data } = await admin
+    .from('bookings')
+    .select('event_type')
+    .eq('booking_type', 'mobile')
+    .not('event_type', 'is', null)
+    .limit(5000);
+  const set = new Set<string>();
+  for (const r of ((data as { event_type: string | null }[] | null) || [])) {
+    if (r.event_type) set.add(r.event_type);
+  }
+  return Array.from(set).sort();
 }
 
 export async function getAdminBookingDetail(bookingId: string): Promise<AdminBookingDetail | null> {
