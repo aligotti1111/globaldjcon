@@ -51,7 +51,7 @@ export default async function PastEventsPage() {
     .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, status_overrides')
     .eq('requester_id', user.id)
     .lt('event_date', today)
-    .or('status.eq.approved,is_manual.eq.true')
+    .or('status.eq.approved,status.eq.cancelled,is_manual.eq.true')
     .order('event_date', { ascending: false })
     .order('start_time', { ascending: false })
     .limit(200);
