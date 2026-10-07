@@ -434,7 +434,7 @@ function mobileBookingRequestBox(opts: {
   // DJ-authored details HTML, when there is any) read as a unit instead of
   // being buried among the event rows.
   const packageBox = opts.packageTitle
-    ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:-12px 0 24px;">
+    ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
          <p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>
          ${opts.packageDetails && opts.packageDetails.trim()
            ? `<div style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`
