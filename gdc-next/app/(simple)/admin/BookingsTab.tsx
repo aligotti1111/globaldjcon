@@ -284,6 +284,12 @@ function buildAdminSteps(detail: AdminBookingDetail) {
 
 const PAGE_SIZE = 50;
 
+// Event types are stored inconsistently in the DB ("Wedding", "weddings",
+// "wedding"), so we group them by a canonical key (lowercase, trailing "s"
+// dropped) and filter on EVERY raw spelling in the chosen group.
+const canonEvent = (s: string) => s.trim().toLowerCase().replace(/s$/, '');
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export default function BookingsTab() {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<AdminBookingRow[]>([]);
@@ -316,10 +322,15 @@ export default function BookingsTab() {
     const mine = ++seq.current;
     setLoading(true); setErr(null);
     try {
+      // Mobile event-type filter: expand the chosen canonical key back to every
+      // raw spelling stored in the DB (Wedding / weddings / wedding).
+      const eventTypes = (djTypeFilter === 'mobile' && subFilter !== 'all')
+        ? eventTypeOptions.filter((t) => canonEvent(t) === subFilter)
+        : undefined;
       const res = await searchAdminBookings({
         query, page: p, pageSize: PAGE_SIZE,
         djType: djTypeFilter,
-        eventType: djTypeFilter === 'mobile' ? subFilter : 'all',
+        eventTypes,
         venueBucket: djTypeFilter === 'club' ? (subFilter as 'all' | 'club' | 'bar' | 'other') : 'all',
         when: whenFilter,
       });
@@ -329,7 +340,7 @@ export default function BookingsTab() {
     } finally {
       if (mine === seq.current) setLoading(false);
     }
-  }, [query, djTypeFilter, subFilter, whenFilter]);
+  }, [query, djTypeFilter, subFilter, whenFilter, eventTypeOptions]);
 
   // Any filter/search change resets to page 0. The effect below then re-fetches.
   useEffect(() => { setPage(0); }, [query, djTypeFilter, subFilter, whenFilter]);
@@ -376,14 +387,20 @@ export default function BookingsTab() {
   const contractState = (s: string | null): 'none' | 'sent' | 'signed' =>
     s === 'signed' ? 'signed' : s === 'sent' || s === 'viewed' ? 'sent' : 'none';
 
-  // Sub-filter options. Mobile → the full distinct event-type list (loaded once,
-  // so it's complete regardless of the current page). Club → fixed Club/Bar/Other.
-  const subOptions: { value: string; label: string }[] =
-    djTypeFilter === 'mobile'
-      ? eventTypeOptions.map((t) => ({ value: t, label: t }))
-      : djTypeFilter === 'club'
-        ? [{ value: 'club', label: 'Club' }, { value: 'bar', label: 'Bar' }, { value: 'other', label: 'Other' }]
-        : [];
+  // Sub-filter options. Mobile → event types grouped by canonical key (so the
+  // DB's "Wedding"/"weddings"/"wedding" collapse into one "Wedding" option).
+  // Club → fixed Club/Bar/Other.
+  const subOptions: { value: string; label: string }[] = (() => {
+    if (djTypeFilter === 'mobile') {
+      const byCanon = new Map<string, string>(); // canon key → display label
+      for (const t of eventTypeOptions) { const c = canonEvent(t); if (!byCanon.has(c)) byCanon.set(c, titleCase(c)); }
+      return Array.from(byCanon, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+    }
+    if (djTypeFilter === 'club') {
+      return [{ value: 'club', label: 'Club' }, { value: 'bar', label: 'Bar' }, { value: 'other', label: 'Other' }];
+    }
+    return [];
+  })();
 
   const selectStyle: React.CSSProperties = { ...input, width: 'auto', minWidth: 150, padding: '9px 12px', cursor: 'pointer' };
 
