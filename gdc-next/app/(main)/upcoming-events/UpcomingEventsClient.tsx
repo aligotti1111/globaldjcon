@@ -410,7 +410,10 @@ function EventRow({
           Cancelled
         </span>
       )}
-      <div className={styles.row}>
+      {/* The inner row + total bar paint opaque backgrounds over the wrapper, so
+          the red tint has to be applied to THEM to be visible on the collapsed
+          card (not just the rowWrap). */}
+      <div className={styles.row} style={isCancelled ? { background: 'rgba(192,57,43,.14)', boxShadow: 'inset 3px 0 0 #ff5f5f' } : undefined}>
         {/* Date pill — first element in the row. Clickable: toggles
             expansion just like the middle area, so the date acts as part
             of the toggle hit-zone visually but lives outside the flyer
@@ -593,7 +596,7 @@ function EventRow({
       {/* Full-width "Total Price" band under the collapsed row — mirrors the
           DJ card's Total Value strip. */}
       {showTotalBar && (
-        <div className={styles.rowTotalBar}>
+        <div className={styles.rowTotalBar} style={isCancelled ? { background: 'rgba(192,57,43,.14)', boxShadow: 'inset 3px 0 0 #ff5f5f' } : undefined}>
           <span className={styles.rowTotalLabel}>Total Price</span>
           <span className={styles.rowTotalValue}>{totalPriceStr}</span>
         </div>
