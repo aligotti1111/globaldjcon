@@ -18,7 +18,7 @@ import { MOB_EVENT_LABELS } from '@/lib/constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Slot = 'contract' | 'contract_declined' | 'deposit' | 'invoice' | 'deposit_pending' | 'invoice_pending' | 'song_list' | 'guestlist' | 'change';
+type Slot = 'contract' | 'contract_declined' | 'deposit' | 'invoice' | 'deposit_pending' | 'invoice_pending' | 'song_list' | 'guestlist' | 'change' | 'cancel_requested';
 
 export async function GET() {
   const supabase = await createClient();
@@ -36,7 +36,7 @@ export async function GET() {
 
   const { data: rows } = await admin
     .from('bookings')
-    .select('id, event_date, event_type, venue_type, contract_status, contract_signed_at, contract_sent_at, contract_declined_at')
+    .select('id, event_date, event_type, venue_type, contract_status, contract_signed_at, contract_sent_at, contract_declined_at, cancel_status, cancel_requested_by, cancel_requested_at')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
@@ -46,6 +46,7 @@ export async function GET() {
     id: string; event_date: string | null; event_type: string | null; venue_type: string | null;
     contract_status: string | null; contract_signed_at: string | null; contract_sent_at: string | null;
     contract_declined_at: string | null;
+    cancel_status: string | null; cancel_requested_by: string | null; cancel_requested_at: string | null;
   }[];
   const ids = bookings.map((b) => b.id);
 
@@ -98,6 +99,12 @@ export async function GET() {
     note(b.id, signedAt, 'contract');
     // A declined contract is a host action the DJ should see in the bell too.
     if (b.contract_status === 'declined') note(b.id, b.contract_declined_at, 'contract_declined');
+    // A pending cancellation REQUESTED BY THE HOST needs the DJ's attention. (A
+    // request the DJ themselves made is awaiting the host, so it's not a DJ bell
+    // item.)
+    if (b.cancel_status === 'requested' && b.cancel_requested_by === 'host') {
+      note(b.id, b.cancel_requested_at, 'cancel_requested');
+    }
   }
 
   const byId = Object.fromEntries(bookings.map((b) => [b.id, b]));
