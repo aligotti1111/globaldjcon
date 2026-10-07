@@ -162,7 +162,12 @@ function WeddingExtrasEditor({ detail, onSaved }: { detail: AdminBookingDetail; 
           <div style={half}>
             <div style={fieldWrap}>
               <span style={smallLabel}>Start time</span>
-              <input type="time" style={sm} value={time} onChange={(e) => setTime(e.target.value)} />
+              <select style={sm} value={time} onChange={(e) => setTime(e.target.value)}>
+                <option value="">Select a time</option>
+                {/* keep an off-grid stored time selectable */}
+                {time && !TIME_OPTS.some((o) => o.value === time) && <option value={time}>{time}</option>}
+                {TIME_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
             <div style={fieldWrap}>
               <span style={smallLabel}>Price (add-on)</span>
@@ -285,10 +290,40 @@ function buildAdminSteps(detail: AdminBookingDetail) {
 const PAGE_SIZE = 50;
 
 // Event types are stored inconsistently in the DB ("Wedding", "weddings",
-// "wedding"), so we group them by a canonical key (lowercase, trailing "s"
-// dropped) and filter on EVERY raw spelling in the chosen group.
+// "wedding"), so we match by a canonical key (lowercase, trailing "s" dropped).
 const canonEvent = (s: string) => s.trim().toLowerCase().replace(/s$/, '');
-const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// The STANDARD mobile event types (mirrors MOB_EVENT_TYPE_LABELS). The admin
+// event-type filter only ever offers these — never custom/free-text values a
+// DJ typed in ("Yooooooo", etc.). Each entry's canonical forms (key + label)
+// are what we match a booking's stored event_type against.
+const STANDARD_EVENT_TYPES: { key: string; label: string }[] = [
+  { key: 'weddings', label: 'Wedding' },
+  { key: 'birthday', label: 'Birthday Party' },
+  { key: 'corporate', label: 'Corporate Event' },
+  { key: 'anniversary', label: 'Anniversary' },
+  { key: 'graduation', label: 'Graduation' },
+  { key: 'sweet16', label: 'Sweet 16' },
+  { key: 'quinceanera', label: 'Quinceañera' },
+  { key: 'mitzvah', label: 'Bar/Bat Mitzvah' },
+  { key: 'reunion', label: 'Reunion' },
+  { key: 'holiday', label: 'Holiday Party' },
+  { key: 'school', label: 'School Event' },
+  { key: 'community', label: 'Community Event' },
+];
+const canonSetFor = (key: string): Set<string> => {
+  const s = STANDARD_EVENT_TYPES.find((e) => e.key === key);
+  return s ? new Set([canonEvent(s.key), canonEvent(s.label)]) : new Set();
+};
+
+// Time options every 15 min — value HH:MM (24h), label 12-hour AM/PM — for the
+// ceremony/cocktail start-time dropdowns.
+const TIME_OPTS: { value: string; label: string }[] = Array.from({ length: 96 }, (_, i) => {
+  const h = Math.floor(i / 4); const m = (i % 4) * 15;
+  const hh = String(h).padStart(2, '0'); const mm = String(m).padStart(2, '0');
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return { value: `${hh}:${mm}`, label: `${h12}:${mm} ${h >= 12 ? 'PM' : 'AM'}` };
+});
 
 export default function BookingsTab() {
   const [query, setQuery] = useState('');
@@ -322,10 +357,10 @@ export default function BookingsTab() {
     const mine = ++seq.current;
     setLoading(true); setErr(null);
     try {
-      // Mobile event-type filter: expand the chosen canonical key back to every
-      // raw spelling stored in the DB (Wedding / weddings / wedding).
+      // Mobile event-type filter: expand the chosen STANDARD type to every raw
+      // spelling of it present in the DB (Wedding / weddings / wedding).
       const eventTypes = (djTypeFilter === 'mobile' && subFilter !== 'all')
-        ? eventTypeOptions.filter((t) => canonEvent(t) === subFilter)
+        ? (() => { const cs = canonSetFor(subFilter); return eventTypeOptions.filter((t) => cs.has(canonEvent(t))); })()
         : undefined;
       const res = await searchAdminBookings({
         query, page: p, pageSize: PAGE_SIZE,
@@ -392,9 +427,12 @@ export default function BookingsTab() {
   // Club → fixed Club/Bar/Other.
   const subOptions: { value: string; label: string }[] = (() => {
     if (djTypeFilter === 'mobile') {
-      const byCanon = new Map<string, string>(); // canon key → display label
-      for (const t of eventTypeOptions) { const c = canonEvent(t); if (!byCanon.has(c)) byCanon.set(c, titleCase(c)); }
-      return Array.from(byCanon, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+      // Only STANDARD event types that are actually present in the data — never
+      // custom/free-text values a DJ typed in.
+      const presentCanon = new Set(eventTypeOptions.map(canonEvent));
+      return STANDARD_EVENT_TYPES
+        .filter((s) => canonSetFor(s.key).size > 0 && Array.from(canonSetFor(s.key)).some((c) => presentCanon.has(c)))
+        .map((s) => ({ value: s.key, label: s.label }));
     }
     if (djTypeFilter === 'club') {
       return [{ value: 'club', label: 'Club' }, { value: 'bar', label: 'Bar' }, { value: 'other', label: 'Other' }];
