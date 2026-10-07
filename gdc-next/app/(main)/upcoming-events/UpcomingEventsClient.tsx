@@ -410,6 +410,12 @@ function EventRow({
           Cancelled
         </span>
       )}
+      {/* The DJ's note on the cancellation — above the top box, red + bold. */}
+      {event.cancel_response_note && event.cancel_response_note.trim() && (
+        <div style={{ color: '#ff5f5f', fontWeight: 700, fontSize: '.84rem', lineHeight: 1.45, padding: '10px 14px 2px', whiteSpace: 'pre-wrap' }}>
+          Note from your DJ: {event.cancel_response_note.trim()}
+        </div>
+      )}
       {/* The inner row + total bar paint opaque backgrounds over the wrapper, so
           the red tint has to be applied to THEM to be visible on the collapsed
           card (not just the rowWrap). */}
