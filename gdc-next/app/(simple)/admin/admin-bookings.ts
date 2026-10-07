@@ -101,7 +101,7 @@ function toRow(
 }
 
 const LIST_COLS =
-  'id, dj_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, is_manual, status, contract_status, created_at';
+  'id, dj_id, requester_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, is_manual, status, contract_status, created_at';
 
 export async function searchAdminBookings(query: string): Promise<AdminBookingRow[]> {
   await requireAdmin();
@@ -133,7 +133,22 @@ export async function searchAdminBookings(query: string): Promise<AdminBookingRo
     qb = qb.or(ors.join(','));
   }
   const { data: rows } = await qb;
-  const bookings = (rows as Record<string, unknown>[] | null) || [];
+  let bookings = (rows as Record<string, unknown>[] | null) || [];
+
+  // Exclude bookings that were BOOKED BY A DJ (the requester/host is a DJ
+  // account) — those are DJs booking each other, which clutter the admin list
+  // and made a DJ show up as a "host" under another DJ's type. Keep every
+  // booking with no requester (manual) or a non-DJ host.
+  {
+    const { data: djUsers } = await admin.from('users').select('id').eq('role', 'dj').limit(2000);
+    const djIdSet = new Set(((djUsers as { id: string }[] | null) || []).map((u) => u.id));
+    if (djIdSet.size) {
+      bookings = bookings.filter((b) => {
+        const rid = b.requester_id as string | null | undefined;
+        return !rid || !djIdSet.has(rid);
+      });
+    }
+  }
 
   // Fetch the DJ user rows for the bookings in one query, then map.
   const ids = Array.from(new Set(bookings.map((b) => b.dj_id).filter(Boolean))) as string[];
