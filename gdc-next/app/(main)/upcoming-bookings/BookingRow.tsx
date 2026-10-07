@@ -829,7 +829,7 @@ export default function BookingRow({
   return (
     <div
       ref={wrapRef} data-booking-id={booking.id}
-      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''}`}
+      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${isCancelled ? styles.rowCancelled : ''}`}
       // A cancelled row is LIT, not dimmed. Fading it treats the news as less
       // important than the rows around it, when it's the one thing on this
       // screen the DJ most needs to notice — a night they'd otherwise still be
