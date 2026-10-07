@@ -394,9 +394,22 @@ function EventRow({
   // under the row (like the DJ card). When either the pipeline band or the
   // price band sits below the collapsed row, square off its bottom corners.
   const showMobilePipeline = !expanded && hasPipeline;
+  // A cancelled event stays on the dashboard (red) until its date passes, then
+  // flows to Past Events — the host sees it the same way the DJ does.
+  const isCancelled = event.status === 'cancelled' || cancelStatus === 'accepted';
 
   return (
-    <div className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''} ${showMobilePipeline ? styles.hasMobilePipeline : ''}`} style={{ position: 'relative' }}>
+    <div
+      className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''} ${showMobilePipeline ? styles.hasMobilePipeline : ''}`}
+      style={isCancelled
+        ? { position: 'relative', background: 'rgba(192,57,43,.10)', boxShadow: 'inset 3px 0 0 #ff5f5f' }
+        : { position: 'relative' }}
+    >
+      {isCancelled && (
+        <span style={{ position: 'absolute', top: 8, right: 10, zIndex: 2, fontSize: '.6rem', fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: '#ff5f5f', border: '1px solid rgba(255,95,95,.5)', borderRadius: 5, padding: '.14rem .4rem', background: 'rgba(0,0,0,.35)' }}>
+          Cancelled
+        </span>
+      )}
       <div className={styles.row}>
         {/* Date pill — first element in the row. Clickable: toggles
             expansion just like the middle area, so the date acts as part
