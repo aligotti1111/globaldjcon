@@ -23,6 +23,7 @@ const EMOJI: Record<string, string> = {
   song_list: '\u{1F3B5}', // 🎵
   guestlist: '\u{1F465}', // 👥
   change: '\u{2705}',     // ✅
+  cancel_requested: '\u{1F6AB}', // 🚫
 };
 const WHAT: Record<string, string> = {
   contract: 'Contract signed',
@@ -34,6 +35,7 @@ const WHAT: Record<string, string> = {
   song_list: 'Planner submitted',
   guestlist: 'Guest list confirmed',
   change: 'Change approved',
+  cancel_requested: 'Cancellation requested',
 };
 
 // For a pending cash/check hand-off, append the method so the DJ sees what to
