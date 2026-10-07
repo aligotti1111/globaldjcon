@@ -111,7 +111,9 @@ export interface AdminBookingSearch {
   page?: number;                          // 0-based page index
   pageSize?: number;                      // default 50
   djType?: 'all' | 'mobile' | 'club';
-  eventType?: string;                     // mobile only; 'all' | a stored event_type
+  // mobile only: the list of raw event_type values to match (one "Wedding"
+  // bucket can map to several stored spellings — "Wedding", "weddings", …).
+  eventTypes?: string[];
   venueBucket?: 'all' | 'club' | 'bar' | 'other'; // club only
   when?: 'all' | 'upcoming' | 'past';
 }
@@ -171,8 +173,8 @@ export async function searchAdminBookings(args: AdminBookingSearch = {}): Promis
   if (args.djType === 'mobile' || args.djType === 'club') {
     qb = qb.eq('booking_type', args.djType);
   }
-  if (args.djType === 'mobile' && args.eventType && args.eventType !== 'all') {
-    qb = qb.eq('event_type', args.eventType);
+  if (args.djType === 'mobile' && args.eventTypes && args.eventTypes.length > 0) {
+    qb = qb.in('event_type', args.eventTypes);
   }
   if (args.djType === 'club' && args.venueBucket && args.venueBucket !== 'all') {
     if (args.venueBucket === 'club') qb = qb.eq('venue_type', 'club');
