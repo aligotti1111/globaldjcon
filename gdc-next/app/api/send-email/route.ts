@@ -1555,6 +1555,18 @@ export async function POST(req: Request) {
          </div>`
       : '';
 
+    // A note the DJ added when answering the host's cancellation request —
+    // shown on the accepted/declined emails.
+    const responseNote = typeof body.responseNote === 'string' && body.responseNote.trim()
+      ? body.responseNote.trim()
+      : null;
+    const noteBlock = responseNote
+      ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
+           <p style="margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#888;">Note from ${escHtml(djName)}</p>
+           <p style="margin:0;color:#1a1a2e;font-size:14px;white-space:pre-wrap;">${escHtml(responseNote)}</p>
+         </div>`
+      : '';
+
     const send = async (to: string | null, subject: string, inner: string) => {
       if (!to) return;
       try {
@@ -1629,6 +1641,7 @@ export async function POST(req: Request) {
           ${escHtml(who)} has been notified.
         </p>
         ${infoCard}
+        ${noteBlock}
         ${contractLine}
       `;
       await send(djEmail, subject, inner(hostName));
@@ -1647,6 +1660,7 @@ export async function POST(req: Request) {
         The cancellation request was declined, so this booking still stands.
       </p>
       ${infoCard}
+      ${noteBlock}
       <p style="color:#666;margin:0 0 8px;">
         If this needs sorting out, the next step is a conversation — not the app.
       </p>
