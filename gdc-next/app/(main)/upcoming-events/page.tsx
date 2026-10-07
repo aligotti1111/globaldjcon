@@ -80,6 +80,7 @@ export interface UpcomingEvent {
   requester_id?: string | null;
   // Cancellation request state (host can ask the DJ to cancel).
   cancel_status?: string | null;
+  cancel_response_note?: string | null;
   // Read-only "booking progress" pipeline shown at the top of the expanded
   // card — only the stages this booking actually has, computed server-side.
   // Uses the DJ-side PipelineStep shape so the host renders the real hero.
@@ -116,7 +117,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, cancel_status, status_overrides')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, cancel_status, cancel_response_note, status_overrides')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,status.eq.cancelled,is_manual.eq.true')
