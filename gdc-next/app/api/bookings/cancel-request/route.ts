@@ -329,11 +329,19 @@ export async function POST(req: Request) {
 
   const accepted = action === 'accept';
 
+  // The DJ may include a note with their answer — stored on the booking and
+  // emailed to the host. (Only the DJ side; the host doesn't answer their own
+  // request, and a host answering a DJ request doesn't get this field.)
+  const responseNote = (actor === 'dj' && typeof body.note === 'string' && body.note.trim())
+    ? body.note.trim().slice(0, 1000)
+    : null;
+
   const { data: respRows, error } = await admin
     .from('bookings')
     .update({
       cancel_status: accepted ? 'accepted' : 'declined',
       cancel_responded_at: nowIso,
+      cancel_response_note: responseNote,
       // Burn the token either way: this link has done its job.
       cancel_token: null,
       cancel_token_expires_at: null,
@@ -386,6 +394,7 @@ export async function POST(req: Request) {
         type: accepted ? 'cancel_accepted' : 'cancel_declined',
         bookingId: booking.id,
         respondedBy: actor,
+        responseNote,
       }),
     });
   } catch (e) {
