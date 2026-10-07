@@ -357,19 +357,27 @@ export default function BookingsTab() {
   const contractState = (s: string | null): 'none' | 'sent' | 'signed' =>
     s === 'signed' ? 'signed' : s === 'sent' || s === 'viewed' ? 'sent' : 'none';
 
-  // Secondary-filter options, derived from the rows that match the chosen DJ
-  // type. Mobile → distinct event types present; Club → the venue types present
-  // (bar/club/other). Empty when "all" DJ types is selected (no sub-filter then).
+  // When the results are all for ONE DJ account (a DJ search), the DJ-type sort
+  // is meaningless — a DJ account is a single type — so that dropdown is hidden.
+  // The TYPE-SPECIFIC sub-filter still applies, using the DJ's actual type
+  // (inferred from their bookings), so you can still sort a mobile DJ by event
+  // type or a club DJ by Club/Bar.
+  const distinctDjEmails = new Set(rows.map((r) => r.djEmail).filter((e) => e && e !== '—'));
+  const singleDj = rows.length > 0 && distinctDjEmails.size === 1;
+  const soleType: 'mobile' | 'club' | null = singleDj ? (rows.find((r) => r.bookingType)?.bookingType ?? null) : null;
+  // The DJ-type context that drives the sub-filter: the sole DJ's type when
+  // scoped to one DJ, otherwise the chosen DJ-type dropdown value.
+  const effType: 'mobile' | 'club' | 'all' = singleDj ? (soleType ?? 'all') : djTypeFilter;
+
+  // Secondary-filter options, derived from the rows for the effective type.
+  // Mobile → distinct event types present; Club → the venue types present
+  // (Club / Bar / Other). Empty when the effective type is "all".
   const subOptions: { value: string; label: string }[] = (() => {
-    if (djTypeFilter === 'mobile') {
+    if (effType === 'mobile') {
       const types = Array.from(new Set(rows.filter((r) => r.bookingType === 'mobile' && r.eventType).map((r) => r.eventType as string))).sort();
       return types.map((t) => ({ value: t, label: t }));
     }
-    if (djTypeFilter === 'club') {
-      // Only three buckets: Club, Bar, and a single "Other" that absorbs every
-      // custom venue type (festival, private, …). The distinct raw values are
-      // normalized before dedupe so "Other - festival" / "Other - private" don't
-      // each become their own option.
+    if (effType === 'club') {
       const norm = (v: string) => { const l = v.toLowerCase(); return l === 'club' ? 'club' : l === 'bar' ? 'bar' : 'other'; };
       const cats = Array.from(new Set(rows.filter((r) => r.bookingType === 'club' && r.venueType).map((r) => norm(r.venueType as string))));
       const order = ['club', 'bar', 'other'];
@@ -378,11 +386,6 @@ export default function BookingsTab() {
     return [];
   })();
 
-  // When the results are all for ONE DJ account (a DJ search), the DJ-type sort
-  // is meaningless — a DJ account is a single type — so it's hidden and ignored.
-  const distinctDjEmails = new Set(rows.map((r) => r.djEmail).filter((e) => e && e !== '—'));
-  const singleDj = rows.length > 0 && distinctDjEmails.size === 1;
-
   const todayStr = new Date().toISOString().slice(0, 10);
   const shown = rows.filter((r) => {
     if (whenFilter !== 'all') {
@@ -390,11 +393,11 @@ export default function BookingsTab() {
       if (whenFilter === 'upcoming' && !(d && d >= todayStr)) return false;
       if (whenFilter === 'past' && !(d && d < todayStr)) return false;
     }
-    // Skip DJ-type / sub filtering entirely for a single-DJ result set.
-    if (singleDj) return true;
-    if (djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
-    if (djTypeFilter === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
-    if (djTypeFilter === 'club' && subFilter !== 'all') {
+    // DJ-type match only applies when NOT scoped to a single DJ.
+    if (!singleDj && djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
+    // Sub-filter (event type / club-bar) always applies, keyed to the effective type.
+    if (effType === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
+    if (effType === 'club' && subFilter !== 'all') {
       const vt = (r.venueType || '').toLowerCase();
       const cat = vt === 'club' ? 'club' : vt === 'bar' ? 'bar' : 'other';
       if (cat !== subFilter) return false;
@@ -438,13 +441,15 @@ export default function BookingsTab() {
           </select>
         )}
 
-        {!singleDj && djTypeFilter === 'mobile' && (
+        {/* Sub-filter keyed to the effective type — shows for a single mobile DJ
+            (event type) or a single club DJ (Club/Bar), and for a chosen DJ type. */}
+        {effType === 'mobile' && (
           <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
             <option value="all">All event types</option>
             {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         )}
-        {djTypeFilter === 'club' && (
+        {effType === 'club' && (
           <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
             <option value="all">Club &amp; Bar</option>
             {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
