@@ -122,7 +122,11 @@ export async function searchAdminBookings(query: string): Promise<AdminBookingRo
     matchedUserIds = ((us as { id: string }[] | null) || []).map((u) => u.id);
   }
 
-  let qb = admin.from('bookings').select(LIST_COLS).order('created_at', { ascending: false }).limit(150);
+  // Fetch a large window so the client-side Mobile/Wedding/date filters see the
+  // WHOLE set, not just the newest N. With a small cap, older bookings fall
+  // outside the fetch and silently disappear from the filtered view even though
+  // they exist. The table is small enough (hundreds of rows) that 1000 is safe.
+  let qb = admin.from('bookings').select(LIST_COLS).order('created_at', { ascending: false }).limit(1000);
   if (q) {
     const term = likeValue(q);
     const ors = [`requester_name.ilike.${term}`, `host_email.ilike.${term}`];
