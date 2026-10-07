@@ -19,7 +19,7 @@ import PipelineHero from '@/app/(main)/upcoming-bookings/pipeline/PipelineHero';
 import { buildBookingSteps } from '@/app/(main)/upcoming-bookings/pipeline/buildSteps';
 import type { UpcomingBooking, BookingPayment } from '@/app/(main)/upcoming-bookings/page';
 import BookingEditModal, { type EditSection } from '@/app/(main)/upcoming-bookings/BookingEditModal';
-import { searchAdminBookings, getAdminBookingDetail, updateWeddingExtras, type AdminBookingRow, type AdminBookingDetail, type WeddingExtrasInput } from './admin-bookings';
+import { searchAdminBookings, getAdminBookingDetail, getAdminEventTypes, updateWeddingExtras, type AdminBookingRow, type AdminBookingDetail, type WeddingExtrasInput } from './admin-bookings';
 
 const NEON = '#00e0a4';
 
@@ -282,9 +282,13 @@ function buildAdminSteps(detail: AdminBookingDetail) {
   return steps;
 }
 
+const PAGE_SIZE = 50;
+
 export default function BookingsTab() {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<AdminBookingRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0); // 0-based
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -293,33 +297,48 @@ export default function BookingsTab() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [editSection, setEditSection] = useState<EditSection | null>(null);
 
-  // Sort/filter: DJ type first, then a secondary filter that depends on it —
-  // event type for mobile, club/bar for club accounts. Applied client-side to
-  // the already-fetched list (capped at 150), so no extra round-trips.
+  // Filters — ALL applied server-side (in the query), so results are unlimited,
+  // stable and paginated 50/page. DJ type first, then a type-specific secondary
+  // filter (event type for mobile, Club/Bar for club), plus a date filter.
   const [djTypeFilter, setDjTypeFilter] = useState<'all' | 'mobile' | 'club'>('all');
   const [subFilter, setSubFilter] = useState<string>('all');
-  // When — upcoming (event date today or later) vs past.
   const [whenFilter, setWhenFilter] = useState<'all' | 'upcoming' | 'past'>('all');
+  // Full list of mobile event types (loaded once), so the sub-filter is complete
+  // regardless of which page is showing.
+  const [eventTypeOptions, setEventTypeOptions] = useState<string[]>([]);
+
+  useEffect(() => { getAdminEventTypes().then(setEventTypeOptions).catch(() => {}); }, []);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const seq = useRef(0);
-  const runSearch = useCallback(async (q: string) => {
+  const runSearch = useCallback(async (p: number) => {
     const mine = ++seq.current;
     setLoading(true); setErr(null);
     try {
-      const res = await searchAdminBookings(q);
-      if (mine === seq.current) setRows(res); // drop out-of-order responses
+      const res = await searchAdminBookings({
+        query, page: p, pageSize: PAGE_SIZE,
+        djType: djTypeFilter,
+        eventType: djTypeFilter === 'mobile' ? subFilter : 'all',
+        venueBucket: djTypeFilter === 'club' ? (subFilter as 'all' | 'club' | 'bar' | 'other') : 'all',
+        when: whenFilter,
+      });
+      if (mine === seq.current) { setRows(res.rows); setTotal(res.total); }
     } catch (e) {
       if (mine === seq.current) setErr(e instanceof Error ? e.message : 'Search failed');
     } finally {
       if (mine === seq.current) setLoading(false);
     }
-  }, []);
+  }, [query, djTypeFilter, subFilter, whenFilter]);
 
-  // Debounced search — also runs on mount (query starts '') for the initial list.
+  // Any filter/search change resets to page 0. The effect below then re-fetches.
+  useEffect(() => { setPage(0); }, [query, djTypeFilter, subFilter, whenFilter]);
+
+  // Debounced fetch on filter/page change (also runs on mount).
   useEffect(() => {
-    const t = setTimeout(() => { void runSearch(query); }, 350);
+    const t = setTimeout(() => { void runSearch(page); }, 300);
     return () => clearTimeout(t);
-  }, [query, runSearch]);
+  }, [runSearch, page]);
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
@@ -357,53 +376,14 @@ export default function BookingsTab() {
   const contractState = (s: string | null): 'none' | 'sent' | 'signed' =>
     s === 'signed' ? 'signed' : s === 'sent' || s === 'viewed' ? 'sent' : 'none';
 
-  // When the results are all for ONE DJ account (a DJ search), the DJ-type sort
-  // is meaningless — a DJ account is a single type — so that dropdown is hidden.
-  // The TYPE-SPECIFIC sub-filter still applies, using the DJ's actual type
-  // (inferred from their bookings), so you can still sort a mobile DJ by event
-  // type or a club DJ by Club/Bar.
-  const distinctDjEmails = new Set(rows.map((r) => r.djEmail).filter((e) => e && e !== '—'));
-  const singleDj = rows.length > 0 && distinctDjEmails.size === 1;
-  const soleType: 'mobile' | 'club' | null = singleDj ? (rows.find((r) => r.bookingType)?.bookingType ?? null) : null;
-  // The DJ-type context that drives the sub-filter: the sole DJ's type when
-  // scoped to one DJ, otherwise the chosen DJ-type dropdown value.
-  const effType: 'mobile' | 'club' | 'all' = singleDj ? (soleType ?? 'all') : djTypeFilter;
-
-  // Secondary-filter options, derived from the rows for the effective type.
-  // Mobile → distinct event types present; Club → the venue types present
-  // (Club / Bar / Other). Empty when the effective type is "all".
-  const subOptions: { value: string; label: string }[] = (() => {
-    if (effType === 'mobile') {
-      const types = Array.from(new Set(rows.filter((r) => r.bookingType === 'mobile' && r.eventType).map((r) => r.eventType as string))).sort();
-      return types.map((t) => ({ value: t, label: t }));
-    }
-    if (effType === 'club') {
-      const norm = (v: string) => { const l = v.toLowerCase(); return l === 'club' ? 'club' : l === 'bar' ? 'bar' : 'other'; };
-      const cats = Array.from(new Set(rows.filter((r) => r.bookingType === 'club' && r.venueType).map((r) => norm(r.venueType as string))));
-      const order = ['club', 'bar', 'other'];
-      return cats.sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
-    }
-    return [];
-  })();
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const shown = rows.filter((r) => {
-    if (whenFilter !== 'all') {
-      const d = (r.eventDate || '').slice(0, 10);
-      if (whenFilter === 'upcoming' && !(d && d >= todayStr)) return false;
-      if (whenFilter === 'past' && !(d && d < todayStr)) return false;
-    }
-    // DJ-type match only applies when NOT scoped to a single DJ.
-    if (!singleDj && djTypeFilter !== 'all' && r.bookingType !== djTypeFilter) return false;
-    // Sub-filter (event type / club-bar) always applies, keyed to the effective type.
-    if (effType === 'mobile' && subFilter !== 'all' && r.eventType !== subFilter) return false;
-    if (effType === 'club' && subFilter !== 'all') {
-      const vt = (r.venueType || '').toLowerCase();
-      const cat = vt === 'club' ? 'club' : vt === 'bar' ? 'bar' : 'other';
-      if (cat !== subFilter) return false;
-    }
-    return true;
-  });
+  // Sub-filter options. Mobile → the full distinct event-type list (loaded once,
+  // so it's complete regardless of the current page). Club → fixed Club/Bar/Other.
+  const subOptions: { value: string; label: string }[] =
+    djTypeFilter === 'mobile'
+      ? eventTypeOptions.map((t) => ({ value: t, label: t }))
+      : djTypeFilter === 'club'
+        ? [{ value: 'club', label: 'Club' }, { value: 'bar', label: 'Bar' }, { value: 'other', label: 'Other' }]
+        : [];
 
   const selectStyle: React.CSSProperties = { ...input, width: 'auto', minWidth: 150, padding: '9px 12px', cursor: 'pointer' };
 
@@ -421,7 +401,8 @@ export default function BookingsTab() {
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      {/* Sort/filter — DJ type, then a type-specific secondary filter. */}
+      {/* Sort/filter — all applied server-side. DJ type, then a type-specific
+          secondary filter, plus a date filter. */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
         <label style={{ fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', color: '#9a9ab0' }}>Sort</label>
         <select style={selectStyle} value={whenFilter} onChange={(e) => setWhenFilter(e.target.value as 'all' | 'upcoming' | 'past')}>
@@ -429,27 +410,23 @@ export default function BookingsTab() {
           <option value="upcoming">Upcoming</option>
           <option value="past">Past</option>
         </select>
-        {!singleDj && (
-          <select
-            style={selectStyle}
-            value={djTypeFilter}
-            onChange={(e) => { setDjTypeFilter(e.target.value as 'all' | 'mobile' | 'club'); setSubFilter('all'); }}
-          >
-            <option value="all">All DJ types</option>
-            <option value="mobile">Mobile</option>
-            <option value="club">Club / Bar</option>
-          </select>
-        )}
+        <select
+          style={selectStyle}
+          value={djTypeFilter}
+          onChange={(e) => { setDjTypeFilter(e.target.value as 'all' | 'mobile' | 'club'); setSubFilter('all'); }}
+        >
+          <option value="all">All DJ types</option>
+          <option value="mobile">Mobile</option>
+          <option value="club">Club / Bar</option>
+        </select>
 
-        {/* Sub-filter keyed to the effective type — shows for a single mobile DJ
-            (event type) or a single club DJ (Club/Bar), and for a chosen DJ type. */}
-        {effType === 'mobile' && (
+        {djTypeFilter === 'mobile' && (
           <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
             <option value="all">All event types</option>
             {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         )}
-        {effType === 'club' && (
+        {djTypeFilter === 'club' && (
           <select style={selectStyle} value={subFilter} onChange={(e) => setSubFilter(e.target.value)}>
             <option value="all">Club &amp; Bar</option>
             {subOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -459,9 +436,21 @@ export default function BookingsTab() {
 
       {err && <div style={{ color: '#ff6b6b', fontSize: '.85rem', marginBottom: 10 }}>{err}</div>}
       {loading && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>Loading…</div>}
-      {!loading && shown.length === 0 && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>No bookings found.</div>}
+      {!loading && rows.length === 0 && <div style={{ color: '#9a9ab0', fontSize: '.85rem' }}>No bookings found.</div>}
 
-      {shown.map((r) => {
+      {!loading && total > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+          <span style={{ color: '#9a9ab0', fontSize: '.8rem' }}>
+            {total.toLocaleString()} booking{total === 1 ? '' : 's'} · page {page + 1} of {totalPages}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" style={{ ...pencilBtn, opacity: page <= 0 ? 0.4 : 1 }} disabled={page <= 0} onClick={() => { setOpenId(null); setDetail(null); setPage((p) => Math.max(0, p - 1)); }}>‹ Prev</button>
+            <button type="button" style={{ ...pencilBtn, opacity: page >= totalPages - 1 ? 0.4 : 1 }} disabled={page >= totalPages - 1} onClick={() => { setOpenId(null); setDetail(null); setPage((p) => Math.min(totalPages - 1, p + 1)); }}>Next ›</button>
+          </div>
+        </div>
+      )}
+
+      {rows.map((r) => {
         const open = openId === r.id;
         return (
           <div key={r.id} style={card}>
@@ -534,7 +523,7 @@ export default function BookingsTab() {
 
                     {/* Ceremony & cocktail — admin editor, weddings only. */}
                     {detail.djType === 'mobile' && /wedding/i.test(detail.eventType || '') && (
-                      <WeddingExtrasEditor detail={detail} onSaved={() => { void loadDetail(r.id); void runSearch(query); }} />
+                      <WeddingExtrasEditor detail={detail} onSaved={() => { void loadDetail(r.id); void runSearch(page); }} />
                     )}
 
                     {/* Editable sections */}
@@ -562,7 +551,7 @@ export default function BookingsTab() {
                         noHostRecipient={false}
                         admin
                         onClose={() => setEditSection(null)}
-                        onSaved={() => { setEditSection(null); void loadDetail(r.id); void runSearch(query); }}
+                        onSaved={() => { setEditSection(null); void loadDetail(r.id); void runSearch(page); }}
                       />
                     )}
                   </>
@@ -575,6 +564,16 @@ export default function BookingsTab() {
           </div>
         );
       })}
+
+      {!loading && totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 6 }}>
+          <span style={{ color: '#9a9ab0', fontSize: '.8rem' }}>Page {page + 1} of {totalPages}</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" style={{ ...pencilBtn, opacity: page <= 0 ? 0.4 : 1 }} disabled={page <= 0} onClick={() => { setOpenId(null); setDetail(null); setPage((p) => Math.max(0, p - 1)); window.scrollTo({ top: 0 }); }}>‹ Prev</button>
+            <button type="button" style={{ ...pencilBtn, opacity: page >= totalPages - 1 ? 0.4 : 1 }} disabled={page >= totalPages - 1} onClick={() => { setOpenId(null); setDetail(null); setPage((p) => Math.min(totalPages - 1, p + 1)); window.scrollTo({ top: 0 }); }}>Next ›</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
