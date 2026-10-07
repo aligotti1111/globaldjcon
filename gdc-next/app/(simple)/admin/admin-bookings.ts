@@ -87,7 +87,16 @@ function toRow(
     hostEmail: (b.host_email as string) || '—',
     eventType: (b.event_type as string) ?? null,
     eventDate: (b.event_date as string) ?? null,
-    startTime: (b.start_time as string) ?? null,
+    // Display start = the EARLIEST of reception / ceremony / cocktail (a wedding
+    // with a cocktail hour at 2pm "starts" at 2pm even if the reception is 3pm).
+    // With no ceremony/cocktail it falls back to the regular booking start_time.
+    startTime: (() => {
+      const times: string[] = [];
+      if (b.start_time) times.push(String(b.start_time));
+      if (b.ceremony_needed === true && b.ceremony_start_time) times.push(String(b.ceremony_start_time));
+      if (b.cocktail_needed === true && b.cocktail_start_time) times.push(String(b.cocktail_start_time));
+      return times.length ? times.sort()[0] : null; // HH:MM[:SS] sorts lexically
+    })(),
     endTime: (b.end_time as string) ?? null,
     venueName: (b.venue_name as string) ?? null,
     venueType: (b.venue_type as string) ?? null,
@@ -101,7 +110,7 @@ function toRow(
 }
 
 const LIST_COLS =
-  'id, dj_id, requester_id, requester_name, host_email, event_type, event_date, start_time, end_time, venue_name, venue_type, package_title, booking_type, is_manual, status, contract_status, created_at';
+  'id, dj_id, requester_id, requester_name, host_email, event_type, event_date, start_time, end_time, ceremony_needed, ceremony_start_time, cocktail_needed, cocktail_start_time, venue_name, venue_type, package_title, booking_type, is_manual, status, contract_status, created_at';
 
 // Filters + pagination the admin booking list accepts. All optional. Filtering
 // and paging happen IN THE QUERY (server-side), so the result is unlimited and
