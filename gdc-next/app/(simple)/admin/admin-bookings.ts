@@ -135,17 +135,23 @@ export async function searchAdminBookings(query: string): Promise<AdminBookingRo
   const { data: rows } = await qb;
   let bookings = (rows as Record<string, unknown>[] | null) || [];
 
-  // Exclude bookings that were BOOKED BY A DJ (the requester/host is a DJ
-  // account) — those are DJs booking each other, which clutter the admin list
-  // and made a DJ show up as a "host" under another DJ's type. Keep every
-  // booking with no requester (manual) or a non-DJ host.
+  // Exclude bookings where a DJ is the HOST on a DIFFERENT DJ's booking — those
+  // are DJs booking each other, which cluttered the admin list and made a DJ
+  // show up as a "host" under another DJ's type.
+  //
+  // CRITICAL: a DJ's OWN manual booking has requester_id === dj_id (the DJ is
+  // logged in when they add it), so we must NOT exclude those — only when the
+  // requester is a DJ who is NOT this booking's own DJ. Keep every booking with
+  // no requester, a non-DJ host, or a self-requester.
   {
     const { data: djUsers } = await admin.from('users').select('id').eq('role', 'dj').limit(2000);
     const djIdSet = new Set(((djUsers as { id: string }[] | null) || []).map((u) => u.id));
     if (djIdSet.size) {
       bookings = bookings.filter((b) => {
         const rid = b.requester_id as string | null | undefined;
-        return !rid || !djIdSet.has(rid);
+        if (!rid) return true;                       // manual / no booker
+        if (rid === (b.dj_id as string)) return true; // the DJ's OWN booking
+        return !djIdSet.has(rid);                     // drop only DJ-as-host-on-another-DJ
       });
     }
   }
