@@ -295,6 +295,9 @@ export default function BookingRow({
   const [cancelConfirming, setCancelConfirming] = useState(false);
   // Set after declining, so the DJ is pointed at the phone rather than the app.
   const [declinedJustNow, setDeclinedJustNow] = useState(false);
+  // A note the DJ can add when answering a host's cancellation request — it's
+  // emailed to the host with the accept/decline notice.
+  const [cancelNote, setCancelNote] = useState('');
 
   /**
    * Cancelled per the server row, OR cancelled by the DJ a moment ago in this
@@ -1218,6 +1221,19 @@ export default function BookingRow({
                     </>
                   )}
                 </div>
+                {/* Optional note the DJ sends back to the host with their answer. */}
+                <div style={{ marginBottom: '.6rem' }}>
+                  <label style={{ fontSize: '.7rem', color: 'var(--muted,#8a8aa0)', display: 'block', marginBottom: 4 }}>
+                    Add a note for {booking.requester_name || 'the host'} (optional) — sent with your answer
+                  </label>
+                  <textarea
+                    value={cancelNote}
+                    onChange={(e) => setCancelNote(e.target.value)}
+                    placeholder="e.g. Sorry it didn't work out — happy to help with a future date."
+                    rows={2}
+                    style={{ width: '100%', boxSizing: 'border-box', background: '#0c0c11', border: '1px solid rgba(255,255,255,.18)', borderRadius: 7, padding: '8px 10px', color: '#fff', fontSize: '.82rem', resize: 'vertical' }}
+                  />
+                </div>
                 {!cancelConfirming ? (
                   <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
                     <button
@@ -1232,7 +1248,7 @@ export default function BookingRow({
                       type="button"
                       disabled={cancelBusy}
                       onClick={async () => {
-                        const r = await postCancel({ action: 'decline' });
+                        const r = await postCancel({ action: 'decline', note: cancelNote.trim() || undefined });
                         if (r) {
                           setCancelState((s) => ({ ...s, status: 'declined' }));
                           setDeclinedJustNow(true);
@@ -1253,7 +1269,7 @@ export default function BookingRow({
                         type="button"
                         disabled={cancelBusy}
                         onClick={async () => {
-                          const r = await postCancel({ action: 'accept' });
+                          const r = await postCancel({ action: 'accept', note: cancelNote.trim() || undefined });
                           if (r) setCancelState((s) => ({ ...s, status: 'accepted' }));
                         }}
                         style={{ background: '#c0392b', border: 'none', color: '#fff', fontWeight: 700, fontSize: '.75rem', padding: '.45rem .8rem', borderRadius: 6, cursor: 'pointer' }}
