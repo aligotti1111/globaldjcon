@@ -1980,6 +1980,14 @@ select.input {
   .dow    { font-size: 10px; }
   .mo     { font-size: 10px; }
   .rowDate { gap: 6px; }
+
+  /* CANCELLED card, mobile. The two solid bands (icon strip #16161c and the
+     value strip #2b2b2b) paint over the rowWrap red wash, so the inline tint
+     on .rowWrap never reaches them — the card read grey from the middle down.
+     Repaint both bands red here, where a two-class selector outranks the plain
+     band rules above, so the whole mobile card reads cancelled top to bottom. */
+  .rowCancelled .statusStrip { background: #3a1f22; }
+  .rowCancelled .rowValue { background: #4a2327; }
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */
