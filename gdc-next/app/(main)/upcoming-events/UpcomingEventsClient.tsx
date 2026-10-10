@@ -498,7 +498,7 @@ function EventRow({
           <div className={styles.middle}>
             {isMobile ? (
               <>
-                <div className={styles.venue}>{eventTypeLabel || 'Event'}</div>
+                <div className={`${styles.venue} ${styles.eventTypeLabel}`}>{eventTypeLabel || 'Event'}</div>
                 {timeRange && <div className={styles.meta}>{timeRange}</div>}
               </>
             ) : (
@@ -594,7 +594,7 @@ function EventRow({
       {/* Mobile-only pipeline band — the header pipeline moves here on narrow
           screens as a full-width, evenly-spaced icon row (like the DJ card). */}
       {showMobilePipeline && event.pipeline && (
-        <div className={styles.pipelineMobile}>
+        <div className={styles.pipelineMobile} style={isCancelled ? { background: 'rgba(192,57,43,.14)' } : undefined}>
           <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} spread />
         </div>
       )}
