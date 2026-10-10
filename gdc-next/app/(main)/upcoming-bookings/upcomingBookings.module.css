@@ -545,14 +545,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Match the host page's event-type label (.venue in upcomingEvents.module.css):
-     inherited Inter, 15px, weight 500, normal case — so the same event reads the
-     same on the DJ card and the host card. */
-  font-family: inherit;
-  font-weight: 500;
-  font-size: 15px;
-  line-height: 1.2;
-  letter-spacing: 0;
+  /* Bebas Neue: the brand's condensed display face, matching the rest of the
+     UI (headers, labels). Event names read like a marquee. Same rule is used on
+     the host page's event-type label so the two pages match exactly. */
+  font-family: 'Bebas Neue', sans-serif;
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: .04em;
 }
 /* The overlap warning stays in the event cell and never shrinks — the name
    gives way first. It's about the event, and it's one glyph. */
