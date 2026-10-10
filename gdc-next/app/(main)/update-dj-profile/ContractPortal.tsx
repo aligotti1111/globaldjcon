@@ -613,24 +613,32 @@ export default function ContractPortal({
                   {/* Send this contract for the booking. Gated: a wedding contract
                       only on a wedding booking, the plain Standard only on a
                       non-wedding booking. Fixed widths so the columns line up row
-                      to row regardless of the edit label. */}
+                      to row regardless of the edit labels. */}
                   {(() => { const locked = useLocked(c); return (
                     <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
                       onClick={() => { if (!locked) onUseContract?.(c.id); }}
                       style={{ width: 128, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use This Contract</button>
                   ); })()}
-                  {/* One contextual editor, mirroring the card layout. Label is
-                      always "Edit Wording"; the click still routes to the right
-                      editor for the contract type. */}
-                  <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: 96, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
+                  {/* Edit Wording — only for contracts with editable text in our
+                      system. Uploaded files have none, so a same-width spacer keeps
+                      the Anchor Tags / Delete columns aligned on those rows. */}
+                  {(c.is_standard || c.body_text != null) ? (
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ width: 96, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
+                  ) : (
+                    <span aria-hidden style={{ width: 96, flexShrink: 0 }} />
+                  )}
+                  {/* Edit Anchor Tags — the DocuSeal field builder, always available.
+                      Same action Booking Settings exposes; added here so the dashboard
+                      can reposition auto-fill fields too. */}
+                  <button type="button" onClick={() => openCard(c)} style={{ width: 118, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
                 </>
               ) : (
                 <>
-                  {/* Edit text — only for contracts whose wording lives in our system
-                      (the standard contracts and written/pasted ones). Uploaded PDFs
-                      and images have no editable text, so they only get data fields. */}
+                  {/* Edit Wording — only for contracts whose wording lives in our
+                      system (standard + written/pasted). Uploaded PDFs/images have
+                      no editable text, so they only get data fields. */}
                   {(c.is_standard || c.body_text != null) && (
-                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Contract Text</button>
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
                   )}
                   <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
                 </>
