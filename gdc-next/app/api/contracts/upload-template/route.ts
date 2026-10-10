@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { getActingContext, canSendContracts } from '@/lib/acting';
+import { uniqueContractName } from '@/lib/contractName';
 
 export const runtime = 'nodejs';
 
@@ -108,13 +109,15 @@ export async function POST(req: Request) {
   // 4. Save as a new named contract (name taken from the uploaded filename).
   const contractName = name.replace(/\.(pdf|docx?|jpe?g|png)$/i, '').trim() || 'Contract';
   let contractId: string | null = null;
+  let finalName = contractName;
   try {
     const admin = createAdminClient();
+    finalName = await uniqueContractName(admin, acting.djId, contractName);
     const { data, error: dbErr } = await admin
       .from('contracts')
       .insert({
         dj_id: acting.djId,
-        name: contractName,
+        name: finalName,
         docuseal_template_id: String(templateId),
         is_standard: false,
       } as unknown as never)
@@ -129,5 +132,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, contractId, templateId: String(templateId), fileName: name, name: contractName });
+  return NextResponse.json({ ok: true, contractId, templateId: String(templateId), fileName: name, name: finalName });
 }
