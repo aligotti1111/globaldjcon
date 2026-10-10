@@ -123,6 +123,19 @@ function translateTags(escaped: string): string {
 // which would render indentation/newlines as big visible gaps).
 const SIGNATURE_BLOCK = `<div style="margin-top:22px"><div style="font-weight:bold;margin-bottom:12px">SIGNATURES</div><div style="display:flex;justify-content:flex-start;gap:56px"><div style="width:240px"><div style="margin-bottom:4px">DJ Name:</div><div style="margin-bottom:14px"><text-field name="dj_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">DJ Signature:</div><div><signature-field name="DJ Signature" role="DJ" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div><div style="width:240px"><div style="margin-bottom:4px">Client Name:</div><div style="margin-bottom:14px"><text-field name="client_name" role="DJ" required="false" readonly="true" style="width:180px;height:16px;display:inline-block;"></text-field></div><div style="margin-bottom:4px">Client Signature:</div><div><signature-field name="Client Signature" role="Client/Host" format="typed" style="width:220px;height:44px;display:inline-block;"></signature-field></div></div></div></div>`;
 
+// Render one body line as a <div>, bolding section-title lines. A heading is an
+// ALL-CAPS line (e.g. "DJ SERVICES AGREEMENT", "EVENT DETAILS", "PAYMENT") — it
+// has an uppercase letter and no lowercase ones, so data lines carrying {{tags}}
+// or mixed-case labels are never mistaken for headings.
+function contractLineDiv(line: string): string {
+  if (line.trim() === '') return '<div style="height:10px"></div>';
+  const t = line.trim();
+  const isHeading = /[A-Z]/.test(t) && !/[a-z]/.test(t) && !t.includes('{{') && !t.includes('<');
+  return isHeading
+    ? `<div style="font-weight:bold;margin-top:14px">${line}</div>`
+    : `<div>${line}</div>`;
+}
+
 // Build the full HTML document for the contract from the DJ's edited text,
 // optionally with a logo at the top. Field tags are left intact for DocuSeal,
 // and the two-column signature block is appended at the end.
@@ -134,7 +147,7 @@ export function buildContractHtml(text: string, logoUrl?: string | null): string
   const withTags = translateTags(escaped);
   const body = withTags
     .split('\n')
-    .map((line) => (line.trim() === '' ? '<div style="height:10px"></div>' : `<div>${line}</div>`))
+    .map((line) => contractLineDiv(line))
     .join('');
   const logo = logoUrl
     ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
@@ -184,7 +197,7 @@ export function buildBookedContractHtml(
 
   const body = esc
     .split('\n')
-    .map((line) => (line.trim() === '' ? '<div style="height:10px"></div>' : `<div>${line}</div>`))
+    .map((line) => contractLineDiv(line))
     .join('');
   const logo = logoUrl
     ? `<div style="text-align:center;margin-bottom:18px"><img src="${logoUrl}" style="max-height:90px;max-width:260px" /></div>`
