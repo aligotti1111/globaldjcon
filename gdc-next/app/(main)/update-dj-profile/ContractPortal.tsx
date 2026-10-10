@@ -613,10 +613,12 @@ export default function ContractPortal({
                   {(() => { const locked = useLocked(c); return (
                     <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
                       onClick={() => { if (!locked) onUseContract?.(c.id); }}
-                      style={{ width: 128, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use this contract</button>
+                      style={{ width: 128, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use This Contract</button>
                   ); })()}
-                  {/* One contextual editor, mirroring the card layout. */}
-                  <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: 96, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit wording' : c.body_text != null ? 'Edit text' : 'Edit fields'}</button>
+                  {/* One contextual editor, mirroring the card layout. Label is
+                      always "Edit Wording"; the click still routes to the right
+                      editor for the contract type. */}
+                  <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: 96, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
                 </>
               ) : (
                 <>
