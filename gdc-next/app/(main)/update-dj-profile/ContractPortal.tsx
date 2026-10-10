@@ -134,6 +134,24 @@ export default function ContractPortal({
   // mode (Booking Settings) it's always available; in booking mode it's locked
   // unless the booking's event is a wedding.
   const weddingLocked = bookingMode && !/wedding/i.test(eventType || '');
+  // Per-contract send gating (booking mode only): a wedding contract can only be
+  // sent for a wedding booking, and the plain Standard contract only for a
+  // non-wedding booking. Custom written/uploaded contracts are always sendable.
+  const isWeddingBooking = /wedding/i.test(eventType || '');
+  const useLocked = (c: Contract) => {
+    if (!bookingMode) return false;
+    const isWeddingContract = /wedding/i.test(c.name);
+    if (isWeddingContract) return !isWeddingBooking;
+    if (c.is_standard) return isWeddingBooking;
+    return false;
+  };
+  const useLockNote = (c: Contract) => {
+    if (!bookingMode) return '';
+    const isWeddingContract = /wedding/i.test(c.name);
+    if (isWeddingContract && !isWeddingBooking) return 'Weddings only';
+    if (c.is_standard && !isWeddingContract && isWeddingBooking) return 'Not for weddings — use the wedding contract';
+    return '';
+  };
   const builderFields = BUILDER_FIELDS
     .filter((f) => !('only' in f) || (f as { only?: string }).only === djType)
     // Club/bar DJs don't use a company — label the field just "DJ Name".
@@ -582,14 +600,31 @@ export default function ContractPortal({
                 {edited && <span style={{ fontSize: '.68rem', color: 'var(--muted,#8a8aa0)' }}>Edited {edited}</span>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0, alignItems: 'center' }}>
-              {/* Edit text — only for contracts whose wording lives in our system
-                  (the standard contracts and written/pasted ones). Uploaded PDFs
-                  and images have no editable text, so they only get data fields. */}
-              {(c.is_standard || c.body_text != null) && (
-                <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Contract Text</button>
+            <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {bookingMode ? (
+                <>
+                  {/* Send this contract for the booking. Gated: a wedding contract
+                      only on a wedding booking, the plain Standard only on a
+                      non-wedding booking. */}
+                  {(() => { const locked = useLocked(c); return (
+                    <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
+                      onClick={() => { if (!locked) onUseContract?.(c.id); }}
+                      style={{ background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use this contract</button>
+                  ); })()}
+                  {/* One contextual editor, mirroring the card layout. */}
+                  <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit wording' : c.body_text != null ? 'Edit text' : 'Edit fields'}</button>
+                </>
+              ) : (
+                <>
+                  {/* Edit text — only for contracts whose wording lives in our system
+                      (the standard contracts and written/pasted ones). Uploaded PDFs
+                      and images have no editable text, so they only get data fields. */}
+                  {(c.is_standard || c.body_text != null) && (
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Contract Text</button>
+                  )}
+                  <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
+                </>
               )}
-              <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
               <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
             </div>
           </div>
@@ -609,8 +644,11 @@ export default function ContractPortal({
       )}
 
       {/* ── Create a new contract ── */}
+      {/* Scoped rule so the four create tiles stay on ONE row on desktop and fall
+          back to a 2×2 grid on phones (inline styles can't do media queries). */}
+      <style>{`.gdc-create-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}@media (max-width:640px){.gdc-create-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}`}</style>
       <div style={sectionLabel}>Create a contract</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '.6rem' }}>
+      <div className="gdc-create-tiles">
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
           <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)' }}>
             <div style={{ fontSize: 28, lineHeight: 1 }}>✍️</div>
@@ -652,7 +690,7 @@ export default function ContractPortal({
         <div style={sectionLabel}>Your contracts</div>
         {loading ? <div style={{ color: 'var(--muted,#8a8aa0)' }}>Loading…</div>
           : contracts.length === 0 ? <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No contracts yet. Create one above.</div>
-          : inline ? contractsList
+          : (inline || bookingMode) ? contractsList
           : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
             {contracts.map((c) => {
