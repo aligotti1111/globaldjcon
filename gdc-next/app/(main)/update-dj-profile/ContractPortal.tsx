@@ -617,20 +617,20 @@ export default function ContractPortal({
                   {(() => { const locked = useLocked(c); return (
                     <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
                       onClick={() => { if (!locked) onUseContract?.(c.id); }}
-                      style={{ width: 128, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use This Contract</button>
+                      style={{ width: 104, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 5, padding: '.3rem .3rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.68rem' }}>Use This Contract</button>
                   ); })()}
                   {/* Edit Wording — only for contracts with editable text in our
                       system. Uploaded files have none, so a same-width spacer keeps
                       the Anchor Tags / Delete columns aligned on those rows. */}
                   {(c.is_standard || c.body_text != null) ? (
-                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ width: 96, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ width: 82, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 5, padding: '.3rem .3rem', cursor: 'pointer', fontSize: '.68rem' }}>Edit Wording</button>
                   ) : (
-                    <span aria-hidden style={{ width: 96, flexShrink: 0 }} />
+                    <span aria-hidden style={{ width: 82, flexShrink: 0 }} />
                   )}
                   {/* Edit Anchor Tags — the DocuSeal field builder, always available.
                       Same action Booking Settings exposes; added here so the dashboard
                       can reposition auto-fill fields too. */}
-                  <button type="button" onClick={() => openCard(c)} style={{ width: 118, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
+                  <button type="button" onClick={() => openCard(c)} style={{ width: 102, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 5, padding: '.3rem .3rem', cursor: 'pointer', fontSize: '.68rem' }}>Edit Anchor Tags</button>
                 </>
               ) : (
                 <>
@@ -643,7 +643,7 @@ export default function ContractPortal({
                   <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
                 </>
               )}
-              <button type="button" onClick={() => deleteContract(c)} style={{ width: bookingMode ? 48 : undefined, flexShrink: 0, textAlign: 'right', background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
+              <button type="button" onClick={() => deleteContract(c)} title="Delete contract" aria-label="Delete contract" style={{ width: bookingMode ? 24 : undefined, flexShrink: 0, textAlign: 'center', lineHeight: 1, background: 'transparent', border: 'none', color: '#ff5f5f', cursor: 'pointer', fontSize: bookingMode ? '1rem' : '.75rem', fontWeight: 700 }}>{bookingMode ? '✕' : 'Delete'}</button>
             </div>
           </div>
         );
