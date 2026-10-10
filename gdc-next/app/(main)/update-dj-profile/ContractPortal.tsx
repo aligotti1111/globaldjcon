@@ -602,6 +602,10 @@ export default function ContractPortal({
                 <span style={{ fontSize: '.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: cType.color }}>{cType.label}</span>
                 {edited && <span style={{ fontSize: '.68rem', color: 'var(--muted,#8a8aa0)' }}>Edited {edited}</span>}
               </div>
+              {/* Why "Use This Contract" is greyed out for this booking. */}
+              {bookingMode && useLockNote(c) && (
+                <div style={{ fontSize: '.66rem', color: '#d9a441', marginTop: 3 }}>{useLockNote(c)}</div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {bookingMode ? (
