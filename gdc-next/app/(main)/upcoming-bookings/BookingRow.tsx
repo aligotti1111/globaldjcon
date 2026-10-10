@@ -934,7 +934,7 @@ export default function BookingRow({
           {/* Mobile rows show the event type; put the venue name under it (club
               rows already lead with the venue, so no second line there). */}
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-            {context && <span className={styles.rowEventType}>{context}</span>}
+            {context && <span className={styles.rowEventType} style={djType !== 'club' ? { textTransform: 'uppercase' } : undefined}>{context}</span>}
             {djType !== 'club' && (booking.venue_name || booking.venue_type_desc) && (
               <span style={{ fontFamily: 'inherit', fontSize: '.82rem', fontWeight: 500, letterSpacing: 0, color: '#9b9baa', textTransform: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 3 }}>
                 {booking.venue_name || booking.venue_type_desc}
