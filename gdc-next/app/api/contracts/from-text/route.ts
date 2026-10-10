@@ -19,6 +19,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { CONTRACT_DATA_FIELDS } from '@/lib/contractText';
 import { getActingContext, canSendContracts } from '@/lib/acting';
+import { uniqueContractName } from '@/lib/contractName';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -165,11 +166,13 @@ export async function POST(req: Request) {
         .eq('dj_id', acting.djId);
       if (error) throw error;
     } else {
+      // New contract: auto-number the name if one with it already exists.
+      const finalName = await uniqueContractName(admin, acting.djId, name);
       const { data, error } = await admin
         .from('contracts')
         .insert({
           dj_id: acting.djId,
-          name,
+          name: finalName,
           docuseal_template_id: String(templateId),
           body_text: text,
           logo_url: logoUrl,
