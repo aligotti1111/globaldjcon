@@ -581,7 +581,7 @@ export default function ContractPortal({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
       {contracts.map((c) => {
         const cType = c.is_standard
-          ? { label: 'Standard', color: '#e8e2d0' }
+          ? { label: /wedding/i.test(c.name) ? 'Standard Wedding' : 'Standard', color: '#e8e2d0' }
           : c.body_text != null
             ? { label: 'Written', color: '#f5c451' }
             : { label: 'Uploaded', color: 'var(--neon,#00e0a4)' };
@@ -713,7 +713,7 @@ export default function ContractPortal({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '.85rem' }}>
             {contracts.map((c) => {
               const cType = c.is_standard
-                ? { label: 'Standard', color: '#e8e2d0' }
+                ? { label: /wedding/i.test(c.name) ? 'Standard Wedding' : 'Standard', color: '#e8e2d0' }
                 : c.body_text != null
                   ? { label: 'Written', color: '#f5c451' }
                   : { label: 'Uploaded', color: 'var(--neon,#00e0a4)' };
