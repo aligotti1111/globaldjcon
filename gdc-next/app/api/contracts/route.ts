@@ -26,10 +26,44 @@ export async function GET() {
     .from('contracts')
     .select('id, name, docuseal_template_id, is_standard, body_text, updated_at')
     .eq('dj_id', acting.djId)
-    .order('is_standard', { ascending: true })
     .order('updated_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ contracts: data || [] });
+
+  // "Most recently used" ordering: a contract's last-used moment is the newest
+  // time it was sent on any booking. We read that from bookings.contract_sent_log_at
+  // (a never-nulled stamp), build a per-contract max, and sort by it — most
+  // recently used first, then never-used contracts by most recently edited.
+  type Row = { id: string; updated_at?: string | null; [k: string]: unknown };
+  const rows = ((data as unknown as Row[] | null) || []);
+  const lastUsed = new Map<string, string>();
+  try {
+    const { data: bk } = await admin
+      .from('bookings')
+      .select('contract_id, contract_sent_log_at')
+      .eq('dj_id', acting.djId)
+      .not('contract_id', 'is', null)
+      .not('contract_sent_log_at', 'is', null);
+    for (const b of ((bk as { contract_id?: string | null; contract_sent_log_at?: string | null }[] | null) || [])) {
+      const cid = b.contract_id || '';
+      const t = b.contract_sent_log_at || '';
+      if (!cid || !t) continue;
+      const prev = lastUsed.get(cid);
+      if (!prev || t > prev) lastUsed.set(cid, t);
+    }
+  } catch { /* fall back to edited order if the lookup fails */ }
+
+  const sorted = rows
+    .map((c) => ({ c, used: lastUsed.get(c.id) || '', edited: c.updated_at || '' }))
+    .sort((a, b) => {
+      // Both used → newer use first. One used → it goes first. Neither → newer edit first.
+      if (a.used && b.used) return a.used < b.used ? 1 : a.used > b.used ? -1 : 0;
+      if (a.used) return -1;
+      if (b.used) return 1;
+      return a.edited < b.edited ? 1 : a.edited > b.edited ? -1 : 0;
+    })
+    .map((x) => ({ ...x.c, last_used_at: x.used || null }));
+
+  return NextResponse.json({ contracts: sorted });
 }
 
 export async function PATCH(req: Request) {
