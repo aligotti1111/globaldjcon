@@ -593,7 +593,10 @@ export default function ContractPortal({
               {renaming === c.id ? (
                 <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} style={{ width: '100%', boxSizing: 'border-box', padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
               ) : (
-                <div style={{ color: 'var(--white,#fff)', fontWeight: 700, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} <span style={{ opacity: .6, fontWeight: 400 }}>✎</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>
+                  <span style={{ color: 'var(--white,#fff)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{c.name}</span>
+                  <span style={{ opacity: .6, fontWeight: 400, flexShrink: 0, color: 'var(--white,#fff)' }}>✎</span>
+                </div>
               )}
               <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', marginTop: 3 }}>
                 <span style={{ fontSize: '.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: cType.color }}>{cType.label}</span>
@@ -605,14 +608,15 @@ export default function ContractPortal({
                 <>
                   {/* Send this contract for the booking. Gated: a wedding contract
                       only on a wedding booking, the plain Standard only on a
-                      non-wedding booking. */}
+                      non-wedding booking. Fixed widths so the columns line up row
+                      to row regardless of the edit label. */}
                   {(() => { const locked = useLocked(c); return (
                     <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
                       onClick={() => { if (!locked) onUseContract?.(c.id); }}
-                      style={{ background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use this contract</button>
+                      style={{ width: 128, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.78rem' }}>Use this contract</button>
                   ); })()}
                   {/* One contextual editor, mirroring the card layout. */}
-                  <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit wording' : c.body_text != null ? 'Edit text' : 'Edit fields'}</button>
+                  <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: 96, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .4rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit wording' : c.body_text != null ? 'Edit text' : 'Edit fields'}</button>
                 </>
               ) : (
                 <>
@@ -625,7 +629,7 @@ export default function ContractPortal({
                   <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
                 </>
               )}
-              <button type="button" onClick={() => deleteContract(c)} style={{ background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
+              <button type="button" onClick={() => deleteContract(c)} style={{ width: bookingMode ? 48 : undefined, flexShrink: 0, textAlign: 'right', background: 'transparent', border: 'none', color: '#ff7676', cursor: 'pointer', fontSize: '.75rem' }}>Delete</button>
             </div>
           </div>
         );
