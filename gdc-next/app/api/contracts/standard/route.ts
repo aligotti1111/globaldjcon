@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDocuseal, buildContractHtml } from '@/lib/docuseal';
 import { getActingContext, canSendContracts } from '@/lib/acting';
+import { uniqueContractName } from '@/lib/contractName';
 
 export const runtime = 'nodejs';
 
@@ -74,11 +75,14 @@ export async function POST(req: Request) {
         .eq('dj_id', acting.djId);
       if (error) throw error;
     } else {
+      // New contract: auto-number the name if the DJ already has one with it
+      // (e.g. a second "Global DJ Connect Standard Contract" → "… 1", "… 2").
+      const finalName = await uniqueContractName(admin, acting.djId, name);
       const { data, error } = await admin
         .from('contracts')
         .insert({
           dj_id: acting.djId,
-          name,
+          name: finalName,
           docuseal_template_id: String(templateId),
           logo_url: logoUrl,
           is_standard: true,
