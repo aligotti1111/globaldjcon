@@ -585,7 +585,7 @@ export default function ContractPortal({
           : c.body_text != null
             ? { label: 'Written', color: '#f5c451' }
             : { label: 'Uploaded', color: 'var(--neon,#00e0a4)' };
-        const edited = c.updated_at ? new Date(c.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+        const edited = c.updated_at ? new Date(c.updated_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
         return (
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '.8rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, padding: '.7rem .9rem', background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
             <div style={{ fontSize: 20 }}>📄</div>
