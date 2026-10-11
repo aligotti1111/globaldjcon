@@ -40,6 +40,26 @@ import { AuthProvider } from '@/components/AuthProvider';
 import Toaster from '@/components/Toaster';
 import { createClient } from '@/lib/supabase/server';
 import type { CurrentUser, UserProfile } from '@/types/db';
+// Self-hosted fonts (served from our own origin) instead of a runtime <link> to
+// fonts.googleapis.com. The cross-site Google Fonts request is what triggered
+// Safari's "reduce privacy protections" banner on iOS; @fontsource bundles the
+// woff2 files at build time and registers the SAME family names ('Inter',
+// 'Bebas Neue', etc.), so all existing `font-family: '…'` rules keep working.
+import '@fontsource/archivo/600.css';
+import '@fontsource/archivo/700.css';
+import '@fontsource/bebas-neue/400.css';
+import '@fontsource/dm-sans/400.css';
+import '@fontsource/dm-sans/500.css';
+import '@fontsource/dm-sans/700.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/oswald/500.css';
+import '@fontsource/oswald/600.css';
+import '@fontsource/oswald/700.css';
+import '@fontsource/space-mono/400.css';
+import '@fontsource/space-mono/700.css';
 import './styles/index.css';
 
 
@@ -135,14 +155,6 @@ export default async function RootLayout({
 
   return (
     <html lang="en" style={fontVars}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>
         <AuthProvider initialUser={initialUser}>{children}</AuthProvider>
         <Toaster />
