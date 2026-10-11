@@ -61,7 +61,7 @@ Address: {{event_address}}
 Price: {{price}}
 Overtime rate: {{overtime_rate}}/hr
 Tax: {{tax}}
-Total: {{grand_total}}
+Total Event Cost with Tax: {{grand_total}}
 Package: {{package}}
 
 ${sharedClauses(OVERTIME_RATED)}`;
@@ -82,7 +82,7 @@ Equipment: {{equipment}}
 Price: {{price}}
 Deposit: {{deposit}}
 Tax: {{tax}}
-Total: {{grand_total}}
+Total Event Cost with Tax: {{grand_total}}
 
 ${sharedClauses(OVERTIME_AGREED)}`;
 
@@ -105,7 +105,7 @@ Address: {{event_address}}
 Price: {{price}}
 Overtime rate: {{overtime_rate}}/hr
 Tax: {{tax}}
-Total: {{grand_total}}
+Total Event Cost with Tax: {{grand_total}}
 Package: {{package}}
 
 SERVICES
