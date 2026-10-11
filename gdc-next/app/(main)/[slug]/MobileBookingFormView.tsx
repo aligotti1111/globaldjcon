@@ -1000,7 +1000,7 @@ export default function MobileBookingForm({
           {knownPhone && !editingPhone ? (
             // Label + number + SMS opt-in all on ONE line — the value is
             // read-only (from the account), so a stacked label just burns a row.
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
               <label htmlFor="mpf-phone" style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Phone</label>
               <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {phone}
@@ -1014,14 +1014,17 @@ export default function MobileBookingForm({
               >
                 {'✎'}
               </button>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0, marginLeft: '1rem', minWidth: 0 }}>
+              {/* Full-width on its own line (flexBasis 100%) so it never runs
+                  off the screen on a phone; sits inline beside the number only
+                  when there's room on wider screens. */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0, flex: '1 1 100%', minWidth: 0 }}>
                 <input
                   type="checkbox"
                   checked={smsOptIn}
                   onChange={(e) => setSmsOptIn(e.target.checked)}
                   style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
                 />
-                <span style={{ fontSize: '.78rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '.78rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400 }}>
                   Text me updates. Msg &amp; data rates may apply.
                 </span>
               </label>
