@@ -955,10 +955,12 @@ export default function MobileBookingForm({
             actually here to supply it. Plain text when the account already has
             a full one; a field only when it's short a surname. */}
         <div className={styles.formRow}>
-          <label htmlFor="mpf-full-name">Your Name</label>
           {!needsFullName && !editingName ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', padding: '.55rem 0' }}>
-              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600 }}>
+            // Stored name: label + value + edit pencil all on ONE line, same as
+            // the known-phone row.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+              <label htmlFor="mpf-full-name" style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Your Name</label>
+              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {accountName}
               </div>
               <button
@@ -973,6 +975,7 @@ export default function MobileBookingForm({
             </div>
           ) : (
             <>
+              <label htmlFor="mpf-full-name">Your Name</label>
               <FieldCheck valid={fullNameValid}>
                 <input
                   id="mpf-full-name"
