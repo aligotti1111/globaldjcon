@@ -1986,7 +1986,7 @@ select.input {
      Repaint both bands red here, where a two-class selector outranks the plain
      band rules above, so the whole mobile card reads cancelled top to bottom. */
   .rowCancelled .statusStrip { background: #3a1f22; }
-  .rowCancelled .rowValue { background: #4a2327; }
+  /* Total Value band is NOT tinted — the red stays above the total only. */
 }
 
 /* ── Host invite block in modal ─────────────────────────────────────── */
