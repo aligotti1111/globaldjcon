@@ -836,11 +836,7 @@ export default function BookingRow({
       // planning for. Red wash + a red edge, at full opacity.
       style={
         isCancelled
-          ? {
-              position: 'relative',
-              background: 'rgba(192,57,43,.10)',
-              boxShadow: 'inset 3px 0 0 #ff5f5f',
-            }
+          ? { position: 'relative', background: 'rgba(192,57,43,.14)' }
           : { position: 'relative' }
       }
     >
