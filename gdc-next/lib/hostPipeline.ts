@@ -23,6 +23,8 @@ export type HostStep = PipelineStep & {
 export interface HostPipelineInput {
   bookingType: 'club' | 'mobile' | null;
   contractStatus?: string | null;
+  /** Link the host clicks to review + sign when the contract is awaiting them. */
+  contractSignHref?: string;
   hasDeposit?: boolean;
   depositPaid?: boolean;
   plannerStatus?: 'sent' | 'partial' | 'submitted' | null;
@@ -77,6 +79,12 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
     out.push(step('contract', 'Contract', 'doc', { muted: true, caption: 'Not Required' }));
   } else if (i.contractStatus === 'signed') {
     out.push(step('contract', 'Contract', 'doc', { done: true, caption: 'Complete' }));
+  } else if (i.contractStatus === 'awaiting_client' && i.contractSignHref) {
+    // It's the host's turn — make the stage clickable so they can review + sign.
+    out.push(step('contract', 'Contract', 'doc', {
+      caption: 'Sign Here',
+      href: i.contractSignHref, hrefLabel: 'View & Sign Contract',
+    }));
   } else {
     out.push(step('contract', 'Contract', 'doc', {
       caption: i.contractStatus === 'awaiting_client' ? 'Pending' : 'Not Requested',
