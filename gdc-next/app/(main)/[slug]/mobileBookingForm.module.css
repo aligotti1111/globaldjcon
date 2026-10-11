@@ -99,7 +99,9 @@
   font-weight: 500;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--white);
+  /* Muted rather than pure white: the label recedes and the white value the
+     host types stands out, which reads easier than white-on-white labels. */
+  color: var(--muted, #9a9ab0);
   display: block;
   margin-bottom: .4rem;
 }
