@@ -766,7 +766,8 @@ function SingleMonthView({
     // quick available/unavailable toggle.
     const showsAsBooked = isBooked || isFull;
     const isSelected = selectedDate === key;
-    const isAvail = !isPast && !isBeyond && !isBooked && !isUnavail && !isFull;
+    // Today is not bookable — requests must be for a future date.
+    const isAvail = !isPast && !isToday && !isBeyond && !isBooked && !isUnavail && !isFull;
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
       Math.floor((firstDay + daysInMonth - 1) / 7);
