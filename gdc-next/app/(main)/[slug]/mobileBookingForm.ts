@@ -566,7 +566,7 @@ export async function searchAddresses(
     const cc = (country || '').trim().toLowerCase();
     const ccParam = cc ? `&countrycodes=${encodeURIComponent(cc)}` : '';
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1${ccParam}`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=10&addressdetails=1${ccParam}`
     );
     const results = await res.json();
     if (!Array.isArray(results)) return [];
