@@ -757,7 +757,8 @@ function SingleMonthView({
         );
       } else if (isUnavail) {
         inner = null; // no badge for unavail
-      } else if (!isOwnProfile && !readOnly) {
+      } else if (!isOwnProfile && !readOnly && !isToday) {
+        // Today is not bookable — requests must be for a future date.
         // Open cell — show "Book Now" badge OR "Pending" if the viewer
         // already has a pending request on this date. The Pending pill
         // is non-clickable (no double-booking the same date).
@@ -837,7 +838,7 @@ function SingleMonthView({
     // unavailable, and pending-for-this-viewer cells are still inert at
     // the cell level (booked cells use the popup handler instead).
     const isPendingForViewerCell = !isOwnProfile && !!pendingDates?.has(key);
-    const isOpenForBooking = !isOwnProfile && !readOnly && !isPast && !isBooked && !isUnavail && !isPendingForViewerCell;
+    const isOpenForBooking = !isOwnProfile && !readOnly && !isPast && !isToday && !isBooked && !isUnavail && !isPendingForViewerCell;
     let cellClickHandler: ((e?: React.MouseEvent) => void) | undefined;
     if (!isOwnProfile && isBooked && !isPrivate && dayData.eventName) {
       cellClickHandler = () => onBookedCellClick(dayData, key);
