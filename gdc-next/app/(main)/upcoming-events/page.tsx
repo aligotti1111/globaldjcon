@@ -249,6 +249,11 @@ export default async function UpcomingEventsPage() {
       bookingType,
       // Contract signed on paper (override) reads the same as e-signed.
       contractStatus: overrides.contract ? 'signed' : (raw.contract_status ?? null),
+      // Awaiting the host's signature → clickable "View & Sign Contract" that
+      // routes them to the DocuSeal signing page.
+      contractSignHref: (!overrides.contract && raw.contract_status === 'awaiting_client')
+        ? `/api/contracts/sign-redirect?bookingId=${e.id}`
+        : undefined,
       hasDeposit: raw.deposit_pct != null || raw.deposit_amount != null || deposits.length > 0 || !!overrides.deposit,
       depositPaid,
       plannerStatus: raw.planner_status ?? null,
