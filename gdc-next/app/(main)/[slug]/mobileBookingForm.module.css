@@ -218,6 +218,16 @@
 .smallNumberInput {
   width: 120px;
 }
+/* Hide the native up/down number spinners on the guest-count field. */
+.smallNumberInput::-webkit-outer-spin-button,
+.smallNumberInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.smallNumberInput {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 
 /* ── Times row (start + end side by side) ───────────── */
 .timesLabel {
