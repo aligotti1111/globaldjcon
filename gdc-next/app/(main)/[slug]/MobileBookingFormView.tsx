@@ -1122,7 +1122,7 @@ export default function MobileBookingForm({
           {eventType === 'other' && (
             <input
               type="text"
-              placeholder="Describe your event..."
+              placeholder=""
               value={eventTypeOther}
               onChange={(e) => setEventTypeOther(e.target.value)}
               className={styles.input}
@@ -1137,7 +1137,7 @@ export default function MobileBookingForm({
               <input
                 id="mpf-event-subtype"
                 type="text"
-                placeholder={EVENT_SUBFIELDS[eventType].textPlaceholder}
+                placeholder=""
                 value={eventSubType}
                 onChange={(e) => setEventSubType(e.target.value)}
                 className={styles.input}
@@ -1163,7 +1163,7 @@ export default function MobileBookingForm({
                   onWheel={(e) => e.currentTarget.blur()}
                   min={0}
                   inputMode="numeric"
-                  placeholder="e.g. 30"
+                  placeholder=""
                   value={birthdayAge}
                   onChange={(e) => setBirthdayAge(e.target.value)}
                   className={styles.input}
@@ -1204,7 +1204,7 @@ export default function MobileBookingForm({
             <input
               id="mpf-venue-name"
               type="text"
-              placeholder="The Grand Ballroom"
+              placeholder=""
               value={venueName}
               onChange={(e) => setVenueName(e.target.value)}
               className={`${fieldClass('mpf-venue-name', styles.input)} ${styles.hasCheck}`}
@@ -1240,7 +1240,7 @@ export default function MobileBookingForm({
               <input
                 id="mpf-venue-address"
                 type="text"
-                placeholder="123 Main St, City, State"
+                placeholder=""
                 value={venueAddress}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1314,7 +1314,7 @@ export default function MobileBookingForm({
             <input
               id="mpf-room"
               type="text"
-              placeholder="e.g. Grand Ballroom, 3rd Floor Terrace"
+              placeholder=""
               value={room}
               onChange={(e) => setRoom(e.target.value)}
               className={`${styles.input} ${styles.hasCheck}`}
@@ -1331,7 +1331,7 @@ export default function MobileBookingForm({
               type="number"
               onWheel={(e) => e.currentTarget.blur()}
               min={1}
-              placeholder="150"
+              placeholder=""
               value={guests}
               onChange={(e) => setGuests(e.target.value)}
               className={`${styles.input} ${styles.smallNumberInput} ${styles.hasCheck}`}
@@ -1738,7 +1738,7 @@ export default function MobileBookingForm({
           </label>
           <textarea
             id="mpf-message"
-            placeholder="Tell the DJ about your event..."
+            placeholder=""
             rows={3}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
