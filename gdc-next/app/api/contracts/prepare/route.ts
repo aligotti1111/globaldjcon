@@ -13,6 +13,7 @@ import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal, buildBookedContractHtml } from '@/lib/docuseal';
 import { getContractUsage } from '@/lib/contractQuota';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { MOB_EVENT_LABELS } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -344,6 +345,12 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     ceremony = [ceStart, room, addOn].filter(Boolean).join(' · ') || 'Yes';
   }
 
+  // Friendly event-type label (e.g. "weddings" → "Wedding"), matching how it
+  // shows on the booking request page. Falls back to the raw value for custom
+  // types not in the map.
+  const rawEventType = ((b.event_type as string) || '');
+  const eventTypeLabel = MOB_EVENT_LABELS[rawEventType.toLowerCase()] || rawEventType;
+
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     agreement_date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
@@ -354,7 +361,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     client_name: clientName,
     dj_name: companyName || dj?.name || 'DJ',
     event_date: fmtDate(b.event_date as string),
-    event_type: (b.event_type as string) || '',
+    event_type: eventTypeLabel,
     venue_name: (b.venue_name as string) || '',
     event_address: (b.venue_address as string) || '',
     start_time: fmtTime(b.start_time as string),
@@ -451,7 +458,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     const brand = companyName || 'your DJ';
 
     // Subject: "Contract from [Company] | [event or venue] | [date]" — skip missing parts.
-    const middle = isClub ? ((b.venue_name as string) || '') : ((b.event_type as string) || '');
+    const middle = isClub ? ((b.venue_name as string) || '') : eventTypeLabel;
     const subjectParts = [
       companyName ? `Contract from ${companyName}` : 'Contract',
       middle,
