@@ -246,7 +246,8 @@
   font-weight: 500;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--white);
+  /* Match the other field labels (.formRow label). */
+  color: #9a9ab0;
   display: block;
   margin-bottom: .4rem;
 }
