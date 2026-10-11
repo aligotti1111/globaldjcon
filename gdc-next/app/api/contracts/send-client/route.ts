@@ -74,24 +74,24 @@ export async function POST(req: Request) {
   let submissionId: string | null = null;
   let booking: {
     dj_id: string | null; host_email: string | null; requester_name: string | null;
-    venue_name: string | null; event_date: string | null;
+    requester_id: string | null; venue_name: string | null; event_date: string | null;
   } | null = null;
   try {
     const { data } = await admin
       .from('bookings')
-      .select('contract_submission_id, dj_id, host_email, requester_name, venue_name, event_date')
+      .select('contract_submission_id, dj_id, host_email, requester_name, requester_id, venue_name, event_date')
       .eq('id', bookingId)
       .eq('dj_id', acting.djId)
       .maybeSingle();
     const row = data as {
       contract_submission_id?: string | null;
       dj_id: string | null; host_email: string | null; requester_name: string | null;
-      venue_name: string | null; event_date: string | null;
+      requester_id: string | null; venue_name: string | null; event_date: string | null;
     } | null;
     submissionId = row?.contract_submission_id || null;
     booking = row ? {
       dj_id: row.dj_id, host_email: row.host_email, requester_name: row.requester_name,
-      venue_name: row.venue_name, event_date: row.event_date,
+      requester_id: row.requester_id, venue_name: row.venue_name, event_date: row.event_date,
     } : null;
   } catch { submissionId = null; }
   if (!submissionId) return NextResponse.json({ error: 'No contract found for this booking.' }, { status: 404 });
@@ -127,7 +127,14 @@ export async function POST(req: Request) {
     djName = (row?.company || row?.name || '').trim() || 'your DJ';
   }
 
-  const greetingName = (booking?.requester_name || '').trim() || 'there';
+  // Greet the host by name. Prefer the name on the booking; otherwise look up
+  // the host account's name so the email reads "Hi Anthony," not "Hi there,".
+  let greetingName = (booking?.requester_name || '').trim();
+  if (!greetingName && booking?.requester_id) {
+    const { data: h } = await admin.from('users').select('name').eq('id', booking.requester_id).maybeSingle();
+    greetingName = (((h as { name?: string | null } | null)?.name) || '').trim();
+  }
+  if (!greetingName) greetingName = 'there';
   const dateStr = fmtDate(booking?.event_date);
   const where = [booking?.venue_name, dateStr].filter(Boolean).join(' — ');
 
