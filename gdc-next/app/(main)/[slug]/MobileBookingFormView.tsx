@@ -1350,7 +1350,7 @@ export default function MobileBookingForm({
                 onChange={(e) => setStartTime(e.target.value)}
                 className={`${fieldClass('mpf-start-time', styles.select)} ${styles.hasCheckSelect}`}
               >
-                <option value="">Select time...</option>
+                <option value="">Select…</option>
                 {MOB_TIME_OPTIONS.map(o => (
                   <option key={o.val} value={o.val}>{o.label}</option>
                 ))}
@@ -1368,7 +1368,7 @@ export default function MobileBookingForm({
                 onChange={(e) => setEndTime(e.target.value)}
                 className={`${styles.select} ${styles.hasCheckSelect}`}
               >
-                <option value="">Select time...</option>
+                <option value="">Select…</option>
                 {endTimeOptions.map(o => (
                   <option key={o.val} value={o.val}>{o.label}</option>
                 ))}
@@ -1433,7 +1433,7 @@ export default function MobileBookingForm({
                     onChange={(e) => setCocktailStart(e.target.value)}
                     className={fieldClass('mpf-cocktail-start', styles.select)}
                   >
-                    <option value="">Select time...</option>
+                    <option value="">Select…</option>
                     {MOB_TIME_OPTIONS.map(o => (
                       <option key={o.val} value={o.val}>{o.label}</option>
                     ))}
@@ -1528,7 +1528,7 @@ export default function MobileBookingForm({
                     onChange={(e) => setCeremonyStart(e.target.value)}
                     className={fieldClass('mpf-ceremony-start', styles.select)}
                   >
-                    <option value="">Select time...</option>
+                    <option value="">Select…</option>
                     {MOB_TIME_OPTIONS.map(o => (
                       <option key={o.val} value={o.val}>{o.label}</option>
                     ))}
