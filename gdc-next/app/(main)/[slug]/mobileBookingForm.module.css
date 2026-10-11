@@ -99,9 +99,9 @@
   font-weight: 500;
   letter-spacing: .04em;
   text-transform: uppercase;
-  /* Muted rather than pure white: the label recedes and the white value the
-     host types stands out, which reads easier than white-on-white labels. */
-  color: var(--muted, #9a9ab0);
+  /* Field name uses the lighter grey the placeholder used to use; the
+     placeholder now takes the darker --muted (swapped per request). */
+  color: #9a9ab0;
   display: block;
   margin-bottom: .4rem;
 }
@@ -113,6 +113,14 @@
   font-family: 'Space Mono', monospace;
 }
 
+/* Sample/placeholder text takes the darker --muted (the color the field name
+   used to use) — swapped with the label per request. opacity:1 stops Firefox
+   from lightening it. */
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
 .input,
 .select,
 .textarea {
