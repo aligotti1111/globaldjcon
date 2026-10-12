@@ -363,11 +363,7 @@ export default function MobileMenu() {
             <Link href="/account-settings" onClick={close} className="mobile-menu-item">
               <IconSettings />Account Settings
             </Link>
-            {(isDj || isStaff) && (
-              <Link href="/inbox" onClick={close} className="mobile-menu-item">
-                <IconInbox />Inbox
-              </Link>
-            )}
+            {/* Inbox lives under Navigate only — not duplicated here in Account. */}
             {/* Finance/Earnings — owner only + paid (matches the desktop menu). */}
             {isDj && !isStaff && bookingEnabled && (
               <Link href="/finance" onClick={close} className="mobile-menu-item">
