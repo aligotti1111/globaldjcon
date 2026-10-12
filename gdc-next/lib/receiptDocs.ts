@@ -90,7 +90,7 @@ function friendlyDate(iso?: string | null): string {
 /** Fetch a logo URL into pdf-lib-embeddable bytes. Only PNG/JPG survive — any
  *  other format (or a failed fetch) returns null and the document renders
  *  logo-less. */
-async function fetchLogo(url?: string | null): Promise<{ bytes: Uint8Array; type: 'png' | 'jpg' } | null> {
+export async function fetchLogo(url?: string | null): Promise<{ bytes: Uint8Array; type: 'png' | 'jpg' } | null> {
   if (!url) return null;
   try {
     const res = await fetch(url);
@@ -144,6 +144,13 @@ interface DjDocRow {
   zip: string | null;
   phone: string | null;
   contract_logo_url: string | null;
+  // Receipt-tab override for the address printed on invoices/receipts ONLY.
+  // null  -> fall back to the account address (default, backward-compatible)
+  // ''    -> the DJ chose to show NO address on receipts
+  // 'text'-> use this exact line
+  receipt_address: string | null;
+  // Receipt accent colour (hex). null -> house teal default.
+  receipt_color: string | null;
   payment_methods: unknown;
   stripe_connect_ready: boolean | null;
 }
@@ -194,7 +201,7 @@ export async function buildBookingDocAttachment(
 
     const { data: dData } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, payment_methods, stripe_connect_ready')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, payment_methods, stripe_connect_ready')
       .eq('id', args.djId)
       .maybeSingle();
     const dj = dData as DjDocRow | null;
@@ -221,12 +228,15 @@ export async function buildBookingDocAttachment(
     const isReceipt = args.docKind === 'receipt';
     const isClub = b.dj_type === 'club';
 
-    // Business address line: the autocomplete stores the full "street, City,
-    // ST zip" in `address`. Fall back to composing from the parts for older
-    // rows that only have the pieces.
-    const addressLine = (dj.address && dj.address.trim())
+    // Business address line. The Receipt-tab override (receipt_address) wins:
+    //   non-null  -> use it exactly ('' means the DJ chose to show NO address)
+    //   null      -> fall back to the account address (the autocomplete stores
+    //                the full "street, City, ST zip" in `address`; compose from
+    //                the parts for older rows that only have the pieces).
+    const accountAddr = (dj.address && dj.address.trim())
       || [dj.city, [dj.state, dj.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
       || '';
+    const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
 
     const logo = await fetchLogo(dj.contract_logo_url);
 
@@ -428,6 +438,7 @@ export async function buildBookingDocAttachment(
       docNumber,
       dateText,
       currency,
+      accentHex: dj.receipt_color,
       business: {
         name: dj.name,
         address: addressLine || null,
