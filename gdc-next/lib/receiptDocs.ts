@@ -247,6 +247,13 @@ export async function buildBookingDocAttachment(
     if (dj.zip && String(dj.zip).trim() && accountAddr && !accountAddr.includes(String(dj.zip).trim())) {
       accountAddr = `${accountAddr} ${String(dj.zip).trim()}`;
     }
+    // Stack the account line (first comma part = street, the rest = city/ST/ZIP)
+    // so the address renders on multiple lines like the custom receipt address.
+    if (accountAddr.includes(',')) {
+      const p = accountAddr.split(',').map((s) => s.trim()).filter(Boolean);
+      if (p.length > 1) accountAddr = [p[0], p.slice(1).join(', ')].join('\n');
+    }
+    // The custom receipt address is already newline-stacked; use it as-is.
     const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
     // Phone printed on the receipt: the override wins ('' -> none), else account phone.
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : dj.phone;
