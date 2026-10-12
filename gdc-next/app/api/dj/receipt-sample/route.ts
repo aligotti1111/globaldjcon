@@ -69,8 +69,8 @@ export async function GET() {
         venue: 'The Grand Ballroom',
       },
       details: [
-        { label: 'Package', value: 'Signature DJ Package' },
         { label: 'Event Type', value: 'Wedding' },
+        { label: 'Package', value: 'Signature DJ Package' },
       ],
       lines: [
         { label: 'Event total (incl. tax)', amount: 2400 },
