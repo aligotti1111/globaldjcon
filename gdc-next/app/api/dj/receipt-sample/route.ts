@@ -41,6 +41,10 @@ export async function GET() {
     if (dj.zip && String(dj.zip).trim() && accountAddr && !accountAddr.includes(String(dj.zip).trim())) {
       accountAddr = `${accountAddr} ${String(dj.zip).trim()}`;
     }
+    if (accountAddr.includes(',')) {
+      const p = accountAddr.split(',').map((s) => s.trim()).filter(Boolean);
+      if (p.length > 1) accountAddr = [p[0], p.slice(1).join(', ')].join('\n');
+    }
     const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : (dj.phone || null);
 
