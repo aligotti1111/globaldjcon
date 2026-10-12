@@ -401,6 +401,27 @@ export default function UpcomingBookingsClient({
   }, [bookings]);
   const activityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
 
+  // Dashboard summary stats (desktop only). Cancelled bookings are excluded.
+  const dashStats = useMemo(() => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+    const d30iso = d30.toISOString();
+    const isCancelled = (b: UpcomingBooking) => b.status === 'cancelled' || b.cancel_status === 'accepted';
+    const outstanding = (s: string) => s === 'requested' || s === 'pending_confirmation' || s === 'partial';
+    let upcoming = 0, booked30 = 0, pendingPayments = 0, pendingContracts = 0;
+    for (const b of bookings) {
+      if (isCancelled(b)) continue;
+      if ((b.event_date || '') >= todayKey) upcoming++;
+      const when = b.accepted_at || b.created_at || '';
+      if (when && when >= d30iso) booked30++;
+      if (b.contract_status === 'awaiting_dj' || b.contract_status === 'awaiting_client') pendingContracts++;
+      for (const r of (paymentsMap[b.id] || [])) {
+        if (outstanding(r.status)) pendingPayments++;
+      }
+    }
+    return { upcoming, booked30, pendingPayments, pendingContracts };
+  }, [bookings, paymentsMap]);
+
   // IDs of bookings whose time range overlaps another booking on the SAME
   // date — CLUB/BAR DJs only (a club DJ can't be in two places at once).
   // Mobile DJs can accept multiple same-day bookings, so this is empty for
@@ -546,6 +567,23 @@ export default function UpcomingBookingsClient({
           )}
         </div>
       </div>
+
+      {/* Summary stat boxes — desktop only (hidden on mobile via CSS). */}
+      {!archive && (
+        <div className={styles.statBoxes}>
+          {([
+            ['Total Upcoming Bookings', dashStats.upcoming],
+            ['Total Booked — Last 30 Days', dashStats.booked30],
+            ['Pending Payment Requests', dashStats.pendingPayments],
+            ['Pending Contracts', dashStats.pendingContracts],
+          ] as [string, number][]).map(([label, value]) => (
+            <div key={label} className={styles.statBox}>
+              <div className={styles.statBoxNum}>{value}</div>
+              <div className={styles.statBoxLabel}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!archive && bookings.length > 0 && (
         <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
