@@ -38,10 +38,10 @@ export async function GET() {
     const admin = createAdminClient();
     const { data } = await admin
       .from('users')
-      .select('address, city, state, zip, phone, receipt_address, receipt_color, receipt_phone')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone')
       .eq('id', acting.djId)
       .maybeSingle();
-    const dj = data as { address?: string | null; city?: string | null; state?: string | null; zip?: string | null; phone?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null } | null;
+    const dj = data as { name?: string | null; address?: string | null; city?: string | null; state?: string | null; zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null } | null;
     return NextResponse.json({
       receiptAddress: dj?.receipt_address ?? null,
       accountAddress: accountAddressOf(dj),
@@ -54,6 +54,9 @@ export async function GET() {
       receiptColor: dj?.receipt_color ?? null,
       receiptPhone: dj?.receipt_phone ?? null,
       accountPhone: dj?.phone ?? '',
+      // For the instant client-side preview.
+      businessName: dj?.name ?? '',
+      logoUrl: dj?.contract_logo_url ?? null,
     });
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
