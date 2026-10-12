@@ -232,11 +232,6 @@ export default function ReceiptSettingsSection() {
 
         {/* Phone — receipt-only, independent of the account phone. */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Phone on receipts</label>
-        <p style={hint}>
-          {phoneDefault
-            ? 'Currently using your account phone. Enter a different one for receipts, or remove it.'
-            : (phone.trim() ? 'Using a custom receipt phone.' : 'No phone is shown on your receipts.')}
-        </p>
         <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(e.target.value)}
           placeholder="(555) 123-4567" style={{ ...input, maxWidth: 260 }} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.7rem' }}>
