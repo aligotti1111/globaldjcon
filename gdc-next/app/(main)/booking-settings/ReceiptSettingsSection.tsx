@@ -11,32 +11,57 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BusinessLogoSection from '../update-dj-profile/BusinessLogoSection';
-import { searchAddresses, type AddressSuggestion } from '../account-settings/helpers';
+import { searchAddresses, COUNTRIES, type AddressSuggestion } from '../account-settings/helpers';
 
 const DEFAULT_COLOR = '#00e0a4';
+const DEFAULT_COUNTRY = 'United States';
 
-// Best-effort split of a stored "street, city, ST zip" line back into fields.
-function parseAddress(s: string): { street: string; city: string; state: string; zip: string } {
+// US state/territory abbreviations for the State dropdown.
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
+  'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
+  'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC','PR',
+];
+
+type AddrFields = { street: string; city: string; state: string; zip: string; country: string };
+
+function parseCityLine(s: string): { city: string; state: string; zip: string } {
   const parts = s.split(',').map((x) => x.trim()).filter(Boolean);
-  if (parts.length === 0) return { street: '', city: '', state: '', zip: '' };
-  if (parts.length === 1) return { street: parts[0], city: '', state: '', zip: '' };
+  if (parts.length === 0) return { city: '', state: '', zip: '' };
   const last = parts[parts.length - 1];
   const m = last.match(/^([A-Za-z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
-  if (m) {
-    return {
-      street: parts.slice(0, parts.length - 2).join(', ') || parts[0],
-      city: parts.length >= 3 ? parts[parts.length - 2] : '',
-      state: m[1].toUpperCase(),
-      zip: m[2] || '',
-    };
-  }
-  // No "ST zip" tail — treat the last comma part as the city.
-  return { street: parts.slice(0, parts.length - 1).join(', '), city: last, state: '', zip: '' };
+  if (m) return { city: parts.slice(0, parts.length - 1).join(', '), state: m[1].toUpperCase(), zip: m[2] || '' };
+  return { city: parts.join(', '), state: '', zip: '' };
 }
 
-function composeAddress(f: { street: string; city: string; state: string; zip: string }): string {
+// Parse a stored address. New format is newline-stacked (street / "city, ST zip"
+// / country). Older rows are a single comma line — handled too.
+function parseAddress(s: string): AddrFields {
+  const text = (s || '').trim();
+  if (!text) return { street: '', city: '', state: '', zip: '', country: DEFAULT_COUNTRY };
+  const lines = text.split('\n').map((x) => x.trim()).filter(Boolean);
+  if (lines.length > 1) {
+    let country = DEFAULT_COUNTRY;
+    // A trailing line with no digits is the country (city lines carry a ZIP).
+    if (lines.length >= 2 && !/\d/.test(lines[lines.length - 1])) country = lines.pop() || DEFAULT_COUNTRY;
+    const street = lines[0] || '';
+    const { city, state, zip } = parseCityLine(lines.slice(1).join(', '));
+    return { street, city, state, zip, country };
+  }
+  // Legacy single comma line: first part = street, the rest = city/state/zip.
+  const parts = text.split(',').map((x) => x.trim()).filter(Boolean);
+  if (parts.length === 1) return { street: parts[0], city: '', state: '', zip: '', country: DEFAULT_COUNTRY };
+  const { city, state, zip } = parseCityLine(parts.slice(1).join(', '));
+  return { street: parts[0], city, state, zip, country: DEFAULT_COUNTRY };
+}
+
+// Compose the stored value: newline-stacked street / "city, ST zip" / country
+// (country only when it isn't the US default, to avoid clutter on US receipts).
+function composeAddress(f: AddrFields): string {
   const stateZip = [f.state.trim(), f.zip.trim()].filter(Boolean).join(' ');
-  return [f.street.trim(), f.city.trim(), stateZip].filter(Boolean).join(', ');
+  const cityLine = [f.city.trim(), stateZip].filter(Boolean).join(', ');
+  const c = f.country.trim();
+  return [f.street.trim(), cityLine, (c && c !== DEFAULT_COUNTRY) ? c : ''].filter(Boolean).join('\n');
 }
 
 export default function ReceiptSettingsSection() {
@@ -47,6 +72,7 @@ export default function ReceiptSettingsSection() {
   const [city, setCity] = useState('');
   const [stateVal, setStateVal] = useState('');
   const [zip, setZip] = useState('');
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [colorIsDefault, setColorIsDefault] = useState(true);
   const [accountPhone, setAccountPhone] = useState('');
@@ -87,9 +113,10 @@ export default function ReceiptSettingsSection() {
           setCity(j.accountCity || f.city);
           setStateVal(j.accountState || f.state);
           setZip(j.accountZip || f.zip);
+          setCountry(f.country);
         } else {
           const f = parseAddress(j.receiptAddress);
-          setStreet(f.street); setCity(f.city); setStateVal(f.state); setZip(f.zip);
+          setStreet(f.street); setCity(f.city); setStateVal(f.state); setZip(f.zip); setCountry(f.country);
         }
         setUsingDefault(j.receiptAddress == null);
         if (j.receiptColor && /^#[0-9a-fA-F]{6}$/.test(j.receiptColor)) { setColor(j.receiptColor); setColorIsDefault(false); }
@@ -132,7 +159,7 @@ export default function ReceiptSettingsSection() {
   }
 
   async function saveAddress() {
-    const composed = composeAddress({ street, city, state: stateVal, zip });
+    const composed = composeAddress({ street, city, state: stateVal, zip, country });
     await post({ address: composed }, '✓ Receipt address saved.');
     setUsingDefault(false);
   }
@@ -147,6 +174,7 @@ export default function ReceiptSettingsSection() {
     setCity(acctParts.city || f.city);
     setStateVal(acctParts.state || f.state);
     setZip(acctParts.zip || f.zip);
+    setCountry(f.country);
     await post({ address: null }, '✓ Back to your account address.');
     setUsingDefault(true);
   }
@@ -216,8 +244,27 @@ export default function ReceiptSettingsSection() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr .6fr .7fr', gap: '.6rem', marginTop: '.7rem' }}>
           <div><span style={fieldLabel}>City</span><input type="text" value={city} disabled={!loaded || busy} onChange={(e) => setCity(e.target.value)} placeholder="Springfield" style={input} /></div>
-          <div><span style={fieldLabel}>State</span><input type="text" value={stateVal} disabled={!loaded || busy} onChange={(e) => setStateVal(e.target.value)} placeholder="IL" style={input} /></div>
+          <div>
+            <span style={fieldLabel}>State</span>
+            {country === DEFAULT_COUNTRY ? (
+              <select value={stateVal} disabled={!loaded || busy} onChange={(e) => setStateVal(e.target.value)} style={input}>
+                <option value="">—</option>
+                {stateVal && !US_STATES.includes(stateVal) && <option value={stateVal}>{stateVal}</option>}
+                {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={stateVal} disabled={!loaded || busy} onChange={(e) => setStateVal(e.target.value)} placeholder="Region" style={input} />
+            )}
+          </div>
           <div><span style={fieldLabel}>ZIP</span><input type="text" value={zip} disabled={!loaded || busy} onChange={(e) => setZip(e.target.value)} placeholder="62701" style={input} /></div>
+        </div>
+
+        <div style={{ marginTop: '.7rem', maxWidth: 280 }}>
+          <span style={fieldLabel}>Country</span>
+          <select value={country} disabled={!loaded || busy} onChange={(e) => setCountry(e.target.value)} style={input}>
+            {country && !COUNTRIES.includes(country) && <option value={country}>{country}</option>}
+            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.8rem' }}>
@@ -262,7 +309,7 @@ export default function ReceiptSettingsSection() {
         <ReceiptPreview
           logoUrl={logoUrl}
           name={bizName || 'Your Business Name'}
-          address={composeAddress({ street, city, state: stateVal, zip })}
+          address={composeAddress({ street, city, state: stateVal, zip, country })}
           phone={phone.trim()}
           accent={/^#[0-9a-fA-F]{6}$/.test(color) ? color : DEFAULT_COLOR}
         />
@@ -296,7 +343,9 @@ function ReceiptPreview({ logoUrl, name, address, phone, accent }: {
             ? <img src={logoUrl} alt="logo" style={{ maxWidth: 120, maxHeight: 46, objectFit: 'contain', display: 'block', marginBottom: 6 }} />
             : null}
           <div style={{ fontSize: 15, fontWeight: 800 }}>{name}</div>
-          {address && <div style={{ color: muted, fontSize: 11, marginTop: 3 }}>{address}</div>}
+          {address.split('\n').filter(Boolean).map((ln, i) => (
+            <div key={i} style={{ color: muted, fontSize: 11, marginTop: i === 0 ? 3 : 1 }}>{ln}</div>
+          ))}
           {phone && <div style={{ color: muted, fontSize: 11, marginTop: 2 }}>{phone}</div>}
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
