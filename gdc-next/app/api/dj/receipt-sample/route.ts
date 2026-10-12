@@ -85,7 +85,9 @@ export async function GET() {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline; filename="receipt-sample.pdf"',
-        'Cache-Control': 'no-store',
+        // Private per-DJ sample. Cache briefly so re-opening the tab is instant;
+        // saving a setting or hitting Refresh changes the ?ts= and busts it.
+        'Cache-Control': 'private, max-age=120',
       },
     });
   } catch {
