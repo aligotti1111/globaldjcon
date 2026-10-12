@@ -101,8 +101,9 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
     }));
   } else if (i.depositHref) {
     // A payable deposit request exists — the host can click through to pay.
+    // "Pay Here" (like the contract's "Sign Here") reads as an action, not a status.
     out.push(step('deposit', 'Deposit', 'money', {
-      caption: 'Pending',
+      caption: 'Pay Here',
       href: i.depositHref, hrefLabel: 'Make a payment',
     }));
   } else {
@@ -146,7 +147,7 @@ export function buildHostPipeline(i: HostPipelineInput): HostStep[] {
     }));
   } else {
     out.push(step('invoice', 'Balance', 'receipt', {
-      caption: 'Pending', href: i.balanceHref, hrefLabel: 'Make a payment',
+      caption: 'Pay Here', href: i.balanceHref, hrefLabel: 'Make a payment',
     }));
   }
 
