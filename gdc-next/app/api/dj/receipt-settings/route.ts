@@ -38,14 +38,16 @@ export async function GET() {
     const admin = createAdminClient();
     const { data } = await admin
       .from('users')
-      .select('address, city, state, zip, receipt_address, receipt_color')
+      .select('address, city, state, zip, phone, receipt_address, receipt_color, receipt_phone')
       .eq('id', acting.djId)
       .maybeSingle();
-    const dj = data as { address?: string | null; city?: string | null; state?: string | null; zip?: string | null; receipt_address?: string | null; receipt_color?: string | null } | null;
+    const dj = data as { address?: string | null; city?: string | null; state?: string | null; zip?: string | null; phone?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null } | null;
     return NextResponse.json({
       receiptAddress: dj?.receipt_address ?? null,
       accountAddress: accountAddressOf(dj),
       receiptColor: dj?.receipt_color ?? null,
+      receiptPhone: dj?.receipt_phone ?? null,
+      accountPhone: dj?.phone ?? '',
     });
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
@@ -61,12 +63,16 @@ export async function POST(req: Request) {
     if (!canEditProfile(acting.role)) {
       return NextResponse.json({ error: 'You do not have permission to change receipt settings.' }, { status: 403 });
     }
-    const body = (await req.json().catch(() => ({}))) as { address?: string | null; color?: string | null };
+    const body = (await req.json().catch(() => ({}))) as { address?: string | null; color?: string | null; phone?: string | null };
     const update: Record<string, string | null> = {};
     // Only touch the fields the caller actually sent (key present in body).
     if ('address' in body) {
       // null => reset to account default; string (incl. '') => store as-is (trimmed).
       update.receipt_address = body.address == null ? null : String(body.address).slice(0, 300).trim();
+    }
+    if ('phone' in body) {
+      // null => account phone; '' => no phone; text => custom.
+      update.receipt_phone = body.phone == null ? null : String(body.phone).slice(0, 40).trim();
     }
     if ('color' in body) {
       // null/'' => house default; otherwise must be a #rrggbb hex.
