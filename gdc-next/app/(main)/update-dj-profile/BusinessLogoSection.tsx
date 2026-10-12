@@ -24,9 +24,13 @@ export default function BusinessLogoSection({
   label = 'Business Logo',
   // The caption under the label. Pass null to hide it entirely.
   description = 'Shows on your Planner & Playlist, your contracts, and more. Update it any time and every place updates with it.',
+  // Called with the new logo URL (or null when removed) so a parent preview can
+  // update instantly without re-fetching.
+  onLogoChange,
 }: {
   label?: string;
   description?: string | null;
+  onLogoChange?: (url: string | null) => void;
 } = {}) {
   const [userId, setUserId] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -78,6 +82,7 @@ export default function BusinessLogoSection({
       });
       if (!res.ok) throw new Error('save failed');
       setLogoUrl(url);
+      onLogoChange?.(url);
       setMsg('✓ Logo saved — it shows on your Planner & Playlist, contracts, and more.');
     } catch {
       setMsg('Logo upload failed — try again.');
@@ -106,6 +111,7 @@ export default function BusinessLogoSection({
       });
       if (!res.ok) throw new Error('remove failed');
       setLogoUrl(null);
+      onLogoChange?.(null);
       setMsg('✓ Logo removed everywhere.');
     } catch {
       setMsg('Could not remove — try again.');
