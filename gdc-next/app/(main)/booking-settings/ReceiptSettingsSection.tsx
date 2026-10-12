@@ -41,6 +41,7 @@ function composeAddress(f: { street: string; city: string; state: string; zip: s
 
 export default function ReceiptSettingsSection() {
   const [accountAddress, setAccountAddress] = useState('');
+  const [acctParts, setAcctParts] = useState<{ city: string; state: string; zip: string }>({ city: '', state: '', zip: '' });
   const [usingDefault, setUsingDefault] = useState(true); // receipt_address === null
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
@@ -68,11 +69,24 @@ export default function ReceiptSettingsSection() {
     (async () => {
       try {
         const r = await fetch('/api/dj/receipt-settings');
-        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string };
+        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string };
         if (!alive) return;
         setAccountAddress(j.accountAddress || '');
-        const f = parseAddress(j.receiptAddress == null ? (j.accountAddress || '') : j.receiptAddress);
-        setStreet(f.street); setCity(f.city); setStateVal(f.state); setZip(f.zip);
+        setAcctParts({ city: j.accountCity || '', state: j.accountState || '', zip: j.accountZip || '' });
+        if (j.receiptAddress == null) {
+          // Default (no custom receipt address): prefill from the account. City /
+          // state / ZIP come from the reliable account columns (ZIP is required
+          // at signup), so the ZIP field is never blank even if the stored
+          // address line didn't include it. Street parsed from the line.
+          const f = parseAddress(j.accountAddress || '');
+          setStreet(f.street);
+          setCity(j.accountCity || f.city);
+          setStateVal(j.accountState || f.state);
+          setZip(j.accountZip || f.zip);
+        } else {
+          const f = parseAddress(j.receiptAddress);
+          setStreet(f.street); setCity(f.city); setStateVal(f.state); setZip(f.zip);
+        }
         setUsingDefault(j.receiptAddress == null);
         if (j.receiptColor && /^#[0-9a-fA-F]{6}$/.test(j.receiptColor)) { setColor(j.receiptColor); setColorIsDefault(false); }
         else { setColor(DEFAULT_COLOR); setColorIsDefault(true); }
@@ -125,7 +139,10 @@ export default function ReceiptSettingsSection() {
   }
   async function useAccountAddress() {
     const f = parseAddress(accountAddress);
-    setStreet(f.street); setCity(f.city); setStateVal(f.state); setZip(f.zip);
+    setStreet(f.street);
+    setCity(acctParts.city || f.city);
+    setStateVal(acctParts.state || f.state);
+    setZip(acctParts.zip || f.zip);
     await post({ address: null }, '✓ Back to your account address.');
     setUsingDefault(true);
   }
@@ -176,7 +193,7 @@ export default function ReceiptSettingsSection() {
         <p style={hint}>
           {usingDefault
             ? 'Currently using your account address. Edit the fields below to use a different one on receipts, or remove it.'
-            : (composeAddress({ street, city, state: stateVal, zip }) ? 'Using a custom receipt address.' : 'No address is shown on your receipts.')}
+            : (composeAddress({ street, city, state: stateVal, zip }) ? 'Using a custom receipt address.' : '')}
         </p>
 
         <div style={{ position: 'relative' }}>
@@ -212,7 +229,6 @@ export default function ReceiptSettingsSection() {
           <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removeAddress}>Remove address</button>
           {!usingDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountAddress}>Use my account address</button>}
         </div>
-        {accountAddress && <p style={{ ...hint, margin: '.7rem 0 0' }}>Account address: {accountAddress}</p>}
 
         {/* Phone — receipt-only, independent of the account phone. */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Phone on receipts</label>
