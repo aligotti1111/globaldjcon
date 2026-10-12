@@ -9,7 +9,7 @@
 // The address and colour are isolated: they only affect receipts, never the
 // account address or anything derived from it.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BusinessLogoSection from '../update-dj-profile/BusinessLogoSection';
 import { searchAddresses, type AddressSuggestion } from '../account-settings/helpers';
 
@@ -55,24 +55,26 @@ export default function ReceiptSettingsSection() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  // 0 = initial load: use the plain (cacheable) URL so re-opening the tab is
-  // instant. A save or Refresh sets a real timestamp to force a fresh render.
-  const [nonce, setNonce] = useState(0);
+  // Live-preview inputs (logo + business name), so the HTML sample updates
+  // instantly on every edit with no server round-trip.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [bizName, setBizName] = useState('');
 
   // Address autocomplete state.
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSug, setShowSug] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const refreshSample = useCallback(() => setNonce(Date.now()), []);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const r = await fetch('/api/dj/receipt-settings');
-        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string };
+        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string; businessName?: string; logoUrl?: string | null };
         if (!alive) return;
+        setBizName(j.businessName || '');
+        setLogoUrl(j.logoUrl ?? null);
         setAccountAddress(j.accountAddress || '');
         setAcctParts({ city: j.accountCity || '', state: j.accountState || '', zip: j.accountZip || '' });
         if (j.receiptAddress == null) {
@@ -124,7 +126,7 @@ export default function ReceiptSettingsSection() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       if (!r.ok) throw new Error('save failed');
-      setMsg(note); refreshSample();
+      setMsg(note);
     } catch { setMsg('Could not save — try again.'); }
     finally { setBusy(false); }
   }
@@ -183,11 +185,8 @@ export default function ReceiptSettingsSection() {
         </p>
 
         {/* Logo */}
-        <BusinessLogoSection label="Add/Edit Logo" description={null} />
-        <div style={{ margin: '.2rem 0 1.4rem' }}>
-          <button type="button" style={linkBtn} disabled={busy} onClick={refreshSample}>
-            Refresh sample after changing the logo
-          </button>
+        <div style={{ marginBottom: '1.4rem' }}>
+          <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} />
         </div>
 
         {/* Address — discrete fields with autocomplete. */}
@@ -254,21 +253,73 @@ export default function ReceiptSettingsSection() {
         {msg && <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: '#8a8aa0' }}>{msg}</div>}
       </div>
 
-      {/* ── Right: live sample ── */}
+      {/* ── Right: live HTML sample (instant — mirrors the receipt PDF) ── */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.5rem' }}>
           <span style={{ fontSize: '.7rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#8a8aa0' }}>Sample receipt</span>
-          <button type="button" style={linkBtn} disabled={busy} onClick={refreshSample}>Refresh</button>
+          <a href="/api/dj/receipt-sample" target="_blank" rel="noopener noreferrer" style={{ ...linkBtn, textDecoration: 'underline' }}>View exact PDF</a>
         </div>
-        <iframe
-          key={nonce}
-          src={nonce ? `/api/dj/receipt-sample?ts=${nonce}` : '/api/dj/receipt-sample'}
-          title="Sample receipt"
-          style={{ width: '100%', height: 560, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, background: '#fff' }}
+        <ReceiptPreview
+          logoUrl={logoUrl}
+          name={bizName || 'Your Business Name'}
+          address={composeAddress({ street, city, state: stateVal, zip })}
+          phone={phone.trim()}
+          accent={/^#[0-9a-fA-F]{6}$/.test(color) ? color : DEFAULT_COLOR}
         />
         <p style={{ ...hint, margin: '.5rem 0 0' }}>
-          Sample with placeholder event details — only your logo, address and colour reflect your real settings.
+          Live preview with placeholder event details — your logo, address, phone and colour update instantly.
+          &ldquo;View exact PDF&rdquo; opens the real generated receipt.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Live HTML receipt preview — mirrors the generated PDF layout, updates
+// instantly from props. Placeholder event details; logo/address/phone/colour
+// are the DJ's real settings. ────────────────────────────────────────────────
+function ReceiptPreview({ logoUrl, name, address, phone, accent }: {
+  logoUrl: string | null; name: string; address: string; phone: string; accent: string;
+}) {
+  const ink = '#1a1a2e';
+  const muted = '#777';
+  const line = '1px solid #e5e5e5';
+  const row: CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12.5, color: ink };
+  const sec: CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#999', margin: '0 0 4px' };
+  return (
+    <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(255,255,255,.14)', padding: '26px 28px', color: ink, minHeight: 540 }}>
+      {/* Header: left business block, right title/date/reference */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ minWidth: 0 }}>
+          {logoUrl
+            /* eslint-disable-next-line @next/next/no-img-element */
+            ? <img src={logoUrl} alt="logo" style={{ maxWidth: 120, maxHeight: 46, objectFit: 'contain', display: 'block', marginBottom: 6 }} />
+            : null}
+          <div style={{ fontSize: 15, fontWeight: 800 }}>{name}</div>
+          {address && <div style={{ color: muted, fontSize: 11, marginTop: 3 }}>{address}</div>}
+          {phone && <div style={{ color: muted, fontSize: 11, marginTop: 2 }}>{phone}</div>}
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: accent, letterSpacing: '.02em' }}>RECEIPT</div>
+          <div style={{ color: muted, fontSize: 11, marginTop: 4 }}>June 20, 2026</div>
+          <div style={{ color: muted, fontSize: 11 }}>Reference: GDC-SAMPLE</div>
+        </div>
+      </div>
+      <hr style={{ border: 'none', borderTop: line, margin: '16px 0' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
+        <div><div style={sec}>Received From</div><div style={{ fontWeight: 700, fontSize: 12.5 }}>Sample Client</div><div style={{ color: muted, fontSize: 12 }}>client@example.com</div></div>
+        <div style={{ textAlign: 'right' }}><div style={sec}>Event</div><div style={{ fontSize: 12.5 }}>Wedding Reception</div><div style={{ color: muted, fontSize: 12 }}>Sat, Jun 20, 2026<br />The Grand Ballroom<br />6:00 PM – 11:00 PM</div></div>
+      </div>
+      <hr style={{ border: 'none', borderTop: line, margin: '16px 0' }} />
+      <div style={sec}>Details</div>
+      <div style={{ ...row, color: muted }}><span>Event Type</span><span style={{ color: ink }}>Wedding</span></div>
+      <div style={{ ...row, color: muted }}><span>Package</span><span style={{ color: ink }}>Signature DJ Package</span></div>
+      <hr style={{ border: 'none', borderTop: line, margin: '14px 0 2px' }} />
+      <div style={row}><span>Event total (incl. tax)</span><span>$2,400.00</span></div>
+      <div style={{ ...row, fontWeight: 700 }}><span>Deposit Received (25%)</span><span>$600.00</span></div>
+      <div style={{ ...row, color: muted, borderTop: line, marginTop: 4, paddingTop: 9 }}><span>Remaining balance</span><span>$1,800.00</span></div>
+      <div style={{ marginTop: 16, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: accent }}>
+        <span style={{ color: ink }}>DEPOSIT RECEIVED</span><span>$600.00</span>
       </div>
     </div>
   );
