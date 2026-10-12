@@ -403,18 +403,25 @@ export default function UpcomingBookingsClient({
 
   // Dashboard summary stats (desktop only). Cancelled bookings are excluded.
   const dashStats = useMemo(() => {
-    const todayKey = new Date().toISOString().slice(0, 10);
     const d30 = new Date(); d30.setDate(d30.getDate() - 30);
     const d30iso = d30.toISOString();
     const isCancelled = (b: UpcomingBooking) => b.status === 'cancelled' || b.cancel_status === 'accepted';
     const outstanding = (s: string) => s === 'requested' || s === 'pending_confirmation' || s === 'partial';
     let upcoming = 0, booked30 = 0, pendingPayments = 0, pendingContracts = 0;
     for (const b of bookings) {
+      // Total Upcoming Bookings mirrors the month list below: every booking
+      // with an event date that the page renders. The server already limits
+      // this view to upcoming events, and cancelled rows still appear in the
+      // list, so they are counted here exactly as the user sees them.
+      if (b.event_date) upcoming++;
       if (isCancelled(b)) continue;
-      if ((b.event_date || '') >= todayKey) upcoming++;
       const when = b.accepted_at || b.created_at || '';
       if (when && when >= d30iso) booked30++;
-      if (b.contract_status === 'awaiting_dj' || b.contract_status === 'awaiting_client') pendingContracts++;
+      // "Pending" contract means SENT and waiting on the client
+      // (awaiting_client) — the same rule the row's contract column uses.
+      // awaiting_dj is the DJ's own unsigned draft, shown as "Not Sent", so it
+      // must NOT count as a pending contract here.
+      if (b.contract_status === 'awaiting_client') pendingContracts++;
       for (const r of (paymentsMap[b.id] || [])) {
         if (outstanding(r.status)) pendingPayments++;
       }
