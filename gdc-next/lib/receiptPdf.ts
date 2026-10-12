@@ -47,6 +47,9 @@ export interface ReceiptDocOptions {
   /** ISO or already-formatted date string shown top-right. */
   dateText: string;
   currency: string;
+  /** Brand accent colour for the title, totals box and payment tiles, as a hex
+   *  string (e.g. "#00e0a4"). Defaults to the house teal when omitted/invalid. */
+  accentHex?: string | null;
 
   // ── DJ business header (all optional) ──
   business: {
@@ -204,6 +207,9 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const boldOblique = await pdf.embedFont(StandardFonts.HelveticaBoldOblique);
 
+  // Brand accent — the DJ's chosen receipt colour, or the house teal default.
+  const accent = opts.accentHex ? hexToRgb(opts.accentHex) : ACCENT;
+
   const rightX = PAGE_W - MARGIN;
   let y = PAGE_H - MARGIN;
 
@@ -259,7 +265,7 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   headerBottom = Math.min(headerBottom - 46, by);
 
   // Document title + number + date, right-aligned.
-  drawR(title, rightX, y - 20, 26, bold, ACCENT);
+  drawR(title, rightX, y - 20, 26, bold, accent);
   drawR(`Reference: ${opts.docNumber}`, rightX, y - 38, 11, reg, MUTED);
   drawR(opts.dateText, rightX, y - 53, 11, reg, MUTED);
 
@@ -347,17 +353,17 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   const boxH = 40;
   page.drawRectangle({
     x: MARGIN, y: y - boxH + 12, width: rightX - MARGIN, height: boxH,
-    color: rgb(0.96, 0.98, 0.97), borderColor: ACCENT, borderWidth: 1,
+    color: rgb(0.96, 0.98, 0.97), borderColor: accent, borderWidth: 1,
   });
   if (opts.headline.hideAmount) {
     // Label only, centred in the box — no figure.
     const hl = opts.headline.label.toUpperCase();
     const hlSize = 13;
     const hlW = bold.widthOfTextAtSize(hl, hlSize);
-    page.drawText(hl, { x: MARGIN + (rightX - MARGIN - hlW) / 2, y: y - 13, size: hlSize, font: bold, color: ACCENT });
+    page.drawText(hl, { x: MARGIN + (rightX - MARGIN - hlW) / 2, y: y - 13, size: hlSize, font: bold, color: accent });
   } else {
     drawL(opts.headline.label.toUpperCase(), MARGIN + 14, y - 8, 11, bold, INK);
-    drawR(money(opts.headline.amount, opts.currency), rightX - 14, y - 12, 18, bold, ACCENT);
+    drawR(money(opts.headline.amount, opts.currency), rightX - 14, y - 12, 18, bold, accent);
   }
   y -= boxH + 18;
 
