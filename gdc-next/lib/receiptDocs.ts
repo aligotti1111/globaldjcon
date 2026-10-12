@@ -235,9 +235,15 @@ export async function buildBookingDocAttachment(
     //   null      -> fall back to the account address (the autocomplete stores
     //                the full "street, City, ST zip" in `address`; compose from
     //                the parts for older rows that only have the pieces).
-    const accountAddr = (dj.address && dj.address.trim())
+    let accountAddr = (dj.address && dj.address.trim())
       || [dj.city, [dj.state, dj.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
       || '';
+    // ZIP is required at signup and stored reliably in `zip`, but an older/typed
+    // address line may not include it. Append the ZIP so the default account
+    // address always shows it, without needing a custom receipt address saved.
+    if (dj.zip && String(dj.zip).trim() && accountAddr && !accountAddr.includes(String(dj.zip).trim())) {
+      accountAddr = `${accountAddr} ${String(dj.zip).trim()}`;
+    }
     const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
     // Phone printed on the receipt: the override wins ('' -> none), else account phone.
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : dj.phone;
@@ -270,6 +276,9 @@ export async function buildBookingDocAttachment(
       if (b.set_type) details.push({ label: 'Set type', value: b.set_type });
       if (b.equipment) details.push({ label: 'Equipment', value: EQUIPMENT_LABEL[b.equipment] || b.equipment });
     } else {
+      // Event Type sits ABOVE the package on the paper.
+      const etLabel = eventLabel(b.event_type);
+      if (etLabel) details.push({ label: 'Event Type', value: etLabel });
       if (b.package_title) details.push({ label: 'Package', value: b.package_title });
       if (b.package_details && b.package_details.trim()) {
         details.push({ label: 'Includes', value: stripHtml(b.package_details) });
