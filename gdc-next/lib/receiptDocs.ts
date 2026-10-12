@@ -93,7 +93,10 @@ function friendlyDate(iso?: string | null): string {
 export async function fetchLogo(url?: string | null): Promise<{ bytes: Uint8Array; type: 'png' | 'jpg' } | null> {
   if (!url) return null;
   try {
-    const res = await fetch(url);
+    // Never let a slow/hung logo host stall the whole document — cap the fetch.
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    const res = await fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
     if (!res.ok) return null;
     const ct = (res.headers.get('content-type') || '').toLowerCase();
     const lower = url.toLowerCase();
