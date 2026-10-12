@@ -48,6 +48,9 @@ export default function ReceiptSettingsSection() {
   const [zip, setZip] = useState('');
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [colorIsDefault, setColorIsDefault] = useState(true);
+  const [accountPhone, setAccountPhone] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneDefault, setPhoneDefault] = useState(true); // receipt_phone === null
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export default function ReceiptSettingsSection() {
     (async () => {
       try {
         const r = await fetch('/api/dj/receipt-settings');
-        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; receiptColor?: string | null };
+        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string };
         if (!alive) return;
         setAccountAddress(j.accountAddress || '');
         const f = parseAddress(j.receiptAddress == null ? (j.accountAddress || '') : j.receiptAddress);
@@ -73,6 +76,9 @@ export default function ReceiptSettingsSection() {
         setUsingDefault(j.receiptAddress == null);
         if (j.receiptColor && /^#[0-9a-fA-F]{6}$/.test(j.receiptColor)) { setColor(j.receiptColor); setColorIsDefault(false); }
         else { setColor(DEFAULT_COLOR); setColorIsDefault(true); }
+        setAccountPhone(j.accountPhone || '');
+        setPhone(j.receiptPhone == null ? (j.accountPhone || '') : j.receiptPhone);
+        setPhoneDefault(j.receiptPhone == null);
       } catch { /* optional */ }
       finally { if (alive) setLoaded(true); }
     })();
@@ -123,6 +129,9 @@ export default function ReceiptSettingsSection() {
     await post({ address: null }, '✓ Back to your account address.');
     setUsingDefault(true);
   }
+  async function savePhone() { await post({ phone }, '✓ Receipt phone saved.'); setPhoneDefault(false); }
+  async function removePhone() { setPhone(''); await post({ phone: '' }, '✓ Phone removed from receipts.'); setPhoneDefault(false); }
+  async function useAccountPhone() { setPhone(accountPhone); await post({ phone: null }, '✓ Back to your account phone.'); setPhoneDefault(true); }
   async function saveColor() { await post({ color }, '✓ Receipt colour saved.'); setColorIsDefault(false); }
   async function resetColor() { setColor(DEFAULT_COLOR); await post({ color: '' }, '✓ Colour reset to default.'); setColorIsDefault(true); }
 
@@ -155,7 +164,7 @@ export default function ReceiptSettingsSection() {
         </p>
 
         {/* Logo */}
-        <BusinessLogoSection />
+        <BusinessLogoSection label="Add/Edit Logo" description={null} />
         <div style={{ margin: '.2rem 0 1.4rem' }}>
           <button type="button" style={linkBtn} disabled={busy} onClick={refreshSample}>
             Refresh sample after changing the logo
@@ -204,6 +213,22 @@ export default function ReceiptSettingsSection() {
           {!usingDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountAddress}>Use my account address</button>}
         </div>
         {accountAddress && <p style={{ ...hint, margin: '.7rem 0 0' }}>Account address: {accountAddress}</p>}
+
+        {/* Phone — receipt-only, independent of the account phone. */}
+        <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Phone on receipts</label>
+        <p style={hint}>
+          {phoneDefault
+            ? 'Currently using your account phone. Enter a different one for receipts, or remove it.'
+            : (phone.trim() ? 'Using a custom receipt phone.' : 'No phone is shown on your receipts.')}
+        </p>
+        <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(e.target.value)}
+          placeholder="(555) 123-4567" style={{ ...input, maxWidth: 260 }} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.7rem' }}>
+          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={savePhone}>Save phone</button>
+          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removePhone}>Remove phone</button>
+          {!phoneDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountPhone}>Use my account phone</button>}
+        </div>
+        {accountPhone && <p style={{ ...hint, margin: '.7rem 0 0' }}>Account phone: {accountPhone}</p>}
 
         {/* Colour */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Receipt colour</label>
