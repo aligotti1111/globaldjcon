@@ -60,7 +60,8 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     const totalPaid = pays.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
     const paidInFull = total > 0 && totalPaid >= total - 0.01;
 
-    type Step = { left: string; right: string; done: boolean; skipped?: boolean };
+    const SITE_URL = 'https://globaldjconnect.com';
+    type Step = { left: string; right: string; done: boolean; skipped?: boolean; href?: string };
     const steps: Step[] = [];
     steps.push({ left: 'Booking Request', right: 'Accepted', done: true });
 
@@ -79,7 +80,16 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     // (deposit, etc.) were already done.
     const contractDone = b.contract_status === 'signed' || !!ov.contract;
     if (b.requires_contract === true || contractSent || !!ov.contract) {
-      steps.push({ left: contractSent ? 'Contract sent' : 'Contract', right: 'Signed', done: contractDone });
+      // While it's still with the host to sign (awaiting_client), the status
+      // word reads "Pending" (grey) rather than a misleading "Signed", and the
+      // whole capsule links to the signing page so they can sign from the email.
+      const awaitingHost = b.contract_status === 'awaiting_client' && !contractDone;
+      steps.push({
+        left: contractSent ? 'Contract sent' : 'Contract',
+        right: contractDone ? 'Signed' : 'Pending',
+        done: contractDone,
+        href: awaitingHost ? `${SITE_URL}/api/contracts/sign-redirect?bookingId=${bookingId}` : undefined,
+      });
     }
     // Deposit step — only when a deposit is genuinely part of this booking: a
     // NON-ZERO percentage or amount was set at creation, or money's already
@@ -155,7 +165,14 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
       const inner = (s.right || check)
         ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr><td align="left" width="100%" style="width:100%;font-size:13px;font-weight:${leftWeight};color:${leftColor};padding-right:12px;">${s.left}</td><td align="right" style="font-size:13px;white-space:nowrap;text-align:right;">${rightCell}</td></tr></table>`
         : `<span style="font-size:13px;font-weight:${leftWeight};color:${leftColor};">${s.left}</span>`;
-      return `${nextTab}${wrapOpen}${inner}</div>`;
+      const block = `${wrapOpen}${inner}</div>`;
+      // A pending contract capsule is a link to the signing page — the host can
+      // tap it straight from the email. Block-level anchor so the whole card is
+      // clickable; color:inherit keeps the text colours above.
+      const linked = s.href
+        ? `<a href="${s.href}" style="display:block;text-decoration:none;color:inherit;">${block}</a>`
+        : block;
+      return `${nextTab}${linked}`;
     }).join('');
 
     return `<div style="background:#fbfbfb;border:1px solid #ececec;border-radius:10px;padding:16px 18px 8px;margin:0 0 24px;"><p style="margin:0 0 12px;color:#888;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Booking Progress</p>${capsules}</div>`;
