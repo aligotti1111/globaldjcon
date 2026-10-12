@@ -254,7 +254,10 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   }
   // Left block: business name, then address, then contact (phone/email).
   const bizSmall: string[] = [];
-  if (opts.business.address) bizSmall.push(opts.business.address);
+  // Address may be newline-stacked (street / city, ST zip / country) — one line each.
+  if (opts.business.address) {
+    for (const al of opts.business.address.split('\n')) if (al.trim()) bizSmall.push(al.trim());
+  }
   const contactBits = [opts.business.phone, opts.business.email].filter(Boolean) as string[];
   if (contactBits.length) bizSmall.push(contactBits.join('  ·  '));
   for (const raw of bizSmall) {
