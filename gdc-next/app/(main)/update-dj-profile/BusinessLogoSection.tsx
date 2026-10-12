@@ -20,7 +20,14 @@ const iconBtnStyle: CSSProperties = {
   background: 'rgba(0,0,0,.6)', border: '1px solid rgba(255,255,255,.25)', color: '#fff',
 };
 
-export default function BusinessLogoSection() {
+export default function BusinessLogoSection({
+  label = 'Business Logo',
+  // The caption under the label. Pass null to hide it entirely.
+  description = 'Shows on your Planner & Playlist, your contracts, and more. Update it any time and every place updates with it.',
+}: {
+  label?: string;
+  description?: string | null;
+} = {}) {
   const [userId, setUserId] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,10 +116,12 @@ export default function BusinessLogoSection() {
 
   return (
     <div className={styles.formGroup}>
-      <label>Business Logo</label>
-      <div style={{ fontSize: '.8rem', color: '#8a8aa0', margin: '0 0 .6rem' }}>
-        Shows on your Planner &amp; Playlist, your contracts, and more. Update it any time and every place updates with it.
-      </div>
+      <label>{label}</label>
+      {description && (
+        <div style={{ fontSize: '.8rem', color: '#8a8aa0', margin: '0 0 .6rem' }}>
+          {description}
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPick} />
         <div
