@@ -151,6 +151,8 @@ interface DjDocRow {
   receipt_address: string | null;
   // Receipt accent colour (hex). null -> house teal default.
   receipt_color: string | null;
+  // Receipt phone override. null -> account phone; '' -> none; text -> use it.
+  receipt_phone: string | null;
   payment_methods: unknown;
   stripe_connect_ready: boolean | null;
 }
@@ -201,7 +203,7 @@ export async function buildBookingDocAttachment(
 
     const { data: dData } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, payment_methods, stripe_connect_ready')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, payment_methods, stripe_connect_ready')
       .eq('id', args.djId)
       .maybeSingle();
     const dj = dData as DjDocRow | null;
@@ -237,6 +239,8 @@ export async function buildBookingDocAttachment(
       || [dj.city, [dj.state, dj.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
       || '';
     const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
+    // Phone printed on the receipt: the override wins ('' -> none), else account phone.
+    const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : dj.phone;
 
     const logo = await fetchLogo(dj.contract_logo_url);
 
@@ -399,7 +403,7 @@ export async function buildBookingDocAttachment(
           // at the DJ's actual office address + phone when account settings has
           // them, so the client knows exactly where to go.
           if (args.paymentKind === 'deposit') {
-            const office = [addressLine, dj.phone].filter((s) => s && String(s).trim()).join(' · ');
+            const office = [addressLine, phoneLine].filter((s) => s && String(s).trim()).join(' · ');
             parts.push(office
               ? `Cash or check: in person only. A deposit requires an arranged meeting — office: ${office}.`
               : 'Cash or check: in person only. A deposit requires an arranged meeting.');
@@ -442,7 +446,7 @@ export async function buildBookingDocAttachment(
       business: {
         name: dj.name,
         address: addressLine || null,
-        phone: dj.phone,
+        phone: phoneLine,
         logo,
       },
       client: { name: billToName || b.requester_name, email: args.clientEmail || b.host_email },
