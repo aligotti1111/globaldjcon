@@ -55,7 +55,9 @@ export default function ReceiptSettingsSection() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [nonce, setNonce] = useState(() => Date.now());
+  // 0 = initial load: use the plain (cacheable) URL so re-opening the tab is
+  // instant. A save or Refresh sets a real timestamp to force a fresh render.
+  const [nonce, setNonce] = useState(0);
 
   // Address autocomplete state.
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -260,7 +262,7 @@ export default function ReceiptSettingsSection() {
         </div>
         <iframe
           key={nonce}
-          src={`/api/dj/receipt-sample?ts=${nonce}`}
+          src={nonce ? `/api/dj/receipt-sample?ts=${nonce}` : '/api/dj/receipt-sample'}
           title="Sample receipt"
           style={{ width: '100%', height: 560, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, background: '#fff' }}
         />
