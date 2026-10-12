@@ -35,9 +35,12 @@ export async function GET() {
 
     // Same address resolution the real receipt uses: the receipt override wins
     // (''=no address), else the account address.
-    const accountAddr = (dj.address && dj.address.trim())
+    let accountAddr = (dj.address && dj.address.trim())
       || [dj.city, [dj.state, dj.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
       || '';
+    if (dj.zip && String(dj.zip).trim() && accountAddr && !accountAddr.includes(String(dj.zip).trim())) {
+      accountAddr = `${accountAddr} ${String(dj.zip).trim()}`;
+    }
     const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : (dj.phone || null);
 
