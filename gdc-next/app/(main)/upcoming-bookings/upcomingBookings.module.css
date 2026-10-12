@@ -199,18 +199,22 @@
   gap: .8rem;
   margin: 0 0 1.3rem;
 }
+/* Option F — each box is a solid color block with dark text. */
 .statBox {
-  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border: none;
   border-radius: 12px;
   padding: .9rem 1.1rem;
-  background: rgba(255,255,255,.02);
 }
+.statBox:nth-child(1) { background: #00f5c4; }
+.statBox:nth-child(2) { background: #4da3ff; }
+.statBox:nth-child(3) { background: #ffb84d; }
+.statBox:nth-child(4) { background: #c98bff; }
 .statBoxNum {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 2.1rem;
   line-height: 1;
   letter-spacing: .02em;
-  color: var(--neon, #00f5c4);
+  color: #0a0a10;
 }
 .statBoxLabel {
   margin-top: .35rem;
@@ -218,7 +222,7 @@
   font-weight: 600;
   letter-spacing: .05em;
   text-transform: uppercase;
-  color: var(--muted, #8a8aa0);
+  color: rgba(10, 10, 16, .75);
 }
 
 .sortBar {
