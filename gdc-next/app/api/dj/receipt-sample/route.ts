@@ -25,12 +25,12 @@ export async function GET() {
     const admin = createAdminClient();
     const { data } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone')
       .eq('id', acting.djId)
       .maybeSingle();
     const dj = (data || {}) as {
       name?: string | null; address?: string | null; city?: string | null; state?: string | null;
-      zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null;
+      zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null;
     };
 
     // Same address resolution the real receipt uses: the receipt override wins
@@ -39,6 +39,7 @@ export async function GET() {
       || [dj.city, [dj.state, dj.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
       || '';
     const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
+    const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : (dj.phone || null);
 
     const logo = await fetchLogo(dj.contract_logo_url);
 
@@ -54,7 +55,7 @@ export async function GET() {
       business: {
         name: dj.name || 'Your Business Name',
         address: addressLine || null,
-        phone: dj.phone || null,
+        phone: phoneLine,
         logo,
       },
       client: { name: 'Sample Client', email: 'client@example.com' },
