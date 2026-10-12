@@ -409,12 +409,15 @@ export default function UpcomingBookingsClient({
     const outstanding = (s: string) => s === 'requested' || s === 'pending_confirmation' || s === 'partial';
     let upcoming = 0, booked30 = 0, pendingPayments = 0, pendingContracts = 0;
     for (const b of bookings) {
-      // Total Upcoming Bookings mirrors the month list below: every booking
-      // with an event date that the page renders. The server already limits
-      // this view to upcoming events, and cancelled rows still appear in the
-      // list, so they are counted here exactly as the user sees them.
-      if (b.event_date) upcoming++;
+      // Cancelled bookings are not "upcoming" and their contracts are not
+      // "pending", so they drop out of every count here. (Cancelled rows still
+      // RENDER in the list below with a CANCELLED badge — they just don't tally.)
       if (isCancelled(b)) continue;
+      // Total Upcoming Bookings: every remaining booking with an event date.
+      // The server already limits this view to upcoming events, so no date
+      // cutoff is needed — and avoiding one keeps today's bookings included
+      // regardless of the UTC/local date boundary.
+      if (b.event_date) upcoming++;
       const when = b.accepted_at || b.created_at || '';
       if (when && when >= d30iso) booked30++;
       // "Pending" contract means SENT and waiting on the client
