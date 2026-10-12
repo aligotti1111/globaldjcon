@@ -260,7 +260,7 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
 
   // Document title + number + date, right-aligned.
   drawR(title, rightX, y - 20, 26, bold, ACCENT);
-  drawR(opts.docNumber, rightX, y - 38, 11, reg, MUTED);
+  drawR(`Reference: ${opts.docNumber}`, rightX, y - 38, 11, reg, MUTED);
   drawR(opts.dateText, rightX, y - 53, 11, reg, MUTED);
 
   y = headerBottom - 12;
