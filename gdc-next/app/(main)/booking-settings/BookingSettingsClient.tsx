@@ -22,6 +22,7 @@ import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import PlannerLibrarySection from './PlannerLibrarySection';
+import ReceiptSettingsSection from './ReceiptSettingsSection';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
 import SectionBanner from '../update-dj-profile/SectionBanner';
 
@@ -52,7 +53,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const SETTINGS_KEYS: string[] = djType === 'club'
     ? ['booking_window_months', 'club_bookings_per_day', 'club_deposit_pct', 'tax_enabled', 'tax_pct', 'require_contract', 'rider_enabled', 'rider_default', 'rider_mode', 'rider_pdf_url', 'guestlist_enabled']
     : ['mob_booking_window', 'mob_bookings_per_day', 'mob_deposit_pct', 'rate_currency', 'tax_enabled', 'tax_pct', 'require_contract'];
-  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests';
+  type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests' | 'receipts';
   const [secTab, setSecTab] = useState<SecTab>('settings');
   // Monthly contract quota, shown on the "Your Contracts" banner.
   const [contractUsage, setContractUsage] = useState<{ quota: number; used: number; pending: number } | null>(null);
@@ -81,7 +82,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     try {
       // Valid deep-link targets — the setup checklist links here with ?section=,
       // so any tab id (not just discounts) can open directly.
-      const VALID: SecTab[] = ['settings', 'packages', 'discounts', 'payments', 'contracts', 'planners', 'rates', 'rider', 'guests'];
+      const VALID: SecTab[] = ['settings', 'packages', 'discounts', 'payments', 'contracts', 'planners', 'rates', 'rider', 'guests', 'receipts'];
       const section = searchParams.get('section') as SecTab | null;
       if (searchParams.get('paypal') === 'connected') {
         setSecTab('payments');
@@ -290,6 +291,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         { id: 'packages', label: 'Packages' },
         ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
         { id: 'payments', label: 'Payments' },
+        ...(hasBookingAccess ? [{ id: 'receipts', label: 'Receipts' }] : []),
         ...(hasBookingAccess ? [{ id: 'planners', label: 'Planner & Playlist' }] : []),
         { id: 'discounts', label: 'Discounts' },
       ]
@@ -300,6 +302,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         { id: 'rider', label: 'DJ Rider' },
         { id: 'guests', label: 'Guest List' },
         { id: 'payments', label: 'Payments' },
+        ...(hasBookingAccess ? [{ id: 'receipts', label: 'Receipts' }] : []),
         { id: 'discounts', label: 'Discounts' },
       ]
   ) as { id: SecTab; label: string }[];
@@ -493,7 +496,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
       <div
         className={styles.card}
         style={{
-          display: (secTab !== 'contracts' && secTab !== 'planners') ? undefined : 'none',
+          display: (secTab !== 'contracts' && secTab !== 'planners' && secTab !== 'receipts') ? undefined : 'none',
           // No outer frame — the inner section card (with its banner) is the only
           // frame, so the tabs sit on top of the real card, not a wrapper.
           background: 'transparent', border: 'none', borderRadius: 0, padding: 0, boxShadow: 'none',
@@ -573,6 +576,12 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
             <li>When a booking is approved, the details fill in for you to review and send.</li>
           </ul>
           <ContractPortal userId={initialProfile.id} djType={djType} inline />
+        </div>
+      )}
+
+      {hasBookingAccess && secTab === 'receipts' && (
+        <div className={styles.card}>
+          <ReceiptSettingsSection />
         </div>
       )}
     </div>
