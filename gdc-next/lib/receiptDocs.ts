@@ -363,8 +363,16 @@ export async function buildBookingDocAttachment(
       }
     } else if (isReceipt) {
       const received = round2(Number(args.receivedNow ?? 0));
-      const methodLbl = prettyMethod(args.method);
-      lines.push({ label: `Payment received${methodLbl ? ` (${methodLbl})` : ''}`, amount: received });
+      // Deposit receipts show the deposit as a % of the event total; balance and
+      // other receipts get their own plain label. Payment method is intentionally
+      // not printed on this line.
+      const depPct = total > 0 ? Math.round((received / total) * 100) : 0;
+      const receivedLabel = args.paymentKind === 'deposit'
+        ? `Deposit Received (${depPct}%)`
+        : args.paymentKind === 'balance'
+          ? 'Balance Received'
+          : 'Payment Received';
+      lines.push({ label: receivedLabel, amount: received });
       lines.push({ label: 'Event total', amount: total, emphasis: 'muted' });
       lines.push({ label: 'Paid to date', amount: paidToDate, emphasis: 'muted' });
       const remaining = round2(Math.max(0, total - paidToDate));
