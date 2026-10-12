@@ -191,7 +191,15 @@ export async function POST(req: Request) {
         if (!to && bk.requester_id) to = (await resolveUserEmail(bk.requester_id)) || '';
         if (to) {
           const progressBox = await bookingProgressBox(bookingId);
-          const name = (bk.requester_name || '').trim() || 'there';
+          // Greet the host by name. requester_name is often empty on the booking
+          // (phone bookings, older rows), so fall back to the host account's name
+          // via requester_id before settling on "there".
+          let fullName = (bk.requester_name || '').trim();
+          if (!fullName && bk.requester_id) {
+            const { data: u } = await admin.from('users').select('name').eq('id', bk.requester_id).maybeSingle();
+            fullName = (((u as { name?: string | null } | null)?.name) || '').trim();
+          }
+          const name = fullName ? fullName.split(' ')[0] : 'there';
           const dateStr = bk.event_date
             ? new Date(`${bk.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
             : '';
