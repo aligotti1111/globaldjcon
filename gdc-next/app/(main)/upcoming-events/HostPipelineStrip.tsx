@@ -84,7 +84,10 @@ export default function HostPipelineStrip({
         const ring: CSSProperties = done
           ? { borderColor: NEON, background: 'rgba(34,227,173,.14)', color: NEON }
           : { borderColor: '#3a3a4c', color: isNow ? '#b9b9c6' : '#c2c2ce' };
-        const capColor = done ? DONE_CAP : isNow ? TODO_CAP : '#5a5a72';
+        // Any clickable "your move" stage reads amber (like the contract's "Sign
+        // Here"), not just the single current step — so a payable deposit/balance
+        // or an open planner invites the click instead of looking inert-grey.
+        const capColor = done ? DONE_CAP : (isNow || clickable) ? TODO_CAP : '#5a5a72';
 
         const iconRing = (
           <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, fontSize: 16, borderRadius: '50%', border: '1.5px solid', boxSizing: 'border-box', ...ring }}>
