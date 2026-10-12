@@ -190,11 +190,6 @@ export default function ReceiptSettingsSection() {
 
         {/* Address — discrete fields with autocomplete. */}
         <label style={label}>Business address on receipts</label>
-        <p style={hint}>
-          {usingDefault
-            ? 'Currently using your account address. Edit the fields below to use a different one on receipts, or remove it.'
-            : (composeAddress({ street, city, state: stateVal, zip }) ? 'Using a custom receipt address.' : '')}
-        </p>
 
         <div style={{ position: 'relative' }}>
           <span style={fieldLabel}>Street address</span>
@@ -225,8 +220,8 @@ export default function ReceiptSettingsSection() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.8rem' }}>
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={saveAddress}>Save address</button>
-          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removeAddress}>Remove address</button>
+          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={saveAddress}>Save</button>
+          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removeAddress}>Remove</button>
           {!usingDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountAddress}>Use my account address</button>}
         </div>
 
@@ -235,8 +230,8 @@ export default function ReceiptSettingsSection() {
         <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(e.target.value)}
           placeholder="(555) 123-4567" style={{ ...input, maxWidth: 260 }} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.7rem' }}>
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={savePhone}>Save phone</button>
-          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removePhone}>Remove phone</button>
+          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={savePhone}>Save</button>
+          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removePhone}>Remove</button>
           {!phoneDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountPhone}>Use my account phone</button>}
         </div>
         {accountPhone && <p style={{ ...hint, margin: '.7rem 0 0' }}>Account phone: {accountPhone}</p>}
@@ -250,8 +245,8 @@ export default function ReceiptSettingsSection() {
           <input type="text" value={color} disabled={!loaded || busy}
             onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
             style={{ ...input, width: 120, fontFamily: 'monospace' }} maxLength={7} />
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy || !/^#[0-9a-fA-F]{6}$/.test(color)} onClick={saveColor}>Save colour</button>
-          {!colorIsDefault && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset to default</button>}
+          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy || !/^#[0-9a-fA-F]{6}$/.test(color)} onClick={saveColor}>Save</button>
+          {!colorIsDefault && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Remove</button>}
         </div>
 
         {msg && <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: '#8a8aa0' }}>{msg}</div>}
