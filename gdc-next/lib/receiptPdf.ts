@@ -252,8 +252,9 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     drawL(opts.business.name, textLeftX, by - 12, 15, bold);
     by -= 20;
   }
+  // Left block keeps the business name + contact. The ADDRESS is moved to the
+  // right column, above the reference number (see below).
   const bizSmall: string[] = [];
-  if (opts.business.address) bizSmall.push(opts.business.address);
   const contactBits = [opts.business.phone, opts.business.email].filter(Boolean) as string[];
   if (contactBits.length) bizSmall.push(contactBits.join('  ·  '));
   for (const raw of bizSmall) {
@@ -264,10 +265,21 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   }
   headerBottom = Math.min(headerBottom - 46, by);
 
-  // Document title + number + date, right-aligned.
+  // Right column: title, then the business address, then the reference number,
+  // then the date — so the address sits directly ABOVE the reference.
   drawR(title, rightX, y - 20, 26, bold, accent);
-  drawR(`Reference: ${opts.docNumber}`, rightX, y - 38, 11, reg, MUTED);
-  drawR(opts.dateText, rightX, y - 53, 11, reg, MUTED);
+  let hy = y - 38;
+  if (opts.business.address) {
+    for (const ln of wrap(opts.business.address, reg, 10, 250)) {
+      drawR(ln, rightX, hy, 10, reg, MUTED);
+      hy -= 13;
+    }
+    hy -= 2;
+  }
+  drawR(`Reference: ${opts.docNumber}`, rightX, hy, 11, reg, MUTED);
+  hy -= 15;
+  drawR(opts.dateText, rightX, hy, 11, reg, MUTED);
+  headerBottom = Math.min(headerBottom, hy - 6);
 
   y = headerBottom - 12;
 
