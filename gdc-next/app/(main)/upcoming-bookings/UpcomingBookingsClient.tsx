@@ -421,10 +421,15 @@ export default function UpcomingBookingsClient({
       const when = b.accepted_at || b.created_at || '';
       if (when && when >= d30iso) booked30++;
       // "Pending" contract means SENT and waiting on the client
-      // (awaiting_client) — the same rule the row's contract column uses.
-      // awaiting_dj is the DJ's own unsigned draft, shown as "Not Sent", so it
-      // must NOT count as a pending contract here.
-      if (b.contract_status === 'awaiting_client') pendingContracts++;
+      // (awaiting_client) — the SAME rule the row's contract column uses to
+      // print "Pending". Two carve-outs match that column exactly:
+      //   • awaiting_dj is the DJ's own unsigned draft (shown "Not Sent") — not pending.
+      //   • a contract manually marked complete (status_overrides.contract)
+      //     shows "Complete" on the row even while its status is still
+      //     awaiting_client, so it must NOT be counted as pending here.
+      if (b.contract_status === 'awaiting_client' && !b.status_overrides?.contract) {
+        pendingContracts++;
+      }
       for (const r of (paymentsMap[b.id] || [])) {
         if (outstanding(r.status)) pendingPayments++;
       }
