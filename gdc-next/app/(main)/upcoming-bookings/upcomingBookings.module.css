@@ -191,6 +191,36 @@
 .addBtn:active { transform: scale(0.97); }
 
 /* ── Sort bar ───────────────────────────────────────────────────────── */
+/* Dashboard summary stat boxes — desktop only (hidden in the mobile media
+   query at the bottom of this file). */
+.statBoxes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .8rem;
+  margin: 0 0 1.3rem;
+}
+.statBox {
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 12px;
+  padding: .9rem 1.1rem;
+  background: rgba(255,255,255,.02);
+}
+.statBoxNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: .02em;
+  color: var(--neon, #00f5c4);
+}
+.statBoxLabel {
+  margin-top: .35rem;
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted, #8a8aa0);
+}
+
 .sortBar {
   display: flex;
   align-items: center;
@@ -986,6 +1016,8 @@ select.input {
 /* ── Mobile (header / addBtn only — row mobile rules are below in the
        expand block) ──────────────────────────────────────────────────── */
 @media (max-width: 600px) {
+  /* Dashboard stat boxes are desktop-only. */
+  .statBoxes { display: none; }
   .header { flex-direction: column; align-items: stretch; }
   .addBtn { width: 100%; }
   /* Sort options become a dropdown on mobile: the button group wraps onto two
