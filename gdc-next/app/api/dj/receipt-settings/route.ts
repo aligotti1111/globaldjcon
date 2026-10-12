@@ -45,6 +45,12 @@ export async function GET() {
     return NextResponse.json({
       receiptAddress: dj?.receipt_address ?? null,
       accountAddress: accountAddressOf(dj),
+      // The account's structured parts — city/state/ZIP are reliable (ZIP is
+      // required at signup), so the receipt fields prefill from these rather
+      // than a best-effort parse of the composed address line.
+      accountCity: dj?.city ?? '',
+      accountState: dj?.state ?? '',
+      accountZip: dj?.zip ?? '',
       receiptColor: dj?.receipt_color ?? null,
       receiptPhone: dj?.receipt_phone ?? null,
       accountPhone: dj?.phone ?? '',
