@@ -415,9 +415,11 @@ export async function buildBookingDocAttachment(
       overtime: { title: 'OVERTIME', prefix: 'OT', file: 'Overtime' },
     }[stage];
 
-    // ── Document number + date ──
-    const short = args.bookingId.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase();
-    const docNumber = `${STAGE_META.prefix}-${short}`;
+    // ── Document reference + date ──
+    // Use the EXACT same reference the booking card shows (GDC-XXXX-X), so the
+    // DJ and host quote one identical code across the card, invoice and receipt.
+    const hex = (args.bookingId || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const docNumber = hex.length < 5 ? `GDC-${hex}` : `GDC-${hex.slice(0, 4)}-${hex.slice(4, 5)}`;
     const dateText = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
     const pdfBytes = await buildDocumentPdf({
