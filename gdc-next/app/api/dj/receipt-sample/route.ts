@@ -74,10 +74,10 @@ export async function GET() {
       ],
       lines: [
         { label: 'Event total (incl. tax)', amount: 2400 },
-        { label: 'Deposit received', amount: 600, emphasis: 'bold' },
+        { label: 'Deposit Received (25%)', amount: 600, emphasis: 'bold' },
         { label: 'Remaining balance', amount: 1800, emphasis: 'muted', ruleAbove: true },
       ],
-      headline: { label: 'Deposit received', amount: 600 },
+      headline: { label: 'Deposit Received', amount: 600 },
     });
 
     return new Response(Buffer.from(pdfBytes), {
