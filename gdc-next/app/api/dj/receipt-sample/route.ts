@@ -15,8 +15,9 @@ import { fetchLogo } from '@/lib/receiptDocs';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const isBalance = new URL(req.url).searchParams.get('kind') === 'balance';
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response('Not signed in.', { status: 401 });
@@ -82,12 +83,22 @@ export async function GET() {
         { label: 'Package Name', value: 'Signature DJ Package' },
         { label: 'Package Includes', value: 'DJ & MC · premium sound · dance lighting · wireless mics' },
       ],
-      lines: [
-        { label: 'Event total (incl. tax)', amount: 2400 },
-        { label: 'Deposit Received (25%)', amount: 600, emphasis: 'bold' },
-        { label: 'Remaining balance', amount: 1800, emphasis: 'muted', ruleAbove: true },
-      ],
-      headline: { label: 'Deposit Received', amount: 600 },
+      // Deposit sample (default) and balance sample (?kind=balance) mirror the two
+      // real receipt layouts.
+      lines: isBalance
+        ? [
+            { label: 'Balance Received', amount: 1800, emphasis: 'bold' as const },
+            { label: 'Event total', amount: 2400, emphasis: 'muted' as const },
+            { label: 'Paid to date', amount: 2400, emphasis: 'muted' as const },
+          ]
+        : [
+            { label: 'Event total (incl. tax)', amount: 2400 },
+            { label: 'Deposit Received (25%)', amount: 600, emphasis: 'bold' as const },
+            { label: 'Remaining balance', amount: 1800, emphasis: 'muted' as const, ruleAbove: true },
+          ],
+      headline: isBalance
+        ? { label: 'Paid in Full', amount: 2400 }
+        : { label: 'Deposit Received', amount: 600 },
     });
 
     return new Response(Buffer.from(pdfBytes), {
