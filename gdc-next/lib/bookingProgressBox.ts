@@ -104,7 +104,9 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     // derived skip (a balance was billed with no deposit money collected, so
     // the DJ chose to take it in one payment). A settled deposit is never
     // skipped. Mirrors buildSteps' depositSkipped rule.
-    const depositSkipped = !!ov.deposit_skipped || (requestedOf('balance') && !paidOf('deposit'));
+    // A deposit marked complete by hand (ov.deposit) counts as collected — never
+    // skipped just because a balance was billed.
+    const depositSkipped = !ov.deposit && (!!ov.deposit_skipped || (requestedOf('balance') && !paidOf('deposit')));
     // Show the deposit step when it's genuinely part of this booking: money was
     // requested, a non-zero deposit was configured, or the DJ explicitly marked
     // it complete or skipped by hand. (Same rule the on-screen pipeline uses.)
