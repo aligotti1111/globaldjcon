@@ -330,13 +330,16 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
         .split('\n')
         .flatMap((seg) => { const w = wrap(seg, reg, 10, rightX - valX); return w.length ? w : ['']; });
       drawL(valLines[0], valX, y, 10, reg, INK);
+      // Wrapped continuation lines stay tight (14); a fuller gap (19) separates
+      // one detail row from the next so the labels aren't cramped together.
       y -= 14;
       for (let i = 1; i < valLines.length; i++) {
         drawL(valLines[i], valX, y, 10, reg, INK);
         y -= 14;
       }
+      y -= 5;
     }
-    y -= 6;
+    y -= 4;
   }
 
   // ── Money table ──
@@ -353,7 +356,8 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     const color = row.emphasis === 'muted' ? MUTED : INK;
     drawL(row.label, MARGIN, y, row.emphasis === 'bold' ? 11.5 : 10.5, font, color);
     drawR(money(row.amount, opts.currency), rightX, y, row.emphasis === 'bold' ? 11.5 : 10.5, font, color);
-    y -= row.emphasis === 'bold' ? 20 : 17;
+    // More breathing room between money rows so they don't crowd each other.
+    y -= row.emphasis === 'bold' ? 24 : 21;
   }
 
   y -= 4;
