@@ -435,8 +435,11 @@ export async function buildBookingDocAttachment(
       // Default headline from the DERIVED remaining; override replaces label and
       // amount verbatim. An override label with no amount prints the label alone.
       const remaining = round2(Math.max(0, total - paidToDate));
+      // Paid in full shows the TOTAL in the headline box (so it reads like the
+      // deposit's "Balance Remaining $X" — an amount, not a bare label); any
+      // remaining balance shows that figure.
       const defHeadline = remaining <= 0.005
-        ? { label: 'Paid in Full', amount: 0, hideAmount: true }
+        ? { label: 'Paid in Full', amount: round2(ovNum(ov?.total, total)), hideAmount: false }
         : { label: 'Balance Remaining', amount: remaining, hideAmount: false };
       if (ov && (ov.headlineLabel !== undefined || ov.headlineAmount !== undefined)) {
         const hl = ovStr(ov.headlineLabel, defHeadline.label) || defHeadline.label;
