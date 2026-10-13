@@ -637,7 +637,9 @@ export default function BookingRow({
         // stays, since the balance already nets out real payments.
         const depPaid = payments.filter((p) => p.kind === 'deposit').reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
         const depSettled = payments.some((p) => p.kind === 'deposit' && (p.status === 'paid' || p.status === 'waived'));
-        if (depPaid <= 0 && !depSettled) {
+        // A deposit hand-marked complete (overrides.deposit) counts as collected —
+        // don't skip it, or its receipt actions disappear after billing the balance.
+        if (depPaid <= 0 && !depSettled && !overrides.deposit) {
           setOverrides((prev) => ({ ...prev, deposit_skipped: true }));
         }
       }
