@@ -429,7 +429,12 @@ export async function buildBookingDocAttachment(
           ? 'Balance Received'
           : 'Payment Received';
       const receivedLabel = ovStr(ov?.receivedLabel, defaultReceivedLabel) || defaultReceivedLabel;
-      lines.push({ label: receivedLabel, amount: received });
+      // Drop the "Received" line when it's redundant — i.e. it equals BOTH the
+      // event total and paid-to-date (a one-payment, paid-in-full receipt, where
+      // the same figure would otherwise appear three times plus the headline). It
+      // stays whenever it differs, e.g. a balance paid after a separate deposit.
+      const receivedRedundant = Math.abs(received - totalShown) < 0.005 && Math.abs(received - paidShown) < 0.005;
+      if (!receivedRedundant) lines.push({ label: receivedLabel, amount: received });
       lines.push({ label: 'Event total', amount: totalShown, emphasis: 'muted' });
       lines.push({ label: 'Paid to date', amount: paidShown, emphasis: 'muted' });
       // Default headline from the DERIVED remaining; override replaces label and
