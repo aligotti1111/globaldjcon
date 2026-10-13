@@ -41,11 +41,16 @@ export async function GET() {
     if (dj.zip && String(dj.zip).trim() && accountAddr && !accountAddr.includes(String(dj.zip).trim())) {
       accountAddr = `${accountAddr} ${String(dj.zip).trim()}`;
     }
-    if (accountAddr.includes(',')) {
-      const p = accountAddr.split(',').map((s) => s.trim()).filter(Boolean);
-      if (p.length > 1) accountAddr = [p[0], p.slice(1).join(', ')].join('\n');
-    }
-    const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
+    // Stack any address onto separate lines: street / "city, ST zip" / country.
+    // Already-stacked values (newlines present, e.g. new saves) are left as-is so
+    // we never re-split a legit "city, ST zip" line on its comma.
+    const stack = (s: string): string => {
+      if (!s || s.includes('\n')) return s;
+      const p = s.split(',').map((x) => x.trim()).filter(Boolean);
+      return p.length > 1 ? [p[0], p.slice(1).join(', ')].join('\n') : s;
+    };
+    accountAddr = stack(accountAddr);
+    const addressLine = stack(dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr);
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : (dj.phone || null);
 
     const logo = await fetchLogo(dj.contract_logo_url);
