@@ -61,7 +61,11 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     const paidInFull = total > 0 && totalPaid >= total - 0.01;
 
     const SITE_URL = 'https://globaldjconnect.com';
-    type Step = { left: string; right: string; done: boolean; skipped?: boolean; href?: string };
+    // rightAlways: show the right-hand status word even when the step isn't done.
+    // Used for LIVE statuses (a contract "Pending" with the host, a "Skipped"
+    // deposit). Steps WITHOUT it hide their right word until done — so a future
+    // step never previews "Paid"/"Submitted" in grey before it has happened.
+    type Step = { left: string; right: string; done: boolean; skipped?: boolean; href?: string; rightAlways?: boolean };
     const steps: Step[] = [];
     steps.push({ left: 'Booking Request', right: 'Accepted', done: true });
 
@@ -88,6 +92,8 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
         left: contractSent ? 'Contract sent' : 'Contract',
         right: contractDone ? 'Signed' : 'Pending',
         done: contractDone,
+        // "Pending" (awaiting the host's signature) is a live status, so show it.
+        rightAlways: true,
         href: awaitingHost ? `${SITE_URL}/api/contracts/sign-redirect?bookingId=${bookingId}` : undefined,
       });
     }
@@ -110,7 +116,7 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
         // Skipped is its own state — LABELLED, not hidden, and never treated as
         // the "next" step. Two ways to skip: the DJ hits Skip deposit, or they
         // request the whole balance so no separate deposit is collected.
-        steps.push({ left: 'Deposit', right: 'Skipped', done: false, skipped: true });
+        steps.push({ left: 'Deposit', right: 'Skipped', done: false, skipped: true, rightAlways: true });
       } else {
         // paidOf covers a real payment; ov.deposit covers a deposit the DJ
         // marked complete by hand (cash, a transfer that never touched the app).
@@ -157,7 +163,11 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
       const wrapOpen = `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin:0 0 8px;">`;
       // Two columns: step name on the LEFT, its status word (+ ✓ on done)
       // right-aligned so "Signed / Paid / Submitted" line up down the right edge.
-      const rightCell = s.right ? `<span style="color:${rightColor};">${s.right}</span>${check}` : check;
+      // Show the right-hand status word only when the step is actually done (or
+      // it's a live status flagged rightAlways). A future step shows no word —
+      // so "Paid"/"Submitted" never appear in grey before they've happened.
+      const showRight = !!s.right && (s.done || !!s.rightAlways);
+      const rightCell = showRight ? `<span style="color:${rightColor};">${s.right}</span>${check}` : check;
       // The reliable email trick for left/right on one line in iOS Gmail:
       // make the LEFT cell greedy (width:100%) so it expands and shoves the
       // status cell to the far RIGHT edge. The right cell has no width and
