@@ -132,6 +132,7 @@ interface BookingDocRow {
   set_type: string | null;
   equipment: string | null;
   quoted_rate: number | null;
+  tax_pct: number | null;
   tax_amount: number | null;
   total_with_tax: number | null;
   requester_name: string | null;
@@ -225,7 +226,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, requester_id, host_email, receipt_overrides')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_pct, tax_amount, total_with_tax, requester_name, requester_id, host_email, receipt_overrides')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -357,6 +358,7 @@ export async function buildBookingDocAttachment(
     // ── Money lines + headline ──
     const services = round2(Number(b.quoted_rate ?? 0));
     const tax = round2(Number(b.tax_amount ?? 0));
+    const taxPct = Number(b.tax_pct ?? 0);
     const total = round2(Number(b.total_with_tax ?? services + tax));
     const paidToDate = round2(Number(args.paidToDate ?? 0));
     const lines: DocMoneyLine[] = [];
@@ -397,7 +399,7 @@ export async function buildBookingDocAttachment(
       const hrLabel = `${hrs} hr${hrs === 1 ? '' : 's'}`;
       const otLine = `Overtime — ${hrLabel} × ${fmtCur(Number(ot.rate), currency)}`;
       if (isReceipt) {
-        lines.push({ label: 'Event total', amount: total });
+        lines.push({ label: 'Event Total', amount: total });
         lines.push({ label: otLine, amount: otSub });
         if (otTax > 0) lines.push({ label: 'Overtime tax', amount: otTax });
         lines.push({ label: 'Total', amount: round2(total + otAmount), emphasis: 'bold', ruleAbove: true });
@@ -452,7 +454,7 @@ export async function buildBookingDocAttachment(
         // in bold, a rule, then the remaining balance; the headline box is the
         // deposit itself (DEPOSIT RECEIVED $X).
         const remainingDep = round2(Math.max(0, totalShown - paidShown));
-        lines.push({ label: 'Event total (incl. tax)', amount: totalShown });
+        lines.push({ label: 'Event Total (incl. tax)', amount: totalShown });
         lines.push({ label: receivedLabel, amount: received, emphasis: 'bold' });
         lines.push({ label: 'Remaining balance', amount: remainingDep, emphasis: 'muted', ruleAbove: true });
         headline = applyHeadline({ label: 'Deposit Received', amount: received, hideAmount: false });
@@ -462,16 +464,29 @@ export async function buildBookingDocAttachment(
         // amount received now. The "Deposit received" line only appears when a
         // deposit was actually taken (paid-to-date minus what just arrived).
         const deposit = round2(Math.max(0, paidShown - received));
-        const servicesShown = services > 0 ? services : totalShown;
-        // Only break the total into price + tax when they add up to it (i.e. the
-        // total wasn't overridden to something else).
-        const breakdownOk = tax > 0 && Math.abs(round2(servicesShown + tax) - totalShown) < 0.01;
-        if (breakdownOk) {
-          lines.push({ label: 'Event price', amount: servicesShown, emphasis: 'muted' });
-          lines.push({ label: 'Sales Tax', amount: tax, emphasis: 'muted' });
-          lines.push({ label: 'Event total', amount: totalShown, emphasis: 'bold' });
+        // Split the total into the pre-tax event price and the tax. Prefer the
+        // itemized stored figures; if tax wasn't stored as its own amount but a
+        // tax RATE is on file, reconstruct both from the total so the receipt
+        // still shows tax as its own line. (Totals quoted tax-inclusive but
+        // never itemized would otherwise hide the tax entirely.)
+        let baseShown = services > 0 ? round2(services) : 0;
+        let taxShown = tax > 0 ? round2(tax) : 0;
+        if (taxShown <= 0.005 && taxPct > 0.0001) {
+          baseShown = round2(totalShown / (1 + taxPct / 100));
+          taxShown = round2(totalShown - baseShown);
+        } else if (baseShown <= 0.005 && taxShown > 0.005) {
+          baseShown = round2(totalShown - taxShown);
+        }
+        // Show the three-line breakdown only when a real tax figure exists and
+        // base + tax reconcile to the total; otherwise a single total line.
+        const showTax = taxShown > 0.005 && baseShown > 0.005
+          && Math.abs(round2(baseShown + taxShown) - totalShown) < 0.02;
+        if (showTax) {
+          lines.push({ label: 'Event Total', amount: baseShown, emphasis: 'muted' });
+          lines.push({ label: 'Tax', amount: taxShown, emphasis: 'muted' });
+          lines.push({ label: 'Total Cost', amount: totalShown, emphasis: 'bold' });
         } else {
-          lines.push({ label: 'Event total', amount: totalShown, emphasis: 'bold' });
+          lines.push({ label: 'Event Total', amount: totalShown, emphasis: 'bold' });
         }
         if (deposit > 0.005) {
           lines.push({ label: 'Deposit received', amount: deposit, emphasis: 'muted', ruleAbove: true });
@@ -495,7 +510,7 @@ export async function buildBookingDocAttachment(
       const dueNow = round2(Number(args.amountDue ?? Math.max(0, total - paidToDate)));
       lines.push({ label: b.package_title || 'DJ Services', amount: services2 });
       if (tax > 0) lines.push({ label: 'Sales Tax', amount: tax });
-      lines.push({ label: 'Event total', amount: total, emphasis: 'bold' });
+      lines.push({ label: 'Event Total', amount: total, emphasis: 'bold' });
       // No repeated "due now" row — the headline box below IS that number, so
       // printing it in the table too shows the same figure twice. The table
       // only carries how we get there: what's already paid, or what's still to
