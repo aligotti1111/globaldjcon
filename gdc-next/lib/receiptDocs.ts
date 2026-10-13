@@ -492,18 +492,19 @@ export async function buildBookingDocAttachment(
         }
         // A deposit paid earlier should show as its own line, with this payment
         // then being only the remaining balance. Normally deposit = what was
-        // collected before now (paid-to-date minus this payment). But when the
+        // collected before now (paid-to-date minus this payment). When the
         // deposit was marked complete BY HAND (no ledger row), "received" can
-        // arrive as the full total, hiding the split — so fall back to the
-        // booking's own deposit amount. Skipped when the DJ edited the received
-        // figure on this receipt (then it's printed verbatim).
+        // arrive as the full total and hide the split — so fall back to the
+        // booking's own deposit amount, but ONLY while the deposit is still
+        // marked collected. If the DJ later un-marks the deposit, no deposit
+        // line should appear even though a deposit_amount is still on file.
+        // Skipped entirely when the DJ edited the received figure (verbatim).
         let depositShown = deposit;
         let balanceShown = received;
-        if (ov?.received === undefined) {
+        if (ov?.received === undefined && depositShown <= 0.005) {
           const bookingDeposit = round2(Number(b.deposit_amount ?? 0));
           const depositMarked = !!(b.status_overrides && b.status_overrides.deposit);
-          if (depositShown <= 0.005 && bookingDeposit > 0.005
-            && (depositMarked || paidShown >= round2(totalShown - 0.005))) {
+          if (bookingDeposit > 0.005 && depositMarked) {
             depositShown = Math.min(bookingDeposit, round2(Math.max(0, totalShown)));
             balanceShown = round2(Math.max(0, totalShown - depositShown));
           }
