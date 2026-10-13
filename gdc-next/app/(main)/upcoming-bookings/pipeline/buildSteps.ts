@@ -329,7 +329,10 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     // overrides.invoice, which records no balance row) means the DJ billed the
     // whole thing — so a deposit that was never collected reads as skipped, not
     // a stuck "Not sent". Only when no deposit money actually came in.
-    const depositSkipped = !reallySettled && depositRealPaidNow <= 0
+    // A deposit the DJ marked complete BY HAND (overrides.deposit — cash, etc.)
+    // is NOT skipped: it was collected, just outside the app. Billing/marking the
+    // balance must leave it reading "Paid", never flip it to "Skipped".
+    const depositSkipped = !reallySettled && !overrides.deposit && depositRealPaidNow <= 0
       && (!!overrides.deposit_skipped || payments.some((p) => p.kind === 'balance') || !!overrides.invoice);
     // ...or the DJ marked it done by hand, for money that never went through
     // the app: cash on the night, a bank transfer, a client who paid before
