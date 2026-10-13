@@ -26,6 +26,7 @@ import RiderSendModal from './RiderSendModal';
 import { useSendActions } from './hooks/useSendActions';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
+import EditReceiptModal from './EditReceiptModal';
 import {
   MOBILE_EVENT_TYPES, NEON,
   fmtMoney, getDateParts, formatTimeRange,
@@ -421,6 +422,8 @@ export default function BookingRow({
   const [reqOpen, setReqOpen] = useState(false);
   // Themed confirm dialog (replaces window.confirm so it matches the site).
   const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; cancelLabel?: string; danger?: boolean; onOk: () => void } | null>(null);
+  // Phase 2 — Edit Receipt modal target (which paid stage's receipt is open).
+  const [editReceiptKind, setEditReceiptKind] = useState<'deposit' | 'balance' | null>(null);
   const [reqAmount, setReqAmount] = useState('');
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState<string | null>(null);
@@ -594,7 +597,10 @@ export default function BookingRow({
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch { alert('Could not build the receipt.'); }
-  } async function submitRequest() {
+  }
+  // Phase 2 — just opens the editor; the modal owns the form + submit.
+  function editReceipt(kind: 'deposit' | 'balance') { setEditReceiptKind(kind); }
+  async function submitRequest() {
     const amount = Number(reqAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setReqErr('Enter an amount greater than zero.');
@@ -809,7 +815,7 @@ export default function BookingRow({
     requestPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, editReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
@@ -1098,6 +1104,16 @@ export default function BookingRow({
           currency, no context, and no way to see what it was a deposit ON. */}
       {confirmModal && (
         <ConfirmDialog confirm={confirmModal} onClose={() => setConfirmModal(null)} />
+      )}
+      {editReceiptKind && (
+        <EditReceiptModal
+          kind={editReceiptKind}
+          booking={booking}
+          payments={payments}
+          currency={booking.currency || 'USD'}
+          onClose={() => setEditReceiptKind(null)}
+          onSaved={() => { onMutated?.(); }}
+        />
       )}
       {reqOpen && (
         <RequestPaymentModal
