@@ -847,6 +847,107 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     return NextResponse.json({ ok: true });
   }
 
+  // ───────────────── edit-receipt (DJ only) ─────────────────
+  // Phase 2: the DJ edits what the RECEIPT shows — amounts, labels, event
+  // details, client name/email — as a per-kind override that is printed VERBATIM
+  // (no recalculation) and NEVER changes the booking record. The edit is stored
+  // as a frozen snapshot in bookings.receipt_overrides[kind], so every later
+  // re-send / download reproduces exactly what the DJ approved. On save the
+  // updated receipt is emailed to the host.
+  if (action === 'edit-receipt') {
+    const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
+    const kind = typeof body.kind === 'string' && KINDS.has(body.kind) ? body.kind : 'balance';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, receipt_overrides')
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as (BookingRow & { receipt_overrides: Record<string, unknown> | null }) | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
+
+    // Sanitize the submitted snapshot. undefined = field not sent (keep deriving);
+    // '' or null on a string = cleared; a number stays a number. Strings capped.
+    const o = (body.overrides && typeof body.overrides === 'object') ? body.overrides as Record<string, unknown> : {};
+    const num = (v: unknown): number | null | undefined =>
+      v === undefined ? undefined : (v === null || v === '' ? null : (Number.isFinite(Number(v)) ? round2(Number(v)) : undefined));
+    const str = (v: unknown): string | null | undefined =>
+      v === undefined ? undefined : (v === null ? null : String(v).slice(0, 400));
+    const snapshot: Record<string, unknown> = {
+      received: num(o.received), receivedLabel: str(o.receivedLabel),
+      total: num(o.total), paidToDate: num(o.paidToDate),
+      headlineLabel: str(o.headlineLabel), headlineAmount: num(o.headlineAmount),
+      eventType: str(o.eventType), packageTitle: str(o.packageTitle), includes: str(o.includes),
+      eventDate: str(o.eventDate), eventTime: str(o.eventTime), venue: str(o.venue),
+      clientName: str(o.clientName), clientEmail: str(o.clientEmail),
+    };
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(snapshot)) if (v !== undefined) clean[k] = v;
+
+    const curOverrides = (b.receipt_overrides && typeof b.receipt_overrides === 'object') ? b.receipt_overrides : {};
+    const nextOverrides = { ...curOverrides, [kind]: clean };
+    // Use the generically-typed client: the generated Supabase types don't yet
+    // include the receipt_overrides column (same pattern the rest of this route
+    // uses for columns outside the generated schema).
+    const { error: upErr } = await db.from('bookings').update({ receipt_overrides: nextOverrides }).eq('id', bookingId);
+    if (upErr) return NextResponse.json({ error: 'Could not save the receipt edit.' }, { status: 500 });
+
+    // Derived defaults — the override fills in whatever the DJ changed; these
+    // cover anything they left alone.
+    const cur = b.currency || 'USD';
+    const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
+    const { data: paidData } = await db
+      .from('booking_payments').select('amount_paid').eq('booking_id', bookingId);
+    const paidSoFar = ((paidData as { amount_paid?: number }[] | null) || [])
+      .reduce((s, r) => s + Number(r.amount_paid || 0), 0);
+    let received: number;
+    let paidToDate: number;
+    if (kind === 'deposit') {
+      received = b.deposit_amount != null ? Number(b.deposit_amount) : round2(agreed);
+      paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
+    } else {
+      received = round2(Math.max(0, agreed - paidSoFar));
+      paidToDate = round2(agreed);
+    }
+
+    const to = typeof clean.clientEmail === 'string' && clean.clientEmail.trim()
+      ? clean.clientEmail.trim()
+      : await clientEmailFor(b);
+    if (!to) return NextResponse.json({ error: 'No client email on this booking.' }, { status: 400 });
+    if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email is not configured.' }, { status: 500 });
+
+    const receiptAtt = await buildBookingDocAttachment(db, {
+      docKind: 'receipt', bookingId, djId: acting.djId, currency: cur,
+      paymentKind: kind as 'deposit' | 'balance' | 'other',
+      receivedNow: received, method: null, paidToDate, clientEmail: to,
+    });
+
+    // Headline amount shown in the email mirrors what the DJ typed when present.
+    const emailReceived = typeof clean.received === 'number' ? clean.received : received;
+    const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
+    const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Updated receipt — ${money(emailReceived, cur)}</h1>
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Here is an updated receipt for your ${kind === 'deposit' ? 'deposit' : 'payment'}${b.event_date ? ` for ${b.event_date}` : ''}. It replaces any earlier copy.</p>`;
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: FROM, to,
+        subject: `Updated receipt — ${money(emailReceived, cur)}${subjTail ? ` | ${subjTail}` : ''}`,
+        html: shell(content),
+        attachments: receiptAtt ? [receiptAtt] : undefined,
+      });
+    } catch {
+      // The override was saved; only the email failed. Tell the DJ precisely that.
+      return NextResponse.json({ error: 'Saved the edit, but could not email the receipt.' }, { status: 502 });
+    }
+
+    await logActivity(acting, { action: `receipt.${kind}.edited.sent`, summary: `Edited and re-sent the ${kind === 'deposit' ? 'deposit' : 'payment'} receipt`, bookingId });
+    return NextResponse.json({ ok: true });
+  }
+
   // ───────────────── download-receipt (DJ only) ─────────────────
   // Same receipt PDF as send-receipt, but returned for download instead of
   // emailed — so the DJ can keep a copy or hand it over themselves. No client
