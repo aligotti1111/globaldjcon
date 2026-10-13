@@ -882,6 +882,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       headlineLabel: str(o.headlineLabel), headlineAmount: num(o.headlineAmount),
       eventType: str(o.eventType), packageTitle: str(o.packageTitle), includes: str(o.includes),
       eventDate: str(o.eventDate), eventTime: str(o.eventTime), venue: str(o.venue),
+      eventExtra: str(o.eventExtra),
       clientName: str(o.clientName), clientEmail: str(o.clientEmail),
     };
     const clean: Record<string, unknown> = {};
