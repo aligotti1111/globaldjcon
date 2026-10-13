@@ -318,7 +318,9 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     y -= 18;
     drawL('DETAILS', MARGIN, y, 8.5, bold, MUTED);
     y -= 15;
-    const labelColW = 130;
+    // A wider label column gives "Package Includes" / "Package Name" room before
+    // the value starts, matching the breathing room in the on-screen sample.
+    const labelColW = 165;
     const valX = MARGIN + labelColW;
     for (const d of details) {
       drawL(d.label, MARGIN, y, 10, reg, MUTED);
