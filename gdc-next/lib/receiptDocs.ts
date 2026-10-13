@@ -247,14 +247,17 @@ export async function buildBookingDocAttachment(
     if (dj.zip && String(dj.zip).trim() && accountAddr && !accountAddr.includes(String(dj.zip).trim())) {
       accountAddr = `${accountAddr} ${String(dj.zip).trim()}`;
     }
-    // Stack the account line (first comma part = street, the rest = city/ST/ZIP)
-    // so the address renders on multiple lines like the custom receipt address.
-    if (accountAddr.includes(',')) {
-      const p = accountAddr.split(',').map((s) => s.trim()).filter(Boolean);
-      if (p.length > 1) accountAddr = [p[0], p.slice(1).join(', ')].join('\n');
-    }
-    // The custom receipt address is already newline-stacked; use it as-is.
-    const addressLine = dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr;
+    // Stack any address (first comma part = street, the rest = city/ST/ZIP) so it
+    // renders on multiple lines. Values that already contain newlines (new saves)
+    // are left alone so we never re-split a legit "city, ST zip" on its comma.
+    const stack = (s: string): string => {
+      if (!s || s.includes('\n')) return s;
+      const p = s.split(',').map((x) => x.trim()).filter(Boolean);
+      return p.length > 1 ? [p[0], p.slice(1).join(', ')].join('\n') : s;
+    };
+    accountAddr = stack(accountAddr);
+    // Custom receipt override wins; a legacy one-line override gets stacked too.
+    const addressLine = stack(dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr);
     // Phone printed on the receipt: the override wins ('' -> none), else account phone.
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : dj.phone;
 
