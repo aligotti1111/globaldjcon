@@ -361,20 +361,25 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   y -= 24;
 
   // ── Headline box (balance due / amount paid) ──
-  const boxH = 40;
+  const boxH = 50;
   page.drawRectangle({
     x: MARGIN, y: y - boxH + 12, width: rightX - MARGIN, height: boxH,
     color: rgb(0.96, 0.98, 0.97), borderColor: accent, borderWidth: 1,
   });
+  // Vertical centre of the box — baselines sit a touch below it (≈0.34·fontSize)
+  // so the glyphs are optically centred top-to-bottom.
+  const boxMid = y + 12 - boxH / 2;
   if (opts.headline.hideAmount) {
     // Label only, centred in the box — no figure.
     const hl = opts.headline.label.toUpperCase();
-    const hlSize = 13;
+    const hlSize = 16;
     const hlW = bold.widthOfTextAtSize(hl, hlSize);
-    page.drawText(hl, { x: MARGIN + (rightX - MARGIN - hlW) / 2, y: y - 13, size: hlSize, font: bold, color: accent });
+    page.drawText(hl, { x: MARGIN + (rightX - MARGIN - hlW) / 2, y: boxMid - hlSize * 0.34, size: hlSize, font: bold, color: accent });
   } else {
-    drawL(opts.headline.label.toUpperCase(), MARGIN + 14, y - 8, 11, bold, INK);
-    drawR(money(opts.headline.amount, opts.currency), rightX - 14, y - 12, 18, bold, accent);
+    const labelSize = 15;
+    const amtSize = 22;
+    drawL(opts.headline.label.toUpperCase(), MARGIN + 16, boxMid - labelSize * 0.34, labelSize, bold, INK);
+    drawR(money(opts.headline.amount, opts.currency), rightX - 16, boxMid - amtSize * 0.34, amtSize, bold, accent);
   }
   y -= boxH + 18;
 
