@@ -227,7 +227,7 @@ export async function POST(req: Request) {
               paymentKind: 'deposit', receivedNow: received, method: null, paidToDate, clientEmail: to,
             });
           }
-          const attachLine = receiptAtt ? ' A receipt is attached.' : '';
+          const attachLine = receiptAtt ? ' Your receipt for the deposit is attached.' : '';
           const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Deposit received ✅</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${escHtml(name)}, your deposit has been received${dateStr ? ` for ${escHtml(dateStr)}` : ''}.${attachLine} Thanks!</p>${progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : ''}`;
           const resend = new Resend(process.env.RESEND_API_KEY);
