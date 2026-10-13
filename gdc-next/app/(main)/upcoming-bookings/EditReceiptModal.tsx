@@ -1,17 +1,18 @@
 'use client';
 
-// EditReceiptModal — Phase 2. The DJ edits exactly what the RECEIPT shows for a
-// PAID deposit or balance: amounts, the lines' labels, the event details and the
-// client name/email. Everything is printed VERBATIM on the receipt (no
-// recalculation — editing the total does NOT move the deposit % or the balance),
-// stored as a per-kind snapshot on the booking (receipt_overrides), and the
-// booking record itself is never touched. Saving re-sends the receipt to the host.
+// EditReceiptModal — Phase 2, WYSIWYG. The DJ edits a PAID deposit/balance
+// receipt ON the receipt itself: a realistic render of the paper (their logo,
+// business header, brand colour — pulled from Receipt settings) with every
+// client-facing value sitting as an inline input right where it prints. What you
+// see is what the host gets.
 //
-// Fields prefill from the last saved edit if there is one, otherwise from the
-// receipt's current derived values — so the DJ is correcting a filled-in form,
-// not starting from blank.
+// Everything is printed VERBATIM — no recalculation (editing the total does NOT
+// move the deposit % or the balance). The edit is stored as a per-kind snapshot
+// on the booking (receipt_overrides); the booking record is never touched.
+// Saving re-sends the receipt to the host. Fields prefill from the last saved
+// edit if there is one, else from the receipt's current derived values.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { UpcomingBooking, BookingPayment } from './page';
 import { currencySymbol } from '@/lib/constants';
 import { NEON } from './shared';
@@ -26,9 +27,10 @@ interface Props {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const DEFAULT_ACCENT = '#00e0a4';
+const INK = '#1a1a2e';
+const MUTED = '#777';
 
-// Light client-side formatting for the prefilled defaults. These only seed the
-// inputs; whatever the DJ leaves or types is what prints.
 function prettyType(s: string | null | undefined): string {
   if (!s) return '';
   return String(s).replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
@@ -48,6 +50,19 @@ function friendlyDate(d: string | null | undefined): string {
   const dt = new Date(`${d}T12:00:00`);
   if (isNaN(dt.getTime())) return String(d);
   return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+// Stack "street, city, ST zip" onto separate lines (mirrors the PDF/preview).
+function stackAddr(s: string): string[] {
+  if (!s) return [];
+  if (s.includes('\n')) return s.split('\n').map((x) => x.trim()).filter(Boolean);
+  const p = s.split(',').map((x) => x.trim()).filter(Boolean);
+  return p.length > 1 ? [p[0], p.slice(1).join(', ')] : [s];
+}
+
+interface SettingsShape {
+  receiptAddress: string | null; accountAddress: string;
+  receiptColor: string | null; receiptPhone: string | null; accountPhone: string;
+  businessName: string; logoUrl: string | null;
 }
 
 export default function EditReceiptModal({ kind, booking, payments, currency, onClose, onSaved }: Props) {
@@ -97,13 +112,33 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [settings, setSettings] = useState<SettingsShape | null>(null);
+
+  // Pull the DJ's header (logo, name, address, colour, phone) so the render
+  // matches the real receipt — exactly what the Receipt tab shows.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/dj/receipt-settings');
+        const j = (await r.json().catch(() => ({}))) as Partial<SettingsShape>;
+        if (alive) setSettings({
+          receiptAddress: j.receiptAddress ?? null,
+          accountAddress: j.accountAddress ?? '',
+          receiptColor: j.receiptColor ?? null,
+          receiptPhone: j.receiptPhone ?? null,
+          accountPhone: j.accountPhone ?? '',
+          businessName: j.businessName ?? '',
+          logoUrl: j.logoUrl ?? null,
+        });
+      } catch { if (alive) setSettings({ receiptAddress: null, accountAddress: '', receiptColor: null, receiptPhone: null, accountPhone: '', businessName: '', logoUrl: null }); }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   async function save() {
     setBusy(true);
     setErr(null);
-    // Numbers go as numbers; blanks on the amount lines fall back to the derived
-    // value server-side (undefined), EXCEPT the headline amount, where blank is a
-    // deliberate "show the label with no figure" (null). `includes` blank is omit.
     const numOrUndef = (s: string): number | undefined => {
       const t = s.trim();
       if (t === '') return undefined;
@@ -112,10 +147,10 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
     };
     const overrides: Record<string, unknown> = {
       received: numOrUndef(received),
-      receivedLabel: receivedLabel,
+      receivedLabel,
       total: numOrUndef(total),
       paidToDate: numOrUndef(paidToDate),
-      headlineLabel: headlineLabel,
+      headlineLabel,
       headlineAmount: headlineAmount.trim() === '' ? null : numOrUndef(headlineAmount),
       eventType, packageTitle,
       includes: includes.trim() === '' ? undefined : includes,
@@ -137,79 +172,130 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
   }
 
   const sym = currencySymbol(currency);
-  const labelCss: React.CSSProperties = {
-    display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.58rem',
-    letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', margin: '0 0 .3rem',
-  };
-  const inputCss: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box', background: 'var(--deep,#0b0b12)',
-    border: '1px solid rgba(255,255,255,.14)', borderRadius: 6, color: 'var(--white,#fff)',
-    padding: '.5rem .6rem', fontSize: '.85rem',
-  };
-  const sectionCss: React.CSSProperties = {
-    fontFamily: "'Space Mono', monospace", fontSize: '.62rem', letterSpacing: '.1em',
-    textTransform: 'uppercase', color: NEON, margin: '1rem 0 .55rem',
-  };
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: '.6rem' }}>
-      <label style={labelCss}>{label}</label>
-      {children}
-    </div>
+  const accent = (settings?.receiptColor && /^#[0-9a-fA-F]{6}$/.test(settings.receiptColor)) ? settings.receiptColor : DEFAULT_ACCENT;
+  const addrLines = settings ? stackAddr(settings.receiptAddress != null ? settings.receiptAddress : settings.accountAddress) : [];
+  const headerPhone = settings ? (settings.receiptPhone != null ? settings.receiptPhone : settings.accountPhone) : '';
+  const hex = (booking.id || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const docNumber = hex.length < 5 ? `GDC-${hex}` : `GDC-${hex.slice(0, 4)}-${hex.slice(4, 5)}`;
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Inline input styled to blend into the paper but still read as editable
+  // (dashed underline, solid accent on focus).
+  const base = (extra: React.CSSProperties): React.CSSProperties => ({
+    font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
+    borderBottom: '1px dashed rgba(0,0,0,.22)', padding: '0 0 1px', margin: 0, outline: 'none',
+    ...extra,
+  });
+  const onFocus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderBottomColor = accent; e.currentTarget.style.borderBottomStyle = 'solid'; };
+  const onBlur = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderBottomColor = 'rgba(0,0,0,.22)'; e.currentTarget.style.borderBottomStyle = 'dashed'; };
+  const Tx = ({ v, set, style, placeholder }: { v: string; set: (s: string) => void; style?: React.CSSProperties; placeholder?: string }) => (
+    <input value={v} placeholder={placeholder} onChange={(e) => { set(e.target.value); setErr(null); }}
+      onFocus={onFocus} onBlur={onBlur} style={base({ width: '100%', ...style })} />
   );
-  const money = (v: string, set: (s: string) => void) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-      <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.9rem' }}>{sym}</span>
+  // Money input: $ glyph + a right-sized number field.
+  const Mny = ({ v, set, bold, align = 'right' }: { v: string; set: (s: string) => void; bold?: boolean; align?: 'left' | 'right' }) => (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, justifyContent: align === 'right' ? 'flex-end' : 'flex-start', fontWeight: bold ? 700 : 'inherit' }}>
+      <span>{sym}</span>
       <input type="number" min="0" step="0.01" value={v} onWheel={(e) => e.currentTarget.blur()}
-        onChange={(e) => { set(e.target.value); setErr(null); }} style={inputCss} />
-    </div>
+        onChange={(e) => { set(e.target.value); setErr(null); }} onFocus={onFocus} onBlur={onBlur}
+        style={base({ width: 86, textAlign: 'right', fontWeight: bold ? 700 : 'inherit' })} />
+    </span>
   );
-  const text = (v: string, set: (s: string) => void) => (
-    <input value={v} onChange={(e) => { set(e.target.value); setErr(null); }} style={inputCss} />
-  );
+
+  const secLabel: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#999', margin: '0 0 4px' };
+  const rowCss: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '4px 0', fontSize: 12.5 };
+  const hr = <hr style={{ border: 'none', borderTop: '1px solid #e5e5e5', margin: '14px 0' }} />;
 
   return (
-    <div
-      onClick={() => !busy && onClose()}
-      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.2rem', overflowY: 'auto' }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.1rem 1.2rem', maxWidth: 460, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,.6)', margin: 'auto' }}
-      >
-        <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.2rem' }}>
+    <div onClick={() => !busy && onClose()}
+      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.2rem', overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 580, width: '100%', margin: 'auto' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: '.95rem', marginBottom: '.2rem' }}>
           Edit {kind === 'deposit' ? 'deposit' : 'balance'} receipt
         </div>
-        <p style={{ margin: '0 0 .4rem', color: 'var(--muted,#8a8aa0)', fontSize: '.72rem', lineHeight: 1.5 }}>
-          Changes here only affect this receipt — the booking is never altered. Values print exactly as typed; nothing recalculates. Saving re-sends the receipt to the client.
+        <p style={{ margin: '0 0 .6rem', color: 'rgba(255,255,255,.7)', fontSize: '.72rem', lineHeight: 1.5 }}>
+          Edit any value right on the receipt — it prints exactly as typed, nothing recalculates, and the booking is never changed. Saving re-sends this to the client.
         </p>
 
-        <div style={sectionCss}>Amounts</div>
-        <Field label="Received line label">{text(receivedLabel, setReceivedLabel)}</Field>
-        <Field label="Amount received">{money(received, setReceived)}</Field>
-        <Field label="Event total">{money(total, setTotal)}</Field>
-        <Field label="Paid to date">{money(paidToDate, setPaidToDate)}</Field>
-        <Field label="Headline label">{text(headlineLabel, setHeadlineLabel)}</Field>
-        <Field label="Headline amount (blank = no figure)">{money(headlineAmount, setHeadlineAmount)}</Field>
+        {/* The receipt itself — a real render with inline-editable values. */}
+        <div style={{ background: '#fff', borderRadius: 10, padding: '24px 26px', color: INK, boxShadow: '0 12px 40px rgba(0,0,0,.5)' }}>
+          {/* Header: logo + business block (left, from settings) · title/date/ref (right) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0 }}>
+              {settings?.logoUrl
+                /* eslint-disable-next-line @next/next/no-img-element */
+                ? <img src={settings.logoUrl} alt="logo" style={{ maxWidth: 110, maxHeight: 44, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                : null}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800 }}>{settings?.businessName || 'Your Business'}</div>
+                {addrLines.map((ln, i) => (
+                  <div key={i} style={{ color: MUTED, fontSize: 11, marginTop: i === 0 ? 3 : 1 }}>{ln}</div>
+                ))}
+                {headerPhone ? <div style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{headerPhone}</div> : null}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: accent, letterSpacing: '.02em' }}>RECEIPT</div>
+              <div style={{ color: MUTED, fontSize: 11, marginTop: 4 }}>{today}</div>
+              <div style={{ color: MUTED, fontSize: 11 }}>Reference: {docNumber}</div>
+            </div>
+          </div>
 
-        <div style={sectionCss}>Event details</div>
-        <Field label="Event type">{text(eventType, setEventType)}</Field>
-        <Field label="Package">{text(packageTitle, setPackageTitle)}</Field>
-        <Field label="Includes (blank = keep package's listed inclusions)">
-          <textarea value={includes} onChange={(e) => { setIncludes(e.target.value); setErr(null); }} rows={2} style={{ ...inputCss, resize: 'vertical' }} />
-        </Field>
-        <Field label="Event date">{text(eventDate, setEventDate)}</Field>
-        <Field label="Event time">{text(eventTime, setEventTime)}</Field>
-        <Field label="Venue">{text(venue, setVenue)}</Field>
+          {hr}
 
-        <div style={sectionCss}>Client (Received From)</div>
-        <Field label="Client name">{text(clientName, setClientName)}</Field>
-        <Field label="Client email (the receipt is sent here)">{text(clientEmail, setClientEmail)}</Field>
+          {/* RECEIVED FROM · EVENT */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={secLabel}>Received From</div>
+              <div style={{ fontWeight: 700, fontSize: 12.5 }}><Tx v={clientName} set={setClientName} placeholder="Client name" /></div>
+              <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><Tx v={clientEmail} set={setClientEmail} placeholder="client@email" style={{ color: MUTED }} /></div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+              <div style={secLabel}>Event</div>
+              <div style={{ fontSize: 12.5 }}><Tx v={eventType} set={setEventType} placeholder="Event type" style={{ textAlign: 'right' }} /></div>
+              <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><Tx v={eventDate} set={setEventDate} placeholder="Event date" style={{ textAlign: 'right', color: MUTED }} /></div>
+              <div style={{ color: MUTED, fontSize: 12 }}><Tx v={venue} set={setVenue} placeholder="Venue" style={{ textAlign: 'right', color: MUTED }} /></div>
+              <div style={{ color: MUTED, fontSize: 12 }}><Tx v={eventTime} set={setEventTime} placeholder="Event time" style={{ textAlign: 'right', color: MUTED }} /></div>
+            </div>
+          </div>
 
-        {err && <p style={{ margin: '.3rem 0 .6rem', color: '#ff6b6b', fontSize: '.75rem', lineHeight: 1.5, wordBreak: 'break-word' }}>{err}</p>}
+          {hr}
+
+          {/* DETAILS */}
+          <div style={secLabel}>Details</div>
+          <div style={{ ...rowCss, color: MUTED }}><span>Event Type</span><span style={{ color: INK, width: '55%' }}><Tx v={eventType} set={setEventType} style={{ textAlign: 'right' }} /></span></div>
+          <div style={{ ...rowCss, color: MUTED }}><span>Package</span><span style={{ color: INK, width: '55%' }}><Tx v={packageTitle} set={setPackageTitle} style={{ textAlign: 'right' }} placeholder="Package" /></span></div>
+          <div style={{ ...rowCss, color: MUTED, alignItems: 'flex-start' }}><span>Includes</span><span style={{ color: INK, width: '55%' }}><Tx v={includes} set={setIncludes} style={{ textAlign: 'right' }} placeholder="(optional)" /></span></div>
+
+          {hr}
+
+          {/* Money lines */}
+          <div style={rowCss}><span style={{ flex: 1 }}><Tx v={receivedLabel} set={setReceivedLabel} placeholder="Received label" /></span><Mny v={received} set={setReceived} /></div>
+          <div style={{ ...rowCss, color: MUTED }}><span>Event total</span><Mny v={total} set={setTotal} /></div>
+          <div style={{ ...rowCss, color: MUTED }}><span>Paid to date</span><Mny v={paidToDate} set={setPaidToDate} /></div>
+
+          {/* Headline box */}
+          <div style={{ marginTop: 14, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontWeight: 800 }}>
+            <span style={{ color: INK, flex: 1, textTransform: 'uppercase', fontSize: 13 }}>
+              <input value={headlineLabel} onChange={(e) => { setHeadlineLabel(e.target.value); setErr(null); }} onFocus={onFocus} onBlur={onBlur}
+                style={base({ width: '100%', fontWeight: 800, textTransform: 'uppercase' })} />
+            </span>
+            <span style={{ color: accent, display: 'inline-flex', alignItems: 'baseline', gap: 1, fontSize: 18 }}>
+              <span>{sym}</span>
+              <input type="number" min="0" step="0.01" value={headlineAmount} placeholder="—" onWheel={(e) => e.currentTarget.blur()}
+                onChange={(e) => { setHeadlineAmount(e.target.value); setErr(null); }} onFocus={onFocus} onBlur={onBlur}
+                style={base({ width: 100, textAlign: 'right', fontWeight: 800, color: accent })} />
+            </span>
+          </div>
+          <div style={{ color: MUTED, fontSize: 10.5, marginTop: 6, textAlign: 'right' }}>Headline amount blank = label only (e.g. “Paid in Full”).</div>
+        </div>
+
+        {err && <p style={{ margin: '.5rem 0 0', color: '#ff8a8a', fontSize: '.78rem', lineHeight: 1.5, wordBreak: 'break-word' }}>{err}</p>}
 
         <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end', marginTop: '.7rem' }}>
           <button type="button" disabled={busy} onClick={onClose}
-            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.18)', color: 'var(--muted,#8a8aa0)', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: busy ? 'default' : 'pointer', fontSize: '.8rem' }}>
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: 'rgba(255,255,255,.8)', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: busy ? 'default' : 'pointer', fontSize: '.8rem' }}>
             Cancel
           </button>
           <button type="button" disabled={busy} onClick={() => void save()}
