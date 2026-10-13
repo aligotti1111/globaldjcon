@@ -121,6 +121,20 @@ function fmtTime(t: string | null | undefined): string {
   hr = hr % 12 || 12;
   return `${hr}:${m[2]} ${ap}`;
 }
+// Flatten the booking's rich-text package details into newline-separated plain
+// text, so the editor can prefill "Package Includes" with what's on the booking
+// card (one item per line) — mirroring how the receipt flattens it.
+function stripToLines(raw: string | null | undefined): string {
+  return String(raw || '')
+    .replace(/<\/(p|div|br|li|h[1-6])>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/[ \t]+/g, ' ')
+    .split('\n').map((l) => l.trim()).filter(Boolean).join('\n')
+    .trim();
+}
 function friendlyDate(d: string | null | undefined): string {
   if (!d) return '';
   const dt = new Date(`${d}T12:00:00`);
@@ -181,7 +195,7 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
   const [headlineAmount, setHeadlineAmount] = useState(sv('headlineAmount', defHeadlineAmount));
   const [eventType, setEventType] = useState(sv('eventType', prettyType(booking.event_type)));
   const [packageTitle, setPackageTitle] = useState(sv('packageTitle', booking.package_title || ''));
-  const [includes, setIncludes] = useState(sv('includes', ''));
+  const [includes, setIncludes] = useState(sv('includes', stripToLines(booking.package_details)));
   const [eventDate, setEventDate] = useState(sv('eventDate', friendlyDate(booking.event_date)));
   const [eventTime, setEventTime] = useState(sv('eventTime',
     [fmtTime(booking.start_time), fmtTime(booking.end_time)].filter(Boolean).join(' – ')));
