@@ -322,7 +322,11 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     const valX = MARGIN + labelColW;
     for (const d of details) {
       drawL(d.label, MARGIN, y, 10, reg, MUTED);
-      const valLines = wrap(String(d.value), reg, 10, rightX - valX);
+      // Honour explicit line breaks the DJ typed (Enter in the editor) — split on
+      // newlines first, then word-wrap each line so long lines still flow.
+      const valLines = String(d.value)
+        .split('\n')
+        .flatMap((seg) => { const w = wrap(seg, reg, 10, rightX - valX); return w.length ? w : ['']; });
       drawL(valLines[0], valX, y, 10, reg, INK);
       y -= 14;
       for (let i = 1; i < valLines.length; i++) {
