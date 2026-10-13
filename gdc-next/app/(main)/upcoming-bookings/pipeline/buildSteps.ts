@@ -481,8 +481,17 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // A SKIPPED deposit offers only "Undo skip" (and nothing if it was
       // skipped because a balance is already out — there's no undoing then).
       // Otherwise the normal request/skip/payment-options set.
-      actions: (archive || !!overrides.deposit)
+      actions: archive
         ? []
+        : !!overrides.deposit
+        // Deposit HAND-marked complete (e.g. cash): no request workflow applies,
+        // but a receipt was/can be sent for it, so offer the receipt actions
+        // (Edit / Re-send / Download) alongside the "Mark Not Paid" toggle.
+        ? [
+            ...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('deposit') }] : []),
+            { label: 'Re-send receipt', run: () => sendReceipt('deposit') },
+            { label: 'Download receipt', run: () => downloadReceipt?.('deposit') },
+          ]
         : depositSkipped
         ? (balanceRequested
             ? []
