@@ -15,6 +15,9 @@ import { Resend } from 'resend';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
 import { getActingContext, canAcceptBookings } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
+import { buildBookingDocAttachment } from '@/lib/receiptDocs';
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -182,10 +185,10 @@ export async function POST(req: Request) {
     try {
       const { data: bkData } = await admin
         .from('bookings')
-        .select('id, host_email, requester_id, requester_name, event_date')
+        .select('id, host_email, requester_id, requester_name, event_date, dj_id, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
         .eq('id', bookingId)
         .maybeSingle();
-      const bk = bkData as { host_email?: string | null; requester_id?: string | null; requester_name?: string | null; event_date?: string | null } | null;
+      const bk = bkData as { host_email?: string | null; requester_id?: string | null; requester_name?: string | null; event_date?: string | null; dj_id?: string | null; currency?: string | null; deposit_amount?: number | null; total_with_tax?: number | null; counter_rate?: number | null; quoted_rate?: number | null; offer_amount?: number | null } | null;
       if (bk) {
         let to = (bk.host_email || '').trim();
         if (!to && bk.requester_id) to = (await resolveUserEmail(bk.requester_id)) || '';
@@ -203,14 +206,37 @@ export async function POST(req: Request) {
           const dateStr = bk.event_date
             ? new Date(`${bk.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
             : '';
+          // Build the deposit RECEIPT PDF (same generator the online payment
+          // confirmation uses), so a hand-marked deposit also gives the host a
+          // receipt. Amounts derived the way the receipt actions derive them.
+          let receiptAtt: { filename: string; content: string } | null = null;
+          if (bk.dj_id) {
+            const cur = bk.currency || 'USD';
+            const agreed = Number(bk.total_with_tax ?? bk.counter_rate ?? bk.quoted_rate ?? bk.offer_amount ?? 0);
+            // booking_payments isn't in the generated Supabase types — talk to it
+            // through a generically-typed client, same as the payments route.
+            const pdb = admin as unknown as import('@supabase/supabase-js').SupabaseClient;
+            const { data: paidData } = await pdb
+              .from('booking_payments').select('amount_paid').eq('booking_id', bookingId).eq('kind', 'deposit');
+            const paidSoFar = ((paidData as { amount_paid?: number }[] | null) || [])
+              .reduce((s, r) => s + Number(r.amount_paid || 0), 0);
+            const received = bk.deposit_amount != null ? Number(bk.deposit_amount) : round2(agreed);
+            const paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
+            receiptAtt = await buildBookingDocAttachment(admin, {
+              docKind: 'receipt', bookingId, djId: bk.dj_id, currency: cur,
+              paymentKind: 'deposit', receivedNow: received, method: null, paidToDate, clientEmail: to,
+            });
+          }
+          const attachLine = receiptAtt ? ' A receipt is attached.' : '';
           const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Deposit received ✅</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${escHtml(name)}, your deposit is settled${dateStr ? ` for ${escHtml(dateStr)}` : ''}. Thanks!</p>${progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : ''}`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Hi ${escHtml(name)}, your deposit has been received${dateStr ? ` for ${escHtml(dateStr)}` : ''}.${attachLine} Thanks!</p>${progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : ''}`;
           const resend = new Resend(process.env.RESEND_API_KEY);
           await resend.emails.send({
             from: FROM,
             to,
             subject: `Deposit received${dateStr ? ` — ${dateStr}` : ''}`,
             html: shell(content),
+            attachments: receiptAtt ? [receiptAtt] : undefined,
           });
         }
       }
