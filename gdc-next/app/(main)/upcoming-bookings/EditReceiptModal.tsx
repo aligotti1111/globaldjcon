@@ -319,8 +319,8 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
           {/* DETAILS — Package & Includes are multi-line and grow with the text. */}
           <div style={secLabel}>Details</div>
           <div style={{ ...rowCss, color: MUTED, alignItems: 'center' }}><span>Event Type</span><span style={{ color: INK, width: '55%' }}><InlineText value={eventType} set={setEventType} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} /></span></div>
-          <div style={{ ...rowCss, color: MUTED }}><span style={{ paddingTop: 1 }}>Package</span><span style={{ color: INK, width: '60%' }}><InlineArea value={packageTitle} set={setPackageTitle} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} placeholder="Package" /></span></div>
-          <div style={{ ...rowCss, color: MUTED }}><span style={{ paddingTop: 1 }}>Includes</span><span style={{ color: INK, width: '60%' }}><InlineArea value={includes} set={setIncludes} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} placeholder="(optional)" /></span></div>
+          <div style={{ ...rowCss, color: MUTED }}><span style={{ paddingTop: 1 }}>Package Name</span><span style={{ color: INK, width: '60%' }}><InlineArea value={packageTitle} set={setPackageTitle} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} placeholder="Package name" /></span></div>
+          <div style={{ ...rowCss, color: MUTED }}><span style={{ paddingTop: 1 }}>Package Includes</span><span style={{ color: INK, width: '60%' }}><InlineArea value={includes} set={setIncludes} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} placeholder="(optional)" /></span></div>
 
           {hr}
 
