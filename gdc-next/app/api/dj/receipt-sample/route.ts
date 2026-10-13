@@ -79,7 +79,8 @@ export async function GET() {
       },
       details: [
         { label: 'Event Type', value: 'Wedding' },
-        { label: 'Package', value: 'Signature DJ Package' },
+        { label: 'Package Name', value: 'Signature DJ Package' },
+        { label: 'Package Includes', value: 'DJ & MC · premium sound · dance lighting · wireless mics' },
       ],
       lines: [
         { label: 'Event total (incl. tax)', amount: 2400 },
