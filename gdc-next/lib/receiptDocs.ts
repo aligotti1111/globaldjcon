@@ -137,6 +137,30 @@ interface BookingDocRow {
   requester_name: string | null;
   requester_id: string | null;
   host_email: string | null;
+  // Receipt-only per-kind override snapshots (see db/receipt_overrides.sql).
+  // Printed VERBATIM; never recalculated; never read by booking/pipeline math.
+  receipt_overrides: Record<string, ReceiptOverride> | null;
+}
+
+// A frozen snapshot of what the DJ typed into the Edit Receipt modal for one
+// payment kind. Every field is optional — a missing field falls back to the
+// value the receipt would otherwise derive.
+export interface ReceiptOverride {
+  received?: number | null;
+  receivedLabel?: string | null;
+  total?: number | null;
+  paidToDate?: number | null;
+  headlineLabel?: string | null;
+  /** null here means "show the label with no amount" (e.g. Paid in Full). */
+  headlineAmount?: number | null;
+  eventType?: string | null;
+  packageTitle?: string | null;
+  includes?: string | null;
+  eventDate?: string | null;
+  eventTime?: string | null;
+  venue?: string | null;
+  clientName?: string | null;
+  clientEmail?: string | null;
 }
 
 interface DjDocRow {
@@ -198,7 +222,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, requester_id, host_email')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_amount, total_with_tax, requester_name, requester_id, host_email, receipt_overrides')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -232,6 +256,18 @@ export async function buildBookingDocAttachment(
     const currency = args.currency || b.currency || 'USD';
     const isReceipt = args.docKind === 'receipt';
     const isClub = b.dj_type === 'club';
+
+    // Receipt-only override snapshot for THIS kind. Applies only to a normal
+    // (non-overtime) receipt — an overtime receipt is a different document and
+    // isn't editable here. Every field is printed verbatim with no recalculation;
+    // a missing field falls through to the derived value. Small helpers keep the
+    // "override wins, else default" choice readable and treat '' as "cleared".
+    const ov: ReceiptOverride | null =
+      (isReceipt && !args.overtime && b.receipt_overrides && b.receipt_overrides[args.paymentKind]) || null;
+    const ovStr = (v: string | null | undefined, fallback: string | null): string | null =>
+      (v !== undefined && v !== null) ? (String(v).trim() || null) : fallback;
+    const ovNum = (v: number | null | undefined, fallback: number): number =>
+      (v !== undefined && v !== null && Number.isFinite(Number(v))) ? Number(v) : fallback;
 
     // Business address line. The Receipt-tab override (receipt_address) wins:
     //   non-null  -> use it exactly ('' means the DJ chose to show NO address)
@@ -289,13 +325,14 @@ export async function buildBookingDocAttachment(
       if (b.set_type) details.push({ label: 'Set type', value: b.set_type });
       if (b.equipment) details.push({ label: 'Equipment', value: EQUIPMENT_LABEL[b.equipment] || b.equipment });
     } else {
-      // Event Type sits ABOVE the package on the paper.
-      const etLabel = eventLabel(b.event_type);
+      // Event Type sits ABOVE the package on the paper. A receipt override, when
+      // present, replaces each value verbatim.
+      const etLabel = ovStr(ov?.eventType, eventLabel(b.event_type) || null);
       if (etLabel) details.push({ label: 'Event Type', value: etLabel });
-      if (b.package_title) details.push({ label: 'Package', value: b.package_title });
-      if (b.package_details && b.package_details.trim()) {
-        details.push({ label: 'Includes', value: stripHtml(b.package_details) });
-      }
+      const pkgTitle = ovStr(ov?.packageTitle, b.package_title);
+      if (pkgTitle) details.push({ label: 'Package', value: pkgTitle });
+      const includes = ovStr(ov?.includes, (b.package_details && b.package_details.trim()) ? stripHtml(b.package_details) : null);
+      if (includes) details.push({ label: 'Includes', value: includes });
     }
 
     // Wedding ceremony + cocktail-hour times → EVENT block (under the venue).
@@ -375,23 +412,41 @@ export async function buildBookingDocAttachment(
         }
       }
     } else if (isReceipt) {
-      const received = round2(Number(args.receivedNow ?? 0));
+      // Each printed value starts from the derived default, then an Edit-Receipt
+      // override replaces it VERBATIM — nothing is recomputed from an edited
+      // field (editing the total does NOT shift the deposit % or the balance).
+      const received = round2(ovNum(ov?.received, Number(args.receivedNow ?? 0)));
+      const totalShown = round2(ovNum(ov?.total, total));
+      const paidShown = round2(ovNum(ov?.paidToDate, paidToDate));
       // Deposit receipts show the deposit as a % of the event total; balance and
       // other receipts get their own plain label. Payment method is intentionally
-      // not printed on this line.
-      const depPct = total > 0 ? Math.round((received / total) * 100) : 0;
-      const receivedLabel = args.paymentKind === 'deposit'
+      // not printed on this line. The % is computed from the DERIVED figures so a
+      // later amount edit doesn't move it — the DJ edits the label text to change it.
+      const depPct = total > 0 ? Math.round((round2(Number(args.receivedNow ?? 0)) / total) * 100) : 0;
+      const defaultReceivedLabel = args.paymentKind === 'deposit'
         ? `Deposit Received (${depPct}%)`
         : args.paymentKind === 'balance'
           ? 'Balance Received'
           : 'Payment Received';
+      const receivedLabel = ovStr(ov?.receivedLabel, defaultReceivedLabel) || defaultReceivedLabel;
       lines.push({ label: receivedLabel, amount: received });
-      lines.push({ label: 'Event total', amount: total, emphasis: 'muted' });
-      lines.push({ label: 'Paid to date', amount: paidToDate, emphasis: 'muted' });
+      lines.push({ label: 'Event total', amount: totalShown, emphasis: 'muted' });
+      lines.push({ label: 'Paid to date', amount: paidShown, emphasis: 'muted' });
+      // Default headline from the DERIVED remaining; override replaces label and
+      // amount verbatim. An override label with no amount prints the label alone.
       const remaining = round2(Math.max(0, total - paidToDate));
-      headline = remaining <= 0.005
+      const defHeadline = remaining <= 0.005
         ? { label: 'Paid in Full', amount: 0, hideAmount: true }
-        : { label: 'Balance Remaining', amount: remaining };
+        : { label: 'Balance Remaining', amount: remaining, hideAmount: false };
+      if (ov && (ov.headlineLabel !== undefined || ov.headlineAmount !== undefined)) {
+        const hl = ovStr(ov.headlineLabel, defHeadline.label) || defHeadline.label;
+        // headlineAmount: a number shows it; explicit null (or absent while a
+        // label was given) shows the label with no figure.
+        const hasAmt = ov.headlineAmount !== undefined && ov.headlineAmount !== null && Number.isFinite(Number(ov.headlineAmount));
+        headline = { label: hl, amount: hasAmt ? round2(Number(ov.headlineAmount)) : 0, hideAmount: !hasAmt };
+      } else {
+        headline = defHeadline;
+      }
     } else {
       // Invoice — tell the WHOLE story so the client never has to do the math:
       // the full event total, anything already paid, what's due right now, and
@@ -479,8 +534,17 @@ export async function buildBookingDocAttachment(
         phone: phoneLine,
         logo,
       },
-      client: { name: billToName || b.requester_name, email: args.clientEmail || b.host_email },
-      event: { title: eventLabel(b.event_type), dateText: friendlyDate(b.event_date), timeText: weddingTimeText || setTime || null, venue: b.venue_name, extra: eventExtra },
+      client: {
+        name: ovStr(ov?.clientName, billToName || b.requester_name),
+        email: ovStr(ov?.clientEmail, args.clientEmail || b.host_email),
+      },
+      event: {
+        title: ovStr(ov?.eventType, eventLabel(b.event_type)),
+        dateText: ovStr(ov?.eventDate, friendlyDate(b.event_date)),
+        timeText: ovStr(ov?.eventTime, weddingTimeText || setTime || null),
+        venue: ovStr(ov?.venue, b.venue_name),
+        extra: eventExtra,
+      },
       details,
       lines,
       headline,
