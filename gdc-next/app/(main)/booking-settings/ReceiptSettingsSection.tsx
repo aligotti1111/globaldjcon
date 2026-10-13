@@ -11,7 +11,16 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BusinessLogoSection from '../update-dj-profile/BusinessLogoSection';
-import { searchAddresses, COUNTRIES, type AddressSuggestion } from '../account-settings/helpers';
+import { searchAddresses, COUNTRIES, COUNTRY_CODES_ADDR, type AddressSuggestion } from '../account-settings/helpers';
+
+// 2-letter ISO code → flag emoji (regional-indicator letters). Matches the
+// booking request's country selector, which shows "🇺🇸 US" style options.
+function flagEmoji(code: string): string {
+  const cc = (code || '').trim().toUpperCase();
+  if (cc.length !== 2 || !/^[A-Z]{2}$/.test(cc)) return '';
+  const base = 0x1f1e6;
+  return String.fromCodePoint(base + (cc.charCodeAt(0) - 65), base + (cc.charCodeAt(1) - 65));
+}
 
 const DEFAULT_COLOR = '#00e0a4';
 const DEFAULT_COUNTRY = 'United States';
@@ -220,29 +229,45 @@ export default function ReceiptSettingsSection() {
         {/* Address — discrete fields with autocomplete. */}
         <label style={label}>Business address on receipts</label>
 
-        <div style={{ position: 'relative' }}>
-          <span style={fieldLabel}>Street address</span>
-          <input
-            type="text" value={street} disabled={!loaded || busy} autoComplete="off"
-            placeholder="123 Main St"
-            onChange={(e) => onStreetChange(e.target.value)}
-            onBlur={() => setTimeout(() => setShowSug(false), 150)}
-            onFocus={() => { if (suggestions.length > 0) setShowSug(true); }}
-            style={input}
-          />
-          {showSug && suggestions.length > 0 && (
-            <div style={{ position: 'absolute', zIndex: 20, left: 0, right: 0, top: '100%', marginTop: 4, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,.5)' }}>
-              {suggestions.map((sg, i) => (
-                <div key={i} onMouseDown={(e) => { e.preventDefault(); onPick(sg); }}
-                  style={{ padding: '8px 12px', fontSize: '.82rem', color: '#e8e8f0', cursor: 'pointer', borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,.07)' : 'none' }}>
-                  {sg.display.length > 60 ? sg.display.slice(0, 60) + '…' : sg.display}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Street address + Country on one line. Country shows flag + ISO code,
+            matching the booking request's selector. */}
+        <div style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <span style={fieldLabel}>Street address</span>
+            <input
+              type="text" value={street} disabled={!loaded || busy} autoComplete="off"
+              placeholder="123 Main St"
+              onChange={(e) => onStreetChange(e.target.value)}
+              onBlur={() => setTimeout(() => setShowSug(false), 150)}
+              onFocus={() => { if (suggestions.length > 0) setShowSug(true); }}
+              style={input}
+            />
+            {showSug && suggestions.length > 0 && (
+              <div style={{ position: 'absolute', zIndex: 20, left: 0, right: 0, top: '100%', marginTop: 4, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,.5)' }}>
+                {suggestions.map((sg, i) => (
+                  <div key={i} onMouseDown={(e) => { e.preventDefault(); onPick(sg); }}
+                    style={{ padding: '8px 12px', fontSize: '.82rem', color: '#e8e8f0', cursor: 'pointer', borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,.07)' : 'none' }}>
+                    {sg.display.length > 60 ? sg.display.slice(0, 60) + '…' : sg.display}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ width: 96, flexShrink: 0 }}>
+            <span style={fieldLabel}>Country</span>
+            <select value={country} disabled={!loaded || busy} onChange={(e) => setCountry(e.target.value)} style={input} aria-label="Country">
+              {country && !COUNTRIES.includes(country) && <option value={country}>{country}</option>}
+              {COUNTRIES.filter((c) => c !== 'Other').map((c) => {
+                const code = (COUNTRY_CODES_ADDR[c] || '').toUpperCase();
+                const flag = flagEmoji(code);
+                return <option key={c} value={c}>{flag ? `${flag} ` : ''}{code || c}</option>;
+              })}
+            </select>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr .6fr .7fr', gap: '.6rem', marginTop: '.7rem' }}>
+        {/* City / State / ZIP — equal-width columns. */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem', marginTop: '.7rem' }}>
           <div><span style={fieldLabel}>City</span><input type="text" value={city} disabled={!loaded || busy} onChange={(e) => setCity(e.target.value)} placeholder="Springfield" style={input} /></div>
           <div>
             <span style={fieldLabel}>State</span>
@@ -259,18 +284,9 @@ export default function ReceiptSettingsSection() {
           <div><span style={fieldLabel}>ZIP</span><input type="text" value={zip} disabled={!loaded || busy} onChange={(e) => setZip(e.target.value)} placeholder="62701" style={input} /></div>
         </div>
 
-        <div style={{ marginTop: '.7rem', maxWidth: 280 }}>
-          <span style={fieldLabel}>Country</span>
-          <select value={country} disabled={!loaded || busy} onChange={(e) => setCountry(e.target.value)} style={input}>
-            {country && !COUNTRIES.includes(country) && <option value={country}>{country}</option>}
-            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.8rem' }}>
           <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={saveAddress}>Save</button>
           <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removeAddress}>Remove</button>
-          {!usingDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountAddress}>Use my account address</button>}
         </div>
 
         {/* Phone — receipt-only, independent of the account phone. */}
@@ -280,9 +296,7 @@ export default function ReceiptSettingsSection() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.7rem' }}>
           <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={savePhone}>Save</button>
           <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removePhone}>Remove</button>
-          {!phoneDefault && <button type="button" style={linkBtn} disabled={busy} onClick={useAccountPhone}>Use my account phone</button>}
         </div>
-        {accountPhone && <p style={{ ...hint, margin: '.7rem 0 0' }}>Account phone: {accountPhone}</p>}
 
         {/* Colour */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Receipt colour</label>
