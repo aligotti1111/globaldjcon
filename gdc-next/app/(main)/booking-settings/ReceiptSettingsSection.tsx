@@ -172,6 +172,14 @@ export default function ReceiptSettingsSection() {
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
+  // Re-format the phone whenever the country changes, so switching country
+  // adapts the existing number's dashes (US/Canada ↔ other). Idempotent, so it
+  // no-ops when the format already matches.
+  useEffect(() => {
+    if (!loaded) return;
+    setPhone((p) => formatPhone(p, country));
+  }, [country, loaded]);
+
   function onStreetChange(val: string) {
     setStreet(val);
     if (timerRef.current) clearTimeout(timerRef.current);
