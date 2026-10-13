@@ -434,31 +434,43 @@ export async function buildBookingDocAttachment(
           ? 'Balance Received'
           : 'Payment Received';
       const receivedLabel = ovStr(ov?.receivedLabel, defaultReceivedLabel) || defaultReceivedLabel;
-      // Drop the "Received" line when it's redundant — i.e. it equals BOTH the
-      // event total and paid-to-date (a one-payment, paid-in-full receipt, where
-      // the same figure would otherwise appear three times plus the headline). It
-      // stays whenever it differs, e.g. a balance paid after a separate deposit.
-      const receivedRedundant = Math.abs(received - totalShown) < 0.005 && Math.abs(received - paidShown) < 0.005;
-      if (!receivedRedundant) lines.push({ label: receivedLabel, amount: received });
-      lines.push({ label: 'Event total', amount: totalShown, emphasis: 'muted' });
-      lines.push({ label: 'Paid to date', amount: paidShown, emphasis: 'muted' });
-      // Default headline from the DERIVED remaining; override replaces label and
-      // amount verbatim. An override label with no amount prints the label alone.
-      const remaining = round2(Math.max(0, total - paidToDate));
-      // Paid in full shows the TOTAL in the headline box (so it reads like the
-      // deposit's "Balance Remaining $X" — an amount, not a bare label); any
-      // remaining balance shows that figure.
-      const defHeadline = remaining <= 0.005
-        ? { label: 'Paid in Full', amount: round2(ovNum(ov?.total, total)), hideAmount: false }
-        : { label: 'Balance Remaining', amount: remaining, hideAmount: false };
-      if (ov && (ov.headlineLabel !== undefined || ov.headlineAmount !== undefined)) {
-        const hl = ovStr(ov.headlineLabel, defHeadline.label) || defHeadline.label;
-        // headlineAmount: a number shows it; explicit null (or absent while a
-        // label was given) shows the label with no figure.
-        const hasAmt = ov.headlineAmount !== undefined && ov.headlineAmount !== null && Number.isFinite(Number(ov.headlineAmount));
-        headline = { label: hl, amount: hasAmt ? round2(Number(ov.headlineAmount)) : 0, hideAmount: !hasAmt };
+      // Helper: apply a headline override (label + optional amount) over a default.
+      const applyHeadline = (def: { label: string; amount: number; hideAmount: boolean }) => {
+        if (ov && (ov.headlineLabel !== undefined || ov.headlineAmount !== undefined)) {
+          const hl = ovStr(ov.headlineLabel, def.label) || def.label;
+          const hasAmt = ov.headlineAmount !== undefined && ov.headlineAmount !== null && Number.isFinite(Number(ov.headlineAmount));
+          // A number shows it; explicit null shows the label with no figure;
+          // absent keeps the default amount.
+          const amt = hasAmt ? round2(Number(ov.headlineAmount)) : def.amount;
+          return { label: hl, amount: amt, hideAmount: ov.headlineAmount === null ? true : def.hideAmount };
+        }
+        return def;
+      };
+
+      if (args.paymentKind === 'deposit') {
+        // Deposit receipt — matches the sample: event total, the deposit received
+        // in bold, a rule, then the remaining balance; the headline box is the
+        // deposit itself (DEPOSIT RECEIVED $X).
+        const remainingDep = round2(Math.max(0, totalShown - paidShown));
+        lines.push({ label: 'Event total (incl. tax)', amount: totalShown });
+        lines.push({ label: receivedLabel, amount: received, emphasis: 'bold' });
+        lines.push({ label: 'Remaining balance', amount: remainingDep, emphasis: 'muted', ruleAbove: true });
+        headline = applyHeadline({ label: 'Deposit Received', amount: received, hideAmount: false });
       } else {
-        headline = defHeadline;
+        // Balance / other receipt — the received line, muted event total +
+        // paid-to-date, and a Paid-in-Full / Balance-Remaining headline. Drop the
+        // "Received" line when it equals BOTH the event total and paid-to-date (a
+        // one-payment, paid-in-full receipt); keep it when it differs (a balance
+        // paid after a separate deposit).
+        const receivedRedundant = Math.abs(received - totalShown) < 0.005 && Math.abs(received - paidShown) < 0.005;
+        if (!receivedRedundant) lines.push({ label: receivedLabel, amount: received });
+        lines.push({ label: 'Event total', amount: totalShown, emphasis: 'muted' });
+        lines.push({ label: 'Paid to date', amount: paidShown, emphasis: 'muted' });
+        const remaining = round2(Math.max(0, totalShown - paidShown));
+        const defHeadline = remaining <= 0.005
+          ? { label: 'Paid in Full', amount: totalShown, hideAmount: false }
+          : { label: 'Balance Remaining', amount: remaining, hideAmount: false };
+        headline = applyHeadline(defHeadline);
       }
     } else {
       // Invoice — tell the WHOLE story so the client never has to do the math:
