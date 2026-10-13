@@ -324,8 +324,16 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
 
           {hr}
 
-          {/* Money lines */}
-          <div style={{ ...rowCss, alignItems: 'center' }}><span style={{ flex: 1 }}><InlineText value={receivedLabel} set={setReceivedLabel} accent={accent} onEdit={clearErr} placeholder="Received label" /></span><InlineMoney value={received} set={setReceived} accent={accent} onEdit={clearErr} sym={sym} /></div>
+          {/* Money lines. The "Received" line hides when it's redundant — equal to
+              BOTH the event total and paid-to-date — matching the receipt, which
+              drops it in that case. It reappears the moment any of them differ. */}
+          {(() => {
+            const n = (s: string) => { const v = Number(s); return Number.isFinite(v) ? Math.round(v * 100) / 100 : NaN; };
+            const redundant = Math.abs(n(received) - n(total)) < 0.005 && Math.abs(n(received) - n(paidToDate)) < 0.005;
+            return redundant ? null : (
+              <div style={{ ...rowCss, alignItems: 'center' }}><span style={{ flex: 1 }}><InlineText value={receivedLabel} set={setReceivedLabel} accent={accent} onEdit={clearErr} placeholder="Received label" /></span><InlineMoney value={received} set={setReceived} accent={accent} onEdit={clearErr} sym={sym} /></div>
+            );
+          })()}
           <div style={{ ...rowCss, color: MUTED, alignItems: 'center' }}><span>Event total</span><InlineMoney value={total} set={setTotal} accent={accent} onEdit={clearErr} sym={sym} /></div>
           <div style={{ ...rowCss, color: MUTED, alignItems: 'center' }}><span>Paid to date</span><InlineMoney value={paidToDate} set={setPaidToDate} accent={accent} onEdit={clearErr} sym={sym} /></div>
 
