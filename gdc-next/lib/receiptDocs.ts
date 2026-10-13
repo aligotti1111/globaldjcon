@@ -457,15 +457,35 @@ export async function buildBookingDocAttachment(
         lines.push({ label: 'Remaining balance', amount: remainingDep, emphasis: 'muted', ruleAbove: true });
         headline = applyHeadline({ label: 'Deposit Received', amount: received, hideAmount: false });
       } else {
-        // Balance / other receipt — the received line, muted event total +
-        // paid-to-date, and a Paid-in-Full / Balance-Remaining headline. Drop the
-        // "Received" line when it equals BOTH the event total and paid-to-date (a
-        // one-payment, paid-in-full receipt); keep it when it differs (a balance
-        // paid after a separate deposit).
-        const receivedRedundant = Math.abs(received - totalShown) < 0.005 && Math.abs(received - paidShown) < 0.005;
-        if (!receivedRedundant) lines.push({ label: receivedLabel, amount: received });
-        lines.push({ label: 'Event total', amount: totalShown, emphasis: 'muted' });
-        lines.push({ label: 'Paid to date', amount: paidShown, emphasis: 'muted' });
+        // Balance / other receipt. The amount already paid BEFORE this payment is
+        // the deposit (paid-to-date minus what just arrived).
+        const deposit = round2(Math.max(0, paidShown - received));
+        if (deposit > 0.005) {
+          // A deposit was taken earlier — show the FULL breakdown: event price +
+          // tax making up the total, then the deposit received and the balance
+          // received now. The headline stays Paid in Full / Balance Remaining.
+          const servicesShown = services > 0 ? services : totalShown;
+          // Only break the total into price + tax when they actually add up to it
+          // (i.e. the total wasn't overridden to something else).
+          const breakdownOk = tax > 0 && Math.abs(round2(servicesShown + tax) - totalShown) < 0.01;
+          if (breakdownOk) {
+            lines.push({ label: 'Event price', amount: servicesShown, emphasis: 'muted' });
+            lines.push({ label: 'Sales Tax', amount: tax, emphasis: 'muted' });
+            lines.push({ label: 'Event total', amount: totalShown, emphasis: 'bold' });
+          } else {
+            lines.push({ label: 'Event total', amount: totalShown, emphasis: 'bold' });
+          }
+          lines.push({ label: 'Deposit received', amount: deposit, emphasis: 'muted', ruleAbove: true });
+          lines.push({ label: receivedLabel, amount: received, emphasis: 'bold' });
+        } else {
+          // No separate deposit — the simple layout: drop the "Received" line when
+          // it equals BOTH the event total and paid-to-date (a one-payment, paid-
+          // in-full receipt), otherwise keep it.
+          const receivedRedundant = Math.abs(received - totalShown) < 0.005 && Math.abs(received - paidShown) < 0.005;
+          if (!receivedRedundant) lines.push({ label: receivedLabel, amount: received });
+          lines.push({ label: 'Event total', amount: totalShown, emphasis: 'muted' });
+          lines.push({ label: 'Paid to date', amount: paidShown, emphasis: 'muted' });
+        }
         const remaining = round2(Math.max(0, totalShown - paidShown));
         const defHeadline = remaining <= 0.005
           ? { label: 'Paid in Full', amount: totalShown, hideAmount: false }
