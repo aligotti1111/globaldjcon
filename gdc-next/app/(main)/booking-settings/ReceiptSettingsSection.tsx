@@ -252,7 +252,10 @@ export default function ReceiptSettingsSection() {
   const hint: CSSProperties = { fontSize: '.82rem', color: 'rgba(235,235,245,.55)', lineHeight: 1.5, margin: '0 0 .7rem' };
   const input: CSSProperties = {
     width: '100%', boxSizing: 'border-box', fontSize: '.9rem', color: '#fff', background: 'rgba(255,255,255,.04)',
-    border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, padding: '.55rem .75rem',
+    border: '1px solid rgba(255,255,255,.14)', borderRadius: 10,
+    // Fixed height + vertical-centered text so <input> and <select> fields line
+    // up at the same height (selects render shorter than inputs by default).
+    height: 40, padding: '0 .75rem', lineHeight: '38px',
   };
   const fieldLabel: CSSProperties = { fontSize: '.72rem', color: 'rgba(235,235,245,.6)', margin: '0 0 .25rem', display: 'block' };
   const btn = (bg: string, fg: string): CSSProperties => ({
