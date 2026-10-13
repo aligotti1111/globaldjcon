@@ -118,6 +118,8 @@ export default function ReceiptSettingsSection() {
   // instantly on every edit with no server round-trip.
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [bizName, setBizName] = useState('');
+  // Which sample the preview shows — a deposit receipt or a balance receipt.
+  const [sampleKind, setSampleKind] = useState<'deposit' | 'balance'>('deposit');
 
   // Address autocomplete state.
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -376,7 +378,21 @@ export default function ReceiptSettingsSection() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.5rem' }}>
           <span style={{ fontSize: '.7rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#8a8aa0' }}>Sample receipt</span>
-          <a href="/api/dj/receipt-sample" target="_blank" rel="noopener noreferrer" style={{ ...linkBtn, textDecoration: 'underline' }}>View exact PDF</a>
+          <a href={`/api/dj/receipt-sample?kind=${sampleKind}`} target="_blank" rel="noopener noreferrer" style={{ ...linkBtn, textDecoration: 'underline' }}>View exact PDF</a>
+        </div>
+        {/* Deposit / Balance sample switch. */}
+        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 999, padding: 3, marginBottom: '.6rem' }}>
+          {(['deposit', 'balance'] as const).map((k) => (
+            <button key={k} type="button" onClick={() => setSampleKind(k)}
+              style={{
+                border: 'none', cursor: 'pointer', borderRadius: 999, padding: '.3rem .9rem',
+                fontSize: '.72rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'capitalize',
+                background: sampleKind === k ? '#00e0a4' : 'transparent',
+                color: sampleKind === k ? '#06231b' : '#aab',
+              }}>
+              {k}
+            </button>
+          ))}
         </div>
         <ReceiptPreview
           logoUrl={logoUrl}
@@ -384,6 +400,7 @@ export default function ReceiptSettingsSection() {
           address={composeAddress({ street, city, state: stateVal, zip, country })}
           phone={phone.trim()}
           accent={/^#[0-9a-fA-F]{6}$/.test(color) ? color : DEFAULT_COLOR}
+          kind={sampleKind}
         />
         <p style={{ ...hint, margin: '.5rem 0 0' }}>
           Live preview with placeholder event details — your logo, address, phone and colour update instantly.
@@ -397,8 +414,8 @@ export default function ReceiptSettingsSection() {
 // ── Live HTML receipt preview — mirrors the generated PDF layout, updates
 // instantly from props. Placeholder event details; logo/address/phone/colour
 // are the DJ's real settings. ────────────────────────────────────────────────
-function ReceiptPreview({ logoUrl, name, address, phone, accent }: {
-  logoUrl: string | null; name: string; address: string; phone: string; accent: string;
+function ReceiptPreview({ logoUrl, name, address, phone, accent, kind }: {
+  logoUrl: string | null; name: string; address: string; phone: string; accent: string; kind: 'deposit' | 'balance';
 }) {
   const ink = '#1a1a2e';
   const muted = '#777';
@@ -441,12 +458,25 @@ function ReceiptPreview({ logoUrl, name, address, phone, accent }: {
       <div style={{ ...row, color: muted }}><span>Package Name</span><span style={{ color: ink }}>Signature DJ Package</span></div>
       <div style={{ ...row, color: muted }}><span>Package Includes</span><span style={{ color: ink }}>DJ &amp; MC · premium sound · dance lighting</span></div>
       <hr style={{ border: 'none', borderTop: line, margin: '14px 0 2px' }} />
-      <div style={row}><span>Event total (incl. tax)</span><span>$2,400.00</span></div>
-      <div style={{ ...row, fontWeight: 700 }}><span>Deposit Received (25%)</span><span>$600.00</span></div>
-      <div style={{ ...row, color: muted, borderTop: line, marginTop: 4, paddingTop: 9 }}><span>Remaining balance</span><span>$1,800.00</span></div>
-      <div style={{ marginTop: 16, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: accent }}>
-        <span style={{ color: ink }}>DEPOSIT RECEIVED</span><span>$600.00</span>
-      </div>
+      {kind === 'deposit' ? (
+        <>
+          <div style={row}><span>Event total (incl. tax)</span><span>$2,400.00</span></div>
+          <div style={{ ...row, fontWeight: 700 }}><span>Deposit Received (25%)</span><span>$600.00</span></div>
+          <div style={{ ...row, color: muted, borderTop: line, marginTop: 4, paddingTop: 9 }}><span>Remaining balance</span><span>$1,800.00</span></div>
+          <div style={{ marginTop: 16, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: accent }}>
+            <span style={{ color: ink }}>DEPOSIT RECEIVED</span><span>$600.00</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ ...row, fontWeight: 700 }}><span>Balance Received</span><span>$1,800.00</span></div>
+          <div style={{ ...row, color: muted }}><span>Event total</span><span>$2,400.00</span></div>
+          <div style={{ ...row, color: muted }}><span>Paid to date</span><span>$2,400.00</span></div>
+          <div style={{ marginTop: 16, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: accent }}>
+            <span style={{ color: ink }}>PAID IN FULL</span><span>$2,400.00</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
