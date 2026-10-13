@@ -351,10 +351,10 @@ export async function buildBookingDocAttachment(
     // keep the plain time.
     const weddingTimeText = (!isClub && isWedding && setTime) ? `Reception ${setTime}` : '';
     if (!isClub && isWedding && b.ceremony_needed && b.ceremony_start_time) {
-      eventExtra.push(`Ceremony ${fmtTime(b.ceremony_start_time)} · ${b.ceremony_same_room ? 'same room as reception' : 'separate room'}`);
+      eventExtra.push(`Ceremony ${fmtTime(b.ceremony_start_time)}`);
     }
     if (!isClub && isWedding && b.cocktail_needed && b.cocktail_start_time) {
-      eventExtra.push(`Cocktail hour ${fmtTime(b.cocktail_start_time)} · ${b.cocktail_same_room ? 'same room as reception' : 'separate room'}`);
+      eventExtra.push(`Cocktail hour ${fmtTime(b.cocktail_start_time)}`);
     }
 
     // ── Money lines + headline ──
