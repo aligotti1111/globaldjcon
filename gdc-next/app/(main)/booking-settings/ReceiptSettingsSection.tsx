@@ -22,6 +22,30 @@ function flagEmoji(code: string): string {
   return String.fromCodePoint(base + (cc.charCodeAt(0) - 65), base + (cc.charCodeAt(1) - 65));
 }
 
+// Format a phone number with dashes. US/Canada (NANP) get (###) ###-####; any
+// other country just gets its digits grouped in threes with dashes, since digit
+// counts vary. A leading "+" (country code) is kept. Formats progressively as
+// the DJ types, and never drops digits beyond the format's capacity.
+function formatPhone(raw: string, country: string): string {
+  const hasPlus = raw.trim().startsWith('+');
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return hasPlus ? '+' : '';
+  if (country === 'United States' || country === 'Canada') {
+    const intl = digits.length === 11 && digits[0] === '1';
+    const d = intl ? digits.slice(1) : digits;
+    const a = d.slice(0, 3), b = d.slice(3, 6), c = d.slice(6, 10);
+    let out = '';
+    if (d.length > 6) out = `(${a}) ${b}-${c}`;
+    else if (d.length > 3) out = `(${a}) ${b}`;
+    else if (d.length > 0) out = d.length === 3 ? `(${a}) ` : `(${a}`;
+    // Any extra digits beyond 10 just trail on so nothing is silently lost.
+    if (d.length > 10) out += d.slice(10);
+    return intl ? `+1 ${out}` : out;
+  }
+  const groups = digits.match(/.{1,3}/g) || [];
+  return (hasPlus ? '+' : '') + groups.join('-');
+}
+
 const DEFAULT_COLOR = '#00e0a4';
 const DEFAULT_COUNTRY = 'United States';
 
@@ -134,7 +158,8 @@ export default function ReceiptSettingsSection() {
         if (j.receiptColor && /^#[0-9a-fA-F]{6}$/.test(j.receiptColor)) { setColor(j.receiptColor); setColorIsDefault(false); }
         else { setColor(DEFAULT_COLOR); setColorIsDefault(true); }
         setAccountPhone(j.accountPhone || '');
-        const iPhone = j.receiptPhone == null ? (j.accountPhone || '') : j.receiptPhone;
+        const rawPhone = j.receiptPhone == null ? (j.accountPhone || '') : j.receiptPhone;
+        const iPhone = formatPhone(rawPhone, iCountry);
         setPhone(iPhone);
         setPhoneDefault(j.receiptPhone == null);
         // Baseline = what's currently persisted, so nothing reads as "unsaved" on load.
@@ -313,7 +338,7 @@ export default function ReceiptSettingsSection() {
 
         {/* Phone — receipt-only, independent of the account phone. */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Phone on receipts</label>
-        <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(e.target.value)}
+        <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(formatPhone(e.target.value, country))}
           placeholder="(555) 123-4567" style={{ ...input, maxWidth: 260 }} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.7rem' }}>
           <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={savePhone}>Save</button>
