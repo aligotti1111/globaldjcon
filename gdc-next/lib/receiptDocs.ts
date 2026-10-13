@@ -309,7 +309,9 @@ export async function buildBookingDocAttachment(
         .replace(/&amp;/gi, '&')
         .replace(/[ \t]+/g, ' ')
         .replace(/\n{2,}/g, '\n')
-        .split('\n').map((l) => l.trim()).filter(Boolean).join('  •  ')
+        // Keep each package-detail item on its own line (the PDF honours the
+        // newlines and stacks them), rather than joining them into one sentence.
+        .split('\n').map((l) => l.trim()).filter(Boolean).join('\n')
         .trim();
 
     // ── Details block (differs by DJ type) ──
