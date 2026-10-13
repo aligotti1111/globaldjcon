@@ -135,6 +135,8 @@ interface BookingDocRow {
   tax_pct: number | null;
   tax_amount: number | null;
   total_with_tax: number | null;
+  deposit_amount: number | null;
+  status_overrides: Record<string, boolean> | null;
   requester_name: string | null;
   requester_id: string | null;
   host_email: string | null;
@@ -226,7 +228,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_pct, tax_amount, total_with_tax, requester_name, requester_id, host_email, receipt_overrides')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_pct, tax_amount, total_with_tax, deposit_amount, status_overrides, requester_name, requester_id, host_email, receipt_overrides')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -488,9 +490,27 @@ export async function buildBookingDocAttachment(
         } else {
           lines.push({ label: 'Event Total', amount: totalShown, emphasis: 'bold' });
         }
-        if (deposit > 0.005) {
-          lines.push({ label: 'Deposit received', amount: deposit, emphasis: 'muted', ruleAbove: true });
-          lines.push({ label: receivedLabel, amount: received, emphasis: 'bold' });
+        // A deposit paid earlier should show as its own line, with this payment
+        // then being only the remaining balance. Normally deposit = what was
+        // collected before now (paid-to-date minus this payment). But when the
+        // deposit was marked complete BY HAND (no ledger row), "received" can
+        // arrive as the full total, hiding the split — so fall back to the
+        // booking's own deposit amount. Skipped when the DJ edited the received
+        // figure on this receipt (then it's printed verbatim).
+        let depositShown = deposit;
+        let balanceShown = received;
+        if (ov?.received === undefined) {
+          const bookingDeposit = round2(Number(b.deposit_amount ?? 0));
+          const depositMarked = !!(b.status_overrides && b.status_overrides.deposit);
+          if (depositShown <= 0.005 && bookingDeposit > 0.005
+            && (depositMarked || paidShown >= round2(totalShown - 0.005))) {
+            depositShown = Math.min(bookingDeposit, round2(Math.max(0, totalShown)));
+            balanceShown = round2(Math.max(0, totalShown - depositShown));
+          }
+        }
+        if (depositShown > 0.005) {
+          lines.push({ label: 'Deposit received', amount: depositShown, emphasis: 'muted', ruleAbove: true });
+          lines.push({ label: receivedLabel, amount: balanceShown, emphasis: 'bold' });
         } else {
           lines.push({ label: receivedLabel, amount: received, emphasis: 'bold', ruleAbove: true });
         }
