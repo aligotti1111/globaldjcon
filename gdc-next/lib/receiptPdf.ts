@@ -227,32 +227,9 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
 
   let headerBottom = y;
 
-  // Logo, if we were handed bytes.
-  let textLeftX = MARGIN;
-  if (opts.business.logo) {
-    try {
-      const img = opts.business.logo.type === 'png'
-        ? await pdf.embedPng(opts.business.logo.bytes)
-        : await pdf.embedJpg(opts.business.logo.bytes);
-      const maxLogoH = 46;
-      const scale = Math.min(maxLogoH / img.height, 120 / img.width);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      page.drawImage(img, { x: MARGIN, y: y - h + 6, width: w, height: h });
-      textLeftX = MARGIN + w + 14;
-    } catch {
-      // A bad/oversized image must never sink the whole document — skip it.
-      textLeftX = MARGIN;
-    }
-  }
-
-  // Business text lines beside/under the logo.
-  let by = y;
-  if (opts.business.name) {
-    drawL(opts.business.name, textLeftX, by - 12, 15, bold);
-    by -= 20;
-  }
-  // Left block: business name, then address, then contact (phone/email).
+  // Pre-build the business text block (name + address lines + contact) and
+  // measure its total height, so the logo can be scaled to the SAME height as
+  // the block beside it rather than a fixed cap.
   const bizSmall: string[] = [];
   // Address may be newline-stacked (street / city, ST zip / country) — one line each.
   if (opts.business.address) {
@@ -260,13 +237,43 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   }
   const contactBits = [opts.business.phone, opts.business.email].filter(Boolean) as string[];
   if (contactBits.length) bizSmall.push(contactBits.join('  ·  '));
-  for (const raw of bizSmall) {
-    for (const ln of wrap(raw, reg, 9.5, 280)) {
-      drawL(ln, textLeftX, by - 10, 9.5, reg, MUTED);
-      by -= 13;
+  const wrappedSmall: string[] = [];
+  for (const raw of bizSmall) for (const ln of wrap(raw, reg, 9.5, 280)) wrappedSmall.push(ln);
+  const nameBlockH = opts.business.name ? 20 : 0;
+  const blockH = nameBlockH + wrappedSmall.length * 13; // full vertical span of the text
+
+  // Logo, if we were handed bytes — sized to the text block's height, capped on
+  // width so a wide logo can't run across the page.
+  let textLeftX = MARGIN;
+  if (opts.business.logo) {
+    try {
+      const img = opts.business.logo.type === 'png'
+        ? await pdf.embedPng(opts.business.logo.bytes)
+        : await pdf.embedJpg(opts.business.logo.bytes);
+      const targetH = Math.max(blockH, 30);
+      const scale = Math.min(targetH / img.height, 150 / img.width);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      // Top of the logo lines up with the top of the name.
+      page.drawImage(img, { x: MARGIN, y: y - h - 1, width: w, height: h });
+      textLeftX = MARGIN + w + 14;
+    } catch {
+      // A bad/oversized image must never sink the whole document — skip it.
+      textLeftX = MARGIN;
     }
   }
-  headerBottom = Math.min(headerBottom - 46, by);
+
+  // Draw the business text lines beside the logo.
+  let by = y;
+  if (opts.business.name) {
+    drawL(opts.business.name, textLeftX, by - 12, 15, bold);
+    by -= 20;
+  }
+  for (const ln of wrappedSmall) {
+    drawL(ln, textLeftX, by - 10, 9.5, reg, MUTED);
+    by -= 13;
+  }
+  headerBottom = Math.min(headerBottom - blockH, by);
 
   // Right column: title, then the DATE, then the reference number — so the date
   // sits directly ABOVE the reference.
