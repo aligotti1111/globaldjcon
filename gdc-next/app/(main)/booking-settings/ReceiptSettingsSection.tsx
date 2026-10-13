@@ -366,7 +366,8 @@ function ReceiptPreview({ logoUrl, name, address, phone, accent }: {
       <hr style={{ border: 'none', borderTop: line, margin: '16px 0' }} />
       <div style={sec}>Details</div>
       <div style={{ ...row, color: muted }}><span>Event Type</span><span style={{ color: ink }}>Wedding</span></div>
-      <div style={{ ...row, color: muted }}><span>Package</span><span style={{ color: ink }}>Signature DJ Package</span></div>
+      <div style={{ ...row, color: muted }}><span>Package Name</span><span style={{ color: ink }}>Signature DJ Package</span></div>
+      <div style={{ ...row, color: muted }}><span>Package Includes</span><span style={{ color: ink }}>DJ &amp; MC · premium sound · dance lighting</span></div>
       <hr style={{ border: 'none', borderTop: line, margin: '14px 0 2px' }} />
       <div style={row}><span>Event total (incl. tax)</span><span>$2,400.00</span></div>
       <div style={{ ...row, fontWeight: 700 }}><span>Deposit Received (25%)</span><span>$600.00</span></div>
