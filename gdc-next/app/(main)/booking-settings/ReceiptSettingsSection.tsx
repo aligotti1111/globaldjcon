@@ -337,16 +337,20 @@ function ReceiptPreview({ logoUrl, name, address, phone, accent }: {
     <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(255,255,255,.14)', padding: '26px 28px', color: ink, minHeight: 540 }}>
       {/* Header: left business block, right title/date/reference */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-        <div style={{ minWidth: 0 }}>
+        {/* Logo LEFT, business block to its RIGHT — mirrors the emailed PDF,
+            where the name/address are drawn beside the logo, not under it. */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0 }}>
           {logoUrl
             /* eslint-disable-next-line @next/next/no-img-element */
-            ? <img src={logoUrl} alt="logo" style={{ maxWidth: 120, maxHeight: 46, objectFit: 'contain', display: 'block', marginBottom: 6 }} />
+            ? <img src={logoUrl} alt="logo" style={{ maxWidth: 120, maxHeight: 46, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
             : null}
-          <div style={{ fontSize: 15, fontWeight: 800 }}>{name}</div>
-          {address.split('\n').filter(Boolean).map((ln, i) => (
-            <div key={i} style={{ color: muted, fontSize: 11, marginTop: i === 0 ? 3 : 1 }}>{ln}</div>
-          ))}
-          {phone && <div style={{ color: muted, fontSize: 11, marginTop: 2 }}>{phone}</div>}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>{name}</div>
+            {address.split('\n').filter(Boolean).map((ln, i) => (
+              <div key={i} style={{ color: muted, fontSize: 11, marginTop: i === 0 ? 3 : 1 }}>{ln}</div>
+            ))}
+            {phone && <div style={{ color: muted, fontSize: 11, marginTop: 2 }}>{phone}</div>}
+          </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: accent, letterSpacing: '.02em' }}>RECEIPT</div>
