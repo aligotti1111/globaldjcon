@@ -159,6 +159,9 @@ export interface ReceiptOverride {
   eventDate?: string | null;
   eventTime?: string | null;
   venue?: string | null;
+  /** Extra EVENT lines (e.g. wedding ceremony / cocktail hour), newline-joined.
+   *  '' means show none; absent falls back to the derived lines. */
+  eventExtra?: string | null;
   clientName?: string | null;
   clientEmail?: string | null;
 }
@@ -553,7 +556,11 @@ export async function buildBookingDocAttachment(
         dateText: ovStr(ov?.eventDate, friendlyDate(b.event_date)),
         timeText: ovStr(ov?.eventTime, weddingTimeText || setTime || null),
         venue: ovStr(ov?.venue, b.venue_name),
-        extra: eventExtra,
+        // Extra lines (ceremony / cocktail). An override replaces them verbatim,
+        // split back into lines; '' hides them; absent keeps the derived lines.
+        extra: (ov && ov.eventExtra !== undefined && ov.eventExtra !== null)
+          ? String(ov.eventExtra).split('\n').map((s) => s.trim()).filter(Boolean)
+          : eventExtra,
       },
       details,
       lines,
