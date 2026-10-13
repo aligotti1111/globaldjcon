@@ -38,6 +38,9 @@ const MUTED = '#777';
 const fieldBase: React.CSSProperties = {
   font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
   borderBottom: '1px dashed rgba(0,0,0,.22)', padding: '0 0 1px', margin: 0, outline: 'none',
+  // Belt-and-suspenders: no number spinners, ever, even if a browser ignores the
+  // text input type. Amount fields use type="text" + inputMode="decimal".
+  WebkitAppearance: 'none', MozAppearance: 'textfield', appearance: 'none',
 };
 function focusOn(accent: string) {
   return (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -155,7 +158,11 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
   const remaining = round2(Math.max(0, defTotal - defPaidToDate));
   const paidInFull = remaining <= 0.005;
   const defHeadlineLabel = paidInFull ? 'Paid in Full' : 'Balance Remaining';
-  const defHeadlineAmount = paidInFull ? '' : String(remaining);
+  // Pre-fill the headline amount with the real figure (the amount paid when it's
+  // paid in full, otherwise the remaining balance). The DJ sees the number by
+  // default and only has to touch it to change it — clearing it falls back to a
+  // label-only headline (e.g. "Paid in Full" with no figure).
+  const defHeadlineAmount = paidInFull ? String(defTotal) : String(remaining);
 
   // ── Prefill from a saved edit when present, else the derived defaults ──
   const saved = (booking.receipt_overrides && booking.receipt_overrides[kind]) || {};
