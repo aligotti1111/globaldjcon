@@ -366,7 +366,7 @@ export default function ReceiptSettingsSection() {
             onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
             style={{ ...input, width: 120, fontFamily: 'monospace' }} maxLength={7} />
           <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy || !/^#[0-9a-fA-F]{6}$/.test(color)} onClick={saveColor}>Save</button>
-          {!colorIsDefault && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Remove</button>}
+          {!colorIsDefault && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
         </div>
 
         {msg && <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: '#8a8aa0' }}>{msg}</div>}
