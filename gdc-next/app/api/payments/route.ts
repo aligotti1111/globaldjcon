@@ -395,14 +395,18 @@ export async function POST(req: Request) {
           .eq('booking_id', bookingId)
           .eq('kind', 'deposit');
         const depRows = (depRowsData as { amount_paid?: number; status?: string }[] | null) || [];
+        const { data: bkRow } = await admin.from('bookings').select('status_overrides').eq('id', bookingId).maybeSingle();
+        const curOv = ((bkRow as { status_overrides?: Record<string, boolean> } | null)?.status_overrides) || {};
         // Billing the whole balance overrides the deposit — skip it whenever
         // nothing was actually collected, even if a request went out unpaid.
         // (A paid or part-paid deposit is left alone; the balance nets it out.)
-        const depSettled = depRows.some((r) => r.status === 'paid' || r.status === 'waived')
+        // A deposit MANUALLY marked complete (cash, outside the app) counts as
+        // collected too — it has no payment row, but it must NOT be skipped, or
+        // its receipt (Edit / Re-send / Download) would vanish after billing.
+        const depSettled = !!curOv.deposit
+          || depRows.some((r) => r.status === 'paid' || r.status === 'waived')
           || depRows.reduce((sum, r) => sum + Number(r.amount_paid || 0), 0) > 0;
         if (!depSettled) {
-          const { data: bkRow } = await admin.from('bookings').select('status_overrides').eq('id', bookingId).maybeSingle();
-          const curOv = ((bkRow as { status_overrides?: Record<string, boolean> } | null)?.status_overrides) || {};
           if (!curOv.deposit_skipped) {
             await admin.from('bookings')
               .update({ status_overrides: { ...curOv, deposit_skipped: true } } as unknown as never)
