@@ -100,6 +100,10 @@ export default function ReceiptSettingsSection() {
   const [showSug, setShowSug] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Last-saved values, per field — used to detect unsaved edits so we can warn
+  // the DJ before they leave the page with changes they didn't Save.
+  const baseline = useRef({ street: '', city: '', stateVal: '', zip: '', country: DEFAULT_COUNTRY, phone: '', color: DEFAULT_COLOR });
+
 
   useEffect(() => {
     let alive = true;
@@ -112,27 +116,29 @@ export default function ReceiptSettingsSection() {
         setLogoUrl(j.logoUrl ?? null);
         setAccountAddress(j.accountAddress || '');
         setAcctParts({ city: j.accountCity || '', state: j.accountState || '', zip: j.accountZip || '' });
+        let iStreet: string, iCity: string, iState: string, iZip: string, iCountry: string;
         if (j.receiptAddress == null) {
           // Default (no custom receipt address): prefill from the account. City /
           // state / ZIP come from the reliable account columns (ZIP is required
           // at signup), so the ZIP field is never blank even if the stored
           // address line didn't include it. Street parsed from the line.
           const f = parseAddress(j.accountAddress || '');
-          setStreet(f.street);
-          setCity(j.accountCity || f.city);
-          setStateVal(j.accountState || f.state);
-          setZip(j.accountZip || f.zip);
-          setCountry(f.country);
+          iStreet = f.street; iCity = j.accountCity || f.city; iState = j.accountState || f.state; iZip = j.accountZip || f.zip; iCountry = f.country;
         } else {
           const f = parseAddress(j.receiptAddress);
-          setStreet(f.street); setCity(f.city); setStateVal(f.state); setZip(f.zip); setCountry(f.country);
+          iStreet = f.street; iCity = f.city; iState = f.state; iZip = f.zip; iCountry = f.country;
         }
+        setStreet(iStreet); setCity(iCity); setStateVal(iState); setZip(iZip); setCountry(iCountry);
         setUsingDefault(j.receiptAddress == null);
+        const iColor = (j.receiptColor && /^#[0-9a-fA-F]{6}$/.test(j.receiptColor)) ? j.receiptColor : DEFAULT_COLOR;
         if (j.receiptColor && /^#[0-9a-fA-F]{6}$/.test(j.receiptColor)) { setColor(j.receiptColor); setColorIsDefault(false); }
         else { setColor(DEFAULT_COLOR); setColorIsDefault(true); }
         setAccountPhone(j.accountPhone || '');
-        setPhone(j.receiptPhone == null ? (j.accountPhone || '') : j.receiptPhone);
+        const iPhone = j.receiptPhone == null ? (j.accountPhone || '') : j.receiptPhone;
+        setPhone(iPhone);
         setPhoneDefault(j.receiptPhone == null);
+        // Baseline = what's currently persisted, so nothing reads as "unsaved" on load.
+        baseline.current = { street: iStreet, city: iCity, stateVal: iState, zip: iZip, country: iCountry, phone: iPhone, color: iColor };
       } catch { /* optional */ }
       finally { if (alive) setLoaded(true); }
     })();
@@ -171,27 +177,43 @@ export default function ReceiptSettingsSection() {
     const composed = composeAddress({ street, city, state: stateVal, zip, country });
     await post({ address: composed }, '✓ Receipt address saved.');
     setUsingDefault(false);
+    baseline.current = { ...baseline.current, street, city, stateVal, zip, country };
   }
   async function removeAddress() {
     setStreet(''); setCity(''); setStateVal(''); setZip('');
     await post({ address: '' }, '✓ Address removed from receipts.');
     setUsingDefault(false);
+    baseline.current = { ...baseline.current, street: '', city: '', stateVal: '', zip: '' };
   }
   async function useAccountAddress() {
     const f = parseAddress(accountAddress);
-    setStreet(f.street);
-    setCity(acctParts.city || f.city);
-    setStateVal(acctParts.state || f.state);
-    setZip(acctParts.zip || f.zip);
-    setCountry(f.country);
+    const nStreet = f.street, nCity = acctParts.city || f.city, nState = acctParts.state || f.state, nZip = acctParts.zip || f.zip, nCountry = f.country;
+    setStreet(nStreet); setCity(nCity); setStateVal(nState); setZip(nZip); setCountry(nCountry);
     await post({ address: null }, '✓ Back to your account address.');
     setUsingDefault(true);
+    baseline.current = { ...baseline.current, street: nStreet, city: nCity, stateVal: nState, zip: nZip, country: nCountry };
   }
-  async function savePhone() { await post({ phone }, '✓ Receipt phone saved.'); setPhoneDefault(false); }
-  async function removePhone() { setPhone(''); await post({ phone: '' }, '✓ Phone removed from receipts.'); setPhoneDefault(false); }
-  async function useAccountPhone() { setPhone(accountPhone); await post({ phone: null }, '✓ Back to your account phone.'); setPhoneDefault(true); }
-  async function saveColor() { await post({ color }, '✓ Receipt colour saved.'); setColorIsDefault(false); }
-  async function resetColor() { setColor(DEFAULT_COLOR); await post({ color: '' }, '✓ Colour reset to default.'); setColorIsDefault(true); }
+  async function savePhone() { await post({ phone }, '✓ Receipt phone saved.'); setPhoneDefault(false); baseline.current = { ...baseline.current, phone }; }
+  async function removePhone() { setPhone(''); await post({ phone: '' }, '✓ Phone removed from receipts.'); setPhoneDefault(false); baseline.current = { ...baseline.current, phone: '' }; }
+  async function useAccountPhone() { setPhone(accountPhone); await post({ phone: null }, '✓ Back to your account phone.'); setPhoneDefault(true); baseline.current = { ...baseline.current, phone: accountPhone }; }
+  async function saveColor() { await post({ color }, '✓ Receipt colour saved.'); setColorIsDefault(false); baseline.current = { ...baseline.current, color }; }
+  async function resetColor() { setColor(DEFAULT_COLOR); await post({ color: '' }, '✓ Colour reset to default.'); setColorIsDefault(true); baseline.current = { ...baseline.current, color: DEFAULT_COLOR }; }
+
+  // Unsaved-changes guard: true when any field differs from what's persisted.
+  const dirty = loaded && (
+    street !== baseline.current.street || city !== baseline.current.city ||
+    stateVal !== baseline.current.stateVal || zip !== baseline.current.zip ||
+    country !== baseline.current.country || phone !== baseline.current.phone ||
+    color !== baseline.current.color
+  );
+  // Warn the DJ if they try to leave (close/refresh/navigate away) with edits
+  // they haven't Saved. The browser shows its native "leave site?" prompt.
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   const label: CSSProperties = { display: 'block', fontSize: '.95rem', fontWeight: 600, color: '#ececf3', margin: '0 0 .35rem' };
   const hint: CSSProperties = { fontSize: '.82rem', color: 'rgba(235,235,245,.55)', lineHeight: 1.5, margin: '0 0 .7rem' };
