@@ -12,7 +12,7 @@
 // Saving re-sends the receipt to the host. Fields prefill from the last saved
 // edit if there is one, else from the receipt's current derived values.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { UpcomingBooking, BookingPayment } from './page';
 import { currencySymbol } from '@/lib/constants';
 import { NEON } from './shared';
@@ -30,6 +30,70 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const DEFAULT_ACCENT = '#00e0a4';
 const INK = '#1a1a2e';
 const MUTED = '#777';
+
+// ── Inline editors ──────────────────────────────────────────────────────────
+// These MUST live at module scope. Defining them inside the component makes React
+// treat them as a brand-new component type on every render, which remounts the
+// <input> each keystroke and drops focus after one character.
+const fieldBase: React.CSSProperties = {
+  font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
+  borderBottom: '1px dashed rgba(0,0,0,.22)', padding: '0 0 1px', margin: 0, outline: 'none',
+};
+function focusOn(accent: string) {
+  return (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderBottomColor = accent;
+    e.currentTarget.style.borderBottomStyle = 'solid';
+  };
+}
+function blurOff(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  e.currentTarget.style.borderBottomColor = 'rgba(0,0,0,.22)';
+  e.currentTarget.style.borderBottomStyle = 'dashed';
+}
+
+function InlineText({ value, set, accent, onEdit, style, placeholder }: {
+  value: string; set: (s: string) => void; accent: string; onEdit: () => void;
+  style?: React.CSSProperties; placeholder?: string;
+}) {
+  return (
+    <input value={value} placeholder={placeholder}
+      onChange={(e) => { set(e.target.value); onEdit(); }}
+      onFocus={focusOn(accent)} onBlur={blurOff}
+      style={{ ...fieldBase, width: '100%', ...style }} />
+  );
+}
+
+// Auto-growing multi-line field — for Package / Includes, which can run long.
+function InlineArea({ value, set, accent, onEdit, style, placeholder }: {
+  value: string; set: (s: string) => void; accent: string; onEdit: () => void;
+  style?: React.CSSProperties; placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const resize = () => {
+    const el = ref.current;
+    if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; }
+  };
+  useEffect(() => { resize(); }, [value]);
+  return (
+    <textarea ref={ref} value={value} placeholder={placeholder} rows={1}
+      onChange={(e) => { set(e.target.value); onEdit(); }}
+      onFocus={focusOn(accent)} onBlur={blurOff}
+      style={{ ...fieldBase, width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.4, ...style }} />
+  );
+}
+
+function InlineMoney({ value, set, accent, onEdit, sym, bold, color }: {
+  value: string; set: (s: string) => void; accent: string; onEdit: () => void;
+  sym: string; bold?: boolean; color?: string;
+}) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, fontWeight: bold ? 800 : 'inherit', color }}>
+      <span>{sym}</span>
+      <input type="number" min="0" step="0.01" value={value} placeholder="—" onWheel={(e) => e.currentTarget.blur()}
+        onChange={(e) => { set(e.target.value); onEdit(); }} onFocus={focusOn(accent)} onBlur={blurOff}
+        style={{ ...fieldBase, width: 90, textAlign: 'right', fontWeight: bold ? 800 : 'inherit', color: 'inherit' }} />
+    </span>
+  );
+}
 
 function prettyType(s: string | null | undefined): string {
   if (!s) return '';
@@ -51,7 +115,6 @@ function friendlyDate(d: string | null | undefined): string {
   if (isNaN(dt.getTime())) return String(d);
   return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
-// Stack "street, city, ST zip" onto separate lines (mirrors the PDF/preview).
 function stackAddr(s: string): string[] {
   if (!s) return [];
   if (s.includes('\n')) return s.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -113,9 +176,8 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [settings, setSettings] = useState<SettingsShape | null>(null);
+  const clearErr = () => setErr(null);
 
-  // Pull the DJ's header (logo, name, address, colour, phone) so the render
-  // matches the real receipt — exactly what the Receipt tab shows.
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -179,31 +241,8 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
   const docNumber = hex.length < 5 ? `GDC-${hex}` : `GDC-${hex.slice(0, 4)}-${hex.slice(4, 5)}`;
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  // Inline input styled to blend into the paper but still read as editable
-  // (dashed underline, solid accent on focus).
-  const base = (extra: React.CSSProperties): React.CSSProperties => ({
-    font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
-    borderBottom: '1px dashed rgba(0,0,0,.22)', padding: '0 0 1px', margin: 0, outline: 'none',
-    ...extra,
-  });
-  const onFocus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderBottomColor = accent; e.currentTarget.style.borderBottomStyle = 'solid'; };
-  const onBlur = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderBottomColor = 'rgba(0,0,0,.22)'; e.currentTarget.style.borderBottomStyle = 'dashed'; };
-  const Tx = ({ v, set, style, placeholder }: { v: string; set: (s: string) => void; style?: React.CSSProperties; placeholder?: string }) => (
-    <input value={v} placeholder={placeholder} onChange={(e) => { set(e.target.value); setErr(null); }}
-      onFocus={onFocus} onBlur={onBlur} style={base({ width: '100%', ...style })} />
-  );
-  // Money input: $ glyph + a right-sized number field.
-  const Mny = ({ v, set, bold, align = 'right' }: { v: string; set: (s: string) => void; bold?: boolean; align?: 'left' | 'right' }) => (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, justifyContent: align === 'right' ? 'flex-end' : 'flex-start', fontWeight: bold ? 700 : 'inherit' }}>
-      <span>{sym}</span>
-      <input type="number" min="0" step="0.01" value={v} onWheel={(e) => e.currentTarget.blur()}
-        onChange={(e) => { set(e.target.value); setErr(null); }} onFocus={onFocus} onBlur={onBlur}
-        style={base({ width: 86, textAlign: 'right', fontWeight: bold ? 700 : 'inherit' })} />
-    </span>
-  );
-
   const secLabel: React.CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#999', margin: '0 0 4px' };
-  const rowCss: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '4px 0', fontSize: 12.5 };
+  const rowCss: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '4px 0', fontSize: 12.5 };
   const hr = <hr style={{ border: 'none', borderTop: '1px solid #e5e5e5', margin: '14px 0' }} />;
 
   return (
@@ -218,9 +257,8 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
           Edit any value right on the receipt — it prints exactly as typed, nothing recalculates, and the booking is never changed. Saving re-sends this to the client.
         </p>
 
-        {/* The receipt itself — a real render with inline-editable values. */}
         <div style={{ background: '#fff', borderRadius: 10, padding: '24px 26px', color: INK, boxShadow: '0 12px 40px rgba(0,0,0,.5)' }}>
-          {/* Header: logo + business block (left, from settings) · title/date/ref (right) */}
+          {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0 }}>
               {settings?.logoUrl
@@ -248,44 +286,40 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={secLabel}>Received From</div>
-              <div style={{ fontWeight: 700, fontSize: 12.5 }}><Tx v={clientName} set={setClientName} placeholder="Client name" /></div>
-              <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><Tx v={clientEmail} set={setClientEmail} placeholder="client@email" style={{ color: MUTED }} /></div>
+              <div style={{ fontWeight: 700, fontSize: 12.5 }}><InlineText value={clientName} set={setClientName} accent={accent} onEdit={clearErr} placeholder="Client name" style={{ fontWeight: 700 }} /></div>
+              <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><InlineText value={clientEmail} set={setClientEmail} accent={accent} onEdit={clearErr} placeholder="client@email" style={{ color: MUTED }} /></div>
             </div>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
               <div style={secLabel}>Event</div>
-              <div style={{ fontSize: 12.5 }}><Tx v={eventType} set={setEventType} placeholder="Event type" style={{ textAlign: 'right' }} /></div>
-              <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><Tx v={eventDate} set={setEventDate} placeholder="Event date" style={{ textAlign: 'right', color: MUTED }} /></div>
-              <div style={{ color: MUTED, fontSize: 12 }}><Tx v={venue} set={setVenue} placeholder="Venue" style={{ textAlign: 'right', color: MUTED }} /></div>
-              <div style={{ color: MUTED, fontSize: 12 }}><Tx v={eventTime} set={setEventTime} placeholder="Event time" style={{ textAlign: 'right', color: MUTED }} /></div>
+              <div style={{ fontSize: 12.5 }}><InlineText value={eventType} set={setEventType} accent={accent} onEdit={clearErr} placeholder="Event type" style={{ textAlign: 'right' }} /></div>
+              <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><InlineText value={eventDate} set={setEventDate} accent={accent} onEdit={clearErr} placeholder="Event date" style={{ textAlign: 'right', color: MUTED }} /></div>
+              <div style={{ color: MUTED, fontSize: 12 }}><InlineText value={venue} set={setVenue} accent={accent} onEdit={clearErr} placeholder="Venue" style={{ textAlign: 'right', color: MUTED }} /></div>
+              <div style={{ color: MUTED, fontSize: 12 }}><InlineText value={eventTime} set={setEventTime} accent={accent} onEdit={clearErr} placeholder="Event time" style={{ textAlign: 'right', color: MUTED }} /></div>
             </div>
           </div>
 
           {hr}
 
-          {/* DETAILS */}
+          {/* DETAILS — Package & Includes are multi-line and grow with the text. */}
           <div style={secLabel}>Details</div>
-          <div style={{ ...rowCss, color: MUTED }}><span>Event Type</span><span style={{ color: INK, width: '55%' }}><Tx v={eventType} set={setEventType} style={{ textAlign: 'right' }} /></span></div>
-          <div style={{ ...rowCss, color: MUTED }}><span>Package</span><span style={{ color: INK, width: '55%' }}><Tx v={packageTitle} set={setPackageTitle} style={{ textAlign: 'right' }} placeholder="Package" /></span></div>
-          <div style={{ ...rowCss, color: MUTED, alignItems: 'flex-start' }}><span>Includes</span><span style={{ color: INK, width: '55%' }}><Tx v={includes} set={setIncludes} style={{ textAlign: 'right' }} placeholder="(optional)" /></span></div>
+          <div style={{ ...rowCss, color: MUTED, alignItems: 'center' }}><span>Event Type</span><span style={{ color: INK, width: '55%' }}><InlineText value={eventType} set={setEventType} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} /></span></div>
+          <div style={{ ...rowCss, color: MUTED }}><span style={{ paddingTop: 1 }}>Package</span><span style={{ color: INK, width: '60%' }}><InlineArea value={packageTitle} set={setPackageTitle} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} placeholder="Package" /></span></div>
+          <div style={{ ...rowCss, color: MUTED }}><span style={{ paddingTop: 1 }}>Includes</span><span style={{ color: INK, width: '60%' }}><InlineArea value={includes} set={setIncludes} accent={accent} onEdit={clearErr} style={{ textAlign: 'right' }} placeholder="(optional)" /></span></div>
 
           {hr}
 
           {/* Money lines */}
-          <div style={rowCss}><span style={{ flex: 1 }}><Tx v={receivedLabel} set={setReceivedLabel} placeholder="Received label" /></span><Mny v={received} set={setReceived} /></div>
-          <div style={{ ...rowCss, color: MUTED }}><span>Event total</span><Mny v={total} set={setTotal} /></div>
-          <div style={{ ...rowCss, color: MUTED }}><span>Paid to date</span><Mny v={paidToDate} set={setPaidToDate} /></div>
+          <div style={{ ...rowCss, alignItems: 'center' }}><span style={{ flex: 1 }}><InlineText value={receivedLabel} set={setReceivedLabel} accent={accent} onEdit={clearErr} placeholder="Received label" /></span><InlineMoney value={received} set={setReceived} accent={accent} onEdit={clearErr} sym={sym} /></div>
+          <div style={{ ...rowCss, color: MUTED, alignItems: 'center' }}><span>Event total</span><InlineMoney value={total} set={setTotal} accent={accent} onEdit={clearErr} sym={sym} /></div>
+          <div style={{ ...rowCss, color: MUTED, alignItems: 'center' }}><span>Paid to date</span><InlineMoney value={paidToDate} set={setPaidToDate} accent={accent} onEdit={clearErr} sym={sym} /></div>
 
           {/* Headline box */}
           <div style={{ marginTop: 14, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontWeight: 800 }}>
             <span style={{ color: INK, flex: 1, textTransform: 'uppercase', fontSize: 13 }}>
-              <input value={headlineLabel} onChange={(e) => { setHeadlineLabel(e.target.value); setErr(null); }} onFocus={onFocus} onBlur={onBlur}
-                style={base({ width: '100%', fontWeight: 800, textTransform: 'uppercase' })} />
+              <InlineText value={headlineLabel} set={setHeadlineLabel} accent={accent} onEdit={clearErr} style={{ fontWeight: 800, textTransform: 'uppercase' }} />
             </span>
-            <span style={{ color: accent, display: 'inline-flex', alignItems: 'baseline', gap: 1, fontSize: 18 }}>
-              <span>{sym}</span>
-              <input type="number" min="0" step="0.01" value={headlineAmount} placeholder="—" onWheel={(e) => e.currentTarget.blur()}
-                onChange={(e) => { setHeadlineAmount(e.target.value); setErr(null); }} onFocus={onFocus} onBlur={onBlur}
-                style={base({ width: 100, textAlign: 'right', fontWeight: 800, color: accent })} />
+            <span style={{ fontSize: 18 }}>
+              <InlineMoney value={headlineAmount} set={setHeadlineAmount} accent={accent} onEdit={clearErr} sym={sym} bold color={accent} />
             </span>
           </div>
           <div style={{ color: MUTED, fontSize: 10.5, marginTop: 6, textAlign: 'right' }}>Headline amount blank = label only (e.g. “Paid in Full”).</div>
