@@ -81,16 +81,25 @@ function InlineArea({ value, set, accent, onEdit, style, placeholder }: {
   );
 }
 
-function InlineMoney({ value, set, accent, onEdit, sym, bold, color }: {
+function InlineMoney({ value, set, accent, onEdit, sym, bold, color, optional }: {
   value: string; set: (s: string) => void; accent: string; onEdit: () => void;
   sym: string; bold?: boolean; color?: string;
+  // optional: the amount may be left blank (the headline on a "Paid in Full").
+  // When blank we hide the currency symbol and show a faint hint, so an empty
+  // amount reads as deliberate rather than broken.
+  optional?: boolean;
 }) {
+  const empty = value.trim() === '';
+  const hideSym = optional && empty;
+  // text + inputMode=decimal instead of type=number: no spinner arrows, but the
+  // numeric keypad still comes up on mobile. Non-numeric input is parsed out on save.
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, fontWeight: bold ? 800 : 'inherit', color }}>
-      <span>{sym}</span>
-      <input type="number" min="0" step="0.01" value={value} placeholder="—" onWheel={(e) => e.currentTarget.blur()}
-        onChange={(e) => { set(e.target.value); onEdit(); }} onFocus={focusOn(accent)} onBlur={blurOff}
-        style={{ ...fieldBase, width: 90, textAlign: 'right', fontWeight: bold ? 800 : 'inherit', color: 'inherit' }} />
+      {!hideSym && <span>{sym}</span>}
+      <input type="text" inputMode="decimal" value={value} placeholder={optional ? 'add amount' : ''}
+        onChange={(e) => { set(e.target.value.replace(/[^0-9.]/g, '')); onEdit(); }}
+        onFocus={focusOn(accent)} onBlur={blurOff}
+        style={{ ...fieldBase, width: optional ? 110 : 90, textAlign: 'right', fontWeight: bold ? 800 : 'inherit', color: hideSym ? '#b9b9c6' : 'inherit', fontStyle: hideSym ? 'italic' : 'normal' }} />
     </span>
   );
 }
@@ -319,7 +328,7 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
               <InlineText value={headlineLabel} set={setHeadlineLabel} accent={accent} onEdit={clearErr} style={{ fontWeight: 800, textTransform: 'uppercase' }} />
             </span>
             <span style={{ fontSize: 18 }}>
-              <InlineMoney value={headlineAmount} set={setHeadlineAmount} accent={accent} onEdit={clearErr} sym={sym} bold color={accent} />
+              <InlineMoney value={headlineAmount} set={setHeadlineAmount} accent={accent} onEdit={clearErr} sym={sym} bold color={accent} optional />
             </span>
           </div>
           <div style={{ color: MUTED, fontSize: 10.5, marginTop: 6, textAlign: 'right' }}>Headline amount blank = label only (e.g. “Paid in Full”).</div>
