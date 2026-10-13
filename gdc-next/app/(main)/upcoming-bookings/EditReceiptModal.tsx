@@ -200,6 +200,19 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
   const [eventTime, setEventTime] = useState(sv('eventTime',
     [fmtTime(booking.start_time), fmtTime(booking.end_time)].filter(Boolean).join(' – ')));
   const [venue, setVenue] = useState(sv('venue', booking.venue_name || ''));
+  // Wedding extra EVENT lines (ceremony / cocktail hour), derived the same way the
+  // receipt does, so the DJ can edit them when they're on the booking.
+  const defExtraLines: string[] = [];
+  if ((booking.event_type || '').includes('wedding')) {
+    if (booking.ceremony_needed && booking.ceremony_start_time) {
+      defExtraLines.push(`Ceremony ${fmtTime(booking.ceremony_start_time)} · ${booking.ceremony_same_room ? 'same room as reception' : 'separate room'}`);
+    }
+    if (booking.cocktail_needed && booking.cocktail_start_time) {
+      defExtraLines.push(`Cocktail hour ${fmtTime(booking.cocktail_start_time)} · ${booking.cocktail_same_room ? 'same room as reception' : 'separate room'}`);
+    }
+  }
+  const [eventExtra, setEventExtra] = useState(sv('eventExtra', defExtraLines.join('\n')));
+  const savedHasExtra = (saved as Record<string, unknown>).eventExtra !== undefined;
   const [clientName, setClientName] = useState(sv('clientName', booking.requester_name || ''));
   const [clientEmail, setClientEmail] = useState(sv('clientEmail', booking.host_email || ''));
 
@@ -246,7 +259,7 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
       headlineAmount: headlineAmount.trim() === '' ? null : numOrUndef(headlineAmount),
       eventType, packageTitle,
       includes: includes.trim() === '' ? undefined : includes,
-      eventDate, eventTime, venue, clientName, clientEmail,
+      eventDate, eventTime, venue, eventExtra, clientName, clientEmail,
     };
     try {
       const res = await fetch('/api/payments', {
@@ -325,6 +338,11 @@ export default function EditReceiptModal({ kind, booking, payments, currency, on
               <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}><InlineText value={eventDate} set={setEventDate} accent={accent} onEdit={clearErr} placeholder="Event date" style={{ textAlign: 'right', color: MUTED }} /></div>
               <div style={{ color: MUTED, fontSize: 12 }}><InlineText value={venue} set={setVenue} accent={accent} onEdit={clearErr} placeholder="Venue" style={{ textAlign: 'right', color: MUTED }} /></div>
               <div style={{ color: MUTED, fontSize: 12 }}><InlineText value={eventTime} set={setEventTime} accent={accent} onEdit={clearErr} placeholder="Event time" style={{ textAlign: 'right', color: MUTED }} /></div>
+              {(defExtraLines.length > 0 || savedHasExtra) && (
+                <div style={{ color: MUTED, fontSize: 12, marginTop: 1 }}>
+                  <InlineArea value={eventExtra} set={setEventExtra} accent={accent} onEdit={clearErr} placeholder="Ceremony / cocktail lines" style={{ textAlign: 'right', color: MUTED }} />
+                </div>
+              )}
             </div>
           </div>
 
