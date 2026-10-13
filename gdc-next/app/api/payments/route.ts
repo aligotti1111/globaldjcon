@@ -831,9 +831,10 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     });
 
     const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const niceDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
     const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
     const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — ${money(received, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! A receipt for your ${kind === 'deposit' ? 'deposit' : 'payment'} is attached${b.event_date ? ` for ${b.event_date}` : ''}.</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Your receipt for the ${kind === 'deposit' ? 'deposit' : 'payment'} is attached${niceDate ? ` for ${niceDate}` : ''}. Thanks!</p>`;
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
