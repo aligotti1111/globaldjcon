@@ -330,9 +330,9 @@ export async function buildBookingDocAttachment(
       const etLabel = ovStr(ov?.eventType, eventLabel(b.event_type) || null);
       if (etLabel) details.push({ label: 'Event Type', value: etLabel });
       const pkgTitle = ovStr(ov?.packageTitle, b.package_title);
-      if (pkgTitle) details.push({ label: 'Package', value: pkgTitle });
+      if (pkgTitle) details.push({ label: 'Package Name', value: pkgTitle });
       const includes = ovStr(ov?.includes, (b.package_details && b.package_details.trim()) ? stripHtml(b.package_details) : null);
-      if (includes) details.push({ label: 'Includes', value: includes });
+      if (includes) details.push({ label: 'Package Includes', value: includes });
     }
 
     // Wedding ceremony + cocktail-hour times → EVENT block (under the venue).
