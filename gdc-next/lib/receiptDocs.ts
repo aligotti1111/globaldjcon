@@ -424,21 +424,24 @@ export async function buildBookingDocAttachment(
         } else {
           lines.push({ label: 'Event Total', amount: totalShown, emphasis: 'bold' });
         }
-        // By the time overtime is charged the event is paid in full, so show the
-        // deposit + balance split when a deposit was collected (unless it was
-        // explicitly un-marked).
+        // Cost section continues: a divider, then the overtime charge and (if
+        // any) its tax — the other half of what the event cost.
+        lines.push({ label: otLine, amount: otSub, emphasis: 'muted', ruleAbove: true });
+        if (otTax > 0) lines.push({ label: 'Overtime tax', amount: otTax, emphasis: 'muted' });
+        // Received section: a divider, then what actually came in — the deposit
+        // (if one was collected and not un-marked), the balance, and the overtime
+        // payment including its tax.
+        const otReceived = round2(otSub + otTax);
         const bookingDeposit = round2(Number(b.deposit_amount ?? 0));
         const depositUnmarked = !!(b.status_overrides && b.status_overrides.deposit === false);
         if (bookingDeposit > 0.005 && bookingDeposit < round2(totalShown - 0.005) && !depositUnmarked) {
-          lines.push({ label: 'Deposit received', amount: bookingDeposit, emphasis: 'muted', ruleAbove: true });
+          lines.push({ label: 'Deposit Received', amount: bookingDeposit, emphasis: 'bold', ruleAbove: true });
           lines.push({ label: 'Balance Received', amount: round2(totalShown - bookingDeposit), emphasis: 'bold' });
         } else {
           lines.push({ label: 'Balance Received', amount: totalShown, emphasis: 'bold', ruleAbove: true });
         }
-        // Divider, then the overtime charge and (if any) its tax.
-        lines.push({ label: otLine, amount: otSub, ruleAbove: true });
-        if (otTax > 0) lines.push({ label: 'Overtime tax', amount: otTax });
-        headline = { label: 'Paid in Full', amount: round2(totalShown + otSub + otTax), hideAmount: false };
+        lines.push({ label: 'Overtime (with tax) Received', amount: otReceived, emphasis: 'bold' });
+        headline = { label: 'Paid in Full', amount: round2(totalShown + otReceived), hideAmount: false };
       } else {
         lines.push({ label: otLine, amount: otSub });
         if (otTax > 0) lines.push({ label: 'Sales Tax', amount: otTax });
@@ -543,7 +546,7 @@ export async function buildBookingDocAttachment(
           }
         }
         if (depositShown > 0.005) {
-          lines.push({ label: 'Deposit received', amount: depositShown, emphasis: 'muted', ruleAbove: true });
+          lines.push({ label: 'Deposit Received', amount: depositShown, emphasis: 'bold', ruleAbove: true });
           lines.push({ label: receivedLabel, amount: balanceShown, emphasis: 'bold' });
         } else {
           lines.push({ label: receivedLabel, amount: received, emphasis: 'bold', ruleAbove: true });
