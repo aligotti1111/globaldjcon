@@ -15,7 +15,7 @@ import { NEON } from '../shared';
 
 // Inline icon set for the menu rows. All stroke currentColor so each icon
 // inherits its row's text color (neon / danger red / muted) for free.
-const ico = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } };
+const ico = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0, marginTop: 1 } };
 const IconEdit = () => (<svg {...ico}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>);
 const IconSend = () => (<svg {...ico}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>);
 const IconDownload = () => (<svg {...ico}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>);
@@ -127,10 +127,10 @@ export default function StageMenu({
               onClick={() => { if (locked) return; onRunAction(a.run); }}
               onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1, transition: 'background .12s' }}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1, transition: 'background .12s', whiteSpace: 'normal' }}
             >
               {iconForLabel(a.label)}
-              <span>{titleCase(a.label)}{roleLocked ? '  \u{1F512}' : ''}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{titleCase(a.label)}{roleLocked ? '  \u{1F512}' : ''}</span>
             </button>
           );
         })}
@@ -146,10 +146,10 @@ export default function StageMenu({
               onClick={() => { if (overrideLocked) return; onToggleOverride(); }}
               onMouseEnter={(e) => { if (!overrideLocked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s', whiteSpace: 'normal' }}
             >
               {st.done ? <IconX /> : <IconCheck />}
-              <span>{st.done ? (payStage ? 'Mark Not Paid' : 'Mark Not Complete') : (payStage ? 'Mark Paid' : 'Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{st.done ? (payStage ? 'Mark Not Paid' : 'Mark Not Complete') : (payStage ? 'Mark Paid' : 'Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}</span>
             </button>
             {!payStage && (
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>For steps handled outside the app.</div>
