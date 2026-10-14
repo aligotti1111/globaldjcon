@@ -469,9 +469,11 @@ function ReceiptPreview({ logoUrl, name, address, phone, accent, kind }: {
         </>
       ) : (
         <>
+          <div style={{ ...row, color: muted }}><span>Event Total</span><span>$2,204.13</span></div>
+          <div style={{ ...row, color: muted }}><span>Tax</span><span>$195.87</span></div>
+          <div style={{ ...row, fontWeight: 700 }}><span>Total Cost</span><span>$2,400.00</span></div>
+          <div style={{ ...row, fontWeight: 700, borderTop: line, marginTop: 4, paddingTop: 9 }}><span>Deposit Received</span><span>$600.00</span></div>
           <div style={{ ...row, fontWeight: 700 }}><span>Balance Received</span><span>$1,800.00</span></div>
-          <div style={{ ...row, color: muted }}><span>Event total</span><span>$2,400.00</span></div>
-          <div style={{ ...row, color: muted }}><span>Paid to date</span><span>$2,400.00</span></div>
           <div style={{ marginTop: 16, background: '#f4fbf8', border: `1px solid ${accent}`, borderRadius: 8, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: accent }}>
             <span style={{ color: ink }}>PAID IN FULL</span><span>$2,400.00</span>
           </div>
