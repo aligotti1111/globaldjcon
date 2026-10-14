@@ -89,6 +89,16 @@ function parseAddress(s: string): AddrFields {
   // Legacy single comma line: first part = street, the rest = city/state/zip.
   const parts = text.split(',').map((x) => x.trim()).filter(Boolean);
   if (parts.length === 1) return { street: parts[0], city: '', state: '', zip: '', country: DEFAULT_COUNTRY };
+  // "City, ST ZIP" with no street (e.g. an address whose street was cleared and
+  // saved before the stacked format) must NOT read the city as the street. If
+  // the first part doesn't look like a street — no leading house number and no
+  // common street suffix — and the rest is a clean "ST ZIP", treat it as the
+  // city line with an empty street.
+  if (parts.length === 2 && /^[A-Za-z]{2}\s*\d{5}(?:-\d{4})?$/.test(parts[1])
+    && !/\d/.test(parts[0]) && !/\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|ct|court|pl|place|pkwy|parkway|hwy|highway|ter|terrace|cir|circle)\b/i.test(parts[0])) {
+    const { city, state, zip } = parseCityLine(parts.join(', '));
+    return { street: '', city, state, zip, country: DEFAULT_COUNTRY };
+  }
   const { city, state, zip } = parseCityLine(parts.slice(1).join(', '));
   return { street: parts[0], city, state, zip, country: DEFAULT_COUNTRY };
 }
