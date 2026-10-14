@@ -10,7 +10,35 @@
 // stopPropagation because, being position:fixed, they're still DOM children of
 // the row and their clicks would otherwise bubble into the row's expand toggle.
 
+import type { ReactElement } from 'react';
 import { NEON } from '../shared';
+
+// Inline icon set for the menu rows. All stroke currentColor so each icon
+// inherits its row's text color (neon / danger red / muted) for free.
+const ico = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } };
+const IconEdit = () => (<svg {...ico}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>);
+const IconSend = () => (<svg {...ico}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>);
+const IconDownload = () => (<svg {...ico}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>);
+const IconGear = () => (<svg {...ico}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>);
+const IconDoc = () => (<svg {...ico}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>);
+const IconMusic = () => (<svg {...ico}><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>);
+const IconDollar = () => (<svg {...ico}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>);
+const IconCheck = () => (<svg {...ico}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>);
+const IconX = () => (<svg {...ico}><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>);
+const IconDot = () => (<svg {...ico}><circle cx="12" cy="12" r="4" /></svg>);
+
+// Pick an icon from the action's label text.
+function iconForLabel(label: string): ReactElement {
+  const l = label.toLowerCase();
+  if (l.includes('edit')) return <IconEdit />;
+  if (l.includes('download')) return <IconDownload />;
+  if (l.includes('option')) return <IconGear />;
+  if (l.includes('contract')) return <IconDoc />;
+  if (l.includes('planner') || l.includes('playlist') || l.includes('rider') || l.includes('song')) return <IconMusic />;
+  if (l.includes('request') || l.includes('deposit') || l.includes('balance')) return <IconDollar />;
+  if (l.includes('send') || l.includes('invoice') || l.includes('receipt')) return <IconSend />;
+  return <IconDot />;
+}
 
 // Only the fields the menu reads — BookingRow's richer step object is
 // structurally assignable to this.
@@ -99,9 +127,10 @@ export default function StageMenu({
               onClick={() => { if (locked) return; onRunAction(a.run); }}
               onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1, transition: 'background .12s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: locked ? 'var(--muted,#7a7a90)' : (a.danger ? '#ff7676' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.55 : 1, transition: 'background .12s' }}
             >
-              {titleCase(a.label)}{roleLocked ? '  \u{1F512}' : ''}
+              {iconForLabel(a.label)}
+              <span>{titleCase(a.label)}{roleLocked ? '  \u{1F512}' : ''}</span>
             </button>
           );
         })}
@@ -117,9 +146,10 @@ export default function StageMenu({
               onClick={() => { if (overrideLocked) return; onToggleOverride(); }}
               onMouseEnter={(e) => { if (!overrideLocked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
             >
-              {st.done ? (payStage ? '✕ Mark Not Paid' : '✕ Mark Not Complete') : (payStage ? '✓ Mark Paid' : '✓ Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}
+              {st.done ? <IconX /> : <IconCheck />}
+              <span>{st.done ? (payStage ? 'Mark Not Paid' : 'Mark Not Complete') : (payStage ? 'Mark Paid' : 'Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}</span>
             </button>
             {!payStage && (
               <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>For steps handled outside the app.</div>
