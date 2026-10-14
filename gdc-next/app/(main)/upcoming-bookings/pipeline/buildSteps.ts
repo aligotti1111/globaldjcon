@@ -52,6 +52,10 @@ export interface BuildStepsCtx {
   // Phase 2: open the Edit Receipt modal for a PAID deposit/balance. Optional for
   // the same land-in-either-order reason.
   editReceipt?: (kind: 'deposit' | 'balance') => void;
+  // Whether a receipt has already been emailed for each kind — drives the menu
+  // label ("Send receipt" first time, "Re-send receipt" afterwards).
+  depositReceiptSent?: boolean;
+  balanceReceiptSent?: boolean;
   toggleStep: (key: string, next: boolean) => Promise<void> | void;
   setMethodsOpen: (v: boolean) => void;
   plannerBusy: boolean;
@@ -68,7 +72,10 @@ export interface BuildStepsCtx {
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, editReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
+  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
+  // Receipt menu label — first send says "Send receipt", later sends "Re-send".
+  const depRcptLabel = depositReceiptSent ? 'Re-send receipt' : 'Send receipt';
+  const balRcptLabel = balanceReceiptSent ? 'Re-send receipt' : 'Send receipt';
   const steps: PipelineStep[] = [];
   /*
     MANUAL BOOKINGS CAN HAVE A CONTRACT — this used to be `!booking.is_manual`,
@@ -385,7 +392,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // rows genuinely settled, the dropdown is gone — otherwise a DJ could
       // "mark not complete" on money that actually arrived and the strip would
       // contradict the ledger sitting right beneath it.
-      overridable: !reallySettled && !depositSkipped,
+      // Also: once a balance has been requested or marked paid, the deposit
+      // stage is locked — a hand-marked deposit can't be "un-marked" while the
+      // balance is in play (that would reopen a settled step mid-collection).
+      // "Mark Not Paid" returns only after the balance request is cancelled or
+      // the balance itself is marked not paid (both clear `balanceRequested`).
+      overridable: !reallySettled && !depositSkipped && !(!!overrides.deposit && balanceRequested),
       done: allDone,
       // Done via the manual "Mark Complete" toggle — not a real (or partial)
       // payment in the ledger, and not the skip state.
@@ -492,7 +504,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         // (Edit / Re-send / Download) alongside the "Mark Not Paid" toggle.
         ? [
             ...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('deposit') }] : []),
-            { label: 'Re-send receipt', run: () => sendReceipt('deposit') },
+            { label: depRcptLabel, run: () => sendReceipt('deposit') },
             { label: 'Download receipt', run: () => downloadReceipt?.('deposit') },
           ]
         : depositSkipped
@@ -522,7 +534,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             // A genuinely PAID deposit (real money settled) can have its receipt
             // re-sent, downloaded, or edited. Edit opens the receipt-only editor.
             ...(reallySettled && editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('deposit') }] : []),
-            ...(reallySettled ? [{ label: 'Re-send receipt', run: () => sendReceipt('deposit') }, { label: 'Download receipt', run: () => downloadReceipt?.('deposit') }] : []),
+            ...(reallySettled ? [{ label: depRcptLabel, run: () => sendReceipt('deposit') }, { label: 'Download receipt', run: () => downloadReceipt?.('deposit') }] : []),
           ],
     });
   }
@@ -845,12 +857,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               ...(done
                   ? [
                       ...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('balance') }] : []),
-                      { label: 'Resend receipt', run: () => sendReceipt('balance') },
+                      { label: balRcptLabel, run: () => sendReceipt('balance') },
                       { label: 'Download receipt', run: () => downloadReceipt?.('balance') },
                     ]
                   : []),
             ]
-          : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance'), disabled: depositPending, title: depositPending ? 'Settle or cancel the pending deposit first.' : undefined }]), ...(done ? [...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('balance') }] : []), { label: 'Re-send receipt', run: () => sendReceipt('balance') }, { label: 'Download receipt', run: () => downloadReceipt?.('balance') }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${balanceRow.id}`).catch(() => {}); } }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+          : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance'), disabled: depositPending, title: depositPending ? 'Settle or cancel the pending deposit first.' : undefined }]), ...(done ? [...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('balance') }] : []), { label: balRcptLabel, run: () => sendReceipt('balance') }, { label: 'Download receipt', run: () => downloadReceipt?.('balance') }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${balanceRow.id}`).catch(() => {}); } }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
         // Why "Request balance" is missing: a deposit is still out and unpaid.
         hint: (!hasNewBalance && !archive && !balanceRow && !done && depositPending)
           ? 'Settle or cancel the pending deposit first, then request the full balance.'
