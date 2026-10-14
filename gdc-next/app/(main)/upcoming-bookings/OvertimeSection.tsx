@@ -389,8 +389,8 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
             </>
           ) : (
             <>
-              <button type="button" style={{ ...primaryBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Send invoice'}</button>
-              <button type="button" style={{ ...ghostBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark paid & send receipt'}</button>
+              <button type="button" style={{ ...primaryBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={sendInvoice}>{busy === 'invoice' ? 'Sending…' : 'Request Balance'}</button>
+              <button type="button" style={{ ...ghostBtn, opacity: (anyBusy || !valid) ? 0.4 : 1, cursor: (anyBusy || !valid) ? 'not-allowed' : 'pointer' }} disabled={anyBusy || !valid} onClick={markPaid}>{busy === 'receipt' ? 'Sending…' : 'Mark Paid & Send Invoice'}</button>
             </>
           )}
         </div>
