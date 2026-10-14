@@ -55,12 +55,15 @@ interface Props {
   actionLocked: (label: string) => boolean;
   overrideLockedFor: (key: string) => boolean;
   onToggleOverride: (key: string, done: boolean) => void;
+  /** Stage whose action is mid-flight (sending/downloading) — shows a transient
+   *  spinner ring on that icon only. Does not affect any stage state or color. */
+  busyKey?: string | null;
 }
 
 export default function PipelineStrip({
   steps, slots, djType, newSlot,
   menuOpenKey, setMenuOpenKey, menuPos, setMenuPos, menuBtnRef,
-  openedLabel, actionLocked, overrideLockedFor, onToggleOverride,
+  openedLabel, actionLocked, overrideLockedFor, onToggleOverride, busyKey,
 }: Props) {
   // Short stage name shown ABOVE each icon (mobile framed cards only; hidden on
   // desktop, which already has column headers). Shorter than stageLabel so it
@@ -106,6 +109,10 @@ export default function PipelineStrip({
         const open = menuOpenKey === st.key;
         const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
         const waiting = !st.done && (!!st.caption || st.state === 'pending');
+        // Transient in-flight cue only — a spinner ring over this icon while its
+        // request/receipt action is sending or downloading. Adds nothing to the
+        // stage's real state; clears the instant the call settles.
+        const busy = busyKey != null && busyKey === st.key;
         // Skipped = a muted step that still counts as "done" (e.g. a skipped
         // deposit): resolved, not completed. It reads WHITE — neutral, with no
         // green anywhere on it (no green caption, icon or check).
@@ -161,6 +168,7 @@ export default function PipelineStrip({
           <>
             <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle }}>
               {stageIcon(st.icon)}
+              {busy && <span className={styles.stSpin} aria-hidden="true" />}
               {positiveDone && (
                 <span className={styles.stBadge}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
