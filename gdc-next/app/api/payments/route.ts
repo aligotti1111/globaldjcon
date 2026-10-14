@@ -764,6 +764,8 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
           html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
           attachments: receiptAtt ? [receiptAtt] : undefined,
         });
+        // Record the receipt send so the card menu shows "Re-send receipt".
+        if (receiptAtt) { try { await db.from('bookings').update({ [p.kind === 'balance' ? 'balance_receipt_sent_at' : 'deposit_receipt_sent_at']: new Date().toISOString() } as unknown as never).eq('id', p.booking_id); } catch { /* non-fatal */ } }
       } catch { /* non-fatal */ }
     }
 
@@ -863,6 +865,8 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         html: shell(content),
         attachments: receiptAtt ? [receiptAtt] : undefined,
       });
+      // Record the send so the card menu flips to "Re-send receipt".
+      try { await db.from('bookings').update({ [kind === 'balance' ? 'balance_receipt_sent_at' : 'deposit_receipt_sent_at']: new Date().toISOString() } as unknown as never).eq('id', bookingId); } catch { /* non-fatal */ }
     } catch {
       return NextResponse.json({ error: 'Could not send the receipt email.' }, { status: 502 });
     }
