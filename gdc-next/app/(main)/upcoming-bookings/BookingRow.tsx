@@ -582,7 +582,7 @@ export default function BookingRow({
         } catch { alert('Could not cancel the request.'); }
       },
     });
-  } async function sendReceipt(kind: 'deposit' | 'balance') { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind }) }); const raw = await res.text(); if (!res.ok) { alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { alert('Receipt sent to the client.'); onMutated?.(); } } catch { alert('Could not send the receipt.'); } }
+  } async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
     try {
       const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download-receipt', bookingId: booking.id, kind }) });
@@ -671,8 +671,10 @@ export default function BookingRow({
   function confirmAndToggleStep(key: string, done: boolean) {
     const proceed = () => {
       toggleStep(key, done);
-      // Marking the balance complete sends the final receipt automatically.
-      if (done && key === 'invoice') { sendReceipt('balance'); }
+      // Marking the balance complete sends the final receipt automatically —
+      // unless the DJ turned off "auto-send receipt after balance is paid"
+      // (enforced server-side via the `auto` flag).
+      if (done && key === 'invoice') { sendReceipt('balance', true); }
     };
     if (done && key === 'deposit') {
       setConfirmModal({
