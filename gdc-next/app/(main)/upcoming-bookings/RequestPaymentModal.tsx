@@ -5,7 +5,7 @@
 // still owns the request state (amount, kind, busy, error, methods) and the
 // submit handler, and passes them in.
 
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { usableMethods, type PaymentMethod, type PaymentMethodType } from '@/lib/paymentMethods';
 import { currencySymbol } from '@/lib/constants';
 import { VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, CardNetworksMark } from '../update-dj-profile/BrandMarks';
@@ -67,6 +67,12 @@ export default function RequestPaymentModal({
     && Math.abs(entered - (expectedAmount as number)) > 0.01;
   const diff = mismatch ? Math.round((entered - (expectedAmount as number)) * 100) / 100 : 0;
   const kindNoun = reqKind === 'balance' ? 'balance' : 'deposit';
+
+  // When the amount doesn't match the receipt, the DJ must tick the box below
+  // before the request will send — a deliberate "yes, I mean to send a
+  // different number" so it's never an accidental typo going out.
+  const [ackMismatch, setAckMismatch] = useState(false);
+  const blockedByMismatch = mismatch && !ackMismatch;
 
   return (
     <div
@@ -145,6 +151,17 @@ export default function RequestPaymentModal({
                 </>
               )}
             </div>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.45rem', marginTop: '.65rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={ackMismatch}
+                onChange={(e) => setAckMismatch(e.target.checked)}
+                style={{ marginTop: '.15rem', accentColor: '#f0b43c', cursor: 'pointer' }}
+              />
+              <span style={{ color: 'var(--white,#fff)', fontSize: '.7rem', lineHeight: 1.45 }}>
+                I understand this {kindNoun} doesn&apos;t match the receipt and I&apos;ll update the receipt by hand.
+              </span>
+            </label>
           </div>
         )}
 
@@ -192,11 +209,16 @@ export default function RequestPaymentModal({
           </button>
           <button
             type="button"
-            disabled={reqBusy}
+            disabled={reqBusy || blockedByMismatch}
             onClick={onSubmit}
-            style={{ background: NEON, border: 'none', color: '#06231b', fontWeight: 800, borderRadius: 6, padding: '.5rem 1.1rem', cursor: reqBusy ? 'wait' : 'pointer', fontSize: '.8rem', opacity: reqBusy ? .6 : 1 }}
+            style={{
+              background: mismatch ? '#f0b43c' : NEON, border: 'none', color: '#06231b', fontWeight: 800,
+              borderRadius: 6, padding: '.5rem 1.1rem', fontSize: '.8rem',
+              cursor: reqBusy ? 'wait' : blockedByMismatch ? 'not-allowed' : 'pointer',
+              opacity: (reqBusy || blockedByMismatch) ? .5 : 1,
+            }}
           >
-            {reqBusy ? 'Requesting…' : 'Request'}
+            {reqBusy ? 'Requesting…' : mismatch ? 'Request anyway' : 'Request'}
           </button>
         </div>
       </div>
