@@ -401,11 +401,44 @@ export async function buildBookingDocAttachment(
       const hrLabel = `${hrs} hr${hrs === 1 ? '' : 's'}`;
       const otLine = `Overtime — ${hrLabel} × ${fmtCur(Number(ot.rate), currency)}`;
       if (isReceipt) {
-        lines.push({ label: 'Event Total', amount: total });
-        lines.push({ label: otLine, amount: otSub });
+        // Overtime RECEIPT = the whole paid-in-full balance receipt (event
+        // price + tax → total, deposit + balance received), THEN a divider and
+        // the overtime charge (+ its own tax when applied). The headline is the
+        // grand total: the event total plus the overtime and its tax.
+        const totalShown = round2(total);
+        // Event price / tax split — same rule as the balance receipt.
+        let baseShown = services > 0 ? round2(services) : 0;
+        let taxShown = tax > 0 ? round2(tax) : 0;
+        if (taxShown <= 0.005 && taxPct > 0.0001) {
+          baseShown = round2(totalShown / (1 + taxPct / 100));
+          taxShown = round2(totalShown - baseShown);
+        } else if (baseShown <= 0.005 && taxShown > 0.005) {
+          baseShown = round2(totalShown - taxShown);
+        }
+        const showTax = taxShown > 0.005 && baseShown > 0.005
+          && Math.abs(round2(baseShown + taxShown) - totalShown) < 0.02;
+        if (showTax) {
+          lines.push({ label: 'Event Total', amount: baseShown, emphasis: 'muted' });
+          lines.push({ label: 'Tax', amount: taxShown, emphasis: 'muted' });
+          lines.push({ label: 'Total Cost', amount: totalShown, emphasis: 'bold' });
+        } else {
+          lines.push({ label: 'Event Total', amount: totalShown, emphasis: 'bold' });
+        }
+        // By the time overtime is charged the event is paid in full, so show the
+        // deposit + balance split when a deposit was collected (unless it was
+        // explicitly un-marked).
+        const bookingDeposit = round2(Number(b.deposit_amount ?? 0));
+        const depositUnmarked = !!(b.status_overrides && b.status_overrides.deposit === false);
+        if (bookingDeposit > 0.005 && bookingDeposit < round2(totalShown - 0.005) && !depositUnmarked) {
+          lines.push({ label: 'Deposit received', amount: bookingDeposit, emphasis: 'muted', ruleAbove: true });
+          lines.push({ label: 'Balance Received', amount: round2(totalShown - bookingDeposit), emphasis: 'bold' });
+        } else {
+          lines.push({ label: 'Balance Received', amount: totalShown, emphasis: 'bold', ruleAbove: true });
+        }
+        // Divider, then the overtime charge and (if any) its tax.
+        lines.push({ label: otLine, amount: otSub, ruleAbove: true });
         if (otTax > 0) lines.push({ label: 'Overtime tax', amount: otTax });
-        lines.push({ label: 'Total', amount: round2(total + otAmount), emphasis: 'bold', ruleAbove: true });
-        headline = { label: 'Paid in Full', amount: 0, hideAmount: true };
+        headline = { label: 'Paid in Full', amount: round2(totalShown + otSub + otTax), hideAmount: false };
       } else {
         lines.push({ label: otLine, amount: otSub });
         if (otTax > 0) lines.push({ label: 'Sales Tax', amount: otTax });
