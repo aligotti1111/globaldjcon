@@ -166,7 +166,10 @@ export default function PipelineStrip({
             : skipped ? '#b9b9c6' : '#c2c2ce';
         const inner = (
           <>
-            <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle }}>
+            {/* While busy, the node's own border goes transparent and the
+                spinner ring (identical geometry) becomes the circle — so it's
+                the actual circle spinning, not a second ring around it. */}
+            <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle, ...(busy ? { borderColor: 'transparent' } : null) }}>
               {stageIcon(st.icon)}
               {busy && <span className={styles.stSpin} aria-hidden="true" />}
               {positiveDone && (
