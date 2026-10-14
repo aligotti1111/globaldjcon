@@ -243,6 +243,8 @@ interface ProfileRow extends AccessFields {
   city: string | null;
   state: string | null;
   travel_distance: string | null;
+  receipt_auto_deposit: boolean | null;
+  receipt_auto_balance: boolean | null;
 }
 
 export default async function UpcomingBookingsPage() {
@@ -259,7 +261,7 @@ export default async function UpcomingBookingsPage() {
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, receipt_auto_deposit, receipt_auto_balance')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -519,6 +521,8 @@ export default async function UpcomingBookingsPage() {
       initialPlanners={plannersByBooking}
       canPro={canPro}
       isPaid={isPaid}
+      autoDepositReceipt={profile?.receipt_auto_deposit !== false}
+      autoBalanceReceipt={profile?.receipt_auto_balance !== false}
       settingsCurrency={settingsCurrency}
       requireContract={requireContract}
       riderEnabled={riderEnabled}
