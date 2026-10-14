@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { buildDocumentPdf } from '@/lib/receiptPdf';
-import { fetchLogo } from '@/lib/receiptDocs';
+import { fetchLogo, receiptAddressLines } from '@/lib/receiptDocs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       return p.length > 1 ? [p[0], p.slice(1).join(', ')].join('\n') : s;
     };
     accountAddr = stack(accountAddr);
-    const addressLine = stack(dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr);
+    const addressLine = stack(dj.receipt_address != null ? receiptAddressLines(dj.receipt_address) : accountAddr);
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : (dj.phone || null);
 
     const logo = await fetchLogo(dj.contract_logo_url);
