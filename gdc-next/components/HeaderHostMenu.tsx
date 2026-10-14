@@ -40,6 +40,15 @@ function IconClock() {
     </svg>
   );
 }
+function IconArchive() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <path d="M21 8v13H3V8" />
+      <path d="M1 3h22v5H1z" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
 function IconSettings() {
   return (
     <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
@@ -170,7 +179,7 @@ export default function HeaderHostMenu({ name, avatarUrl, isAdmin = false }: Hea
             <IconClock />Upcoming Events
           </Link>
           <Link href="/past-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            <IconClock />Past Events
+            <IconArchive />Past Events
           </Link>
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
             <IconSettings />Account Settings
