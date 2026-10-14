@@ -1162,7 +1162,7 @@ ${optionsBlock}`
       await resend.emails.send({
         from: FROM,
         to,
-        subject: isInv ? `Overtime Invoice — ${money(amount, cur)}` : 'Receipt — paid in full',
+        subject: isInv ? `Overtime Invoice — ${money(amount, cur)}` : 'Overtime Receipt — paid in full',
         html: shell(content),
         attachments: att ? [att] : undefined,
       });
