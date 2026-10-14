@@ -418,7 +418,9 @@
 
    Inter, sentence case, 14px: same list, half the width, scannable. */
 .hdr-dj-menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   text-align: left;
   background: transparent;
@@ -433,6 +435,8 @@
   text-decoration: none;
 }
 .hdr-dj-menu-item:hover { background: rgba(255, 255, 255, .06); }
+.hdr-dj-menu-item .mm-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--neon); }
+.hdr-dj-menu-item-danger .mm-icon { color: #ff6b6b; }
 .hdr-dj-menu-sep {
   height: 1px;
   background: rgba(255, 255, 255, .1);
