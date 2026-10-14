@@ -83,7 +83,15 @@ export async function sendPaypalPaidEmails(db: SupabaseClient, args: PaypalPaidA
   // ── Receipt to the host (best-effort) ──
   if (hostEmail) {
     try {
-      const receiptAtt = await buildBookingDocAttachment(db, {
+      // Honour the DJ's auto-send-receipt toggles (default on). When off, the
+      // host still gets the payment confirmation but no receipt is attached.
+      let autoSend = true;
+      if (b.dj_id) {
+        const { data: djTog } = await db.from('users').select('receipt_auto_deposit, receipt_auto_balance').eq('id', b.dj_id).maybeSingle();
+        const tog = djTog as { receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null } | null;
+        autoSend = args.kind === 'balance' ? (tog?.receipt_auto_balance !== false) : (tog?.receipt_auto_deposit !== false);
+      }
+      const receiptAtt = autoSend ? await buildBookingDocAttachment(db, {
         docKind: 'receipt',
         bookingId: args.bookingId,
         djId: b.dj_id || '',
@@ -93,12 +101,13 @@ export async function sendPaypalPaidEmails(db: SupabaseClient, args: PaypalPaidA
         method: 'paypal',
         paidToDate: args.paidToDate,
         clientEmail: hostEmail,
-      });
+      }) : null;
+      const receiptLine = autoSend ? ' A receipt is attached.' : '';
       const content = settled
         ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Payment received — ${money(args.paidToDate, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${kindNoun} is settled${b.event_date ? ` for ${b.event_date}` : ''}. A receipt is attached.</p>`
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${kindNoun} is settled${b.event_date ? ` for ${b.event_date}` : ''}.${receiptLine}</p>`
         : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Partial payment received</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">${money(args.paidToDate, cur)} of ${money(Number(args.amountTotal), cur)} received — <strong>${money(outstanding, cur)} still due</strong>. A receipt is attached.</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">${money(args.paidToDate, cur)} of ${money(Number(args.amountTotal), cur)} received — <strong>${money(outstanding, cur)} still due</strong>.${receiptLine}</p>`;
       const progressBox = await bookingProgressBox(args.bookingId);
       await resend.emails.send({
         from: FROM,
