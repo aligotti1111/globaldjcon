@@ -45,7 +45,32 @@ export default function HostPipelineStrip({
   spread?: boolean;
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // Which stage's receipt is downloading right now — drives a transient spinner
+  // ring on that icon (same cue as the DJ dashboard). Purely cosmetic; clears
+  // the moment the download resolves.
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // Pull the receipt as a blob (so we can show the spinner while it builds),
+  // then trigger the file download. Falls back to opening the link on any error.
+  async function downloadVia(href: string, key: string) {
+    setOpenKey(null);
+    setBusyKey(key);
+    try {
+      const res = await fetch(href);
+      if (!res.ok) { window.open(href, '_blank', 'noopener'); return; }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = /filename="?([^"]+)"?/.exec(cd);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = m ? m[1] : 'Receipt.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch { window.open(href, '_blank', 'noopener'); }
+    finally { setBusyKey(null); }
+  }
 
   // Close the open action menu on any click outside the strip (and on Escape).
   useEffect(() => {
@@ -74,11 +99,13 @@ export default function HostPipelineStrip({
     <div ref={wrapRef} style={spread
       ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }
       : { display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 10 }}>
+      <style>{'@keyframes gdcHostSpin{to{transform:rotate(360deg)}}'}</style>
       {ordered.map((st) => {
         const done = st.done;
         const isNow = st.key === currentKey;
         const clickable = !!st.href;
         const open = openKey === st.key;
+        const busy = busyKey === st.key;
         // Ring: neon + fill for done, calm grey otherwise (the DJ carries "your
         // move" in the caption colour, not by lighting the ring).
         const ring: CSSProperties = done
@@ -90,8 +117,13 @@ export default function HostPipelineStrip({
         const capColor = done ? DONE_CAP : (isNow || clickable) ? TODO_CAP : '#5a5a72';
 
         const iconRing = (
-          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, fontSize: 16, borderRadius: '50%', border: '1.5px solid', boxSizing: 'border-box', ...ring }}>
+          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, fontSize: 16, borderRadius: '50%', border: '2px solid', boxSizing: 'border-box', ...ring, ...(busy ? { borderColor: 'transparent' } : null) }}>
             {stageIcon(st.icon)}
+            {/* While downloading, the circle's own border goes transparent and a
+                spinning arc of the same geometry becomes the circle. */}
+            {busy && (
+              <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderRadius: '50%', border: '2px solid transparent', borderTopColor: NEON, borderRightColor: NEON, boxSizing: 'border-box', animation: 'gdcHostSpin .7s linear infinite' }} />
+            )}
             {done && (
               <span style={{ position: 'absolute', right: -3, bottom: -3, width: 14, height: 14, borderRadius: '50%', background: NEON, border: '2px solid #16161f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -115,7 +147,7 @@ export default function HostPipelineStrip({
         const capSpread: CSSProperties = spread ? { whiteSpace: 'normal', minWidth: 0 } : {};
         const inner = (
           <>
-            <span style={{ ...labelStyle, ...labelSpread, marginBottom: 6 }}>{stageLabel(st.key, djType)}</span>
+            <span style={{ ...labelStyle, ...labelSpread, marginBottom: 2 }}>{stageLabel(st.key, djType)}</span>
             {top}
             <span style={{ ...capBase, ...capSpread, color: capColor, marginTop: 5 }}>{st.caption}</span>
           </>
@@ -142,7 +174,17 @@ export default function HostPipelineStrip({
                     { href: st.href, label: st.hrefLabel },
                     ...(st.href2 ? [{ href: st.href2, label: st.hrefLabel2 }] : []),
                   ].map((a, i) => (
-                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // A receipt download goes through fetch() so the icon
+                        // shows a spinner while the PDF builds; other links (pay,
+                        // open planner) navigate normally.
+                        if (a.label?.startsWith('Download') && a.href) {
+                          e.preventDefault();
+                          void downloadVia(a.href, st.key);
+                        }
+                      }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', borderRadius: 7, background: 'transparent', transition: 'background .12s ease', color: '#fff', fontSize: 12.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
