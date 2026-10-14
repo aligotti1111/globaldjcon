@@ -87,6 +87,26 @@ function friendlyDate(iso?: string | null): string {
   }
 }
 
+/** Turn a stored receipt_address into a newline-stacked display string. New
+ *  saves store an exact JSON object ({street,city,state,zip,country}); older
+ *  rows are a composed string (returned as-is for the caller to stack). Country
+ *  is shown only when it isn't the US default. Blank parts are dropped. */
+export function receiptAddressLines(stored?: string | null): string {
+  const s = (stored || '').trim();
+  if (!s) return '';
+  if (s.startsWith('{')) {
+    try {
+      const o = JSON.parse(s) as { street?: string; city?: string; state?: string; zip?: string; country?: string };
+      const stateZip = [o.state, o.zip].map((x) => (x || '').trim()).filter(Boolean).join(' ');
+      const cityLine = [(o.city || '').trim(), stateZip].filter(Boolean).join(', ');
+      const c = (o.country || '').trim();
+      const countryLine = (c && c !== 'United States') ? c : '';
+      return [(o.street || '').trim(), cityLine, countryLine].filter(Boolean).join('\n');
+    } catch { return s; }
+  }
+  return s;
+}
+
 /** Fetch a logo URL into pdf-lib-embeddable bytes. Only PNG/JPG survive — any
  *  other format (or a failed fetch) returns null and the document renders
  *  logo-less. */
@@ -299,7 +319,7 @@ export async function buildBookingDocAttachment(
     };
     accountAddr = stack(accountAddr);
     // Custom receipt override wins; a legacy one-line override gets stacked too.
-    const addressLine = stack(dj.receipt_address != null ? dj.receipt_address.trim() : accountAddr);
+    const addressLine = stack(dj.receipt_address != null ? receiptAddressLines(dj.receipt_address) : accountAddr);
     // Phone printed on the receipt: the override wins ('' -> none), else account phone.
     const phoneLine = dj.receipt_phone != null ? (dj.receipt_phone.trim() || null) : dj.phone;
 
