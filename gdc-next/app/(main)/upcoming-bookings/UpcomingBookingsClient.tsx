@@ -62,6 +62,10 @@ interface Props {
   // mount doesn't pass them and doesn't gate on them.
   canPro?: boolean;
   isPaid?: boolean;
+  // DJ's auto-send-receipt toggles — when on, a receipt is auto-sent on paid, so
+  // the card menu reads "Re-send receipt" rather than "Send receipt".
+  autoDepositReceipt?: boolean;
+  autoBalanceReceipt?: boolean;
   settingsCurrency?: string;
   requireContract?: boolean;
   riderEnabled?: boolean;
@@ -79,7 +83,7 @@ interface Props {
 export default function UpcomingBookingsClient({
   userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
   initialPayments, initialPlanners,
-  canPro: canProProp, isPaid: isPaidProp, settingsCurrency: settingsCurrencyProp,
+  canPro: canProProp, isPaid: isPaidProp, autoDepositReceipt = true, autoBalanceReceipt = true, settingsCurrency: settingsCurrencyProp,
   requireContract: requireContractProp, riderEnabled: riderEnabledProp,
   guestlistEnabled: guestlistEnabledProp, clubDepositPct: clubDepositPctProp,
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
@@ -704,6 +708,8 @@ export default function UpcomingBookingsClient({
                 onPaymentsChange={handlePaymentsChange}
                 onMutated={refresh}
                 canPro={canPro}
+                autoDepositReceipt={autoDepositReceipt}
+                autoBalanceReceipt={autoBalanceReceipt}
                 planner={plannerMap[b.id]}
                 onPlannerChange={handlePlannerChange}
                 overlaps={overlapIds.has(b.id)}
@@ -741,7 +747,9 @@ export default function UpcomingBookingsClient({
                     onPaymentsChange={handlePaymentsChange}
                     onMutated={refresh}
                     canPro={canPro}
-                planner={plannerMap[b.id]}
+                    autoDepositReceipt={autoDepositReceipt}
+                    autoBalanceReceipt={autoBalanceReceipt}
+                    planner={plannerMap[b.id]}
                     onPlannerChange={handlePlannerChange}
                     overlaps={overlapIds.has(b.id)}
                     onDelete={canBookings && b.is_manual ? () => handleDelete(b.id) : undefined}
