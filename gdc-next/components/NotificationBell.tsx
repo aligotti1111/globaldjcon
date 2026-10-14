@@ -14,6 +14,7 @@ type Item = { bookingId: string; slot: string; at: string; eventDate: string | n
 // The stage icon that represents each kind of update — same vocabulary as the
 // booking pipeline (contract / deposit / balance / planner-or-rider / guests).
 const EMOJI: Record<string, string> = {
+  // DJ-side slots (host actions on the DJ's bookings).
   contract: '\u{1F4DD}',  // 📝
   contract_declined: '\u{274C}', // ❌
   deposit: '\u{1F4B5}',   // 💵
@@ -24,8 +25,21 @@ const EMOJI: Record<string, string> = {
   guestlist: '\u{1F465}', // 👥
   change: '\u{2705}',     // ✅
   cancel_requested: '\u{1F6AB}', // 🚫
+  // Host-side slots (DJ actions on the host's bookings).
+  accepted: '\u{2705}',        // ✅
+  countered: '\u{1F4AC}',      // 💬
+  denied: '\u{274C}',          // ❌
+  contract_sign: '\u{1F4DD}',  // 📝
+  deposit_request: '\u{1F4B5}',// 💵
+  balance_request: '\u{1F9FE}',// 🧾
+  planner_sent: '\u{1F3B5}',   // 🎵
+  planner_reminder: '\u{23F0}',// ⏰
+  guestlist_sent: '\u{1F465}', // 👥
+  rider_sent: '\u{1F4CB}',     // 📋
+  cancelled: '\u{1F6AB}',      // 🚫
 };
 const WHAT: Record<string, string> = {
+  // DJ-side.
   contract: 'Contract signed',
   contract_declined: 'Contract declined',
   deposit: 'Deposit paid',
@@ -36,6 +50,18 @@ const WHAT: Record<string, string> = {
   guestlist: 'Guest list confirmed',
   change: 'Change approved',
   cancel_requested: 'Cancellation requested',
+  // Host-side.
+  accepted: 'Booking accepted',
+  countered: 'Counter offer sent',
+  denied: 'Booking declined',
+  contract_sign: 'Contract ready to sign',
+  deposit_request: 'Deposit requested',
+  balance_request: 'Balance requested',
+  planner_sent: 'Planner & Playlist sent',
+  planner_reminder: 'Planner reminder',
+  guestlist_sent: 'Guest list sent',
+  rider_sent: 'Rider sent',
+  cancelled: 'Booking cancelled',
 };
 
 // For a pending cash/check hand-off, append the method so the DJ sees what to
@@ -76,9 +102,24 @@ function timeAgo(iso: string): string {
   return `${y} year${y === 1 ? '' : 's'} ago`;
 }
 
-const MORE_HREF = '/upcoming-bookings?filter=activity';
+interface NotificationBellProps {
+  /** Activity endpoint. DJ default; hosts pass '/api/host/new-activity'. */
+  endpoint?: string;
+  /** "View more" destination. */
+  moreHref?: string;
+  /** localStorage key for the last-seen timestamp (separate per audience so a
+   *  DJ-and-host hybrid account doesn't share a badge). */
+  seenKey?: string;
+  /** Base path an item opens; the booking id is appended as ?open=<id>. */
+  openHrefBase?: string;
+}
 
-export default function NotificationBell() {
+export default function NotificationBell({
+  endpoint = '/api/dj/new-activity',
+  moreHref = '/upcoming-bookings?filter=activity',
+  seenKey = 'gdc_newactivity_seen',
+  openHrefBase = '/upcoming-bookings',
+}: NotificationBellProps = {}) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   // Fixed viewport position for the panel. The <header> has overflow:hidden,
@@ -96,7 +137,7 @@ export default function NotificationBell() {
   const router = useRouter();
 
   useEffect(() => {
-    try { setLastSeen(localStorage.getItem('gdc_newactivity_seen')); } catch { /* ignore */ }
+    try { setLastSeen(localStorage.getItem(seenKey)); } catch { /* ignore */ }
   }, []);
 
   function toggle() {
@@ -108,14 +149,14 @@ export default function NotificationBell() {
       // now counts as seen; a later host action bumps the badge again.
       const seen = new Date().toISOString();
       setLastSeen(seen);
-      try { localStorage.setItem('gdc_newactivity_seen', seen); } catch { /* ignore */ }
+      try { localStorage.setItem(seenKey, seen); } catch { /* ignore */ }
     }
     setOpen((v) => !v);
   }
 
   async function load() {
     try {
-      const r = await fetch('/api/dj/new-activity', { cache: 'no-store' });
+      const r = await fetch(endpoint, { cache: 'no-store' });
       if (!r.ok) return;
       const j = await r.json();
       setItems(Array.isArray(j.items) ? j.items : []);
@@ -196,7 +237,7 @@ export default function NotificationBell() {
               <button
                 key={`${it.bookingId}-${it.at}`}
                 type="button"
-                onClick={() => { setOpen(false); router.push(`/upcoming-bookings?open=${encodeURIComponent(it.bookingId)}`); }}
+                onClick={() => { setOpen(false); router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`); }}
                 style={{
                   display: 'flex', gap: 11, alignItems: 'center', width: '100%', textAlign: 'left',
                   padding: '11px 15px', background: 'transparent', border: 'none',
@@ -223,7 +264,7 @@ export default function NotificationBell() {
 
           <button
             type="button"
-            onClick={() => { setOpen(false); router.push(MORE_HREF); }}
+            onClick={() => { setOpen(false); router.push(moreHref); }}
             style={{
               display: 'block', width: '100%', textAlign: 'center', padding: '12px',
               background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,.08)',
