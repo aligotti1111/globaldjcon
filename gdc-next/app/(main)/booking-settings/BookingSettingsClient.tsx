@@ -237,6 +237,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const [hasDirtyPackages, setHasDirtyPackages] = useState(false);
   const [hasDirtyClubRates, setHasDirtyClubRates] = useState(false);
   const [hasDirtyPayments, setHasDirtyPayments] = useState(false);
+  const [hasDirtyReceipts, setHasDirtyReceipts] = useState(false);
   const [clubBookingActivationIncomplete, setClubBookingActivationIncomplete] = useState(false);
   const [masterSaveTrigger, setMasterSaveTrigger] = useState(0);
   function triggerMasterSave() {
@@ -278,7 +279,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const isPageDirty = hasDirtyPackages || hasDirtyClubRates;
   // Warn on leave when there are draft edits OR when club booking is on but
   // no equipment is picked (booking won't be publicly live in that state).
-  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete || settingsDirty || hasDirtyPayments;
+  const needsLeaveWarn = isPageDirty || clubBookingActivationIncomplete || settingsDirty || hasDirtyPayments || hasDirtyReceipts;
 
   const { setDirty: setGlobalDirty } = useUnsavedChanges();
 
@@ -314,6 +315,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (id === 'packages') return hasDirtyPackages;
     if (id === 'rates') return hasDirtyClubRates;
     if (id === 'payments') return hasDirtyPayments;
+    if (id === 'receipts') return hasDirtyReceipts;
     return false;
   }
 
@@ -581,7 +583,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
 
       {hasBookingAccess && secTab === 'receipts' && (
         <div className={styles.card}>
-          <ReceiptSettingsSection />
+          <ReceiptSettingsSection onDirtyChange={setHasDirtyReceipts} />
         </div>
       )}
     </div>
