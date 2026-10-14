@@ -234,12 +234,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
   }
   // Secondary resets — local only; the change is persisted by the Save button.
   function clearAddress() { setStreet(''); setCity(''); setStateVal(''); setZip(''); }
-  function useAccountAddress() {
-    const f = parseAddress(accountAddress);
-    setStreet(f.street); setCity(acctParts.city || f.city); setStateVal(acctParts.state || f.state); setZip(acctParts.zip || f.zip); setCountry(f.country);
-  }
   function clearPhone() { setPhone(''); }
-  function useAccountPhone() { setPhone(formatPhone(accountPhone, country)); }
   function resetColor() { setColor(DEFAULT_COLOR); }
 
   // Unsaved-changes guard: true when any field differs from what's persisted.
@@ -284,7 +279,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
     <>
       <SectionBanner
         icon="payments"
-        title="Receipts & Invoices"
+        title="Receipts"
         subtitle="Your logo, address, colour and automatic-receipt settings for every invoice and receipt."
       />
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1.6rem', alignItems: 'start', marginTop: '1.2rem' }} className="gdcReceiptGrid">
@@ -312,7 +307,6 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
             <span style={fieldLabel}>Street address</span>
             <input
               type="text" value={street} disabled={!loaded || busy} autoComplete="off"
-              placeholder="123 Main St"
               onChange={(e) => onStreetChange(e.target.value)}
               onBlur={() => setTimeout(() => setShowSug(false), 150)}
               onFocus={() => { if (suggestions.length > 0) setShowSug(true); }}
@@ -344,7 +338,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
 
         {/* City / State / ZIP — equal-width columns. */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem', marginTop: '.7rem' }}>
-          <div><span style={fieldLabel}>City</span><input type="text" value={city} disabled={!loaded || busy} onChange={(e) => setCity(e.target.value)} placeholder="Springfield" style={input} /></div>
+          <div><span style={fieldLabel}>City</span><input type="text" value={city} disabled={!loaded || busy} onChange={(e) => setCity(e.target.value)} style={input} /></div>
           <div>
             <span style={fieldLabel}>State</span>
             {country === DEFAULT_COUNTRY ? (
@@ -357,21 +351,19 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
               <input type="text" value={stateVal} disabled={!loaded || busy} onChange={(e) => setStateVal(e.target.value)} placeholder="Region" style={input} />
             )}
           </div>
-          <div><span style={fieldLabel}>ZIP</span><input type="text" value={zip} disabled={!loaded || busy} onChange={(e) => setZip(e.target.value)} placeholder="62701" style={input} /></div>
+          <div><span style={fieldLabel}>ZIP</span><input type="text" value={zip} disabled={!loaded || busy} onChange={(e) => setZip(e.target.value)} style={input} /></div>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '.6rem' }}>
           <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={clearAddress}>Clear address</button>
-          <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={useAccountAddress}>Use account address</button>
         </div>
 
         {/* Phone — receipt-only, independent of the account phone. */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Phone on receipts</label>
         <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(formatPhone(e.target.value, country))}
-          placeholder="(555) 123-4567" style={{ ...input, maxWidth: 260 }} />
+          style={{ ...input, maxWidth: 260 }} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '.6rem' }}>
           <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={clearPhone}>Clear phone</button>
-          <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={useAccountPhone}>Use account phone</button>
         </div>
 
         {/* Colour */}
@@ -394,11 +386,11 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         <Toggle checked={autoBalance} disabled={!loaded || busy} onChange={setAutoBalance} label="Auto-send receipt after balance is paid" />
 
         {/* One Save button for the whole tab. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '1.6rem' }}>
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy || !dirty} onClick={saveAll}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'flex-end', marginTop: '1.6rem' }}>
+          {dirty && <span style={{ fontSize: '.8rem', color: '#f0b64a', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0b64a', display: 'inline-block' }} />Unsaved changes</span>}
+          <button type="button" style={{ ...btn('#00e0a4', '#06231b'), opacity: (!loaded || busy || !dirty) ? 0.4 : 1, cursor: (!loaded || busy || !dirty) ? 'not-allowed' : 'pointer' }} disabled={!loaded || busy || !dirty} onClick={saveAll}>
             {busy ? 'Saving…' : 'Save'}
           </button>
-          {dirty && <span style={{ fontSize: '.8rem', color: '#f0b64a', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0b64a', display: 'inline-block' }} />Unsaved changes</span>}
         </div>
 
         {msg && <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: '#8a8aa0' }}>{msg}</div>}
@@ -481,11 +473,12 @@ function ReceiptPreview({ logoUrl, name, address, phone, accent, kind }: {
       {/* Header: left business block, right title/date/reference */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         {/* Logo LEFT, business block to its RIGHT — mirrors the emailed PDF,
-            where the name/address are drawn beside the logo, not under it. */}
+            where the logo is sized to the full height of the name/address/phone
+            block beside it (up to 150px wide), not the small fixed tile. */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0 }}>
           {logoUrl
             /* eslint-disable-next-line @next/next/no-img-element */
-            ? <img src={logoUrl} alt="logo" style={{ maxWidth: 120, maxHeight: 46, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+            ? <img src={logoUrl} alt="logo" style={{ maxWidth: 150, maxHeight: 64, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
             : null}
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 800 }}>{name}</div>
