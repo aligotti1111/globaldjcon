@@ -13,31 +13,80 @@ type Item = { bookingId: string; slot: string; at: string; eventDate: string | n
 
 // The stage icon that represents each kind of update — same vocabulary as the
 // booking pipeline (contract / deposit / balance / planner-or-rider / guests).
-const EMOJI: Record<string, string> = {
+// Line-icon chips instead of emoji — a tinted rounded square with a stroked
+// glyph, colour-coded by what the update means: green = done / accepted,
+// amber = awaiting you / in-flight, red = declined / cancelled. Each slot maps
+// to one { shape, tone }; the shapes are drawn in slotGlyph() below.
+type Tone = 'green' | 'amber' | 'red';
+const TONE_COLOR: Record<Tone, string> = { green: '#00e0a4', amber: '#eaa94a', red: '#ff6b6b' };
+
+type Shape = 'check' | 'x' | 'message' | 'docPen' | 'doc' | 'dollar' | 'receipt' | 'music' | 'clock' | 'users' | 'clipboard' | 'ban' | 'download' | 'eye';
+
+const SLOT_STYLE: Record<string, { shape: Shape; tone: Tone }> = {
   // DJ-side slots (host actions on the DJ's bookings).
-  contract: '\u{1F4DD}',  // 📝
-  contract_declined: '\u{274C}', // ❌
-  deposit: '\u{1F4B5}',   // 💵
-  invoice: '\u{1F9FE}',   // 🧾
-  deposit_pending: '\u{23F3}', // ⏳
-  invoice_pending: '\u{23F3}', // ⏳
-  song_list: '\u{1F3B5}', // 🎵
-  guestlist: '\u{1F465}', // 👥
-  change: '\u{2705}',     // ✅
-  cancel_requested: '\u{1F6AB}', // 🚫
+  contract: { shape: 'doc', tone: 'green' },
+  contract_declined: { shape: 'x', tone: 'red' },
+  deposit: { shape: 'dollar', tone: 'green' },
+  invoice: { shape: 'receipt', tone: 'green' },
+  deposit_pending: { shape: 'dollar', tone: 'amber' },
+  invoice_pending: { shape: 'receipt', tone: 'amber' },
+  song_list: { shape: 'music', tone: 'green' },
+  guestlist: { shape: 'users', tone: 'green' },
+  change: { shape: 'check', tone: 'green' },
+  cancel_requested: { shape: 'ban', tone: 'red' },
   // Host-side slots (DJ actions on the host's bookings).
-  accepted: '\u{2705}',        // ✅
-  countered: '\u{1F4AC}',      // 💬
-  denied: '\u{274C}',          // ❌
-  contract_sign: '\u{1F4DD}',  // 📝
-  deposit_request: '\u{1F4B5}',// 💵
-  balance_request: '\u{1F9FE}',// 🧾
-  planner_sent: '\u{1F3B5}',   // 🎵
-  planner_reminder: '\u{23F0}',// ⏰
-  guestlist_sent: '\u{1F465}', // 👥
-  rider_sent: '\u{1F4CB}',     // 📋
-  cancelled: '\u{1F6AB}',      // 🚫
+  accepted: { shape: 'check', tone: 'green' },
+  countered: { shape: 'message', tone: 'amber' },
+  denied: { shape: 'x', tone: 'red' },
+  contract_sign: { shape: 'docPen', tone: 'amber' },
+  deposit_request: { shape: 'dollar', tone: 'amber' },
+  balance_request: { shape: 'receipt', tone: 'amber' },
+  planner_sent: { shape: 'music', tone: 'amber' },
+  planner_reminder: { shape: 'clock', tone: 'amber' },
+  guestlist_sent: { shape: 'users', tone: 'amber' },
+  rider_sent: { shape: 'clipboard', tone: 'amber' },
+  cancelled: { shape: 'ban', tone: 'red' },
+  contract_ready: { shape: 'eye', tone: 'green' },
+  deposit_receipt: { shape: 'download', tone: 'green' },
+  balance_receipt: { shape: 'download', tone: 'green' },
 };
+
+function slotGlyph(shape: Shape) {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (shape) {
+    case 'check': return (<><circle cx="12" cy="12" r="9" {...p} /><polyline points="8.5 12.5 11 15 15.5 9.5" {...p} /></>);
+    case 'x': return (<><circle cx="12" cy="12" r="9" {...p} /><line x1="15" y1="9" x2="9" y2="15" {...p} /><line x1="9" y1="9" x2="15" y2="15" {...p} /></>);
+    case 'ban': return (<><circle cx="12" cy="12" r="9" {...p} /><line x1="5.6" y1="5.6" x2="18.4" y2="18.4" {...p} /></>);
+    case 'message': return (<path d="M21 15a2 2 0 0 1-2 2H8l-4 3V6a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" {...p} />);
+    case 'doc': return (<><path d="M14 3v5h5" {...p} /><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" {...p} /><path d="M8 13h8M8 17h6" {...p} /></>);
+    case 'docPen': return (<><path d="M14 3v5h5" {...p} /><path d="M20 10V8l-6-5H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5" {...p} /><path d="M18.4 13.6a1.5 1.5 0 0 1 2 2L16 20l-3 1 1-3z" {...p} /></>);
+    case 'dollar': return (<><line x1="12" y1="2.5" x2="12" y2="21.5" {...p} /><path d="M16.5 6H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H7" {...p} /></>);
+    case 'receipt': return (<><path d="M5 3v18l2-1 2 1 2-1 2 1 2-1 2 1V3l-2 1-2-1-2 1-2-1-2 1-2-1z" {...p} /><path d="M8 8h8M8 12h8M8 16h5" {...p} /></>);
+    case 'music': return (<><path d="M9 18V5l12-2v11" {...p} /><circle cx="6" cy="18" r="2.6" {...p} /><circle cx="18" cy="16" r="2.6" {...p} /></>);
+    case 'clock': return (<><circle cx="12" cy="12" r="9" {...p} /><path d="M12 7.5V12l3 2" {...p} /></>);
+    case 'users': return (<><circle cx="9" cy="8" r="3.2" {...p} /><path d="M3.5 20c0-3.3 2.6-5 5.5-5s5.5 1.7 5.5 5" {...p} /><path d="M16 5.2a3 3 0 0 1 0 5.8M17.5 15c2 .5 3.5 2 3.5 5" {...p} /></>);
+    case 'clipboard': return (<><rect x="6" y="4" width="12" height="17" rx="2" {...p} /><path d="M9 4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4" {...p} /><path d="M9 10h6M9 14h6M9 18h4" {...p} /></>);
+    case 'download': return (<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" {...p} /><polyline points="7 10 12 15 17 10" {...p} /><line x1="12" y1="15" x2="12" y2="3" {...p} /></>);
+    case 'eye': return (<><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z" {...p} /><circle cx="12" cy="12" r="3" {...p} /></>);
+  }
+}
+
+function SlotChip({ slot }: { slot: string }) {
+  const s = SLOT_STYLE[slot] || { shape: 'check' as Shape, tone: 'green' as Tone };
+  const color = TONE_COLOR[s.tone];
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        flexShrink: 0, marginLeft: 10, width: 34, height: 34, borderRadius: 10,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: `${color}1f`, border: `1px solid ${color}3d`, color,
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24">{slotGlyph(s.shape)}</svg>
+    </span>
+  );
+}
 const WHAT: Record<string, string> = {
   // DJ-side.
   contract: 'Contract signed',
@@ -62,6 +111,9 @@ const WHAT: Record<string, string> = {
   guestlist_sent: 'Guest list sent',
   rider_sent: 'Rider sent',
   cancelled: 'Booking cancelled',
+  contract_ready: 'Contract ready to view',
+  deposit_receipt: 'Deposit receipt ready to download',
+  balance_receipt: 'Balance receipt ready to download',
 };
 
 // For a pending cash/check hand-off, append the method so the DJ sees what to
@@ -257,7 +309,7 @@ export default function NotificationBell({
                     </span>
                   )}
                 </span>
-                <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0, marginLeft: 10 }}>{EMOJI[it.slot] || '\u{1F514}'}</span>
+                <SlotChip slot={it.slot} />
               </button>
             ))
           )}
