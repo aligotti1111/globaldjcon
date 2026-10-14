@@ -31,8 +31,9 @@ export const dynamic = 'force-dynamic';
 
 type Slot =
   | 'accepted' | 'countered' | 'denied'
-  | 'contract_sign'
+  | 'contract_sign' | 'contract_ready'
   | 'deposit_request' | 'balance_request'
+  | 'deposit_receipt' | 'balance_receipt'
   | 'planner_sent' | 'planner_reminder'
   | 'guestlist_sent' | 'rider_sent'
   | 'cancelled' | 'cancel_requested';
@@ -48,6 +49,7 @@ interface BookingRow {
   updated_at: string | null;
   contract_status: string | null;
   contract_sent_at: string | null;
+  contract_signed_at: string | null;
   planner_sent_at: string | null;
   cancel_status: string | null;
   cancel_requested_by: string | null;
@@ -63,7 +65,7 @@ export async function GET() {
   // makes reading the DJ-owned child tables below safe.
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, event_type, venue_type, status, accepted_at, quote_sent_at, updated_at, contract_status, contract_sent_at, planner_sent_at, cancel_status, cancel_requested_by, cancel_requested_at')
+    .select('id, event_date, event_type, venue_type, status, accepted_at, quote_sent_at, updated_at, contract_status, contract_sent_at, contract_signed_at, planner_sent_at, cancel_status, cancel_requested_by, cancel_requested_at')
     .eq('requester_id', user.id)
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
@@ -86,8 +88,10 @@ export async function GET() {
     if (b.status === 'approved') note(b.id, b.accepted_at, 'accepted');
     if (b.status === 'counter') note(b.id, b.quote_sent_at || b.updated_at, 'countered');
     if (b.status === 'denied') note(b.id, b.updated_at, 'denied');
-    // Contract waiting on the host's signature.
+    // Contract waiting on the host's signature → "ready to sign". Once signed,
+    // it becomes "ready to view" so the host can open their signed copy.
     if (b.contract_status === 'awaiting_client') note(b.id, b.contract_sent_at, 'contract_sign');
+    else if (b.contract_status === 'signed') note(b.id, b.contract_signed_at, 'contract_ready');
     // Planner & Playlist was sent to the host.
     note(b.id, b.planner_sent_at, 'planner_sent');
     // Cancelled outright, or the DJ asked the host to cancel.
@@ -101,13 +105,18 @@ export async function GET() {
   if (ids.length > 0) {
     const admin = createAdminClient() as unknown as SupabaseClient;
     const [{ data: pay }, { data: planners }, { data: riders }, { data: gls }] = await Promise.all([
-      admin.from('booking_payments').select('booking_id, kind, marked_sent_at').in('booking_id', ids),
+      admin.from('booking_payments').select('booking_id, kind, marked_sent_at, status, confirmed_at').in('booking_id', ids),
       admin.from('booking_planners').select('booking_id, last_reminder_at').in('booking_id', ids),
       admin.from('booking_riders').select('booking_id, sent_at').in('booking_id', ids),
       admin.from('booking_guestlists').select('booking_id, sent_at').in('booking_id', ids),
     ]);
-    for (const p of ((pay as { booking_id: string; kind: string | null; marked_sent_at: string | null }[] | null) || [])) {
-      note(p.booking_id, p.marked_sent_at, p.kind === 'deposit' ? 'deposit_request' : 'balance_request');
+    for (const p of ((pay as { booking_id: string; kind: string | null; marked_sent_at: string | null; status: string | null; confirmed_at: string | null }[] | null) || [])) {
+      const isDeposit = p.kind === 'deposit';
+      // The request going out.
+      note(p.booking_id, p.marked_sent_at, isDeposit ? 'deposit_request' : 'balance_request');
+      // Settled → a receipt is now downloadable.
+      const settled = p.status === 'paid' || p.status === 'partial' || p.status === 'waived' || !!p.confirmed_at;
+      if (settled) note(p.booking_id, p.confirmed_at, isDeposit ? 'deposit_receipt' : 'balance_receipt');
     }
     for (const p of ((planners as { booking_id: string; last_reminder_at: string | null }[] | null) || [])) {
       note(p.booking_id, p.last_reminder_at, 'planner_reminder');
