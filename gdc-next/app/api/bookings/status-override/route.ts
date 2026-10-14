@@ -210,13 +210,15 @@ export async function POST(req: Request) {
           // confirmation uses), so a hand-marked deposit also gives the host a
           // receipt. Amounts derived the way the receipt actions derive them.
           let receiptAtt: { filename: string; content: string } | null = null;
-          // Only auto-attach the receipt if the DJ hasn't turned off
-          // "auto-send receipt after deposit is paid" (default on).
+          // "Auto-send receipt after deposit is paid" (default on). When the DJ
+          // turns it OFF, this automatic deposit-receipt email is not sent at
+          // all — the DJ sends it by hand from the booking icon instead.
           let autoDeposit = true;
           if (bk.dj_id) {
             const { data: djRow } = await admin.from('users').select('receipt_auto_deposit').eq('id', bk.dj_id).maybeSingle();
             autoDeposit = ((djRow as { receipt_auto_deposit?: boolean | null } | null)?.receipt_auto_deposit) !== false;
           }
+          if (!autoDeposit) return NextResponse.json({ ok: true, status_overrides: overrides });
           if (bk.dj_id && autoDeposit) {
             const cur = bk.currency || 'USD';
             const agreed = Number(bk.total_with_tax ?? bk.counter_rate ?? bk.quoted_rate ?? bk.offer_amount ?? 0);
