@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BusinessLogoSection from '../update-dj-profile/BusinessLogoSection';
+import SectionBanner from '../update-dj-profile/SectionBanner';
 import { searchAddresses, COUNTRIES, COUNTRY_CODES_ADDR, type AddressSuggestion } from '../account-settings/helpers';
 
 // 2-letter ISO code → flag emoji (regional-indicator letters). Matches the
@@ -97,7 +98,7 @@ function composeAddress(f: AddrFields): string {
   return [f.street.trim(), cityLine, (c && c !== DEFAULT_COUNTRY) ? c : ''].filter(Boolean).join('\n');
 }
 
-export default function ReceiptSettingsSection() {
+export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChange?: (dirty: boolean) => void } = {}) {
   const [accountAddress, setAccountAddress] = useState('');
   const [acctParts, setAcctParts] = useState<{ city: string; state: string; zip: string }>({ city: '', state: '', zip: '' });
   const [usingDefault, setUsingDefault] = useState(true); // receipt_address === null
@@ -111,6 +112,9 @@ export default function ReceiptSettingsSection() {
   const [accountPhone, setAccountPhone] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneDefault, setPhoneDefault] = useState(true); // receipt_phone === null
+  // Auto-send-receipt toggles — on by default.
+  const [autoDeposit, setAutoDeposit] = useState(true);
+  const [autoBalance, setAutoBalance] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -128,7 +132,7 @@ export default function ReceiptSettingsSection() {
 
   // Last-saved values, per field — used to detect unsaved edits so we can warn
   // the DJ before they leave the page with changes they didn't Save.
-  const baseline = useRef({ street: '', city: '', stateVal: '', zip: '', country: DEFAULT_COUNTRY, phone: '', color: DEFAULT_COLOR });
+  const baseline = useRef({ street: '', city: '', stateVal: '', zip: '', country: DEFAULT_COUNTRY, phone: '', color: DEFAULT_COLOR, autoDeposit: true, autoBalance: true });
 
 
   useEffect(() => {
@@ -136,8 +140,11 @@ export default function ReceiptSettingsSection() {
     (async () => {
       try {
         const r = await fetch('/api/dj/receipt-settings');
-        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string; businessName?: string; logoUrl?: string | null };
+        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string; businessName?: string; logoUrl?: string | null; autoDeposit?: boolean; autoBalance?: boolean };
         if (!alive) return;
+        const iAutoDep = j.autoDeposit !== false;
+        const iAutoBal = j.autoBalance !== false;
+        setAutoDeposit(iAutoDep); setAutoBalance(iAutoBal);
         setBizName(j.businessName || '');
         setLogoUrl(j.logoUrl ?? null);
         setAccountAddress(j.accountAddress || '');
@@ -165,7 +172,7 @@ export default function ReceiptSettingsSection() {
         setPhone(iPhone);
         setPhoneDefault(j.receiptPhone == null);
         // Baseline = what's currently persisted, so nothing reads as "unsaved" on load.
-        baseline.current = { street: iStreet, city: iCity, stateVal: iState, zip: iZip, country: iCountry, phone: iPhone, color: iColor };
+        baseline.current = { street: iStreet, city: iCity, stateVal: iState, zip: iZip, country: iCountry, phone: iPhone, color: iColor, autoDeposit: iAutoDep, autoBalance: iAutoBal };
       } catch { /* optional */ }
       finally { if (alive) setLoaded(true); }
     })();
@@ -196,7 +203,7 @@ export default function ReceiptSettingsSection() {
     setShowSug(false);
   }
 
-  async function post(body: Record<string, string | null>, note: string) {
+  async function post(body: Record<string, string | null | boolean>, note: string) {
     setBusy(true); setMsg(null);
     try {
       const r = await fetch('/api/dj/receipt-settings', {
@@ -208,39 +215,43 @@ export default function ReceiptSettingsSection() {
     finally { setBusy(false); }
   }
 
-  async function saveAddress() {
+  // One Save button persists EVERYTHING on the tab in a single request —
+  // address, phone, colour and the two auto-send toggles.
+  async function saveAll() {
     const composed = composeAddress({ street, city, state: stateVal, zip, country });
-    await post({ address: composed }, '✓ Receipt address saved.');
-    setUsingDefault(false);
-    baseline.current = { ...baseline.current, street, city, stateVal, zip, country };
+    const colorOk = /^#[0-9a-fA-F]{6}$/.test(color);
+    await post({
+      address: composed,
+      phone,
+      color: colorOk ? color : '',
+      autoDeposit,
+      autoBalance,
+    }, '✓ Receipt settings saved.');
+    setUsingDefault(composed === '');
+    setPhoneDefault(false);
+    setColorIsDefault(!colorOk);
+    baseline.current = { street, city, stateVal, zip, country, phone, color: colorOk ? color : DEFAULT_COLOR, autoDeposit, autoBalance };
   }
-  async function removeAddress() {
-    setStreet(''); setCity(''); setStateVal(''); setZip('');
-    await post({ address: '' }, '✓ Address removed from receipts.');
-    setUsingDefault(false);
-    baseline.current = { ...baseline.current, street: '', city: '', stateVal: '', zip: '' };
-  }
-  async function useAccountAddress() {
+  // Secondary resets — local only; the change is persisted by the Save button.
+  function clearAddress() { setStreet(''); setCity(''); setStateVal(''); setZip(''); }
+  function useAccountAddress() {
     const f = parseAddress(accountAddress);
-    const nStreet = f.street, nCity = acctParts.city || f.city, nState = acctParts.state || f.state, nZip = acctParts.zip || f.zip, nCountry = f.country;
-    setStreet(nStreet); setCity(nCity); setStateVal(nState); setZip(nZip); setCountry(nCountry);
-    await post({ address: null }, '✓ Back to your account address.');
-    setUsingDefault(true);
-    baseline.current = { ...baseline.current, street: nStreet, city: nCity, stateVal: nState, zip: nZip, country: nCountry };
+    setStreet(f.street); setCity(acctParts.city || f.city); setStateVal(acctParts.state || f.state); setZip(acctParts.zip || f.zip); setCountry(f.country);
   }
-  async function savePhone() { await post({ phone }, '✓ Receipt phone saved.'); setPhoneDefault(false); baseline.current = { ...baseline.current, phone }; }
-  async function removePhone() { setPhone(''); await post({ phone: '' }, '✓ Phone removed from receipts.'); setPhoneDefault(false); baseline.current = { ...baseline.current, phone: '' }; }
-  async function useAccountPhone() { setPhone(accountPhone); await post({ phone: null }, '✓ Back to your account phone.'); setPhoneDefault(true); baseline.current = { ...baseline.current, phone: accountPhone }; }
-  async function saveColor() { await post({ color }, '✓ Receipt colour saved.'); setColorIsDefault(false); baseline.current = { ...baseline.current, color }; }
-  async function resetColor() { setColor(DEFAULT_COLOR); await post({ color: '' }, '✓ Colour reset to default.'); setColorIsDefault(true); baseline.current = { ...baseline.current, color: DEFAULT_COLOR }; }
+  function clearPhone() { setPhone(''); }
+  function useAccountPhone() { setPhone(formatPhone(accountPhone, country)); }
+  function resetColor() { setColor(DEFAULT_COLOR); }
 
   // Unsaved-changes guard: true when any field differs from what's persisted.
   const dirty = loaded && (
     street !== baseline.current.street || city !== baseline.current.city ||
     stateVal !== baseline.current.stateVal || zip !== baseline.current.zip ||
     country !== baseline.current.country || phone !== baseline.current.phone ||
-    color !== baseline.current.color
+    color !== baseline.current.color ||
+    autoDeposit !== baseline.current.autoDeposit || autoBalance !== baseline.current.autoBalance
   );
+  // Report dirty state up so the tab bar shows its "unsaved" dot.
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   // Warn the DJ if they try to leave (close/refresh/navigate away) with edits
   // they haven't Saved. The browser shows its native "leave site?" prompt.
   useEffect(() => {
@@ -270,12 +281,17 @@ export default function ReceiptSettingsSection() {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1.6rem', alignItems: 'start' }} className="gdcReceiptGrid">
+    <>
+      <SectionBanner
+        icon="payments"
+        title="Receipts & Invoices"
+        subtitle="Your logo, address, colour and automatic-receipt settings for every invoice and receipt."
+      />
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1.6rem', alignItems: 'start', marginTop: '1.2rem' }} className="gdcReceiptGrid">
       <style>{`@media (max-width: 760px){ .gdcReceiptGrid{ grid-template-columns: 1fr !important; } }`}</style>
 
       {/* ── Left: editable settings ── */}
       <div>
-        <h2 style={{ fontSize: '1.05rem', color: '#fff', margin: '0 0 .3rem' }}>Receipts &amp; Invoices</h2>
         <p style={{ ...hint, margin: '0 0 1.2rem' }}>
           Your logo, business address and brand colour appear on every invoice and
           receipt your clients receive. Set them here and watch the sample update.
@@ -344,18 +360,18 @@ export default function ReceiptSettingsSection() {
           <div><span style={fieldLabel}>ZIP</span><input type="text" value={zip} disabled={!loaded || busy} onChange={(e) => setZip(e.target.value)} placeholder="62701" style={input} /></div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.8rem' }}>
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={saveAddress}>Save</button>
-          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removeAddress}>Remove</button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '.6rem' }}>
+          <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={clearAddress}>Clear address</button>
+          <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={useAccountAddress}>Use account address</button>
         </div>
 
         {/* Phone — receipt-only, independent of the account phone. */}
         <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Phone on receipts</label>
         <input type="tel" value={phone} disabled={!loaded || busy} onChange={(e) => setPhone(formatPhone(e.target.value, country))}
           placeholder="(555) 123-4567" style={{ ...input, maxWidth: 260 }} />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'center', marginTop: '.7rem' }}>
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy} onClick={savePhone}>Save</button>
-          <button type="button" style={btn('rgba(255,95,95,.14)', '#ff8a8a')} disabled={!loaded || busy} onClick={removePhone}>Remove</button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '.6rem' }}>
+          <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={clearPhone}>Clear phone</button>
+          <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={useAccountPhone}>Use account phone</button>
         </div>
 
         {/* Colour */}
@@ -367,8 +383,22 @@ export default function ReceiptSettingsSection() {
           <input type="text" value={color} disabled={!loaded || busy}
             onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
             style={{ ...input, width: 120, fontFamily: 'monospace' }} maxLength={7} />
-          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy || !/^#[0-9a-fA-F]{6}$/.test(color)} onClick={saveColor}>Save</button>
-          {!colorIsDefault && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
+          {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
+        </div>
+
+        {/* Auto-send receipt toggles — on by default. */}
+        <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Automatic receipts</label>
+        <p style={hint}>Email the host a receipt automatically when a payment is marked paid. Turn either off to send receipts only by hand.</p>
+        <Toggle checked={autoDeposit} disabled={!loaded || busy} onChange={setAutoDeposit} label="Auto-send receipt after deposit is paid" />
+        <div style={{ height: 8 }} />
+        <Toggle checked={autoBalance} disabled={!loaded || busy} onChange={setAutoBalance} label="Auto-send receipt after balance is paid" />
+
+        {/* One Save button for the whole tab. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '1.6rem' }}>
+          <button type="button" style={btn('#00e0a4', '#06231b')} disabled={!loaded || busy || !dirty} onClick={saveAll}>
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+          {dirty && <span style={{ fontSize: '.8rem', color: '#f0b64a', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0b64a', display: 'inline-block' }} />Unsaved changes</span>}
         </div>
 
         {msg && <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: '#8a8aa0' }}>{msg}</div>}
@@ -407,7 +437,31 @@ export default function ReceiptSettingsSection() {
           &ldquo;View exact PDF&rdquo; opens the real generated receipt.
         </p>
       </div>
-    </div>
+      </div>
+    </>
+  );
+}
+
+// Small pill switch used for the auto-send-receipt toggles.
+function Toggle({ checked, disabled, onChange, label }: { checked: boolean; disabled?: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: '.7rem', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
+      <button
+        type="button" role="switch" aria-checked={checked} disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
+        style={{
+          width: 40, height: 22, borderRadius: 999, border: 'none', flexShrink: 0, position: 'relative',
+          background: checked ? '#00e0a4' : 'rgba(255,255,255,.18)', cursor: disabled ? 'default' : 'pointer',
+          transition: 'background .15s',
+        }}
+      >
+        <span style={{
+          position: 'absolute', top: 2, left: checked ? 20 : 2, width: 18, height: 18, borderRadius: '50%',
+          background: '#fff', transition: 'left .15s',
+        }} />
+      </button>
+      <span style={{ fontSize: '.88rem', color: '#ececf3' }}>{label}</span>
+    </label>
   );
 }
 
