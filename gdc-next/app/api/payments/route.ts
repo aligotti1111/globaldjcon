@@ -703,12 +703,19 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
       const outstanding = round2(Math.max(0, Number(p.amount) - nextPaid));
       const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
       const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
+      // Honour the DJ's auto-send-receipt toggles (default on): deposit payments
+      // follow receipt_auto_deposit, balance payments receipt_auto_balance. When
+      // off, the confirmation still goes out but with no receipt attached.
+      const { data: djTog } = await db.from('users').select('receipt_auto_deposit, receipt_auto_balance').eq('id', acting.djId).maybeSingle();
+      const tog = djTog as { receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null } | null;
+      const autoSend = p.kind === 'balance' ? (tog?.receipt_auto_balance !== false) : (tog?.receipt_auto_deposit !== false);
+      const receiptLine = autoSend ? ' A receipt is attached.' : '';
       const content = status === 'paid'
         ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Payment received — ${money(nextPaid, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${p.kind === 'balance' ? 'balance' : 'deposit'} is settled${b.event_date ? ` for ${b.event_date}` : ''}. A receipt is attached.</p>`
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${p.kind === 'balance' ? 'balance' : 'deposit'} is settled${b.event_date ? ` for ${b.event_date}` : ''}.${receiptLine}</p>`
         : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Partial payment received</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">
-${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>${money(outstanding, cur)} still due</strong>. A receipt is attached.
+${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>${money(outstanding, cur)} still due</strong>.${receiptLine}
 </p>`;
 
       // Paid-to-date = EVERYTHING collected on the booking, not just this row —
@@ -728,7 +735,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       paidToDateAll = round2(paidToDateAll);
       // A branded RECEIPT PDF for what actually arrived. Amounts here come from
       // the ledger (received now + paid-to-date), not the invoice. null-safe.
-      const receiptAtt = await buildBookingDocAttachment(db, {
+      const receiptAtt = autoSend ? await buildBookingDocAttachment(db, {
         docKind: 'receipt',
         bookingId: p.booking_id,
         djId: acting.djId,
@@ -738,7 +745,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
         method: p.method,
         paidToDate: paidToDateAll,
         clientEmail: to,
-      });
+      }) : null;
 
       // Booking progress tracker at the bottom of the confirmation. The ledger
       // update above has already committed, so the box reflects this payment —
