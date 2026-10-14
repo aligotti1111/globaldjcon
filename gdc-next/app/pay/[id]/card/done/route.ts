@@ -148,21 +148,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const applied = ((updRows as unknown[] | null)?.length ?? 0) > 0;
   const hostEmail = b?.host_email || (b?.requester_id ? await resolveUserEmail(b.requester_id) : null);
 
+  // The DJ's auto-send-receipt toggle (default on). When OFF, no automatic
+  // receipt email goes to the host on a card payment — the DJ sends it by hand
+  // from the booking icon instead.
+  let autoSendHost = true;
+  if (applied && b?.dj_id) {
+    const { data: djTog } = await db.from('users').select('receipt_auto_deposit, receipt_auto_balance').eq('id', b.dj_id).maybeSingle();
+    const tog = djTog as { receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null } | null;
+    autoSendHost = p.kind === 'balance' ? (tog?.receipt_auto_balance !== false) : (tog?.receipt_auto_deposit !== false);
+  }
+
   // Receipt to the host (best-effort). Same branded receipt PDF the app sends
   // for every other paid rail — a card payer should get one too.
-  if (applied && b && hostEmail && process.env.RESEND_API_KEY) {
+  if (applied && b && hostEmail && autoSendHost && process.env.RESEND_API_KEY) {
     try {
       const cur = p.currency || 'USD';
-      // Honour the DJ's auto-send-receipt toggles (default on). When the
-      // relevant one is off, the host still gets the payment confirmation but no
-      // receipt is attached — the DJ can send it by hand from the booking icon.
-      let autoSend = true;
-      if (b.dj_id) {
-        const { data: djTog } = await db.from('users').select('receipt_auto_deposit, receipt_auto_balance').eq('id', b.dj_id).maybeSingle();
-        const tog = djTog as { receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null } | null;
-        autoSend = p.kind === 'balance' ? (tog?.receipt_auto_balance !== false) : (tog?.receipt_auto_deposit !== false);
-      }
-      const receiptAtt = autoSend ? await buildBookingDocAttachment(db, {
+      const receiptAtt = await buildBookingDocAttachment(db, {
         docKind: 'receipt',
         bookingId: p.booking_id,
         djId: b.dj_id || '',
@@ -172,14 +173,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         method: 'card',
         paidToDate: nextPaid,
         clientEmail: hostEmail,
-      }) : null;
+      });
       // Same content shape as the manual 'confirm' receipt in the payments
       // route: an h1 + line, wrapped in the shared shell, with the booking
       // progress box appended — so a card receipt reads identically to every
       // other paid-rail receipt.
       const outstanding = round2(Math.max(0, Number(p.amount) - nextPaid));
       const kindNoun = p.kind === 'balance' ? 'balance' : p.kind === 'deposit' ? 'deposit' : 'payment';
-      const receiptLine = autoSend ? ' A receipt is attached.' : '';
+      const receiptLine = ' A receipt is attached.';
       const content = status === 'paid'
         ? `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Payment received — ${money(nextPaid, cur)}</h1>
 <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your ${kindNoun} is settled${b.event_date ? ` for ${b.event_date}` : ''}.${receiptLine}</p>`
