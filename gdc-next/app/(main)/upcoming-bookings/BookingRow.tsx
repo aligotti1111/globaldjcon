@@ -432,6 +432,13 @@ export default function BookingRow({
   // receipt figure should read. { amount: the receipt figure, total, collected }.
   const [reqExpected, setReqExpected] = useState<{ amount: number; total: number; collected: number } | null>(null);
   const [reqBusy, setReqBusy] = useState(false);
+  // Which pipeline cell is mid-flight right now (sending a request/receipt or
+  // building a download). Purely a transient spinner-ring cue on that icon —
+  // it does NOT touch the stage's real state, caption, or colors; when the call
+  // settles this clears and the icon looks exactly as before. Money stages map
+  // deposit→'deposit', balance→'invoice' (the balance slot's key).
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const moneySlot = (k: 'deposit' | 'balance') => (k === 'balance' ? 'invoice' : 'deposit');
   const [reqErr, setReqErr] = useState<string | null>(null);
   const [methodsOpen, setMethodsOpen] = useState(false); const [reqKind, setReqKind] = useState<'deposit' | 'balance'>('deposit');
   // The rails the client will actually be offered — shown as icons in the
@@ -591,8 +598,9 @@ export default function BookingRow({
         } catch { alert('Could not cancel the request.'); }
       },
     });
-  } async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } }
+  } async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
+    setBusyKey(moneySlot(kind));
     try {
       const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download-receipt', bookingId: booking.id, kind }) });
       if (!res.ok) { const raw = await res.text(); alert(raw.slice(0, 160) || 'Could not build the receipt.'); return; }
@@ -605,7 +613,7 @@ export default function BookingRow({
       a.download = m ? m[1] : `Receipt-${booking.id.slice(0, 6)}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch { alert('Could not build the receipt.'); }
+    } catch { alert('Could not build the receipt.'); } finally { setBusyKey(null); }
   }
   // Phase 2 — just opens the editor; the modal owns the form + submit.
   function editReceipt(kind: 'deposit' | 'balance') { setEditReceiptKind(kind); }
@@ -616,7 +624,9 @@ export default function BookingRow({
       return;
     }
     setReqBusy(true);
+    setBusyKey(moneySlot(reqKind));
     setReqErr(null);
+    let ok = false;
     try {
       const res = await fetch('/api/payments', {
         method: 'POST',
@@ -653,10 +663,17 @@ export default function BookingRow({
         }
       }
       setReqOpen(false);
+      ok = true;
     } catch (e) {
       setReqErr(e instanceof Error ? e.message : 'Could not request the deposit.');
     } finally {
       setReqBusy(false);
+      // The request runs while the modal still covers the screen, so hold the
+      // sending-ring a beat AFTER the modal closes so the DJ actually sees the
+      // cue land on the dashboard icon. Cleared immediately on error (modal
+      // stays open to show it).
+      if (ok) setTimeout(() => setBusyKey(null), 1100);
+      else setBusyKey(null);
     }
   }
   async function toggleStep(key: string, next: boolean) {
@@ -1032,6 +1049,7 @@ export default function BookingRow({
           actionLocked={actionLocked}
           overrideLockedFor={overrideLockedFor}
           onToggleOverride={confirmAndToggleStep}
+          busyKey={busyKey}
         />
         {/* 10 — Actions. Right corner, its own track, so nothing it contains
             can squeeze the event name.
