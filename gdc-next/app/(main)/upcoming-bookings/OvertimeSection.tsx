@@ -135,7 +135,11 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   async function sendInvoice() {
     if (!valid) { setErr('Enter hours and a rate greater than zero.'); return; }
     setBusy('invoice'); setErr(null); setMsg(null);
-    if (await post('overtime-invoice')) { setInvoicedAt(new Date().toISOString()); rememberSaved(); setMsg('Overtime invoice sent.'); onMutated?.(); }
+    if (await post('overtime-invoice')) {
+      setInvoicedAt(new Date().toISOString()); rememberSaved(); setMsg('Balance requested — sent to the host.'); onMutated?.();
+      // Show the confirmation, then close the modal after 5 seconds.
+      setTimeout(() => setOpen(false), 5000);
+    }
     setBusy('');
   }
 
@@ -149,6 +153,8 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
       rememberSaved();
       setMsg('Marked paid — receipt sent.');
       onMutated?.();
+      // Show the confirmation, then close the modal after 5 seconds.
+      setTimeout(() => setOpen(false), 5000);
     }
     setBusy('');
   }
