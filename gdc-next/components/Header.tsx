@@ -187,6 +187,18 @@ export default function Header() {
                       accounts, since it's about the host actions on their
                       own bookings. */}
                   {(isDj || isTeammate) && <NotificationBell />}
+                  {/* Hosts get the same bell, fed by their OWN activity feed:
+                      the DJ's actions on their bookings (accepted/counter/denied,
+                      contract to sign, deposit & balance requests, planner/rider/
+                      guest-list sent, reminders, cancellations). */}
+                  {isHost && (
+                    <NotificationBell
+                      endpoint="/api/host/new-activity"
+                      moreHref="/upcoming-events"
+                      seenKey="gdc_host_newactivity_seen"
+                      openHrefBase="/upcoming-events"
+                    />
+                  )}
 
                   {/* DJ-side accounts get the bell on the toolbar; their Inbox
                       moves into the burger menu on mobile, so hide this toolbar
