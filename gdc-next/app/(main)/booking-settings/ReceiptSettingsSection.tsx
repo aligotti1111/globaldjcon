@@ -73,11 +73,15 @@ function parseCityLine(s: string): { city: string; state: string; zip: string } 
 function parseAddress(s: string): AddrFields {
   const text = (s || '').trim();
   if (!text) return { street: '', city: '', state: '', zip: '', country: DEFAULT_COUNTRY };
-  const lines = text.split('\n').map((x) => x.trim()).filter(Boolean);
-  if (lines.length > 1) {
+  // Stacked format (any newline present): line 0 = street (may be EMPTY when the
+  // DJ cleared it), line 1 = "city, ST zip", optional trailing country line. We
+  // do NOT drop empty lines here — an empty first line keeps the city from
+  // sliding up into the street field on reload.
+  if ((s || '').includes('\n')) {
+    const lines = (s || '').split('\n').map((x) => x.trim());
     let country = DEFAULT_COUNTRY;
-    // A trailing line with no digits is the country (city lines carry a ZIP).
-    if (lines.length >= 2 && !/\d/.test(lines[lines.length - 1])) country = lines.pop() || DEFAULT_COUNTRY;
+    // A trailing non-empty line with no digits is the country (city lines carry a ZIP).
+    if (lines.length >= 2 && lines[lines.length - 1] && !/\d/.test(lines[lines.length - 1])) country = lines.pop() || DEFAULT_COUNTRY;
     const street = lines[0] || '';
     const { city, state, zip } = parseCityLine(lines.slice(1).join(', '));
     return { street, city, state, zip, country };
@@ -95,7 +99,16 @@ function composeAddress(f: AddrFields): string {
   const stateZip = [f.state.trim(), f.zip.trim()].filter(Boolean).join(' ');
   const cityLine = [f.city.trim(), stateZip].filter(Boolean).join(', ');
   const c = f.country.trim();
-  return [f.street.trim(), cityLine, (c && c !== DEFAULT_COUNTRY) ? c : ''].filter(Boolean).join('\n');
+  const countryLine = (c && c !== DEFAULT_COUNTRY) ? c : '';
+  const street = f.street.trim();
+  // With no city and no country, just the street (or ''). Otherwise keep the
+  // (possibly empty) street as line 0 so the stacked format round-trips — an
+  // empty street must stay an empty line, not be dropped, or the city would
+  // read back as the street on reload.
+  if (!cityLine && !countryLine) return street;
+  const lines = [street, cityLine];
+  if (countryLine) lines.push(countryLine);
+  return lines.join('\n');
 }
 
 export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChange?: (dirty: boolean) => void } = {}) {
@@ -385,14 +398,6 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         <div style={{ height: 8 }} />
         <Toggle checked={autoBalance} disabled={!loaded || busy} onChange={setAutoBalance} label="Auto-send receipt after balance is paid" />
 
-        {/* One Save button for the whole tab. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'flex-end', marginTop: '1.6rem' }}>
-          {dirty && <span style={{ fontSize: '.8rem', color: '#f0b64a', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0b64a', display: 'inline-block' }} />Unsaved changes</span>}
-          <button type="button" style={{ ...btn('#00e0a4', '#06231b'), opacity: (!loaded || busy || !dirty) ? 0.4 : 1, cursor: (!loaded || busy || !dirty) ? 'not-allowed' : 'pointer' }} disabled={!loaded || busy || !dirty} onClick={saveAll}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-
         {msg && <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: '#8a8aa0' }}>{msg}</div>}
       </div>
 
@@ -429,6 +434,14 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
           &ldquo;View exact PDF&rdquo; opens the real generated receipt.
         </p>
       </div>
+      </div>
+
+      {/* One Save button for the whole tab — full width, right-aligned. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'flex-end', marginTop: '1.4rem' }}>
+        {dirty && <span style={{ fontSize: '.8rem', color: '#f0b64a', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0b64a', display: 'inline-block' }} />Unsaved changes</span>}
+        <button type="button" style={{ ...btn('#00e0a4', '#06231b'), opacity: (!loaded || busy || !dirty) ? 0.4 : 1, cursor: (!loaded || busy || !dirty) ? 'not-allowed' : 'pointer' }} disabled={!loaded || busy || !dirty} onClick={saveAll}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
       </div>
     </>
   );
