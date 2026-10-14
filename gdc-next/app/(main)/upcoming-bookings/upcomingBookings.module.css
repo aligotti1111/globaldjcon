@@ -1335,14 +1335,15 @@ select.input {
    so the real ring underneath stays visible. */
 .stSpin {
   position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 46px;
-  height: 46px;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 3px solid transparent;
   border-top-color: var(--neon, #00e0a4);
   border-right-color: var(--neon, #00e0a4);
+  box-sizing: border-box;
   z-index: 2;
   pointer-events: none;
   animation: stSpinKf .7s linear infinite;
