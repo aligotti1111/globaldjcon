@@ -427,6 +427,10 @@ export default function BookingRow({
   // Phase 2 — Edit Receipt modal target (which paid stage's receipt is open).
   const [editReceiptKind, setEditReceiptKind] = useState<'deposit' | 'balance' | null>(null);
   const [reqAmount, setReqAmount] = useState('');
+  // What the receipt will actually show for the stage being requested, so the
+  // modal can warn the DJ when they type a different Amount and show how the
+  // receipt figure should read. { amount: the receipt figure, total, collected }.
+  const [reqExpected, setReqExpected] = useState<{ amount: number; total: number; collected: number } | null>(null);
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState<string | null>(null);
   const [methodsOpen, setMethodsOpen] = useState(false); const [reqKind, setReqKind] = useState<'deposit' | 'balance'>('deposit');
@@ -534,8 +538,11 @@ export default function BookingRow({
       const collected = Math.max(paid + depositMarked, settledSnap);
       const remaining = Math.max(0, Math.round((total - collected) * 100) / 100);
       setReqAmount(remaining > 0 ? remaining.toFixed(2) : '');
+      setReqExpected({ amount: remaining, total, collected });
     } else {
       setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
+      const total = Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0);
+      setReqExpected(suggestedDeposit != null && suggestedDeposit > 0 ? { amount: suggestedDeposit, total, collected: 0 } : null);
     }
     setReqOpen(true);
   }
@@ -1134,6 +1141,9 @@ export default function BookingRow({
           suggestedDeposit={suggestedDeposit}
           currency={booking.currency || 'USD'}
           depositPct={booking.deposit_pct ?? null}
+          expectedAmount={reqExpected?.amount ?? null}
+          expectedTotal={reqExpected?.total ?? 0}
+          expectedCollected={reqExpected?.collected ?? 0}
           onClose={() => setReqOpen(false)}
           onEditMethods={roleCanEditPaymentOptions ? () => setMethodsOpen(true) : undefined}
           onSubmit={() => void submitRequest()}
