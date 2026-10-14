@@ -15,6 +15,16 @@ const REQ_METHOD_ICON: Partial<Record<PaymentMethodType, (p: { size?: number }) 
   venmo: VenmoMark, cashapp: CashAppMark, paypal: PaypalMark, zelle: ZelleMark, cash: CashMark, check: CheckMark,
 };
 
+// One line of the "how the receipt reads" breakdown.
+function Row({ label, value, bold, currencyMuted }: { label: string; value: string; bold?: boolean; currencyMuted?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.8rem', padding: '.12rem 0' }}>
+      <span style={{ fontSize: '.72rem', color: bold ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)', fontWeight: bold ? 700 : 400 }}>{label}</span>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.78rem', color: bold ? 'var(--white,#fff)' : (currencyMuted ? 'var(--muted,#8a8aa0)' : 'var(--white,#fff)'), fontWeight: bold ? 700 : 400 }}>{value}</span>
+    </div>
+  );
+}
+
 interface Props {
   reqKind: 'deposit' | 'balance';
   reqAmount: string;
@@ -27,6 +37,13 @@ interface Props {
   suggestedDeposit: number | null;
   currency: string;
   depositPct: number | null;
+  // What the receipt will actually show for this stage, derived from the
+  // booking's agreed figures. When the DJ edits the Amount to something else,
+  // we warn them the difference won't appear on the receipt and show the
+  // expected breakdown so they can see how the number should look.
+  expectedAmount: number | null;
+  expectedTotal: number;
+  expectedCollected: number;
   onClose: () => void;
   // Owner-only. When absent, the "Edit" link to change saved payment options
   // is hidden — teammates may request money but not change where it lands.
@@ -36,8 +53,21 @@ interface Props {
 
 export default function RequestPaymentModal({
   reqKind, reqAmount, setReqAmount, reqErr, setReqErr, reqBusy, reqMethods, reqCardReady,
-  suggestedDeposit, currency, depositPct, onClose, onEditMethods, onSubmit,
+  suggestedDeposit, currency, depositPct, expectedAmount, expectedTotal, expectedCollected,
+  onClose, onEditMethods, onSubmit,
 }: Props) {
+  // Does the Amount the DJ typed match what the receipt will actually show?
+  // The receipt is built from the booking's agreed figures (total, tax,
+  // deposit) — not from whatever number is requested here — so any override
+  // only changes what the client is ASKED to pay, never the receipt. Flag the
+  // gap so the DJ knows to edit the receipt by hand if they mean to keep it.
+  const entered = Number(reqAmount);
+  const hasExpected = expectedAmount != null && expectedAmount > 0;
+  const mismatch = hasExpected && Number.isFinite(entered) && entered > 0
+    && Math.abs(entered - (expectedAmount as number)) > 0.01;
+  const diff = mismatch ? Math.round((entered - (expectedAmount as number)) * 100) / 100 : 0;
+  const kindNoun = reqKind === 'balance' ? 'balance' : 'deposit';
+
   return (
     <div
       onClick={() => !reqBusy && onClose()}
@@ -79,11 +109,43 @@ export default function RequestPaymentModal({
           />
         </div>
 
-        {reqKind === 'deposit' && suggestedDeposit != null && suggestedDeposit > 0 && (
+        {reqKind === 'deposit' && suggestedDeposit != null && suggestedDeposit > 0 && !mismatch && (
           <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>
             This booking&apos;s agreed deposit: {fmtMoney(suggestedDeposit, currency)}
             {depositPct != null ? ` (${depositPct}%)` : ''}
           </p>
+        )}
+
+        {/* Receipt mismatch warning + breakdown. The receipt is generated from
+            the booking's agreed figures, so a custom Amount here is only what
+            the client is ASKED to pay — it won't change the receipt. */}
+        {mismatch && (
+          <div style={{ margin: '0 0 .9rem', border: '1px solid rgba(240,180,60,.5)', background: 'rgba(240,180,60,.08)', borderRadius: 8, padding: '.6rem .7rem' }}>
+            <p style={{ margin: '0 0 .5rem', color: '#f0b43c', fontSize: '.72rem', lineHeight: 1.55, fontWeight: 700 }}>
+              This doesn&apos;t match the agreed {kindNoun}. You&apos;re requesting {fmtMoney(entered, currency)}
+              {' '}({diff > 0 ? '+' : '−'}{fmtMoney(Math.abs(diff), currency)}).
+            </p>
+            <p style={{ margin: '0 0 .6rem', color: 'var(--muted,#8a8aa0)', fontSize: '.68rem', lineHeight: 1.55 }}>
+              The receipt is built from this booking&apos;s figures, so it will still show the amount below — not what you request here. To reflect the difference, edit the receipt by hand after the payment is marked paid.
+            </p>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.5rem' }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
+                How the receipt reads
+              </div>
+              {reqKind === 'balance' ? (
+                <>
+                  <Row label="Total cost" value={fmtMoney(expectedTotal, currency)} currencyMuted />
+                  <Row label="Collected so far" value={`− ${fmtMoney(expectedCollected, currency)}`} currencyMuted />
+                  <Row label="Balance due" value={fmtMoney(expectedAmount as number, currency)} bold />
+                </>
+              ) : (
+                <>
+                  <Row label="Total cost" value={fmtMoney(expectedTotal, currency)} currencyMuted />
+                  <Row label={`Deposit${depositPct != null ? ` (${depositPct}%)` : ''}`} value={fmtMoney(expectedAmount as number, currency)} bold />
+                </>
+              )}
+            </div>
+          </div>
         )}
 
         {(() => {
