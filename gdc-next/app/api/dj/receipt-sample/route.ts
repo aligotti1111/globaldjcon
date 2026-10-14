@@ -87,9 +87,11 @@ export async function GET(req: Request) {
       // real receipt layouts.
       lines: isBalance
         ? [
+            { label: 'Event Total', amount: 2204.13, emphasis: 'muted' as const },
+            { label: 'Tax', amount: 195.87, emphasis: 'muted' as const },
+            { label: 'Total Cost', amount: 2400, emphasis: 'bold' as const },
+            { label: 'Deposit Received', amount: 600, emphasis: 'bold' as const, ruleAbove: true },
             { label: 'Balance Received', amount: 1800, emphasis: 'bold' as const },
-            { label: 'Event total', amount: 2400, emphasis: 'muted' as const },
-            { label: 'Paid to date', amount: 2400, emphasis: 'muted' as const },
           ]
         : [
             { label: 'Event total (incl. tax)', amount: 2400 },
