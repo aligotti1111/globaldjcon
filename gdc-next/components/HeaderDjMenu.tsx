@@ -45,6 +45,98 @@ interface HeaderDjMenuProps {
   isAdmin?: boolean;
 }
 
+// Inline icon set — matches the hamburger (MobileMenu) icons exactly so the
+// two menus read as the same product. Sized/colored via the shared .mm-icon
+// class (16px, neon) added to the dropdown stylesheet.
+const iconStroke = {
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+function IconUser() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  );
+}
+function IconArchive() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <path d="M21 8v13H3V8" />
+      <path d="M1 3h22v5H1z" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
+function IconPlus() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+function IconGear() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+function IconTag() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  );
+}
+function IconSettings() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+function IconChart() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <path d="M3 3v18h18" />
+      <path d="M7 15v3M12 10v8M17 6v12" />
+    </svg>
+  );
+}
+function IconLogout() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5M21 12H9" />
+    </svg>
+  );
+}
+function IconAdmin() {
+  return (
+    <svg className="mm-icon" viewBox="0 0 24 24" {...iconStroke} aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 9h6M9 13h6M9 17h3" />
+    </svg>
+  );
+}
+
 function initialsFrom(name: string): string {
   const parts = (name || '').trim().split(/\s+/);
   if (parts.length === 0 || !parts[0]) return '?';
@@ -191,7 +283,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           {isAdmin && (
             <>
               <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-                Admin Panel
+                <IconAdmin />Admin Panel
               </Link>
               <div className="hdr-dj-menu-sep" />
             </>
@@ -202,7 +294,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               doesn't belong under a heading with settings. */}
           {slug && (
             <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              {isTeammate ? 'View Profile' : 'View My Profile'}
+              <IconUser />{isTeammate ? 'View Profile' : 'View My Profile'}
             </Link>
           )}
 
@@ -218,27 +310,27 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Bookings</div>
           <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Dashboard
+            <IconClock />Dashboard
           </Link>
           <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Past Bookings
+            <IconArchive />Past Bookings
           </Link>
           {(bookingEnabled || isTeammate) && canAddBookings && (
             <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Add Booking Manually
+              <IconPlus />Add Booking Manually
             </Link>
           )}
           {/* Booking Settings is owner-only — hidden from teammates. Shown
               whether or not bookings are live (it's where you set them up). */}
           {!isTeammate && (
             <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Booking Settings
+              <IconGear />Booking Settings
             </Link>
           )}
           {/* Discounts shortcut — owner/admin/manager, live plan only. */}
           {(bookingEnabled || isTeammate) && canMakeDiscounts && (
             <Link href="/booking-settings?section=discounts" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Add Discount / Promo Code
+              <IconTag />Add Discount / Promo Code
             </Link>
           )}
 
@@ -246,14 +338,14 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Account</div>
           <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-            Account Settings
+            <IconSettings />Account Settings
           </Link>
           {/* Finance report — OWNER ONLY + paid feature. Hidden from teammates
               and from free accounts (bookingEnabled = live paid/comped tier);
               the page itself also hard-redirects anyone who reaches it by URL. */}
           {!isTeammate && bookingEnabled && (
             <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
-              Finance/Earnings
+              <IconChart />Finance/Earnings
             </Link>
           )}
           {!isTeammate && (
@@ -263,9 +355,9 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               role="menuitem"
               onClick={openBilling}
               disabled={portalLoading}
-              style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+              style={{ cursor: 'pointer' }}
             >
-              {portalLoading ? 'Opening…' : 'Manage Subscription'}
+              <IconGear />{portalLoading ? 'Opening…' : 'Manage Subscription'}
             </button>
           )}
 
@@ -277,7 +369,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
             role="menuitem"
             onClick={handleSignOut}
           >
-            Sign Out
+            <IconLogout />Sign Out
           </button>
         </div>
       )}
