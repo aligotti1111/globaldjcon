@@ -787,6 +787,10 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
   if (action === 'send-receipt') {
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     const kind = typeof body.kind === 'string' && KINDS.has(body.kind) ? body.kind : 'balance';
+    // `auto` = fired automatically when the DJ marked the payment paid (not a
+    // manual "send receipt" click). An automatic send must honour the DJ's
+    // auto-send-receipt toggle; a manual send always goes through.
+    const isAuto = body.auto === true;
     if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
 
     const { data: bData } = await admin
@@ -798,6 +802,14 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
     if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
+
+    if (isAuto) {
+      const { data: djTog } = await db.from('users').select('receipt_auto_deposit, receipt_auto_balance').eq('id', acting.djId).maybeSingle();
+      const tog = djTog as { receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null } | null;
+      const autoSend = kind === 'balance' ? (tog?.receipt_auto_balance !== false) : (tog?.receipt_auto_deposit !== false);
+      // Toggle off → don't auto-send; the DJ can still send it by hand.
+      if (!autoSend) return NextResponse.json({ ok: true, sent: false });
+    }
 
     const cur = b.currency || 'USD';
     const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
