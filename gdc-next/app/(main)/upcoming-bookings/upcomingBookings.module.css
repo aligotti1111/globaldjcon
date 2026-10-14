@@ -1328,6 +1328,29 @@ select.input {
   border: 2.5px solid var(--card, #14141f);
 }
 
+/* Sending / downloading — a transient spinner ring drawn OVER the node while
+   its request or receipt action is in flight. Purely cosmetic feedback: it
+   overlays the circle without altering the stage's own ring, icon, or caption,
+   and is removed the moment the call settles. Sits just outside the 40px node
+   so the real ring underneath stays visible. */
+.stSpin {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--neon, #00e0a4);
+  border-right-color: var(--neon, #00e0a4);
+  z-index: 2;
+  pointer-events: none;
+  animation: stSpinKf .7s linear infinite;
+}
+@keyframes stSpinKf {
+  to { transform: rotate(360deg); }
+}
+
 .stChev {
   color: #6c6c86;
   font-size: 11px;
