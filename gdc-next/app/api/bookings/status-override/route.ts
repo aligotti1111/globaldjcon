@@ -247,6 +247,9 @@ export async function POST(req: Request) {
             html: shell(content),
             attachments: receiptAtt ? [receiptAtt] : undefined,
           });
+          // Record that a deposit receipt has gone out (drives "Send" vs
+          // "Re-send receipt" on the booking card).
+          if (receiptAtt) { try { await admin.from('bookings').update({ deposit_receipt_sent_at: new Date().toISOString() } as unknown as never).eq('id', bookingId); } catch { /* non-fatal */ } }
         }
       }
     } catch { /* non-fatal — the override already saved */ }
