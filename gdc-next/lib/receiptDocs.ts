@@ -661,8 +661,12 @@ export async function buildBookingDocAttachment(
       headline,
       acceptedMethods,
       methodsNote,
+      // Balance and overtime receipts close with a warmer thank-you; the deposit
+      // receipt keeps the plain line (the event isn't done yet).
       note: isReceipt
-        ? `Thank you. ${docNumber} · ${dateText}.`
+        ? ((args.overtime || args.paymentKind === 'balance')
+            ? `Thank You For Doing Business With Us! ${docNumber} · ${dateText}.`
+            : `Thank you. ${docNumber} · ${dateText}.`)
         : `Please include ${docNumber} in the payment note.`,
     });
 
