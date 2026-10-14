@@ -55,6 +55,21 @@ function money(n: number, currency: string): string {
   }
 }
 const round2 = (n: number) => Math.round(n * 100) / 100;
+// Just the currency symbol (e.g. "$", "£", "€") for inline prefixes.
+function currencySymbol(currency: string): string {
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency }).formatToParts(0);
+    return parts.find((p) => p.type === 'currency')?.value || '$';
+  } catch { return '$'; }
+}
+// Hours in 15-minute steps up to 5 hours, labelled friendly ("1 hr 30 min").
+const HOUR_OPTIONS = Array.from({ length: 20 }, (_, i) => {
+  const v = (i + 1) * 0.25;
+  const h = Math.floor(v);
+  const m = Math.round((v - h) * 60);
+  const label = [h > 0 ? `${h} hr` : '', m > 0 ? `${m} min` : ''].filter(Boolean).join(' ');
+  return { value: v, label };
+});
 
 export default function OvertimeSection({ bookingId, currency, taxPct, defaultRate, initial, canManage, onMutated, rateLabel }: Props) {
   const [savedHours, setSavedHours] = useState<number | null>(initial.hours);
@@ -69,7 +84,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   // same numbers.
   const [hours, setHours] = useState(initial.hours != null ? String(initial.hours) : '');
   const [rate, setRate] = useState(
-    initial.rate != null ? String(initial.rate) : (defaultRate != null ? String(defaultRate) : ''),
+    initial.rate != null ? initial.rate.toFixed(2) : (defaultRate != null ? defaultRate.toFixed(2) : ''),
   );
   const [applyTax, setApplyTax] = useState(initial.tax != null ? Number(initial.tax) > 0 : taxPct > 0);
   const [taxEdited, setTaxEdited] = useState(initial.tax != null && Number(initial.tax) > 0);
@@ -171,7 +186,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
     else {
       setInvoicedAt(null); setPaidAt(null);
       setSavedHours(null); setSavedRate(null); setSavedTax(null); setSavedAmount(null);
-      setHours(''); setRate(defaultRate != null ? String(defaultRate) : '');
+      setHours(''); setRate(defaultRate != null ? defaultRate.toFixed(2) : '');
       setTaxEdited(false); setTaxStr(''); setApplyTax(taxPct > 0);
       setMsg(null); setOpen(false);
       onMutated?.();
@@ -338,11 +353,26 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
         <div style={{ display: 'flex', gap: '.6rem', marginBottom: '.7rem', flexWrap: 'wrap' }}>
           <label style={{ flex: '1 1 120px', minWidth: 0 }}>
             <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.3rem', letterSpacing: '.04em' }}>HOURS</div>
-            <input style={input} inputMode="decimal" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="1" />
+            <select style={{ ...input, appearance: 'none', cursor: 'pointer' }} value={hours} onChange={(e) => setHours(e.target.value)}>
+              <option value="" disabled>Select…</option>
+              {HOUR_OPTIONS.map((o) => (
+                <option key={o.value} value={String(o.value)}>{o.label}</option>
+              ))}
+            </select>
           </label>
           <label style={{ flex: '1 1 120px', minWidth: 0 }}>
             <div style={{ fontSize: '.68rem', color: 'rgba(255,255,255,.55)', marginBottom: '.3rem', letterSpacing: '.04em' }}>RATE / HR</div>
-            <input style={input} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="150" />
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,.55)', fontSize: '.88rem', pointerEvents: 'none' }}>{currencySymbol(currency)}</span>
+              <input
+                style={{ ...input, paddingLeft: 24 }}
+                inputMode="decimal"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                onBlur={() => { const n = parseFloat(rate); if (Number.isFinite(n)) setRate(n.toFixed(2)); }}
+                placeholder="150.00"
+              />
+            </div>
           </label>
         </div>
 
