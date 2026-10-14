@@ -73,6 +73,20 @@ function parseCityLine(s: string): { city: string; state: string; zip: string } 
 function parseAddress(s: string): AddrFields {
   const text = (s || '').trim();
   if (!text) return { street: '', city: '', state: '', zip: '', country: DEFAULT_COUNTRY };
+  // New exact format: a JSON object of the discrete fields. No guessing — the
+  // street/city/state/zip round-trip exactly, including when any is cleared.
+  if (text.startsWith('{')) {
+    try {
+      const o = JSON.parse(text) as Partial<AddrFields>;
+      return {
+        street: (o.street || '').trim(),
+        city: (o.city || '').trim(),
+        state: (o.state || '').trim(),
+        zip: (o.zip || '').trim(),
+        country: (o.country || '').trim() || DEFAULT_COUNTRY,
+      };
+    } catch { /* fall through to legacy string parsing */ }
+  }
   // Stacked format (any newline present): line 0 = street (may be EMPTY when the
   // DJ cleared it), line 1 = "city, ST zip", optional trailing country line. We
   // do NOT drop empty lines here — an empty first line keeps the city from
@@ -109,22 +123,25 @@ function parseAddress(s: string): AddrFields {
   return { street: parts[0], city, state, zip, country: DEFAULT_COUNTRY };
 }
 
-// Compose the stored value: newline-stacked street / "city, ST zip" / country
-// (country only when it isn't the US default, to avoid clutter on US receipts).
-function composeAddress(f: AddrFields): string {
+// The value PERSISTED to users.receipt_address: an exact JSON object of the
+// discrete fields so street/city/state/zip round-trip with zero guessing. '' is
+// stored when every field is blank (so "no address on receipts").
+function storeAddress(f: AddrFields): string {
+  const street = f.street.trim(), city = f.city.trim(), state = f.state.trim(), zip = f.zip.trim();
+  const country = f.country.trim() || DEFAULT_COUNTRY;
+  if (!street && !city && !state && !zip) return '';
+  return JSON.stringify({ street, city, state, zip, country });
+}
+
+// The DISPLAY string for the live preview: newline-stacked street / "city, ST
+// zip" / country (country only when it isn't the US default). Blank lines are
+// dropped — this is for showing, not storing.
+function displayAddress(f: AddrFields): string {
   const stateZip = [f.state.trim(), f.zip.trim()].filter(Boolean).join(' ');
   const cityLine = [f.city.trim(), stateZip].filter(Boolean).join(', ');
   const c = f.country.trim();
   const countryLine = (c && c !== DEFAULT_COUNTRY) ? c : '';
-  const street = f.street.trim();
-  // With no city and no country, just the street (or ''). Otherwise keep the
-  // (possibly empty) street as line 0 so the stacked format round-trips — an
-  // empty street must stay an empty line, not be dropped, or the city would
-  // read back as the street on reload.
-  if (!cityLine && !countryLine) return street;
-  const lines = [street, cityLine];
-  if (countryLine) lines.push(countryLine);
-  return lines.join('\n');
+  return [f.street.trim(), cityLine, countryLine].filter(Boolean).join('\n');
 }
 
 export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChange?: (dirty: boolean) => void } = {}) {
@@ -247,7 +264,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
   // One Save button persists EVERYTHING on the tab in a single request —
   // address, phone, colour and the two auto-send toggles.
   async function saveAll() {
-    const composed = composeAddress({ street, city, state: stateVal, zip, country });
+    const composed = storeAddress({ street, city, state: stateVal, zip, country });
     const colorOk = /^#[0-9a-fA-F]{6}$/.test(color);
     await post({
       address: composed,
@@ -440,7 +457,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         <ReceiptPreview
           logoUrl={logoUrl}
           name={bizName || 'Your Business Name'}
-          address={composeAddress({ street, city, state: stateVal, zip, country })}
+          address={displayAddress({ street, city, state: stateVal, zip, country })}
           phone={phone.trim()}
           accent={/^#[0-9a-fA-F]{6}$/.test(color) ? color : DEFAULT_COLOR}
           kind={sampleKind}
