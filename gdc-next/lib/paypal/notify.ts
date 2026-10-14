@@ -118,6 +118,8 @@ export async function sendPaypalPaidEmails(db: SupabaseClient, args: PaypalPaidA
         html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
         attachments: receiptAtt ? [receiptAtt] : undefined,
       });
+      // Record the send so the card menu shows "Re-send receipt".
+      try { await db.from('bookings').update({ [args.kind === 'balance' ? 'balance_receipt_sent_at' : 'deposit_receipt_sent_at']: new Date().toISOString() } as unknown as never).eq('id', args.bookingId); } catch { /* non-fatal */ }
     } catch { /* receipt is best-effort */ }
   }
 
