@@ -234,9 +234,11 @@ Or paste this into your browser:<br/><a href="${link}" style="color:#999;">${lin
         });
         emails += 1;
         // Stamp the day so a later ping today (or a future run) can't re-send it.
+        // last_reminder_at gives the host's notification bell a timestamp to show
+        // "Planner reminder sent" in its feed.
         await db
           .from('booking_planners')
-          .update({ reminders_sent: [...sentAlready, hit] } as unknown as never)
+          .update({ reminders_sent: [...sentAlready, hit], last_reminder_at: new Date().toISOString() } as unknown as never)
           .eq('id', planner.id);
       } catch { /* non-fatal — keep going for the other bookings */ }
     }
