@@ -322,6 +322,12 @@ export default function BookingRow({
    */
   const archive = archiveProp || isCancelled;
 
+  // A manual booking that has actually been sent to a host email has a second
+  // party now, so it behaves like an app booking for deletion: it can only be
+  // CANCELLED (with host confirmation), never hard-deleted.
+  const sentToHost = booking.is_manual
+    && !!((booking as { host_email_sent_at?: string | null }).host_email_sent_at);
+
   async function postCancel(payload: Record<string, unknown>) {
     setCancelBusy(true);
     setCancelErr(null);
@@ -853,12 +859,18 @@ export default function BookingRow({
 
   // Both edit and delete must stop propagation so they don't also toggle
   // the row's expand/collapse state (the row is itself a <button>).
-  function handleEdit(e: React.MouseEvent) {
-    e.stopPropagation();
-    onEdit && onEdit();
-  }
+  // A manual booking that was emailed to a host can no longer be permanently
+  // deleted — there's a real person expecting it. The X instead starts a
+  // cancellation request, which the host has to confirm (same flow as an app
+  // booking). A manual booking with no host attached is still a hard delete.
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
+    if (sentToHost) {
+      setExpanded(true);
+      setCancelFormOpen(true);
+      setTimeout(() => { wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
+      return;
+    }
     onDelete && onDelete();
   }
 
@@ -1086,29 +1098,19 @@ export default function BookingRow({
           {booking.is_manual && !isCancelled && (
             <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
           )}
-          {/* Edit + delete are handed down by the parent, which only knows about
-              the page-level archive — so they need the cancelled check here. */}
-          {onEdit && !isCancelled && (
-            <span
-              onClick={handleEdit}
-              className={styles.editBtn}
-              role="button"
-              aria-label="Edit manual booking"
-              title="Edit"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </span>
-          )}
+          {/* Editing a manual booking now happens entirely through the per-section
+              pencils in the expanded card (they open this same full editor), so
+              there's no separate pencil up here — just the X. */}
+          {/* The X deletes a manual booking that was never sent to a host; once it
+              HAS a host (sentToHost), the X starts a cancellation the host must
+              confirm instead of a permanent delete. */}
           {onDelete && !isCancelled && (
             <span
               onClick={handleDelete}
               className={styles.deleteBtn}
               role="button"
-              aria-label="Delete manual booking"
-              title="Delete"
+              aria-label={sentToHost ? 'Cancel booking' : 'Delete manual booking'}
+              title={sentToHost ? 'Cancel booking (host must confirm)' : 'Delete'}
             >
               ✕
             </span>
@@ -1211,7 +1213,8 @@ export default function BookingRow({
           canManageMoney={roleCanMoney}
           canManageContract={roleCanContract}
           hasHostContact={hasHostContact}
-          onEdit={onAddHost || onEdit}
+          onEdit={onEdit}
+          onEditHost={onAddHost}
           isOwner={actingRole === 'owner'}
         />
       )}
@@ -1222,7 +1225,7 @@ export default function BookingRow({
           already cancelled, and never on a manual add-in — there's no second
           party to ask. Deliberately the last thing in the panel and styled
           quietly: it should be findable, not tempting. */}
-      {expanded && !archive && !booking.is_manual && booking.status !== 'cancelled' && (
+      {expanded && !archive && (!booking.is_manual || sentToHost) && booking.status !== 'cancelled' && (
         <div
           style={{
             padding: '.9rem 1.1rem',
