@@ -194,7 +194,7 @@ export default function Header() {
                   {isHost && (
                     <NotificationBell
                       endpoint="/api/host/new-activity"
-                      moreHref="/upcoming-events"
+                      moreHref="/upcoming-events?filter=activity"
                       seenKey="gdc_host_newactivity_seen"
                       openHrefBase="/upcoming-events"
                     />
