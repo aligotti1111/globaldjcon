@@ -12,6 +12,7 @@
 //   - Delete (manual only)
 
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { UpcomingEvent } from './page';
@@ -54,6 +55,9 @@ export default function UpcomingEventsClient({
 }: Props) {
   const [events, setEvents] = useState<UpcomingEvent[]>(initialEvents);
   const [editing, setEditing] = useState<UpcomingEvent | null>(null);
+  // Deep-link from the notification bell: /upcoming-events?open=<bookingId>
+  // expands and scrolls to that event so clicking a notification lands somewhere.
+  const openId = useSearchParams().get('open');
 
   // Group events by year-month for "Aug 2026" / "Sep 2026" section headers.
   const grouped = groupByMonth(events);
@@ -95,6 +99,7 @@ export default function UpcomingEventsClient({
                   event={ev}
                   userId={userId}
                   readOnly={readOnly}
+                  autoOpen={!!openId && ev.id === openId}
                   onEdit={() => setEditing(ev)}
                   onDeleted={() => handleDeleted(ev.id)}
                   onLinkSaved={(url, label) => {
@@ -133,20 +138,29 @@ export default function UpcomingEventsClient({
 // ── Row ───────────────────────────────────────────────────────────────
 
 function EventRow({
-  event, userId, readOnly = false, onEdit, onDeleted, onLinkSaved, onFlyerSaved,
+  event, userId, readOnly = false, autoOpen = false, onEdit, onDeleted, onLinkSaved, onFlyerSaved,
 }: {
   event: UpcomingEvent;
   userId: string;
   readOnly?: boolean;
+  /** Expand + scroll to this row on mount (notification-bell deep link). */
+  autoOpen?: boolean;
   onEdit: () => void;
   onDeleted: () => void;
   onLinkSaved: (url: string | null, label: string | null) => void;
   onFlyerSaved: (url: string | null) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(autoOpen);
+
+  // Deep-linked from a notification: scroll the expanded row into view once.
+  useEffect(() => {
+    if (!autoOpen || !rowRef.current) return;
+    rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [autoOpen]);
   // Lightbox for the flyer image — shown when the user clicks the
   // thumbnail. Provides a Download link inside the overlay.
   const [showLightbox, setShowLightbox] = useState(false);
@@ -400,6 +414,7 @@ function EventRow({
 
   return (
     <div
+      ref={rowRef}
       className={`${styles.rowWrap} ${expanded ? styles.rowWrapExpanded : ''} ${showTotalBar ? styles.hasTotalBar : ''} ${showMobilePipeline ? styles.hasMobilePipeline : ''}`}
       style={{ position: 'relative' }}
     >
