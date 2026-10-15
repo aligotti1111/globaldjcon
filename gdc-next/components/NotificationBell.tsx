@@ -320,7 +320,9 @@ export default function NotificationBell({
                   <span style={{ display: 'block', color: '#fff', fontSize: '.86rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {it.label}{it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
                   </span>
-                  <span style={{ display: 'block', color: 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
+                  {/* Negative updates (booking/contract declined, cancelled)
+                      read in red instead of the usual neon green. */}
+                  <span style={{ display: 'block', color: (SLOT_STYLE[it.slot]?.tone === 'red') ? TONE_COLOR.red : 'var(--neon,#00e0a4)', fontSize: '.72rem', marginTop: 1 }}>
                     {whatLabel(it)}
                   </span>
                   {timeAgo(it.at) && (
