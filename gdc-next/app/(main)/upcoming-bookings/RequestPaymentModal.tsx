@@ -166,7 +166,7 @@ export default function RequestPaymentModal({
                 style={{ marginTop: '.15rem', accentColor: '#f0b43c', cursor: 'pointer' }}
               />
               <span style={{ color: 'var(--white,#fff)', fontSize: '.7rem', lineHeight: 1.45 }}>
-                I understand this {kindNoun} doesn&apos;t match the receipt and I&apos;ll update the receipt by hand.
+                I understand the {kindNoun} being requested doesn&apos;t match the price agreed. I will manually update the receipt to reflect the new {kindNoun} total.
               </span>
             </label>
           </div>
