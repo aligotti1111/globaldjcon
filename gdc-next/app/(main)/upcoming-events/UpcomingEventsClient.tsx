@@ -55,9 +55,56 @@ export default function UpcomingEventsClient({
 }: Props) {
   const [events, setEvents] = useState<UpcomingEvent[]>(initialEvents);
   const [editing, setEditing] = useState<UpcomingEvent | null>(null);
+  const searchParams = useSearchParams();
   // Deep-link from the notification bell: /upcoming-events?open=<bookingId>
   // expands and scrolls to that event so clicking a notification lands somewhere.
-  const openId = useSearchParams().get('open');
+  const openId = searchParams.get('open');
+
+  // "New activity" view — the host equivalent of the DJ's ?filter=activity.
+  // sortMode 'activity' filters to events the DJ recently acted on (newest
+  // first), fed by the same /api/host/new-activity feed the bell uses.
+  const [sortMode, setSortMode] = useState<'date' | 'activity'>('date');
+  // bookingId → most recent activity timestamp (ISO), for sorting + filtering.
+  const [activityAt, setActivityAt] = useState<Record<string, string>>({});
+
+  // Switch to the activity view whenever ?filter=activity appears (fires on
+  // every URL change, so the bell's "View more" works even when already on the
+  // page), then strip the param so a later re-sort isn't overridden.
+  useEffect(() => {
+    if (searchParams?.get('filter') === 'activity') {
+      setSortMode('activity');
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('filter');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, [searchParams]);
+
+  // Pull the activity feed once so we know which events have recent DJ activity
+  // and when — the same data the bell shows, reused here to order the view.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/host/new-activity', { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json();
+        const map: Record<string, string> = {};
+        for (const it of (Array.isArray(j.items) ? j.items : []) as { bookingId: string; at: string }[]) {
+          if (!map[it.bookingId] || Date.parse(it.at) > Date.parse(map[it.bookingId])) map[it.bookingId] = it.at;
+        }
+        if (!cancelled) setActivityAt(map);
+      } catch { /* non-fatal — activity view just falls back to date order */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Events the DJ recently acted on, newest activity first (a filter, not just
+  // a sort — an event with no activity doesn't belong in this view).
+  const activityList = events
+    .filter((e) => activityAt[e.id])
+    .sort((a, b) => Date.parse(activityAt[b.id]) - Date.parse(activityAt[a.id]));
 
   // Group events by year-month for "Aug 2026" / "Sep 2026" section headers.
   const grouped = groupByMonth(events);
@@ -74,6 +121,31 @@ export default function UpcomingEventsClient({
     setEvents((prev) => prev.filter((e) => e.id !== id));
   }
 
+  // One row — reused by the date (grouped) and activity (flat) views.
+  const renderRow = (ev: UpcomingEvent) => (
+    <EventRow
+      key={ev.id}
+      event={ev}
+      userId={userId}
+      readOnly={readOnly}
+      autoOpen={!!openId && ev.id === openId}
+      onEdit={() => setEditing(ev)}
+      onDeleted={() => handleDeleted(ev.id)}
+      onLinkSaved={(url, label) => {
+        setEvents((prev) => prev.map((e) => (
+          e.id === ev.id ? { ...e, link_url: url, link_label: label } : e
+        )));
+      }}
+      onFlyerSaved={(url) => {
+        setEvents((prev) => prev.map((e) => (
+          e.id === ev.id ? { ...e, flyer_url: url } : e
+        )));
+      }}
+    />
+  );
+
+  const activityCount = activityList.length;
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -83,37 +155,57 @@ export default function UpcomingEventsClient({
         </div>
       </div>
 
+      {/* By date / New activity toggle — mirrors the DJ dashboard. Shown once
+          there's any activity (or the activity view is already open). */}
+      {(activityCount > 0 || sortMode === 'activity') && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {([['date', 'By date'], ['activity', `New activity${activityCount ? ` (${activityCount})` : ''}`]] as const).map(([mode, text]) => {
+            const on = sortMode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setSortMode(mode)}
+                style={{
+                  background: on ? 'var(--neon,#00e0a4)' : 'transparent',
+                  color: on ? '#06231b' : 'var(--muted,#8a8aa0)',
+                  border: `1px solid ${on ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`,
+                  borderRadius: 8, padding: '.4rem .9rem', fontSize: '.8rem', fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {text}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {events.length === 0 ? (
         <div className={styles.empty}>
           <p>{emptyText}</p>
           <p className={styles.emptyHint}>{emptyHint}</p>
         </div>
+      ) : sortMode === 'activity' ? (
+        activityCount === 0 ? (
+          <div className={styles.empty}>
+            <p>No new activity.</p>
+            <p className={styles.emptyHint}>Updates from your DJ show up here.</p>
+          </div>
+        ) : (
+          <section className={styles.monthGroup}>
+            <h2 className={styles.monthHeading}>New activity</h2>
+            <div className={styles.eventList}>
+              {activityList.map(renderRow)}
+            </div>
+          </section>
+        )
       ) : (
         grouped.map(({ key, label, items }) => (
           <section key={key} className={styles.monthGroup}>
             <h2 className={styles.monthHeading}>{label}</h2>
             <div className={styles.eventList}>
-              {items.map((ev) => (
-                <EventRow
-                  key={ev.id}
-                  event={ev}
-                  userId={userId}
-                  readOnly={readOnly}
-                  autoOpen={!!openId && ev.id === openId}
-                  onEdit={() => setEditing(ev)}
-                  onDeleted={() => handleDeleted(ev.id)}
-                  onLinkSaved={(url, label) => {
-                    setEvents((prev) => prev.map((e) => (
-                      e.id === ev.id ? { ...e, link_url: url, link_label: label } : e
-                    )));
-                  }}
-                  onFlyerSaved={(url) => {
-                    setEvents((prev) => prev.map((e) => (
-                      e.id === ev.id ? { ...e, flyer_url: url } : e
-                    )));
-                  }}
-                />
-              ))}
+              {items.map(renderRow)}
             </div>
           </section>
         ))
