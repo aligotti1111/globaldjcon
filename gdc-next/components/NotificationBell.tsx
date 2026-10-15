@@ -300,8 +300,15 @@ export default function NotificationBell({
                   // Everything else opens the booking's card.
                   const dest = it.href
                     || (it.slot === 'contract_sign' ? `/api/contracts/sign-redirect?bookingId=${encodeURIComponent(it.bookingId)}` : null);
-                  if (dest) window.location.href = dest;
-                  else router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`);
+                  if (dest) {
+                    // The contract signing page opens in a NEW window/tab so the
+                    // host keeps the dashboard open behind it; other links
+                    // navigate in place.
+                    if (it.slot === 'contract_sign') window.open(dest, '_blank', 'noopener');
+                    else window.location.href = dest;
+                  } else {
+                    router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`);
+                  }
                 }}
                 style={{
                   display: 'flex', gap: 11, alignItems: 'center', width: '100%', textAlign: 'left',
