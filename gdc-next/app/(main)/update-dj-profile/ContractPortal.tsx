@@ -176,6 +176,11 @@ export default function ContractPortal({
   // guards the proceed button. Standard/wedding always pass (guaranteed block).
   const [sigCheck, setSigCheck] = useState<{ hasClient: boolean; hasDj: boolean } | null>(null);
   const [sigChecking, setSigChecking] = useState(false);
+  // Unsaved-changes guard for the wording editors. The baseline is the text the
+  // editor was opened with; if what's in the box now differs, leaving without
+  // saving pops a confirm. leaveConfirm holds the pending "leave anyway" action.
+  const [wordingBaseline, setWordingBaseline] = useState('');
+  const [leaveConfirm, setLeaveConfirm] = useState<null | (() => void)>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [builderToken, setBuilderToken] = useState<string | null>(null);
@@ -238,12 +243,38 @@ export default function ContractPortal({
   useEffect(() => {
     if (view === 'paste' && editorRef.current) {
       editorRef.current.innerHTML = htmlToChipsHtml(pasteText || '');
+      // Baseline for the unsaved-changes guard — read back with the SAME
+      // serializer save uses, so an untouched editor compares equal.
+      setWordingBaseline(serializeChipsPreserveHtml(editorRef.current));
     }
     if (view === 'standard' && stdRef.current) {
       stdRef.current.innerHTML = textToChipsHtml(text || '');
+      setWordingBaseline(serializeChips(stdRef.current));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, editingId]);
+
+  // The wording editors are uncontrolled contenteditables, so "dirty" means the
+  // current serialized content differs from the baseline captured on open.
+  function currentWordingText(): string | null {
+    if (view === 'standard' && stdRef.current) return serializeChips(stdRef.current);
+    if (view === 'paste' && editorRef.current) return serializeChipsPreserveHtml(editorRef.current);
+    return null;
+  }
+  function isWordingDirty(): boolean {
+    const cur = currentWordingText();
+    if (cur == null) return false;
+    return cur.trim() !== wordingBaseline.trim();
+  }
+  // Run `action` to leave the editor, but if there are unsaved wording edits,
+  // ask first. The confirm modal below calls the stashed action on "Leave".
+  function requestLeave(action: () => void) {
+    if ((view === 'standard' || view === 'paste') && isWordingDirty()) {
+      setLeaveConfirm(() => action);
+    } else {
+      action();
+    }
+  }
 
   function exec(cmd: string, value?: string) {
     editorRef.current?.focus();
@@ -515,14 +546,28 @@ export default function ContractPortal({
   };
 
   const wrap = (inner: React.ReactNode, white = false, title = 'Contract Portal') => (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) { view === 'grid' ? closePortal() : setView('grid'); } }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) { requestLeave(() => (view === 'grid' ? closePortal() : setView('grid'))); } }}>
       <div style={{ background: white ? '#fff' : 'var(--bg-card,#14141f)', border: white ? 'none' : '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 12, width: '100%', maxWidth: white ? 1000 : 780, height: white ? '90vh' : undefined, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.75rem 1rem', borderBottom: white ? '1px solid #eee' : '1px solid var(--border,rgba(255,255,255,.12))' }}>
           <strong style={{ color: white ? '#111' : 'var(--white,#fff)' }}>{title}</strong>
-          <button type="button" onClick={() => view === 'grid' ? closePortal() : setView('grid')} style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: white ? '#666' : 'var(--muted,#888)' }}>✕</button>
+          <button type="button" onClick={() => requestLeave(() => (view === 'grid' ? closePortal() : setView('grid')))} style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: white ? '#666' : 'var(--muted,#888)' }}>✕</button>
         </div>
         {inner}
       </div>
+      {/* Unsaved-changes confirm — sits above the editor so leaving the wording
+          editor (Cancel, Back, ✕, or the backdrop) with unsaved edits asks first. */}
+      {leaveConfirm && (
+        <div onClick={(e) => { e.stopPropagation(); setLeaveConfirm(null); }} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 12, padding: '1.3rem', boxShadow: '0 24px 60px rgba(0,0,0,.4)' }}>
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#111', marginBottom: '.5rem' }}>Leave without saving?</div>
+            <p style={{ margin: '0 0 1.1rem', fontSize: '.85rem', color: '#555', lineHeight: 1.5 }}>You&rsquo;ve made changes to the wording that haven&rsquo;t been saved. If you leave now, they&rsquo;ll be lost.</p>
+            <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => setLeaveConfirm(null)} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.82rem' }}>Keep editing</button>
+              <button type="button" onClick={() => { const a = leaveConfirm; setLeaveConfirm(null); if (a) a(); }} style={{ background: '#c0392b', border: 'none', color: '#fff', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.82rem' }}>Leave without saving</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -558,7 +603,7 @@ export default function ContractPortal({
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 1rem', borderTop: '1px solid #e5e7eb', background: '#fff' }}>
-          <button type="button" onClick={() => setView('grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
+          <button type="button" onClick={() => requestLeave(() => setView('grid'))} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>Cancel</button>
           <button type="button" onClick={submitPastedText} disabled={submittingPaste} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: submittingPaste ? 'wait' : 'pointer' }}>{submittingPaste ? 'Opening…' : 'Next: place fields →'}</button>
         </div>
       </div>, true, editingId ? 'Edit your contract' : 'Write your contract',
@@ -664,7 +709,7 @@ export default function ContractPortal({
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
         <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
-          <button type="button" onClick={() => setView(editingId && !stdWordingOnly ? 'builder' : 'grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId && !stdWordingOnly ? 'Back to fields' : 'Cancel'}</button>
+          <button type="button" onClick={() => requestLeave(() => setView(editingId && !stdWordingOnly ? 'builder' : 'grid'))} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId && !stdWordingOnly ? 'Back to fields' : 'Cancel'}</button>
           <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : stdWordingOnly ? 'Save changes' : 'Save & review fields →'}</button>
         </div>
       </div>, true, 'Global DJ Connect Standard Contract',
