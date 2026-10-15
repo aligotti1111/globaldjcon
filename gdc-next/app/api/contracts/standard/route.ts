@@ -59,10 +59,11 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     let savedId = contractId;
     if (contractId) {
+      const finalName = await uniqueContractName(admin, acting.djId, name, contractId);
       const { error } = await admin
         .from('contracts')
         .update({
-          name,
+          name: finalName,
           docuseal_template_id: String(templateId),
           logo_url: logoUrl,
           is_standard: true,
