@@ -127,27 +127,24 @@ export default function RequestPaymentModal({
             the client is ASKED to pay — it won't change the receipt. */}
         {mismatch && (
           <div style={{ margin: '0 0 .9rem', border: '1px solid rgba(240,180,60,.5)', background: 'rgba(240,180,60,.08)', borderRadius: 8, padding: '.6rem .7rem' }}>
-            <p style={{ margin: '0 0 .5rem', color: '#f0b43c', fontSize: '.72rem', lineHeight: 1.55, fontWeight: 700 }}>
-              This doesn&apos;t match the agreed {kindNoun}. You&apos;re requesting {fmtMoney(entered, currency)}
+            <p style={{ margin: '0 0 .6rem', color: '#f0b43c', fontSize: '.72rem', lineHeight: 1.55, fontWeight: 700 }}>
+              This doesn&apos;t match the agreed price. You&apos;re requesting {fmtMoney(entered, currency)}
               {' '}({diff > 0 ? '+' : '−'}{fmtMoney(Math.abs(diff), currency)}).
             </p>
-            <p style={{ margin: '0 0 .6rem', color: 'var(--muted,#8a8aa0)', fontSize: '.68rem', lineHeight: 1.55 }}>
-              The receipt is built from this booking&apos;s figures, so it will still show the amount below — not what you request here. To reflect the difference, edit the receipt by hand after the payment is marked paid.
-            </p>
             <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.5rem' }}>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
-                How the receipt reads
-              </div>
               {reqKind === 'balance' ? (
                 <>
-                  <Row label="Total cost" value={fmtMoney(expectedTotal, currency)} currencyMuted />
-                  <Row label="Collected so far" value={`− ${fmtMoney(expectedCollected, currency)}`} currencyMuted />
+                  <Row label="Price agreed" value={fmtMoney(expectedTotal, currency)} currencyMuted />
+                  {expectedCollected > 0 && (
+                    <Row label="Deposit received" value={`− ${fmtMoney(expectedCollected, currency)}`} currencyMuted />
+                  )}
                   <Row label="Balance due" value={fmtMoney(expectedAmount as number, currency)} bold />
                 </>
               ) : (
                 <>
-                  <Row label="Total cost" value={fmtMoney(expectedTotal, currency)} currencyMuted />
+                  <Row label="Price agreed" value={fmtMoney(expectedTotal, currency)} currencyMuted />
                   <Row label={`Deposit${depositPct != null ? ` (${depositPct}%)` : ''}`} value={fmtMoney(expectedAmount as number, currency)} bold />
+                  <Row label="Balance to be requested" value={fmtMoney(Math.max(0, Math.round((expectedTotal - (expectedAmount as number)) * 100) / 100), currency)} currencyMuted />
                 </>
               )}
             </div>
