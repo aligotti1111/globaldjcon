@@ -75,15 +75,18 @@ function SlotChip({ slot }: { slot: string }) {
   const s = SLOT_STYLE[slot] || { shape: 'check' as Shape, tone: 'green' as Tone };
   const color = TONE_COLOR[s.tone];
   return (
-    <span
-      aria-hidden="true"
-      style={{
-        flexShrink: 0, marginLeft: 10, width: 34, height: 34, borderRadius: 10,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: `${color}1f`, border: `1px solid ${color}3d`, color,
-      }}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24">{slotGlyph(s.shape)}</svg>
+    <span style={{ flexShrink: 0, marginLeft: 10, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+      <span
+        aria-hidden="true"
+        style={{
+          width: 34, height: 34, borderRadius: 10,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: `${color}1f`, border: `1px solid ${color}3d`, color,
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24">{slotGlyph(s.shape)}</svg>
+      </span>
+      <span style={{ fontSize: '.6rem', fontWeight: 700, letterSpacing: '.04em', color: 'var(--neon,#00e0a4)' }}>View</span>
     </span>
   );
 }
