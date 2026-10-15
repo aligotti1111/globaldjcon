@@ -6,15 +6,18 @@
 // number appended: "Name", then "Name 1", "Name 2", "Name 3", …
 //
 // Pass the admin client, the acting DJ's id, and the desired base name; get back
-// a name guaranteed not to collide with an existing one.
+// a name guaranteed not to collide with an existing one. Pass excludeId when
+// RENAMING an existing contract so it doesn't collide with its own current name
+// (and keeping the same name is a no-op, not "Name 1").
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function uniqueContractName(admin: any, djId: string, base: string): Promise<string> {
+export async function uniqueContractName(admin: any, djId: string, base: string, excludeId?: string | null): Promise<string> {
   const clean = (base || 'Contract').trim();
   try {
-    const { data } = await admin.from('contracts').select('name').eq('dj_id', djId);
+    const { data } = await admin.from('contracts').select('id, name').eq('dj_id', djId);
     const existing = new Set<string>(
-      ((data as { name?: string }[] | null) || [])
+      ((data as { id?: string; name?: string }[] | null) || [])
+        .filter((r) => !excludeId || r?.id !== excludeId)
         .map((r) => (r?.name || '').trim())
         .filter(Boolean),
     );
