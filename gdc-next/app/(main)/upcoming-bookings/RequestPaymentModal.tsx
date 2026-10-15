@@ -67,8 +67,6 @@ export default function RequestPaymentModal({
     ? taxAmount
     : (taxPct != null && taxPct > 0 ? Math.round((expectedTotal - expectedTotal / (1 + taxPct / 100)) * 100) / 100 : 0);
   const hasTax = taxVal > 0.005;
-  // "Price agreed" is the pre-tax base when tax applies, else the whole total.
-  const basePrice = hasTax ? Math.round((expectedTotal - taxVal) * 100) / 100 : expectedTotal;
   // Does the Amount the DJ typed match what the receipt will actually show?
   // The receipt is built from the booking's agreed figures (total, tax,
   // deposit) — not from whatever number is requested here — so any override
@@ -145,10 +143,7 @@ export default function RequestPaymentModal({
               {' '}({diff > 0 ? '+' : '−'}{fmtMoney(Math.abs(diff), currency)}).
             </p>
             <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.5rem' }}>
-              <Row label="Price agreed" value={fmtMoney(basePrice, currency)} />
-              {hasTax && (
-                <Row label={`Tax${taxPct != null && taxPct > 0 ? ` (${taxPct}%)` : ''}`} value={fmtMoney(taxVal, currency)} />
-              )}
+              <Row label={`Price agreed${hasTax ? ' (with tax)' : ''}`} value={fmtMoney(expectedTotal, currency)} />
               {reqKind === 'balance' ? (
                 <>
                   {expectedCollected > 0 && (
