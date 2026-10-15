@@ -261,9 +261,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
   // Which tile is awaiting a "yes, remove" confirmation (Remove pop-up).
   const [confirmingRemove, setConfirmingRemove] = useState<PaymentMethodType | null>(null);
-  // The confirm modal portals to document.body, which only exists on the client.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
   // Tiles the DJ has explicitly Removed this session — auto-fill leaves these
   // alone from then on, so Remove means blank and stays blank.
   const autofillOff = useRef<Set<PaymentMethodType>>(new Set());
@@ -2026,10 +2023,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 )}
                 {/* Confirm pop-up — centered modal over a dark scrim. Portaled to
                     <body> so no parent overflow/transform can clip it. */}
-                {mounted && confirmingRemove === t && createPortal(
+                {confirmingRemove === t && typeof document !== 'undefined' && createPortal(
                   <div
                     onClick={() => setConfirmingRemove(null)}
-                    style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+                    style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
                   >
                     <div
                       onClick={(e) => e.stopPropagation()}
