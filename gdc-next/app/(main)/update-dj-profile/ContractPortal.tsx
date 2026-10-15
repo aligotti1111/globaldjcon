@@ -164,6 +164,11 @@ export default function ContractPortal({
   // standard), false when editing an existing one from the list — drives the
   // primary button label ("Create contract" vs "Save changes").
   const [builderNew, setBuilderNew] = useState(false);
+  // True when the standard-text editor was opened straight from the list's
+  // "Edit Wording" action (not from inside the fields builder). In that case
+  // saving just persists the wording and closes back to the list — it does NOT
+  // hand off to the anchor-tags/fields builder.
+  const [stdWordingOnly, setStdWordingOnly] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [builderToken, setBuilderToken] = useState<string | null>(null);
@@ -316,6 +321,7 @@ export default function ContractPortal({
   function openStandardText(c: Contract) {
     setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name);
     setText(defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null);
+    setStdWordingOnly(true);
     setView('standard');
   }
 
@@ -389,6 +395,13 @@ export default function ContractPortal({
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
       await load();
+      // "Edit Wording" from the list is wording-only: save and go straight back
+      // to the contracts list (or close), never on to the anchor-tags builder.
+      if (stdWordingOnly) {
+        setSavingStd(false);
+        if (inline) { setView('grid'); } else { closePortal(); }
+        return;
+      }
       // Hand off to the drag builder so the DJ can place/reposition the fields
       // (signatures, auto-fill) on the document, DocuSeal-style.
       const cid = json.contractId || editingId;
@@ -518,7 +531,7 @@ export default function ContractPortal({
           <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. {bookingMode ? 'Then Lock it in.' : 'Then save your changes.'}</div>
           {isStdBuilder && (
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-              <button type="button" onClick={() => setView('standard')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit Contract Text</button>
+              <button type="button" onClick={() => { setStdWordingOnly(false); setView('standard'); }} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit Contract Text</button>
               <button type="button" onClick={() => logoInputFields.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.45rem 1.1rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem', fontWeight: 600 }}>{logoBusy ? 'Adding logo…' : logoUrl ? 'Change logo' : 'Add logo to contract'}</button>
               <input ref={logoInputFields} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoFromFields} />
             </div>
@@ -552,7 +565,7 @@ export default function ContractPortal({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: '#f3f4f6' }}>
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name" style={{ width: '100%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontWeight: 600, fontSize: '.95rem' }} />
-          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Edit the wording. The green chips mark where the booking details and signatures fill in automatically — leave them in place (you can delete one to remove that field). Next you can review and adjust where the fields sit. Have a lawyer review before use.</div>
+          <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>Edit the wording. The green chips mark where the booking details and signatures fill in automatically — leave them in place (you can delete one to remove that field). {stdWordingOnly ? 'Save changes when you’re done.' : 'Next you can review and adjust where the fields sit.'} Have a lawyer review before use.</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginTop: '.6rem', flexWrap: 'wrap' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 38, maxWidth: 110, borderRadius: 4 }} />}
@@ -568,8 +581,8 @@ export default function ContractPortal({
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
         <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
-          <button type="button" onClick={() => setView(editingId ? 'builder' : 'grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId ? 'Back to fields' : 'Cancel'}</button>
-          <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : 'Save & review fields →'}</button>
+          <button type="button" onClick={() => setView(editingId && !stdWordingOnly ? 'builder' : 'grid')} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId && !stdWordingOnly ? 'Back to fields' : 'Cancel'}</button>
+          <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : stdWordingOnly ? 'Save changes' : 'Save & review fields →'}</button>
         </div>
       </div>, true, 'Global DJ Connect Standard Contract',
     );
