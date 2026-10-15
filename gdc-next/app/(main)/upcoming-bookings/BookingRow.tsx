@@ -1162,6 +1162,8 @@ export default function BookingRow({
           expectedAmount={reqExpected?.amount ?? null}
           expectedTotal={reqExpected?.total ?? 0}
           expectedCollected={reqExpected?.collected ?? 0}
+          taxPct={(booking as { tax_pct?: number | null }).tax_pct ?? null}
+          taxAmount={(booking as { tax_amount?: number | null }).tax_amount ?? null}
           onClose={() => setReqOpen(false)}
           onEditMethods={roleCanEditPaymentOptions ? () => setMethodsOpen(true) : undefined}
           onSubmit={() => void submitRequest()}
