@@ -38,7 +38,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onMutated, canManageMoney = true, canManageContract = true, onEdit, contractAction, onContractActionHandled, isOwner = false,
+  payments, onMutated, canManageMoney = true, canManageContract = true, onEdit, onEditHost, contractAction, onContractActionHandled, isOwner = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -74,8 +74,13 @@ export default function BookingDetails({
    * greyed-out icon sitting above a live "Review & Send Contract" button.
    */
   hasHostContact: boolean;
-  /** Opens the Add/Edit Manual Booking modal. Manual, non-archive rows only. */
+  /** Opens the Add/Edit Manual Booking modal. Manual, non-archive rows only.
+   *  For manual bookings the section pencils route here (the full editor) rather
+   *  than the limited inline BookingEditModal, so there's one editor. */
   onEdit?: () => void;
+  /** Same modal as onEdit, but scrolled to Host Details — used by the HOST
+   *  section pencil on a manual booking. */
+  onEditHost?: () => void;
   // One-shot request from the pipeline's contract dropdown. The portal and the
   // send/resend/cancel/download handlers all live here; the menu that wants
   // them lives a component up, on a row that may not even be expanded yet.
@@ -383,10 +388,21 @@ export default function BookingDetails({
     'Venue Type': 'venue_type', 'Booked By': 'requester_name', 'Contact Phone': 'phone', 'Email': 'host_email', 'Host name': 'requester_name',
   };
   // The pencil button on a section's chip header (owner, non-archive).
+  // MANUAL bookings route every section pencil to the FULL manual editor (the
+  // same one the modal opens) — one editor, with price and everything, instead
+  // of the limited inline BookingEditModal. Non-manual (host-requested) bookings
+  // keep the change-tracked inline edit, which notifies/asks the host.
+  const openSection = (sec: EditSection) => {
+    if (booking.is_manual) {
+      if (sec === 'HOST') { (onEditHost || onEdit)?.(); } else { onEdit?.(); }
+      return;
+    }
+    setEditSection(sec);
+  };
   const sectionPencil = (sec: EditSection): React.ReactNode => canEdit ? (
     <button
       type="button"
-      onClick={() => setEditSection(sec)}
+      onClick={() => openSection(sec)}
       title="Edit these details"
       aria-label="Edit these details"
       style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, background: 'transparent', border: '1px solid rgba(255,255,255,.16)', borderRadius: 7, color: 'var(--muted,#8a8aa0)', cursor: 'pointer', flexShrink: 0 }}
