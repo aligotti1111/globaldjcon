@@ -59,6 +59,8 @@ export async function GET(req: Request) {
     const submitters = ((submission as { submitters?: Sub[] })?.submitters) || [];
     const client = submitters.find((s) => s.role === 'Client/Host' || s.role === 'Client');
     if (!client) return back(req, 'notready');
+    // Already signed → bounce back to Upcoming Events (the card shows the signed
+    // document + audit log there); only an unsigned contract goes to DocuSeal.
     if (client.completed_at) return back(req, 'signed');
     const url = client.embed_src || (client.slug ? `https://docuseal.com/s/${client.slug}` : null);
     if (!url) return back(req, 'notready');
