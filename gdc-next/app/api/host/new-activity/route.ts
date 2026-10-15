@@ -157,6 +157,8 @@ export async function GET() {
       const bid = it.bookingId;
       let href: string | null = null;
       switch (it.slot) {
+        // Awaiting signature → straight to DocuSeal. Already signed
+        // (contract_ready) → the event card (handled by the default: href null).
         case 'contract_sign': href = `/api/contracts/sign-redirect?bookingId=${bid}`; break;
         case 'deposit_request': href = depositPayId[bid] ? `/pay/${depositPayId[bid]}` : null; break;
         case 'balance_request': href = balancePayId[bid] ? `/pay/${balancePayId[bid]}` : null; break;
