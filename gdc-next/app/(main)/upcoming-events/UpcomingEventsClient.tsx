@@ -167,6 +167,7 @@ export default function UpcomingEventsClient({
                 type="button"
                 onClick={() => setSortMode(mode)}
                 style={{
+                  position: 'relative',
                   background: on ? 'var(--neon,#00e0a4)' : 'transparent',
                   color: on ? '#06231b' : 'var(--muted,#8a8aa0)',
                   border: `1px solid ${on ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)'}`,
@@ -175,6 +176,19 @@ export default function UpcomingEventsClient({
                 }}
               >
                 {text}
+                {/* NEW badge on the activity tab while it's not the active view
+                    and there IS fresh activity, so it draws the eye. */}
+                {mode === 'activity' && activityCount > 0 && !on && (
+                  <span
+                    style={{
+                      position: 'absolute', top: -7, right: -7, background: 'var(--neon,#00e0a4)', color: '#06231b',
+                      fontSize: '.52rem', fontWeight: 800, letterSpacing: '.06em', lineHeight: 1,
+                      padding: '2px 5px', borderRadius: 5, border: '1px solid #0d0d14',
+                    }}
+                  >
+                    NEW
+                  </span>
+                )}
               </button>
             );
           })}
