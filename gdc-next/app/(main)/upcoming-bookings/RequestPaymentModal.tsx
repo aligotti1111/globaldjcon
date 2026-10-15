@@ -15,12 +15,14 @@ const REQ_METHOD_ICON: Partial<Record<PaymentMethodType, (p: { size?: number }) 
   venmo: VenmoMark, cashapp: CashAppMark, paypal: PaypalMark, zelle: ZelleMark, cash: CashMark, check: CheckMark,
 };
 
-// One line of the "how the receipt reads" breakdown.
-function Row({ label, value, bold, currencyMuted }: { label: string; value: string; bold?: boolean; currencyMuted?: boolean }) {
+// One line of the price breakdown. No grey — every line reads clearly; the
+// bold row (the figure that matters) is pure white + heavier to stand out.
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean; currencyMuted?: boolean }) {
+  const color = bold ? 'var(--white,#fff)' : '#d6d6e2';
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.8rem', padding: '.12rem 0' }}>
-      <span style={{ fontSize: '.72rem', color: bold ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)', fontWeight: bold ? 700 : 400 }}>{label}</span>
-      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.78rem', color: bold ? 'var(--white,#fff)' : (currencyMuted ? 'var(--muted,#8a8aa0)' : 'var(--white,#fff)'), fontWeight: bold ? 700 : 400 }}>{value}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.8rem', padding: '.14rem 0' }}>
+      <span style={{ fontSize: '.74rem', color, fontWeight: bold ? 800 : 500 }}>{label}</span>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', color, fontWeight: bold ? 800 : 500 }}>{value}</span>
     </div>
   );
 }
@@ -44,6 +46,9 @@ interface Props {
   expectedAmount: number | null;
   expectedTotal: number;
   expectedCollected: number;
+  /** Tax on the booking, shown as its own line when it applies. */
+  taxPct?: number | null;
+  taxAmount?: number | null;
   onClose: () => void;
   // Owner-only. When absent, the "Edit" link to change saved payment options
   // is hidden — teammates may request money but not change where it lands.
@@ -54,8 +59,16 @@ interface Props {
 export default function RequestPaymentModal({
   reqKind, reqAmount, setReqAmount, reqErr, setReqErr, reqBusy, reqMethods, reqCardReady,
   suggestedDeposit, currency, depositPct, expectedAmount, expectedTotal, expectedCollected,
-  onClose, onEditMethods, onSubmit,
+  taxPct, taxAmount, onClose, onEditMethods, onSubmit,
 }: Props) {
+  // Tax portion of the agreed total, so we can show it as its own line. Prefer
+  // the stored amount; otherwise derive it from the % (total already includes it).
+  const taxVal = taxAmount != null && taxAmount > 0
+    ? taxAmount
+    : (taxPct != null && taxPct > 0 ? Math.round((expectedTotal - expectedTotal / (1 + taxPct / 100)) * 100) / 100 : 0);
+  const hasTax = taxVal > 0.005;
+  // "Price agreed" is the pre-tax base when tax applies, else the whole total.
+  const basePrice = hasTax ? Math.round((expectedTotal - taxVal) * 100) / 100 : expectedTotal;
   // Does the Amount the DJ typed match what the receipt will actually show?
   // The receipt is built from the booking's agreed figures (total, tax,
   // deposit) — not from whatever number is requested here — so any override
@@ -132,19 +145,21 @@ export default function RequestPaymentModal({
               {' '}({diff > 0 ? '+' : '−'}{fmtMoney(Math.abs(diff), currency)}).
             </p>
             <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: '.5rem' }}>
+              <Row label="Price agreed" value={fmtMoney(basePrice, currency)} />
+              {hasTax && (
+                <Row label={`Tax${taxPct != null && taxPct > 0 ? ` (${taxPct}%)` : ''}`} value={fmtMoney(taxVal, currency)} />
+              )}
               {reqKind === 'balance' ? (
                 <>
-                  <Row label="Price agreed" value={fmtMoney(expectedTotal, currency)} currencyMuted />
                   {expectedCollected > 0 && (
-                    <Row label="Deposit received" value={`− ${fmtMoney(expectedCollected, currency)}`} currencyMuted />
+                    <Row label="Deposit received" value={`− ${fmtMoney(expectedCollected, currency)}`} />
                   )}
                   <Row label="Balance due" value={fmtMoney(expectedAmount as number, currency)} bold />
                 </>
               ) : (
                 <>
-                  <Row label="Price agreed" value={fmtMoney(expectedTotal, currency)} currencyMuted />
                   <Row label={`Deposit${depositPct != null ? ` (${depositPct}%)` : ''}`} value={fmtMoney(expectedAmount as number, currency)} bold />
-                  <Row label="Balance to be requested" value={fmtMoney(Math.max(0, Math.round((expectedTotal - (expectedAmount as number)) * 100) / 100), currency)} currencyMuted />
+                  <Row label="Balance to be requested" value={fmtMoney(Math.max(0, Math.round((expectedTotal - (expectedAmount as number)) * 100) / 100), currency)} />
                 </>
               )}
             </div>
