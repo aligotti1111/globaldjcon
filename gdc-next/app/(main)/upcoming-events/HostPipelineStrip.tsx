@@ -138,9 +138,12 @@ export default function HostPipelineStrip({
         const top = (
           <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
             {iconRing}
-            {/* NEW tag on the exact stage the DJ just acted on. */}
+            {/* NEW tag on the exact stage the DJ just acted on. Sits to the LEFT
+                of the icon at its vertical center — the label is above, the
+                caption below and the chevron to the right, so the left gap is the
+                only spot that never overlaps text. */}
             {isNewStage && (
-              <span aria-hidden="true" style={{ position: 'absolute', top: -9, left: 15, transform: 'translateX(-50%)', zIndex: 3, background: NEON, color: '#06231b', fontSize: 7.5, fontWeight: 800, letterSpacing: '.04em', lineHeight: 1, padding: '2px 4px', borderRadius: 4, border: '1px solid #16161f', whiteSpace: 'nowrap' }}>NEW</span>
+              <span aria-hidden="true" style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: 3, zIndex: 3, background: NEON, color: '#06231b', fontSize: 7.5, fontWeight: 800, letterSpacing: '.04em', lineHeight: 1, padding: '2px 4px', borderRadius: 4, whiteSpace: 'nowrap' }}>NEW</span>
             )}
             {clickable && (
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6c6c86" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: 1 }}><polyline points="6 9 12 15 18 9" /></svg>
