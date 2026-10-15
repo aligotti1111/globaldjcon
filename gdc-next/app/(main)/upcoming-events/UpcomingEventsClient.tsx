@@ -81,6 +81,27 @@ export default function UpcomingEventsClient({
   // bookingId → the PIPELINE STAGE of that most recent activity, so the card
   // can show a NEW tag next to the exact icon that changed.
   const [activityStage, setActivityStage] = useState<Record<string, string>>({});
+  // "Seen" moment for the NEW tags — like the bell's badge, a stage is only
+  // tagged NEW while its activity is newer than the last time the host opened
+  // the activity view. Loaded once (the PRIOR view time); a fresh view stamps a
+  // new time for next visit without clearing this session's tags.
+  const SEEN_KEY = 'gdc_host_activity_seen';
+  const [seenAt, setSeenAt] = useState<string | null>(null);
+  const wroteSeen = useRef(false);
+  useEffect(() => {
+    try { setSeenAt(localStorage.getItem(SEEN_KEY)); } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    if (sortMode === 'activity' && !wroteSeen.current) {
+      wroteSeen.current = true;
+      try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch { /* ignore */ }
+    }
+  }, [sortMode]);
+  const seenT = seenAt ? Date.parse(seenAt) : Number.NEGATIVE_INFINITY;
+  // The stage to tag NEW for an event — only when its activity is newer than
+  // the host last viewed the activity list.
+  const newStageFor = (id: string): string | null =>
+    activityStage[id] && Date.parse(activityAt[id] || '') > seenT ? activityStage[id] : null;
 
   // Switch to the activity view whenever ?filter=activity appears (fires on
   // every URL change, so the bell's "View more" works even when already on the
@@ -149,7 +170,7 @@ export default function UpcomingEventsClient({
       userId={userId}
       readOnly={readOnly}
       autoOpen={!!openId && ev.id === openId}
-      newStage={activityStage[ev.id] || null}
+      newStage={newStageFor(ev.id)}
       onEdit={() => setEditing(ev)}
       onDeleted={() => handleDeleted(ev.id)}
       onLinkSaved={(url, label) => {
