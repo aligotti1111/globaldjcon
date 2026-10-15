@@ -32,13 +32,19 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return users;
+    // Phone: compare on digits only, so "9175551234", "(917) 555-1234" and
+    // "917-555-1234" all match regardless of how either side is formatted.
+    const qDigits = q.replace(/\D/g, '');
     return users.filter((u) => {
       const name = role === 'venue' ? (u.venue_name || u.name || '') : (u.name || '');
       const email = emailMap[u.id] || '';
       const slug = u.slug || '';
+      const phone = u.phone || '';
       return name.toLowerCase().includes(q)
         || email.toLowerCase().includes(q)
-        || slug.toLowerCase().includes(q);
+        || slug.toLowerCase().includes(q)
+        || phone.toLowerCase().includes(q)
+        || (qDigits.length >= 3 && phone.replace(/\D/g, '').includes(qDigits));
     });
   }, [users, search, emailMap, role]);
 
@@ -99,7 +105,7 @@ export default function UsersTab({ role, users, emailMap, lastLoginMap, disabled
       <input
         type="search"
         className={`${styles.formInput} ${styles.adminSearch}`}
-        placeholder="Search by email, name, or slug..."
+        placeholder="Search by email, name, phone, or slug..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
