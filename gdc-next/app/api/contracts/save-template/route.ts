@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
+import { uniqueContractName } from '@/lib/contractName';
 
 export const runtime = 'nodejs';
 
@@ -42,10 +43,11 @@ export async function POST(req: Request) {
       // Standard (or Standard Wedding) contract keeps its is_standard flag —
       // only the DocuSeal template behind it is being re-saved here. Flipping
       // is_standard to false was relabelling Standard contracts as "Written".
+      const finalName = await uniqueContractName(admin, acting.djId, name, contractId);
       const { error } = await admin
         .from('contracts')
         .update({
-          name,
+          name: finalName,
           docuseal_template_id: templateId,
           updated_at: new Date().toISOString(),
         } as unknown as never)
@@ -53,11 +55,12 @@ export async function POST(req: Request) {
         .eq('dj_id', acting.djId);
       if (error) throw error;
     } else {
+      const finalName = await uniqueContractName(admin, acting.djId, name);
       const { data, error } = await admin
         .from('contracts')
         .insert({
           dj_id: acting.djId,
-          name,
+          name: finalName,
           docuseal_template_id: templateId,
           is_standard: false,
         } as unknown as never)
