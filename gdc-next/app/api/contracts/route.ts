@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
+import { uniqueContractName } from '@/lib/contractName';
 
 export const runtime = 'nodejs';
 
@@ -83,13 +84,17 @@ export async function PATCH(req: Request) {
   if (!id || !name) return NextResponse.json({ error: 'Missing id or name' }, { status: 400 });
 
   const admin = createAdminClient();
+  // No two contracts can share a name — auto-number a rename that collides with
+  // another of the DJ's contracts (excluding this one, so keeping its own name
+  // is a no-op). The final name is returned so the UI can reflect any change.
+  const finalName = await uniqueContractName(admin, acting.djId, name, id);
   const { error } = await admin
     .from('contracts')
-    .update({ name, updated_at: new Date().toISOString() } as unknown as never)
+    .update({ name: finalName, updated_at: new Date().toISOString() } as unknown as never)
     .eq('id', id)
     .eq('dj_id', acting.djId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, name: finalName });
 }
 
 export async function DELETE(req: Request) {
