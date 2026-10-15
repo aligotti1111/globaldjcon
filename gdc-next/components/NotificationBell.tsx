@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Item = { bookingId: string; slot: string; at: string; eventDate: string | null; label: string; method?: string | null };
+type Item = { bookingId: string; slot: string; at: string; eventDate: string | null; label: string; method?: string | null; href?: string | null };
 
 // The stage icon that represents each kind of update — same vocabulary as the
 // booking pipeline (contract / deposit / balance / planner-or-rider / guests).
@@ -292,7 +292,17 @@ export default function NotificationBell({
               <button
                 key={`${it.bookingId}-${it.at}`}
                 type="button"
-                onClick={() => { setOpen(false); router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`); }}
+                onClick={() => {
+                  setOpen(false);
+                  // Where the row goes: the API-supplied href, or a client-side
+                  // fallback for an unsigned-contract row (straight to the DocuSeal
+                  // signing page) so it never dead-ends on the booking card.
+                  // Everything else opens the booking's card.
+                  const dest = it.href
+                    || (it.slot === 'contract_sign' ? `/api/contracts/sign-redirect?bookingId=${encodeURIComponent(it.bookingId)}` : null);
+                  if (dest) window.location.href = dest;
+                  else router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`);
+                }}
                 style={{
                   display: 'flex', gap: 11, alignItems: 'center', width: '100%', textAlign: 'left',
                   padding: '11px 15px', background: 'transparent', border: 'none',
