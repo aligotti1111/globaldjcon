@@ -301,12 +301,12 @@ export default function NotificationBell({
                   const dest = it.href
                     || (it.slot === 'contract_sign' ? `/api/contracts/sign-redirect?bookingId=${encodeURIComponent(it.bookingId)}` : null);
                   if (dest) {
-                    // The contract signing page opens in a NEW window/tab so the
-                    // host keeps the dashboard open behind it; other links
-                    // navigate in place.
-                    if (it.slot === 'contract_sign') window.open(dest, '_blank', 'noopener');
-                    else window.location.href = dest;
+                    // Page links (contract signing, pay deposit/balance, planner,
+                    // rider, guest list) open in a NEW window/tab so the host keeps
+                    // the dashboard open behind them.
+                    window.open(dest, '_blank', 'noopener');
                   } else {
+                    // No dedicated page → open the booking's card in place.
                     router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`);
                   }
                 }}
