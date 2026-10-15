@@ -169,6 +169,13 @@ export default function ContractPortal({
   // saving just persists the wording and closes back to the list — it does NOT
   // hand off to the anchor-tags/fields builder.
   const [stdWordingOnly, setStdWordingOnly] = useState(false);
+  // Signature check for WRITTEN / UPLOADED contracts on the anchor-tags page.
+  // null = not checked yet; otherwise whether the saved template has each
+  // party's signature field. A written/uploaded contract missing the client
+  // signature is blocked (red warning) until one is placed. undefined hasClient
+  // guards the proceed button. Standard/wedding always pass (guaranteed block).
+  const [sigCheck, setSigCheck] = useState<{ hasClient: boolean; hasDj: boolean } | null>(null);
+  const [sigChecking, setSigChecking] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [builderToken, setBuilderToken] = useState<string | null>(null);
@@ -355,6 +362,10 @@ export default function ContractPortal({
   async function openCard(c: Contract, isNew = false) {
     setBuilderNew(isNew);
     setEditingId(c.id); setName(c.name); setError(null);
+    // Reset the signature check for the new contract. Standard/wedding never
+    // need it; written/uploaded get checked on open and after each save.
+    setSigCheck(null);
+    if (!c.is_standard && !isNew) void checkSignatures(c.id);
     // Standard contracts open straight to the fields builder (which has the
     // "Edit text" button + disclaimer); preload wording so Edit text is ready.
     if (c.is_standard) { setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
@@ -377,7 +388,33 @@ export default function ContractPortal({
         body: JSON.stringify({ templateId: String(id), name, contractId: editingId }),
       });
       await load();
+      // After the DJ saves fields, re-check whether the client signature is
+      // present so the red warning + proceed gate update live.
+      if (editingId) void checkSignatures(editingId);
     } catch { /* template exists regardless */ }
+  }
+
+  // Ask the server whether this contract's template has each party's signature.
+  // Standard/wedding always pass. Returns the result and stores it for the UI.
+  async function checkSignatures(id: string): Promise<{ hasClient: boolean; hasDj: boolean }> {
+    setSigChecking(true);
+    try {
+      const res = await fetch('/api/contracts/check-signatures', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: id }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { hasClient?: boolean; hasDj?: boolean };
+      const result = { hasClient: j.hasClient !== false, hasDj: j.hasDj !== false };
+      setSigCheck(result);
+      return result;
+    } catch {
+      // Fail open — don't trap the DJ if the check itself errors.
+      const result = { hasClient: true, hasDj: true };
+      setSigCheck(result);
+      return result;
+    } finally {
+      setSigChecking(false);
+    }
   }
 
   async function saveStandard(overrideLogo?: string | null) {
@@ -431,7 +468,13 @@ export default function ContractPortal({
     if (!newName || newName === c.name) return;
     setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: newName } : x));
     try {
-      await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: newName }) });
+      const res = await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: newName }) });
+      // The server auto-numbers a name that collides with another contract, so
+      // reflect the final (possibly deduped) name it returns.
+      const j = (await res.json().catch(() => ({}))) as { name?: string };
+      if (j?.name && j.name !== newName) {
+        setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: j.name as string } : x));
+      }
     } catch { /* optimistic */ }
   }
 
@@ -554,9 +597,47 @@ export default function ContractPortal({
               <span>I understand Global DJ Connect provides this contract as a template only and takes no responsibility for its content, enforceability, or any dispute arising from its use. I&rsquo;ll have it reviewed by a lawyer before relying on it.</span>
             </label>
           )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" disabled={isStdBuilder && bookingMode && !stdDisclaimer} title={isStdBuilder && bookingMode && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && bookingMode && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && bookingMode && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : (builderNew ? 'Create Contract' : 'Save changes')}</button>
-          </div>
+          {/* Written / uploaded contracts: a client signature is required before
+              this can be saved or sent — otherwise the client has no way to sign.
+              (Standard/wedding get a guaranteed signature block, so no warning.) */}
+          {(() => {
+            const needsClientSig = !isStdBuilder && !!sigCheck && !sigCheck.hasClient;
+            if (!needsClientSig) return null;
+            return (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginBottom: '.55rem', border: '1px solid #f1b0b0', background: '#fde8e8', borderRadius: 7, padding: '.55rem .7rem' }}>
+                <span style={{ color: '#c0392b', fontWeight: 800, fontSize: '.9rem', lineHeight: 1.2 }}>!</span>
+                <span style={{ color: '#a5281b', fontSize: '.76rem', lineHeight: 1.45 }}>
+                  No <strong>Client signature</strong> is placed on this contract yet, so the client would have nothing to sign. Add a <strong>Client/Host</strong> signature field (from the role dropdown, top-right), save in the builder, then continue.
+                </span>
+              </div>
+            );
+          })()}
+          {(() => {
+            const needsClientSig = !isStdBuilder && !!sigCheck && !sigCheck.hasClient;
+            const blocked = (isStdBuilder && bookingMode && !stdDisclaimer) || needsClientSig || sigChecking;
+            const title = needsClientSig ? 'Add a Client signature first'
+              : (isStdBuilder && bookingMode && !stdDisclaimer) ? 'Accept the disclaimer to finish'
+              : undefined;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" disabled={blocked} title={title}
+                  onClick={async () => {
+                    // Gate written/uploaded contracts on a client signature.
+                    // Re-check at click time so a field just placed in the
+                    // builder counts, and block if it's still missing.
+                    if (!isStdBuilder && editingId) {
+                      const r = await checkSignatures(editingId);
+                      if (!r.hasClient) return;
+                    }
+                    try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {}
+                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); }
+                  }}
+                  style={{ background: blocked ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: blocked ? 'not-allowed' : 'pointer' }}>
+                  {sigChecking ? 'Checking…' : bookingMode ? 'Lock it in & send →' : (builderNew ? 'Create Contract' : 'Save changes')}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>, true, 'Add fields',
     );
