@@ -109,7 +109,7 @@ const WHAT: Record<string, string> = {
   contract_sign: 'Contract ready to sign',
   deposit_request: 'Deposit requested',
   balance_request: 'Balance requested',
-  planner_sent: 'Planner & Playlist sent',
+  planner_sent: 'Planner & Playlist Awaiting Your Details',
   planner_reminder: 'Planner reminder',
   guestlist_sent: 'Guest list sent',
   rider_sent: 'Rider sent',
