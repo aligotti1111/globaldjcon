@@ -583,11 +583,29 @@ export async function buildBookingDocAttachment(
       // (for a deposit) what will still be owed afterward. A deposit invoice
       // that shows "$2,000 total" but "$500 due" and says nothing about the
       // other $1,500 just breeds a confused reply-email.
-      const services2 = services > 0 ? services : total; // if no split, show total
       const dueNow = round2(Number(args.amountDue ?? Math.max(0, total - paidToDate)));
-      lines.push({ label: b.package_title || 'DJ Services', amount: services2 });
-      if (tax > 0) lines.push({ label: 'Sales Tax', amount: tax });
-      lines.push({ label: 'Event Total', amount: total, emphasis: 'bold' });
+      // Match the receipt's price layout exactly: Event Total (pre-tax) on the
+      // first line, Sales Tax second when it applies, then Total Cost in bold —
+      // never the raw package name on a price line. Split the grand total into
+      // base + tax the same way the receipt does, reconstructing from the rate
+      // when tax wasn't itemized so the breakdown still reconciles.
+      let baseShown = services > 0 ? round2(services) : 0;
+      let taxShown = tax > 0 ? round2(tax) : 0;
+      if (taxShown <= 0.005 && taxPct > 0.0001) {
+        baseShown = round2(total / (1 + taxPct / 100));
+        taxShown = round2(total - baseShown);
+      } else if (baseShown <= 0.005 && taxShown > 0.005) {
+        baseShown = round2(total - taxShown);
+      }
+      const showTax = taxShown > 0.005 && baseShown > 0.005
+        && Math.abs(round2(baseShown + taxShown) - total) < 0.02;
+      if (showTax) {
+        lines.push({ label: 'Event Total', amount: baseShown, emphasis: 'muted' });
+        lines.push({ label: 'Sales Tax', amount: taxShown, emphasis: 'muted' });
+        lines.push({ label: 'Total Cost', amount: total, emphasis: 'bold' });
+      } else {
+        lines.push({ label: 'Event Total', amount: total, emphasis: 'bold' });
+      }
       // No repeated "due now" row — the headline box below IS that number, so
       // printing it in the table too shows the same figure twice. The table
       // only carries how we get there: what's already paid, or what's still to
@@ -639,7 +657,7 @@ export async function buildBookingDocAttachment(
     const stage = isReceipt ? 'receipt' : (args.overtime ? 'overtime' : (isDeposit ? 'deposit' : 'balance'));
     const STAGE_META = {
       deposit: { title: 'DEPOSIT', prefix: 'DEP', file: 'Deposit' },
-      balance: { title: 'BALANCE', prefix: 'BAL', file: 'Balance' },
+      balance: { title: 'INVOICE', prefix: 'BAL', file: 'Invoice' },
       receipt: { title: 'RECEIPT', prefix: 'RCPT', file: 'Receipt' },
       overtime: { title: 'OVERTIME', prefix: 'OT', file: 'Overtime' },
     }[stage];
