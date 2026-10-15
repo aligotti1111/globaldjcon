@@ -38,12 +38,15 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     let savedId = contractId;
     if (contractId) {
+      // Editing anchor tags must NOT change what kind of contract this is. A
+      // Standard (or Standard Wedding) contract keeps its is_standard flag —
+      // only the DocuSeal template behind it is being re-saved here. Flipping
+      // is_standard to false was relabelling Standard contracts as "Written".
       const { error } = await admin
         .from('contracts')
         .update({
           name,
           docuseal_template_id: templateId,
-          is_standard: false,
           updated_at: new Date().toISOString(),
         } as unknown as never)
         .eq('id', contractId)
