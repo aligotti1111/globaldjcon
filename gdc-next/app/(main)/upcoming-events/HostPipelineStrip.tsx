@@ -37,12 +37,15 @@ export default function HostPipelineStrip({
   steps,
   djType,
   spread = false,
+  newSlot = null,
 }: {
   steps: HostStep[];
   djType: 'club' | 'mobile';
   /** Full-width, evenly-distributed icons (mobile band). Default is a
       centered cluster with fixed gaps (desktop header). */
   spread?: boolean;
+  /** Stage key with the newest DJ activity — gets a NEW tag on its icon. */
+  newSlot?: string | null;
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   // Which stage's receipt is downloading right now — drives a transient spinner
@@ -106,6 +109,7 @@ export default function HostPipelineStrip({
         const clickable = !!st.href;
         const open = openKey === st.key;
         const busy = busyKey === st.key;
+        const isNewStage = !!newSlot && newSlot === st.key;
         // Ring: neon + fill for done, calm grey otherwise (the DJ carries "your
         // move" in the caption colour, not by lighting the ring).
         const ring: CSSProperties = done
@@ -134,6 +138,10 @@ export default function HostPipelineStrip({
         const top = (
           <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
             {iconRing}
+            {/* NEW tag on the exact stage the DJ just acted on. */}
+            {isNewStage && (
+              <span aria-hidden="true" style={{ position: 'absolute', top: -9, left: 15, transform: 'translateX(-50%)', zIndex: 3, background: NEON, color: '#06231b', fontSize: 7.5, fontWeight: 800, letterSpacing: '.04em', lineHeight: 1, padding: '2px 4px', borderRadius: 4, border: '1px solid #16161f', whiteSpace: 'nowrap' }}>NEW</span>
+            )}
             {clickable && (
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6c6c86" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: 1 }}><polyline points="6 9 12 15 18 9" /></svg>
             )}
