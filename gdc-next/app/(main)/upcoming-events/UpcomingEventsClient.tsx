@@ -39,6 +39,18 @@ interface Props {
   readOnly?: boolean;
 }
 
+// Map a host-activity slot (from /api/host/new-activity) to the pipeline stage
+// key it belongs to, so the card can tag the right icon. Booking-level events
+// (accepted / countered / declined / cancelled) belong to no single stage.
+function slotToStage(slot: string): string | null {
+  if (slot.startsWith('contract')) return 'contract';
+  if (slot.startsWith('deposit')) return 'deposit';
+  if (slot.startsWith('balance')) return 'invoice';
+  if (slot === 'planner_sent' || slot === 'planner_reminder' || slot === 'rider_sent') return 'song_list';
+  if (slot === 'guestlist_sent') return 'guestlist';
+  return null;
+}
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -66,6 +78,9 @@ export default function UpcomingEventsClient({
   const [sortMode, setSortMode] = useState<'date' | 'activity'>('date');
   // bookingId → most recent activity timestamp (ISO), for sorting + filtering.
   const [activityAt, setActivityAt] = useState<Record<string, string>>({});
+  // bookingId → the PIPELINE STAGE of that most recent activity, so the card
+  // can show a NEW tag next to the exact icon that changed.
+  const [activityStage, setActivityStage] = useState<Record<string, string>>({});
 
   // Switch to the activity view whenever ?filter=activity appears (fires on
   // every URL change, so the bell's "View more" works even when already on the
@@ -91,10 +106,15 @@ export default function UpcomingEventsClient({
         if (!r.ok) return;
         const j = await r.json();
         const map: Record<string, string> = {};
-        for (const it of (Array.isArray(j.items) ? j.items : []) as { bookingId: string; at: string }[]) {
-          if (!map[it.bookingId] || Date.parse(it.at) > Date.parse(map[it.bookingId])) map[it.bookingId] = it.at;
+        const stage: Record<string, string> = {};
+        for (const it of (Array.isArray(j.items) ? j.items : []) as { bookingId: string; at: string; slot: string }[]) {
+          if (!map[it.bookingId] || Date.parse(it.at) > Date.parse(map[it.bookingId])) {
+            map[it.bookingId] = it.at;
+            const st = slotToStage(it.slot);
+            if (st) stage[it.bookingId] = st; else delete stage[it.bookingId];
+          }
         }
-        if (!cancelled) setActivityAt(map);
+        if (!cancelled) { setActivityAt(map); setActivityStage(stage); }
       } catch { /* non-fatal — activity view just falls back to date order */ }
     })();
     return () => { cancelled = true; };
@@ -129,6 +149,7 @@ export default function UpcomingEventsClient({
       userId={userId}
       readOnly={readOnly}
       autoOpen={!!openId && ev.id === openId}
+      newStage={activityStage[ev.id] || null}
       onEdit={() => setEditing(ev)}
       onDeleted={() => handleDeleted(ev.id)}
       onLinkSaved={(url, label) => {
@@ -176,19 +197,6 @@ export default function UpcomingEventsClient({
                 }}
               >
                 {text}
-                {/* NEW badge on the activity tab while it's not the active view
-                    and there IS fresh activity, so it draws the eye. */}
-                {mode === 'activity' && activityCount > 0 && !on && (
-                  <span
-                    style={{
-                      position: 'absolute', top: -7, right: -7, background: 'var(--neon,#00e0a4)', color: '#06231b',
-                      fontSize: '.52rem', fontWeight: 800, letterSpacing: '.06em', lineHeight: 1,
-                      padding: '2px 5px', borderRadius: 5, border: '1px solid #0d0d14',
-                    }}
-                  >
-                    NEW
-                  </span>
-                )}
               </button>
             );
           })}
@@ -244,13 +252,15 @@ export default function UpcomingEventsClient({
 // ── Row ───────────────────────────────────────────────────────────────
 
 function EventRow({
-  event, userId, readOnly = false, autoOpen = false, onEdit, onDeleted, onLinkSaved, onFlyerSaved,
+  event, userId, readOnly = false, autoOpen = false, newStage = null, onEdit, onDeleted, onLinkSaved, onFlyerSaved,
 }: {
   event: UpcomingEvent;
   userId: string;
   readOnly?: boolean;
   /** Expand + scroll to this row on mount (notification-bell deep link). */
   autoOpen?: boolean;
+  /** Pipeline stage key with the newest DJ activity — tagged NEW on its icon. */
+  newStage?: string | null;
   onEdit: () => void;
   onDeleted: () => void;
   onLinkSaved: (url: string | null, label: string | null) => void;
@@ -657,7 +667,7 @@ function EventRow({
             its dropdown buttons aren't nested inside the toggle button. */}
         {event.pipeline && event.pipeline.length > 0 && (
           <div className={styles.hdrPipeline}>
-            <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} />
+            <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} newSlot={newStage} />
           </div>
         )}
 
@@ -714,7 +724,7 @@ function EventRow({
           screens as a full-width, evenly-spaced icon row (like the DJ card). */}
       {showMobilePipeline && event.pipeline && (
         <div className={styles.pipelineMobile} style={isCancelled ? { background: 'rgba(192,57,43,.14)' } : undefined}>
-          <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} spread />
+          <HostPipelineStrip steps={event.pipeline} djType={event.pipelineDjType || 'mobile'} newSlot={newStage} spread />
         </div>
       )}
 
