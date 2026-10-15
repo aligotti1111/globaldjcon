@@ -152,10 +152,11 @@ export async function POST(req: Request) {
   let savedId: string | null = contractId;
   try {
     if (contractId) {
+      const finalName = await uniqueContractName(admin, acting.djId, name, contractId);
       const { error } = await admin
         .from('contracts')
         .update({
-          name,
+          name: finalName,
           docuseal_template_id: String(templateId),
           body_text: text,
           logo_url: logoUrl,
