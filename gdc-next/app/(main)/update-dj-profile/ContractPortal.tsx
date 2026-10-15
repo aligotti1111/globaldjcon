@@ -320,7 +320,9 @@ export default function ContractPortal({
   // (the fields builder is a separate "Edit data fields" action).
   function openStandardText(c: Contract) {
     setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name);
-    setText(defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null);
+    // Load the contract's SAVED wording (body_text), not the blank default —
+    // otherwise edits look lost: reopening would always show the template again.
+    setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null);
     setStdWordingOnly(true);
     setView('standard');
   }
@@ -355,7 +357,7 @@ export default function ContractPortal({
     setEditingId(c.id); setName(c.name); setError(null);
     // Standard contracts open straight to the fields builder (which has the
     // "Edit text" button + disclaimer); preload wording so Edit text is ready.
-    if (c.is_standard) { setText(defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
+    if (c.is_standard) { setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
