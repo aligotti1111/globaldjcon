@@ -530,14 +530,17 @@ export default function ContractPortal({
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ borderTop: '1px solid #eee', padding: '.6rem 1rem', background: '#fff' }}>
-          {isStdBuilder && (
+          {/* The template disclaimer is only for the moment a contract is being
+              selected and sent on a booking. Creating or editing a contract in
+              Booking Settings (anchor tags / wording) should not surface it. */}
+          {isStdBuilder && bookingMode && (
             <label style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', color: '#6b7280', fontSize: '.74rem', lineHeight: 1.4, cursor: 'pointer', marginBottom: '.55rem' }}>
               <input type="checkbox" checked={stdDisclaimer} onChange={(e) => setStdDisclaimer(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
               <span>I understand Global DJ Connect provides this contract as a template only and takes no responsibility for its content, enforceability, or any dispute arising from its use. I&rsquo;ll have it reviewed by a lawyer before relying on it.</span>
             </label>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" disabled={isStdBuilder && !stdDisclaimer} title={isStdBuilder && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : (builderNew ? 'Create Contract' : 'Save changes')}</button>
+            <button type="button" disabled={isStdBuilder && bookingMode && !stdDisclaimer} title={isStdBuilder && bookingMode && !stdDisclaimer ? 'Accept the disclaimer to finish' : undefined} onClick={async () => { try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {} if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); } }} style={{ background: (isStdBuilder && bookingMode && !stdDisclaimer) ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: (isStdBuilder && bookingMode && !stdDisclaimer) ? 'not-allowed' : 'pointer' }}>{bookingMode ? 'Lock it in & send →' : (builderNew ? 'Create Contract' : 'Save changes')}</button>
           </div>
         </div>
       </div>, true, 'Add fields',
