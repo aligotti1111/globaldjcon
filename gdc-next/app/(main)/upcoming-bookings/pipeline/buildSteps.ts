@@ -124,13 +124,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
     // put "Contract pending" on bookings where nothing had been sent and the
     // DJ was the one holding it up — telling them to wait for someone else.
     const awaiting = cstatus === 'awaiting_client';
-    // awaiting_dj: the contract exists but the DJ hasn't signed it yet, so it
-    // has NOT gone to the client — the hold-up is the DJ, not the host. This used
-    // to read "Not Sent", which made a DJ who'd just sent a contract think
-    // nothing happened. It now reads "Sign to send" so they know it worked and
-    // the next move is theirs.
-    const awaitingDj = cstatus === 'awaiting_dj';
-    const cLabel = isDone ? 'Contract' : awaiting ? 'Contract pending' : awaitingDj ? 'Sign & send contract' : 'Send contract';
+    const cLabel = isDone ? 'Contract' : awaiting ? 'Contract pending' : 'Send contract';
     steps.push({
       key: 'contract',
       label: cLabel,
@@ -160,7 +154,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // A declined contract reads "Declined" under the icon (not "Not Sent"),
       // until the DJ sends a new one — at which point contract_status moves to
       // awaiting_* and the caption follows.
-      caption: isDone ? 'Complete' : cstatus === 'declined' ? 'Declined' : awaiting ? 'Pending' : awaitingDj ? 'Sign to send' : 'Not Sent',
+      caption: isDone ? 'Complete' : cstatus === 'declined' ? 'Declined' : awaiting ? 'Pending' : 'Not Sent',
       // The dropdown offers what's actually possible RIGHT NOW:
       //
       //   signed        -> Download contract. Not "Review & send" — that
