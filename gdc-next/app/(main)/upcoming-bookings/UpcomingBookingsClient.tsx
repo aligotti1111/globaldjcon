@@ -473,6 +473,42 @@ export default function UpcomingBookingsClient({
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // One booking row, with its full prop set — shared by the list views and the
+  // focused single-card view so they never drift apart.
+  const renderRow = (b: UpcomingBooking, showNewActivity: boolean, forceOpen = false) => (
+    <BookingRow
+      key={b.id}
+      booking={b}
+      showNewActivity={showNewActivity}
+      defaultOpen={forceOpen || (!!openId && b.id === openId)}
+      djType={djType}
+      userId={userId}
+      actingRole={actingRole}
+      clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
+      taxPct={taxPct}
+      djZip={djZip} djCity={djCity} djState={djState}
+      requireContract={requireContract}
+      archive={archive}
+      payments={paymentsMap[b.id] || []}
+      onPaymentsChange={handlePaymentsChange}
+      onMutated={refresh}
+      canPro={canPro}
+      autoDepositReceipt={autoDepositReceipt}
+      autoBalanceReceipt={autoBalanceReceipt}
+      planner={plannerMap[b.id]}
+      onPlannerChange={handlePlannerChange}
+      overlaps={overlapIds.has(b.id)}
+      onDelete={canBookings && b.is_manual ? () => handleDelete(b.id) : undefined}
+      onEdit={canBookings && !archive && b.is_manual ? () => setEditing(b) : undefined}
+      onAddHost={canBookings && !archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
+    />
+  );
+
+  // Focused single-card view — the bell links here (?card=<id>) so a tap opens
+  // that one booking, interactive, instead of the whole list.
+  const focusId = searchParams?.get('card') || null;
+  const focusedBooking = focusId ? bookings.find((b) => b.id === focusId) || null : null;
+
   // Dashboard summary stats (desktop only). Cancelled bookings are excluded.
   const dashStats = useMemo(() => {
     const d30 = new Date(); d30.setDate(d30.getDate() - 30);
@@ -625,6 +661,21 @@ export default function UpcomingBookingsClient({
     <div className={styles.page}>
       {confirmDialog}
       {roleToast}
+      {focusedBooking ? (
+        /* Focused single-card view (from a notification). The whole list, stats
+           and pager are hidden; just this one card, open, with a way back. */
+        <>
+          <div style={{ padding: '1rem 0 .5rem' }}>
+            <Link href={archive ? '/past-bookings' : '/upcoming-bookings'} className={styles.backLink} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>← All bookings</Link>
+          </div>
+          <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
+            <div className={styles.monthItems}>
+              {renderRow(focusedBooking, false, true)}
+            </div>
+          </div>
+        </>
+      ) : (
+      <>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>{archive ? 'Past Bookings' : 'Upcoming Bookings'}</h1>
@@ -758,34 +809,7 @@ export default function UpcomingBookingsClient({
             <CalendarSyncButton />
           </div>
           <div className={styles.monthItems}>
-            {pagedList.map((b) => (
-              <BookingRow
-                key={b.id}
-                booking={b}
-                showNewActivity={sortMode === 'activity'}
-                defaultOpen={!!openId && b.id === openId}
-                djType={djType}
-                userId={userId}
-                actingRole={actingRole}
-                clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
-                taxPct={taxPct}
-                djZip={djZip} djCity={djCity} djState={djState}
-                requireContract={requireContract}
-                archive={archive}
-                payments={paymentsMap[b.id] || []}
-                onPaymentsChange={handlePaymentsChange}
-                onMutated={refresh}
-                canPro={canPro}
-                autoDepositReceipt={autoDepositReceipt}
-                autoBalanceReceipt={autoBalanceReceipt}
-                planner={plannerMap[b.id]}
-                onPlannerChange={handlePlannerChange}
-                overlaps={overlapIds.has(b.id)}
-                onDelete={canBookings && b.is_manual ? () => handleDelete(b.id) : undefined}
-                onEdit={canBookings && !archive && b.is_manual ? () => setEditing(b) : undefined}
-                onAddHost={canBookings && !archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
-              />
-            ))}
+            {pagedList.map((b) => renderRow(b, sortMode === 'activity'))}
           </div>
         </div>
       ) : (
@@ -797,34 +821,7 @@ export default function UpcomingBookingsClient({
                 {mi === 0 && <CalendarSyncButton />}
               </div>
               <div className={styles.monthItems}>
-                {items.map((b) => (
-                  <BookingRow
-                    key={b.id}
-                    booking={b}
-                    showNewActivity={false}
-                    defaultOpen={!!openId && b.id === openId}
-                    djType={djType}
-                    userId={userId}
-                actingRole={actingRole}
-                    clubDepositPct={clubDepositPct} riderEnabled={riderEnabled} guestlistEnabled={guestlistEnabled}
-                    taxPct={taxPct}
-                    djZip={djZip} djCity={djCity} djState={djState}
-                    requireContract={requireContract}
-                    archive={archive}
-                    payments={paymentsMap[b.id] || []}
-                    onPaymentsChange={handlePaymentsChange}
-                    onMutated={refresh}
-                    canPro={canPro}
-                    autoDepositReceipt={autoDepositReceipt}
-                    autoBalanceReceipt={autoBalanceReceipt}
-                    planner={plannerMap[b.id]}
-                    onPlannerChange={handlePlannerChange}
-                    overlaps={overlapIds.has(b.id)}
-                    onDelete={canBookings && b.is_manual ? () => handleDelete(b.id) : undefined}
-                    onEdit={canBookings && !archive && b.is_manual ? () => setEditing(b) : undefined}
-                onAddHost={canBookings && !archive && b.is_manual ? () => { setEditing(b); setFocusHost(true); } : undefined}
-                  />
-                ))}
+                {items.map((b) => renderRow(b, false))}
               </div>
             </section>
           ))}
@@ -858,6 +855,8 @@ export default function UpcomingBookingsClient({
           </div>
         )
       ) : null}
+      </>
+      )}
 
       {showStory && isPaid && (
         <MonthlyStory
