@@ -109,6 +109,11 @@ export default function PipelineStrip({
         const open = menuOpenKey === st.key;
         const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
         const waiting = !st.done && (!!st.caption || st.state === 'pending');
+        // "Pending" specifically = sent and waiting on the host (not "Not Sent",
+        // not "Declined"). These get an AMBER ring with an amber arc that
+        // animates around the circle — the same arc keeps spinning while the
+        // action is actually sending (busy).
+        const isPending = !st.done && (st.state === 'pending' || /^pending/i.test(st.caption || ''));
         // Transient in-flight cue only — a spinner ring over this icon while its
         // request/receipt action is sending or downloading. Adds nothing to the
         // stage's real state; clears the instant the call settles.
@@ -152,6 +157,8 @@ export default function PipelineStrip({
           ? { borderColor: '#2f2f3d' }
           : positiveDone
           ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
+          : isPending
+            ? { borderColor: 'rgba(234,169,74,.4)' }
           : (!st.done && waiting)
             ? { borderColor: 'rgba(255,255,255,.16)' }
             : skipped
@@ -161,6 +168,8 @@ export default function PipelineStrip({
           ? '#5a5a72'
           : positiveDone
           ? 'var(--neon,#00e0a4)'
+          : isPending
+            ? '#eaa94a'
           : (!st.done && waiting)
             ? '#b9b9c6'
             : skipped ? '#b9b9c6' : '#c2c2ce';
@@ -171,7 +180,12 @@ export default function PipelineStrip({
                 the actual circle spinning, not a second ring around it. */}
             <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle, ...(busy ? { borderColor: 'transparent' } : null) }}>
               {stageIcon(st.icon)}
-              {busy && <span className={styles.stSpin} aria-hidden="true" />}
+              {/* The spinning arc. Amber for a pending stage (and while its action
+                  is sending); neon only for a non-pending busy action. A pending
+                  stage shows the arc continuously over its dim amber ring. */}
+              {(busy || isPending) && (
+                <span className={(busy && !isPending) ? styles.stSpin : styles.stSpinPending} aria-hidden="true" />
+              )}
               {positiveDone && (
                 <span className={styles.stBadge}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
