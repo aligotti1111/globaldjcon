@@ -244,9 +244,6 @@ export default function ShareBookingButton({
                 />
                 <span>
                   Also include a link to the <strong>event planner</strong>
-                  <span style={{ display: 'block', color: '#8a8aa0', fontSize: '.72rem', marginTop: 2 }}>
-                    Read-only — the client can view it but can&apos;t edit it.
-                  </span>
                 </span>
               </label>
             )}
