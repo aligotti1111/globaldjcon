@@ -77,6 +77,14 @@ interface Props {
   djZip?: string | null;
   djCity?: string | null;
   djState?: string | null;
+  // SERVER-SIDE pagination (used by the Past page, whose archive grows without
+  // bound). When set, the page has already sliced to this page's rows and the
+  // pager navigates ?page= instead of slicing in the browser. serverPage is
+  // 0-based; serverTotal is the full count across all pages.
+  serverPaged?: boolean;
+  serverPage?: number;
+  serverTotal?: number;
+  serverPageSize?: number;
 }
 
 
@@ -88,6 +96,7 @@ export default function UpcomingBookingsClient({
   guestlistEnabled: guestlistEnabledProp, clubDepositPct: clubDepositPctProp,
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
   djZip = null, djCity = null, djState = null,
+  serverPaged = false, serverPage = 0, serverTotal = 0, serverPageSize = 50,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Payment ledger rows per booking (booking_payments). Owned at the top so a
@@ -405,6 +414,65 @@ export default function UpcomingBookingsClient({
   }, [bookings]);
   const activityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
 
+  // ── Pagination ──────────────────────────────────────────────────────────
+  // Each booking row is a heavy component (pipeline, payments, effects), so
+  // rendering the whole list (up to the server's 200-row cap) at once bogs the
+  // page down. We render a safe number per page and page through the rest.
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(0);
+  // The full ordered list for the current view, BEFORE paging. The date view
+  // flattens the month groups in display order so paging is consistent.
+  const orderedList = useMemo(() => {
+    if (sortMode === 'activity') return activityList;
+    if (sortMode === 'recent') return recentList;
+    return grouped.flatMap(([, items]) => items);
+  }, [sortMode, activityList, recentList, grouped]);
+  const loadedCount = orderedList.length;
+  // When the SERVER paginates (Past archive), the loaded rows are exactly one
+  // page and the pager navigates ?page=; otherwise we slice in the browser.
+  const totalCount = serverPaged ? serverTotal : loadedCount;
+  const pageCount = serverPaged
+    ? Math.max(1, Math.ceil(serverTotal / (serverPageSize || PAGE_SIZE)))
+    : Math.max(1, Math.ceil(loadedCount / PAGE_SIZE));
+  const safePage = serverPaged ? serverPage : Math.min(page, pageCount - 1);
+  // Switching view (or the Past/Upcoming tab) resets client paging.
+  useEffect(() => { setPage(0); }, [sortMode, archive]);
+  // Deep link (?open=) may point at a booking on a later page — jump to it.
+  // (Client paging only; server-paged archive isn't deep-linked this way.)
+  useEffect(() => {
+    if (serverPaged || !openId) return;
+    const i = orderedList.findIndex((b) => b.id === openId);
+    if (i >= 0) setPage(Math.floor(i / PAGE_SIZE));
+  }, [serverPaged, openId, orderedList]);
+  const pagedList = useMemo(
+    () => (serverPaged ? orderedList : orderedList.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)),
+    [serverPaged, orderedList, safePage],
+  );
+  // Re-group the current page's rows by month (date view), preserving order.
+  const pagedGrouped = useMemo(() => {
+    const out: [string, UpcomingBooking[]][] = [];
+    const idx = new Map<string, number>();
+    for (const b of pagedList) {
+      const key = (b.event_date || '').slice(0, 7);
+      if (!idx.has(key)) { idx.set(key, out.length); out.push([key, []]); }
+      out[idx.get(key)!][1].push(b);
+    }
+    return out;
+  }, [pagedList]);
+  // Go to a 0-based page. Server-paged mode navigates the URL (?page=, 1-based);
+  // client mode updates local state. Both scroll back to the top.
+  const goToPage = (p: number) => {
+    const target = Math.max(0, Math.min(pageCount - 1, p));
+    if (serverPaged) {
+      const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
+      params.set('page', String(target + 1));
+      router.push(`?${params.toString()}`);
+    } else {
+      setPage(target);
+    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Dashboard summary stats (desktop only). Cancelled bookings are excluded.
   const dashStats = useMemo(() => {
     const d30 = new Date(); d30.setDate(d30.getDate() - 30);
@@ -690,7 +758,7 @@ export default function UpcomingBookingsClient({
             <CalendarSyncButton />
           </div>
           <div className={styles.monthItems}>
-            {(sortMode === 'activity' ? activityList : recentList).map((b) => (
+            {pagedList.map((b) => (
               <BookingRow
                 key={b.id}
                 booking={b}
@@ -722,7 +790,7 @@ export default function UpcomingBookingsClient({
         </div>
       ) : (
         <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
-          {grouped.map(([monthKey, items], mi) => (
+          {pagedGrouped.map(([monthKey, items], mi) => (
             <section key={monthKey} className={styles.month}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', flexWrap: 'wrap' }}>
                 <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
@@ -762,6 +830,34 @@ export default function UpcomingBookingsClient({
           ))}
         </div>
       )}
+
+      {/* Pagination — only when there's more than one page. Keeps the number of
+          heavy booking rows on screen bounded so the page stays responsive. */}
+      {sortMode !== 'activity' || activityList.length > 0 ? (
+        pageCount > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.6rem', margin: '1.4rem 0 .6rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => goToPage(safePage - 1)}
+              disabled={safePage === 0}
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: safePage === 0 ? 'var(--muted,#8a8aa0)' : 'var(--white,#fff)', borderRadius: 7, padding: '.45rem .9rem', fontSize: '.78rem', fontWeight: 700, cursor: safePage === 0 ? 'default' : 'pointer', opacity: safePage === 0 ? .5 : 1 }}
+            >
+              ← Prev
+            </button>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', letterSpacing: '.03em' }}>
+              Page {safePage + 1} of {pageCount} · {totalCount} booking{totalCount === 1 ? '' : 's'}
+            </span>
+            <button
+              type="button"
+              onClick={() => goToPage(safePage + 1)}
+              disabled={safePage >= pageCount - 1}
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: safePage >= pageCount - 1 ? 'var(--muted,#8a8aa0)' : 'var(--white,#fff)', borderRadius: 7, padding: '.45rem .9rem', fontSize: '.78rem', fontWeight: 700, cursor: safePage >= pageCount - 1 ? 'default' : 'pointer', opacity: safePage >= pageCount - 1 ? .5 : 1 }}
+            >
+              Next →
+            </button>
+          </div>
+        )
+      ) : null}
 
       {showStory && isPaid && (
         <MonthlyStory
