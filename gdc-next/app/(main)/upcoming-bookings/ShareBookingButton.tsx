@@ -97,6 +97,12 @@ export default function ShareBookingButton({
     openHandler(`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`);
   }
 
+  function downloadCard() {
+    // The public card page runs the html2canvas capture; ?download=1 makes it
+    // fire on open. Opening it in a new tab keeps the share sheet in place.
+    openHandler(`${cardUrl}?download=1`);
+  }
+
   function shareByText() {
     const num = phone ? String(phone).replace(/[^\d+]/g, '') : '';
     // The text leads with WHICH event — type + date — before the link(s), so
@@ -110,11 +116,11 @@ export default function ShareBookingButton({
     openHandler(`sms:${num}?&body=${encodeURIComponent(head + buildBody())}`);
   }
 
+  // Bare icon — no box, no border.
   const iconBtn = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: 26, height: 26, borderRadius: 7,
-    border: '1px solid rgba(255,255,255,.18)',
-    background: 'transparent',
+    width: 20, height: 20,
+    border: 'none', background: 'transparent',
     color: 'var(--muted,#8a8aa0)',
     cursor: 'pointer', flexShrink: 0,
   } as const;
@@ -209,7 +215,7 @@ export default function ShareBookingButton({
               </label>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
               <MethodButton
                 onClick={copyLink}
                 active={copied}
@@ -227,6 +233,11 @@ export default function ShareBookingButton({
                 onClick={shareByText}
                 label="Text"
                 icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
+              />
+              <MethodButton
+                onClick={downloadCard}
+                label="Download"
+                icon={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>}
               />
             </div>
           </div>
