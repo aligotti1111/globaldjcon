@@ -51,7 +51,6 @@ export default function PipelineHero({
     <div className={styles.heroWrap}>
       <div className={styles.heroHead}>
         <span className={styles.heroTitle}><span className={styles.heroBar} />Booking progress</span>
-        <span className={styles.heroStep}>Step {stepNum} of {total}</span>
       </div>
       <div className={styles.heroPipe}>
         {present.map((st, i) => {
