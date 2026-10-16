@@ -85,6 +85,11 @@ interface Props {
   serverPage?: number;
   serverTotal?: number;
   serverPageSize?: number;
+  // Upcoming is server-paged too: the sort is URL-driven (?sort=), so the page
+  // tells us which sort it fetched, and the New-activity badge count across ALL
+  // upcoming bookings (not just this page's rows).
+  initialSort?: 'date' | 'recent' | 'activity';
+  activityTotal?: number;
 }
 
 
@@ -97,6 +102,7 @@ export default function UpcomingBookingsClient({
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
   djZip = null, djCity = null, djState = null,
   serverPaged = false, serverPage = 0, serverTotal = 0, serverPageSize = 50,
+  initialSort = 'date', activityTotal,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Payment ledger rows per booking (booking_payments). Owned at the top so a
@@ -242,7 +248,23 @@ export default function UpcomingBookingsClient({
   // Sort mode for the list: 'date' (default — soonest event first, grouped by
   // month), 'recent' (most recently booked first, flat list), or 'activity'
   // (most recent HOST action first — see last_activity_at from the server).
-  const [sortMode, setSortMode] = useState<'date' | 'recent' | 'activity'>('date');
+  // Upcoming is server-paged with a URL-driven sort, so the initial value comes
+  // from the page (which read ?sort). The Past archive has no sort bar and stays
+  // on 'date'. changeSort() below navigates ?sort= in server-paged mode so the
+  // server returns the correctly-ordered page.
+  const [sortMode, setSortMode] = useState<'date' | 'recent' | 'activity'>(initialSort);
+  // Keep sortMode in step with the URL after a server-paged navigation.
+  useEffect(() => { if (serverPaged) setSortMode(initialSort); }, [serverPaged, initialSort]);
+  const changeSort = (mode: 'date' | 'recent' | 'activity') => {
+    if (serverPaged) {
+      const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
+      params.set('sort', mode);
+      params.delete('page'); // a new sort starts at page 1
+      router.push(`?${params.toString()}`);
+    } else {
+      setSortMode(mode);
+    }
+  };
   // Deep link: /upcoming-bookings?filter=activity opens straight into the New
   // activity view — handled by a searchParams-watching effect below so it fires
   // on every URL change (including re-taps while already on this page).
@@ -355,7 +377,17 @@ export default function UpcomingBookingsClient({
   // when the DJ is already on /upcoming-bookings (no remount). The param is then
   // stripped so re-sorting by date later isn't overridden on the next render.
   useEffect(() => {
-    if (searchParams?.get('filter') === 'activity') {
+    if (searchParams?.get('filter') !== 'activity') return;
+    if (serverPaged) {
+      // Server-paged: the activity view is a different server query, so navigate
+      // ?sort=activity (dropping ?filter and ?page) rather than just flipping
+      // local state.
+      const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
+      params.delete('filter');
+      params.delete('page');
+      params.set('sort', 'activity');
+      router.replace(`?${params.toString()}`);
+    } else {
       setSortMode('activity');
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
@@ -363,7 +395,7 @@ export default function UpcomingBookingsClient({
         window.history.replaceState(null, '', url.toString());
       }
     }
-  }, [searchParams]);
+  }, [searchParams, serverPaged, router]);
 
   // Open the add modal once we KNOW the DJ is a subscriber. Kept subscriber-only
   // on purpose — a lapsed DJ can't create new bookings, so the request simply
@@ -412,7 +444,11 @@ export default function UpcomingBookingsClient({
       .filter((b) => b.event_date && b.last_activity_at)
       .sort((a, b) => Date.parse(b.last_activity_at || '') - Date.parse(a.last_activity_at || ''));
   }, [bookings]);
-  const activityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
+  // The badge count. Server-paged (upcoming) sends the true total across ALL
+  // bookings via activityTotal, since this page's rows are only one slice;
+  // client-paged (none now, but kept safe) counts the loaded rows.
+  const loadedActivityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
+  const activityCount = serverPaged && typeof activityTotal === 'number' ? activityTotal : loadedActivityCount;
 
   // ── Pagination ──────────────────────────────────────────────────────────
   // Each booking row is a heavy component (pipeline, payments, effects), so
@@ -731,21 +767,21 @@ export default function UpcomingBookingsClient({
             <button
               type="button"
               className={`${styles.sortBtn} ${sortMode === 'date' ? styles.sortBtnActive : ''}`}
-              onClick={() => setSortMode('date')}
+              onClick={() => changeSort('date')}
             >
               By date
             </button>
             <button
               type="button"
               className={`${styles.sortBtn} ${sortMode === 'recent' ? styles.sortBtnActive : ''}`}
-              onClick={() => setSortMode('recent')}
+              onClick={() => changeSort('recent')}
             >
               Recently booked
             </button>
             <button
               type="button"
               className={`${styles.sortBtn} ${sortMode === 'activity' ? styles.sortBtnActive : ''}`}
-              onClick={() => setSortMode('activity')}
+              onClick={() => changeSort('activity')}
               title="Bookings where the host recently did something — signed, paid, submitted or confirmed"
             >
               New activity
@@ -757,7 +793,7 @@ export default function UpcomingBookingsClient({
           <select
             className={styles.sortSelect}
             value={sortMode}
-            onChange={(e) => setSortMode(e.target.value as 'date' | 'recent' | 'activity')}
+            onChange={(e) => changeSort(e.target.value as 'date' | 'recent' | 'activity')}
             aria-label="Sort bookings"
           >
             <option value="date">By date</option>
