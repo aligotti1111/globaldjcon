@@ -33,7 +33,14 @@ interface ProfileRow {
   timezone: string | null;
 }
 
-export default async function PastBookingsPage() {
+// Past bookings grow forever, so this page is SERVER-paginated: each page pulls
+// only its own 50 rows from the DB (no cap on the total archive). ?page= is
+// 1-based in the URL.
+const PAST_PAGE_SIZE = 50;
+
+export default async function PastBookingsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const sp = await searchParams;
+  const pageParam = Math.max(1, parseInt(sp?.page || '1', 10) || 1);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -75,14 +82,18 @@ export default async function PastBookingsPage() {
   // Cancelled dates are included on purpose. They're part of the record —
   // what was booked, and what came of it. Dropping them makes a night the DJ
   // definitely remembers vanish from the only place they'd look it up.
-  const { data: rows } = await admin
+  // One page's worth, via .range() + an exact count — so the whole archive is
+  // reachable page by page, however large it grows. `count` drives the pager.
+  const fromIdx = (pageParam - 1) * PAST_PAGE_SIZE;
+  const toIdx = fromIdx + PAST_PAGE_SIZE - 1;
+  const { data: rows, count: pastTotal } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at', { count: 'exact' })
     .eq('dj_id', djId)
     .lt('event_date', today)
     .or('status.eq.approved,status.eq.cancelled,is_manual.eq.true')
     .order('event_date', { ascending: false })
-    .limit(500);
+    .range(fromIdx, toIdx);
 
   let bookingRows = (rows || []) as UpcomingBooking[];
   const missingRequesterIds = [
@@ -176,6 +187,10 @@ export default async function PastBookingsPage() {
       mobPackages={mobPackages ?? null}
       initialPayments={paymentsByBooking}
       archive
+      serverPaged
+      serverPage={pageParam - 1}
+      serverTotal={pastTotal ?? bookingRows.length}
+      serverPageSize={PAST_PAGE_SIZE}
     />
   );
 }
