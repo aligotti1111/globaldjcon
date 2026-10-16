@@ -1089,6 +1089,8 @@ export default function BookingRow({
               hostEmail={booking.host_email}
               phone={booking.phone}
               eventLabel={booking.requester_name || booking.venue_name || null}
+              eventType={context || booking.event_type || null}
+              eventDate={booking.event_date}
             />
           </span>
           {/* A cancelled date stays on the list — it's still a fact about this

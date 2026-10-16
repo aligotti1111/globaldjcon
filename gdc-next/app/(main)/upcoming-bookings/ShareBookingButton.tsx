@@ -29,10 +29,14 @@ interface Props {
   phone?: string | null;
   /** A short name for the event, used in the email subject line. */
   eventLabel?: string | null;
+  /** Event type + date — led with in the text message so the recipient knows
+      which event the link is for. */
+  eventType?: string | null;
+  eventDate?: string | null;
 }
 
 export default function ShareBookingButton({
-  shareToken, djType = 'mobile', plannerId, hostEmail, phone, eventLabel,
+  shareToken, djType = 'mobile', plannerId, hostEmail, phone, eventLabel, eventType, eventDate,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -72,18 +76,38 @@ export default function ShareBookingButton({
     setTimeout(() => setCopied(false), 1800);
   }
 
+  // Open an app-handler URL (mailto:/sms:) by clicking a real anchor rather than
+  // assigning window.location.href. Setting location.href navigates the SPA,
+  // and webmail handlers (Gmail especially) frequently drop the subject/body
+  // when the request arrives that way — the compose window opens empty. A
+  // genuine anchor click hands the full URL to the registered handler intact.
+  function openHandler(url: string) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   function shareByEmail() {
     const subject = `Your event details${eventLabel ? ` — ${eventLabel}` : ''}`;
     const to = hostEmail ? encodeURIComponent(hostEmail) : '';
-    const url = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`;
-    window.location.href = url;
+    openHandler(`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`);
   }
 
   function shareByText() {
     const num = phone ? String(phone).replace(/[^\d+]/g, '') : '';
+    // The text leads with WHICH event — type + date — before the link(s), so
+    // the recipient has context the moment it arrives.
+    const niceDate = eventDate
+      ? new Date(`${eventDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+    const headParts = [eventType || '', niceDate].filter(Boolean);
+    const head = headParts.length ? `${headParts.join(' — ')}\n\n` : '';
     // iOS wants ?&body=, Android wants ?body= — the ?&body form works on both.
-    const url = `sms:${num}${num ? '' : ''}?&body=${encodeURIComponent(buildBody())}`;
-    window.location.href = url;
+    openHandler(`sms:${num}?&body=${encodeURIComponent(head + buildBody())}`);
   }
 
   const iconBtn = {
