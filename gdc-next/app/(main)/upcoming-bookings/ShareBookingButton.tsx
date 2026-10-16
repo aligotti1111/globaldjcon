@@ -81,11 +81,13 @@ export default function ShareBookingButton({
   // and webmail handlers (Gmail especially) frequently drop the subject/body
   // when the request arrives that way — the compose window opens empty. A
   // genuine anchor click hands the full URL to the registered handler intact.
-  function openHandler(url: string) {
+  function openHandler(url: string, newTab = false) {
     const a = document.createElement('a');
     a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener';
+    // mailto:/sms: must NOT open in a new tab — the browser opens a blank tab
+    // and the OS mail/SMS handler often never fires. A same-tab anchor click
+    // hands off to the handler without actually navigating the page away.
+    if (newTab) { a.target = '_blank'; a.rel = 'noopener'; }
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -100,7 +102,7 @@ export default function ShareBookingButton({
   function downloadCard() {
     // The public card page runs the html2canvas capture; ?download=1 makes it
     // fire on open. Opening it in a new tab keeps the share sheet in place.
-    openHandler(`${cardUrl}?download=1`);
+    openHandler(`${cardUrl}?download=1`, true);
   }
 
   function shareByText() {
@@ -119,7 +121,7 @@ export default function ShareBookingButton({
   // Bare icon — no box, no border.
   const iconBtn = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: 20, height: 20,
+    width: 28, height: 28,
     border: 'none', background: 'transparent',
     color: 'var(--muted,#8a8aa0)',
     cursor: 'pointer', flexShrink: 0,
@@ -135,7 +137,7 @@ export default function ShareBookingButton({
         title="Share a view-only link to this booking card"
         style={iconBtn}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <line x1="22" y1="2" x2="11" y2="13" />
           <polygon points="22 2 15 22 11 13 2 9 22 2" />
         </svg>
