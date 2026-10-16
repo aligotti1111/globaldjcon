@@ -1351,6 +1351,24 @@ select.input {
 @keyframes stSpinKf {
   to { transform: rotate(360deg); }
 }
+/* Pending stage — an amber arc that sweeps around the circle (same geometry as
+   .stSpin), shown continuously while a stage is pending and while its action is
+   sending. Sits over the stage's dim amber ring. */
+.stSpinPending {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--amber, #eaa94a);
+  border-right-color: var(--amber, #eaa94a);
+  box-sizing: border-box;
+  z-index: 2;
+  pointer-events: none;
+  animation: stSpinKf 1.1s linear infinite;
+}
 
 .stChev {
   color: #6c6c86;
