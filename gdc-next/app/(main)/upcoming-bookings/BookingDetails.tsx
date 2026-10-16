@@ -8,6 +8,7 @@
 
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import ShareBookingButton from './ShareBookingButton';
 import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
@@ -1172,6 +1173,10 @@ export default function BookingDetails({
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
       {confirmDialog}
+      {/* Share a view-only, login-free link to this booking's card. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.5rem' }}>
+        <ShareBookingButton shareToken={(booking as { share_token?: string | null }).share_token} />
+      </div>
       {typeMismatchNote && (
         <div className={styles.typeMismatchNote}>
           <strong>Note:</strong> {typeMismatchNote}
