@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import ShareBookingButton from './ShareBookingButton';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
@@ -1075,6 +1076,9 @@ export default function BookingRow({
             stop their own, so this only ever blocked the empty part of the
             cell (and, on a non-manual booking, the entire 84px of it). */}
         <div className={styles.rowActionsCell}>
+          {/* Share a view-only link to this booking's card — top-right, visible
+              even when the row is collapsed. */}
+          <ShareBookingButton shareToken={(booking as { share_token?: string | null }).share_token} />
           {/* A cancelled date stays on the list — it's still a fact about this
               night — but it says so, loudly, before anything else in the cell. */}
           {isCancelled && (

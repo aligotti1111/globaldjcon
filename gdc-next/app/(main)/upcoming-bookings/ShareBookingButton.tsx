@@ -2,7 +2,9 @@
 
 // Copies the booking's public read-only card link (/card/<share_token>) to the
 // clipboard. The link needs no login and the token is unguessable; anyone with
-// it sees the card read-only. Used on the DJ booking card.
+// it sees the card read-only. Uses the same paper-plane "Share" icon as the
+// profile pages. Sits on the top-right of the booking card (shows even when
+// the card is collapsed).
 
 import { useState } from 'react';
 
@@ -10,12 +12,13 @@ export default function ShareBookingButton({ shareToken }: { shareToken?: string
   const [copied, setCopied] = useState(false);
   if (!shareToken) return null;
 
-  async function copy() {
+  async function copy(e: React.MouseEvent) {
+    // The whole row is a click-to-expand button — don't toggle it when sharing.
+    e.stopPropagation();
     const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/card/${shareToken}`;
     try {
       await navigator.clipboard.writeText(url);
     } catch {
-      // Fallback for older browsers / insecure contexts.
       const ta = document.createElement('textarea');
       ta.value = url; document.body.appendChild(ta); ta.select();
       try { document.execCommand('copy'); } catch { /* ignore */ }
@@ -26,22 +29,28 @@ export default function ShareBookingButton({ shareToken }: { shareToken?: string
   }
 
   return (
-    <button
-      type="button"
+    <span
       onClick={copy}
-      title="Copy a view-only link to this booking card"
+      role="button"
+      tabIndex={0}
+      aria-label="Share booking card"
+      title={copied ? 'Link copied' : 'Share a view-only link to this booking card'}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: '.4rem',
-        background: 'transparent', border: '1px solid rgba(255,255,255,.18)',
-        color: copied ? '#00e0a4' : 'var(--muted,#8a8aa0)', fontWeight: 700,
-        fontSize: '.72rem', borderRadius: 7, padding: '.4rem .7rem', cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 26, height: 26, borderRadius: 7,
+        border: '1px solid rgba(255,255,255,.18)',
+        color: copied ? '#00e0a4' : 'var(--muted,#8a8aa0)',
+        cursor: 'pointer', flexShrink: 0,
       }}
     >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-      </svg>
-      {copied ? 'Link copied' : 'Share card'}
-    </button>
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="22" y1="2" x2="11" y2="13" />
+          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      )}
+    </span>
   );
 }

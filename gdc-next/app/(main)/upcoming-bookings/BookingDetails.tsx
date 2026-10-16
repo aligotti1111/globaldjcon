@@ -8,7 +8,6 @@
 
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import ShareBookingButton from './ShareBookingButton';
 import CardDownloadButton from '../../card/[token]/CardDownloadButton';
 import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
@@ -1174,9 +1173,9 @@ export default function BookingDetails({
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
       {confirmDialog}
-      {/* Share a view-only link, or download the card as an image. */}
+      {/* Download the card as an image. (Share lives on the row header so it
+          shows even when the card is collapsed.) */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', marginBottom: '.5rem', flexWrap: 'wrap' }}>
-        <ShareBookingButton shareToken={(booking as { share_token?: string | null }).share_token} />
         <CardDownloadButton targetId={`gdc-dj-card-${booking.id}`} fileName={`booking-${(booking.event_type || 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
       </div>
       {typeMismatchNote && (
