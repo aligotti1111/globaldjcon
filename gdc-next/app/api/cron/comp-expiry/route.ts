@@ -4,10 +4,11 @@
 // Rules:
 //   • Fires ~7 days before comp_expires_at (any comp still in the future and
 //     inside the 7-day window that we haven't warned about yet).
-//   • Grants +3 bonus days on send, so they get a little extra runway.
-//   • One warning per distinct comp grant: we stamp comp_expiry_notified_for
-//     with the (post-extension) expiry, so it won't re-send; re-granting a new
-//     comp with a later expiry re-arms it.
+//   • Does NOT add any free time — the warning never extends access. (It used
+//     to grant +3 bonus days; that was removed so nobody gets free time added.)
+//   • One warning per comp grant: we stamp comp_expiry_notified_for with the
+//     comp's expiry, so it won't re-send; a new comp with a later expiry
+//     re-arms it.
 //   • Skips anyone who has ALREADY added billing (an active/trialing/past_due
 //     Stripe subscription, or a stored subscription id) — they'll convert
 //     automatically and don't need the nudge.
@@ -26,7 +27,6 @@ const SITE_URL = 'https://globaldjconnect.com';
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const REPLY_TO = 'info@globaldjconnect.com';
 const WARN_DAYS = 7;   // start warning this many days out
-const BONUS_DAYS = 3;  // extra days granted on send
 
 interface CompRow {
   id: string;
@@ -55,8 +55,7 @@ function expiryEmailHtml(endDate: string, daysLeft: number): string {
 </td></tr>
 <tr><td style="padding:32px;">
 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Your free access is ending</h2>
-<p style="color:#666666;margin-bottom:8px;line-height:1.6;">Your complimentary access ends on <strong>${endDate}</strong> — that's about <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong> from now. Subscribe to keep your booking engine live and keep taking bookings without interruption.</p>
-<p style="color:#0a6f61;margin:0 0 20px;line-height:1.6;font-size:14px;">We've added <strong>3 bonus days</strong> to your free access so you have time to decide.</p>
+<p style="color:#666666;margin-bottom:20px;line-height:1.6;">Your complimentary access ends on <strong>${endDate}</strong> — that's about <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong> from now. Subscribe to keep your booking engine live and keep taking bookings without interruption.</p>
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#0a6f61;border-radius:6px;"><a href="${ctaHref}" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:0.02em;">Subscribe now</a></td></tr></table>
 <p style="text-align:center;margin:16px 0 0;color:#999999;font-size:12px;line-height:1.6;">If you don't subscribe, your booking engine simply pauses when access ends — your profile and data stay put, and you can reactivate any time.</p>
 </td></tr>
@@ -110,13 +109,12 @@ async function run(req: Request) {
     const email = await resolveUserEmail(dj.id);
     if (!email) { skipped++; continue; }
 
-    // Grant the bonus days.
-    const newExp = new Date(expMs + BONUS_DAYS * 86_400_000);
-    const newExpIso = newExp.toISOString();
-    const endDate = newExp.toLocaleDateString('en-US', {
+    // No free time is added — we warn on the REAL expiry, never extend it.
+    const exp = new Date(expMs);
+    const endDate = exp.toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
     });
-    const daysLeftRounded = Math.max(1, Math.round((newExp.getTime() - now) / 86_400_000));
+    const daysLeftRounded = Math.max(1, Math.round((expMs - now) / 86_400_000));
 
     try {
       await resend.emails.send({
@@ -132,11 +130,12 @@ async function run(req: Request) {
       continue;
     }
 
+    // Record that we've warned about THIS expiry so it won't re-send. We do NOT
+    // touch comp_expires_at — the warning adds no free time.
     await admin
       .from('users')
       .update({
-        comp_expires_at: newExpIso,
-        comp_expiry_notified_for: newExpIso,
+        comp_expiry_notified_for: dj.comp_expires_at,
       } as unknown as never)
       .eq('id', dj.id);
     sent++;
