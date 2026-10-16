@@ -249,7 +249,11 @@ interface ProfileRow extends AccessFields {
   receipt_auto_balance: boolean | null;
 }
 
-export default async function UpcomingBookingsPage() {
+export default async function UpcomingBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -311,33 +315,102 @@ export default async function UpcomingBookingsPage() {
   // Upcoming until local midnight instead of dropping it to Past at 8pm ET.
   const today = todayInTz(effectiveTimezone(profile?.timezone, null));
 
-  // Fetch FUTURE approved-or-manual bookings for this DJ. (Past bookings live on
-  // the dedicated /past-bookings page.)
-  // Read via the admin client (getActingContext already authorized this
-  // teammate/owner): the bookings table has no team-member RLS policy, so the
-  // RLS client returns nothing for a teammate. Scoped hard to djId below.
-  const { data: rows } = await admin
+  // ── Server-side pagination ────────────────────────────────────────────────
+  // Only the current page's 50 rows are fully fetched and enriched, so the page
+  // payload stays small no matter how many upcoming bookings a DJ has. Growth is
+  // unbounded over time, so a flat cap (the old .limit(500)) would eventually
+  // hide bookings and bloat the payload.
+  //
+  // A light "index" of EVERY upcoming booking — ids plus the handful of fields
+  // needed to order the list and to tell whether a host recently acted — drives
+  // the ordering, the total count, and the New-activity badge, without shipping
+  // full rows. Past bookings live on the dedicated /past-bookings page.
+  const UP_PAGE_SIZE = 50;
+  const sp = (await searchParams) || {};
+  const pick = (k: string): string | null => { const v = sp[k]; return Array.isArray(v) ? (v[0] ?? null) : (v ?? null); };
+  const sortRaw = pick('sort');
+  const sortMode: 'date' | 'recent' | 'activity' = sortRaw === 'recent' ? 'recent' : sortRaw === 'activity' ? 'activity' : 'date';
+  const pageParam = Math.max(1, parseInt(pick('page') || '1', 10) || 1);
+  const focusCardId = pick('card');
+  const focusOpenId = pick('open');
+
+  // Index: ids + ordering/activity fields for all upcoming bookings. Read with
+  // the admin client (getActingContext already authorized this teammate/owner;
+  // the bookings table has no team-member RLS policy). Scoped hard to djId.
+  const { data: idxRows } = await admin
     .from('bookings')
-    .select('id, share_token, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, sms_opt_in, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, balance_settled_total, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_declined_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, deposit_request_cancelled_at, balance_request_cancelled_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at, planner_status, field_edits, receipt_overrides, deposit_receipt_sent_at, balance_receipt_sent_at')
+    .select('id, event_date, start_time, created_at, contract_status, contract_signed_at, contract_sent_at')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
-    // Cancelled bookings stay VISIBLE here until the date passes, marked in
-    // red. A date that was called off is still a fact about your calendar —
-    // silently deleting the row is how a DJ forgets it happened, double-books
-    // the slot, or can't find the booking to look up what was agreed.
+    // Cancelled bookings stay VISIBLE here until the date passes (shown in red):
+    // a called-off date is still a fact about the calendar.
     .or('status.eq.approved,status.eq.cancelled,is_manual.eq.true')
     .order('event_date', { ascending: true })
     .order('start_time', { ascending: true })
-    // Cap the rows loaded at once. The client paginates these (50/page), so a
-    // high-volume DJ still scrolls through all of them — but we cap here so a
-    // runaway count can't balloon the page payload. 500 covers 400+ upcoming
-    // bookings with headroom; past this, move to true server-side paging.
-    .limit(500);
+    // Safety net for a pathological account; realistically never hit.
+    .limit(5000);
+  type IdxRow = { id: string; event_date: string | null; start_time: string | null; created_at: string | null; contract_status: string | null; contract_signed_at: string | null; contract_sent_at: string | null };
+  const idx = (idxRows || []) as IdxRow[];
+  const allIds = idx.map((r) => r.id);
+
+  // Most-recent host action per booking, across ALL upcoming bookings
+  // (timestamp-only reads — cheap). Powers the New-activity count + sort.
+  const actAt: Record<string, number> = {};
+  const noteAct = (bid: string, ts: string | null | undefined) => {
+    if (!ts) return; const t = Date.parse(ts); if (Number.isNaN(t)) return;
+    if (!actAt[bid] || t > actAt[bid]) actAt[bid] = t;
+  };
+  if (allIds.length > 0) {
+    const [{ data: pAll }, { data: plAll }, { data: rAll }, { data: gAll }] = await Promise.all([
+      admin.from('booking_payments').select('booking_id, marked_sent_at').in('booking_id', allIds),
+      admin.from('booking_planners').select('booking_id, submitted_at').in('booking_id', allIds),
+      admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', allIds),
+      admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', allIds),
+    ]);
+    for (const p of (((pAll as unknown) as { booking_id: string; marked_sent_at: string | null }[] | null) || [])) noteAct(p.booking_id, p.marked_sent_at);
+    for (const p of (((plAll as unknown) as { booking_id: string; submitted_at: string | null }[] | null) || [])) noteAct(p.booking_id, p.submitted_at);
+    for (const r of (((rAll as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) noteAct(r.booking_id, r.confirmed_at);
+    for (const g of (((gAll as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) noteAct(g.booking_id, g.confirmed_at);
+  }
+  for (const r of idx) {
+    const signedAt = r.contract_status === 'signed' ? (r.contract_signed_at || r.contract_sent_at || null) : r.contract_signed_at || null;
+    noteAct(r.id, signedAt);
+  }
+  const activityCount = Object.keys(actAt).length;
+
+  // Ordered id list for the requested sort. (Index is already event_date/start
+  // ascending, so "date" needs no re-sort.)
+  const orderedIdx: IdxRow[] = sortMode === 'recent'
+    ? [...idx].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    : sortMode === 'activity'
+      ? idx.filter((r) => actAt[r.id]).sort((a, b) => (actAt[b.id] || 0) - (actAt[a.id] || 0))
+      : idx;
+  const serverTotal = sortMode === 'activity' ? activityCount : allIds.length;
+
+  const fromIdx = (pageParam - 1) * UP_PAGE_SIZE;
+  const pageIds = orderedIdx.slice(fromIdx, fromIdx + UP_PAGE_SIZE).map((r) => r.id);
+  // A notification deep-link (?card / ?open) may point at a booking on another
+  // page — make sure it's loaded so the focused view / auto-open still works.
+  for (const want of [focusCardId, focusOpenId]) {
+    if (want && allIds.includes(want) && !pageIds.includes(want)) pageIds.push(want);
+  }
+
+  // Full rows for just this page.
+  const { data: rows } = pageIds.length === 0
+    ? { data: [] as UpcomingBooking[] }
+    : await admin
+      .from('bookings')
+      .select('id, share_token, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, equipment, room_details, guest_count, event_type, event_details, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, requester_id, phone, sms_opt_in, package_title, package_details, package_category, package_index, cocktail_needed, cocktail_start_time, cocktail_same_room, cocktail_price, cocktail_included, ceremony_needed, ceremony_start_time, ceremony_same_room, ceremony_price, ceremony_included, setup_hours, quoted_rate, counter_rate, overtime_rate, overtime_hours, overtime_charge_rate, overtime_tax, overtime_amount, overtime_invoiced_at, overtime_paid_at, overtime_cancelled_at, offer_amount, original_rate, discount_code, discount_label, discount_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, balance_settled_total, currency, notes, status, created_at, accepted_at, contract_submission_id, contract_status, contract_sent_at, contract_signed_at, contract_cancelled_at, contract_declined_at, contract_completed_at, contract_completion_undone_at, cancel_status, cancel_requested_by, cancel_reason, cancel_requested_at, cancel_responded_at, status_overrides, requires_contract, deposit_skipped_at, deposit_skip_undone_at, deposit_completed_at, deposit_completion_undone_at, balance_completed_at, balance_completion_undone_at, deposit_request_cancelled_at, balance_request_cancelled_at, contract_sent_log_at, overtime_invoiced_log_at, overtime_paid_log_at, planner_sent_at, planner_status, field_edits, receipt_overrides, deposit_receipt_sent_at, balance_receipt_sent_at')
+      .in('id', pageIds);
+
+  // Re-order the fetched rows to match the computed page order (an .in() query
+  // returns rows in arbitrary order).
+  const pagePos = new Map(pageIds.map((id, i) => [id, i]));
 
   // Backfill the booker (host) name from requester_id when not already
   // denormalized on the row, so the "Booked By" field shows a name.
-  let bookingRows = (rows || []) as UpcomingBooking[];
+  let bookingRows = (((rows || []) as UpcomingBooking[]).sort((a, b) => (pagePos.get(a.id) ?? 0) - (pagePos.get(b.id) ?? 0)));
   const missingRequesterIds = [
     ...new Set(
       bookingRows
@@ -539,6 +612,12 @@ export default async function UpcomingBookingsPage() {
       djZip={profile?.zip ?? null}
       djCity={profile?.city ?? null}
       djState={profile?.state ?? null}
+      serverPaged
+      serverPage={pageParam - 1}
+      serverTotal={serverTotal}
+      serverPageSize={UP_PAGE_SIZE}
+      initialSort={sortMode}
+      activityTotal={activityCount}
     />
   );
 }
