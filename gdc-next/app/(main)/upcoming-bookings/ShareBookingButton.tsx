@@ -20,6 +20,8 @@ import { createPortal } from 'react-dom';
 
 interface Props {
   shareToken?: string | null;
+  /** The booking id — used to send the card by email server-side. */
+  bookingId?: string | null;
   /** Only mobile DJ bookings offer the planner link. */
   djType?: 'club' | 'mobile';
   /** The booking's planner id, when one exists (for the uneditable planner link). */
@@ -36,13 +38,15 @@ interface Props {
 }
 
 export default function ShareBookingButton({
-  shareToken, djType = 'mobile', plannerId, hostEmail, phone, eventLabel, eventType, eventDate,
+  shareToken, bookingId, djType = 'mobile', plannerId, hostEmail, phone, eventLabel, eventType, eventDate,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   // Default the planner link ON when one is available — the DJ asked for it,
   // so assume they want to send it unless they turn it off.
   const [includePlanner, setIncludePlanner] = useState(true);
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
 
   if (!shareToken) return null;
 
@@ -96,10 +100,26 @@ export default function ShareBookingButton({
     window.location.href = url;
   }
 
-  function shareByEmail() {
-    const subject = `Your event details${eventLabel ? ` — ${eventLabel}` : ''}`;
-    const to = hostEmail ? encodeURIComponent(hostEmail) : '';
-    openHandler(`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`);
+  // Email is SENT server-side (Resend), not handed to a mailto: — a mailto only
+  // opens the DJ's webmail homepage without a composed message. The host gets a
+  // branded email with a clickable "View your booking card" button.
+  async function shareByEmail() {
+    if (!bookingId) { setEmailState('error'); setEmailMsg('Missing booking.'); return; }
+    setEmailState('sending'); setEmailMsg(null);
+    try {
+      const res = await fetch('/api/dj/share-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, includePlanner: canPlanner && includePlanner }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setEmailState('error'); setEmailMsg(data?.error || 'Could not send.'); return; }
+      setEmailState('sent');
+      setEmailMsg(data?.to ? `Sent to ${data.to}` : 'Email sent');
+      setTimeout(() => { setEmailState('idle'); setEmailMsg(null); }, 4000);
+    } catch {
+      setEmailState('error'); setEmailMsg('Could not send. Try again.');
+    }
   }
 
   function downloadCard() {
@@ -231,8 +251,12 @@ export default function ShareBookingButton({
               />
               <MethodButton
                 onClick={shareByEmail}
-                label="Email"
-                icon={<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
+                active={emailState === 'sent'}
+                busy={emailState === 'sending'}
+                label={emailState === 'sending' ? 'Sending…' : emailState === 'sent' ? 'Sent!' : 'Email'}
+                icon={emailState === 'sent'
+                  ? <polyline points="20 6 9 17 4 12" />
+                  : <><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
               />
               <MethodButton
                 onClick={shareByText}
@@ -245,6 +269,14 @@ export default function ShareBookingButton({
                 icon={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>}
               />
             </div>
+            {emailMsg && (
+              <div style={{
+                marginTop: '.6rem', textAlign: 'center', fontSize: '.74rem',
+                color: emailState === 'error' ? '#ff6b6b' : '#00e0a4',
+              }}>
+                {emailMsg}
+              </div>
+            )}
           </div>
         </div>,
         document.body,
@@ -254,24 +286,26 @@ export default function ShareBookingButton({
 }
 
 function MethodButton({
-  onClick, label, icon, active = false,
+  onClick, label, icon, active = false, busy = false,
 }: {
   onClick: () => void;
   label: string;
   icon: React.ReactNode;
   active?: boolean;
+  busy?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={busy}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.4rem',
-        padding: '.75rem .4rem', borderRadius: 10, cursor: 'pointer',
+        padding: '.75rem .4rem', borderRadius: 10, cursor: busy ? 'wait' : 'pointer',
         border: `1px solid ${active ? 'rgba(0,224,164,.6)' : 'rgba(255,255,255,.14)'}`,
         background: active ? 'rgba(0,224,164,.1)' : 'rgba(255,255,255,.03)',
         color: active ? '#00e0a4' : '#e9e9f2',
-        fontSize: '.74rem', fontWeight: 700,
+        fontSize: '.74rem', fontWeight: 700, opacity: busy ? 0.7 : 1,
       }}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
