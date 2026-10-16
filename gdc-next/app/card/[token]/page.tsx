@@ -30,6 +30,12 @@ interface BookingRow {
   venue_address: string | null;
   venue_type: string | null;
   venue_type_desc: string | null;
+  ceremony_needed: boolean | null;
+  ceremony_start_time: string | null;
+  ceremony_same_room: boolean | null;
+  cocktail_needed: boolean | null;
+  cocktail_start_time: string | null;
+  cocktail_same_room: boolean | null;
   requester_name: string | null;
   host_email: string | null;
   phone: string | null;
@@ -86,7 +92,7 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data } = await admin
     .from('bookings')
-    .select('id, dj_id, booking_type, event_type, event_date, start_time, end_time, venue_name, venue_address, venue_type, venue_type_desc, requester_name, host_email, phone, package_title, package_details, set_type, equipment, quoted_rate, counter_rate, offer_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, status, contract_status, planner_status, deposit_completed_at, balance_completed_at, status_overrides')
+    .select('id, dj_id, booking_type, event_type, event_date, start_time, end_time, venue_name, venue_address, venue_type, venue_type_desc, ceremony_needed, ceremony_start_time, ceremony_same_room, cocktail_needed, cocktail_start_time, cocktail_same_room, requester_name, host_email, phone, package_title, package_details, set_type, equipment, quoted_rate, counter_rate, offer_amount, deposit_pct, deposit_amount, tax_pct, tax_amount, total_with_tax, currency, status, contract_status, planner_status, deposit_completed_at, balance_completed_at, status_overrides')
     .eq('share_token', token)
     .maybeSingle<BookingRow>();
 
@@ -146,12 +152,26 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
         </div>
         <div style={{ padding: '.3rem 1.2rem 1rem', color: '#8a8aa0', fontSize: '.74rem' }}>Booked with <strong style={{ color: '#fff' }}>{djName}</strong></div>
 
-        {/* Event */}
+        {/* Event. Weddings can carry a ceremony and/or a cocktail hour, each with
+            its own start time (and room note) — surface them above the main
+            reception time, same as the DJ's own card. */}
         <div style={section}>
           <span style={chip}>Event</span>
           <Field l="Event Type" v={eventLabel} />
           <Field l="Date" v={fmtDate(b.event_date)} />
-          <Field l="Time" v={timeRange} />
+          {b.ceremony_needed && b.ceremony_start_time && (
+            <Field
+              l="Ceremony"
+              v={`${fmtTime(b.ceremony_start_time)}${b.ceremony_same_room == null ? '' : b.ceremony_same_room ? ' · same room as reception' : ' · separate room'}`}
+            />
+          )}
+          {b.cocktail_needed && b.cocktail_start_time && (
+            <Field
+              l="Cocktail Hour"
+              v={`${fmtTime(b.cocktail_start_time)}${b.cocktail_same_room == null ? '' : b.cocktail_same_room ? ' · same room as reception' : ' · separate room'}`}
+            />
+          )}
+          <Field l={(b.ceremony_needed && b.ceremony_start_time) || (b.cocktail_needed && b.cocktail_start_time) ? 'Reception' : 'Time'} v={timeRange} />
         </div>
 
         {/* Venue */}
