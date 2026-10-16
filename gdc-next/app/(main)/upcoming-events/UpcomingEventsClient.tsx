@@ -71,6 +71,9 @@ export default function UpcomingEventsClient({
   // Deep-link from the notification bell: /upcoming-events?open=<bookingId>
   // expands and scrolls to that event so clicking a notification lands somewhere.
   const openId = searchParams.get('open');
+  // Focused single-card view (?card=<id>) — the bell links here so a tap opens
+  // just that one event, not the whole list.
+  const focusId = searchParams?.get('card') || null;
 
   // "New activity" view — the host equivalent of the DJ's ?filter=activity.
   // sortMode 'activity' filters to events the DJ recently acted on (newest
@@ -169,7 +172,7 @@ export default function UpcomingEventsClient({
       event={ev}
       userId={userId}
       readOnly={readOnly}
-      autoOpen={!!openId && ev.id === openId}
+      autoOpen={(!!openId && ev.id === openId) || ev.id === focusId}
       newStage={newStageFor(ev.id)}
       onEdit={() => setEditing(ev)}
       onDeleted={() => handleDeleted(ev.id)}
@@ -187,6 +190,7 @@ export default function UpcomingEventsClient({
   );
 
   const activityCount = activityList.length;
+  const focusedEvent = focusId ? events.find((e) => e.id === focusId) || null : null;
 
   return (
     <div className={styles.page}>
@@ -197,6 +201,18 @@ export default function UpcomingEventsClient({
         </div>
       </div>
 
+      {focusedEvent ? (
+        /* Focused single-card view (from a notification) — just this event. */
+        <>
+          <div style={{ padding: '0 0 .6rem' }}>
+            <Link href="/upcoming-events" style={{ color: 'var(--neon,#00e0a4)', fontSize: '.8rem', fontWeight: 700, textDecoration: 'none' }}>← All events</Link>
+          </div>
+          <div className={styles.eventList}>
+            {renderRow(focusedEvent)}
+          </div>
+        </>
+      ) : (
+      <>
       {/* By date / New activity toggle — mirrors the DJ dashboard. Shown once
           there's any activity (or the activity view is already open). */}
       {(activityCount > 0 || sortMode === 'activity') && (
@@ -252,6 +268,8 @@ export default function UpcomingEventsClient({
             </div>
           </section>
         ))
+      )}
+      </>
       )}
 
       {editing && (
