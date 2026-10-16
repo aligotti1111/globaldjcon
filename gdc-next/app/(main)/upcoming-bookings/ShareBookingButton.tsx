@@ -15,8 +15,28 @@
 // The whole row is a click-to-expand button, so every interactive element here
 // calls stopPropagation.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { createClient } from '@/lib/supabase/client';
+
+// Turn the DJ's account-email domain into a web-compose URL builder for the big
+// webmail providers. For these, a plain mailto: is unreliable on desktop (it
+// just opens the provider's homepage), so we open the provider's own compose
+// page directly in a new tab with the subject + body preloaded. Anything we
+// don't recognise returns null and we fall back to mailto:.
+function webComposer(email: string | null): ((subject: string, body: string) => string) | null {
+  const domain = (email || '').split('@')[1]?.toLowerCase() || '';
+  const q = (subject: string, body: string) => `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (/^(gmail\.com|googlemail\.com)$/.test(domain))
+    return (s, b) => `https://mail.google.com/mail/?view=cm&fs=1&tf=1&${q(s, b)}`;
+  if (/^(outlook\.|hotmail\.|live\.|msn\.)/.test(domain) || domain === 'outlook.com')
+    return (s, b) => `https://outlook.live.com/mail/0/deeplink/compose?${q(s, b)}`;
+  if (/^(yahoo\.|ymail\.com|rocketmail\.com)/.test(domain) || domain === 'yahoo.com')
+    return (s, b) => `https://compose.mail.yahoo.com/?${q(s, b)}`;
+  if (domain === 'aol.com')
+    return (s, b) => `https://mail.aol.com/?${q(s, b)}`;
+  return null;
+}
 
 interface Props {
   shareToken?: string | null;
@@ -42,6 +62,16 @@ export default function ShareBookingButton({
   // Default the planner link ON when one is available — the DJ asked for it,
   // so assume they want to send it unless they turn it off.
   const [includePlanner, setIncludePlanner] = useState(true);
+  // The DJ's account email, read once so Email can route to their webmail's
+  // compose page (Gmail / Outlook / Yahoo / AOL) instead of a flaky mailto:.
+  const [acctEmail, setAcctEmail] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    createClient().auth.getUser().then(({ data }) => {
+      if (alive) setAcctEmail(data.user?.email ?? null);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   if (!shareToken) return null;
 
@@ -83,16 +113,23 @@ export default function ShareBookingButton({
     return [eventType || eventLabel || '', niceDate].filter(Boolean).join(' — ');
   };
 
-  // Email opens the DJ's own mail app with the message pre-filled, so THEY send
-  // it to whoever they want — no recipient is pre-set. Subject carries the event
-  // type and date. Opened via a real anchor click (no target) rather than
-  // window.location.href: on desktop that hands the mailto to the registered
-  // handler more reliably and never risks the SPA swallowing the navigation.
+  // Email, with no recipient pre-set so the DJ sends to whoever they want.
+  // Subject carries the event type + date. If the DJ's account email is a known
+  // webmail provider, open THAT provider's compose page directly (new tab) with
+  // everything preloaded — reliable on desktop. Otherwise fall back to mailto:,
+  // which opens whatever mail app their computer has set as default.
   function shareByEmail() {
-    const headline = eventHeadline();
-    const subject = headline || 'Event details';
+    const subject = eventHeadline() || 'Event details';
+    const body = buildBody();
+    const compose = webComposer(acctEmail);
+    if (compose) {
+      const a = document.createElement('a');
+      a.href = compose(subject, body); a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
     const a = document.createElement('a');
-    a.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`;
+    a.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     document.body.appendChild(a); a.click(); a.remove();
   }
 
