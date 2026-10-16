@@ -75,13 +75,25 @@ export default function ShareBookingButton({
     setTimeout(() => setCopied(false), 1800);
   }
 
+  // Event type + date, e.g. "Wedding — Jan 15, 2026". Reused for the subject.
+  const eventHeadline = (): string => {
+    const niceDate = eventDate
+      ? new Date(`${eventDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+    return [eventType || eventLabel || '', niceDate].filter(Boolean).join(' — ');
+  };
+
   // Email opens the DJ's own mail app with the message pre-filled, so THEY send
-  // it to whoever they want — no recipient is pre-set. Which app opens is the
-  // user's OS/browser default-mail-handler setting, not ours. A short subject
-  // plus the link(s) in the body.
+  // it to whoever they want — no recipient is pre-set. Subject carries the event
+  // type and date. Opened via a real anchor click (no target) rather than
+  // window.location.href: on desktop that hands the mailto to the registered
+  // handler more reliably and never risks the SPA swallowing the navigation.
   function shareByEmail() {
-    const subject = `Event details${eventLabel ? ` — ${eventLabel}` : ''}`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`;
+    const headline = eventHeadline();
+    const subject = headline || 'Event details';
+    const a = document.createElement('a');
+    a.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`;
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   function downloadCard() {
@@ -96,11 +108,8 @@ export default function ShareBookingButton({
     const num = phone ? String(phone).replace(/[^\d+]/g, '') : '';
     // The text leads with WHICH event — type + date — before the link(s), so
     // the recipient has context the moment it arrives.
-    const niceDate = eventDate
-      ? new Date(`${eventDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : '';
-    const headParts = [eventType || '', niceDate].filter(Boolean);
-    const head = headParts.length ? `${headParts.join(' — ')}\n\n` : '';
+    const headline = eventHeadline();
+    const head = headline ? `${headline}\n\n` : '';
     // iOS wants ?&body=, Android wants ?body= — the ?&body form works on both.
     window.location.href = `sms:${num}?&body=${encodeURIComponent(head + buildBody())}`;
   }
