@@ -82,15 +82,18 @@ export default function ShareBookingButton({
   // when the request arrives that way — the compose window opens empty. A
   // genuine anchor click hands the full URL to the registered handler intact.
   function openHandler(url: string, newTab = false) {
-    const a = document.createElement('a');
-    a.href = url;
-    // mailto:/sms: must NOT open in a new tab — the browser opens a blank tab
-    // and the OS mail/SMS handler often never fires. A same-tab anchor click
-    // hands off to the handler without actually navigating the page away.
-    if (newTab) { a.target = '_blank'; a.rel = 'noopener'; }
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    if (newTab) {
+      // The download link is a real page — open it in its own tab.
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    // mailto:/sms: — assign to window.location. This is the canonical hand-off:
+    // the browser routes it to the OS mail/SMS app and does NOT navigate the
+    // page. A blank-target anchor opened an empty tab and the handler never
+    // fired, which is why Email appeared to do nothing.
+    window.location.href = url;
   }
 
   function shareByEmail() {
