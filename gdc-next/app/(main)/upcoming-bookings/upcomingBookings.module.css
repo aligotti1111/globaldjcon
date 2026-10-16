@@ -2339,3 +2339,19 @@ select.input {
   display: flex;
   gap: 1.25rem;
 }
+
+/* Share icon. In the flow (mobile) it just sits in the actions cell. On
+   desktop it's pinned to the card's top-right corner so it's always in the
+   same spot and shows whether the row is collapsed or expanded. The nearest
+   positioned ancestor is the row wrapper (position:relative), whose top edge
+   is the row header — so top:7px lands in the header, clear of the chevron
+   which is vertically centred below it. */
+.shareCorner { display: inline-flex; }
+@media (min-width: 601px) {
+  .shareCorner {
+    position: absolute;
+    top: 7px;
+    right: 10px;
+    z-index: 4;
+  }
+}

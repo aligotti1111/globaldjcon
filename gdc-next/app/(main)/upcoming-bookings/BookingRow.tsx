@@ -1077,8 +1077,20 @@ export default function BookingRow({
             cell (and, on a non-manual booking, the entire 84px of it). */}
         <div className={styles.rowActionsCell}>
           {/* Share a view-only link to this booking's card — top-right, visible
-              even when the row is collapsed. */}
-          <ShareBookingButton shareToken={(booking as { share_token?: string | null }).share_token} />
+              even when the row is collapsed. On desktop it's pinned to the
+              card's top-right corner (see .shareCorner). The sheet shows a
+              preview and offers Copy link / Email / Text, plus — for a mobile
+              DJ booking with a planner — a link to the read-only planner. */}
+          <span className={styles.shareCorner} onClick={(e) => e.stopPropagation()}>
+            <ShareBookingButton
+              shareToken={(booking as { share_token?: string | null }).share_token}
+              djType={djType}
+              plannerId={djType !== 'club' ? planner?.id : null}
+              hostEmail={booking.host_email}
+              phone={booking.phone}
+              eventLabel={booking.requester_name || booking.venue_name || null}
+            />
+          </span>
           {/* A cancelled date stays on the list — it's still a fact about this
               night — but it says so, loudly, before anything else in the cell. */}
           {isCancelled && (
