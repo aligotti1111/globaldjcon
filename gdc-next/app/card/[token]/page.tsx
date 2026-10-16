@@ -10,8 +10,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import HostPipelineHero from '../../(main)/upcoming-events/HostPipelineHero';
-import { buildHostPipeline } from '@/lib/hostPipeline';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 import CardDownloadButton from './CardDownloadButton';
 
@@ -109,24 +107,8 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   const currency = b.currency || 'USD';
   const isClub = b.booking_type === 'club';
   const isCancelled = b.status === 'cancelled';
-  const ov = b.status_overrides || {};
   const price = b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
   const total = b.total_with_tax ?? price;
-  const hasDeposit = (b.deposit_amount != null && b.deposit_amount > 0) || (b.deposit_pct != null && b.deposit_pct > 0);
-  const depositPaid = !!b.deposit_completed_at || !!ov.deposit;
-  const balancePaid = !!b.balance_completed_at || !!ov.balance;
-  const contractStatus = ov.contract ? 'signed' : b.contract_status;
-
-  // Read-only pipeline (no hrefs → nothing clickable).
-  const steps = buildHostPipeline({
-    bookingType: (b.booking_type === 'club' ? 'club' : 'mobile'),
-    contractStatus,
-    hasDeposit,
-    depositPaid,
-    plannerStatus: (b.planner_status as 'sent' | 'partial' | 'submitted' | null) || null,
-    hasBalance: total != null && total > 0,
-    balancePaid,
-  });
 
   const eventLabel = MOB_EVENT_LABELS[(b.event_type || '').toLowerCase()] || b.event_type || 'Event';
   const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
@@ -163,13 +145,6 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
           )}
         </div>
         <div style={{ padding: '.3rem 1.2rem 1rem', color: '#8a8aa0', fontSize: '.74rem' }}>Booked with <strong style={{ color: '#fff' }}>{djName}</strong></div>
-
-        {/* Read-only pipeline */}
-        {steps.length > 0 && (
-          <div style={{ padding: '0 1rem 1rem' }}>
-            <HostPipelineHero steps={steps} djType={isClub ? 'club' : 'mobile'} />
-          </div>
-        )}
 
         {/* Event */}
         <div style={section}>
