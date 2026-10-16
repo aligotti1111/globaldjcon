@@ -158,7 +158,7 @@ export default function PipelineStrip({
           : positiveDone
           ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
           : isPending
-            ? { borderColor: 'rgba(234,169,74,.4)' }
+            ? { borderColor: 'var(--amber,#eaa94a)' }
           : (!st.done && waiting)
             ? { borderColor: 'rgba(255,255,255,.16)' }
             : skipped
@@ -180,11 +180,11 @@ export default function PipelineStrip({
                 the actual circle spinning, not a second ring around it. */}
             <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle, ...(busy ? { borderColor: 'transparent' } : null) }}>
               {stageIcon(st.icon)}
-              {/* The spinning arc. Amber for a pending stage (and while its action
-                  is sending); neon only for a non-pending busy action. A pending
-                  stage shows the arc continuously over its dim amber ring. */}
-              {(busy || isPending) && (
-                <span className={(busy && !isPending) ? styles.stSpin : styles.stSpinPending} aria-hidden="true" />
+              {/* The arc only SPINS while an action is actually sending (busy):
+                  amber for a pending stage, neon otherwise. A pending stage that
+                  isn't sending is just a static amber ring (the border above). */}
+              {busy && (
+                <span className={isPending ? styles.stSpinPending : styles.stSpin} aria-hidden="true" />
               )}
               {positiveDone && (
                 <span className={styles.stBadge}>
