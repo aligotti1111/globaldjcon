@@ -8,7 +8,6 @@
 
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import CardDownloadButton from '../../card/[token]/CardDownloadButton';
 import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
@@ -1173,11 +1172,8 @@ export default function BookingDetails({
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
       {confirmDialog}
-      {/* Download the card as an image. (Share lives on the row header so it
-          shows even when the card is collapsed.) */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', marginBottom: '.5rem', flexWrap: 'wrap' }}>
-        <CardDownloadButton targetId={`gdc-dj-card-${booking.id}`} fileName={`booking-${(booking.event_type || 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
-      </div>
+      {/* Download + share both live in the share sheet on the row header (the
+          paper-plane), so there's no separate download button down here. */}
       {typeMismatchNote && (
         <div className={styles.typeMismatchNote}>
           <strong>Note:</strong> {typeMismatchNote}
