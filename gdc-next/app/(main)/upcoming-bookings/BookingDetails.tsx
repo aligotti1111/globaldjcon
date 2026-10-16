@@ -9,6 +9,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import ShareBookingButton from './ShareBookingButton';
+import CardDownloadButton from '../../card/[token]/CardDownloadButton';
 import { createClient } from '@/lib/supabase/client';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
@@ -1173,16 +1174,17 @@ export default function BookingDetails({
   return (
     <div className={styles.detailsPanel} style={{ paddingTop: '0.75rem' }}>
       {confirmDialog}
-      {/* Share a view-only, login-free link to this booking's card. */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.5rem' }}>
+      {/* Share a view-only link, or download the card as an image. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', marginBottom: '.5rem', flexWrap: 'wrap' }}>
         <ShareBookingButton shareToken={(booking as { share_token?: string | null }).share_token} />
+        <CardDownloadButton targetId={`gdc-dj-card-${booking.id}`} fileName={`booking-${(booking.event_type || 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
       </div>
       {typeMismatchNote && (
         <div className={styles.typeMismatchNote}>
           <strong>Note:</strong> {typeMismatchNote}
         </div>
       )}
-      <div className={styles.detailsSections}>
+      <div className={styles.detailsSections} id={`gdc-dj-card-${booking.id}`}>
         {groupedSections.map((g) => (
           <Fragment key={g.key}>
           {g.key === 'PRICING' && packageBlock}
