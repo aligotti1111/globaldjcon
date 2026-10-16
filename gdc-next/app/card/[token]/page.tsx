@@ -218,9 +218,7 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
           </div>
         )}
       </div>
-      {/* Hidden on the public card — downloading is offered from the DJ's share
-          sheet. Stays mounted so a ?download=1 link can auto-capture the card. */}
-      <CardDownloadButton targetId="gdc-share-card" fileName={`booking-${eventLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} autoOnly />
+      <CardDownloadButton targetId="gdc-share-card" fileName={`booking-${eventLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
       <div style={{ textAlign: 'center', color: '#5a5a72', fontSize: '.68rem', marginTop: '1rem' }}>
         Shared via Global DJ Connect · view only
       </div>
