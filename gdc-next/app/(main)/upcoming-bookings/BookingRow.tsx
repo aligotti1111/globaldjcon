@@ -329,6 +329,17 @@ export default function BookingRow({
   const sentToHost = booking.is_manual
     && !!((booking as { host_email_sent_at?: string | null }).host_email_sent_at);
 
+  // Does this manual booking have a host attached (an email we can notify)?
+  const hasHostEmail = !!booking.host_email
+    || !!((booking as { host_email_sent_at?: string | null }).host_email_sent_at);
+  // An AGREED (signed) contract on the booking. Only then does cancelling a
+  // manual booking require the host's approval — otherwise the DJ cancels it
+  // directly and we just email the host that it was cancelled.
+  const contractAgreed = booking.contract_status === 'signed'
+    || booking.contract_status === 'completed'
+    || !!booking.contract_signed_at
+    || !!(booking.status_overrides && booking.status_overrides.contract);
+
   async function postCancel(payload: Record<string, unknown>) {
     setCancelBusy(true);
     setCancelErr(null);
@@ -858,21 +869,41 @@ export default function BookingRow({
   // panel's callout banner (see BookingDetails below) — keeping the row
   // header clean. The row no longer renders a CLUB/BAR pill.
 
-  // Both edit and delete must stop propagation so they don't also toggle
-  // the row's expand/collapse state (the row is itself a <button>).
-  // A manual booking that was emailed to a host can no longer be permanently
-  // deleted — there's a real person expecting it. The X instead starts a
-  // cancellation request, which the host has to confirm (same flow as an app
-  // booking). A manual booking with no host attached is still a hard delete.
+  // Direct-cancel a manual booking with no signed contract: the DJ owns it, so
+  // it just flips to cancelled and the host is emailed that the DJ cancelled it.
+  async function directCancel() {
+    const res = await postCancel({ action: 'cancel-direct' });
+    if (res) { setExpanded(false); onMutated?.(); }
+  }
+
+  // Both edit and delete must stop propagation so they don't also toggle the
+  // row's expand/collapse state (the row is itself a <button>).
+  //
+  // The X on a manual booking does one of three things:
+  //   • No host attached        → permanent delete (nobody's expecting it).
+  //   • Host + SIGNED contract   → cancellation REQUEST the host must confirm
+  //                                (same as a regular online booking).
+  //   • Host + no contract       → the DJ cancels it outright; the host is just
+  //                                emailed that the DJ cancelled the booking.
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (sentToHost) {
+    if (!hasHostEmail) { onDelete && onDelete(); return; }
+    if (contractAgreed) {
+      // Needs host approval — open the cancellation request form.
       setExpanded(true);
       setCancelFormOpen(true);
       setTimeout(() => { wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
       return;
     }
-    onDelete && onDelete();
+    // No contract — cancel directly after a confirm.
+    setConfirmModal({
+      title: 'Cancel this booking?',
+      body: `This booking has no signed contract, so it will be cancelled right away. ${booking.requester_name || 'The host'} will be emailed that you cancelled it.`,
+      okLabel: 'Cancel booking',
+      cancelLabel: 'Keep it',
+      danger: true,
+      onOk: () => { directCancel(); },
+    });
   }
 
   return (
@@ -1118,16 +1149,20 @@ export default function BookingRow({
           {/* Editing a manual booking now happens entirely through the per-section
               pencils in the expanded card (they open this same full editor), so
               there's no separate pencil up here — just the X. */}
-          {/* The X deletes a manual booking that was never sent to a host; once it
-              HAS a host (sentToHost), the X starts a cancellation the host must
-              confirm instead of a permanent delete. */}
+          {/* The X: delete if no host attached; cancel-with-host-approval if a
+              signed contract exists; otherwise the DJ cancels directly and the
+              host is just emailed. */}
           {onDelete && !isCancelled && (
             <span
               onClick={handleDelete}
               className={styles.deleteBtn}
               role="button"
-              aria-label={sentToHost ? 'Cancel booking' : 'Delete manual booking'}
-              title={sentToHost ? 'Cancel booking (host must confirm)' : 'Delete'}
+              aria-label={!hasHostEmail ? 'Delete manual booking' : 'Cancel booking'}
+              title={!hasHostEmail
+                ? 'Delete'
+                : contractAgreed
+                  ? 'Cancel booking (host must confirm — signed contract)'
+                  : 'Cancel booking (host will be notified)'}
             >
               ✕
             </span>
