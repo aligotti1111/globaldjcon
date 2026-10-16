@@ -184,7 +184,19 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
           <div style={section}>
             <span style={chip}>Venue</span>
             <Field l="Venue" v={b.venue_name} />
-            <Field l="Address" v={b.venue_address} />
+            {b.venue_address && (
+              <div style={{ marginBottom: '.7rem' }}>
+                <div style={label}>Address</div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ...value, color: '#00e0a4', textDecoration: 'none' }}
+                >
+                  {b.venue_address}
+                </a>
+              </div>
+            )}
             <Field l="Venue Type" v={venueType} />
           </div>
         )}
