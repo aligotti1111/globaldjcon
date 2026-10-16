@@ -269,22 +269,22 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
             {(hasDeposit || balanceAtEvent || depositPaid || balancePaid) && (
               <div style={{ marginTop: '.7rem', paddingTop: '.6rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
                 {hasDeposit && depositAmount != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.2rem 0' }}>
-                    <span style={{ color: '#d6d6e2', fontSize: '.84rem' }}>Deposit</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}>
-                      <span style={{ fontFamily: "'Space Mono', monospace", color: '#fff', fontSize: '.9rem' }}>{money(depositAmount, currency)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.2rem 0', gap: '.6rem' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', minWidth: 0 }}>
+                      <span style={{ color: '#d6d6e2', fontSize: '.84rem' }}>Deposit</span>
                       {depositPaid && <span style={paidPill}>Paid</span>}
                     </span>
+                    <span style={{ fontFamily: "'Space Mono', monospace", color: '#fff', fontSize: '.9rem', whiteSpace: 'nowrap' }}>{money(depositAmount, currency)}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.2rem 0' }}>
-                  <span style={{ color: '#d6d6e2', fontSize: '.84rem' }}>Balance</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}>
-                    {balanceAmount != null && <span style={{ fontFamily: "'Space Mono', monospace", color: '#fff', fontSize: '.9rem' }}>{money(balanceAmount, currency)}</span>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.2rem 0', gap: '.6rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', minWidth: 0, flexWrap: 'wrap' }}>
+                    <span style={{ color: '#d6d6e2', fontSize: '.84rem' }}>Balance</span>
                     {balancePaid
                       ? <span style={paidPill}>Paid</span>
                       : balanceAtEvent && <span style={atEventPill}>{balanceAtEvent}</span>}
                   </span>
+                  {balanceAmount != null && <span style={{ fontFamily: "'Space Mono', monospace", color: '#fff', fontSize: '.9rem', whiteSpace: 'nowrap' }}>{money(balanceAmount, currency)}</span>}
                 </div>
               </div>
             )}
