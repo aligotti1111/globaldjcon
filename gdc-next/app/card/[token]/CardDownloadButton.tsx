@@ -4,7 +4,7 @@
 // html2canvas (loaded from CDN on demand) so the downloaded image looks exactly
 // like the on-screen card. No server round-trip; works on the public page.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // html2canvas attaches itself to window when the CDN script loads.
 declare global {
@@ -45,6 +45,20 @@ export default function CardDownloadButton({ targetId, fileName }: { targetId: s
       setBusy(false);
     }
   }
+
+  // When the share sheet's "Download" button opens this card with ?download=1,
+  // fire the download automatically once html2canvas can run. Guarded so it
+  // only ever runs once.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    if (typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).get('download') !== '1') return;
+    autoRan.current = true;
+    const t = setTimeout(() => { download(); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ textAlign: 'center', marginTop: '1rem' }}>
