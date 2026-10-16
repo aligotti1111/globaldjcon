@@ -116,6 +116,31 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   const price = b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? null;
   const total = b.total_with_tax ?? price;
 
+  // Payment status for the Pricing block. Read the manual-payment ledger rows so
+  // a Paid deposit / Paid balance shows on the card, and a balance the host said
+  // they'll settle in cash/check at the event reads "Cash on day of event".
+  const ov = b.status_overrides || {};
+  const { data: payData } = await admin
+    .from('booking_payments')
+    .select('kind, status, method, client_intent, amount, amount_paid')
+    .eq('booking_id', b.id);
+  const payRows = (payData || []) as Array<{ kind: string; status: string; method: string | null; client_intent: string | null; amount: number | null; amount_paid: number | null }>;
+  const depRow = payRows.find((r) => r.kind === 'deposit') || null;
+  const balRow = payRows.find((r) => r.kind === 'balance') || null;
+
+  const hasDeposit = (b.deposit_amount != null && b.deposit_amount > 0) || (b.deposit_pct != null && b.deposit_pct > 0) || !!depRow;
+  const depositAmount = b.deposit_amount != null && b.deposit_amount > 0
+    ? b.deposit_amount
+    : (b.deposit_pct && total != null ? Math.round(total * b.deposit_pct) / 100 : (depRow?.amount ?? null));
+  const depositPaid = !!b.deposit_completed_at || !!ov.deposit || depRow?.status === 'paid';
+  const balancePaid = !!b.balance_completed_at || !!ov.balance || !!ov.invoice || balRow?.status === 'paid';
+  const balanceAmount = hasDeposit && depositAmount != null && total != null ? Math.max(total - depositAmount, 0) : total;
+
+  // "Pay at the event" intent on an unpaid balance → Cash / Check on day of event.
+  const balanceAtEvent = !balancePaid && balRow && balRow.client_intent === 'pay_at_event'
+    ? (balRow.method === 'check' ? 'Check on day of event' : 'Cash on day of event')
+    : null;
+
   const eventLabel = MOB_EVENT_LABELS[(b.event_type || '').toLowerCase()] || b.event_type || 'Event';
   const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
   const venueType = b.venue_type_desc || b.venue_type || '';
@@ -127,6 +152,8 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   const chip: React.CSSProperties = { display: 'inline-block', background: 'rgba(0,224,164,.15)', color: '#00e0a4', fontWeight: 800, fontSize: '.62rem', letterSpacing: '.08em', padding: '.25rem .6rem', borderRadius: 6, textTransform: 'uppercase', marginBottom: '.7rem' };
   const label: React.CSSProperties = { color: '#8a8aa0', fontSize: '.62rem', letterSpacing: '.08em', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" };
   const value: React.CSSProperties = { color: '#fff', fontSize: '.92rem', marginTop: 2 };
+  const paidPill: React.CSSProperties = { background: 'rgba(0,224,164,.15)', color: '#00e0a4', fontWeight: 800, fontSize: '.6rem', letterSpacing: '.06em', padding: '.12rem .45rem', borderRadius: 5, textTransform: 'uppercase' };
+  const atEventPill: React.CSSProperties = { background: 'rgba(234,169,74,.15)', color: '#eaa94a', fontWeight: 700, fontSize: '.62rem', padding: '.12rem .45rem', borderRadius: 5 };
 
   const Field = ({ l, v }: { l: string; v: string | null | undefined }) => (!v ? null : (
     <div style={{ marginBottom: '.7rem' }}>
@@ -235,6 +262,32 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
               <span style={{ color: '#fff', fontWeight: 800, fontSize: '.9rem' }}>Total</span>
               <span style={{ fontFamily: "'Space Mono', monospace", color: '#00e0a4', fontWeight: 800, fontSize: '1rem' }}>{money(total, currency)}</span>
             </div>
+
+            {/* Deposit / balance status. Paid shows a green "Paid"; an unpaid
+                balance the host plans to settle in cash/check at the event shows
+                that note instead. */}
+            {(hasDeposit || balanceAtEvent || depositPaid || balancePaid) && (
+              <div style={{ marginTop: '.7rem', paddingTop: '.6rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
+                {hasDeposit && depositAmount != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.2rem 0' }}>
+                    <span style={{ color: '#d6d6e2', fontSize: '.84rem' }}>Deposit</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}>
+                      <span style={{ fontFamily: "'Space Mono', monospace", color: '#fff', fontSize: '.9rem' }}>{money(depositAmount, currency)}</span>
+                      {depositPaid && <span style={paidPill}>Paid</span>}
+                    </span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.2rem 0' }}>
+                  <span style={{ color: '#d6d6e2', fontSize: '.84rem' }}>Balance</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}>
+                    {balanceAmount != null && <span style={{ fontFamily: "'Space Mono', monospace", color: '#fff', fontSize: '.9rem' }}>{money(balanceAmount, currency)}</span>}
+                    {balancePaid
+                      ? <span style={paidPill}>Paid</span>
+                      : balanceAtEvent && <span style={atEventPill}>{balanceAtEvent}</span>}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
