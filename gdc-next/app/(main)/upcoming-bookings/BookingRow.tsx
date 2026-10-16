@@ -1084,6 +1084,7 @@ export default function BookingRow({
           <span className={styles.shareCorner} onClick={(e) => e.stopPropagation()}>
             <ShareBookingButton
               shareToken={(booking as { share_token?: string | null }).share_token}
+              bookingId={booking.id}
               djType={djType}
               plannerId={djType !== 'club' ? planner?.id : null}
               hostEmail={booking.host_email}
