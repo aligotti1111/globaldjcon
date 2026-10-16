@@ -51,16 +51,37 @@ interface BookingRow {
   requester_id: string | null;
   status: string | null;
   event_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   booking_type: string | null;
   set_type: string | null;
   cancel_status: string | null;
   cancel_requested_by: string | null;
   cancel_token: string | null;
   cancel_token_expires_at: string | null;
+  // For the manual-booking direct cancel (no host approval when no contract).
+  is_manual: boolean | null;
+  host_email: string | null;
+  requester_name: string | null;
+  venue_name: string | null;
+  contract_status: string | null;
+  contract_signed_at: string | null;
+  status_overrides: Record<string, boolean> | null;
 }
 
 const SELECT =
-  'id, dj_id, requester_id, status, event_date, booking_type, set_type, cancel_status, cancel_requested_by, cancel_token, cancel_token_expires_at';
+  'id, dj_id, requester_id, status, event_date, start_time, end_time, booking_type, set_type, cancel_status, cancel_requested_by, cancel_token, cancel_token_expires_at, is_manual, host_email, requester_name, venue_name, contract_status, contract_signed_at, status_overrides';
+
+// Whether a real, AGREED contract sits on this booking — a signed/completed
+// document (or one the DJ manually marked complete). Only then does cancelling a
+// manual booking need the host's approval; without one the DJ owns the booking
+// and can cancel it outright.
+function hasAgreedContract(b: BookingRow): boolean {
+  return b.contract_status === 'signed'
+    || b.contract_status === 'completed'
+    || !!b.contract_signed_at
+    || !!(b.status_overrides && b.status_overrides.contract);
+}
 
 /**
  * Give the DJ their slot back.
@@ -160,7 +181,7 @@ export async function POST(req: Request) {
   }
 
   const action = String(body.action || '');
-  if (action !== 'request' && action !== 'accept' && action !== 'decline') {
+  if (action !== 'request' && action !== 'accept' && action !== 'decline' && action !== 'cancel-direct') {
     return fail('Unknown action');
   }
 
@@ -198,8 +219,8 @@ export async function POST(req: Request) {
     booking = data;
     // Whoever holds the token is the responder — the opposite side to the asker.
     actor = data.cancel_requested_by === 'dj' ? 'host' : 'dj';
-    // A token can only answer a request, never start one.
-    if (action === 'request') return fail('Invalid link', 404);
+    // A token can only answer a request, never start one or cancel directly.
+    if (action === 'request' || action === 'cancel-direct') return fail('Invalid link', 404);
   } else {
     // Session path — must be logged in AND be one of the two parties.
     if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return fail('Missing booking');
@@ -225,11 +246,11 @@ export async function POST(req: Request) {
       if (!canAcceptBookings(acting.role)) {
         return fail('You do not have permission to cancel this booking.', 403);
       }
-      // SENDING a cancellation request is OWNER-ONLY. Answering one (accept/
-      // decline) stays manager+, but starting the request — which can end a
-      // committed booking — is reserved for the account owner.
-      if (action === 'request' && !canBilling(acting.role)) {
-        return fail('Only the account owner can request a cancellation.', 403);
+      // SENDING a cancellation request — or directly cancelling a manual booking
+      // — is OWNER-ONLY. Answering one (accept/decline) stays manager+, but
+      // ending a booking is reserved for the account owner.
+      if ((action === 'request' || action === 'cancel-direct') && !canBilling(acting.role)) {
+        return fail('Only the account owner can cancel a booking.', 403);
       }
       actor = 'dj';
       djActing = acting;
@@ -264,6 +285,89 @@ export async function POST(req: Request) {
   }
 
   const nowIso = new Date().toISOString();
+
+  // ── CANCEL DIRECT (manual bookings, no signed contract) ─────────────
+  // A manual booking the DJ entered themselves is theirs to cancel — UNLESS an
+  // agreed (signed) contract sits on it, in which case it behaves like a normal
+  // online booking and needs the host's approval (the request flow below). With
+  // no contract, the DJ cancels outright and the host is simply emailed that the
+  // DJ cancelled it. Session DJ only (blocked on the token path above).
+  if (action === 'cancel-direct') {
+    if (actor !== 'dj') return fail('Only the DJ can cancel this booking.', 403);
+    if (!booking.is_manual) return fail('Only manually-added bookings can be cancelled directly.', 400);
+    if (hasAgreedContract(booking)) {
+      return fail('This booking has a signed contract — the host must approve the cancellation.', 409);
+    }
+
+    const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, 1000) : null;
+
+    const { data: rows, error } = await admin
+      .from('bookings')
+      .update({
+        status: 'cancelled',
+        cancel_status: 'accepted',
+        cancel_requested_by: 'dj',
+        cancel_reason: reason,
+        cancel_requested_at: nowIso,
+        cancel_responded_at: nowIso,
+        cancel_token: null,
+        cancel_token_expires_at: null,
+        updated_at: nowIso,
+      } as unknown as never)
+      .eq('id', booking.id)
+      .neq('status', 'cancelled')
+      .select('id');
+    if (error) {
+      console.error('direct cancel update failed:', error);
+      return fail('Could not cancel the booking. Please try again.', 500);
+    }
+    const applied = Array.isArray(rows) && rows.length > 0;
+    if (applied) await releaseCalendarSlot(admin, booking);
+
+    // Email the host that the DJ cancelled — best-effort. Recipient is the
+    // booking's host_email (manual bookings), falling back to the booker's
+    // account email if one is linked.
+    try {
+      const { resolveUserEmail } = await import('@/lib/supabase/admin');
+      const to = booking.host_email || (booking.requester_id ? await resolveUserEmail(booking.requester_id) : null);
+      if (to && process.env.RESEND_API_KEY) {
+        const { Resend } = await import('resend');
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        let djName = 'your DJ';
+        if (booking.dj_id) {
+          const { data: djp } = await admin.from('users').select('name, company').eq('id', booking.dj_id).maybeSingle<{ name: string | null; company: string | null }>();
+          djName = djp?.company || djp?.name || djName;
+        }
+        const hi = booking.requester_name?.trim() ? booking.requester_name.trim().split(' ')[0] : 'there';
+        const when = booking.event_date
+          ? new Date(`${booking.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+          : 'your event';
+        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const replyTo = booking.dj_id ? await resolveUserEmail(booking.dj_id) : null;
+        await resend.emails.send({
+          from: 'Global DJ Connect <info@globaldjconnect.com>',
+          to,
+          subject: `Your booking on ${when} has been cancelled`,
+          ...(replyTo ? { replyTo } : {}),
+          html: `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;">
+<tr><td style="background:#000;padding:22px 32px;" align="center"><div style="font-family:'Bebas Neue',Impact,Arial,sans-serif;font-size:26px;letter-spacing:.06em;color:#00f5c4;font-weight:700;">GLOBAL DJ CONNECT</div></td></tr>
+<tr><td style="padding:30px 32px;color:#222;">
+<h1 style="margin:0 0 8px;font-size:21px;color:#111;">Booking cancelled</h1>
+<p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#444;">Hi ${esc(hi)}, <strong>${esc(djName)}</strong> has cancelled the booking for your event on <strong>${esc(when)}</strong>${booking.venue_name ? ` at ${esc(booking.venue_name)}` : ''}.</p>
+${reason ? `<p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#555;background:#f7f7f9;border:1px solid #ececf0;border-radius:10px;padding:12px 14px;">${esc(reason)}</p>` : ''}
+<p style="margin:0;color:#888;font-size:12px;line-height:1.6;">If you have questions, just reply to this email to reach ${esc(djName)} directly.</p>
+</td></tr></table></td></tr></table>`,
+        });
+      }
+    } catch (e) {
+      console.warn('direct cancel email failed:', e);
+    }
+
+    if (djActing) await logActivity(djActing, { action: 'cancellation.direct', summary: 'Cancelled a manual booking (no contract — no host approval needed)', bookingId: booking.id });
+    return NextResponse.json({ ok: true, cancel_status: 'accepted', status: 'cancelled' });
+  }
 
   // ── REQUEST ─────────────────────────────────────────────────────────
   if (action === 'request') {
