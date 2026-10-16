@@ -22,7 +22,7 @@ function loadHtml2Canvas(): Promise<NonNullable<Window['html2canvas']>> {
   });
 }
 
-export default function CardDownloadButton({ targetId, fileName }: { targetId: string; fileName: string }) {
+export default function CardDownloadButton({ targetId, fileName, autoOnly = false }: { targetId: string; fileName: string; autoOnly?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -59,6 +59,15 @@ export default function CardDownloadButton({ targetId, fileName }: { targetId: s
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // On the public card the button is hidden (sharing/downloading is handled by
+  // the DJ's share sheet) — the component stays mounted only so ?download=1 can
+  // fire the capture above. Still surface an error if that auto-run fails.
+  if (autoOnly) {
+    return err ? (
+      <div style={{ textAlign: 'center', color: '#ff6b6b', fontSize: '.72rem', marginTop: '.6rem' }}>{err}</div>
+    ) : null;
+  }
 
   return (
     <div style={{ textAlign: 'center', marginTop: '1rem' }}>
