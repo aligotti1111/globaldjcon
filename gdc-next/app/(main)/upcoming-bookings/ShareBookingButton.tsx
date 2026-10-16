@@ -20,14 +20,11 @@ import { createPortal } from 'react-dom';
 
 interface Props {
   shareToken?: string | null;
-  /** The booking id — used to send the card by email server-side. */
-  bookingId?: string | null;
   /** Only mobile DJ bookings offer the planner link. */
   djType?: 'club' | 'mobile';
   /** The booking's planner id, when one exists (for the uneditable planner link). */
   plannerId?: string | null;
-  /** Prefills the recipient on Email / Text when we have them. */
-  hostEmail?: string | null;
+  /** Prefills the recipient number on Text when we have it. */
   phone?: string | null;
   /** A short name for the event, used in the email subject line. */
   eventLabel?: string | null;
@@ -38,15 +35,13 @@ interface Props {
 }
 
 export default function ShareBookingButton({
-  shareToken, bookingId, djType = 'mobile', plannerId, hostEmail, phone, eventLabel, eventType, eventDate,
+  shareToken, djType = 'mobile', plannerId, phone, eventLabel, eventType, eventDate,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   // Default the planner link ON when one is available — the DJ asked for it,
   // so assume they want to send it unless they turn it off.
   const [includePlanner, setIncludePlanner] = useState(true);
-  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [emailMsg, setEmailMsg] = useState<string | null>(null);
 
   if (!shareToken) return null;
 
@@ -80,52 +75,21 @@ export default function ShareBookingButton({
     setTimeout(() => setCopied(false), 1800);
   }
 
-  // Open an app-handler URL (mailto:/sms:) by clicking a real anchor rather than
-  // assigning window.location.href. Setting location.href navigates the SPA,
-  // and webmail handlers (Gmail especially) frequently drop the subject/body
-  // when the request arrives that way — the compose window opens empty. A
-  // genuine anchor click hands the full URL to the registered handler intact.
-  function openHandler(url: string, newTab = false) {
-    if (newTab) {
-      // The download link is a real page — open it in its own tab.
-      const a = document.createElement('a');
-      a.href = url; a.target = '_blank'; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); a.remove();
-      return;
-    }
-    // mailto:/sms: — assign to window.location. This is the canonical hand-off:
-    // the browser routes it to the OS mail/SMS app and does NOT navigate the
-    // page. A blank-target anchor opened an empty tab and the handler never
-    // fired, which is why Email appeared to do nothing.
-    window.location.href = url;
-  }
-
-  // Email is SENT server-side (Resend), not handed to a mailto: — a mailto only
-  // opens the DJ's webmail homepage without a composed message. The host gets a
-  // branded email with a clickable "View your booking card" button.
-  async function shareByEmail() {
-    if (!bookingId) { setEmailState('error'); setEmailMsg('Missing booking.'); return; }
-    setEmailState('sending'); setEmailMsg(null);
-    try {
-      const res = await fetch('/api/dj/share-card', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, includePlanner: canPlanner && includePlanner }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setEmailState('error'); setEmailMsg(data?.error || 'Could not send.'); return; }
-      setEmailState('sent');
-      setEmailMsg(data?.to ? `Sent to ${data.to}` : 'Email sent');
-      setTimeout(() => { setEmailState('idle'); setEmailMsg(null); }, 4000);
-    } catch {
-      setEmailState('error'); setEmailMsg('Could not send. Try again.');
-    }
+  // Email opens the DJ's own mail app with the message pre-filled, so THEY send
+  // it to whoever they want — no recipient is pre-set. Which app opens is the
+  // user's OS/browser default-mail-handler setting, not ours. A short subject
+  // plus the link(s) in the body.
+  function shareByEmail() {
+    const subject = `Event details${eventLabel ? ` — ${eventLabel}` : ''}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildBody())}`;
   }
 
   function downloadCard() {
     // The public card page runs the html2canvas capture; ?download=1 makes it
-    // fire on open. Opening it in a new tab keeps the share sheet in place.
-    openHandler(`${cardUrl}?download=1`, true);
+    // fire on open. Open it in its own tab so the share sheet stays put.
+    const a = document.createElement('a');
+    a.href = `${cardUrl}?download=1`; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   function shareByText() {
@@ -138,7 +102,7 @@ export default function ShareBookingButton({
     const headParts = [eventType || '', niceDate].filter(Boolean);
     const head = headParts.length ? `${headParts.join(' — ')}\n\n` : '';
     // iOS wants ?&body=, Android wants ?body= — the ?&body form works on both.
-    openHandler(`sms:${num}?&body=${encodeURIComponent(head + buildBody())}`);
+    window.location.href = `sms:${num}?&body=${encodeURIComponent(head + buildBody())}`;
   }
 
   // Bare icon — no box, no border.
@@ -251,12 +215,8 @@ export default function ShareBookingButton({
               />
               <MethodButton
                 onClick={shareByEmail}
-                active={emailState === 'sent'}
-                busy={emailState === 'sending'}
-                label={emailState === 'sending' ? 'Sending…' : emailState === 'sent' ? 'Sent!' : 'Email'}
-                icon={emailState === 'sent'
-                  ? <polyline points="20 6 9 17 4 12" />
-                  : <><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
+                label="Email"
+                icon={<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
               />
               <MethodButton
                 onClick={shareByText}
@@ -269,14 +229,6 @@ export default function ShareBookingButton({
                 icon={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>}
               />
             </div>
-            {emailMsg && (
-              <div style={{
-                marginTop: '.6rem', textAlign: 'center', fontSize: '.74rem',
-                color: emailState === 'error' ? '#ff6b6b' : '#00e0a4',
-              }}>
-                {emailMsg}
-              </div>
-            )}
           </div>
         </div>,
         document.body,
