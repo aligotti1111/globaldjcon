@@ -334,12 +334,14 @@ export default async function UpcomingBookingsPage({
   const focusCardId = pick('card');
   const focusOpenId = pick('open');
 
-  // Index: ids + ordering/activity fields for all upcoming bookings. Read with
-  // the admin client (getActingContext already authorized this teammate/owner;
-  // the bookings table has no team-member RLS policy). Scoped hard to djId.
+  // Index: ids + the fields needed to order the list, compute the dashboard
+  // stats, flag same-day overlaps, and tell whether a host recently acted — for
+  // EVERY upcoming booking. Read with the admin client (getActingContext already
+  // authorized this teammate/owner; the bookings table has no team-member RLS
+  // policy). Scoped hard to djId.
   const { data: idxRows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, created_at, contract_status, contract_signed_at, contract_sent_at')
+    .select('id, event_date, start_time, end_time, created_at, accepted_at, status, cancel_status, booking_type, is_manual, contract_status, contract_signed_at, contract_sent_at, status_overrides, venue_name, venue_address, flyer_url')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .gte('event_date', today)
@@ -350,25 +352,42 @@ export default async function UpcomingBookingsPage({
     .order('start_time', { ascending: true })
     // Safety net for a pathological account; realistically never hit.
     .limit(5000);
-  type IdxRow = { id: string; event_date: string | null; start_time: string | null; created_at: string | null; contract_status: string | null; contract_signed_at: string | null; contract_sent_at: string | null };
+  type IdxRow = {
+    id: string; event_date: string | null; start_time: string | null; end_time: string | null;
+    created_at: string | null; accepted_at: string | null; status: string | null; cancel_status: string | null;
+    booking_type: string | null; is_manual: boolean | null; contract_status: string | null;
+    contract_signed_at: string | null; contract_sent_at: string | null; status_overrides: Record<string, boolean> | null;
+    venue_name: string | null; venue_address: string | null; flyer_url: string | null;
+  };
   const idx = (idxRows || []) as IdxRow[];
   const allIds = idx.map((r) => r.id);
 
+  // Supabase sends .in() as a URL query string, which a gateway rejects past a
+  // few hundred ids — so chunk any all-ids read. (chunk size well under the
+  // ~16KB URL limit even for 36-char uuids.)
+  const chunk = <T,>(arr: T[], n: number): T[][] => { const out: T[][] = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+  const idChunks = chunk(allIds, 200);
+
   // Most-recent host action per booking, across ALL upcoming bookings
-  // (timestamp-only reads — cheap). Powers the New-activity count + sort.
+  // (timestamp-only reads — cheap). Powers the New-activity count + sort. Also
+  // count outstanding payment requests for the dashboard stat.
   const actAt: Record<string, number> = {};
   const noteAct = (bid: string, ts: string | null | undefined) => {
     if (!ts) return; const t = Date.parse(ts); if (Number.isNaN(t)) return;
     if (!actAt[bid] || t > actAt[bid]) actAt[bid] = t;
   };
-  if (allIds.length > 0) {
+  let pendingPayments = 0;
+  for (const ids of idChunks) {
     const [{ data: pAll }, { data: plAll }, { data: rAll }, { data: gAll }] = await Promise.all([
-      admin.from('booking_payments').select('booking_id, marked_sent_at').in('booking_id', allIds),
-      admin.from('booking_planners').select('booking_id, submitted_at').in('booking_id', allIds),
-      admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', allIds),
-      admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', allIds),
+      admin.from('booking_payments').select('booking_id, marked_sent_at, status').in('booking_id', ids),
+      admin.from('booking_planners').select('booking_id, submitted_at').in('booking_id', ids),
+      admin.from('booking_riders').select('booking_id, confirmed_at').in('booking_id', ids),
+      admin.from('booking_guestlists').select('booking_id, confirmed_at').in('booking_id', ids),
     ]);
-    for (const p of (((pAll as unknown) as { booking_id: string; marked_sent_at: string | null }[] | null) || [])) noteAct(p.booking_id, p.marked_sent_at);
+    for (const p of (((pAll as unknown) as { booking_id: string; marked_sent_at: string | null; status: string | null }[] | null) || [])) {
+      noteAct(p.booking_id, p.marked_sent_at);
+      if (p.status === 'requested' || p.status === 'pending_confirmation' || p.status === 'partial') pendingPayments++;
+    }
     for (const p of (((plAll as unknown) as { booking_id: string; submitted_at: string | null }[] | null) || [])) noteAct(p.booking_id, p.submitted_at);
     for (const r of (((rAll as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) noteAct(r.booking_id, r.confirmed_at);
     for (const g of (((gAll as unknown) as { booking_id: string; confirmed_at: string | null }[] | null) || [])) noteAct(g.booking_id, g.confirmed_at);
@@ -379,6 +398,51 @@ export default async function UpcomingBookingsPage({
   }
   const activityCount = Object.keys(actAt).length;
 
+  // ── Dashboard stats, overlaps, and a light booking list — computed over the
+  // FULL set (not just this page) so the desktop stat boxes, the same-day
+  // overlap warnings, and the Add-booking per-day cap stay correct. ───────────
+  const isCancelledIdx = (r: IdxRow) => r.status === 'cancelled' || r.cancel_status === 'accepted';
+  const d30iso = (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString(); })();
+  let statUpcoming = 0, statBooked30 = 0, statPendingContracts = 0;
+  for (const r of idx) {
+    if (isCancelledIdx(r)) continue;
+    if (r.event_date) statUpcoming++;
+    const when = r.accepted_at || r.created_at || '';
+    if (when && when >= d30iso) statBooked30++;
+    if (r.contract_status === 'awaiting_client' && !r.status_overrides?.contract) statPendingContracts++;
+  }
+  const dashStats = { upcoming: statUpcoming, booked30: statBooked30, pendingPayments, pendingContracts: statPendingContracts };
+
+  // Same-day time overlaps — club/bar DJs only (they can't be in two places).
+  const overlapIds: string[] = [];
+  if (djType === 'club') {
+    const toRange = (r: IdxRow): [number, number] | null => {
+      if (!r.start_time || !r.end_time) return null;
+      const [sh, sm] = r.start_time.split(':').map(Number);
+      const [eh, em] = r.end_time.split(':').map(Number);
+      if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+      const start = sh * 60 + sm; let end = eh * 60 + em; if (end <= start) end += 1440;
+      return [start, end];
+    };
+    const byDate = new Map<string, IdxRow[]>();
+    for (const r of idx) { if (!r.event_date) continue; (byDate.get(r.event_date) || byDate.set(r.event_date, []).get(r.event_date)!).push(r); }
+    const seen = new Set<string>();
+    for (const sameDay of byDate.values()) {
+      for (let i = 0; i < sameDay.length; i++) for (let j = i + 1; j < sameDay.length; j++) {
+        const a = toRange(sameDay[i]); const b = toRange(sameDay[j]);
+        if (a && b && a[0] < b[1] && b[0] < a[1]) { for (const id of [sameDay[i].id, sameDay[j].id]) if (!seen.has(id)) { seen.add(id); overlapIds.push(id); } }
+      }
+    }
+  }
+
+  // Light list for the Add-booking modal (per-day cap) and the ?addManual
+  // existing-booking lookup — every upcoming booking, just the few fields those
+  // need, so neither is fooled by pagination.
+  const lightBookings = idx.map((r) => ({
+    id: r.id, event_date: r.event_date, start_time: r.start_time, end_time: r.end_time,
+    is_manual: r.is_manual, status: r.status, venue_name: r.venue_name, venue_address: r.venue_address, flyer_url: r.flyer_url,
+  }));
+
   // Ordered id list for the requested sort. (Index is already event_date/start
   // ascending, so "date" needs no re-sort.)
   const orderedIdx: IdxRow[] = sortMode === 'recent'
@@ -387,8 +451,12 @@ export default async function UpcomingBookingsPage({
       ? idx.filter((r) => actAt[r.id]).sort((a, b) => (actAt[b.id] || 0) - (actAt[a.id] || 0))
       : idx;
   const serverTotal = sortMode === 'activity' ? activityCount : allIds.length;
+  // Clamp the page so ?page=99 of 3 lands on the last real page rather than an
+  // empty one with a broken "Page 99 of 3" pager.
+  const lastPage = Math.max(1, Math.ceil(serverTotal / UP_PAGE_SIZE));
+  const page = Math.min(pageParam, lastPage);
 
-  const fromIdx = (pageParam - 1) * UP_PAGE_SIZE;
+  const fromIdx = (page - 1) * UP_PAGE_SIZE;
   const pageIds = orderedIdx.slice(fromIdx, fromIdx + UP_PAGE_SIZE).map((r) => r.id);
   // A notification deep-link (?card / ?open) may point at a booking on another
   // page — make sure it's loaded so the focused view / auto-open still works.
@@ -454,11 +522,12 @@ export default async function UpcomingBookingsPage({
   // add-booking form's package picker.
   const mobPackages = settings?.mob_packages;
 
-  // Payment rows for these bookings, keyed by booking_id. One .in() query.
-  // The generated types/supabase.ts predates booking_payments, so
-  // .from('booking_payments') on the typed client is a build error — cast to
-  // an untyped client for this ONE table (same fix as /api/payments).
-  const db = supabase as unknown as SupabaseClient;
+  // Payment / planner rows for the page's bookings are read with the ADMIN
+  // client, hard-scoped to these bookingIds — the same reason the bookings read
+  // above uses admin: booking_payments / booking_planners have no team-member
+  // RLS policy, so a teammate's session client returns nothing, and the row's
+  // activity/pipeline state would then disagree with the admin-computed index.
+  const db = admin;
 
   // ── New-activity sort: newest HOST action per booking ──────────────────────
   // We track the most recent thing the HOST did on each booking — never the
@@ -613,11 +682,15 @@ export default async function UpcomingBookingsPage({
       djCity={profile?.city ?? null}
       djState={profile?.state ?? null}
       serverPaged
-      serverPage={pageParam - 1}
+      serverPage={page - 1}
       serverTotal={serverTotal}
       serverPageSize={UP_PAGE_SIZE}
       initialSort={sortMode}
       activityTotal={activityCount}
+      upcomingTotal={allIds.length}
+      serverStats={dashStats}
+      serverOverlapIds={overlapIds}
+      serverLightBookings={lightBookings}
     />
   );
 }
