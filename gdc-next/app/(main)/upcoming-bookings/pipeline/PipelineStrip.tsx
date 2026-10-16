@@ -109,11 +109,13 @@ export default function PipelineStrip({
         const open = menuOpenKey === st.key;
         const hasMenu = (st.actions?.length ?? 0) > 0 || st.overridable || !!st.info || !!st.hint;
         const waiting = !st.done && (!!st.caption || st.state === 'pending');
-        // "Pending" specifically = sent and waiting on the host (not "Not Sent",
-        // not "Declined"). These get an AMBER ring with an amber arc that
-        // animates around the circle — the same arc keeps spinning while the
-        // action is actually sending (busy).
-        const isPending = !st.done && (st.state === 'pending' || /^pending/i.test(st.caption || ''));
+        // "Pending" specifically = the caption literally reads "Pending" (sent,
+        // waiting on the host). NOT "Not Sent", "0%", "Skipped" or "Declined" —
+        // st.state === 'pending' is just "incomplete" and was lighting those up
+        // too. Only a real Pending gets the amber ring.
+        // "Sign to send" is awaiting_dj — the DJ's own move — and reads amber the
+        // same as a real "Pending".
+        const isPending = !st.done && /^(pending\b|sign to send$)/i.test((st.caption || '').trim());
         // Transient in-flight cue only — a spinner ring over this icon while its
         // request/receipt action is sending or downloading. Adds nothing to the
         // stage's real state; clears the instant the call settles.
