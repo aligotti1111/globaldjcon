@@ -306,8 +306,9 @@ export default function NotificationBell({
                     // the dashboard open behind them.
                     window.open(dest, '_blank', 'noopener');
                   } else {
-                    // No dedicated page → open the booking's card in place.
-                    router.push(`${openHrefBase}?open=${encodeURIComponent(it.bookingId)}`);
+                    // No dedicated page → open JUST that booking's card on its
+                    // own focused view (?card=), not the whole list.
+                    router.push(`${openHrefBase}?card=${encodeURIComponent(it.bookingId)}`);
                   }
                 }}
                 style={{
