@@ -26,15 +26,16 @@ import { createClient } from '@/lib/supabase/client';
 // don't recognise returns null and we fall back to mailto:.
 function webComposer(email: string | null): ((subject: string, body: string) => string) | null {
   const domain = (email || '').split('@')[1]?.toLowerCase() || '';
-  const q = (subject: string, body: string) => `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const enc = encodeURIComponent;
+  // NB: Gmail's compose URL names the subject param "su", not "subject".
   if (/^(gmail\.com|googlemail\.com)$/.test(domain))
-    return (s, b) => `https://mail.google.com/mail/?view=cm&fs=1&tf=1&${q(s, b)}`;
+    return (s, b) => `https://mail.google.com/mail/?view=cm&fs=1&tf=1&su=${enc(s)}&body=${enc(b)}`;
   if (/^(outlook\.|hotmail\.|live\.|msn\.)/.test(domain) || domain === 'outlook.com')
-    return (s, b) => `https://outlook.live.com/mail/0/deeplink/compose?${q(s, b)}`;
+    return (s, b) => `https://outlook.live.com/mail/0/deeplink/compose?subject=${enc(s)}&body=${enc(b)}`;
   if (/^(yahoo\.|ymail\.com|rocketmail\.com)/.test(domain) || domain === 'yahoo.com')
-    return (s, b) => `https://compose.mail.yahoo.com/?${q(s, b)}`;
+    return (s, b) => `https://compose.mail.yahoo.com/?subject=${enc(s)}&body=${enc(b)}`;
   if (domain === 'aol.com')
-    return (s, b) => `https://mail.aol.com/?${q(s, b)}`;
+    return (s, b) => `https://mail.aol.com/?subject=${enc(s)}&body=${enc(b)}`;
   return null;
 }
 
