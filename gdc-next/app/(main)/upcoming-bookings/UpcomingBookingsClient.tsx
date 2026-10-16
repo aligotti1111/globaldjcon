@@ -90,7 +90,19 @@ interface Props {
   // upcoming bookings (not just this page's rows).
   initialSort?: 'date' | 'recent' | 'activity';
   activityTotal?: number;
+  // These are all computed over the FULL upcoming set server-side, because this
+  // page's `bookings` is only one slice now. Used when serverPaged.
+  upcomingTotal?: number;                       // count of all upcoming (non-activity)
+  serverStats?: { upcoming: number; booked30: number; pendingPayments: number; pendingContracts: number };
+  serverOverlapIds?: string[];                  // same-day time clashes (club only)
+  serverLightBookings?: LightBooking[];         // id + a few fields for the add-cap + ?addManual lookup + schedule graphic
 }
+
+// Minimal shape of every upcoming booking (all pages), for whole-set checks.
+type LightBooking = {
+  id: string; event_date: string | null; start_time: string | null; end_time: string | null;
+  is_manual: boolean | null; status: string | null; venue_name: string | null; venue_address: string | null; flyer_url: string | null;
+};
 
 
 export default function UpcomingBookingsClient({
@@ -103,6 +115,7 @@ export default function UpcomingBookingsClient({
   djZip = null, djCity = null, djState = null,
   serverPaged = false, serverPage = 0, serverTotal = 0, serverPageSize = 50,
   initialSort = 'date', activityTotal,
+  upcomingTotal, serverStats, serverOverlapIds, serverLightBookings,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
   // Payment ledger rows per booking (booking_payments). Owned at the top so a
@@ -257,9 +270,15 @@ export default function UpcomingBookingsClient({
   useEffect(() => { if (serverPaged) setSortMode(initialSort); }, [serverPaged, initialSort]);
   const changeSort = (mode: 'date' | 'recent' | 'activity') => {
     if (serverPaged) {
+      setSortMode(mode); // optimistic: flip the active button before the round-trip
       const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
       params.set('sort', mode);
-      params.delete('page'); // a new sort starts at page 1
+      // A new sort starts at page 1 and drops any focused/opened deep-link so it
+      // doesn't stick a stray card onto the fresh list.
+      params.delete('page');
+      params.delete('open');
+      params.delete('card');
+      setOpenId(null);
       router.push(`?${params.toString()}`);
     } else {
       setSortMode(mode);
@@ -332,11 +351,25 @@ export default function UpcomingBookingsClient({
     const returnTo = params.get('returnTo');
     if (returnTo) setReturnToUrl(returnTo);
     if (addManual) {
+      // A manual booking already on this date (full loaded row = edit it here).
       const existing = initialBookings.find(
         (b) => b.event_date === addManual && b.is_manual,
       );
+      // Server-paged: the existing manual booking may be on ANOTHER page, so
+      // consult the full light list before opening Add — otherwise we'd create
+      // a duplicate. If it exists but isn't loaded, open its card to edit there.
+      const existsAnywhere = existing || (serverPaged && (serverLightBookings || []).some(
+        (b) => b.event_date === addManual && b.is_manual,
+      ));
       if (existing) {
         setEditing(existing);
+      } else if (existsAnywhere) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('addManual');
+        const hit = (serverLightBookings || []).find((b) => b.event_date === addManual && b.is_manual);
+        if (hit) url.searchParams.set('card', hit.id);
+        router.replace(`${url.pathname}${url.search}`);
+        return;
       } else {
         setPrefillDate(addManual);
         setShowAddModal(true);
@@ -502,6 +535,11 @@ export default function UpcomingBookingsClient({
     if (serverPaged) {
       const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
       params.set('page', String(target + 1));
+      // Paging away drops any deep-linked card/open so it doesn't get re-appended
+      // to every page and auto-open on each one.
+      params.delete('open');
+      params.delete('card');
+      setOpenId(null);
       router.push(`?${params.toString()}`);
     } else {
       setPage(target);
@@ -546,7 +584,10 @@ export default function UpcomingBookingsClient({
   const focusedBooking = focusId ? bookings.find((b) => b.id === focusId) || null : null;
 
   // Dashboard summary stats (desktop only). Cancelled bookings are excluded.
-  const dashStats = useMemo(() => {
+  // Server-paged: the page computed these over ALL upcoming bookings (this
+  // page's `bookings` is only one slice), so prefer that. Fall back to the
+  // local computation for the non-paged path.
+  const localDashStats = useMemo(() => {
     const d30 = new Date(); d30.setDate(d30.getDate() - 30);
     const d30iso = d30.toISOString();
     const isCancelled = (b: UpcomingBooking) => b.status === 'cancelled' || b.cancel_status === 'accepted';
@@ -580,12 +621,16 @@ export default function UpcomingBookingsClient({
     }
     return { upcoming, booked30, pendingPayments, pendingContracts };
   }, [bookings, paymentsMap]);
+  const dashStats = serverPaged && serverStats ? serverStats : localDashStats;
 
   // IDs of bookings whose time range overlaps another booking on the SAME
   // date — CLUB/BAR DJs only (a club DJ can't be in two places at once).
   // Mobile DJs can accept multiple same-day bookings, so this is empty for
   // them. Times are "HH:MM"; an end at/before start wraps past midnight.
   const overlapIds = useMemo(() => {
+    // Server-paged: overlaps were computed over the full set (a same-day clash
+    // can straddle a page boundary), so use that list.
+    if (serverPaged && serverOverlapIds) return new Set(serverOverlapIds);
     if (djType !== 'club') return new Set<string>();
     const toRange = (b: UpcomingBooking): [number, number] | null => {
       if (!b.start_time || !b.end_time) return null;
@@ -620,7 +665,19 @@ export default function UpcomingBookingsClient({
       }
     }
     return ids;
-  }, [bookings, djType]);
+  }, [bookings, djType, serverPaged, serverOverlapIds]);
+
+  // Whether the DJ has ANY upcoming bookings at all. Server-paged: the current
+  // page's `bookings` can be empty (e.g. New-activity view with none, or a page
+  // past the end) while the DJ still has bookings — so trust the full total, not
+  // this slice. Keeps the sort bar visible and shows the right empty-state.
+  // Past (archive) is server-paged too but doesn't send upcomingTotal; its
+  // serverTotal is the full past count, so fall back to that.
+  const hasAnyUpcoming = serverPaged ? ((upcomingTotal ?? serverTotal) > 0) : (bookings.length > 0);
+  // Full-set booking list for whole-set checks (add-cap, ?addManual lookup, the
+  // schedule graphic). Server-paged uses the light list the page computed over
+  // every upcoming booking; otherwise the loaded rows are the full set.
+  const fullBookings = (serverPaged && serverLightBookings ? serverLightBookings : bookings) as UpcomingBooking[];
 
   function monthLabel(key: string): string {
     const [y, m] = key.split('-').map((s) => parseInt(s, 10));
@@ -759,7 +816,7 @@ export default function UpcomingBookingsClient({
         </div>
       )}
 
-      {!archive && bookings.length > 0 && (
+      {!archive && hasAnyUpcoming && (
         <div className={styles.sortBar} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={styles.sortLabel}>Sort:</span>
           {/* Desktop: the three sort options as a button group. */}
@@ -814,7 +871,7 @@ export default function UpcomingBookingsClient({
         </div>
       )}
 
-      {bookings.length === 0 ? (
+      {!hasAnyUpcoming ? (
         <div className={styles.empty}>
           {archive ? (
             <>
@@ -896,7 +953,7 @@ export default function UpcomingBookingsClient({
 
       {showStory && isPaid && (
         <MonthlyStory
-          bookings={bookings}
+          bookings={fullBookings}
           djName={djName}
           userId={userId}
           onClose={() => setShowStory(false)}
@@ -911,7 +968,7 @@ export default function UpcomingBookingsClient({
           djName={djName}
           bookingsPerDay={bookingsPerDay}
           mobPackages={mobPackages}
-          existingBookings={bookings}
+          existingBookings={fullBookings}
           existing={editing}
           focusHost={focusHost}
           prefillDate={prefillDate}
