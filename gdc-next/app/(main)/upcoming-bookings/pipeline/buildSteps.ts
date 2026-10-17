@@ -191,7 +191,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             ? []
             : awaiting
               ? [
-                  { label: 'Resend contract', run: () => runContract('resend') },
+                  { label: 'Re-send contract', run: () => runContract('resend') },
                   // The DocuSeal email is the single point of failure in this
                   // whole flow — spam folder, typo'd address, corporate filter
                   // — and the DJ finds out by the contract never coming back.
@@ -530,7 +530,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               : []),
             // The rails the client will be offered — only before a request has
             // gone out (after that the request already carries them).
-            ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${depositRow.id}`).catch(() => {}); } }] : []), ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id) }] : []), ...(!depositRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : []),
+            ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${depositRow.id}`).catch(() => {}); } }] : []), ...(depositRow && Number(depositRow.amount_paid || 0) <= 0 && depositRow.status !== 'paid' && depositRow.status !== 'waived' ? [{ label: 'Cancel request', run: () => cancelRequest(depositRow.id), danger: true }] : []), ...(!depositRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : []),
             // A genuinely PAID deposit (real money settled) can have its receipt
             // re-sent, downloaded, or edited. Edit opens the receipt-only editor.
             ...(reallySettled && editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('deposit') }] : []),
@@ -831,9 +831,9 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               ? [
                   { label: 'Mark New Balance Paid', run: () => markBalancePaid?.(unpaidBalanceRow!.id) },
                   ...(Number(unpaidBalanceRow!.amount_paid || 0) <= 0
-                    ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${unpaidBalanceRow!.id}`).catch(() => {}); } }]
+                    ? [{ label: 'Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${unpaidBalanceRow!.id}`).catch(() => {}); } }]
                     : []),
-                  { label: 'Cancel request', run: () => cancelRequest(unpaidBalanceRow!.id) },
+                  { label: 'Cancel request', run: () => cancelRequest(unpaidBalanceRow!.id), danger: true },
                 ]
               : [{ label: 'Request New Balance', run: () => openRequest('balance') }])
           : archive
@@ -852,7 +852,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               // clears the request, logs it, and emails the host a cancellation
               // notice (handled by /api/payments cancel-request for any kind).
               ...(!done && balanceRow && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled
-                  ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }]
+                  ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id), danger: true }]
                   : []),
               ...(done
                   ? [
@@ -862,7 +862,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                     ]
                   : []),
             ]
-          : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance'), disabled: depositPending, title: depositPending ? 'Settle or cancel the pending deposit first.' : undefined }]), ...(done ? [...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('balance') }] : []), { label: balRcptLabel, run: () => sendReceipt('balance') }, { label: 'Download receipt', run: () => downloadReceipt?.('balance') }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: '\u{1F517} Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${balanceRow.id}`).catch(() => {}); } }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id) }] : []), ...(!balanceRow ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
+          : [...((balanceRow || done) ? [] : [{ label: 'Request balance', run: () => openRequest('balance'), disabled: depositPending, title: depositPending ? 'Settle or cancel the pending deposit first.' : undefined }]), ...(done ? [...(editReceipt ? [{ label: 'Edit receipt', run: () => editReceipt('balance') }] : []), { label: balRcptLabel, run: () => sendReceipt('balance') }, { label: 'Download receipt', run: () => downloadReceipt?.('balance') }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Copy payment link', run: () => { navigator.clipboard?.writeText(`${window.location.origin}/pay/${balanceRow.id}`).catch(() => {}); } }] : []), ...(balanceRow && !done && Number(balanceRow.amount_paid || 0) <= 0 && !balanceSettled ? [{ label: 'Cancel request', run: () => cancelRequest(balanceRow.id), danger: true }] : []), ...(!balanceRow && !done ? [{ label: 'Payment options', run: () => setMethodsOpen(true) }] : [])],
         // Why "Request balance" is missing: a deposit is still out and unpaid.
         hint: (!hasNewBalance && !archive && !balanceRow && !done && depositPending)
           ? 'Settle or cancel the pending deposit first, then request the full balance.'
