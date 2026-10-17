@@ -65,6 +65,16 @@ export async function POST(req: Request) {
     const reference = referenceCode(p.booking_id, p.kind);
     const noun = p.kind === 'balance' ? 'Balance' : p.kind === 'deposit' ? 'Deposit' : 'Payment';
 
+    // invoice_id must be UNIQUE per order. The old scheme reused a short, stable
+    // per-row code as a duplicate-payment guard, but (a) only 4 hex chars means
+    // two different bookings collide at a few hundred rows (PayPal then rejects a
+    // legitimate host with DUPLICATE_INVOICE_ID), and (b) it blocks a legitimate
+    // re-payment after a refund. Double-payment is already prevented by the row
+    // claim + the paypal_capture_id guard in capture-order, so we make this
+    // unique per order (payment id + a base-36 timestamp) and keep the readable
+    // code in the description. Stays well under PayPal's 127-char limit.
+    const invoiceId = `${p.id}-${Date.now().toString(36)}`;
+
     const order = {
       intent: 'CAPTURE',
       purchase_units: [{
@@ -73,12 +83,8 @@ export async function POST(req: Request) {
         payee: { merchant_id: dj.paypal_merchant_id },
         // custom_id ties the capture/webhook back to this payment row.
         custom_id: p.id,
-        // invoice_id is STABLE per payment row (no timestamp): PayPal refuses a
-        // second capture with an invoice_id it has already settled, which is
-        // exactly the duplicate-payment guard we want — a host who taps twice
-        // can't pay the same deposit twice.
-        invoice_id: reference,
-        description: `${noun} — ${dj.name || 'DJ'}`.slice(0, 127),
+        invoice_id: invoiceId,
+        description: `${noun} ${reference} — ${dj.name || 'DJ'}`.slice(0, 127),
       }],
     };
 
