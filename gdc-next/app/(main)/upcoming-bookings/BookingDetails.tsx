@@ -1455,6 +1455,7 @@ export default function BookingDetails({
           pendingCols={pendingCols}
           pendingInfo={pendingInfo}
           noHostRecipient={!hostUserId && !((booking as { host_email?: string | null }).host_email || '').trim() && !((booking as { account_email?: string | null }).account_email || '').trim()}
+          manualNotify={!!booking.is_manual && (!!hostUserId || !!((booking as { host_email?: string | null }).host_email || '').trim() || !!((booking as { account_email?: string | null }).account_email || '').trim())}
           onCancelled={() => { void loadBadges(); onMutated?.(); }}
           onClose={() => setEditSection(null)}
           onSaved={(res) => {
