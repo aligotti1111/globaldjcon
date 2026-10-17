@@ -893,29 +893,6 @@ export default function BookingRow({
     });
   }
 
-  // Both edit and delete must stop propagation so they don't also toggle the
-  // row's expand/collapse state (the row is itself a <button>).
-  //
-  // The X on a manual booking does one of three things:
-  //   • No host attached        → permanent delete (nobody's expecting it).
-  //   • Host + SIGNED contract   → cancellation REQUEST the host must confirm
-  //                                (same as a regular online booking).
-  //   • Host + no contract       → the DJ cancels it outright; the host is just
-  //                                emailed that the DJ cancelled the booking.
-  function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!hasHostEmail) { onDelete && onDelete(); return; }
-    if (contractAgreed) {
-      // Needs host approval — open the cancellation request form.
-      setExpanded(true);
-      setCancelFormOpen(true);
-      setTimeout(() => { wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
-      return;
-    }
-    // No contract — cancel directly after a confirm.
-    confirmDirectCancel();
-  }
-
   return (
     <div
       ref={wrapRef} data-booking-id={booking.id}
@@ -1157,29 +1134,12 @@ export default function BookingRow({
               CANCELLED
             </span>
           )}
+          {/* The MANUAL pill stays put — no hover swap to an X. Cancelling or
+              deleting a manual booking now lives in the expanded card (the
+              "Cancel event" / "Delete booking" / "Request cancellation" button at
+              the bottom of the panel), so there's no control up here. */}
           {booking.is_manual && !isCancelled && (
             <span className={styles.manualPill} title="Added manually by you">MANUAL</span>
-          )}
-          {/* Editing a manual booking now happens entirely through the per-section
-              pencils in the expanded card (they open this same full editor), so
-              there's no separate pencil up here — just the X. */}
-          {/* The X: delete if no host attached; cancel-with-host-approval if a
-              signed contract exists; otherwise the DJ cancels directly and the
-              host is just emailed. */}
-          {onDelete && !isCancelled && (
-            <span
-              onClick={handleDelete}
-              className={styles.deleteBtn}
-              role="button"
-              aria-label={!hasHostEmail ? 'Delete manual booking' : 'Cancel booking'}
-              title={!hasHostEmail
-                ? 'Delete'
-                : contractAgreed
-                  ? 'Cancel booking (host must confirm — signed contract)'
-                  : 'Cancel booking (host will be notified)'}
-            >
-              ✕
-            </span>
           )}
         </div>
         {/* 11 — Chevron. Last track, last thing on the row. */}
