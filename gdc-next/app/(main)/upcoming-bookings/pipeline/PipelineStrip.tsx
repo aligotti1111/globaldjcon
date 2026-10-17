@@ -180,11 +180,13 @@ export default function PipelineStrip({
                 the actual circle spinning, not a second ring around it. */}
             <span className={styles.stIcon} style={{ color: iconColor, ...ringStyle, ...(busy ? { borderColor: 'transparent' } : null) }}>
               {stageIcon(st.icon)}
-              {/* The arc only SPINS while an action is actually sending (busy):
-                  amber for a pending stage, neon otherwise. A pending stage that
-                  isn't sending is just a static amber ring (the border above). */}
+              {/* The arc only SPINS while an action is actually sending (busy).
+                  It's AMBER whenever the stage isn't done yet — a request/send
+                  lands the stage on amber "Pending", so the spinner matches where
+                  it's heading. Neon only when the stage is already done (e.g.
+                  re-sending a receipt on a completed stage). */}
               {busy && (
-                <span className={isPending ? styles.stSpinPending : styles.stSpin} aria-hidden="true" />
+                <span className={positiveDone ? styles.stSpin : styles.stSpinPending} aria-hidden="true" />
               )}
               {positiveDone && (
                 <span className={styles.stBadge}>
