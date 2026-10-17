@@ -324,48 +324,12 @@ export async function POST(req: Request) {
     const applied = Array.isArray(rows) && rows.length > 0;
     if (applied) await releaseCalendarSlot(admin, booking);
 
-    // Email the host that the DJ cancelled — best-effort. Recipient is the
-    // booking's host_email (manual bookings), falling back to the booker's
-    // account email if one is linked.
-    try {
-      const { resolveUserEmail } = await import('@/lib/supabase/admin');
-      const to = booking.host_email || (booking.requester_id ? await resolveUserEmail(booking.requester_id) : null);
-      if (to && process.env.RESEND_API_KEY) {
-        const { Resend } = await import('resend');
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        let djName = 'your DJ';
-        if (booking.dj_id) {
-          const { data: djp } = await admin.from('users').select('name, company').eq('id', booking.dj_id).maybeSingle<{ name: string | null; company: string | null }>();
-          djName = djp?.company || djp?.name || djName;
-        }
-        const hi = booking.requester_name?.trim() ? booking.requester_name.trim().split(' ')[0] : 'there';
-        const when = booking.event_date
-          ? new Date(`${booking.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-          : 'your event';
-        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const replyTo = booking.dj_id ? await resolveUserEmail(booking.dj_id) : null;
-        await resend.emails.send({
-          from: 'Global DJ Connect <info@globaldjconnect.com>',
-          to,
-          subject: `Your booking on ${when} has been cancelled`,
-          ...(replyTo ? { replyTo } : {}),
-          html: `
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;">
-<tr><td style="background:#000;padding:22px 32px;" align="center"><div style="font-family:'Bebas Neue',Impact,Arial,sans-serif;font-size:26px;letter-spacing:.06em;color:#00f5c4;font-weight:700;">GLOBAL DJ CONNECT</div></td></tr>
-<tr><td style="padding:30px 32px;color:#222;">
-<h1 style="margin:0 0 8px;font-size:21px;color:#111;">Booking cancelled</h1>
-<p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#444;">Hi ${esc(hi)}, <strong>${esc(djName)}</strong> has cancelled the booking for your event on <strong>${esc(when)}</strong>${booking.venue_name ? ` at ${esc(booking.venue_name)}` : ''}.</p>
-${reason ? `<p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#555;background:#f7f7f9;border:1px solid #ececf0;border-radius:10px;padding:12px 14px;">${esc(reason)}</p>` : ''}
-<p style="margin:0;color:#888;font-size:12px;line-height:1.6;">If you have questions, just reply to this email to reach ${esc(djName)} directly.</p>
-</td></tr></table></td></tr></table>`,
-        });
-      }
-    } catch (e) {
-      console.warn('direct cancel email failed:', e);
-    }
+    // The host is deliberately NOT emailed here. A manual booking is the DJ's
+    // own entry; the DJ handles telling the host and settling any refund per
+    // whatever they agreed. (Online bookings, and manual bookings with a signed
+    // contract, go through the request flow below, which does email.)
 
-    if (djActing) await logActivity(djActing, { action: 'cancellation.direct', summary: 'Cancelled a manual booking (no contract — no host approval needed)', bookingId: booking.id });
+    if (djActing) await logActivity(djActing, { action: 'cancellation.direct', summary: 'Cancelled a manual booking (no contract — immediate, host not notified)', bookingId: booking.id });
     return NextResponse.json({ ok: true, cancel_status: 'accepted', status: 'cancelled' });
   }
 
