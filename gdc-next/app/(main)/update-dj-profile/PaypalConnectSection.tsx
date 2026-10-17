@@ -43,6 +43,9 @@ export default function PaypalConnectSection(
   const [ready, setReady] = useState(initialReady);
   const [email, setEmail] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Styled in-app disconnect confirm (replaces the OS window.confirm, which
+  // can't be themed and looks out of place against the dark UI).
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const post = useCallback(async (payload: Record<string, unknown>): Promise<StatusResp | null> => {
     try {
@@ -103,8 +106,8 @@ export default function PaypalConnectSection(
     if (url) { window.location.href = url; }
   }
 
-  async function disconnect() {
-    if (!window.confirm('Stop accepting PayPal? Your PayPal account itself is untouched — this only unlinks it here. You can reconnect any time.')) return;
+  async function doDisconnect() {
+    setConfirmOpen(false);
     setBusy(true);
     setErr(null);
     const json = await post({ action: 'disconnect' });
@@ -192,7 +195,7 @@ export default function PaypalConnectSection(
             <button type="button" onClick={() => void refresh()} disabled={busy} style={btn(true, !busy)}>
               {busy ? 'Checking…' : 'Recheck status'}
             </button>
-            <button type="button" onClick={() => void disconnect()} disabled={busy}
+            <button type="button" onClick={() => setConfirmOpen(true)} disabled={busy}
               onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.borderColor = '#ff6b6b'; } }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#9a9ab0)'; e.currentTarget.style.borderColor = 'var(--line,#2a2a38)'; }}
               style={{ ...btn(false, !busy), transition: 'color .15s, border-color .15s' }}>Disconnect</button>
@@ -203,10 +206,10 @@ export default function PaypalConnectSection(
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white,#e8fff8)', lineHeight: 1.5 }}>
               {email ? <>Paid into <strong style={{ color: '#00f5c4' }}>{email}</strong>. </> : null}
-              Clients now see a <strong style={{ color: '#00f5c4' }}>&quot;Pay with PayPal&quot;</strong> button on deposits and invoices.
+              Clients now see a <strong style={{ color: '#00f5c4' }}>&quot;Pay with PayPal&quot;</strong> button on deposit and invoice requests.
             </p>
           </div>
-          <button type="button" onClick={() => void disconnect()} disabled={busy}
+          <button type="button" onClick={() => setConfirmOpen(true)} disabled={busy}
             onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.borderColor = '#ff6b6b'; } }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#9a9ab0)'; e.currentTarget.style.borderColor = 'var(--line,#2a2a38)'; }}
             style={{ ...btn(false, !busy), marginLeft: 'auto', flexShrink: 0, alignSelf: 'flex-start', transition: 'color .15s, border-color .15s' }}>Disconnect</button>
@@ -214,6 +217,44 @@ export default function PaypalConnectSection(
       )}
 
       {err && <p style={{ margin: '10px 0 0', fontSize: '.78rem', color: '#ff5f5f' }}>{err}</p>}
+
+      {/* Styled disconnect confirm — replaces window.confirm so it matches the
+          dark UI instead of the OS dialog. */}
+      {confirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 400, background: 'var(--card,#14141c)', border: '1px solid var(--line,#262633)', borderRadius: 16, padding: 22, boxShadow: '0 24px 70px rgba(0,0,0,.6)' }}
+          >
+            <h3 style={{ margin: '0 0 8px', fontSize: '1rem', color: 'var(--white,#fff)' }}>Stop accepting PayPal?</h3>
+            <p style={{ margin: 0, fontSize: '.86rem', lineHeight: 1.55, color: 'var(--muted,#9a9ab0)' }}>
+              Your PayPal account itself is untouched — this only unlinks it here. You can reconnect any time.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                style={{ padding: '.6rem 1.1rem', borderRadius: 8, border: '1px solid var(--line,#2a2a38)', background: 'transparent', color: 'var(--muted,#9a9ab0)', fontWeight: 700, fontSize: '.82rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void doDisconnect()}
+                disabled={busy}
+                style={{ padding: '.6rem 1.1rem', borderRadius: 8, border: '1px solid rgba(255,107,107,.5)', background: 'rgba(255,107,107,.12)', color: '#ff6b6b', fontWeight: 700, fontSize: '.82rem', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}
+              >
+                {busy ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
