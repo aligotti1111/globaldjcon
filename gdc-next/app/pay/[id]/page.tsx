@@ -105,6 +105,11 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
 
   const cardReady = !!dj?.stripe_connect_ready;
   const paypalReady = !!dj?.paypal_connect_ready;
+  // Venmo (via the PayPal SDK) only clears in USD. For a non-USD payment the
+  // Venmo button would always fail isEligible() and dead-end on the "opens on
+  // your phone" screen, so don't offer it — PayPal/Pay Later/card still show.
+  // Manual Venmo stays suppressed on paypalReady regardless (no handle to show).
+  const venmoReady = paypalReady && (pay.currency || 'USD').toUpperCase() === 'USD';
   const methods = usableMethods(
     (Array.isArray(dj?.payment_methods) ? dj?.payment_methods : []) as PaymentMethod[],
   );
@@ -150,14 +155,16 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
       linkLabel: 'Pay with PayPal',
       accent: ACCENT.paypal!,
     });
-    options.push({
-      type: 'venmo',
-      label: 'Venmo',
-      sub: 'Pay with the Venmo app — no account needed',
-      href: `/pay/${pay.id}/paypal?method=venmo`,
-      linkLabel: 'Pay with Venmo',
-      accent: ACCENT.venmo!,
-    });
+    if (venmoReady) {
+      options.push({
+        type: 'venmo',
+        label: 'Venmo',
+        sub: 'Opens in the Venmo app on your phone (US only)',
+        href: `/pay/${pay.id}/paypal?method=venmo`,
+        linkLabel: 'Pay with Venmo',
+        accent: ACCENT.venmo!,
+      });
+    }
   }
 
   for (const m of methods) {
