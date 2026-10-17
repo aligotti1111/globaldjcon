@@ -7,6 +7,20 @@ export default function Footer() {
     <footer>
       <div className="footer-logo">Global DJ Connect</div>
       <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Link
+          href="/about"
+          className="footer-note"
+          style={{ color: 'var(--muted)', textDecoration: 'none', transition: 'color .2s' }}
+        >
+          About Us
+        </Link>
+        <Link
+          href="/faq"
+          className="footer-note"
+          style={{ color: 'var(--muted)', textDecoration: 'none', transition: 'color .2s' }}
+        >
+          FAQ
+        </Link>
         <ContactTrigger
           className="footer-note"
           style={{ color: 'var(--muted)', textDecoration: 'none', transition: 'color .2s' }}
