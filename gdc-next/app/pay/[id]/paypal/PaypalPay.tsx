@@ -190,7 +190,11 @@ export default function PaypalPay({
               {where && <div style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{where}</div>}
             </div>
             <div ref={containerRef} style={{ marginTop: 18, minHeight: 50 }} />
-            {status === 'error' && (
+            {/* Show the message whenever one is set — a declined-but-retryable
+                capture resets status to 'idle' and re-renders the buttons, so
+                gating on status==='error' would hide the "try another" notice.
+                (This branch only renders when status is 'idle' or 'error'.) */}
+            {error && (
               <p style={{ margin: '12px 0 0', fontSize: '.82rem', color: '#ff5f5f', textAlign: 'center' }}>{error}</p>
             )}
             {venmoOnly && (
