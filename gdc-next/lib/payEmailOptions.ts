@@ -136,7 +136,10 @@ export function buildPayEmailBlocks(a: PayBlocksArgs): string {
 </td></tr></table>`
     : '';
   // Venmo — its own button, via the connected PayPal (Venmo opens on a phone).
-  const venmoBlock = paypalReady
+  // Venmo through the PayPal SDK only clears in USD, so suppress the button for
+  // any other currency (it would always dead-end on the "not eligible" screen).
+  const venmoReady = paypalReady && (currency || 'USD').toUpperCase() === 'USD';
+  const venmoBlock = venmoReady
     ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;min-width:100%;border:1px solid #BEDDF2;border-radius:12px;margin:0 0 12px;background:#EAF4FB;overflow:hidden;">
 <tr><td style="height:4px;background:#3D95CE;font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td style="padding:14px 16px 16px;">
@@ -145,7 +148,7 @@ export function buildPayEmailBlocks(a: PayBlocksArgs): string {
 <td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#3D95CE;font-size:15px;">Venmo</td>
 </tr></table>
 <a href="${SITE_URL}/pay/${paymentId}/paypal?method=venmo" style="display:block;margin:11px 0 0;background:#3D95CE;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} with Venmo &rarr;</a>
-<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens in the Venmo app on your phone — no account sign-in needed.</p>
+<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens in the Venmo app on your phone (US only).</p>
 </td></tr></table>`
     : '';
   // One PayPal and one Venmo, not two of each: drop the manual PayPal.me and
