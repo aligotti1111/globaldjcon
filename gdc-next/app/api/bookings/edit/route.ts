@@ -97,6 +97,7 @@ interface BookingRow {
   tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null; deposit_pct: number | null; deposit_amount: number | null;
   status_overrides: Record<string, boolean> | null;
   contract_status: string | null; field_edits: Record<string, string> | null;
+  is_manual: boolean | null;
 }
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -192,7 +193,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: bData } = await admin
     .from('bookings')
-    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, status_overrides, contract_status, field_edits')
+    .select('id, dj_id, requester_id, requester_name, host_email, phone, event_type, guest_count, event_date, start_time, end_time, venue_name, venue_type, room_details, venue_address, package_title, package_details, counter_rate, quoted_rate, offer_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, status_overrides, contract_status, field_edits, is_manual')
     .eq('id', bookingId)
     .maybeSingle<BookingRow>();
   if (!bData) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -253,6 +254,12 @@ export async function POST(req: Request) {
   // has no one to approve or be notified — so every change just applies now.
   const noHostRecipient = !booking.requester_id && !(booking.host_email && booking.host_email.trim());
 
+  // Manual bookings never require host approval. The DJ created the booking on the
+  // host's behalf, so any change applies immediately; if a host email is on file
+  // they get an FYI notification, but they don't approve. (Online bookings keep
+  // the approve tier for date/time/address/package-details.)
+  const isManualBooking = booking.is_manual === true;
+
   // Price is no longer editable from the booking card — any `price` in the
   // payload is ignored (the field is absent from EDIT_FIELD_BY_KEY, so the loop
   // below skips it). The base rate is locked once a booking exists.
@@ -262,7 +269,7 @@ export async function POST(req: Request) {
     if (!def) continue;
     // When there's no host recipient — or an admin is editing — approval fields
     // apply immediately (admin edits never go to the host for approval).
-    const tier: 'notify' | 'approve' = (def.tier === 'approve' && (noHostRecipient || isAdmin)) ? 'notify' : def.tier;
+    const tier: 'notify' | 'approve' = (def.tier === 'approve' && (noHostRecipient || isAdmin || isManualBooking)) ? 'notify' : def.tier;
     // Approval field that's already awaiting the host — block the duplicate.
     if (tier === 'approve' && alreadyPending.has(def.col)) {
       blocked.push({ field: key, label: def.label });
