@@ -491,7 +491,12 @@ ${b.venue_name ? detailRow('Venue', b.venue_name) : ''}
 <td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#003087;font-size:15px;">PayPal</td>
 </tr></table>
 <a href="${SITE_URL}/pay/${payment.id}/paypal" style="display:block;margin:11px 0 0;background:#0070ba;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, cur)} with PayPal &rarr;</a>
-<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">PayPal, Pay Later, or card — no account or sign-in needed.</p>
+<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:12px auto 0;"><tr>
+<td align="center" width="90" style="padding:0 2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><div style="font-size:22px;line-height:1;">&#128091;</div><div style="margin:5px 0 0;font-size:11px;font-weight:700;color:#003087;">PayPal</div></td>
+<td align="center" width="90" style="padding:0 2px;border-left:1px solid #C5CFE6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><div style="font-size:22px;line-height:1;">&#128197;</div><div style="margin:5px 0 0;font-size:11px;font-weight:700;color:#003087;">Pay Later</div></td>
+<td align="center" width="90" style="padding:0 2px;border-left:1px solid #C5CFE6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><div style="font-size:22px;line-height:1;">&#128179;</div><div style="margin:5px 0 0;font-size:11px;font-weight:700;color:#003087;">Credit card</div></td>
+</tr></table>
+<p style="margin:10px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">No account or sign-in needed.</p>
 </td></tr></table>`
         : '';
       // Venmo — its own button, via the connected PayPal (Venmo opens on a phone).
@@ -522,7 +527,7 @@ ${summary ? `<div style="text-align:center;margin:10px 0 0;color:#4a6b62;font-si
 </td></tr></table>
 ${recap}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">
-Please choose a payment option below to complete the ${noun} required to reserve your date.
+${noun === 'balance' ? 'Please choose a payment option below to settle the balance for your upcoming event.' : 'Please choose a payment option below to complete the deposit required to reserve your date.'}
 </p>
 ${cardBlock}${paypalBlock}${venmoBlock}${optionsHtml(emailMethods, amount, cur, reference, djName, payment.id, b.event_date, b.venue_name, noun === 'balance')}
 <div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
