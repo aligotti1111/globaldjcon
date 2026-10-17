@@ -137,7 +137,10 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
     });
   }
 
-  // Connected PayPal replaces the manual PayPal row entirely.
+  // Connected PayPal replaces the manual PayPal row entirely, and brings Venmo
+  // with it — so we show PayPal (PayPal + Pay Later + card) and a separate Venmo
+  // option, both captured straight into the DJ's account and auto-confirmed. The
+  // DJ's manual Venmo handle (if any) is suppressed below so there's no duplicate.
   if (paypalReady) {
     options.push({
       type: 'paypal',
@@ -147,11 +150,22 @@ export default async function PayHubPage({ params }: { params: Promise<{ id: str
       linkLabel: 'Pay with PayPal',
       accent: ACCENT.paypal!,
     });
+    options.push({
+      type: 'venmo',
+      label: 'Venmo',
+      sub: 'Pay with the Venmo app — no account needed',
+      href: `/pay/${pay.id}/paypal?method=venmo`,
+      linkLabel: 'Pay with Venmo',
+      accent: ACCENT.venmo!,
+    });
   }
 
   for (const m of methods) {
     // Manual PayPal is superseded by the connected button above.
     if (m.type === 'paypal' && paypalReady) continue;
+    // Manual Venmo is superseded by the connected Venmo (via PayPal) above —
+    // never show two Venmo options.
+    if (m.type === 'venmo' && paypalReady) continue;
 
     const label = METHOD_TYPES[m.type]?.label || m.type;
     const accent = ACCENT[m.type] || ACCENT.other!;
