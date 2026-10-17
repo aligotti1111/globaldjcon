@@ -107,7 +107,11 @@ export default function StageMenu({
             <div style={{ color: 'var(--white,#fff)', fontSize: '.75rem', fontWeight: 600, lineHeight: 1.4, whiteSpace: 'normal', maxWidth: 190, padding: '.45rem .6rem .35rem' }}>
               {st.info}
             </div>
-            <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
+            {/* Only separate the info from what follows — no dangling line when
+                the info message is the whole menu (nothing actionable below). */}
+            {((st.actions?.length ?? 0) > 0 || st.overridable) && (
+              <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '0 6px 3px' }} />
+            )}
           </>
         )}
         {openedLabelText && (
