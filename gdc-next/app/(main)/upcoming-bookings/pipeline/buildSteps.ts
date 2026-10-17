@@ -196,7 +196,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                   // whole flow — spam folder, typo'd address, corporate filter
                   // — and the DJ finds out by the contract never coming back.
                   // The link works regardless of whether the email landed.
-                  { label: '\u{1F517} Copy link to contract', run: () => runContract('copy-link') },
+                  { label: 'Copy link to contract', run: () => runContract('copy-link') },
                   { label: 'Cancel contract', run: () => runContract('cancel'), danger: true },
                 ]
               // Nobody to send it to — offer the fix, not the dead end.
