@@ -34,8 +34,10 @@ function iconForLabel(label: string): ReactElement {
   if (l.includes('edit')) return <IconEdit />;
   if (l.includes('download')) return <IconDownload />;
   if (l.includes('option')) return <IconGear />;
-  // Copy-link lives on the contract stage, so test it before 'contract' or it
-  // would fall through to the document icon.
+  // These all live on the contract stage, so test them before 'contract' or
+  // they'd fall through to the document icon.
+  if (l.includes('cancel')) return <IconX />;
+  if (l.includes('resend') || l.includes('re-send') || l.includes('share')) return <IconSend />;
   if (l.includes('copy') || l.includes('link')) return <IconLink />;
   if (l.includes('contract')) return <IconDoc />;
   if (l.includes('planner') || l.includes('playlist') || l.includes('rider') || l.includes('song')) return <IconMusic />;
