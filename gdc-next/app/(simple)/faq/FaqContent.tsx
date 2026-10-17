@@ -120,12 +120,13 @@ const HOST_FAQ: QA[] = [
     ),
   },
   {
-    q: 'What if my DJ doesn&rsquo;t show up?',
+    q: 'What if my DJ cancels?',
     a: (
       <>
         Global DJ Connect is a facilitator, not a party to your booking, so your agreement is directly with the
-        DJ. If something goes wrong, your recourse is with the DJ. We always recommend using a contract and
-        keeping your communication on the platform. See our <Link href="/terms">Terms</Link> for details.
+        DJ. If your DJ cancels, any refund and your recourse are handled directly with them, under whatever you
+        agreed to. We always recommend using a contract and keeping your communication on the platform. See our{' '}
+        <Link href="/terms">Terms</Link> for details.
       </>
     ),
   },
