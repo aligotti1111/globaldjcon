@@ -36,6 +36,10 @@ interface Props {
   reqBusy: boolean;
   reqMethods: PaymentMethod[];
   reqCardReady: boolean;
+  // PayPal Connect: when on, clients can pay by PayPal, Pay Later, card, and
+  // Venmo — so show the PayPal + Venmo marks and drop any manual paypal/venmo
+  // handles (they're superseded, same as the hub and the email).
+  reqPaypalReady?: boolean;
   suggestedDeposit: number | null;
   currency: string;
   depositPct: number | null;
@@ -58,6 +62,7 @@ interface Props {
 
 export default function RequestPaymentModal({
   reqKind, reqAmount, setReqAmount, reqErr, setReqErr, reqBusy, reqMethods, reqCardReady,
+  reqPaypalReady = false,
   suggestedDeposit, currency, depositPct, expectedAmount, expectedTotal, expectedCollected,
   taxPct, taxAmount, onClose, onEditMethods, onSubmit,
 }: Props) {
@@ -173,9 +178,20 @@ export default function RequestPaymentModal({
         )}
 
         {(() => {
-          const ms = usableMethods(reqMethods);
+          // When PayPal is connected it supersedes any manual PayPal/Venmo
+          // handle — drop those so we don't show the same rail twice.
+          const ms = usableMethods(reqMethods).filter(
+            (m) => !(reqPaypalReady && (m.type === 'paypal' || m.type === 'venmo')),
+          );
+          const hasAny = ms.length > 0 || reqCardReady || reqPaypalReady;
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap', margin: '0 0 .9rem' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.4rem', flexWrap: 'wrap', margin: '0 0 .9rem', paddingRight: onEditMethods ? '3.2rem' : 0 }}>
+              {reqPaypalReady && (
+                <>
+                  <span title="PayPal" style={{ display: 'inline-flex', lineHeight: 0 }}><PaypalMark size={18} /></span>
+                  <span title="Venmo (via PayPal)" style={{ display: 'inline-flex', lineHeight: 0 }}><VenmoMark size={18} /></span>
+                </>
+              )}
               {ms.map((m) => {
                 const Ico = REQ_METHOD_ICON[m.type];
                 return Ico ? (
@@ -185,14 +201,14 @@ export default function RequestPaymentModal({
               {reqCardReady && (
                 <span title="Card" style={{ display: 'inline-flex', lineHeight: 0 }}><CardNetworksMark size={11} /></span>
               )}
-              {ms.length === 0 && !reqCardReady && (
+              {!hasAny && (
                 <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>No payment methods set yet</span>
               )}
               {onEditMethods && (
                 <button
                   type="button"
                   onClick={onEditMethods}
-                  style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,.18)', color: NEON, fontSize: '.68rem', fontFamily: "'Space Mono', monospace", letterSpacing: '.04em', borderRadius: 6, padding: '.3rem .6rem', cursor: 'pointer' }}
+                  style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: '1px solid rgba(255,255,255,.18)', color: NEON, fontSize: '.68rem', fontFamily: "'Space Mono', monospace", letterSpacing: '.04em', borderRadius: 6, padding: '.3rem .6rem', cursor: 'pointer' }}
                 >
                   Edit
                 </button>
