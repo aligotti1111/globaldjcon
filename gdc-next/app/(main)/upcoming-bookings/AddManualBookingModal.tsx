@@ -1781,7 +1781,15 @@ export default function AddManualBookingModal({
                   {resendBusy ? 'Sending…' : (resendSuccess ? 'Sent ✓' : 'Resend Email')}
                 </button>
               </div>
-            ) : (
+            ) : null}
+            {isEdit && hostEmailAlreadySent && (
+              <div className={styles.inviteCheckRow}>
+                <span style={{ color: 'var(--muted,#9a9ab0)', fontSize: '.8rem' }}>
+                  The host on file will be emailed to notify them of any change you save here — they don’t need to approve it.
+                </span>
+              </div>
+            )}
+            {!hostEmailAlreadySent && (
               <div className={styles.inviteCheckRow}>
                 <span style={{ color: hostEmailValid ? 'var(--muted,#9a9ab0)' : 'var(--muted,#6a6a80)', fontSize: '.8rem' }}>
                   {hostEmailValid
