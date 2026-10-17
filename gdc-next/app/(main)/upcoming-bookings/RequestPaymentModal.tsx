@@ -107,7 +107,7 @@ export default function RequestPaymentModal({
         }}
       >
         <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.7rem' }}>
-          {reqKind === 'balance' ? 'Request balance' : 'Request deposit'}
+          {reqKind === 'balance' ? 'Request Balance' : 'Request Deposit'}
         </div>
 
         <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
@@ -185,21 +185,21 @@ export default function RequestPaymentModal({
           );
           const hasAny = ms.length > 0 || reqCardReady || reqPaypalReady;
           return (
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.4rem', flexWrap: 'wrap', margin: '0 0 .9rem', paddingRight: onEditMethods ? '3.2rem' : 0 }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', flexWrap: 'wrap', margin: '.9rem 0 .9rem', paddingRight: onEditMethods ? '3.4rem' : 0 }}>
               {reqPaypalReady && (
                 <>
-                  <span title="PayPal" style={{ display: 'inline-flex', lineHeight: 0 }}><PaypalMark size={18} /></span>
-                  <span title="Venmo (via PayPal)" style={{ display: 'inline-flex', lineHeight: 0 }}><VenmoMark size={18} /></span>
+                  <span title="PayPal" style={{ display: 'inline-flex', lineHeight: 0 }}><PaypalMark size={24} /></span>
+                  <span title="Venmo (via PayPal)" style={{ display: 'inline-flex', lineHeight: 0 }}><VenmoMark size={24} /></span>
                 </>
               )}
               {ms.map((m) => {
                 const Ico = REQ_METHOD_ICON[m.type];
                 return Ico ? (
-                  <span key={m.id} title={m.type} style={{ display: 'inline-flex', lineHeight: 0 }}><Ico size={18} /></span>
+                  <span key={m.id} title={m.type} style={{ display: 'inline-flex', lineHeight: 0 }}><Ico size={24} /></span>
                 ) : null;
               })}
               {reqCardReady && (
-                <span title="Card" style={{ display: 'inline-flex', lineHeight: 0 }}><CardNetworksMark size={11} /></span>
+                <span title="Card" style={{ display: 'inline-flex', lineHeight: 0 }}><CardNetworksMark size={15} /></span>
               )}
               {!hasAny && (
                 <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>No payment methods set yet</span>
