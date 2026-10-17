@@ -941,7 +941,11 @@ export default function BookingRow({
         A click anywhere toggles expand; interactive children stopPropagation so
         they run their own action instead.
       */}
-      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer' }}>
+      {/* A cancelled row's inner .row paints an opaque background over the
+          wrapper's red wash, so the tint has to go HERE to be visible on the
+          collapsed card — same as the host card. The Total Value band below is
+          left untinted, so the red reads as "above the value". */}
+      <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer', ...(isCancelled && !expanded ? { background: 'rgba(192,57,43,.14)' } : null) }}>
         {/* 1 — Date pill. Kept as-is: it's what you look for first. */}
         <div className={styles.rowDate} style={(dateChangePending || dateChangeApproved) ? { flexDirection: 'column', alignItems: 'flex-start', gap: 4 } : undefined}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
