@@ -463,6 +463,7 @@ export default function BookingRow({
   // request box so the DJ sees what they're sending before they send it.
   const [reqMethods, setReqMethods] = useState<PaymentMethod[]>([]);
   const [reqCardReady, setReqCardReady] = useState(false);
+  const [reqPaypalReady, setReqPaypalReady] = useState(false);
   useEffect(() => {
     // Load when the box opens, and RELOAD whenever the payment-methods editor
     // closes on top of it — so hitting Edit, changing rails, and coming back
@@ -474,13 +475,14 @@ export default function BookingRow({
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('payment_methods, stripe_connect_ready')
+          .select('payment_methods, stripe_connect_ready, paypal_connect_ready')
           .eq('id', userId)
           .maybeSingle();
         if (cancelled) return;
-        const row = (data || {}) as { payment_methods?: unknown; stripe_connect_ready?: boolean };
+        const row = (data || {}) as { payment_methods?: unknown; stripe_connect_ready?: boolean; paypal_connect_ready?: boolean };
         setReqMethods(Array.isArray(row.payment_methods) ? (row.payment_methods as PaymentMethod[]) : []);
         setReqCardReady(!!row.stripe_connect_ready);
+        setReqPaypalReady(!!row.paypal_connect_ready);
       } catch { /* icons are a courtesy — a failed fetch just shows none */ }
     })();
     return () => { cancelled = true; };
@@ -1184,6 +1186,7 @@ export default function BookingRow({
           reqBusy={reqBusy}
           reqMethods={reqMethods}
           reqCardReady={reqCardReady}
+          reqPaypalReady={reqPaypalReady}
           suggestedDeposit={suggestedDeposit}
           currency={booking.currency || 'USD'}
           depositPct={booking.deposit_pct ?? null}
