@@ -259,6 +259,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const [attempted, setAttempted] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
+  // True when this page load is the return from PayPal Connect onboarding
+  // (?paypal=connected). Captured in a ref at mount — before PaypalConnectSection
+  // cleans the URL — so the default-open effect knows to keep PayPal open instead
+  // of overriding to the first saved rail once data loads.
+  const cameFromPaypalRef = useRef(false);
   // Which tile is awaiting a "yes, remove" confirmation (Remove pop-up).
   const [confirmingRemove, setConfirmingRemove] = useState<PaymentMethodType | null>(null);
   // Tiles the DJ has explicitly Removed this session — auto-fill leaves these
@@ -303,6 +308,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   useEffect(() => {
     try {
       if (new URLSearchParams(window.location.search).get('paypal') === 'connected') {
+        cameFromPaypalRef.current = true;
         setOpenTile('paypal');
       }
     } catch { /* no-op */ }
@@ -663,6 +669,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   useEffect(() => {
     if (didInitOpen.current || !loaded) return;
     didInitOpen.current = true;
+    // Just came back from PayPal onboarding → keep the PayPal tile open (the
+    // ?paypal=connected effect already selected it); don't override to a saved rail.
+    if (cameFromPaypalRef.current) { setOpenTile('paypal'); return; }
     const firstConfigured = TILE_ORDER.find(tileConfigured);
     setOpenTile(firstConfigured ?? TILE_ORDER[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
