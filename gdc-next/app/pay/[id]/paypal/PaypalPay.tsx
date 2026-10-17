@@ -1,140 +1,102 @@
-'use client';
-
-// PaypalPay — client half of the PayPal hand-off page. Loads the PayPal JS SDK
-// scoped to the DJ's merchant (multiparty) and renders the PayPal + Venmo
-// buttons. createOrder/onApprove call our own routes, so the order is a
-// server-authored one (payee = DJ) and capture marks the booking_payment paid.
+// POST /api/paypal/create-order  { paymentId }
 //
-// No login — the payment id is an unguessable UUID, same capability-URL model as
-// the Venmo/card pay pages.
+// Public (no login) — the pay page calls this to open a PayPal order for a
+// booking_payment. MULTIPARTY: the order's payee is the DJ's connected merchant,
+// so the money is captured into the DJ's PayPal, not ours. custom_id carries the
+// payment id so the capture + webhook can mark the right row paid.
+//
+// Returns { id } (the PayPal order id) for the JS SDK's createOrder, or
+// { error } with a non-502 status (Cloudflare eats 502 bodies — see the Stripe
+// connect route for the full story).
 
-import { useEffect, useRef, useState } from 'react';
+import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { paypalFetch, paypalConfigured } from '@/lib/paypal/server';
+import { referenceCode } from '@/lib/paymentMethods';
 
-interface Props {
-  paymentId: string;
-  clientId: string;
-  merchantId: string;
-  bnCode?: string;
-  amount: number;
-  currency: string;
-  djName: string;
-  noun: string;            // "Deposit" | "Balance" | "Payment"
-  settled: boolean;
-  venueName: string | null;
-  eventDate: string | null;
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const round2 = (n: number) => Number(n.toFixed(2));
+
+interface PaymentRow {
+  id: string; booking_id: string; kind: string;
+  amount: number; amount_paid: number | null; currency: string | null; status: string;
 }
+interface BookingRow { id: string; dj_id: string | null; currency: string | null; }
+interface DjRow { paypal_merchant_id: string | null; paypal_connect_ready: boolean | null; name: string | null; }
 
-// Minimal shape of the global the SDK installs.
-interface PayPalButtons {
-  Buttons: (opts: unknown) => { render: (sel: string | HTMLElement) => Promise<void> };
-}
-declare global {
-  interface Window { paypal?: PayPalButtons }
-}
+export async function POST(req: Request) {
+  try {
+    if (!paypalConfigured()) return NextResponse.json({ error: 'PayPal is not configured.' }, { status: 500 });
 
-export default function PaypalPay({
-  paymentId, clientId, merchantId, bnCode, amount, currency, djName, noun, settled, venueName, eventDate,
-}: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState<'idle' | 'paid' | 'error'>(settled ? 'paid' : 'idle');
-  const [error, setError] = useState<string | null>(null);
-  const renderedRef = useRef(false);
+    let body: { paymentId?: unknown };
+    try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
+    const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
+    if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
 
-  const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: (currency || 'USD').toUpperCase() });
+    const db = createAdminClient() as unknown as SupabaseClient;
 
-  useEffect(() => {
-    if (settled || status === 'paid') return;
-    if (renderedRef.current) return;
+    const { data: pData } = await db
+      .from('booking_payments')
+      .select('id, booking_id, kind, amount, amount_paid, currency, status')
+      .eq('id', paymentId).maybeSingle();
+    const p = pData as PaymentRow | null;
+    if (!p) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
+    if (p.status === 'paid' || p.status === 'waived') return NextResponse.json({ error: 'Already settled.' }, { status: 409 });
 
-    function renderButtons() {
-      if (!window.paypal || !containerRef.current || renderedRef.current) return;
-      renderedRef.current = true;
-      window.paypal.Buttons({
-        style: { layout: 'vertical', shape: 'rect', label: 'pay' },
-        createOrder: async () => {
-          const res = await fetch('/api/paypal/create-order', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok || !json.id) throw new Error(json.error || 'Could not start PayPal.');
-          return json.id as string;
-        },
-        onApprove: async (data: { orderID: string }) => {
-          const res = await fetch('/api/paypal/capture-order', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId, orderId: data.orderID }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok || !json.ok) { setError(json.error || 'Payment could not be completed.'); setStatus('error'); return; }
-          setStatus('paid');
-        },
-        onError: () => { setError('PayPal hit an error. Please try again.'); setStatus('error'); },
-      }).render(containerRef.current).catch(() => {
-        setError('Could not load the PayPal buttons.'); setStatus('error');
-      });
+    const { data: bData } = await db.from('bookings').select('id, dj_id, currency').eq('id', p.booking_id).maybeSingle();
+    const b = bData as BookingRow | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+
+    const { data: djData } = b.dj_id
+      ? await db.from('users').select('paypal_merchant_id, paypal_connect_ready, name').eq('id', b.dj_id).maybeSingle()
+      : { data: null };
+    const dj = djData as unknown as DjRow | null;
+    if (!dj?.paypal_merchant_id || !dj.paypal_connect_ready) {
+      return NextResponse.json({ error: 'This DJ has not finished connecting PayPal.' }, { status: 409 });
     }
 
-    // Inject the SDK once. merchant-id scopes the buttons to the DJ's account;
-    // enable-funding=venmo surfaces the Venmo button when the payer is eligible.
-    const existing = document.getElementById('paypal-sdk');
-    if (existing) { renderButtons(); return; }
-    const s = document.createElement('script');
-    s.id = 'paypal-sdk';
-    const params = new URLSearchParams({
-      'client-id': clientId,
-      'merchant-id': merchantId,
-      currency: (currency || 'USD').toUpperCase(),
-      intent: 'capture',
-      components: 'buttons',
-      'enable-funding': 'venmo',
-    });
-    s.src = `https://www.paypal.com/sdk/js?${params.toString()}`;
-    if (bnCode) s.setAttribute('data-partner-attribution-id', bnCode);
-    s.onload = renderButtons;
-    s.onerror = () => { setError('Could not reach PayPal.'); setStatus('error'); };
-    document.body.appendChild(s);
-  }, [paymentId, clientId, merchantId, bnCode, currency, settled, status]);
+    const outstanding = round2(Math.max(0, Number(p.amount) - Number(p.amount_paid || 0)));
+    if (!(outstanding > 0)) return NextResponse.json({ error: 'Nothing left to pay.' }, { status: 409 });
 
-  const wrap: React.CSSProperties = {
-    maxWidth: 460, margin: '0 auto', padding: '32px 20px 64px',
-    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8f0',
-  };
-  const card: React.CSSProperties = { background: '#14141c', border: '1px solid #262633', borderRadius: 16, padding: 22 };
+    const cur = (p.currency || b.currency || 'USD').toUpperCase();
+    const reference = referenceCode(p.booking_id, p.kind);
+    const noun = p.kind === 'balance' ? 'Balance' : p.kind === 'deposit' ? 'Deposit' : 'Payment';
 
-  const where = [venueName, eventDate].filter(Boolean).join(' · ');
+    // invoice_id must be UNIQUE per order. The old scheme reused a short, stable
+    // per-row code as a duplicate-payment guard, but (a) only 4 hex chars means
+    // two different bookings collide at a few hundred rows (PayPal then rejects a
+    // legitimate host with DUPLICATE_INVOICE_ID), and (b) it blocks a legitimate
+    // re-payment after a refund. Double-payment is already prevented by the row
+    // claim + the paypal_capture_id guard in capture-order, so we make this
+    // unique per order (payment id + a base-36 timestamp) and keep the readable
+    // code in the description. Stays well under PayPal's 127-char limit.
+    const invoiceId = `${p.id}-${Date.now().toString(36)}`;
 
-  return (
-    <div style={wrap}>
-      <div style={{ textAlign: 'center', marginBottom: 18 }}>
-        <div style={{ fontFamily: "'Bebas Neue',Impact,sans-serif", fontSize: '1.7rem', letterSpacing: '.04em', color: '#00f5c4' }}>GLOBAL DJ CONNECT</div>
-      </div>
-      <div style={card}>
-        {status === 'paid' ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 10 }}>✅</div>
-            <h1 style={{ fontSize: '1.2rem', margin: '0 0 6px', color: '#fff' }}>Payment complete</h1>
-            <p style={{ margin: 0, fontSize: '.9rem', color: '#9a9ab0' }}>
-              Your {noun.toLowerCase()} to {djName} is done. A confirmation will follow by email.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div style={{ textAlign: 'center', marginBottom: 4 }}>
-              <div style={{ fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#8a8aa0', fontWeight: 700 }}>{noun} to {djName}</div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', margin: '6px 0 2px' }}>{money.format(amount)}</div>
-              {where && <div style={{ fontSize: '.8rem', color: '#8a8aa0' }}>{where}</div>}
-            </div>
-            <div ref={containerRef} style={{ marginTop: 18, minHeight: 50 }} />
-            {status === 'error' && (
-              <p style={{ margin: '12px 0 0', fontSize: '.82rem', color: '#ff5f5f', textAlign: 'center' }}>{error}</p>
-            )}
-            <p style={{ margin: '14px 0 0', fontSize: '.72rem', color: '#7a7a90', textAlign: 'center', lineHeight: 1.5 }}>
-              Paid securely through PayPal, straight to {djName}. Global DJ Connect never touches your payment.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  );
+    const order = {
+      intent: 'CAPTURE',
+      purchase_units: [{
+        amount: { currency_code: cur, value: outstanding.toFixed(2) },
+        // payee = the DJ's connected merchant → money lands in THEIR PayPal.
+        payee: { merchant_id: dj.paypal_merchant_id },
+        // custom_id ties the capture/webhook back to this payment row.
+        custom_id: p.id,
+        invoice_id: invoiceId,
+        description: `${noun} ${reference} — ${dj.name || 'DJ'}`.slice(0, 127),
+      }],
+    };
+
+    // onBehalfOf so the order is created for the DJ's account (their settings,
+    // their branding) — consistent with the capture call.
+    const res = await paypalFetch<{ id?: string }>('/v2/checkout/orders', { method: 'POST', body: order, onBehalfOf: dj.paypal_merchant_id });
+    if (!res.ok || !res.data.id) {
+      return NextResponse.json({ error: `PayPal (order ${res.status}): ${JSON.stringify(res.data).slice(0, 300)}` }, { status: 500 });
+    }
+    return NextResponse.json({ id: res.data.id });
+  } catch (e) {
+    console.error('[paypal/create-order]', e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Server error' }, { status: 500 });
+  }
 }
