@@ -870,10 +870,27 @@ export default function BookingRow({
   // header clean. The row no longer renders a CLUB/BAR pill.
 
   // Direct-cancel a manual booking with no signed contract: the DJ owns it, so
-  // it just flips to cancelled and the host is emailed that the DJ cancelled it.
+  // it just flips to cancelled. The host is NOT auto-notified — the DJ handles
+  // that and any refund per whatever they agreed.
   async function directCancel() {
     const res = await postCancel({ action: 'cancel-direct' });
     if (res) { setExpanded(false); onMutated?.(); }
+  }
+
+  // The confirm shown before a direct cancel — shared by the row's X and the
+  // "Cancel event" button in the expanded panel so the wording stays identical.
+  function confirmDirectCancel() {
+    const hostLine = hasHostEmail
+      ? ' The host on file will not be notified of the cancellation.'
+      : '';
+    setConfirmModal({
+      title: 'Cancel this event?',
+      body: `This is a manual booking, so it will be cancelled immediately.${hostLine} Any deposit or balance to be refunded is subject to any agreement you made with the host.`,
+      okLabel: 'Cancel event',
+      cancelLabel: 'Keep it',
+      danger: true,
+      onOk: () => { directCancel(); },
+    });
   }
 
   // Both edit and delete must stop propagation so they don't also toggle the
@@ -896,14 +913,7 @@ export default function BookingRow({
       return;
     }
     // No contract — cancel directly after a confirm.
-    setConfirmModal({
-      title: 'Cancel this booking?',
-      body: `This booking has no signed contract, so it will be cancelled right away. ${booking.requester_name || 'The host'} will be emailed that you cancelled it.`,
-      okLabel: 'Cancel booking',
-      cancelLabel: 'Keep it',
-      danger: true,
-      onOk: () => { directCancel(); },
-    });
+    confirmDirectCancel();
   }
 
   return (
@@ -1413,24 +1423,44 @@ export default function BookingRow({
                a DJ actually wants to click. OWNER-ONLY: teammates don't get to
                start a cancellation. */
             roleCanRequestCancel ? (
-              <button
-                type="button"
-                onClick={() => setCancelFormOpen(true)}
-                style={{
-                  display: 'block',
-                  marginLeft: 'auto',
-                  background: 'transparent',
-                  border: '1px solid rgba(255,255,255,.18)',
-                  borderRadius: 6,
-                  padding: '.4rem .7rem',
-                  color: 'var(--muted,#8a8aa0)',
-                  fontSize: '.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Request cancellation
-              </button>
+              // A manual booking with no signed contract is the DJ's to end:
+              // "Cancel event" cancels it immediately (confirmDirectCancel).
+              // Everything else — online bookings, or a manual booking with a
+              // signed contract — goes through "Request cancellation" (the host
+              // must confirm).
+              (booking.is_manual && !contractAgreed) ? (
+                <button
+                  type="button"
+                  onClick={confirmDirectCancel}
+                  style={{
+                    display: 'block', marginLeft: 'auto', background: 'transparent',
+                    border: '1px solid rgba(255,118,118,.5)', borderRadius: 6,
+                    padding: '.4rem .7rem', color: '#ff7676', fontSize: '.72rem',
+                    fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Cancel event
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCancelFormOpen(true)}
+                  style={{
+                    display: 'block',
+                    marginLeft: 'auto',
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,.18)',
+                    borderRadius: 6,
+                    padding: '.4rem .7rem',
+                    color: 'var(--muted,#8a8aa0)',
+                    fontSize: '.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Request cancellation
+                </button>
+              )
             ) : null
           ) : (
             <div>
