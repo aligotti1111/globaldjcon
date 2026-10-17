@@ -165,11 +165,13 @@ export default function ShareBookingButton({
     <>
       <span
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--neon,#00e0a4)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#8a8aa0)'; }}
         role="button"
         tabIndex={0}
         aria-label="Share booking card"
         title="Share a view-only link to this booking card"
-        style={iconBtn}
+        style={{ ...iconBtn, transition: 'color .12s' }}
       >
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <line x1="22" y1="2" x2="11" y2="13" />
