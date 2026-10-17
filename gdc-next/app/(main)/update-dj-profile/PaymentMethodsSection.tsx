@@ -669,10 +669,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
   // Card is "live" when Stripe is ready; PayPal is live when EITHER the DJ
   // connected via Option 1 (paypalReady) OR saved a manual PayPal.me/email;
-  // every other rail is live once it has a saved handle.
+  // Venmo is ALSO live via a connected PayPal (Venmo rides on PayPal Connect),
+  // so it reads as active with no separate handle; every other rail is live once
+  // it has a saved handle.
   const tileLive = (k: TileKey): boolean =>
     k === 'card' ? !!card?.ready
       : k === 'paypal' ? (paypalReady || isSavedLive(k))
+      : k === 'venmo' ? (paypalReady || isSavedLive(k))
       : isSavedLive(k);
 
   // Open one tile by default: the first ACTIVE (live) option in tile order —
@@ -1580,6 +1583,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           // value, Option 1 (Connect) is blocked — the two rails are mutually
           // exclusive. Only applies while not already connected.
           const paypalManualFilled = t === 'paypal' && !paypalReady && !!(m.handle || '').trim();
+          // Venmo rides on a connected PayPal (Commerce Platform). Once PayPal is
+          // connected, Venmo is already active for clients, so the DJ's manual
+          // Venmo handle is unnecessary — grey it and show an "active via PayPal"
+          // banner so there's never a second, confusing Venmo setup.
+          const venmoViaPaypal = t === 'venmo' && paypalReady;
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
             <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
@@ -1599,8 +1607,22 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   this?" read as fine print. */}
               {/* PayPal shows its own Option 1/Option 2 copy below, so the
                   generic one-line hint is suppressed for it. */}
-              {t !== 'paypal' && cfg.hint && (
+              {t !== 'paypal' && !venmoViaPaypal && cfg.hint && (
                 <p className={styles.bodyHint} style={{ margin: '0 0 .7rem', color: 'var(--white)' }}>{cfg.hint}</p>
+              )}
+
+              {/* Venmo is live through the DJ's connected PayPal — tell them so,
+                  and the manual handle below is greyed (not needed). */}
+              {venmoViaPaypal && (
+                <div style={{ margin: '0 0 .85rem', padding: '.7rem .85rem', border: '1px solid rgba(0,245,196,.5)', borderRadius: 8, background: 'linear-gradient(135deg, rgba(0,245,196,.10), rgba(0,245,196,.02))' }}>
+                  <div style={{ fontSize: '.82rem', fontWeight: 800, color: '#00f5c4', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 3 }}>✓ Active via PayPal</div>
+                  <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.55 }}>
+                    Venmo is already on for your clients — it&rsquo;s included with your <strong>connected PayPal</strong>.
+                    When a client pays by Venmo, the money is sent straight to your <strong>PayPal account</strong> and
+                    the booking is marked paid automatically. Nothing to set up here. To use a manual Venmo handle
+                    instead, disconnect PayPal on the PayPal tile.
+                  </p>
+                </div>
               )}
 
               {/* Check timing sits at the TOP — it changes the whole flow the
@@ -1850,22 +1872,24 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 </>
               )}
 
-              {cfg.handleLabel ? (
+              {/* When Venmo is active via a connected PayPal, hide the manual
+                  handle editor entirely — the banner above is the whole story. */}
+              {cfg.handleLabel && !venmoViaPaypal ? (
                 <>
                   {/* Cash renders its phone inside the accept-method cards above,
                       so the shared handle field is skipped for it. */}
                   {t !== 'paypal' && t !== 'cash' && <label style={label}>{cfg.handleLabel}</label>}
                   {t !== 'cash' && <input
-                    autoFocus={!paypalManualDisabled}
+                    autoFocus={!paypalManualDisabled && !venmoViaPaypal}
                     value={m.handle}
                     placeholder={cfg.placeholder}
-                    disabled={paypalManualDisabled}
+                    disabled={paypalManualDisabled || venmoViaPaypal}
                     onChange={(e) => patchType(t, { handle: e.target.value })}
                     style={{
                       ...field,
                       borderColor: err ? '#ff6b6b' : 'var(--border)',
                       ...(t === 'check' ? { maxWidth: 340 } : null),
-                      ...(paypalManualDisabled ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' as const } : null),
+                      ...((paypalManualDisabled || venmoViaPaypal) ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' as const } : null),
                     }}
                   />}
                   {t !== 'cash' && err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
@@ -2021,7 +2045,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     </>
                   )}
                 </>
-              ) : (
+              ) : venmoViaPaypal ? null : (
                 <p style={{ margin: 0, color: 'var(--white)', fontSize: '.82rem' }}>
                   Nothing to fill in — turn it on and clients will see it as an option.
                 </p>
@@ -2035,7 +2059,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               {/* Off-app manual rails: we can't see the money land, so the DJ
                   marks it paid themselves and the receipt fires from there. Sits
                   at the bottom, just above the Save/Activate button. */}
-              {(t === 'venmo' || t === 'cashapp' || t === 'zelle' || t === 'cash' || t === 'check') && (
+              {!venmoViaPaypal && (t === 'venmo' || t === 'cashapp' || t === 'zelle' || t === 'cash' || t === 'check') && (
                 <p style={{ margin: '.9rem 0 0', color: '#f5c451', fontSize: '.82rem', lineHeight: 1.55 }}>
                   {t === 'check'
                     ? 'Global DJ Connect can’t track Check payments off-app. When the check is received and has cleared, mark it paid in your booking dashboard and the receipt will auto-send.'
@@ -2045,7 +2069,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 </p>
               )}
               <div style={{ display: 'flex', gap: '.6rem', marginTop: '.9rem', flexWrap: 'wrap' }}>
-                {isSavedLive(t) && (
+                {isSavedLive(t) && !venmoViaPaypal && (
                   <button type="button" onClick={() => setConfirmingRemove(t)} style={btn(false)}>
                     Remove this payment option
                   </button>
@@ -2085,14 +2109,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   // an inline reason. It only goes truly inert when there's
                   // nothing to do: mid-save, already-saved-and-unchanged, or the
                   // PayPal manual rail overridden by Connect.
+                  // Venmo via connected PayPal: nothing to save — no button at all.
+                  if (venmoViaPaypal) return null;
                   const actionable = !saving && !nothingToSave && !paypalManualDisabled;
                   return (
                     <button
                       type="button"
                       onClick={() => void save()}
-                      disabled={saving || nothingToSave || paypalManualDisabled}
+                      disabled={saving || nothingToSave || paypalManualDisabled || venmoViaPaypal}
                       title={
-                        paypalManualDisabled ? 'PayPal is connected via Option 1 — manual option not needed.'
+                        venmoViaPaypal ? 'Venmo is active through your connected PayPal — no manual setup needed.'
+                          : paypalManualDisabled ? 'PayPal is connected via Option 1 — manual option not needed.'
                           : nothingToSave ? 'Already saved — nothing to update.'
                           : complete ? undefined
                           : 'Fill in the required fields — press to see what’s missing'
