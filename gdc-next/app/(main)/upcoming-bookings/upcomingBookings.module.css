@@ -1260,6 +1260,10 @@ select.input {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  /* Anchor the absolutely-positioned chevron so it hangs off the icon's right
+     edge WITHOUT taking layout width — otherwise the icon+chevron centre as a
+     group and the icon reads off-centre under its column label. */
+  position: relative;
 }
 
 /* The stage icon. 36px with room around it — the old 28px square was carrying
@@ -1373,6 +1377,13 @@ select.input {
 .stChev {
   color: #6c6c86;
   font-size: 11px;
+  /* Out of flow, hanging off the icon's right edge, so it never nudges the icon
+     off-centre under its label. */
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 1px;
 }
 
 /*
