@@ -37,6 +37,9 @@ import {
   referenceCode,
   cashLine,
   METHOD_TYPES,
+  toStripeMinor,
+  fromStripeMinor,
+  belowStripeMinimum,
   type PaymentMethod,
 } from '@/lib/paymentMethods';
 // The invoice ("amount due") and receipt ("payment received") PDFs. The helper
@@ -1343,8 +1346,9 @@ ${optionsBlock}`
       if (!(outstanding > 0)) {
         return NextResponse.json({ error: 'Nothing left to pay on this request.' }, { status: 400 });
       }
-      if (outstanding < 0.5) {
-        // Stripe's minimum charge is $0.50 (USD).
+      if (belowStripeMinimum(outstanding, p.currency || 'USD')) {
+        // Stripe's minimum charge (~$0.50 for 2-decimal currencies; 1 whole unit
+        // for zero-decimal like JPY/KRW).
         return NextResponse.json({ error: 'The remaining amount is below the card minimum. Settle it with the DJ directly.' }, { status: 400 });
       }
 
@@ -1357,14 +1361,18 @@ ${optionsBlock}`
         const session = await stripe.checkout.sessions.create(
           {
             mode: 'payment',
+            // Card only — see the public /pay/[id]/card route for why (async
+            // methods would return "unpaid" and get dropped).
+            payment_method_types: ['card'],
             line_items: [
               {
                 quantity: 1,
                 price_data: {
                   currency: (p.currency || 'USD').toLowerCase(),
-                  // DB stores DOLLARS; Stripe wants integer CENTS. Math.round,
-                  // not a cast — 599.99 * 100 is 59998.999… in floats.
-                  unit_amount: Math.round(outstanding * 100),
+                  // DB stores MAJOR units; Stripe wants the integer minor amount,
+                  // which is ×100 for 2-decimal currencies but ×1 for zero-decimal
+                  // (JPY/KRW) — toStripeMinor handles both so we never 100× them.
+                  unit_amount: toStripeMinor(outstanding, p.currency || 'USD'),
                   product_data: {
                     name: `${noun} — ${djName}${b.event_date ? ` · ${b.event_date}` : ''}`,
                     description: `Ref ${reference}${b.venue_name ? ` · ${b.venue_name}` : ''}`,
@@ -1381,6 +1389,9 @@ ${optionsBlock}`
               metadata: { payment_id: p.id, booking_id: p.booking_id, reference },
             },
             customer_email: (await clientEmailFor(b)) || undefined,
+            // ~30-min expiry (vs Stripe's 24h default) narrows the window where
+            // a stale open session could still be paid after the amount changed.
+            expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
             // {CHECKOUT_SESSION_ID} is a literal — Stripe substitutes it on
             // redirect. BookingRequestsClient picks both params up on mount.
             success_url: `${origin}/booking-requests?paid=${p.id}&session_id={CHECKOUT_SESSION_ID}`,
@@ -1442,9 +1453,13 @@ ${optionsBlock}`
       // still-open session. Record nothing; the row stays as it was.
       return NextResponse.json({ ok: true, applied: false, amount_paid: p.amount_paid, status: p.status });
     }
+    // Currency must match the row — a mismatch means the amount can't be trusted.
+    if ((session.currency || '').toLowerCase() !== (p.currency || 'USD').toLowerCase()) {
+      return NextResponse.json({ error: 'The checkout currency does not match this payment.' }, { status: 400 });
+    }
 
-    // CENTS → dollars. amount_total is what the card was actually charged.
-    const received = round2((session.amount_total ?? 0) / 100);
+    // Stripe minor units → major. Currency-aware so JPY/KRW aren't divided by 100.
+    const received = fromStripeMinor(session.amount_total ?? 0, p.currency || 'USD');
     if (!(received > 0)) {
       return NextResponse.json({ error: 'Stripe reported a paid session with no amount.' }, { status: 500 });
     }
@@ -1482,6 +1497,12 @@ ${optionsBlock}`
         amount_paid: cur?.amount_paid ?? p.amount_paid,
         status: cur?.status ?? p.status,
       });
+    }
+
+    // Snapshot the settled balance (mirrors the manual-confirm path) so a later
+    // price change computes the balance against what was actually settled.
+    if (p.kind === 'balance' && status === 'paid') {
+      try { await admin.from('bookings').update({ balance_settled_total: b.total_with_tax ?? null } as unknown as never).eq('id', p.booking_id); } catch { /* non-fatal */ }
     }
 
     // Tell the DJ. Cards auto-confirm, so unlike the manual rails there is no
