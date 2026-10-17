@@ -130,12 +130,27 @@ export async function POST(req: Request) {
     // a host who was, in fact, charged.
     let orderData = res.data;
     if (!res.ok) {
-      if (issueOf(res.data) === 'ORDER_ALREADY_CAPTURED') {
+      const issue = issueOf(res.data);
+      if (issue === 'ORDER_ALREADY_CAPTURED') {
         const re = await paypalFetch<OrderResp>(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, { onBehalfOf: merchant });
         if (!re.ok) return NextResponse.json({ error: `PayPal (recheck ${re.status})` }, { status: 502 });
         orderData = re.data;
       } else {
-        return NextResponse.json({ error: `PayPal (capture ${res.status}): ${JSON.stringify(res.data).slice(0, 300)}` }, { status: 502 });
+        // The capture did NOT move money (declined card, risk decline, expired
+        // order, transient 5xx). Release the claim we set above so the host can
+        // try again — otherwise paypal_order_id stays pointed at this dead order
+        // and every future attempt is rejected as "already in progress". We only
+        // clear our own claim (matched on this exact orderId), never someone
+        // else's. `issue` is returned so the client can restart the PayPal flow
+        // on a decline instead of showing a dead end.
+        await db.from('booking_payments')
+          .update({ paypal_order_id: null } as unknown as never)
+          .eq('id', p.id)
+          .eq('paypal_order_id', orderId);
+        return NextResponse.json(
+          { error: `PayPal (capture ${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`, issue, retryable: true },
+          { status: 502 },
+        );
       }
     }
 
