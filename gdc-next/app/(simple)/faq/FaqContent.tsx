@@ -242,6 +242,18 @@ const DJ_FAQ: QA[] = [
     ),
   },
   {
+    q: 'Can I upgrade or downgrade my plan later?',
+    a: (
+      <>
+        Yes. Open the <Link href="/subscribe">subscribe page</Link> and use the <b>Manage Subscription</b> toolbar
+        to switch plans anytime — move up to unlock more features, or down to a smaller plan (including back to the
+        free tier). Upgrades take effect right away; a downgrade keeps your current features until the end of the
+        billing period you&rsquo;ve already paid for. Your profile, bookings, and history stay intact when you change
+        plans.
+      </>
+    ),
+  },
+  {
     q: 'How do I cancel my subscription?',
     a: (
       <>
