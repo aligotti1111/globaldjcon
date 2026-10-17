@@ -81,9 +81,10 @@ const HOST_FAQ: QA[] = [
     q: 'What is the event planner?',
     a: (
       <>
-        The planner is where you share the details that make your night yours — the timeline, must-play songs,
-        do-not-play list, announcements, and special moments. Your DJ sends you a planner to fill out, and what
-        you enter flows straight to them so everyone&rsquo;s working from the same plan.
+        For mobile DJ bookings (weddings, parties, and other private events), the planner is where you share the
+        details that make your night yours — the timeline, must-play songs, do-not-play list, announcements, and
+        special moments. Your DJ sends you a planner to fill out, and what you enter flows straight to them so
+        everyone&rsquo;s working from the same plan.
       </>
     ),
   },
@@ -101,7 +102,9 @@ const HOST_FAQ: QA[] = [
     a: (
       <>
         Your booking is confirmed once the DJ accepts your request. You&rsquo;ll be notified by email (and by text, if
-        you opt in), and your booking will show as confirmed in your account.
+        you opt in), and your booking will show as confirmed in your account. If the DJ doesn&rsquo;t respond, the
+        request automatically expires after 5 days — or sooner if your event date is coming up fast — and you&rsquo;re
+        free to request another DJ. Your request card shows how many days are left before it expires.
       </>
     ),
   },
@@ -109,9 +112,10 @@ const HOST_FAQ: QA[] = [
     q: 'Can I change or cancel my booking?',
     a: (
       <>
-        Yes — reach out through your booking and your DJ will handle the change. Any changes a DJ makes are sent
-        to you so you&rsquo;re always in the loop. Cancellation and refund terms are whatever you and your DJ agreed
-        to, since the booking agreement is directly between the two of you.
+        You can request a change or cancellation through your booking, but it&rsquo;s subject to your DJ agreeing —
+        any change has to be approved by them, since the booking agreement is directly between the two of you.
+        If a DJ makes a change on their end, it&rsquo;s sent to you so you&rsquo;re always in the loop. Cancellation and
+        refund terms are whatever you and your DJ agreed to.
       </>
     ),
   },
@@ -142,9 +146,9 @@ const DJ_FAQ: QA[] = [
     q: 'How much does it cost?',
     a: (
       <>
-        Global DJ Connect is a subscription with more than one tier, so you can start simple and unlock
-        contracts, deposits, and the full planning suite as you grow. See current plans and pricing on the{' '}
-        <Link href="/subscribe">subscribe page</Link>.
+        You can start with a free account — get a profile and take bookings at no cost, no card required. From
+        there, paid tiers unlock contracts, deposits, and the full planning suite as you grow. See the free plan
+        and current pricing on the <Link href="/subscribe">subscribe page</Link>.
       </>
     ),
   },
@@ -181,9 +185,23 @@ const DJ_FAQ: QA[] = [
     q: 'What are planners and riders?',
     a: (
       <>
-        Planners let your clients give you the timeline, song requests, and special moments for their event, and
-        you can customize the questions per event type. Riders let you send your technical and hospitality
-        requirements to a venue. Both can be sent to clients and venues and viewed on their own page.
+        Which one you use depends on your account type. If you&rsquo;re a <b>Mobile DJ</b> account (weddings, parties,
+        private events), you get planners — your clients give you the timeline, song requests, and special
+        moments, and you can customize the questions per event type. If you&rsquo;re a <b>Club/Bar DJ</b> account, you
+        get riders — you send your technical and hospitality requirements to the venue. Each can be sent out and
+        viewed on its own page.
+      </>
+    ),
+  },
+  {
+    q: 'Can I change my DJ account type after signing up?',
+    a: (
+      <>
+        No. The account type you choose at signup — <b>Mobile DJ</b> or <b>Club/Bar DJ</b> — is locked once your
+        account is created, because it shapes your whole setup: your booking form, packages and pricing, and
+        whether you use planners or riders. Choose carefully when you sign up. If you picked the wrong type or
+        your business changes, reach out at <a href="mailto:info@globaldjconnect.com">info@globaldjconnect.com</a>{' '}
+        and we&rsquo;ll help.
       </>
     ),
   },
@@ -227,9 +245,9 @@ const DJ_FAQ: QA[] = [
     q: 'How do I cancel my subscription?',
     a: (
       <>
-        You can manage or cancel your subscription anytime from the{' '}
-        <Link href="/subscribe">subscribe page</Link>. If you have any trouble, reach us at{' '}
-        <a href="mailto:info@globaldjconnect.com">info@globaldjconnect.com</a>.
+        Open the <Link href="/subscribe">subscribe page</Link> and use the <b>Manage Subscription</b> toolbar at
+        the top — from there you can update billing, change your plan, or cancel anytime. If you have any trouble,
+        reach us at <a href="mailto:info@globaldjconnect.com">info@globaldjconnect.com</a>.
       </>
     ),
   },
