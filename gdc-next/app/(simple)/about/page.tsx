@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MobileMenu from '@/components/MobileMenu';
+import DjSearchBar from '@/components/DjSearchBar';
 import styles from './about.module.css';
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function AboutPage() {
     <div id="view-public" className="view active">
       <Header />
       <MobileMenu />
+      <DjSearchBar />
 
       <div className={styles.page}>
         <h1 className={styles.title}>About Us</h1>
