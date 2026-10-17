@@ -1617,10 +1617,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 <div style={{ margin: '0 0 .85rem', padding: '.7rem .85rem', border: '1px solid rgba(0,245,196,.5)', borderRadius: 8, background: 'linear-gradient(135deg, rgba(0,245,196,.10), rgba(0,245,196,.02))' }}>
                   <div style={{ fontSize: '.82rem', fontWeight: 800, color: '#00f5c4', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 3 }}>✓ Active via PayPal</div>
                   <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.55 }}>
-                    Venmo is already on for your clients — it&rsquo;s included with your <strong>connected PayPal</strong>.
-                    When a client pays by Venmo, the money is sent straight to your <strong>PayPal account</strong> and
-                    the booking is marked paid automatically. Nothing to set up here. To use a manual Venmo handle
-                    instead, disconnect PayPal on the PayPal tile.
+                    Venmo is owned by PayPal, so when you connected your PayPal account the
+                    &ldquo;Pay with Venmo&rdquo; option became available automatically. When a host/client pays via
+                    Venmo, the money is sent directly to your <strong>PayPal account</strong> — and because it comes
+                    through PayPal Connect, we&rsquo;re able to track the payment and mark it paid once it&rsquo;s complete
+                    (unlike a Venmo payment made manually, which you&rsquo;d have to mark paid yourself). For the
+                    host/client, it&rsquo;s the same experience as paying through Venmo normally. To use a manual Venmo
+                    handle instead, disconnect PayPal on the PayPal tile.
                   </p>
                 </div>
               )}
