@@ -10,6 +10,7 @@ import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { buildBookingDocAttachment } from '@/lib/receiptDocs';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
+import { fromStripeMinor } from '@/lib/paymentMethods';
 import { Resend } from 'resend';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -126,8 +127,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (session.metadata?.payment_id !== p.id) return page('Mismatch', 'This checkout doesn’t match the request.');
   if (session.payment_status !== 'paid') return page('Not completed', 'This checkout wasn’t completed. Reopen the invoice to try again.');
+  // The session's currency must match the row's — a mismatch means the amount
+  // can't be trusted (e.g. the row's currency was edited after the session was
+  // minted). Record nothing.
+  const rowCur = (p.currency || 'USD').toLowerCase();
+  if ((session.currency || '').toLowerCase() !== rowCur) {
+    return page('Couldn’t confirm yet', 'Your card may have been charged. We’ll confirm shortly — please don’t pay again.');
+  }
 
-  const received = round2((session.amount_total ?? 0) / 100);
+  // Currency-aware: zero-decimal currencies (JPY/KRW) are NOT /100.
+  const received = fromStripeMinor(session.amount_total ?? 0, p.currency || 'USD');
+  if (!(received > 0)) {
+    return page('Couldn’t confirm yet', 'Your card may have been charged. We’ll confirm shortly — please don’t pay again.');
+  }
   const nextPaid = round2(Number(p.amount_paid || 0) + received);
   const status = nextPaid >= Number(p.amount) ? 'paid' : 'partial';
 
@@ -146,6 +158,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     .select('id');
 
   const applied = ((updRows as unknown[] | null)?.length ?? 0) > 0;
+
+  // Snapshot the settled balance so later price-change math treats this card
+  // payment as a real settlement (mirrors the manual-confirm path). Only when
+  // THIS write stuck and the balance is now fully paid.
+  if (applied && p.kind === 'balance' && status === 'paid' && b?.id) {
+    const { data: bFull } = await db.from('bookings').select('total_with_tax').eq('id', b.id).maybeSingle();
+    const twt = (bFull as { total_with_tax?: number | null } | null)?.total_with_tax ?? null;
+    try { await db.from('bookings').update({ balance_settled_total: twt } as unknown as never).eq('id', b.id); } catch { /* non-fatal */ }
+  }
+
   const hostEmail = b?.host_email || (b?.requester_id ? await resolveUserEmail(b.requester_id) : null);
 
   // The DJ's auto-send-receipt toggle (default on). When OFF, no automatic
