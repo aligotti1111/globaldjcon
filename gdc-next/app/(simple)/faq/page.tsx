@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MobileMenu from '@/components/MobileMenu';
+import DjSearchBar from '@/components/DjSearchBar';
 import FaqContent from './FaqContent';
 import styles from './faq.module.css';
 
@@ -20,6 +21,7 @@ export default function FaqPage() {
     <div id="view-public" className="view active">
       <Header />
       <MobileMenu />
+      <DjSearchBar />
 
       <div className={styles.page}>
         <h1 className={styles.title}>Frequently Asked Questions</h1>
