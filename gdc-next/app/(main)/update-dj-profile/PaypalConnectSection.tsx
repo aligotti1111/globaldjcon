@@ -207,8 +207,8 @@ export default function PaypalConnectSection(
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white,#e8fff8)', lineHeight: 1.5 }}>
               {email ? <>Paid into <strong style={{ color: '#00f5c4' }}>{email}</strong>. </> : null}
-              Clients can now pay by <strong style={{ color: '#00f5c4' }}>PayPal, Venmo, Pay Later, or card</strong> on
-              deposit and invoice requests — Venmo and card come with your PayPal connection, no separate setup.
+              Clients can now pay by <strong style={{ color: '#00f5c4' }}>PayPal, Venmo, Pay Later, or credit card</strong> —
+              Venmo and card come with your PayPal connection, no separate setup.
             </p>
           </div>
           <button type="button" onClick={() => setConfirmOpen(true)} disabled={busy}
