@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/server';
-import { referenceCode } from '@/lib/paymentMethods';
+import { referenceCode, toStripeMinor, belowStripeMinimum } from '@/lib/paymentMethods';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -103,7 +103,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!dj?.stripe_connect_id || !dj.stripe_connect_ready) return done(paymentId, 'e=notready');
 
   const outstanding = round2(Math.max(0, Number(p.amount) - Number(p.amount_paid || 0)));
-  if (!(outstanding > 0) || outstanding < 0.5) return done(paymentId, 'state=settled');
+  if (!(outstanding > 0) || belowStripeMinimum(outstanding, p.currency || 'USD')) return done(paymentId, 'state=settled');
 
   const reference = referenceCode(p.booking_id, p.kind);
   const noun = p.kind === 'balance' ? 'Balance' : p.kind === 'deposit' ? 'Deposit' : 'Payment';
@@ -131,12 +131,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const session = await stripe.checkout.sessions.create(
       {
         mode: 'payment',
+        // Card only. Without this, Checkout offers whatever the DJ's connected
+        // account has enabled (ACH, Klarna, etc.) — those settle asynchronously,
+        // return here "unpaid", and would be silently dropped (no webhook to
+        // finalize them). The UI promises instant card, so hold to card.
+        payment_method_types: ['card'],
         line_items: [
           {
             quantity: 1,
             price_data: {
               currency: cur,
-              unit_amount: Math.round(outstanding * 100),
+              unit_amount: toStripeMinor(outstanding, cur),
               product_data: {
                 name: productName,
                 description: productDesc,
@@ -147,6 +152,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         metadata: { payment_id: p.id, booking_id: p.booking_id, reference },
         payment_intent_data: { metadata: { payment_id: p.id, booking_id: p.booking_id, reference } },
         customer_email: b.host_email || undefined,
+        // Short expiry keeps the "stale open session can still be paid" window to
+        // ~30 min instead of Stripe's 24h default (narrows amount-drift / double-
+        // pay exposure).
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
         success_url: `${SITE_URL}/pay/${p.id}/card/done?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${SITE_URL}/pay/${p.id}/card/done?state=cancelled`,
       },
