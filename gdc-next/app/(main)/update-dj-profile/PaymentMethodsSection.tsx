@@ -273,6 +273,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   // When the DJ connects PayPal (Option 1), Option 2 (the manual PayPal.me /
   // email rail) is greyed out and made unclickable — Option 1 overrides it.
   const [paypalReady, setPaypalReady] = useState(false);
+  // Whether the PayPal / Card connect-status fetches have RESOLVED. The default
+  // "open the first active tile" decision must wait for these — otherwise it runs
+  // the instant the saved handles load (before paypalReady / card.ready are
+  // known) and picks the first manual rail (Venmo) instead of a connected one.
+  const [paypalStatusLoaded, setPaypalStatusLoaded] = useState(false);
+  const [cardStatusLoaded, setCardStatusLoaded] = useState(false);
 
   // ── Stripe Connect (cards) ────────────────────────────────────────
   const [card, setCard] = useState<CardState | null>(null);
@@ -329,6 +335,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         const json = (await res.json().catch(() => ({}))) as { ready?: boolean };
         if (!cancelled && res.ok) setPaypalReady(!!json.ready);
       } catch { /* no-op */ }
+      finally { if (!cancelled) setPaypalStatusLoaded(true); }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -381,6 +388,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         if (!cancelled) setCard(next);
       } catch {
         if (!cancelled) setCard(DISCONNECTED);
+      } finally {
+        if (!cancelled) setCardStatusLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -664,7 +673,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   // load, and never fights the DJ after that — opening a tile by hand sticks.
   const didInitOpen = useRef(false);
   useEffect(() => {
-    if (didInitOpen.current || !loaded) return;
+    if (didInitOpen.current) return;
+    // WAIT for all three to resolve: the saved methods AND both connect-status
+    // checks. Picking before PayPal/Card readiness is known would see only saved
+    // handles and wrongly open the first manual rail (Venmo).
+    if (!loaded || !paypalStatusLoaded || !cardStatusLoaded) return;
     didInitOpen.current = true;
     // Just came back from PayPal onboarding → keep the PayPal tile open (the
     // ?paypal=connected effect already selected it); don't override to a saved rail.
@@ -672,7 +685,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     const firstActive = TILE_ORDER.find(tileLive);
     setOpenTile(firstActive ?? TILE_ORDER[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded]);
+  }, [loaded, paypalStatusLoaded, cardStatusLoaded]);
 
   function patchType(t: PaymentMethodType, next: Partial<PaymentMethod>) {
     setFeedback(null);
