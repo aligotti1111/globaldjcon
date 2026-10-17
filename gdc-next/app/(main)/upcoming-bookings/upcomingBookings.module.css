@@ -616,7 +616,8 @@
   min-width: 0;
 }
 /* At rest: the pill. On hover: gone, and the buttons take its place. */
-.row:hover .rowActionsCell .manualPill { display: none; }
+/* The MANUAL pill stays visible on hover — there's no X to reveal underneath it
+   any more. */
 .rowActionsCell .editBtn,
 .rowActionsCell .deleteBtn { display: none; }
 .row:hover .rowActionsCell .editBtn,
