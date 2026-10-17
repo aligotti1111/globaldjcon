@@ -656,15 +656,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       : k === 'paypal' ? (paypalReady || isSavedLive(k))
       : isSavedLive(k);
 
-  // Which tiles the DJ has ALREADY set up (a connected card, or a saved rail).
-  // Used to pick which one opens by default.
-  const tileConfigured = (k: TileKey): boolean =>
-    k === 'card' ? !!card?.ready : !!savedByType[k];
-
-  // Open one tile by default: the first already-configured option in tile
-  // order (the one "closest to the first"), or the very first tile if the DJ
-  // hasn't added anything yet. Runs once after load, and never fights the DJ
-  // after that — collapsing or opening a tile by hand sticks.
+  // Open one tile by default: the first ACTIVE (live) option in tile order —
+  // a connected card, a connected/saved PayPal, or any saved rail — or, if none
+  // is active yet, the very first tile (Card). Using tileLive (not just "has a
+  // saved handle") means a PayPal connected via onboarding counts, so the tab
+  // doesn't skip past it to the first manual rail (e.g. Venmo). Runs once after
+  // load, and never fights the DJ after that — opening a tile by hand sticks.
   const didInitOpen = useRef(false);
   useEffect(() => {
     if (didInitOpen.current || !loaded) return;
@@ -672,8 +669,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     // Just came back from PayPal onboarding → keep the PayPal tile open (the
     // ?paypal=connected effect already selected it); don't override to a saved rail.
     if (cameFromPaypalRef.current) { setOpenTile('paypal'); return; }
-    const firstConfigured = TILE_ORDER.find(tileConfigured);
-    setOpenTile(firstConfigured ?? TILE_ORDER[0]);
+    const firstActive = TILE_ORDER.find(tileLive);
+    setOpenTile(firstActive ?? TILE_ORDER[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
 
