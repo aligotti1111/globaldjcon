@@ -475,7 +475,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         const supabase = createClient();
         const { data } = await supabase
           .from('users')
-          .select('payment_methods, slug, phone, address, city, state, zip, country, booking_settings')
+          .select('payment_methods, slug, phone, address, city, state, zip, country, booking_settings, paypal_connect_ready')
           .eq('id', userId)
           .maybeSingle();
         if (cancelled) return;
@@ -483,7 +483,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           payment_methods?: unknown; slug?: string | null; phone?: string | null;
           address?: string | null; city?: string | null; state?: string | null;
           zip?: string | null; country?: string | null; booking_settings?: unknown;
+          paypal_connect_ready?: boolean | null;
         } | null;
+        // Seed the PayPal "connected" state from the DB-cached flag — this is a
+        // fast local read, so the tile shows Connected instantly instead of
+        // waiting a couple seconds for the live PayPal round-trip (which still
+        // runs in the background to reconcile). Also unblocks the default-open
+        // decision immediately.
+        if (row?.paypal_connect_ready) {
+          setPaypalReady(true);
+          setPaypalStatusLoaded(true);
+        }
         setSlug(typeof row?.slug === 'string' ? row.slug : null);
         setAccountPhone(typeof row?.phone === 'string' && row.phone.trim() ? row.phone.trim() : null);
         // Compose exactly the way lib/receiptDocs builds the invoice's business
