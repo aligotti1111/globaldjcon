@@ -5,6 +5,9 @@
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import MobileMenu from '@/components/MobileMenu';
 import styles from './about.module.css';
 
 export const metadata: Metadata = {
@@ -15,14 +18,9 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <>
-      <header className={styles.header}>
-        <Link href="/" className={styles.navLogo}>Global DJ Connect</Link>
-        <nav className={styles.nav}>
-          <Link href="/faq" className={styles.navLink}>FAQ</Link>
-          <Link href="/djs" className={styles.navLink}>Find a DJ</Link>
-        </nav>
-      </header>
+    <div id="view-public" className="view active">
+      <Header />
+      <MobileMenu />
 
       <div className={styles.page}>
         <h1 className={styles.title}>About Us</h1>
@@ -80,6 +78,8 @@ export default function AboutPage() {
           </p>
         </div>
       </div>
-    </>
+
+      <Footer />
+    </div>
   );
 }
