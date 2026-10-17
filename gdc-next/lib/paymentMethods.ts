@@ -479,6 +479,43 @@ export function referenceCode(bookingId: string, kind: string): string {
   return `GDC-${short}-${suffix}`;
 }
 
+/**
+ * Stripe minor-unit conversion. Most currencies are 2-decimal (USD → cents, ×100),
+ * but a handful are ZERO-DECIMAL (JPY, KRW, …): Stripe wants the whole-unit amount
+ * with NO ×100. Using ×100 for those overcharges the payer 100× — and because the
+ * confirm side divides back by the same factor, it reconciles silently. These two
+ * helpers are the single source of truth for both the charge amount and reading it
+ * back, so the two sides can never disagree.
+ * Ref: https://stripe.com/docs/currencies#zero-decimal
+ */
+export const STRIPE_ZERO_DECIMAL = new Set([
+  'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga',
+  'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
+]);
+
+/** Dollars/major units in the DB → the integer Stripe expects for this currency. */
+export function toStripeMinor(amountMajor: number, currency: string): number {
+  const cur = (currency || 'USD').toLowerCase();
+  return STRIPE_ZERO_DECIMAL.has(cur) ? Math.round(amountMajor) : Math.round(amountMajor * 100);
+}
+
+/** Stripe's integer amount (amount_total) → major units for the DB ledger. */
+export function fromStripeMinor(amountMinor: number, currency: string): number {
+  const cur = (currency || 'USD').toLowerCase();
+  const major = STRIPE_ZERO_DECIMAL.has(cur) ? amountMinor : amountMinor / 100;
+  return Number(major.toFixed(2));
+}
+
+/**
+ * Stripe's minimum charge is roughly $0.50 — but that floor is meaningless for a
+ * zero-decimal currency (¥0.50 isn't a thing). For those, require at least 1 whole
+ * unit; otherwise keep the ~0.50 major-unit floor.
+ */
+export function belowStripeMinimum(amountMajor: number, currency: string): boolean {
+  const cur = (currency || 'USD').toLowerCase();
+  return STRIPE_ZERO_DECIMAL.has(cur) ? amountMajor < 1 : amountMajor < 0.5;
+}
+
 /** Enabled + valid methods, in display order (linkable rails first). */
 export function usableMethods(methods: PaymentMethod[] | null | undefined): PaymentMethod[] {
   const list = Array.isArray(methods) ? methods : [];
