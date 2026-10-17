@@ -25,6 +25,8 @@ const IconMusic = () => (<svg {...ico}><path d="M9 18V5l12-2v13" /><circle cx="6
 const IconDollar = () => (<svg {...ico}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>);
 const IconCheck = () => (<svg {...ico}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>);
 const IconX = () => (<svg {...ico}><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>);
+// Bare X (no circle), a touch larger — used for the "Cancel request" rows.
+const IconXPlain = () => (<svg {...ico} width={17} height={17} strokeWidth={2.4}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>);
 const IconDot = () => (<svg {...ico}><circle cx="12" cy="12" r="4" /></svg>);
 const IconLink = () => (<svg {...ico}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>);
 
@@ -36,7 +38,7 @@ function iconForLabel(label: string): ReactElement {
   if (l.includes('option')) return <IconGear />;
   // These all live on the contract stage, so test them before 'contract' or
   // they'd fall through to the document icon.
-  if (l.includes('cancel')) return <IconX />;
+  if (l.includes('cancel')) return <IconXPlain />;
   if (l.includes('resend') || l.includes('re-send') || l.includes('share')) return <IconSend />;
   if (l.includes('copy') || l.includes('link')) return <IconLink />;
   if (l.includes('contract')) return <IconDoc />;
