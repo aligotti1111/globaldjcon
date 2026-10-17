@@ -129,13 +129,27 @@ export function buildPayEmailBlocks(a: PayBlocksArgs): string {
 <tr><td style="padding:14px 16px 16px;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr>
 <td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:#003087;border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">P</td></tr></table></td>
-<td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#003087;font-size:15px;">PayPal &amp; Venmo</td>
+<td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#003087;font-size:15px;">PayPal</td>
 </tr></table>
 <a href="${SITE_URL}/pay/${paymentId}/paypal" style="display:block;margin:11px 0 0;background:#0070ba;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} with PayPal &rarr;</a>
-<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Pay with PayPal or Venmo — no account or sign-in needed.</p>
+<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">PayPal, Pay Later, or card — no account or sign-in needed.</p>
 </td></tr></table>`
     : '';
-  // One PayPal option, not two: drop the manual PayPal.me card when Connect is on.
-  const emailMethods = paypalReady ? methods.filter((m) => m.type !== 'paypal') : methods;
-  return `${cardBlock}${paypalBlock}${optionsHtml(emailMethods, amount, currency, reference, djName, paymentId, eventDate, venueName, isBalance)}`;
+  // Venmo — its own button, via the connected PayPal (Venmo opens on a phone).
+  const venmoBlock = paypalReady
+    ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;min-width:100%;border:1px solid #BEDDF2;border-radius:12px;margin:0 0 12px;background:#EAF4FB;overflow:hidden;">
+<tr><td style="height:4px;background:#3D95CE;font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td style="padding:14px 16px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr>
+<td width="40" valign="middle"><table cellpadding="0" cellspacing="0" border="0"><tr><td width="40" height="40" align="center" valign="middle" style="background:#3D95CE;border-radius:10px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;line-height:40px;">V</td></tr></table></td>
+<td valign="middle" style="padding-left:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;color:#3D95CE;font-size:15px;">Venmo</td>
+</tr></table>
+<a href="${SITE_URL}/pay/${paymentId}/paypal?method=venmo" style="display:block;margin:11px 0 0;background:#3D95CE;border-radius:8px;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;text-align:center;">Pay ${money(amount, currency)} with Venmo &rarr;</a>
+<p style="margin:8px 0 0;color:#7a7a90;font-size:12px;text-align:center;line-height:1.5;">Opens in the Venmo app on your phone — no account sign-in needed.</p>
+</td></tr></table>`
+    : '';
+  // One PayPal and one Venmo, not two of each: drop the manual PayPal.me and
+  // manual Venmo cards when the connected PayPal buttons are shown.
+  const emailMethods = paypalReady ? methods.filter((m) => m.type !== 'paypal' && m.type !== 'venmo') : methods;
+  return `${cardBlock}${paypalBlock}${venmoBlock}${optionsHtml(emailMethods, amount, currency, reference, djName, paymentId, eventDate, venueName, isBalance)}`;
 }
