@@ -23,8 +23,12 @@ interface PayRow {
   amount: number; amount_paid: number | null; currency: string | null; status: string;
 }
 
-export default async function PaypalPayPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PaypalPayPage(
+  { params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ method?: string }> },
+) {
   const { id } = await params;
+  const { method } = await searchParams;
+  const mode = method === 'venmo' ? 'venmo' : 'all';
   if (!paypalConfigured()) notFound();
 
   const admin = createAdminClient();
@@ -68,6 +72,7 @@ export default async function PaypalPayPage({ params }: { params: Promise<{ id: 
       settled={settled}
       venueName={booking.venue_name}
       eventDate={booking.event_date}
+      mode={mode}
     />
   );
 }
