@@ -407,8 +407,10 @@ export default function BookingRow({
   const roleCanRequestCancel = actingRole === 'owner';
   // Role-locking for the step dropdowns: show every option an admin would see,
   // but grey out (disable) the ones this role can't use, with a hover tooltip.
-  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Skip deposit', 'Request balance', 'Cancel request']);
-  const CONTRACT_LOCK_LABELS = new Set(['Resend contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
+  // NB: these must match the exact labels buildSteps emits. If you rename a menu
+  // label there, update it here too or the role lock silently stops applying.
+  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Skip deposit', 'Undo skip', 'Request balance', 'Resend invoice', 'Request New Balance', 'Mark New Balance Paid', 'Cancel request']);
+  const CONTRACT_LOCK_LABELS = new Set(['Re-send contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
   function actionLocked(label: string): boolean {
     if (label === 'Payment options') return !roleCanEditPaymentOptions;
     if (MONEY_LOCK_LABELS.has(label)) return !roleCanMoney;
