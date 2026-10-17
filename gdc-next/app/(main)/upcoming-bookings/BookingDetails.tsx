@@ -639,18 +639,11 @@ export default function BookingDetails({
     </span>
   ) : money(agreedTotal);
 
-  // Discount note — shown under the agreed rate when the booking used a
-  // sale/promo code (original price + which discount + amount saved).
+  // Discount note — a percent-off / promo code. It no longer rides under the
+  // Agreed Rate; it's rendered as its own line UNDER "Total (with tax)" in
+  // renderPricing (see the discount line there).
   const bkDiscountAmt = booking.discount_amount != null ? Number(booking.discount_amount) : 0;
-  const agreedRateWithDiscount = bkDiscountAmt > 0 ? (
-    <span>
-      {agreedRateValue}
-      <span style={{ display: 'block', color: 'var(--neon)', fontSize: '.8rem', marginTop: 2 }}>
-        {booking.discount_label || 'Discount'} — saved {money(bkDiscountAmt)}
-        {booking.original_rate != null ? ` (was ${money(booking.original_rate)})` : ''}
-      </span>
-    </span>
-  ) : agreedRateValue;
+  const agreedRateWithDiscount = agreedRateValue;
 
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
@@ -751,8 +744,10 @@ export default function BookingDetails({
           // price still matches the snapshot's base; after a renegotiation
           // we recompute below (still using the frozen tax %).
           if (snapshotFresh && booking.deposit_amount != null) {
+            // Percentage sits just LEFT of the amount so the dollar figure stays
+            // flush-right, aligned with the other amounts.
             return booking.deposit_pct != null
-              ? `${money(Number(booking.deposit_amount))} (${booking.deposit_pct}%)`
+              ? `(${booking.deposit_pct}%) ${money(Number(booking.deposit_amount))}`
               : money(Number(booking.deposit_amount));
           }
           // Deposit % is taken on the tax-inclusive total (cardTotal).
@@ -761,14 +756,14 @@ export default function BookingDetails({
           // whole-dollar rounding.
           if (booking.deposit_pct != null) {
             return cardTotal != null
-              ? `${money(snapTaxPct != null
+              ? `(${booking.deposit_pct}%) ${money(snapTaxPct != null
                   ? round2((cardTotal * booking.deposit_pct) / 100)
-                  : Math.round((cardTotal * booking.deposit_pct) / 100))} (${booking.deposit_pct}%)`
+                  : Math.round((cardTotal * booking.deposit_pct) / 100))}`
               : `${booking.deposit_pct}%`;
           }
           if (djType === 'club' && clubDepositPct > 0) {
             return cardTotal != null && cardTotal > 0
-              ? `${money(Math.round((cardTotal * clubDepositPct) / 100))} (${clubDepositPct}%)`
+              ? `(${clubDepositPct}%) ${money(Math.round((cardTotal * clubDepositPct) / 100))}`
               : `${clubDepositPct}%`;
           }
           // Last resort: a stored fixed deposit amount.
@@ -790,7 +785,7 @@ export default function BookingDetails({
       {
         label: 'Tax',
         value: (effTaxPct > 0 && cardTax > 0)
-          ? `${money(cardTax)} (${effTaxPct}%)`
+          ? `(${effTaxPct}%) ${money(cardTax)}`
           : null,
       },
       {
@@ -897,6 +892,16 @@ export default function BookingDetails({
           <div className={styles.priceRow}>
             <span className={styles.priceKey}>Tax{badgeFor('tax_pct')}</span>
             <span className={styles.priceVal}>&mdash;</span>
+          </div>
+        )}
+        {/* Percent-off / promo discount — its own line UNDER "Total (with tax)". */}
+        {bkDiscountAmt > 0 && (
+          <div className={styles.priceRow} style={{ borderTop: 'none', paddingTop: 2 }}>
+            <span className={styles.priceKey} />
+            <span className={styles.priceVal} style={{ color: 'var(--neon)', fontSize: '.78rem', fontWeight: 500 }}>
+              {booking.discount_label || 'Discount'} — saved {money(bkDiscountAmt)}
+              {booking.original_rate != null ? ` (was ${money(booking.original_rate)})` : ''}
+            </span>
           </div>
         )}
         {sched.length > 0 && (
