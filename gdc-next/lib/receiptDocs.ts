@@ -187,6 +187,9 @@ export interface ReceiptOverride {
   eventExtra?: string | null;
   clientName?: string | null;
   clientEmail?: string | null;
+  /** How the payment was received (e.g. "Venmo", "Cash"). When set, it's
+   *  appended to the received line as " — <method>". Absent/null = no method. */
+  method?: string | null;
 }
 
 interface DjDocRow {
@@ -484,16 +487,22 @@ export async function buildBookingDocAttachment(
       const totalShown = round2(ovNum(ov?.total, total));
       const paidShown = round2(ovNum(ov?.paidToDate, paidToDate));
       // Deposit receipts show the deposit as a % of the event total; balance and
-      // other receipts get their own plain label. Payment method is intentionally
-      // not printed on this line. The % is computed from the DERIVED figures so a
-      // later amount edit doesn't move it — the DJ edits the label text to change it.
+      // other receipts get their own plain label. The % is computed from the
+      // DERIVED figures so a later amount edit doesn't move it — the DJ edits the
+      // label text to change it.
       const depPct = total > 0 ? Math.round((round2(Number(args.receivedNow ?? 0)) / total) * 100) : 0;
       const defaultReceivedLabel = args.paymentKind === 'deposit'
         ? `Deposit Received (${depPct}%)`
         : args.paymentKind === 'balance'
           ? 'Balance Received'
           : 'Payment Received';
-      const receivedLabel = ovStr(ov?.receivedLabel, defaultReceivedLabel) || defaultReceivedLabel;
+      let receivedLabel = ovStr(ov?.receivedLabel, defaultReceivedLabel) || defaultReceivedLabel;
+      // When the DJ recorded HOW the payment came in (a manual rail like Venmo
+      // or Cash), append it to the received line: "Deposit Received (50%) — Venmo".
+      const methodLabel = (ov?.method ?? args.method ?? '').toString().trim();
+      if (methodLabel && !receivedLabel.toLowerCase().includes(methodLabel.toLowerCase())) {
+        receivedLabel = `${receivedLabel} — ${methodLabel}`;
+      }
       // Helper: apply a headline override (label + optional amount) over a default.
       const applyHeadline = (def: { label: string; amount: number; hideAmount: boolean }) => {
         if (ov && (ov.headlineLabel !== undefined || ov.headlineAmount !== undefined)) {
