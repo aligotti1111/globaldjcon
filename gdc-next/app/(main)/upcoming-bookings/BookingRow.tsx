@@ -21,7 +21,7 @@ import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './p
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import { ConfirmDialog, PaymentMethodsModal } from './RowModals';
 import RequestPaymentModal from './RequestPaymentModal';
-import type { PaymentMethod } from '@/lib/paymentMethods';
+import { type PaymentMethod, usableMethods, METHOD_TYPES } from '@/lib/paymentMethods';
 import PlannerSendModal from './PlannerSendModal';
 import RiderSendModal from './RiderSendModal';
 import { useSendActions } from './hooks/useSendActions';
@@ -490,6 +490,39 @@ export default function BookingRow({
     return () => { cancelled = true; };
   }, [reqOpen, methodsOpen, userId]);
 
+  // The DJ's accepted MANUAL payment rails (Venmo, Cash App, PayPal, Zelle,
+  // Cash, Check, Other), as the "Mark Paid — <rail>" sub-options on a deposit/
+  // balance stage menu. Card and the PayPal-connect rail are excluded (they
+  // self-confirm, so there's nothing to hand-mark). Loaded once, lazily, the
+  // first time any stage menu opens — the pipeline is always on screen, so we
+  // don't want this fetch on every row up front.
+  const [payMethods, setPayMethods] = useState<{ type: string; label: string }[] | null>(null);
+  useEffect(() => {
+    if (!menuOpenKey || payMethods) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('users').select('payment_methods').eq('id', userId).maybeSingle();
+        if (cancelled) return;
+        const pmRaw = (data as { payment_methods?: unknown } | null)?.payment_methods;
+        const rows = Array.isArray(pmRaw) ? (pmRaw as PaymentMethod[]) : [];
+        // usableMethods already drops 'card' and invalid rows and sorts by rail
+        // order; dedupe to one entry per rail type for the menu.
+        const seen = new Set<string>();
+        const list: { type: string; label: string }[] = [];
+        for (const m of usableMethods(rows)) {
+          if (seen.has(m.type)) continue;
+          seen.add(m.type);
+          list.push({ type: m.type, label: METHOD_TYPES[m.type]?.label || m.type });
+        }
+        setPayMethods(list);
+      } catch { setPayMethods([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [menuOpenKey, payMethods, userId]);
+
   // The booking's OWN frozen deposit — never recomputed from today's settings.
   const suggestedDeposit = booking.deposit_amount != null ? Number(booking.deposit_amount) : null;
   const depositRow = payments.find((p) => p.kind === 'deposit') || null;
@@ -711,13 +744,15 @@ export default function BookingRow({
       else setBusyKey(null);
     }
   }
-  async function toggleStep(key: string, next: boolean) {
+  async function toggleStep(key: string, next: boolean, method?: string | null) {
     setMenuOpenKey(null);
     setOverrides((prev) => { const n = { ...prev }; if (next) n[key] = true; else delete n[key]; return n; });
     try {
       const res = await fetch('/api/bookings/status-override', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, key, done: next }),
+        // `method` records HOW a deposit/balance was paid (a manual rail), so it
+        // prints on the receipt's received line; omitted = "no method".
+        body: JSON.stringify({ bookingId: booking.id, key, done: next, method: method ?? undefined }),
       });
       // Refresh so the booking LOG picks up the timestamp the server just
       // stamped (contract/deposit complete, skip, etc.).
@@ -729,9 +764,11 @@ export default function BookingRow({
   // later bill; a balance send the client their final receipt. `done` is the
   // new state (true = marking complete). Only the deposit/balance steps carry
   // a warning; contract/playlist just toggle.
-  function confirmAndToggleStep(key: string, done: boolean) {
-    const proceed = () => {
-      toggleStep(key, done);
+  function confirmAndToggleStep(key: string, done: boolean, method?: string | null) {
+    const proceed = async () => {
+      // Await the override write so the method (stored in receipt_overrides) is
+      // in place BEFORE the balance receipt below is generated from it.
+      await toggleStep(key, done, method);
       // Marking the balance complete sends the final receipt automatically —
       // unless the DJ turned off "auto-send receipt after balance is paid"
       // (enforced server-side via the `auto` flag).
@@ -1101,6 +1138,7 @@ export default function BookingRow({
           actionLocked={actionLocked}
           overrideLockedFor={overrideLockedFor}
           onToggleOverride={confirmAndToggleStep}
+          payMethods={payMethods ?? undefined}
           busyKey={busyKey}
         />
         {/* 10 — Actions. Right corner, its own track, so nothing it contains
@@ -1233,6 +1271,7 @@ export default function BookingRow({
             actionLocked={actionLocked}
             overrideLockedFor={overrideLockedFor}
             onToggleOverride={confirmAndToggleStep}
+            payMethods={payMethods ?? undefined}
           />
         </div>
       )}
