@@ -1229,9 +1229,7 @@ export default function BookingRequestsClient({
             <TabButton active={outgoingTab === 'awaiting'} onClick={() => setOutgoingTab('awaiting')}>
               Awaiting Response ({outCounts.awaiting})
             </TabButton>
-            <TabButton active={outgoingTab === 'approved'} onClick={() => setOutgoingTab('approved')}>
-              Approved ({outCounts.approved})
-            </TabButton>
+            {/* Approved tab removed — approved bookings live on Upcoming Events. */}
             <TabButton active={outgoingTab === 'denied'} onClick={() => setOutgoingTab('denied')}>
               Declined ({outCounts.denied})
             </TabButton>
