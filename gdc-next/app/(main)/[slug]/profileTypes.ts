@@ -111,6 +111,8 @@ export interface AboutStats {
   ownEquipment?: { on?: boolean; answer?: 'Yes' | 'No' };
   residencies?: { on?: boolean; answer?: 'Yes' | 'No' };
   travels?: { on?: boolean; answer?: 'Yes' | 'No' };
+  // Total social following across platforms — a free number the owner enters.
+  followers?: { on?: boolean; count?: string };
 }
 
 export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq' | 'staff' | 'affiliates';
