@@ -36,6 +36,7 @@ import { TIERS } from '@/lib/access';
 import { SlugInput, type SlugStatus } from './SlugInput';
 import { ZipLookup } from './ZipLookup';
 import HostCodeSignup from './HostCodeSignup';
+import { isFullName } from '@/lib/fullName';
 import styles from './signup.module.css';
 
 // localStorage key used by AuthProvider to claim the booking after the
@@ -1212,19 +1213,24 @@ function HostForm({ onBack, onSwitchType, prefillEmail, lockedEmail, onDone }: {
         <div className={`${styles.alert} ${styles.alertError}`}>{nameError}</div>
       )}
       <label htmlFor="host-name">Your Name</label>
-      <input
-        id="host-name"
-        type="text"
-        placeholder="Jane Smith"
-        value={name}
-        // Clear on the first keystroke. Leaving a red box under someone who is
-        // actively fixing the thing it's complaining about is just nagging.
-        onChange={(e) => { setName(e.target.value); setNameError(null); }}
-        required
-        // Matches .urlPreviewInputTaken, the form's existing convention for a
-        // field that's wrong — same colour, so it reads as the same language.
-        style={nameError ? { borderColor: 'var(--error)' } : undefined}
-      />
+      <span style={{ position: 'relative', display: 'block' }}>
+        <input
+          id="host-name"
+          type="text"
+          placeholder="Jane Smith"
+          value={name}
+          // Clear on the first keystroke. Leaving a red box under someone who is
+          // actively fixing the thing it's complaining about is just nagging.
+          onChange={(e) => { setName(e.target.value); setNameError(null); }}
+          required
+          // Matches .urlPreviewInputTaken, the form's existing convention for a
+          // field that's wrong — same colour, so it reads as the same language.
+          style={{ ...(nameError ? { borderColor: 'var(--error)' } : {}), paddingRight: '2.2rem' }}
+        />
+        {/* Green only once it's a full name (first + last), which is what the
+            form actually requires — a lone first name stays grey. */}
+        <FieldCheck ok={isFullName(name.trim())} />
+      </span>
       <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
         First and last name.
       </small>
