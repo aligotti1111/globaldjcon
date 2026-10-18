@@ -20,11 +20,13 @@ interface Props {
   openedLabel: (key: string) => string | null;
   actionLocked: (label: string) => boolean;
   overrideLockedFor: (key: string) => boolean;
-  onToggleOverride: (key: string, done: boolean) => void;
+  onToggleOverride: (key: string, done: boolean, method?: string | null) => void;
+  /** The DJ's accepted manual payment rails, for the "Mark Paid — <rail>" rows. */
+  payMethods?: { type: string; label: string }[];
 }
 
 export default function PipelineHero({
-  steps, slots, djType, openedLabel, actionLocked, overrideLockedFor, onToggleOverride,
+  steps, slots, djType, openedLabel, actionLocked, overrideLockedFor, onToggleOverride, payMethods,
 }: Props) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -106,9 +108,10 @@ export default function PipelineHero({
                   openedLabelText={openedLabel(st.key)}
                   actionLocked={actionLocked}
                   overrideLocked={overrideLockedFor(st.key)}
+                  payMethods={payMethods}
                   onClose={() => setOpenKey(null)}
                   onRunAction={(run) => { setOpenKey(null); run(); }}
-                  onToggleOverride={() => onToggleOverride(st.key, !st.done)}
+                  onToggleOverride={(method) => onToggleOverride(st.key, !st.done, method)}
                 />
               )}
             </div>
