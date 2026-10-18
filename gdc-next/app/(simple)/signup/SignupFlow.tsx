@@ -463,6 +463,42 @@ export function ConsentCheckbox({
   );
 }
 
+// Small check mark that lives inside a text field. Grey while the field doesn't
+// yet have valid input, neon-green once it does — a quiet "this one's good"
+// cue as the person fills the form out. Purely decorative (aria-hidden,
+// pointer-events none); real validation still happens on submit.
+//
+// Wrap the input in <span className={styles.fieldWithCheck}> (position:relative)
+// and add a little right padding to the input so text doesn't run under it.
+function FieldCheck({ ok }: { ok: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={ok ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,0.28)'}
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        position: 'absolute',
+        right: 12,
+        top: 'calc(50% + 2px)',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        transition: 'stroke .15s ease',
+      }}
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+// Email shape check — same loose rule used elsewhere for the field cue.
+const EMAIL_OK = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className={styles.formBack} onClick={onClick}>
@@ -807,29 +843,37 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
 
       <div className={styles.formGroup}>
         <label htmlFor="dj-email">Email Address</label>
-        <input
-          id="dj-email"
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-        />
+        <span style={{ position: 'relative', display: 'block' }}>
+          <input
+            id="dj-email"
+            type="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            style={{ paddingRight: '2.2rem' }}
+          />
+          <FieldCheck ok={EMAIL_OK(email)} />
+        </span>
       </div>
 
       <div className={styles.formGroup}>
         <label htmlFor="dj-password">Password</label>
-        <input
-          id="dj-password"
-          type="password"
-          placeholder="Minimum 8 characters"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="new-password"
-        />
+        <span style={{ position: 'relative', display: 'block' }}>
+          <input
+            id="dj-password"
+            type="password"
+            placeholder="Minimum 8 characters"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+            style={{ paddingRight: '2.2rem' }}
+          />
+          <FieldCheck ok={password.length >= 8} />
+        </span>
       </div>
 
       <div className={styles.formGroup}>
@@ -865,18 +909,22 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
         <label htmlFor="dj-name">
           {djType === 'mobile' ? 'Company Name' : djType === 'club' ? 'DJ Name' : 'DJ / Company Name'}
         </label>
-        <input
-          id="dj-name"
-          type="text"
-          placeholder={
-            djType === 'mobile' ? 'Premier Events LLC' :
-            djType === 'club' ? 'DJ Nova' :
-            'DJ Nova or Premier Events LLC'
-          }
-          value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          required
-        />
+        <span style={{ position: 'relative', display: 'block' }}>
+          <input
+            id="dj-name"
+            type="text"
+            placeholder={
+              djType === 'mobile' ? 'Premier Events LLC' :
+              djType === 'club' ? 'DJ Nova' :
+              'DJ Nova or Premier Events LLC'
+            }
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            required
+            style={{ paddingRight: '2.2rem' }}
+          />
+          <FieldCheck ok={name.trim().length > 0} />
+        </span>
         {/* Profile URL only appears once they've started typing a name — no
             point showing a URL builder before there's anything to slugify. */}
         {name.trim() !== '' && (
