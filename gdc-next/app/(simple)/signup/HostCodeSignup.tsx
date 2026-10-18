@@ -36,6 +36,28 @@ export function toE164(raw: string): string | null {
   return null;
 }
 
+// Grey-until-valid check mark shown inside a field — same cue as the DJ signup
+// form, so the two read as one product. aria-hidden + pointer-events none;
+// real validation still happens on send.
+function FieldCheck({ ok }: { ok: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={ok ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,0.28)'}
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ position: 'absolute', right: 12, top: 'calc(50% + 2px)', transform: 'translateY(-50%)', pointerEvents: 'none', transition: 'stroke .15s ease' }}
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 interface Props {
   method: 'phone' | 'email';
   /** Collected by the parent before this component is reached. */
@@ -509,32 +531,39 @@ export default function HostCodeSignup({
       {isPhone ? (
         <div className={styles.formGroup}>
           <label htmlFor="host-phone">Mobile Number</label>
-          <input
-            id="host-phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="(555) 555-5555"
-            value={phone}
-            onChange={(e) => { setPhone(e.target.value); setError(null); }}
-            required
-            autoComplete="tel"
-          />
+          <span style={{ position: 'relative', display: 'block' }}>
+            <input
+              id="host-phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(555) 555-5555"
+              value={phone}
+              onChange={(e) => { setPhone(e.target.value); setError(null); }}
+              required
+              autoComplete="tel"
+              style={{ paddingRight: '2.2rem' }}
+            />
+            <FieldCheck ok={!!toE164(phone)} />
+          </span>
           {switchLink}
         </div>
       ) : (
         <div className={styles.formGroup}>
           <label htmlFor="host-email">Email Address</label>
-          <input
-            id="host-email"
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setError(null); }}
-            required
-            readOnly={!!lockedEmail}
-            autoComplete="email"
-            style={lockedEmail ? { background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' } : undefined}
-          />
+          <span style={{ position: 'relative', display: 'block' }}>
+            <input
+              id="host-email"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(null); }}
+              required
+              readOnly={!!lockedEmail}
+              autoComplete="email"
+              style={{ ...(lockedEmail ? { background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' } : {}), paddingRight: '2.2rem' }}
+            />
+            <FieldCheck ok={/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())} />
+          </span>
           {lockedEmail && (
             <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
               Email is locked to match your booking invitation.
