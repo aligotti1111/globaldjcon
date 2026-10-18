@@ -54,7 +54,9 @@ interface Props {
   openedLabel: (key: string) => string | null;
   actionLocked: (label: string) => boolean;
   overrideLockedFor: (key: string) => boolean;
-  onToggleOverride: (key: string, done: boolean) => void;
+  onToggleOverride: (key: string, done: boolean, method?: string | null) => void;
+  /** The DJ's accepted manual payment rails, for the "Mark Paid — <rail>" rows. */
+  payMethods?: { type: string; label: string }[];
   /** Stage whose action is mid-flight (sending/downloading) — shows a transient
    *  spinner ring on that icon only. Does not affect any stage state or color. */
   busyKey?: string | null;
@@ -63,7 +65,7 @@ interface Props {
 export default function PipelineStrip({
   steps, slots, djType, newSlot,
   menuOpenKey, setMenuOpenKey, menuPos, setMenuPos, menuBtnRef,
-  openedLabel, actionLocked, overrideLockedFor, onToggleOverride, busyKey,
+  openedLabel, actionLocked, overrideLockedFor, onToggleOverride, payMethods, busyKey,
 }: Props) {
   // Short stage name shown ABOVE each icon (mobile framed cards only; hidden on
   // desktop, which already has column headers). Shorter than stageLabel so it
@@ -247,9 +249,10 @@ export default function PipelineStrip({
                   openedLabelText={openedLabel(st.key)}
                   actionLocked={actionLocked}
                   overrideLocked={overrideLockedFor(st.key)}
+                  payMethods={payMethods}
                   onClose={() => setMenuOpenKey(null)}
                   onRunAction={(run) => { setMenuOpenKey(null); run(); }}
-                  onToggleOverride={() => onToggleOverride(st.key, !st.done)}
+                  onToggleOverride={(method) => onToggleOverride(st.key, !st.done, method)}
                 />
               )}
             </div>
