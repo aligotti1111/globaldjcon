@@ -620,7 +620,20 @@ export default function BookingRow({
         } catch { alert('Could not cancel the request.'); }
       },
     });
-  } async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
+  }
+  // Re-email the host the pay link for an unpaid deposit/balance request.
+  // Server caps it at 3 per 24h per row (429 carries the message to show) and
+  // records the send, which also surfaces on the host's notification bell.
+  async function sendReminder(paymentId: string) {
+    try {
+      const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-reminder', paymentId }) });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) { alert(j?.error || 'Could not send the reminder.'); return; }
+      alert('Reminder sent to the client.');
+      onMutated?.();
+    } catch { alert('Could not send the reminder.'); }
+  }
+  async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
     setBusyKey(moneySlot(kind));
     try {
@@ -867,7 +880,7 @@ export default function BookingRow({
     requestPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
