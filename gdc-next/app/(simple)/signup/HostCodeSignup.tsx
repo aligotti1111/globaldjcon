@@ -265,31 +265,26 @@ export default function HostCodeSignup({
       // genuine returning user and must be left untouched.
       const { data: existingRow } = await supabase
         .from('users')
-        .select('id, role, phone_verified, email_verified, sms_phone')
+        .select('id, role, name, country, phone_verified, email_verified, sms_phone')
         .eq('id', data.user.id)
-        .maybeSingle<{ id: string; role: string | null; phone_verified: boolean | null; email_verified: boolean | null; sms_phone: string | null }>();
+        .maybeSingle<{ id: string; role: string | null; name: string | null; country: string | null; phone_verified: boolean | null; email_verified: boolean | null; sms_phone: string | null }>();
 
-      // Was the auth identity itself created just now (this signup) or long ago
-      // (a returning user)? The trigger row alone can't tell us; the auth user's
-      // own age can.
-      const createdMs = data.user.created_at ? new Date(data.user.created_at).getTime() : 0;
-      const authIsBrandNew = createdMs > 0 && (Date.now() - createdMs) < 10 * 60 * 1000; // 10 min
-      // A fresh trigger shell: nothing proven yet, no saved number.
+      // A fresh trigger shell: nothing proven yet, no saved number. A COMPLETED
+      // account always carries at least one verified flag (or a saved number),
+      // so the shell test alone separates "this signup's own row" from a real
+      // returning account — no fragile timestamp window needed.
       const isTriggerShell = !!existingRow
         && !existingRow.phone_verified
         && !existingRow.email_verified
         && !existingRow.sms_phone;
       // Never let the host form touch an account that already has a non-host
-      // role — a DJ or venue who landed here must be left completely alone, no
-      // matter how new the identity looks. (The trigger seeds role from signup
-      // metadata, so a genuine host shell reads 'host' here.)
+      // role — a DJ or venue who landed here must be left completely alone.
+      // (The trigger seeds role from signup metadata, so a genuine host shell
+      // reads 'host' here.)
       const hasOtherRole = !!existingRow?.role && existingRow.role !== 'host';
-      // Genuinely pre-existing when there's a non-host-role account, OR a row
-      // that is NOT a fresh shell AND whose auth identity predates this signup.
-      // A shell on a brand-new identity resolves to "this is the current signup
-      // — complete it."
-      const isReturningAccount = hasOtherRole
-        || (!!existingRow && !isTriggerShell && !authIsBrandNew);
+      // Pre-existing when there's a non-host-role account, OR a row that is not a
+      // fresh shell. Everything else is this signup's own (trigger-made) row.
+      const isReturningAccount = hasOtherRole || (!!existingRow && !isTriggerShell);
 
       // Embedded in the booking modal, onDone closes it and lets the form open;
       // a full page load would throw away everything the visitor already typed.
@@ -307,27 +302,43 @@ export default function HostCodeSignup({
         return;
       }
 
-      // This signup's own account — write/complete the profile AFTER the session
-      // exists (RLS checks auth.uid(), so a write before the session is live is
-      // rejected). upsert, not insert, because the trigger has usually already
-      // created a shell row; onConflict merges in the verified fields. Safe here
-      // because the guard above has ruled out a pre-existing account.
+      // This signup's own account — complete the profile AFTER the session exists
+      // (RLS checks auth.uid(), so a write before the session is live is
+      // rejected). The handle_new_user trigger already seeded id/role/name/country
+      // from the signup metadata, so we only ADD proof of ownership: the verified
+      // flag for the channel they just confirmed, plus (phone) their notification
+      // number. We never overwrite role, nor the OTHER channel's flag — so even a
+      // legacy all-null row that merely LOOKS like a shell cannot be clobbered.
+      // name/country are filled only when the trigger left them empty.
       const e164 = isPhone ? (toE164(phone) as string) : null;
-      const { error: rowErr } = await supabase.from('users').upsert({
-        id: data.user.id,
-        role: 'host',
-        name: cleanName,
-        country,
-        // Email path: they just typed a code sent to that address, which is
-        // exactly what the old verification link was proving. Phone path: no
-        // email yet — they're asked at their first booking.
-        email_verified: !isPhone,
-        phone_verified: isPhone,
-        signup_method: method,
-        // Prefilled from the number they proved they own so notifications
-        // work without asking twice. A preference, not the credential.
-        ...(e164 ? { sms_phone: e164 } : {}),
-      } as unknown as never, { onConflict: 'id' });
+      const verifyPatch: Record<string, unknown> = { signup_method: method };
+      if (isPhone) {
+        verifyPatch.phone_verified = true;
+        if (e164) verifyPatch.sms_phone = e164;
+      } else {
+        verifyPatch.email_verified = true;
+      }
+      let rowErr: { message?: string } | null = null;
+      if (existingRow) {
+        if (!existingRow.name && cleanName) verifyPatch.name = cleanName;
+        if (!existingRow.country && country) verifyPatch.country = country;
+        ({ error: rowErr } = await supabase
+          .from('users')
+          .update(verifyPatch as unknown as never)
+          .eq('id', data.user.id));
+      } else {
+        // The trigger didn't create a row (shouldn't happen) — write the full one.
+        ({ error: rowErr } = await supabase.from('users').insert({
+          id: data.user.id,
+          role: 'host',
+          name: cleanName,
+          country,
+          email_verified: !isPhone,
+          phone_verified: isPhone,
+          signup_method: method,
+          ...(e164 ? { sms_phone: e164 } : {}),
+        } as unknown as never));
+      }
       if (rowErr) console.error('[signup] profile row failed:', rowErr);
 
       finishUp();
