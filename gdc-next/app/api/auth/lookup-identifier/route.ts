@@ -113,12 +113,17 @@ export async function POST(req: Request) {
     }
 
     // Also check contact_email — a phone-signup host's delivery address. They
-    // may well type it at login, and it should find them.
+    // may well type it at login, and it should find them. Case-insensitive, but
+    // with LIKE wildcards neutralized: ilike treats % and _ specially, and the
+    // email validator allows % in the local part, so a raw `%@domain` would
+    // return found:true for any host at that domain — a cheap existence oracle.
+    // Escaping % _ \ makes the pattern match the literal address only.
     if (!authUser) {
+      const literal = email.replace(/[\\%_]/g, '\\$&');
       const { data: profile } = await admin
         .from('users')
         .select('id')
-        .ilike('contact_email', email)
+        .ilike('contact_email', literal)
         .limit(1)
         .maybeSingle<{ id: string }>();
       if (profile) authUser = { id: profile.id };
