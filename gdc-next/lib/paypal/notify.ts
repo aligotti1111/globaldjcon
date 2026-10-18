@@ -63,11 +63,27 @@ export async function sendPaypalPaidEmails(db: SupabaseClient, args: PaypalPaidA
 
   const { data: bData } = await db
     .from('bookings')
-    .select('dj_id, requester_id, host_email, requester_name, event_date, venue_name')
+    .select('dj_id, requester_id, host_email, requester_name, event_date, venue_name, receipt_overrides')
     .eq('id', args.bookingId)
     .maybeSingle();
-  const b = bData as BookingLite | null;
+  const b = bData as (BookingLite & { receipt_overrides?: Record<string, Record<string, unknown>> | null }) | null;
   if (!b) return;
+
+  // Record PayPal as the method on this kind's receipt override, so it prints on
+  // the received line AND every later re-send / download carries it too — not
+  // just the inline email below. Don't clobber a method the DJ set by hand.
+  if (args.kind === 'deposit' || args.kind === 'balance') {
+    try {
+      const ro: Record<string, Record<string, unknown>> =
+        b.receipt_overrides && typeof b.receipt_overrides === 'object' ? { ...b.receipt_overrides } : {};
+      const existing = ro[args.kind] && typeof ro[args.kind] === 'object' ? { ...ro[args.kind] } : {};
+      if (!existing.method) {
+        existing.method = 'PayPal';
+        ro[args.kind] = existing;
+        await db.from('bookings').update({ receipt_overrides: ro } as unknown as never).eq('id', args.bookingId);
+      }
+    } catch { /* non-fatal — the receipt below still carries the method inline */ }
+  }
 
   const cur = args.currency || 'USD';
   const kindNoun = args.kind === 'balance' ? 'balance' : args.kind === 'deposit' ? 'deposit' : 'payment';
