@@ -230,11 +230,40 @@ export async function POST(req: Request) {
     // cannot do is lose a form somebody spent a week filling in.
     const { data: existingData } = await db
       .from('booking_planners')
-      .select('id, fields, responses, status')
+      .select('id, fields, responses, status, manual_reminder_sends')
       .eq('booking_id', bookingId)
       .maybeSingle();
     let planner = existingData as unknown as PlannerRow | null;
     const isResend = !!planner;
+
+    // A resend is a reminder — cap it at 3 per rolling 24h. (The first send,
+    // and a test, are never limited.) On success we also stamp last_reminder_at,
+    // which is what the host's notification bell reads for "Planner reminder".
+    if (isResend && !isTest && planner) {
+      const WINDOW = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const prior = Array.isArray((existingData as { manual_reminder_sends?: unknown }).manual_reminder_sends)
+        ? ((existingData as { manual_reminder_sends?: unknown }).manual_reminder_sends as unknown[])
+        : [];
+      const recent = prior
+        .map((s) => (typeof s === 'string' ? Date.parse(s) : NaN))
+        .filter((t) => Number.isFinite(t) && now - t < WINDOW) as number[];
+      if (recent.length >= 3) {
+        const oldest = Math.min(...recent);
+        const hrs = Math.max(1, Math.ceil((WINDOW - (now - oldest)) / 3600000));
+        return NextResponse.json(
+          { error: `Reminder limit reached — up to 3 per 24 hours. Try again in about ${hrs} hour${hrs === 1 ? '' : 's'}.` },
+          { status: 429 },
+        );
+      }
+      const nowIso = new Date().toISOString();
+      try {
+        await db
+          .from('booking_planners')
+          .update({ manual_reminder_sends: [...recent.map((t) => new Date(t).toISOString()), nowIso], last_reminder_at: nowIso } as unknown as never)
+          .eq('id', planner.id);
+      } catch { /* non-fatal — the reminder still goes out */ }
+    }
 
     if (!planner) {
       // is_standard rows have dj_id null; the DJ's own customisations are
