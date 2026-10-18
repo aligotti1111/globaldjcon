@@ -33,6 +33,7 @@ type Slot =
   | 'accepted' | 'countered' | 'denied'
   | 'contract_sign' | 'contract_ready'
   | 'deposit_request' | 'balance_request'
+  | 'deposit_reminder' | 'balance_reminder'
   | 'deposit_receipt' | 'balance_receipt'
   | 'planner_sent' | 'planner_reminder'
   | 'guestlist_sent' | 'rider_sent'
@@ -114,16 +115,24 @@ export async function GET() {
   if (ids.length > 0) {
     const admin = createAdminClient() as unknown as SupabaseClient;
     const [{ data: pay }, { data: planners }, { data: riders }, { data: gls }] = await Promise.all([
-      admin.from('booking_payments').select('id, booking_id, kind, marked_sent_at, status, confirmed_at').in('booking_id', ids),
+      admin.from('booking_payments').select('id, booking_id, kind, marked_sent_at, status, confirmed_at, manual_reminder_sends').in('booking_id', ids),
       admin.from('booking_planners').select('id, booking_id, last_reminder_at').in('booking_id', ids),
       admin.from('booking_riders').select('id, booking_id, sent_at').in('booking_id', ids),
       admin.from('booking_guestlists').select('id, booking_id, sent_at').in('booking_id', ids),
     ]);
-    for (const p of ((pay as { id: string; booking_id: string; kind: string | null; marked_sent_at: string | null; status: string | null; confirmed_at: string | null }[] | null) || [])) {
+    for (const p of ((pay as { id: string; booking_id: string; kind: string | null; marked_sent_at: string | null; status: string | null; confirmed_at: string | null; manual_reminder_sends: unknown }[] | null) || [])) {
       const isDeposit = p.kind === 'deposit';
       (isDeposit ? depositPayId : balancePayId)[p.booking_id] = p.id;
       // The request going out.
       note(p.booking_id, p.marked_sent_at, isDeposit ? 'deposit_request' : 'balance_request');
+      // A manual payment reminder the DJ sent — surface the most recent one.
+      const sends = Array.isArray(p.manual_reminder_sends) ? (p.manual_reminder_sends as unknown[]) : [];
+      const lastReminder = sends
+        .map((s) => (typeof s === 'string' ? s : ''))
+        .filter(Boolean)
+        .sort()
+        .pop() || null;
+      note(p.booking_id, lastReminder, isDeposit ? 'deposit_reminder' : 'balance_reminder');
       // Settled → a receipt is now downloadable.
       const settled = p.status === 'paid' || p.status === 'partial' || p.status === 'waived' || !!p.confirmed_at;
       if (settled) note(p.booking_id, p.confirmed_at, isDeposit ? 'deposit_receipt' : 'balance_receipt');
@@ -160,8 +169,10 @@ export async function GET() {
         // Awaiting signature → straight to DocuSeal. Already signed
         // (contract_ready) → the event card (handled by the default: href null).
         case 'contract_sign': href = `/api/contracts/sign-redirect?bookingId=${bid}`; break;
-        case 'deposit_request': href = depositPayId[bid] ? `/pay/${depositPayId[bid]}` : null; break;
-        case 'balance_request': href = balancePayId[bid] ? `/pay/${balancePayId[bid]}` : null; break;
+        case 'deposit_request':
+        case 'deposit_reminder': href = depositPayId[bid] ? `/pay/${depositPayId[bid]}` : null; break;
+        case 'balance_request':
+        case 'balance_reminder': href = balancePayId[bid] ? `/pay/${balancePayId[bid]}` : null; break;
         case 'planner_sent':
         case 'planner_reminder': href = plannerId[bid] ? `/planner/${plannerId[bid]}` : null; break;
         case 'rider_sent': href = riderId[bid] ? `/rider/${riderId[bid]}` : null; break;
