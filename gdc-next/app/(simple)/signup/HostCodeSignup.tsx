@@ -173,6 +173,36 @@ export default function HostCodeSignup({
     }
 
     setSubmitting(true);
+
+    // DUPLICATE-ACCOUNT GUARD. DJ and Venue signup check this before creating;
+    // host signup didn't, so a host who already has an account under this exact
+    // identifier (same phone login, or same email) could start a second one.
+    // lookup-identifier now only reports an account for a REAL sign-in identity
+    // — an auth email/phone — never a number merely saved for notifications or
+    // typed on a booking, so this can't misfire on a first-time number. Best
+    // effort: a failed/slow check falls through to signInWithOtp, which still
+    // signs an existing user in rather than duplicating (handled after verify).
+    try {
+      const identifier = isPhone ? (to as { phone: string }).phone : (to as { email: string }).email;
+      const res = await fetch('/api/auth/lookup-identifier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      });
+      if (res.ok) {
+        const info = (await res.json().catch(() => ({}))) as { found?: boolean };
+        if (info?.found) {
+          setError(
+            isPhone
+              ? 'This number already has an account — log in instead (we’ll text you a code).'
+              : 'This email already has an account — log in instead.',
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+    } catch { /* network hiccup — let signInWithOtp handle the existing-user case */ }
+
     try {
       // shouldCreateUser:true — this IS the signup. The metadata rides along
       // so the row we write after verification has something to write.
