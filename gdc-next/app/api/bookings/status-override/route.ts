@@ -56,11 +56,15 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  let body: { bookingId?: unknown; key?: unknown; done?: unknown };
+  let body: { bookingId?: unknown; key?: unknown; done?: unknown; method?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
   const bookingId = typeof body.bookingId === 'string' && body.bookingId ? body.bookingId : null;
   const key = typeof body.key === 'string' ? body.key : null;
   const done = body.done === true;
+  // Optional: HOW a hand-marked deposit/balance was paid (a manual rail like
+  // "Venmo" or "Cash"). Printed on the receipt's received line. Capped to keep
+  // the JSON tidy; "" / absent = no method recorded.
+  const method = typeof body.method === 'string' ? body.method.trim().slice(0, 40) : '';
   if (!bookingId || !key || !ALLOWED_KEYS.has(key)) {
     return NextResponse.json({ error: 'Missing or invalid bookingId/key' }, { status: 400 });
   }
@@ -78,10 +82,10 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('bookings')
-    .select('status_overrides, dj_id, total_with_tax')
+    .select('status_overrides, receipt_overrides, dj_id, total_with_tax')
     .eq('id', bookingId)
     .maybeSingle();
-  const row = data as { status_overrides?: Record<string, boolean> | null; dj_id?: string | null; total_with_tax?: number | null } | null;
+  const row = data as { status_overrides?: Record<string, boolean> | null; receipt_overrides?: Record<string, Record<string, unknown>> | null; dj_id?: string | null; total_with_tax?: number | null } | null;
   if (!row) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
   if (row.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
@@ -116,6 +120,22 @@ export async function POST(req: Request) {
     // increase leaves total_with_tax above this, and the gap becomes the
     // collectable "new balance". Cleared when the balance is un-marked.
     patch.balance_settled_total = done ? (row.total_with_tax ?? null) : null;
+  }
+
+  // Record HOW a hand-marked deposit/balance was paid on the matching receipt
+  // override (the frozen snapshot receiptDocs reads), so the method prints on the
+  // receipt's received line. "Mark paid (no method)" sends no method and clears a
+  // previously-recorded one; un-marking (done:false) clears it too.
+  if (key === 'deposit' || key === 'invoice') {
+    const kind = key === 'invoice' ? 'balance' : 'deposit';
+    const ro: Record<string, Record<string, unknown>> =
+      row.receipt_overrides && typeof row.receipt_overrides === 'object' ? { ...row.receipt_overrides } : {};
+    const existing = ro[kind] && typeof ro[kind] === 'object' ? { ...ro[kind] } : {};
+    if (done && method) existing.method = method;
+    else delete existing.method;
+    if (Object.keys(existing).length > 0) ro[kind] = existing;
+    else delete ro[kind];
+    patch.receipt_overrides = ro;
   }
 
   try {
@@ -233,7 +253,7 @@ export async function POST(req: Request) {
             const paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
             receiptAtt = await buildBookingDocAttachment(admin, {
               docKind: 'receipt', bookingId, djId: bk.dj_id, currency: cur,
-              paymentKind: 'deposit', receivedNow: received, method: null, paidToDate, clientEmail: to,
+              paymentKind: 'deposit', receivedNow: received, method: method || null, paidToDate, clientEmail: to,
             });
           }
           const attachLine = receiptAtt ? ' Your receipt for the deposit is attached.' : '';
