@@ -4526,6 +4526,43 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   function profileUrl(): string { return `${window.location.origin}/${effectiveSlug}`; }
   const shareTitle = `${data.name || 'DJ'} on Global DJ Connect`;
 
+  // The signed-in viewer's account email, read once so "Email" can route to
+  // their webmail's compose page (Gmail / Outlook / Yahoo / AOL) instead of a
+  // flaky mailto: — the same approach the booking-card share uses. Anonymous
+  // viewers (no email) fall back to mailto:.
+  const [acctEmail, setAcctEmail] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: u } = await supabase.auth.getUser();
+        if (alive) setAcctEmail(u.user?.email ?? null);
+      } catch { /* not signed in — mailto: fallback */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Open the viewer's webmail compose page with the profile link preloaded; if
+  // their provider isn't a known webmail (or they're not signed in), fall back
+  // to mailto: so the OS mail app opens.
+  function shareByEmail() {
+    setShareOpen(false);
+    const subject = shareTitle;
+    const body = `${shareTitle}\n\n${profileUrl()}`;
+    const enc = encodeURIComponent;
+    const domain = (acctEmail || '').split('@')[1]?.toLowerCase() || '';
+    let compose: string | null = null;
+    if (/^(gmail\.com|googlemail\.com)$/.test(domain)) compose = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&su=${enc(subject)}&body=${enc(body)}`;
+    else if (/^(outlook\.|hotmail\.|live\.|msn\.)/.test(domain) || domain === 'outlook.com') compose = `https://outlook.live.com/mail/0/deeplink/compose?subject=${enc(subject)}&body=${enc(body)}`;
+    else if (/^(yahoo\.|ymail\.com|rocketmail\.com)/.test(domain) || domain === 'yahoo.com') compose = `https://compose.mail.yahoo.com/?subject=${enc(subject)}&body=${enc(body)}`;
+    else if (domain === 'aol.com') compose = `https://mail.aol.com/?subject=${enc(subject)}&body=${enc(body)}`;
+    const a = document.createElement('a');
+    if (compose) { a.href = compose; a.target = '_blank'; a.rel = 'noopener'; }
+    else { a.href = `mailto:?subject=${enc(subject)}&body=${enc(body)}`; }
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
   function copyProfileLink() {
     const url = `${window.location.origin}/${effectiveSlug}`;
     const markCopied = () => {
@@ -4595,7 +4632,7 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   };
   const shareMenu: { key: string; label: string; href?: string; onClick?: () => void }[] = [
     { key: 'copy', label: copied ? 'Copied!' : 'Copy link', onClick: copyProfileLink },
-    { key: 'email', label: 'Email' },
+    { key: 'email', label: 'Email', onClick: shareByEmail },
     { key: 'facebook', label: 'Facebook' },
     { key: 'x', label: 'X (Twitter)' },
     { key: 'whatsapp', label: 'WhatsApp' },
