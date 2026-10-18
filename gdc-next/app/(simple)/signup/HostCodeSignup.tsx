@@ -243,24 +243,53 @@ export default function HostCodeSignup({
         );
       }
 
-      // THIS USED TO BE AN UPSERT, AND THAT WAS DANGEROUS.
+      // THE "ALREADY EXISTS" CHECK — and why a bare row-existence test is wrong.
       //
       // signInWithOtp with shouldCreateUser does NOT fail when the identifier
-      // already belongs to somebody — it just signs that person in. So a DJ
-      // who wandered onto host signup and typed their own email got a code,
-      // got logged in, and then the upsert rewrote their row with
-      // role: 'host'. Their DJ account was demoted, silently, by a form that
-      // appeared to be creating a new account.
+      // already belongs to somebody — it just signs that person in. So a DJ who
+      // wandered onto host signup and typed their own email got a code, got
+      // logged in, and then an upsert rewrote their row with role: 'host',
+      // silently demoting their DJ account. That must never happen.
       //
-      // Reachable before; much more reachable now that a signup box appears
-      // in front of every visitor trying to book. So: look first, and only
-      // write a profile for someone who genuinely doesn't have one. An
-      // existing account is left completely alone — they've simply logged in.
+      // But "a users row exists" does NOT mean "a pre-existing account." A DB
+      // trigger (on_auth_user_created → handle_new_user) writes a users row the
+      // instant the auth user is created — i.e. when the code is SENT, before
+      // this verify. So a brand-new, first-time host ALWAYS has a row by the
+      // time we look, and a bare existence test flags every single phone signup
+      // as "already exists", skips setting phone_verified/sms_phone, and tells a
+      // first-time user they already have an account.
+      //
+      // The real distinction: a fresh trigger-made SHELL (nothing verified, no
+      // notification number) belongs to THIS signup and must be completed; an
+      // established account (already verified, or created well before now) is a
+      // genuine returning user and must be left untouched.
       const { data: existingRow } = await supabase
         .from('users')
-        .select('id')
+        .select('id, role, phone_verified, email_verified, sms_phone')
         .eq('id', data.user.id)
-        .maybeSingle<{ id: string }>();
+        .maybeSingle<{ id: string; role: string | null; phone_verified: boolean | null; email_verified: boolean | null; sms_phone: string | null }>();
+
+      // Was the auth identity itself created just now (this signup) or long ago
+      // (a returning user)? The trigger row alone can't tell us; the auth user's
+      // own age can.
+      const createdMs = data.user.created_at ? new Date(data.user.created_at).getTime() : 0;
+      const authIsBrandNew = createdMs > 0 && (Date.now() - createdMs) < 10 * 60 * 1000; // 10 min
+      // A fresh trigger shell: nothing proven yet, no saved number.
+      const isTriggerShell = !!existingRow
+        && !existingRow.phone_verified
+        && !existingRow.email_verified
+        && !existingRow.sms_phone;
+      // Never let the host form touch an account that already has a non-host
+      // role — a DJ or venue who landed here must be left completely alone, no
+      // matter how new the identity looks. (The trigger seeds role from signup
+      // metadata, so a genuine host shell reads 'host' here.)
+      const hasOtherRole = !!existingRow?.role && existingRow.role !== 'host';
+      // Genuinely pre-existing when there's a non-host-role account, OR a row
+      // that is NOT a fresh shell AND whose auth identity predates this signup.
+      // A shell on a brand-new identity resolves to "this is the current signup
+      // — complete it."
+      const isReturningAccount = hasOtherRole
+        || (!!existingRow && !isTriggerShell && !authIsBrandNew);
 
       // Embedded in the booking modal, onDone closes it and lets the form open;
       // a full page load would throw away everything the visitor already typed.
@@ -269,20 +298,22 @@ export default function HostCodeSignup({
         window.location.href = destination || '/';
       };
 
-      if (existingRow) {
-        // The identifier already had an account — Supabase signed them into it
-        // rather than creating a duplicate. Without a word, "Create My Account"
-        // looks like it did nothing. Tell them what happened, then continue.
+      if (isReturningAccount) {
+        // A real existing account — Supabase signed them into it rather than
+        // creating a duplicate. Say so, then continue, and leave their row alone
+        // (this is what protects a DJ who landed on host signup).
         setWelcomeBack(true);
         setTimeout(finishUp, 2000);
         return;
       }
 
-      // Genuinely new — write the profile row AFTER the session exists (RLS
-      // policies check auth.uid(), so an insert sent before the session is live
-      // is rejected and the account ends up with no users row at all).
+      // This signup's own account — write/complete the profile AFTER the session
+      // exists (RLS checks auth.uid(), so a write before the session is live is
+      // rejected). upsert, not insert, because the trigger has usually already
+      // created a shell row; onConflict merges in the verified fields. Safe here
+      // because the guard above has ruled out a pre-existing account.
       const e164 = isPhone ? (toE164(phone) as string) : null;
-      const { error: rowErr } = await supabase.from('users').insert({
+      const { error: rowErr } = await supabase.from('users').upsert({
         id: data.user.id,
         role: 'host',
         name: cleanName,
@@ -296,7 +327,7 @@ export default function HostCodeSignup({
         // Prefilled from the number they proved they own so notifications
         // work without asking twice. A preference, not the credential.
         ...(e164 ? { sms_phone: e164 } : {}),
-      } as unknown as never);
+      } as unknown as never, { onConflict: 'id' });
       if (rowErr) console.error('[signup] profile row failed:', rowErr);
 
       finishUp();
