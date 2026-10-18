@@ -44,10 +44,11 @@ interface LookupResult {
   /** Can we send a code to this identifier? */
   canCode: boolean;
   /**
-   * True when the number matched a stored number rather than an auth identity —
-   * i.e. we found them via sms_phone or a booking. The code still gets sent;
-   * this just tells the client to say "we found your account" rather than
-   * silently proceeding, and tells verify-otp to attach the phone afterwards.
+   * DEPRECATED / never set. A phone now counts as an account only when it's a
+   * real auth identity (a phone signup); we no longer match saved notification
+   * numbers (users.sms_phone) or booking phones, so there's nothing to "link on
+   * verify." Kept on the type only so existing client reads compile; it is
+   * always falsy.
    */
   linkOnVerify?: boolean;
 }
@@ -167,42 +168,21 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   }
 
-  // 2. Their notification number.
-  const { data: byPrefs } = await admin
-    .from('users')
-    .select('id, sms_phone')
-    .not('sms_phone', 'is', null)
-    .limit(1000);
-  const prefsHit = ((byPrefs as { id: string; sms_phone: string | null }[] | null) || [])
-    .find((u) => u.sms_phone && toE164(u.sms_phone) === e164);
-  if (prefsHit) {
-    const result: LookupResult = {
-      kind: 'phone', found: true, canPassword: false, canCode: true, linkOnVerify: true,
-    };
-    return NextResponse.json(result);
-  }
-
-  // 3. A number they typed while booking. THE case this route exists for.
-  //    requester_id is what ties that row back to a real account; a booking
-  //    made by a guest with no account can't help us and is skipped.
-  const { data: byBooking } = await admin
-    .from('bookings')
-    .select('requester_id, phone')
-    .not('phone', 'is', null)
-    .not('requester_id', 'is', null)
-    .limit(2000);
-  const bookingHit = ((byBooking as { requester_id: string | null; phone: string | null }[] | null) || [])
-    .find((b) => b.phone && toE164(b.phone) === e164);
-  if (bookingHit?.requester_id) {
-    const result: LookupResult = {
-      kind: 'phone', found: true, canPassword: false, canCode: true, linkOnVerify: true,
-    };
-    return NextResponse.json(result);
-  }
-
-  // Nothing anywhere. Never offer to create an account from here — that's how
-  // the person who signed up with an email ends up with a second one. The
-  // client's copy points them at their email instead.
+  // A PHONE COUNTS AS AN ACCOUNT ONLY WHEN IT WAS USED TO SIGN UP.
+  //
+  // We deliberately do NOT look the number up in users.sms_phone (a saved
+  // notification preference) or bookings.phone (a number typed while booking).
+  // Those are things a person uses their phone FOR — they are not a sign-in
+  // credential, and treating them as one is wrong twice over:
+  //   • it can resolve someone else's number (a client's phone a DJ typed on a
+  //     booking) to the wrong account, and
+  //   • there is no phone auth identity to send a login code to anyway, so the
+  //     "we found your account" path can't actually sign anyone in.
+  // So a number that was never used to sign up is simply "not found" here. The
+  // person keeps using their phone for notifications/bookings freely, and if
+  // they actually have an account under an email, the client tells them to use
+  // it. (verify-otp has nothing to attach, and no account is ever auto-created
+  // from this route.)
   const result: LookupResult = {
     kind: 'phone', found: false, canPassword: false, canCode: false,
   };
