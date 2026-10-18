@@ -47,6 +47,8 @@ import {
 // or a flaky fetch returns null, so the email that carries the live pay buttons
 // always goes out regardless.
 import { buildBookingDocAttachment } from '@/lib/receiptDocs';
+// The same "every way to pay" card set the request + cron-reminder emails use.
+import { buildPayEmailBlocks } from '@/lib/payEmailOptions';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -810,6 +812,119 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
   // The amount is DERIVED, because a hand-marked stage records no figure:
   //   deposit → the booking's deposit amount
   //   balance → whatever's left after everything already paid (paid in full)
+  // send-reminder (DJ) → re-email the host the SAME unpaid request's pay link,
+  // capped at 3 per rolling 24h per payment row (deposit and balance count
+  // independently, since they're separate rows). Creates NO new booking_payments
+  // row — unlike "request" — so it can't double-bill. Also surfaces on the host's
+  // notification bell (the new-activity route reads manual_reminder_sends).
+  if (action === 'send-reminder') {
+    const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
+    if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
+
+    const { data: payData } = await db
+      .from('booking_payments')
+      .select('id, booking_id, kind, status, amount, currency, confirmed_at, manual_reminder_sends')
+      .eq('id', paymentId)
+      .maybeSingle();
+    const pay = payData as unknown as {
+      id: string; booking_id: string; kind: string | null; status: string | null;
+      amount: number | null; currency: string | null; confirmed_at: string | null;
+      manual_reminder_sends: unknown;
+    } | null;
+    if (!pay) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
+
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, currency')
+      .eq('id', pay.booking_id)
+      .maybeSingle();
+    const b = bData as BookingRow | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+    // Same role as resending an invoice/receipt — managers and assistants may nudge.
+    if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send reminders.' }, { status: 403 });
+
+    // Only an unpaid request can be reminded.
+    const settled = !!pay.confirmed_at || ['paid', 'waived', 'refunded'].includes((pay.status || '').toLowerCase());
+    if (settled) return NextResponse.json({ error: 'This payment is already settled.' }, { status: 400 });
+
+    // Rate limit: 3 per rolling 24h.
+    const WINDOW = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const prior = Array.isArray(pay.manual_reminder_sends) ? (pay.manual_reminder_sends as unknown[]) : [];
+    const recent = prior
+      .map((s) => (typeof s === 'string' ? Date.parse(s) : NaN))
+      .filter((t) => Number.isFinite(t) && now - t < WINDOW) as number[];
+    if (recent.length >= 3) {
+      const oldest = Math.min(...recent);
+      const hrs = Math.max(1, Math.ceil((WINDOW - (now - oldest)) / 3600000));
+      return NextResponse.json(
+        { error: `Reminder limit reached — up to 3 per 24 hours. Try again in about ${hrs} hour${hrs === 1 ? '' : 's'}.`, limited: true },
+        { status: 429 },
+      );
+    }
+
+    const { data: djRowData } = await admin
+      .from('users')
+      .select('name, payment_methods, stripe_connect_ready, paypal_connect_ready, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+      .eq('id', acting.djId)
+      .maybeSingle();
+    const dj = djRowData as (AccessFields & { name?: string | null; payment_methods?: unknown; stripe_connect_ready?: boolean | null; paypal_connect_ready?: boolean | null }) | null;
+    if (!dj || !canUsePro(dj)) return NextResponse.json({ error: 'Payments are a Pro feature.' }, { status: 403 });
+
+    const to = await clientEmailFor(b);
+    if (!to) return NextResponse.json({ error: 'No client email on this booking.' }, { status: 400 });
+    if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email is not configured.' }, { status: 500 });
+
+    const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+    const djName = dj.name?.trim() || 'Your DJ';
+    const methods = usableMethods((Array.isArray(dj.payment_methods) ? dj.payment_methods : []) as PaymentMethod[]);
+    const stripeReady = !!dj.stripe_connect_ready;
+    const paypalReady = !!dj.paypal_connect_ready;
+    const kindLabel = pay.kind === 'deposit' ? 'deposit' : 'balance';
+    const amount = typeof pay.amount === 'number' ? pay.amount : 0;
+    const cur = pay.currency || b.currency || 'USD';
+    const amt = amount > 0 ? money(amount, cur) : '';
+    const reference = referenceCode(pay.booking_id, pay.kind || 'balance');
+    const link = `${SITE_URL}/pay/${pay.id}`;
+    const stopLink = `${SITE_URL}/api/pay/${pay.id}/stop-reminders`;
+    const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+    const venue = b.venue_name?.trim() ? ` for your event at ${esc(b.venue_name.trim())}` : '';
+    const payBlocks = buildPayEmailBlocks({
+      methods, amount, currency: cur, reference, djName, paymentId: pay.id,
+      eventDate: b.event_date, venueName: b.venue_name, isBalance: pay.kind === 'balance',
+      stripeReady, paypalReady,
+    });
+    const content = `<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, a friendly payment reminder</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Just a reminder from ${esc(djName)} — your ${kindLabel}${amt ? ` of <strong>${amt}</strong>` : ''}${venue} hasn&rsquo;t been paid yet. Choose any option below to take care of it.</p>
+${payBlocks}
+<div style="background:#f8f8f8;border-radius:6px;padding:12px 14px;margin:16px 0 0;">
+<p style="margin:0;color:#666;font-size:12px;">Reference — please include in the payment note:</p>
+<p style="margin:3px 0 0;font-family:monospace;font-size:16px;color:#111;font-weight:700;">${reference}</p>
+</div>
+<p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">Prefer one link with every option? <a href="${link}" style="color:#999;">${link}</a></p>
+<p style="margin:0;padding-top:14px;margin-top:14px;border-top:1px solid #eee;color:#999;font-size:12px;line-height:1.6;">Already paid this ${kindLabel}? <a href="${stopLink}" style="color:#666;">Stop reminders for this ${kindLabel}</a> — it won&rsquo;t affect any other payment.</p>`;
+
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: FROM,
+        to,
+        subject: `Reminder: your ${kindLabel}${amt ? ` of ${amt}` : ''} is still due`,
+        html: shell(content),
+      });
+    } catch {
+      // 500, never 502 — Cloudflare eats a 502 body and the caller's .json() throws.
+      return NextResponse.json({ error: 'Could not send the reminder email. Try again.' }, { status: 500 });
+    }
+
+    // Record the send so the 24h window and the host bell both see it.
+    const nextSends = [...recent.map((t) => new Date(t).toISOString()), new Date().toISOString()];
+    await db.from('booking_payments').update({ manual_reminder_sends: nextSends } as unknown as never).eq('id', pay.id);
+    await logActivity(acting, { action: 'payment.reminder_sent', summary: `Sent a ${kindLabel} payment reminder`, bookingId: pay.booking_id });
+    return NextResponse.json({ ok: true, sent: true, remaining: Math.max(0, 3 - nextSends.length) });
+  }
+
   if (action === 'send-receipt') {
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     const kind = typeof body.kind === 'string' && KINDS.has(body.kind) ? body.kind : 'balance';
