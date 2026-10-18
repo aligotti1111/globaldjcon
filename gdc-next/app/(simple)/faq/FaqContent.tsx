@@ -39,6 +39,17 @@ const HOST_FAQ: QA[] = [
     ),
   },
   {
+    q: 'How long does the DJ have to respond, and how long do I have to approve?',
+    a: (
+      <>
+        The DJ has up to <strong>5 days</strong> to respond to your request — or until your event date, whichever comes
+        first. If they send back a quote or offer, you&rsquo;ll then have <strong>5 days</strong> to approve or decline
+        it (again, or until the event date, whichever is sooner). If a request or offer isn&rsquo;t answered in time, it
+        automatically declines and you&rsquo;re welcome to send a new request anytime.
+      </>
+    ),
+  },
+  {
     q: 'Does it cost anything for me as a host?',
     a: (
       <>
