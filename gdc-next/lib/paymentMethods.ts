@@ -276,6 +276,22 @@ export const METHOD_TYPES: Record<PaymentMethodType, TypeConfig> = {
 export const TYPE_ORDER: PaymentMethodType[] =
   ['paypal', 'venmo', 'cashapp', 'zelle', 'cash', 'check', 'other'];
 
+/**
+ * A payment rail code → its display label for a receipt's received line
+ * ("Deposit Received (50%) — Venmo"). Covers every rail plus 'card' (which
+ * isn't a METHOD_TYPES manual row but does confirm itself). An unrecognized
+ * value is returned trimmed as-is, so an already-nice label (e.g. a manually
+ * chosen "Venmo") passes straight through. Empty/null → ''.
+ */
+export function methodDisplayLabel(code: string | null | undefined): string {
+  const t = (code || '').trim();
+  if (!t) return '';
+  const key = t.toLowerCase();
+  if (key === 'card') return 'Card';
+  if ((METHOD_TYPES as Record<string, TypeConfig>)[key]) return METHOD_TYPES[key as PaymentMethodType].label;
+  return t;
+}
+
 /** Bare handle, prefixes stripped. Stored form. */
 export function cleanHandle(m: Pick<PaymentMethod, 'type' | 'handle'>): string {
   const t = (m.handle || '').trim();
