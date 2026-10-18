@@ -194,8 +194,8 @@ export default function HostCodeSignup({
         if (info?.found) {
           setError(
             isPhone
-              ? 'This number already has an account — log in instead (we’ll text you a code).'
-              : 'This email already has an account — log in instead.',
+              ? 'This number already has an account — sign in instead (we’ll text you a code).'
+              : 'This email already has an account — sign in instead.',
           );
           setSubmitting(false);
           return;
