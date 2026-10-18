@@ -87,7 +87,8 @@ export async function GET() {
   // ── Booking-row signals ──
   for (const b of bookings) {
     if (b.status === 'approved') note(b.id, b.accepted_at, 'accepted');
-    if (b.status === 'counter') note(b.id, b.quote_sent_at || b.updated_at, 'countered');
+    // 'countered' is intentionally NOT a bell notification — a counter offer
+    // already surfaces on the booking card / booking tab, so it'd be redundant.
     if (b.status === 'denied') note(b.id, b.updated_at, 'denied');
     // Contract waiting on the host's signature → "ready to sign". Once signed,
     // it becomes "ready to view" so the host can open their signed copy.
