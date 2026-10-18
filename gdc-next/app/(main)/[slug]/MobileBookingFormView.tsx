@@ -1633,6 +1633,13 @@ export default function MobileBookingForm({
               )}
             </div>
 
+            {/* On a quote, explain what "Price on Request" means for the host. */}
+            {(priceResult.isQuote || priceResult.price == null) && (
+              <div className={styles.depositText} style={{ color: 'var(--muted,#8a8aa0)', maxWidth: 300, margin: '6px auto 0', lineHeight: 1.5 }}>
+                The DJ will send back a quote once they review the details of your event and the package you have selected.
+              </div>
+            )}
+
             {/* Itemized breakdown — the big Total sits at the bottom. */}
             {showPriceBreakdown && discountedTotal != null && grandTotal != null && (
               <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
