@@ -37,6 +37,7 @@ import {
   referenceCode,
   cashLine,
   METHOD_TYPES,
+  methodDisplayLabel,
   toStripeMinor,
   fromStripeMinor,
   belowStripeMinimum,
@@ -667,10 +668,10 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
 
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, balance_settled_total, status_overrides')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, balance_settled_total, status_overrides, receipt_overrides')
       .eq('id', p.booking_id)
       .maybeSingle();
-    const b = bData as BookingRow | null;
+    const b = bData as (BookingRow & { receipt_overrides?: Record<string, Record<string, unknown>> | null }) | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
     if (!canMoney(acting.role)) return NextResponse.json({ error: 'Your role cannot take payments.' }, { status: 403 });
@@ -720,6 +721,25 @@ Payment goes directly to ${djName}. ${djName} will confirm once it lands. A copy
     // it's paid-in-full at so a later price increase surfaces a new balance.
     if (p.kind === 'balance' && status === 'paid') {
       await admin.from('bookings').update({ balance_settled_total: b.total_with_tax ?? null } as unknown as never).eq('id', p.booking_id);
+    }
+
+    // Record HOW this payment came in on the receipt override for its kind, so
+    // the method prints on the received line AND every later re-send / download
+    // (which read receipt_overrides) carry it too — not just this inline email.
+    // Covers the self-confirming rails (Card, PayPal/Venmo) and any manual rail
+    // the row was tagged with. We DON'T clobber a method the DJ set by hand in
+    // Edit Receipt (or via the pipeline's "Mark Paid — <rail>").
+    if (p.method && (p.kind === 'deposit' || p.kind === 'balance')) {
+      try {
+        const ro: Record<string, Record<string, unknown>> =
+          b.receipt_overrides && typeof b.receipt_overrides === 'object' ? { ...b.receipt_overrides } : {};
+        const existing = ro[p.kind] && typeof ro[p.kind] === 'object' ? { ...ro[p.kind] } : {};
+        if (!existing.method) {
+          existing.method = methodDisplayLabel(p.method);
+          ro[p.kind] = existing;
+          await admin.from('bookings').update({ receipt_overrides: ro } as unknown as never).eq('id', p.booking_id);
+        }
+      } catch { /* non-fatal — the receipt below still carries p.method inline */ }
     }
 
     // Receipt to the client. Honour the DJ's auto-send-receipt toggles (default
@@ -1639,6 +1659,24 @@ ${optionsBlock}`
     // price change computes the balance against what was actually settled.
     if (p.kind === 'balance' && status === 'paid') {
       try { await admin.from('bookings').update({ balance_settled_total: b.total_with_tax ?? null } as unknown as never).eq('id', p.booking_id); } catch { /* non-fatal */ }
+    }
+
+    // Card confirmed itself — record "Card" as the method on this kind's receipt
+    // override so it prints on the received line of every receipt (the card
+    // host-receipt send + any later re-send / download). Don't clobber a method
+    // the DJ set by hand.
+    if (p.kind === 'deposit' || p.kind === 'balance') {
+      try {
+        const { data: roData } = await admin.from('bookings').select('receipt_overrides').eq('id', p.booking_id).maybeSingle();
+        const cur = (roData as { receipt_overrides?: Record<string, Record<string, unknown>> | null } | null)?.receipt_overrides;
+        const ro: Record<string, Record<string, unknown>> = cur && typeof cur === 'object' ? { ...cur } : {};
+        const existing = ro[p.kind] && typeof ro[p.kind] === 'object' ? { ...ro[p.kind] } : {};
+        if (!existing.method) {
+          existing.method = methodDisplayLabel('card');
+          ro[p.kind] = existing;
+          await admin.from('bookings').update({ receipt_overrides: ro } as unknown as never).eq('id', p.booking_id);
+        }
+      } catch { /* non-fatal */ }
     }
 
     // Tell the DJ. Cards auto-confirm, so unlike the manual rails there is no
