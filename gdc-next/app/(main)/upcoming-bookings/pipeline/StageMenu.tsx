@@ -77,15 +77,20 @@ interface Props {
   actionLocked: (label: string) => boolean;
   /** Whether the Mark Complete override is locked for this acting role. */
   overrideLocked: boolean;
+  /** The DJ's accepted MANUAL payment rails (Venmo, Cash, Zelle, …). On a pay
+   *  stage, each becomes a "Mark Paid — <label>" row so the method lands on the
+   *  receipt. Empty = only the plain "Mark Paid" (no method) row shows. */
+  payMethods?: { type: string; label: string }[];
   onClose: () => void;
   /** Close the menu, then run the chosen action. */
   onRunAction: (run: () => void) => void;
-  /** Toggle the manual "mark complete" override. */
-  onToggleOverride: () => void;
+  /** Toggle the manual "mark complete / paid" override. On a pay stage, an
+   *  optional method label is recorded on the receipt; undefined = none. */
+  onToggleOverride: (method?: string | null) => void;
 }
 
 export default function StageMenu({
-  st, pos, openedLabelText, actionLocked, overrideLocked,
+  st, pos, openedLabelText, actionLocked, overrideLocked, payMethods,
   onClose, onRunAction, onToggleOverride,
 }: Props) {
   // Deposit/balance are confirmed by hand for every rail except card (Stripe
@@ -146,28 +151,46 @@ export default function StageMenu({
             </button>
           );
         })}
-        {st.overridable && (
-          <>
-            {(st.actions ?? []).length > 0 && (
-              <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
-            )}
+        {st.overridable && (() => {
+          // One override button renderer, reused for every variant below.
+          const overrideBtn = (label: string, done: boolean, onClick: () => void, key?: string) => (
             <button
+              key={key || label}
               type="button"
               disabled={overrideLocked}
               title={overrideLocked ? NO_ACCESS : undefined}
-              onClick={() => { if (overrideLocked) return; onToggleOverride(); }}
+              onClick={() => { if (overrideLocked) return; onClick(); }}
               onMouseEnter={(e) => { if (!overrideLocked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (st.done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s', whiteSpace: 'normal' }}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : (done ? '#ff9a9a' : NEON), fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s', whiteSpace: 'normal' }}
             >
-              {st.done ? <IconX /> : <IconCheck />}
-              <span style={{ flex: 1, minWidth: 0 }}>{st.done ? (payStage ? 'Mark Not Paid' : 'Mark Not Complete') : (payStage ? 'Mark Paid' : 'Mark Complete')}{overrideLocked ? '  \u{1F512}' : ''}</span>
+              {done ? <IconX /> : <IconCheck />}
+              <span style={{ flex: 1, minWidth: 0 }}>{label}{overrideLocked ? '  \u{1F512}' : ''}</span>
             </button>
-            {!payStage && (
-              <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>For steps handled outside the app.</div>
-            )}
-          </>
-        )}
+          );
+          const methods = payMethods ?? [];
+          return (
+            <>
+              {(st.actions ?? []).length > 0 && (
+                <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
+              )}
+              {st.done
+                // Already marked → single un-mark (no method needed to clear it).
+                ? overrideBtn(payStage ? 'Mark Not Paid' : 'Mark Not Complete', true, () => onToggleOverride())
+                : payStage
+                  // A pay stage: one "Mark Paid — <rail>" per accepted manual rail,
+                  // so the method prints on the receipt, plus a plain no-method row.
+                  ? (<>
+                      {methods.map((m) => overrideBtn(`Mark Paid — ${m.label}`, false, () => onToggleOverride(m.label), `pm-${m.type}`))}
+                      {overrideBtn('Mark paid (no method)', false, () => onToggleOverride())}
+                    </>)
+                  : overrideBtn('Mark Complete', false, () => onToggleOverride())}
+              {!payStage && (
+                <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>For steps handled outside the app.</div>
+              )}
+            </>
+          );
+        })()}
       </div>
     </>
   );
