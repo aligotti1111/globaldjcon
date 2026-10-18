@@ -14,6 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildDocumentPdf, type DocMoneyLine } from './receiptPdf';
 import { isFullName, normalizeName } from './fullName';
+import { methodDisplayLabel } from './paymentMethods';
 
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
 
@@ -497,9 +498,12 @@ export async function buildBookingDocAttachment(
           ? 'Balance Received'
           : 'Payment Received';
       let receivedLabel = ovStr(ov?.receivedLabel, defaultReceivedLabel) || defaultReceivedLabel;
-      // When the DJ recorded HOW the payment came in (a manual rail like Venmo
-      // or Cash), append it to the received line: "Deposit Received (50%) — Venmo".
-      const methodLabel = (ov?.method ?? args.method ?? '').toString().trim();
+      // When the payment's rail is known — a manual rail the DJ recorded (Venmo,
+      // Cash…) OR one that confirmed itself (Card, PayPal) — append it to the
+      // received line: "Deposit Received (50%) — Venmo". A stored override label
+      // wins over the raw payment-row code; methodDisplayLabel normalizes a raw
+      // code ('card'→'Card') and leaves an already-nice label untouched.
+      const methodLabel = methodDisplayLabel((ov?.method ?? args.method ?? '').toString());
       if (methodLabel && !receivedLabel.toLowerCase().includes(methodLabel.toLowerCase())) {
         receivedLabel = `${receivedLabel} — ${methodLabel}`;
       }
