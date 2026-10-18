@@ -3330,6 +3330,13 @@ export function AboutStatsRow({
 }) {
   const isClub = djType === 'club';
   const eventsLabel = isClub ? 'Sets played' : 'Total events';
+  // A follower count the owner typed → grouped with thousands separators for the
+  // public card (e.g. "12000" → "12,000"). Non-numeric input shows as-is.
+  const fmtFollowers = (raw: string): string => {
+    const digits = (raw || '').replace(/[^0-9]/g, '');
+    if (!digits) return (raw || '').trim();
+    return Number(digits).toLocaleString('en-US');
+  };
   const [draft, setDraft] = useState<AboutStats>(stats);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3344,6 +3351,7 @@ export function AboutStatsRow({
     if (stats.ownEquipment?.on) cards.push({ key: 'ownEquipment', label: 'Brings own equipment', value: stats.ownEquipment.answer || 'Yes' });
     if (stats.residencies?.on) cards.push({ key: 'residencies', label: 'Open to residencies', value: stats.residencies.answer || 'Yes' });
     if (stats.travels?.on) cards.push({ key: 'travels', label: 'Travels for bookings', value: stats.travels.answer || 'Yes' });
+    if (stats.followers?.on && stats.followers.count) cards.push({ key: 'followers', label: 'Total Followers', value: fmtFollowers(stats.followers.count) });
   } else {
     if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
     if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit %', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
@@ -3358,6 +3366,7 @@ export function AboutStatsRow({
       if (f.control === 'year') return !draft.established?.year;
       if (f.control === 'tier') return !draft.events?.tier;
       if (f.control === 'pct') return !draft.deposit?.value;
+      if (f.control === 'count') return !draft.followers?.count;
       return !(draft[f.key] as { answer?: string } | undefined)?.answer;
     });
     if (missing.length) {
@@ -3389,10 +3398,11 @@ export function AboutStatsRow({
 
   // The editable facts, in display order. Labels match the public cards so the
   // owner sees exactly what a visitor sees as they fill each one in.
-  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' }[] = isClub
+  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' }[] = isClub
     ? [
         { key: 'established', label: 'Established', control: 'year' },
         { key: 'events', label: eventsLabel, control: 'tier' },
+        { key: 'followers', label: 'Total Followers', control: 'count' },
         { key: 'insured', label: 'Insured', control: 'yesno' },
         { key: 'ownEquipment', label: 'Brings own equipment', control: 'yesno' },
         { key: 'residencies', label: 'Open to residencies', control: 'yesno' },
@@ -3415,8 +3425,25 @@ export function AboutStatsRow({
 
   // Renders the inline editor control that sits in place of a card's value, so
   // the owner edits the exact public box. `big` styles it like the teal value.
-  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno', big?: boolean) {
+  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno' | 'count', big?: boolean) {
     const cls = big ? styles.aboutStatValueSelect : styles.aboutStatsSelect;
+    if (control === 'count') {
+      // Free number entry (Total Followers). Digits only; stored as the raw
+      // string and grouped with separators on the public card.
+      return (
+        <input
+          type="text"
+          inputMode="numeric"
+          className={cls}
+          placeholder="e.g. 12,500"
+          value={draft.followers?.count ?? ''}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/[^0-9]/g, '');
+            setDraft(d => ({ ...d, followers: { ...(d.followers || {}), count: digits || undefined } }));
+          }}
+        />
+      );
+    }
     if (control === 'year') {
       return (
         <select
