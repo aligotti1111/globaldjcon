@@ -59,6 +59,26 @@ export async function resolveUserEmail(userId: string): Promise<string | null> {
   }
 }
 
+// Resolves a user's display NAME from their profile row. Used by email
+// greetings to fall back to the account name when a booking row didn't capture
+// one — so a host is greeted "Hi Anthony" rather than a bare "Hi there".
+// Returns null when there's no id or no name on file.
+export async function resolveUserName(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('users')
+      .select('name')
+      .eq('id', userId)
+      .maybeSingle<{ name: string | null }>();
+    return data?.name?.trim() || null;
+  } catch (e) {
+    console.error('[resolveUserName] error', e);
+    return null;
+  }
+}
+
 // Resolves a user id from auth.users by email. Returns null if no user
 // with that email exists. Used by the booking-invite email flow to decide
 // whether to send a "Create Account" or "Add to My Account" CTA.
