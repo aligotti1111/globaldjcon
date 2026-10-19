@@ -68,13 +68,18 @@ async function fetchB64(url: string): Promise<string | null> {
 }
 
 export async function POST(req: Request) {
-  // Optional shared-secret check.
+  // Shared-secret check — REQUIRED, not optional. Without the secret configured
+  // this endpoint would accept forged "declined/completed" events that flip a
+  // booking's contract status and email both parties. Fail closed: if the env
+  // var isn't set, reject rather than trust anonymous callers.
   const secret = process.env.DOCUSEAL_WEBHOOK_SECRET;
-  if (secret) {
-    const url = new URL(req.url);
-    const provided = req.headers.get('x-webhook-secret') || url.searchParams.get('secret');
-    if (provided !== secret) return NextResponse.json({ ok: false }, { status: 401 });
+  if (!secret) {
+    console.error('[contracts/completed] DOCUSEAL_WEBHOOK_SECRET not set — rejecting webhook');
+    return NextResponse.json({ ok: false, error: 'Webhook not configured' }, { status: 503 });
   }
+  const url = new URL(req.url);
+  const provided = req.headers.get('x-webhook-secret') || url.searchParams.get('secret');
+  if (provided !== secret) return NextResponse.json({ ok: false }, { status: 401 });
 
   let payload: Record<string, unknown>;
   try { payload = await req.json(); } catch { return NextResponse.json({ ok: true }); }
