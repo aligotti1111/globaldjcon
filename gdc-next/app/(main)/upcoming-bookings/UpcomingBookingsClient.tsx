@@ -61,6 +61,7 @@ interface Props {
   // hidden from a teammate by RLS. All optional — the /past-bookings archive
   // mount doesn't pass them and doesn't gate on them.
   canPro?: boolean;
+  plannerLeadDays?: number;
   isPaid?: boolean;
   // DJ's auto-send-receipt toggles — when on, a receipt is auto-sent on paid, so
   // the card menu reads "Re-send receipt" rather than "Send receipt".
@@ -108,7 +109,7 @@ type LightBooking = {
 export default function UpcomingBookingsClient({
   userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
   initialPayments, initialPlanners,
-  canPro: canProProp, isPaid: isPaidProp, autoDepositReceipt = true, autoBalanceReceipt = true, settingsCurrency: settingsCurrencyProp,
+  canPro: canProProp, isPaid: isPaidProp, plannerLeadDays = 14, autoDepositReceipt = true, autoBalanceReceipt = true, settingsCurrency: settingsCurrencyProp,
   requireContract: requireContractProp, riderEnabled: riderEnabledProp,
   guestlistEnabled: guestlistEnabledProp, clubDepositPct: clubDepositPctProp,
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
@@ -567,6 +568,7 @@ export default function UpcomingBookingsClient({
       onPaymentsChange={handlePaymentsChange}
       onMutated={refresh}
       canPro={canPro}
+      plannerLeadDays={plannerLeadDays}
       autoDepositReceipt={autoDepositReceipt}
       autoBalanceReceipt={autoBalanceReceipt}
       planner={plannerMap[b.id]}
