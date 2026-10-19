@@ -812,10 +812,15 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
       const goingToPaidCheckout = !freeCovers && (plan > 0 || !!codeVal);
 
       if (signUpData?.user?.id) {
-        // Fire-and-forget the verification email (sendBeacon → immediate, and
-        // it also carries skipFreeGrant so a paid signup doesn't get the free
-        // comp). We don't block on it so the user gets instant feedback.
-        triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug, goingToPaidCheckout);
+        // Fire-and-forget the verification email (sendBeacon → immediate). It
+        // carries skipFreeGrant to control the site-wide free-month comp.
+        //
+        // GRANT ONLY WHEN THE PERSON PICKED THE PROMOTED PAID PLAN (freeCovers).
+        // The free sale is a "first month free on <plan>" offer, not a blanket
+        // Pro giveaway — so someone who deliberately chose the FREE plan is NOT
+        // bumped to Pro, and a paid checkout (not covered by the sale) doesn't
+        // get it either. Only freeCovers → grant; everything else skips.
+        triggerSignupVerification(signUpData.user.id, emailLower, 'dj', slug, !freeCovers);
       }
 
       if (goingToPaidCheckout) {
