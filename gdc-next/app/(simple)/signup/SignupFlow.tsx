@@ -1079,7 +1079,7 @@ function DjForm({ onBack, onSwitchType, onSuccess, initialDjType, initialPlan = 
           onClick={() => setPromoOpen(true)}
           style={{ background: 'none', border: 'none', color: 'var(--neon, #00e0a4)', cursor: 'pointer', fontSize: '.9rem', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, margin: '0 0 1rem' }}
         >
-          + Have a promo code?
+          + Apply a promo code
         </button>
       ) : (
         <div className={styles.formGroup}>
