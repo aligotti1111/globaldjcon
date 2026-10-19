@@ -198,10 +198,15 @@ export function AuthProvider({
       loadUser();
       // On sign-out (including one triggered in ANOTHER tab, which Supabase
       // broadcasts here), the client header updates but any server-rendered
-      // page still shows its authed content until something re-fetches it.
-      // Refresh so server components re-run — their auth guards then redirect
-      // a signed-out viewer off protected pages instead of leaving stale data.
-      if (event === 'SIGNED_OUT') router.refresh();
+      // page still shows its authed content. router.refresh() alone isn't
+      // enough: it's a soft RSC refetch that races the cookie clearing and can
+      // leave Next's client cache showing the stale authed page (exactly what
+      // happened on /booking-settings). A hard navigation to home guarantees a
+      // clean, cookie-less reload — no protected page can linger, and the
+      // server guards redirect a signed-out viewer to /login if they go back.
+      if (event === 'SIGNED_OUT' && typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     });
 
     return () => {
