@@ -12,6 +12,7 @@ import styles from '../upcomingBookings.module.css';
 import { MUTED } from '../shared';
 import StageMenu from './StageMenu';
 import { stageLabel, type PipelineStep } from './types';
+import { RailMark } from '@/app/(main)/update-dj-profile/BrandMarks';
 
 interface Props {
   steps: PipelineStep[];
@@ -101,7 +102,10 @@ export default function PipelineHero({
               ) : (
                 <span className={styles.heroName}>{name(st.key)}</span>
               )}
-              <span className={styles.heroCap} style={{ color: capColor }}>{isDeclined ? 'DECLINED' : (cap || '')}</span>
+              <span className={styles.heroCap} style={{ color: capColor, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {done && st.paidRail && !isDeclined ? <RailMark rail={st.paidRail} size={13} /> : null}
+                {isDeclined ? 'DECLINED' : (cap || '')}
+              </span>
               {open && hasMenu && pos && (
                 <StageMenu
                   st={st}
