@@ -727,6 +727,16 @@ export default function AddManualBookingModal({
       console.error('[upcoming-bookings] resend host email lookup failed', e);
     }
 
+    // Persist the (possibly edited) host email to the row BEFORE sending — the
+    // email route resolves the recipient from booking.host_email, so writing
+    // afterward would mail the OLD address and drop the new one.
+    const supabase = createClient();
+    const nowIso = new Date().toISOString();
+    await supabase
+      .from('bookings')
+      .update({ host_email: recipientEmail } as unknown as never)
+      .eq('id', existing.id)
+      .eq('dj_id', userId);
     const result = await sendHostInviteEmail({
       bookingId: existing.id,
       recipientEmail,
@@ -742,12 +752,10 @@ export default function AddManualBookingModal({
       setResendBusy(false);
       return;
     }
-    // Update host_email_sent_at server-side too so future opens see fresh date.
-    const supabase = createClient();
-    const nowIso = new Date().toISOString();
+    // Stamp host_email_sent_at so future opens see a fresh date.
     await supabase
       .from('bookings')
-      .update({ host_email: recipientEmail, host_email_sent_at: nowIso } as unknown as never)
+      .update({ host_email_sent_at: nowIso } as unknown as never)
       .eq('id', existing.id)
       .eq('dj_id', userId);
     setHostEmailSentAt(nowIso);
