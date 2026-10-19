@@ -309,12 +309,16 @@ export function SignupPageBody() {
         <div className={styles.closeRow}>
           <Link href="/" className={styles.closeX} aria-label="Close and return home">✕</Link>
         </div>
-        <div className={styles.logo}>
-          <Link href="/">
-            <h1>GLOBAL DJ CONNECT</h1>
-          </Link>
-          <p className={styles.tagline}>Directory &amp; Booking</p>
-        </div>
+        {/* Hidden on the success screen — the "Check your email" card is its own
+            heading, so the wordmark above it is just noise there. */}
+        {screen !== 'success' && (
+          <div className={styles.logo}>
+            <Link href="/">
+              <h1>GLOBAL DJ CONNECT</h1>
+            </Link>
+            <p className={styles.tagline}>Directory &amp; Booking</p>
+          </div>
+        )}
 
         {screen !== 'success' && (
           <div className={styles.tabs}>
