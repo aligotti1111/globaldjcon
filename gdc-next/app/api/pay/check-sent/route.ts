@@ -145,8 +145,12 @@ export async function POST(req: Request) {
       const evStart = fmtTime(b.start_time);
       const evEnd = fmtTime(b.end_time);
       const evTime = evStart && evEnd ? `${evStart} – ${evEnd}` : evStart || '';
+      // Label column shrinks to its own text (width:1% + nowrap) and the value
+      // column takes everything else. A FIXED label width (was 120px) looked
+      // fine on a 600px desktop but ate ~half a ~320px phone, forcing every
+      // value to wrap. This gives the value the remaining width on any screen.
       const detailRow = (label: string, val: string) => val
-        ? `<tr><td style="padding:5px 12px 5px 0;color:#888;font-size:12px;width:120px;white-space:nowrap;vertical-align:middle;">${label}</td><td style="padding:5px 0;color:#111;font-size:14px;font-weight:600;vertical-align:middle;word-break:break-word;">${val}</td></tr>`
+        ? `<tr><td style="padding:5px 12px 5px 0;color:#888;font-size:12px;width:1%;white-space:nowrap;vertical-align:middle;">${label}</td><td style="padding:5px 0;color:#111;font-size:14px;font-weight:600;vertical-align:middle;word-break:break-word;">${val}</td></tr>`
         : '';
       const detailsRows = `${detailRow('Date', evDate)}${detailRow('Place', b.venue_name || '')}${detailRow('Time', evTime)}${detailRow(kindLabel === 'deposit' ? 'Deposit' : 'Balance', amt)}`;
       const detailsBlock = detailsRows
