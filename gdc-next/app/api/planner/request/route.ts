@@ -20,7 +20,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
 import { Resend } from 'resend';
@@ -392,7 +392,8 @@ export async function POST(req: Request) {
 
     // ── The email ─────────────────────────────────────────────────────────
     if (process.env.RESEND_API_KEY) {
-      const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+      const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+      const hi = esc(hostFull.split(' ')[0] || 'there');
       const when = fmtDate(b.event_date);
 
       // Event type — cased for the subject ("Wedding Planner & Playlist") and
@@ -434,11 +435,11 @@ ${isResend
 <p style="margin:0 0 20px;color:#666;font-size:14px;line-height:1.7;">
 As you fill out the Planner &amp; Playlist page, everything you enter auto-saves as you go. Enter what you know now and come back to finish the rest whenever you're ready. The latest the planner can be completed is listed below.
 </p>
-${dueBanner}
-<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
 <tr><td style="background:#000000;border-radius:8px;">
-<a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open your Planner &amp; Playlist</a>
+<a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open Planner &amp; Playlist</a>
 </td></tr></table>
+${dueBanner}
 <p style="margin:0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">
 Or paste this into your browser:<br/><a href="${url}" style="color:#999;">${url}</a>
 </p>
