@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
 import { googleCalendarLink } from '@/lib/ics';
 import { canUsePro, type AccessFields } from '@/lib/access';
@@ -794,6 +795,28 @@ export async function POST(req: Request) {
   const authUser = isInternal ? null : (await (await createClient()).auth.getUser()).data.user;
   if (!isInternal && !PUBLIC_TYPES.has(type) && !authUser) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
+  }
+
+  // PER-BOOKING OWNERSHIP. Most types carry a bookingId and resolve the
+  // recipient (host or DJ) from that booking row. Without this, an authenticated
+  // user could trigger a branded email about SOMEONE ELSE'S booking (spam / info
+  // leak). Require the caller to be a party to the booking — the host who made it
+  // (requester_id) or the DJ who owns it (dj_id, via the acting context so team
+  // seats count). Internal/secret callers are already trusted; a missing booking
+  // row is left to the branch to handle.
+  if (authUser && !isInternal && typeof body.bookingId === 'string' && body.bookingId) {
+    try {
+      const { data: bk } = await createAdminClient()
+        .from('bookings').select('dj_id, requester_id').eq('id', body.bookingId).maybeSingle();
+      const row = bk as { dj_id?: string | null; requester_id?: string | null } | null;
+      if (row) {
+        const acting = await getActingContext(authUser.id);
+        const isParty = row.requester_id === authUser.id || (!!row.dj_id && row.dj_id === acting.djId);
+        if (!isParty) {
+          return NextResponse.json({ error: 'Not a party to this booking' }, { status: 403 });
+        }
+      }
+    } catch { /* non-fatal — the branch still resolves/validates its own recipient */ }
   }
 
   let emailPayload: Parameters<typeof resend.emails.send>[0] | null = null;
