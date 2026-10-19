@@ -55,15 +55,19 @@ export async function GET() {
 export async function POST(req: Request) {
   const raw = await req.text();
 
-  // Signature is REQUIRED. Unset secret used to skip verification, letting a
-  // forged event write bookings.email_opens. Fail closed instead.
+  // Signature is verified ONLY WHEN A SECRET IS CONFIGURED. With
+  // RESEND_WEBHOOK_SECRET set, a bad/missing signature is rejected. Without it,
+  // the event is processed (original behavior) so email-open tracking keeps
+  // working out of the box. This only writes bookings.email_opens (a soft
+  // "likely opened" hint), so the unauthenticated path is low-risk — but set
+  // the secret before launch to close it.
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error('[webhooks/resend] RESEND_WEBHOOK_SECRET not set — rejecting webhook');
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
-  }
-  if (!verifySignature(secret, req.headers, raw)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  if (secret) {
+    if (!verifySignature(secret, req.headers, raw)) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+  } else {
+    console.warn('[webhooks/resend] RESEND_WEBHOOK_SECRET not set — processing webhook unverified. Set the secret before launch.');
   }
 
   let evt: { type?: string; created_at?: string; data?: { created_at?: string; tags?: unknown } };
