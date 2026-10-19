@@ -26,6 +26,10 @@ export interface BuildStepsCtx {
   payments: BookingPayment[];
   canPro: boolean;
   planner: BookingPlannerSummary | undefined;
+  /** Days before the event the planner is due (users.planner_lead_days). Used
+   *  to flag a sent-but-unfinished planner RED "Past Due" once that date passes.
+   *  Optional — defaults to 14 for callers that don't compute it (admin view). */
+  plannerLeadDays?: number;
   riderEnabled: boolean;
   guestlistEnabled: boolean;
   onAddHost: (() => void) | undefined;
@@ -76,7 +80,7 @@ export interface BuildStepsCtx {
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
+  const { booking, taxPct, archive, payments, canPro, plannerLeadDays = 14, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
   // Receipt menu label — first send says "Send receipt", later sends "Re-send".
   const depRcptLabel = depositReceiptSent ? 'Re-send receipt' : 'Send receipt';
   const balRcptLabel = balanceReceiptSent ? 'Re-send receipt' : 'Send receipt';
@@ -619,10 +623,23 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       : (pct !== null || !!pstatus) ? 'pending'
       : 'todo';
 
+    // PAST DUE: a planner that went out and isn't finished, now past its due
+    // date (event date − the DJ's planner lead days). Turns the stage RED and
+    // the caption reads "<pct>%/PAST DUE" (or just "PAST DUE" with no percent).
+    let plannerPastDue = false;
+    if (!done && (pstatus || pct !== null) && booking.event_date) {
+      const due = new Date(`${booking.event_date}T12:00:00`);
+      due.setDate(due.getDate() - plannerLeadDays);
+      due.setHours(0, 0, 0, 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      plannerPastDue = due.getTime() < today.getTime();
+    }
+
     // Percent is the caption whenever a planner exists (amber until 100%). An
     // override with no planner behind it reads as 100%. Otherwise Not sent.
     const caption =
       overridden ? '100%'
+      : plannerPastDue ? (pct !== null ? `${pct}%/PAST DUE` : 'PAST DUE')
       : pct !== null ? `${pct}%`
       : pstatus === 'sent' ? 'Pending'
       : 'Not Sent';

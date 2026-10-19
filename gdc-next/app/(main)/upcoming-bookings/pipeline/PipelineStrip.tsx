@@ -116,6 +116,9 @@ export default function PipelineStrip({
         // st.state === 'pending' is just "incomplete" and was lighting those up
         // too. Only a real Pending gets the amber ring.
         const isPending = !st.done && /^pending\b/i.test((st.caption || '').trim());
+        // PAST DUE (planner overdue): the whole node reads RED — ring, icon and
+        // caption — so an overdue planner can't be mistaken for an amber "Pending".
+        const isPastDue = !st.done && /past due/i.test(st.caption || '');
         // Transient in-flight cue only — a spinner ring over this icon while its
         // request/receipt action is sending or downloading. Adds nothing to the
         // stage's real state; clears the instant the call settles.
@@ -138,7 +141,7 @@ export default function PipelineStrip({
         // "Declined" reads red too — and in ALL CAPS — so a refused contract
         // can't be mistaken for an in-flight "Pending".
         const isDeclined = /^declined$/i.test(cap || '');
-        const capColorFinal = (/^not sent$/i.test(cap || '') || isDeclined) ? '#ff6b6b' : capColor;
+        const capColorFinal = (/^not sent$/i.test(cap || '') || isDeclined || isPastDue) ? '#ff6b6b' : capColor;
         // NEW BALANCE (price rose after paid-in-full): two-tone caption —
         // "Paid" in green, the new-balance part in white.
         const capNode: React.ReactNode = (st.newBalanceDue && st.newBalanceDue > 0)
@@ -159,6 +162,8 @@ export default function PipelineStrip({
           ? { borderColor: '#2f2f3d' }
           : positiveDone
           ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
+          : isPastDue
+            ? { borderColor: '#ff6b6b', background: 'rgba(255,107,107,.12)' }
           : isPending
             ? { borderColor: 'var(--amber,#eaa94a)' }
           : (!st.done && waiting)
@@ -170,6 +175,8 @@ export default function PipelineStrip({
           ? '#5a5a72'
           : positiveDone
           ? 'var(--neon,#00e0a4)'
+          : isPastDue
+            ? '#ff6b6b'
           : isPending
             ? '#eaa94a'
           : (!st.done && waiting)

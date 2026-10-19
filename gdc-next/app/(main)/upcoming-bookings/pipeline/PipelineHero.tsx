@@ -65,12 +65,14 @@ export default function PipelineHero({
           // A declined contract reads RED and ALL CAPS — same as the strip — so
           // it can't be mistaken for an in-flight "Pending".
           const isDeclined = /^declined$/i.test(cap || '');
-          const capColor = isDeclined ? '#ff6b6b' : done ? 'var(--neon,#22e3ad)' : isNow ? 'var(--amber,#eaa94a)' : '#7d7d92';
+          // PAST DUE (planner overdue) reads RED — node, name and caption.
+          const isPastDue = !st.done && /past due/i.test(st.caption || '');
+          const capColor = (isDeclined || isPastDue) ? '#ff6b6b' : done ? 'var(--neon,#22e3ad)' : isNow ? 'var(--amber,#eaa94a)' : '#7d7d92';
           const nodeCls = `${styles.heroNode}${done ? ' ' + styles.heroNodeDone : ''}${isNow ? ' ' + styles.heroNodeNow : ''}`;
           return (
             <div key={st.key} className={styles.heroStepCell}>
               <div className={styles.heroConn}>
-                <span className={nodeCls}>
+                <span className={nodeCls} style={isPastDue ? { borderColor: '#ff6b6b', background: 'rgba(255,107,107,.12)', color: '#ff6b6b' } : undefined}>
                   {done && (
                     <svg viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                   )}
@@ -81,7 +83,7 @@ export default function PipelineHero({
                 <button
                   type="button"
                   className={styles.heroName}
-                  style={{ color: isNow ? 'var(--amber,#eaa94a)' : undefined }}
+                  style={{ color: isPastDue ? '#ff6b6b' : isNow ? 'var(--amber,#eaa94a)' : undefined }}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (open) { setOpenKey(null); return; }
