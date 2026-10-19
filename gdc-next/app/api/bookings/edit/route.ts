@@ -376,7 +376,7 @@ export async function POST(req: Request) {
       const djName = (async () => (await admin.from('users').select('name').eq('id', djId).maybeSingle<{ name: string | null }>()).data?.name || 'Your DJ');
       const dj = await djName();
       const line = (l: { label: string; old: string; neu: string }) =>
-        `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(l.label)}</b><br><span style="color:#888;font-size:13px;">${esc(l.old)}</span> → <span style="color:#0a6f61;font-weight:700;">${esc(l.neu)}</span></td></tr>`;
+        `<tr><td style="padding:10px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(l.label)}</b><br><span style="display:block;margin-top:5px;color:#888;font-size:12px;letter-spacing:.04em;text-transform:uppercase;">Original</span><span style="display:block;color:#555;font-size:14px;">${esc(l.old)}</span><span style="display:block;margin-top:7px;color:#888;font-size:12px;letter-spacing:.04em;text-transform:uppercase;">Updated</span><span style="display:block;color:#0a6f61;font-weight:700;font-size:14px;">${esc(l.neu)}</span></td></tr>`;
       const legalFooter = `<p style="margin:20px 0 0;color:#999;font-size:11px;line-height:1.5;border-top:1px solid #eee;padding-top:12px;">${esc(LEGAL)}</p>`;
       // Which booking this is about — pinned to the TOP of every change email so
       // the host knows the event before reading the changes.
@@ -413,7 +413,7 @@ export async function POST(req: Request) {
         const plines = pendingRows
           .filter((r) => !(showBreakdown && (r.target_col === 'price' || r.target_col === 'tax_pct')))
           .filter((r) => r.target_col !== 'package_details')
-          .map((r) => `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(r.field)}</b><br><span style="color:#888;font-size:13px;">${esc(r.old_value)}</span> → <span style="color:#b0791f;font-weight:700;">${esc(r.new_value)}</span></td></tr>`).join('');
+          .map((r) => `<tr><td style="padding:10px 0;border-bottom:1px solid #eee;font-size:14px;color:#111;"><b>${esc(r.field)}</b><br><span style="display:block;margin-top:5px;color:#888;font-size:12px;letter-spacing:.04em;text-transform:uppercase;">Original</span><span style="display:block;color:#555;font-size:14px;">${esc(r.old_value)}</span><span style="display:block;margin-top:7px;color:#888;font-size:12px;letter-spacing:.04em;text-transform:uppercase;">Updated</span><span style="display:block;color:#b0791f;font-weight:700;font-size:14px;">${esc(r.new_value)}</span></td></tr>`).join('');
         // Full before/after for the package details, layout preserved + changes
         // highlighted (old = the current booking value, new = the requested text).
         const packageHtml = pkgPending
