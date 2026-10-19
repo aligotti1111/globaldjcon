@@ -55,8 +55,14 @@ export async function GET() {
 export async function POST(req: Request) {
   const raw = await req.text();
 
+  // Signature is REQUIRED. Unset secret used to skip verification, letting a
+  // forged event write bookings.email_opens. Fail closed instead.
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (secret && !verifySignature(secret, req.headers, raw)) {
+  if (!secret) {
+    console.error('[webhooks/resend] RESEND_WEBHOOK_SECRET not set — rejecting webhook');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
+  if (!verifySignature(secret, req.headers, raw)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
