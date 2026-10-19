@@ -370,7 +370,7 @@ export async function POST(req: Request) {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
         body: JSON.stringify({
           type: 'cancel_requested',
           bookingId: booking.id,
@@ -457,7 +457,7 @@ export async function POST(req: Request) {
   try {
     await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/send-email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
       body: JSON.stringify({
         type: accepted ? 'cancel_accepted' : 'cancel_declined',
         bookingId: booking.id,
