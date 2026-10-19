@@ -221,11 +221,7 @@ export default function StageMenu({
                         </button>
                       );
                       return (
-                        <div
-                          style={{ position: 'relative' }}
-                          onMouseEnter={() => setPickPay(true)}
-                          onMouseLeave={() => setPickPay(false)}
-                        >
+                        <div style={{ position: 'relative' }}>
                           <div
                             onClick={() => { if (!overrideLocked) setPickPay((v) => !v); }}
                             style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: pickPay ? 'rgba(255,255,255,.08)' : 'transparent', color: overrideLocked ? 'var(--muted,#7a7a90)' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
