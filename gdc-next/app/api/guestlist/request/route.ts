@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActingContext } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
-import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { normalizeGuests, sortGuests, headCount } from '@/lib/guestlist';
@@ -71,7 +71,8 @@ export async function POST(req: Request) {
 
     const to = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
     if (to && process.env.RESEND_API_KEY) {
-      const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+      const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+      const hi = esc(hostFull.split(' ')[0] || 'there');
       const when = fmtDate(b.event_date);
       const rows = guests.map((g) => `<li style="margin:0 0 5px;color:#444;font-size:14px;">${esc(g.name)}${g.plus > 0 ? ` <span style="color:#888;">+${g.plus}</span>` : ''}</li>`).join('');
       const content = `
