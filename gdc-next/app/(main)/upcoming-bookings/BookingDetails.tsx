@@ -837,8 +837,13 @@ export default function BookingDetails({
   const groupedSections = sectionOrder
     .map((sec) => ({ ...sec, rows: visibleRows.filter((r) => sectionForRow(r) === sec.key) }))
     // Keep the Event card for mobile even if it has no generic rows — its header
-    // (Type / Date / Guest) renders separately as eventHeaderBlock.
-    .filter((g) => g.rows.length > 0 || (g.key === 'EVENT' && djType === 'mobile'));
+    // (Type / Date / Guest) renders separately as eventHeaderBlock. Likewise keep
+    // the Venue card for mobile always: name + address are required at booking, so
+    // an empty one means a legacy row — surface it (with an "Add venue" prompt)
+    // rather than silently hiding the section.
+    .filter((g) => g.rows.length > 0
+      || (g.key === 'EVENT' && djType === 'mobile')
+      || (g.key === 'VENUE' && djType === 'mobile'));
 
   // Pricing renders as a receipt: label left, amount right, the total emphasised,
   // and the deposit/balance pulled into a separated "Payment schedule" band.
@@ -1199,6 +1204,11 @@ export default function BookingDetails({
             </div>
             {g.key === 'EVENT' && eventHeaderBlock}
             {g.key === 'VENUE' && venueHeaderBlock}
+            {g.key === 'VENUE' && g.rows.length === 0 && (
+              <div style={{ marginTop: 10, fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
+                No venue on file{canEdit ? ' — use the pencil above to add one.' : '.'}
+              </div>
+            )}
             {g.key === 'PRICING' ? renderPricing(g.rows) : g.rows.map((row, i) => (
               <div
                 key={i}
