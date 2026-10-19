@@ -31,13 +31,29 @@ export async function middleware(request: NextRequest) {
   // Refresh the session if expired — this writes new cookies to the response
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Route protection: pages that require login
+  // Route protection: pages that require login. Server pages also self-gate
+  // (getUser + redirect), but listing them here redirects a signed-out visitor
+  // at the edge before any render — one consistent guard for every per-user page.
   const protectedPaths = [
     '/admin',
     '/inbox',
     '/account-settings',
     '/booking-requests',
     '/update-dj-profile',
+    '/booking-settings',
+    '/finance',
+    '/upcoming-bookings',
+    '/past-bookings',
+    '/upcoming-events',
+    '/past-events',
+    '/notifications',
+    '/team-settings',
+    '/customize-planner',
+    '/guestlist-edit',
+    '/rider-edit',
+    // NOTE: /subscribe is intentionally NOT here — the signup→checkout flow
+    // redirects there right after account creation, when the session may not be
+    // readable yet. It's still no-store below.
   ];
   const path = request.nextUrl.pathname;
   const isProtected = protectedPaths.some(p => path.startsWith(p));
@@ -54,10 +70,16 @@ export async function middleware(request: NextRequest) {
   // rendered HTML and serve one user a stale or cross-account copy (e.g. a
   // teammate seeing an empty/owner page, or a stale subscription tier). This
   // header shuts that off at the edge.
+  // Also kills the browser's bfcache for these pages: without no-store, pressing
+  // Back after logging out can restore the fully-rendered authed page from
+  // memory with no request — so the server guard never runs and stale per-user
+  // content shows. no-store makes Back re-fetch (→ redirect to /login).
   const personalPaths = [
     '/upcoming-bookings', '/booking-requests', '/account-settings',
     '/update-dj-profile', '/inbox', '/subscribe', '/notifications',
-    '/past-bookings', '/admin',
+    '/past-bookings', '/admin', '/booking-settings', '/finance',
+    '/upcoming-events', '/past-events', '/team-settings',
+    '/customize-planner', '/guestlist-edit', '/rider-edit',
   ];
   if (personalPaths.some((p) => path === p || path.startsWith(p + '/'))) {
     response.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate');
