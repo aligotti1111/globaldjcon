@@ -235,7 +235,9 @@ export async function GET(req: Request) {
     try {
       await fetch(`${SITE_URL}/api/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Server-to-server call (no user cookie) — carry the internal secret so
+        // the send-email auth gate accepts it.
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
         body: JSON.stringify({
           type: b.booking_type === 'club' ? 'booking_status' : 'mob_booking_status',
           bookingId: b.id,
