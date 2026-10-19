@@ -23,7 +23,7 @@
 
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import { usableMethods, referenceCode, type PaymentMethod } from '@/lib/paymentMethods';
 import { buildPayEmailBlocks } from '@/lib/payEmailOptions';
@@ -221,7 +221,8 @@ export async function GET(req: Request) {
       if (!to) continue;
 
       const kindLabel = p.kind === 'deposit' ? 'deposit' : 'balance';
-      const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+      const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+      const hi = esc(hostFull.split(' ')[0] || 'there');
       const amt = typeof p.amount === 'number' ? money(p.amount, p.currency) : '';
       const link = `${SITE_URL}/pay/${p.id}`;
       const stopLink = `${SITE_URL}/api/pay/${p.id}/stop-reminders`;
