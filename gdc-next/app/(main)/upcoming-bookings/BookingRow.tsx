@@ -410,7 +410,7 @@ export default function BookingRow({
   // but grey out (disable) the ones this role can't use, with a hover tooltip.
   // NB: these must match the exact labels buildSteps emits. If you rename a menu
   // label there, update it here too or the role lock silently stops applying.
-  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Skip deposit', 'Undo skip', 'Request balance', 'Resend invoice', 'Request New Balance', 'Mark New Balance Paid', 'Cancel request']);
+  const MONEY_LOCK_LABELS = new Set(['Request deposit', 'Skip deposit', 'Undo skip', 'Request balance', 'Resend invoice', 'Request New Balance', 'Mark New Balance Paid', 'Cancel Request']);
   const CONTRACT_LOCK_LABELS = new Set(['Re-send contract', 'Cancel contract', 'Add host details\u2026', 'Review & send contract', '\u2b07 Download contract', '\u2b07 Download audit log']);
   function actionLocked(label: string): boolean {
     if (label === 'Payment options') return !roleCanEditPaymentOptions;
@@ -642,7 +642,7 @@ export default function BookingRow({
     setConfirmModal({
       title: 'Cancel this payment request?',
       body: 'This removes the request from the booking. You can request it again later.',
-      okLabel: 'Cancel request',
+      okLabel: 'Cancel Request',
       cancelLabel: 'Keep it',
       danger: true,
       onOk: async () => {
