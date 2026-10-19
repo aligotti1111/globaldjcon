@@ -201,17 +201,35 @@ export function AuthProvider({
       // page still shows its authed content. router.refresh() alone isn't
       // enough: it's a soft RSC refetch that races the cookie clearing and can
       // leave Next's client cache showing the stale authed page (exactly what
-      // happened on /booking-settings). A hard navigation to home guarantees a
-      // clean, cookie-less reload — no protected page can linger, and the
-      // server guards redirect a signed-out viewer to /login if they go back.
-      if (event === 'SIGNED_OUT' && typeof window !== 'undefined') {
-        window.location.href = '/';
+      // happened on /booking-settings). A hard navigation guarantees a clean,
+      // cookie-less reload — no protected page can linger, and the server guards
+      // redirect a signed-out viewer to /login if they go back. REPLACE, not
+      // assign, so the protected URL is dropped from history and Back can't
+      // return to it.
+      if (event === 'SIGNED_OUT' && typeof window !== 'undefined'
+          && window.location.pathname !== '/') {
+        window.location.replace('/');
       }
     });
+
+    // bfcache backstop. A hard nav still leaves the old page in the browser's
+    // back/forward cache; pressing Back restores that fully-rendered authed DOM
+    // from memory with NO request, so no server guard runs. On a bfcache
+    // restore (pageshow persisted=true), re-check the session and bounce to '/'
+    // if it's gone. (middleware's no-store on per-user pages also disables
+    // bfcache for them — this covers anything that slips through.)
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      supabase.auth.getUser().then(({ data }) => {
+        if (!data.user && window.location.pathname !== '/') window.location.replace('/');
+      }).catch(() => {});
+    };
+    if (typeof window !== 'undefined') window.addEventListener('pageshow', onPageShow);
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      if (typeof window !== 'undefined') window.removeEventListener('pageshow', onPageShow);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
