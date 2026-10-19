@@ -119,6 +119,10 @@ export default function PipelineStrip({
         // PAST DUE (planner overdue): the whole node reads RED — ring, icon and
         // caption — so an overdue planner can't be mistaken for an amber "Pending".
         const isPastDue = !st.done && /past due/i.test(st.caption || '');
+        // A planner that's been SENT but isn't finished shows a "NN%" caption. It's
+        // in-flight and waiting on the host, so it gets the same amber ring as a
+        // "Pending" stage (unless it's already past due, handled above).
+        const isPlannerSent = !st.done && !isPastDue && st.key === 'song_list' && /\d%$/.test((st.caption || '').trim());
         // Transient in-flight cue only — a spinner ring over this icon while its
         // request/receipt action is sending or downloading. Adds nothing to the
         // stage's real state; clears the instant the call settles.
@@ -164,7 +168,7 @@ export default function PipelineStrip({
           ? { borderColor: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.14)' }
           : isPastDue
             ? { borderColor: '#ff6b6b', background: 'rgba(255,107,107,.12)' }
-          : isPending
+          : (isPending || isPlannerSent)
             ? { borderColor: 'var(--amber,#eaa94a)' }
           : (!st.done && waiting)
             ? { borderColor: 'rgba(255,255,255,.16)' }
@@ -177,7 +181,7 @@ export default function PipelineStrip({
           ? 'var(--neon,#00e0a4)'
           : isPastDue
             ? '#ff6b6b'
-          : isPending
+          : (isPending || isPlannerSent)
             ? '#eaa94a'
           : (!st.done && waiting)
             ? '#b9b9c6'
