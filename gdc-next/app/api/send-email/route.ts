@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { createClient } from '@/lib/supabase/server';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
 import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
 import { googleCalendarLink } from '@/lib/ics';
@@ -770,6 +771,28 @@ export async function POST(req: Request) {
   const type = body.type as EmailType | undefined;
   if (!type) {
     return NextResponse.json({ error: 'Missing type' }, { status: 400 });
+  }
+
+  // ── AUTH GATE ──────────────────────────────────────────────────────
+  // This route can address ANY recipient and renders Global-DJ-Connect-branded
+  // mail, so an open endpoint is a phishing + brand-abuse + cost relay. Allow a
+  // send only when:
+  //   • an authenticated user is making the request (the common case — every
+  //     dashboard/booking component fetches this with the session cookie), OR
+  //   • it's a trusted server-to-server call carrying the internal secret
+  //     (verify-email, cancel-request, admin claim approval — they fetch this
+  //     route without a user cookie), OR
+  //   • the type is genuinely public AND can only mail the site itself
+  //     (contact_us → ADMIN_EMAIL, never a body-supplied address).
+  // Anything else is rejected before a single email goes out.
+  const PUBLIC_TYPES = new Set<EmailType>(['contact_us']);
+  const internalSecret = req.headers.get('x-internal-secret');
+  const isInternal = !!process.env.CRON_SECRET && internalSecret === process.env.CRON_SECRET;
+  if (!isInternal && !PUBLIC_TYPES.has(type)) {
+    const { data: { user: authUser } } = await (await createClient()).auth.getUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
+    }
   }
 
   let emailPayload: Parameters<typeof resend.emails.send>[0] | null = null;
