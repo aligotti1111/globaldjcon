@@ -746,7 +746,7 @@ export async function POST(req: Request) {
       subject: `Booking request sent to ${djName || 'your DJ'} – ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((requesterName || '').trim().split(' ')[0] || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
         <p style="color:#8a6d00;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;margin:0 0 16px;font-size:13px;line-height:1.6;">The DJ has up to <strong>5 days</strong> (or until your event date, whichever comes first) to respond. If they send you a quote or offer, you'll then have <strong>5 days</strong> to approve or decline it — otherwise it's automatically declined and you can send a new request anytime.</p>
         ${confCard}
         ${confBill}
@@ -1490,7 +1490,7 @@ export async function POST(req: Request) {
       subject: `Counter Offer from ${senderSubjectName} – ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Counter Offer</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((recipientName || '').trim().split(' ')[0] || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
         ${bookingInfoBox({
           setTypeText: setTypeLabel(setType),
           date: eventDate,
@@ -1548,7 +1548,7 @@ export async function POST(req: Request) {
       subject: `Quote received from ${djName || 'your DJ'} – ${dateStr}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Quote Received</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, <strong>${escHtml(djName || 'your DJ')}</strong> sent you a quote for your booking request.</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((recipientName || '').trim().split(' ')[0] || 'there')}, <strong>${escHtml(djName || 'your DJ')}</strong> sent you a quote for your booking request.</p>
         ${bookingInfoBox({
           setTypeText: setTypeLabel(setType),
           date: eventDate,
