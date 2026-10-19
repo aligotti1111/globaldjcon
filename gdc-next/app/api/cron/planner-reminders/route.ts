@@ -208,14 +208,23 @@ export async function GET(req: Request) {
       const dueDate = new Date(`${dueYmd.slice(0, 10)}T12:00:00`);
       dueDate.setDate(dueDate.getDate() - lead);
       const dueLabel = dueDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      // Past the due date? Then the banner reads RED "Past due", not amber.
+      const dueMid = new Date(dueDate); dueMid.setHours(0, 0, 0, 0);
+      const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+      const pastDue = dueMid.getTime() < todayMid.getTime();
+      const dueBanner = pastDue
+        ? `<div style="background:#fdecec;border:1px solid #f3b6b6;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#8a1f1f;font-size:14px;line-height:1.6;">Past due &mdash; it was due<br/><strong style="color:#6f1515;font-size:16px;">${esc(dueLabel)}</strong><br/>Please complete it as soon as you can.</p>
+</div>`
+        : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete it by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+</div>`;
 
       const content = `<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, your Planner &amp; Playlist is still open</h1>
 <p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
 Just a reminder from ${esc(djName)} — your ${esc(eventTypeLabel.toLowerCase())} on <strong>${esc(fmtLongDate(dueYmd))}</strong> is coming up and your Planner &amp; Playlist isn&rsquo;t finished yet. Everything you enter auto-saves, so you can add what you know now and come back to the rest.
 </p>
-<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete it by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
-</div>
+${dueBanner}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
 <tr><td style="background:#000000;border-radius:8px;">
 <a href="${link}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Finish your Planner &amp; Playlist</a>
