@@ -422,11 +422,20 @@ export async function POST(req: Request) {
         const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
         pastDue = dueMid.getTime() < todayMid.getTime();
       }
+      // On the FIRST send we never flag the client as "past due" — they've only
+      // just received the planner. If the DJ sent it after the due date has
+      // already passed, show a neutral "return it ASAP" nudge instead of the red
+      // overdue banner (which is reserved for reminder emails on a planner the
+      // client has already been sitting on).
       const dueBanner = dueLabel
         ? (pastDue
-          ? `<div style="background:#fdecec;border:1px solid #f3b6b6;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+          ? (isResend
+            ? `<div style="background:#fdecec;border:1px solid #f3b6b6;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
 <p style="margin:0;color:#8a1f1f;font-size:14px;line-height:1.6;">Past due &mdash; your Planner &amp; Playlist was due<br/><strong style="color:#6f1515;font-size:16px;">${esc(dueLabel)}</strong><br/>Please complete it as soon as you can.</p>
 </div>`
+            : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please return your completed Planner &amp; Playlist as soon as possible.</p>
+</div>`)
           : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
 <p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
 </div>`)
