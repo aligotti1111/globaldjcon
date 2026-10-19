@@ -875,7 +875,7 @@ export async function POST(req: Request) {
           to: [requesterEmail],
           subject,
           html: buildHtml(
-            `Hi ${escHtml(requesterName)}, your booking request with <strong>${escHtml(djName)}</strong> has been cancelled. If this was a mistake, you can send a new request anytime.`,
+            `Hi ${escHtml((requesterName || '').trim().split(' ')[0])}, your booking request with <strong>${escHtml(djName)}</strong> has been cancelled. If this was a mistake, you can send a new request anytime.`,
           ),
         });
       } catch (e) {
@@ -1287,7 +1287,7 @@ export async function POST(req: Request) {
           to: [requesterEmail],
           subject: `Offer received from ${djName} – ${dateStr}`,
           html: buildHtml(
-            `Hi ${escHtml(requesterName)}, <strong>${escHtml(djName)}</strong> has sent you an offer for your event. Review the details below, then approve or decline.`,
+            `Hi ${escHtml((requesterName || '').trim().split(' ')[0])}, <strong>${escHtml(djName)}</strong> has sent you an offer for your event. Review the details below, then approve or decline.`,
             bookerButtons,
           ),
         });
@@ -1351,7 +1351,7 @@ export async function POST(req: Request) {
       subject: `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel(status).charAt(0).toUpperCase() + statusLabel(status).slice(1)}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((requesterName || '').trim().split(' ')[0] || 'there')}, your booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
         <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
           ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
@@ -1410,7 +1410,7 @@ export async function POST(req: Request) {
       subject: `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}`,
       html: emailTemplate(`
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel(status).charAt(0).toUpperCase() + statusLabel(status).slice(1)}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(requesterName || 'there')}, your mobile booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((requesterName || '').trim().split(' ')[0] || 'there')}, your mobile booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
         <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
           <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
           ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
@@ -1644,7 +1644,7 @@ export async function POST(req: Request) {
         <!-- Approved badge — green pill above the heading. -->
         <div style="display:inline-block;padding:5px 12px;background:rgba(61,220,132,0.12);border:1px solid rgba(61,220,132,0.4);border-radius:14px;color:#3ddc84;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">✓ Booking Approved</div>
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin:4px 0 8px;">Price Agreed – Booking Confirmed</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, your booking with <strong>${escHtml(otherPartyName || ('the ' + otherLabel.toLowerCase()))}</strong> has been confirmed.</p>
+        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((recipientName || '').trim().split(' ')[0] || 'there')}, your booking with <strong>${escHtml(otherPartyName || ('the ' + otherLabel.toLowerCase()))}</strong> has been confirmed.</p>
         ${bookingInfoBox({
           eventTypeText: eventType ? eventTypeLabel(eventType) : undefined,
           eventDetails: (body.eventDetails as string | undefined) || undefined,
