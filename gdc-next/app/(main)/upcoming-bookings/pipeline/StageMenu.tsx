@@ -10,8 +10,25 @@
 // stopPropagation because, being position:fixed, they're still DOM children of
 // the row and their clicks would otherwise bubble into the row's expand toggle.
 
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { NEON } from '../shared';
+import {
+  VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, CardMark, OtherMark,
+} from '@/app/(main)/update-dj-profile/BrandMarks';
+
+// The real payment-method logo for a rail type (official marks, in brand color).
+function markForType(type: string, size = 15): ReactNode {
+  switch (type) {
+    case 'venmo': return <VenmoMark size={size} />;
+    case 'cashapp': return <CashAppMark size={size} />;
+    case 'paypal': return <PaypalMark size={size} />;
+    case 'zelle': return <ZelleMark size={size} />;
+    case 'cash': return <CashMark size={size} />;
+    case 'check': return <CheckMark size={size} />;
+    case 'card': return <CardMark size={size} />;
+    default: return <OtherMark size={size} />;
+  }
+}
 
 // Inline icon set for the menu rows. All stroke currentColor so each icon
 // inherits its row's text color (neon / danger red / muted) for free.
@@ -153,9 +170,20 @@ export default function StageMenu({
         })}
         {st.overridable && (() => {
           // One override button renderer, reused for every variant below.
-          const overrideBtn = (label: string, done: boolean, onClick: () => void, key?: string) => (
+          // A "Mark Paid" row: the verb stays neon, then an arrow, then the method's
+          // real logo + its name in WHITE so the chosen rail is what stands out.
+          const markPaidLabel = (method: string, type: string): ReactNode => (
+            <>
+              Mark Paid
+              <span style={{ color: '#7a7a90', margin: '0 3px' }}>&rarr;</span>
+              <span style={{ color: 'var(--white,#fff)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {markForType(type)}{method}
+              </span>
+            </>
+          );
+          const overrideBtn = (label: ReactNode, done: boolean, onClick: () => void, key?: string) => (
             <button
-              key={key || label}
+              key={key || (typeof label === 'string' ? label : undefined)}
               type="button"
               disabled={overrideLocked}
               title={overrideLocked ? NO_ACCESS : undefined}
@@ -181,8 +209,8 @@ export default function StageMenu({
                   // A pay stage: one "Mark Paid — <rail>" per accepted manual rail,
                   // so the method prints on the receipt, plus a plain no-method row.
                   ? (<>
-                      {methods.map((m) => overrideBtn(`Mark Paid — ${m.label}`, false, () => onToggleOverride(m.label), `pm-${m.type}`))}
-                      {overrideBtn('Mark paid (no method)', false, () => onToggleOverride())}
+                      {methods.map((m) => overrideBtn(markPaidLabel(m.label, m.type), false, () => onToggleOverride(m.label), `pm-${m.type}`))}
+                      {overrideBtn(markPaidLabel('Other', 'other'), false, () => onToggleOverride(), 'pm-other')}
                     </>)
                   : overrideBtn('Mark Complete', false, () => onToggleOverride())}
               {!payStage && (
