@@ -784,24 +784,8 @@ export default function BookingRow({
       });
       return;
     }
-    if (done && key === 'invoice') {
-      // If no deposit was ever collected, marking the balance paid bills the
-      // whole thing — the deposit stage reads "Skipped". Say so up front.
-      const depositCollected = payments.some((p) => p.kind === 'deposit'
-        && ((p.status === 'paid' || p.status === 'waived') || Number(p.amount_paid || 0) > 0))
-        || !!overrides.deposit;
-      const alreadySkipped = !!overrides.deposit_skipped;
-      const skipNote = (!depositCollected && !alreadySkipped)
-        ? ' Since no deposit was collected, the deposit will be marked skipped.'
-        : '';
-      setConfirmModal({
-        title: 'Mark balance as paid?',
-        body: `Marking the balance paid outside the app will send the client their final receipt.${skipNote}`,
-        okLabel: 'Mark balance paid',
-        onOk: proceed,
-      });
-      return;
-    }
+    // Balance: no confirmation step — marking it paid runs straight through
+    // (and sends the final receipt via proceed()).
     proceed();
   }
   // Flyer URL owned here so the row slot and the in-card thumbnail
