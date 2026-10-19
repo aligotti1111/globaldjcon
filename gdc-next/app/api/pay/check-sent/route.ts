@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
-import { checkMemo, referenceCode, splitMailAddress } from '@/lib/paymentMethods';
+import { checkMemo, referenceCode, splitMailAddress, cashDropoff } from '@/lib/paymentMethods';
 import { sendBookingSms } from '@/lib/supabase/sms';
 import { Resend } from 'resend';
 
@@ -175,8 +175,30 @@ export async function POST(req: Request) {
       const howLabel = isCheck
         ? (isMail ? 'Mail It' : handoff === 'meet' ? 'Exchange In Person' : handoff === 'office' ? 'Drop Off At Office' : 'Drop Off In Person')
         : (handoff === 'office' ? 'Drop Off At Office' : 'Exchange In Person Prior To Event');
+      // When the host chose "Drop Off At Office", include WHERE — the DJ's
+      // configured office address (+ open hours), so the email isn't a drop-off
+      // instruction with no location. Pulled from the DJ's payment method for
+      // the chosen rail, falling back to whichever method has an address filled
+      // (a DJ has one physical office, entered on the cash OR check tile).
+      let officeLine: string | null = null;
+      if (handoff === 'office') {
+        try {
+          const { data: djRow } = await db
+            .from('users').select('payment_methods').eq('id', b.dj_id).maybeSingle();
+          const pm = (djRow as unknown as { payment_methods?: unknown } | null)?.payment_methods;
+          const methods = Array.isArray(pm)
+            ? (pm as Array<{ type?: string; dropoffAddress?: string; dropoffHours?: string }>)
+            : [];
+          const forRail = methods.find((m) => m?.type === (method || 'cash'));
+          const addr = (forRail?.dropoffAddress || '').trim()
+            || (methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress || '').trim();
+          const hrs = (forRail?.dropoffHours || '').trim()
+            || (methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours || '').trim();
+          if (addr) officeLine = cashDropoff({ dropoffAddress: addr, dropoffHours: hrs });
+        } catch { /* non-fatal — the row just omits the office line */ }
+      }
       // The shared summary list — same template for every sent claim.
-      const claimSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', payMethodLabel)}${detailRow('How', howLabel)}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '—')}${detailRow('Email', hostEmail || '—')}</table></td></tr></table>`;
+      const claimSummary = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px;background:#f6f7f9;border:1px solid #e4e7eb;border-radius:10px;"><tr><td style="padding:14px 16px;"><table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${detailRow('Payment Method', payMethodLabel)}${detailRow('How', howLabel)}${officeLine ? detailRow('Office', officeLine) : ''}${detailRow('Name', b.requester_name?.trim() || '')}${detailRow('Phone', hostPhone || '—')}${detailRow('Email', hostEmail || '—')}</table></td></tr></table>`;
       // Closing line: a mailed check just needs watching; everything else is
       // arranged directly with the host.
       const claimClosing = isMail
@@ -342,7 +364,16 @@ ${paidNote}`;
       // The DJ has one office — address/hours may be filled on either tile.
       const sharedOfficeAddr = methods.find((m) => (m?.dropoffAddress || '').trim())?.dropoffAddress?.trim() || null;
       const sharedOfficeHours = methods.find((m) => (m?.dropoffHours || '').trim())?.dropoffHours?.trim() || null;
-      const who = b.requester_name?.trim().split(' ')[0] || 'there';
+      // Greet by the host's FIRST name — from the booking, falling back to their
+      // ACCOUNT name — so it never shows a bare "Hi there" when a name is on file.
+      let hostName = b.requester_name?.trim() || '';
+      if (!hostName && b.requester_id) {
+        try {
+          const { data: hu } = await admin.from('users').select('name').eq('id', b.requester_id).maybeSingle();
+          hostName = (hu as { name?: string | null } | null)?.name?.trim() || '';
+        } catch { /* fall back to the generic greeting */ }
+      }
+      const who = hostName.split(' ')[0] || 'there';
       const amt = money(Number(p.amount), p.currency || 'USD');
       const kindLabel = kindLabelFor(p.kind);
       const amountBlock = `${depLeadNote}<p style="margin:0 0 2px;color:#666;font-size:13px;">Amount due:</p>
