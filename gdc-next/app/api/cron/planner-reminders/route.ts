@@ -26,7 +26,7 @@
 
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 import { Resend } from 'resend';
@@ -201,7 +201,8 @@ export async function GET(req: Request) {
       if (!to) continue;
 
       const link = `${SITE_URL}/planner/${planner.id}`;
-      const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+      const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+      const hi = esc(hostFull.split(' ')[0] || 'there');
       const eventTypeLabel = b.event_type ? mobEventLabel(b.event_type, custom) : 'Event';
       const dueYmd = b.event_date!;
       const dueDate = new Date(`${dueYmd.slice(0, 10)}T12:00:00`);
