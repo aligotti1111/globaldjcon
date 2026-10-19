@@ -18,7 +18,7 @@ import { googleCalendarLink } from '@/lib/ics';
 // into lib/emails/* so this route holds orchestration + the per-type branches.
 import { FROM, REPLY_TO, ADMIN_EMAIL, SITE_URL } from '@/lib/emails/constants';
 import {
-  escHtml, fmtDate, fmtTime, fmtTimeRange, eventTypeLabel,
+  escHtml, fmtDate, fmtTimeRange, eventTypeLabel,
   statusColor, statusLabel, currencySymbol, setTypeLabel, venueTypeLabel,
 } from '@/lib/emails/format';
 import {
