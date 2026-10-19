@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -87,7 +87,8 @@ export async function POST(req: Request) {
     const djName = (djData as unknown as { name?: string | null } | null)?.name || 'Your DJ';
     const replyTo = await resolveUserEmail(acting.djId);
 
-    const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+    const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+    const hi = esc(hostFull.split(' ')[0] || 'there');
     const when = fmtDate(b.event_date);
     const bodyHtml = esc(message).replace(/\n/g, '<br/>');
     const content = `
