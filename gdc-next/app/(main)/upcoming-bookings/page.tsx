@@ -267,7 +267,7 @@ export default async function UpcomingBookingsPage({
 
   const { data: profile } = await admin
     .from('users')
-    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, receipt_auto_deposit, receipt_auto_balance')
+    .select('role, dj_type, country, name, booking_settings, timezone, zip, city, state, travel_distance, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source, receipt_auto_deposit, receipt_auto_balance, planner_lead_days')
     .eq('id', djId)
     .maybeSingle<ProfileRow>();
 
@@ -287,6 +287,10 @@ export default async function UpcomingBookingsPage({
   const bookingsPerDay = settings?.mob_bookings_per_day || 1;
   const djCountry = profile?.country || 'United States';
   const djName = profile?.name || 'Your DJ';
+  // How many days before the event the planner is due (same rule the email +
+  // planner page use). Threaded to the pipeline so a sent-but-unfinished planner
+  // can flag RED "Past Due" once that date passes.
+  const plannerLeadDays = (profile as { planner_lead_days?: number | null } | null)?.planner_lead_days ?? 14;
 
   // Subscription- and settings-derived gating, computed HERE (server, admin
   // client, acting.djId) rather than in the client. A teammate's browser reads
@@ -669,6 +673,7 @@ export default async function UpcomingBookingsPage({
       initialPlanners={plannersByBooking}
       canPro={canPro}
       isPaid={isPaid}
+      plannerLeadDays={plannerLeadDays}
       autoDepositReceipt={profile?.receipt_auto_deposit !== false}
       autoBalanceReceipt={profile?.receipt_auto_balance !== false}
       settingsCurrency={settingsCurrency}
