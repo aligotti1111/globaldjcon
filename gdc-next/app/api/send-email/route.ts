@@ -11,6 +11,7 @@ import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
+import { loadBookingParties, recipientForParty } from '@/lib/emails/recipients';
 import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
 import { googleCalendarLink } from '@/lib/ics';
 import { canUsePro, type AccessFields } from '@/lib/access';
@@ -786,7 +787,16 @@ export async function POST(req: Request) {
   //   • the type is genuinely public AND can only mail the site itself
   //     (contact_us → ADMIN_EMAIL, never a body-supplied address).
   // Anything else is rejected before a single email goes out.
-  const PUBLIC_TYPES = new Set<EmailType>(['contact_us']);
+  // Public types can ONLY mail the site itself (ADMIN_EMAIL), never a
+  // body-supplied address — so an open/unauthenticated call can't relay branded
+  // mail to a third party. contact_us and claim_request both go to ADMIN_EMAIL
+  // only; the /claim form is intentionally unauthenticated.
+  const PUBLIC_TYPES = new Set<EmailType>(['contact_us', 'claim_request']);
+  // Types only ever fired server-to-server (verify-email → welcome; admin claim
+  // approval → profile_claimed). They carry a body-supplied recipient, so an
+  // authed user could otherwise relay branded "welcome"/"claim approved" mail to
+  // any address. Require the internal secret for these.
+  const INTERNAL_ONLY_TYPES = new Set<EmailType>(['welcome', 'profile_claimed']);
   const internalSecret = req.headers.get('x-internal-secret');
   const isInternal = !!process.env.CRON_SECRET && internalSecret === process.env.CRON_SECRET;
   // The authenticated caller, when there is one. Resolved once so sensitive
@@ -795,6 +805,9 @@ export async function POST(req: Request) {
   const authUser = isInternal ? null : (await (await createClient()).auth.getUser()).data.user;
   if (!isInternal && !PUBLIC_TYPES.has(type) && !authUser) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
+  }
+  if (INTERNAL_ONLY_TYPES.has(type) && !isInternal) {
+    return NextResponse.json({ error: 'This email type can only be sent by the server' }, { status: 403 });
   }
 
   // PER-BOOKING OWNERSHIP. Most types carry a bookingId and resolve the
@@ -805,18 +818,25 @@ export async function POST(req: Request) {
   // seats count). Internal/secret callers are already trusted; a missing booking
   // row is left to the branch to handle.
   if (authUser && !isInternal && typeof body.bookingId === 'string' && body.bookingId) {
+    // FAIL CLOSED. A thrown lookup or a missing row must NOT fall through to a
+    // send — that would reopen the very hole this gate exists to close. On any
+    // uncertainty we refuse rather than mail.
     try {
       const { data: bk } = await createAdminClient()
         .from('bookings').select('dj_id, requester_id').eq('id', body.bookingId).maybeSingle();
       const row = bk as { dj_id?: string | null; requester_id?: string | null } | null;
-      if (row) {
-        const acting = await getActingContext(authUser.id);
-        const isParty = row.requester_id === authUser.id || (!!row.dj_id && row.dj_id === acting.djId);
-        if (!isParty) {
-          return NextResponse.json({ error: 'Not a party to this booking' }, { status: 403 });
-        }
+      if (!row) {
+        return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
       }
-    } catch { /* non-fatal — the branch still resolves/validates its own recipient */ }
+      const acting = await getActingContext(authUser.id);
+      const isParty = row.requester_id === authUser.id || (!!row.dj_id && row.dj_id === acting.djId);
+      if (!isParty) {
+        return NextResponse.json({ error: 'Not a party to this booking' }, { status: 403 });
+      }
+    } catch (e) {
+      console.error('[send-email] ownership check failed:', e);
+      return NextResponse.json({ error: 'Could not verify booking ownership' }, { status: 500 });
+    }
   }
 
   let emailPayload: Parameters<typeof resend.emails.send>[0] | null = null;
@@ -961,11 +981,13 @@ export async function POST(req: Request) {
 
   // ── 3. CLAIM REQUEST (admin notified of new claim) ─────────────────
   } else if (type === 'claim_request') {
-    const claimerName = body.claimerName as string | undefined;
-    const claimerEmail = body.claimerEmail as string | undefined;
-    const profileSlug = body.profileSlug as string | undefined;
-    const profileName = body.profileName as string | undefined;
-    const message = (body.message as string | undefined) || '';
+    // The /claim form (public, unauthenticated) sends claimant*/biz*/slug; keep
+    // reading the legacy claimer*/profile* names too so either caller works.
+    const claimerName = (body.claimantName ?? body.claimerName) as string | undefined;
+    const claimerEmail = (body.claimantEmail ?? body.claimerEmail) as string | undefined;
+    const profileSlug = (body.slug ?? body.profileSlug) as string | undefined;
+    const profileName = (body.bizName ?? body.profileName) as string | undefined;
+    const message = ((body.verifyMsg ?? body.message) as string | undefined) || '';
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -981,10 +1003,13 @@ export async function POST(req: Request) {
 
   // ── 4. CLAIM RECEIVED (auto-confirmation to the claimer) ───────────
   } else if (type === 'claim_received') {
-    const recipientEmail = await pickEmail(
-      body.email as string | undefined,
-      body.userId as string | undefined,
-    );
+    // The claim confirmation goes to the claimer themselves. Bind the recipient
+    // to the authenticated caller's own account email — never a body-supplied
+    // address — so this can't be used to mail an arbitrary inbox. Internal
+    // callers (none today) fall back to the supplied identifiers.
+    const recipientEmail = authUser
+      ? await resolveUserEmail(authUser.id)
+      : await pickEmail(body.email as string | undefined, body.userId as string | undefined);
     if (!recipientEmail) {
       return NextResponse.json(
         { error: 'Could not resolve recipient email for claim_received' },
@@ -1006,10 +1031,11 @@ export async function POST(req: Request) {
 
   // ── 5. BOOKING REQUEST (alert DJ of new booking) ──────────────────
   } else if (type === 'booking_request') {
-    const djEmail = await pickEmail(
-      body.djEmail as string | undefined,
-      body.djUserId as string | undefined,
-    );
+    // Recipient is the DJ of THIS booking, resolved from the row — never a
+    // body-supplied djEmail/djUserId. The caller (the booker) is already
+    // confirmed a party by the ownership gate above.
+    const brParties = await loadBookingParties(body.bookingId);
+    const djEmail = brParties ? recipientForParty(brParties, 'dj') : null;
     if (!djEmail) {
       return NextResponse.json(
         { error: 'Could not resolve DJ email for booking_request' },
@@ -1210,10 +1236,12 @@ export async function POST(req: Request) {
   // their submission landed and gives them a record of what they sent.
   // Same info card layout for visual consistency.
   } else if (type === 'booking_request_confirmation') {
-    const requesterEmail = await pickEmail(
-      body.requesterEmail as string | undefined,
-      body.requesterUserId as string | undefined,
-    );
+    // The confirmation always goes back to the booker who just submitted — i.e.
+    // the authenticated caller. Bind to their own account email, never a body
+    // address. (This branch carries no bookingId.) Internal callers fall back to
+    // the supplied requesterUserId.
+    const confSelfId = authUser?.id || (body.requesterUserId as string | undefined);
+    const requesterEmail = confSelfId ? await resolveUserEmail(confSelfId) : null;
     if (!requesterEmail) {
       return NextResponse.json(
         { error: 'Could not resolve requester email for booking_request_confirmation' },
@@ -1925,10 +1953,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
 
   } else if (type === 'booking_status') {
-    const requesterEmail = await pickEmail(
-      body.requesterEmail as string | undefined,
-      body.requesterUserId as string | undefined,
-    );
+    // Status (accepted/denied/countered) is sent by the DJ to the host of THIS
+    // booking — resolve the host from the row, never a body address.
+    const bsParties = await loadBookingParties(body.bookingId);
+    const requesterEmail = bsParties ? recipientForParty(bsParties, 'host') : null;
     if (!requesterEmail) {
       return NextResponse.json(
         { error: 'Could not resolve requester email for booking_status' },
@@ -1984,10 +2012,10 @@ export async function POST(req: Request) {
 
   // ── 7. MOB BOOKING STATUS (DJ approved/denied a MOBILE booking) ───
   } else if (type === 'mob_booking_status') {
-    const requesterEmail = await pickEmail(
-      body.requesterEmail as string | undefined,
-      body.requesterUserId as string | undefined,
-    );
+    // Mobile-booking status — same as booking_status: DJ → host of this booking,
+    // recipient resolved from the row.
+    const bsParties = await loadBookingParties(body.bookingId);
+    const requesterEmail = bsParties ? recipientForParty(bsParties, 'host') : null;
     if (!requesterEmail) {
       return NextResponse.json(
         { error: 'Could not resolve requester email for mob_booking_status' },
@@ -2043,10 +2071,12 @@ export async function POST(req: Request) {
 
   // ── 8. BOOKING COUNTER (one side counter-offered the other) ───────
   } else if (type === 'booking_counter') {
-    const recipientEmail = await pickEmail(
-      body.recipientEmail as string | undefined,
-      body.recipientUserId as string | undefined,
-    );
+    // A counter goes to the OTHER party of this booking. fromRole only selects
+    // which of the booking's two real parties receives it — it can never name an
+    // outside address, because the recipient is resolved from the row.
+    const bcParties = await loadBookingParties(body.bookingId);
+    const bcRole: 'dj' | 'host' = (body.fromRole as string | undefined) === 'dj' ? 'host' : 'dj';
+    const recipientEmail = bcParties ? recipientForParty(bcParties, bcRole) : null;
     if (!recipientEmail) {
       return NextResponse.json(
         { error: 'Could not resolve recipient email for booking_counter' },
@@ -2116,10 +2146,9 @@ export async function POST(req: Request) {
   // club booking. This is the FIRST quote on the booking — not a counter
   // — so it's framed as "Quote Received" rather than "Counter Offer".
   } else if (type === 'quote_sent') {
-    const recipientEmail = await pickEmail(
-      body.recipientEmail as string | undefined,
-      body.recipientUserId as string | undefined,
-    );
+    // A quote is always DJ → host; resolve the host of this booking from the row.
+    const qsParties = await loadBookingParties(body.bookingId);
+    const recipientEmail = qsParties ? recipientForParty(qsParties, 'host') : null;
     if (!recipientEmail) {
       return NextResponse.json(
         { error: 'Could not resolve recipient email for quote_sent' },
@@ -2177,10 +2206,12 @@ export async function POST(req: Request) {
   // Carries the same info card the request email used, plus a green
   // "Booking Approved" header and the agreed price line.
   } else if (type === 'booking_approved') {
-    const recipientEmail = await pickEmail(
-      body.recipientEmail as string | undefined,
-      body.recipientUserId as string | undefined,
-    );
+    // Fired twice on approval — once per party. recipientRole only selects which
+    // of the booking's two real parties this copy is for; the address itself is
+    // resolved from the row, so it can never be an outside inbox.
+    const baParties = await loadBookingParties(body.bookingId);
+    const baRole: 'dj' | 'host' = (body.recipientRole as string | undefined) === 'dj' ? 'dj' : 'host';
+    const recipientEmail = baParties ? recipientForParty(baParties, baRole) : null;
     if (!recipientEmail) {
       return NextResponse.json(
         { error: 'Could not resolve recipient email for booking_approved' },
@@ -2349,10 +2380,14 @@ export async function POST(req: Request) {
   // booking id (to auto-link after signup completes — handled in the
   // signup flow, not here).
   } else if (type === 'manual_booking_invite') {
-    const recipientEmail = body.hostEmail as string | undefined;
+    // Recipient is the host email STORED ON THE BOOKING (set by the DJ when the
+    // manual booking was created / last edited), not a body-supplied address —
+    // so this branded invite can't be aimed at an arbitrary inbox.
+    const mbiParties = await loadBookingParties(body.bookingId);
+    const recipientEmail = mbiParties?.hostEmail || null;
     if (!recipientEmail || !recipientEmail.includes('@')) {
       return NextResponse.json(
-        { error: 'Missing or invalid hostEmail for manual_booking_invite' },
+        { error: 'No host email on this booking for manual_booking_invite' },
         { status: 400 }
       );
     }
@@ -2494,10 +2529,14 @@ export async function POST(req: Request) {
     // Host/venue added a DJ to a manual event on /upcoming-events. Two cases:
     //   1. DJ already has an account → "You have a pending booking" + login CTA
     //   2. DJ NOT on system → "Create an account to claim this booking" + signup CTA
-    const recipientEmail = body.recipientEmail as string | undefined;
+    // Recipient is the DJ email STORED ON THE BOOKING — dj_email for a DJ who
+    // isn't registered yet, else the account email behind dj_id. Never a
+    // body-supplied address, so the host can't aim this invite anywhere else.
+    const eifParties = await loadBookingParties(body.bookingId);
+    const recipientEmail = eifParties ? recipientForParty(eifParties, 'dj') : null;
     if (!recipientEmail || !recipientEmail.includes('@')) {
       return NextResponse.json(
-        { error: 'Missing or invalid recipientEmail for event_invite_from_host' },
+        { error: 'No DJ email on this booking for event_invite_from_host' },
         { status: 400 },
       );
     }
@@ -2577,13 +2616,14 @@ export async function POST(req: Request) {
     // the other party's email (the DJ if actor is the host, or vice versa)
     // and sends a short notification with a link to the booking.
     //
-    // Required fields: bookingId, actorId, activity ('note' | 'flyer').
+    // Required fields: bookingId, activity ('note' | 'flyer'). The ACTOR is
+    // derived from the authenticated caller below — never from body.actorId,
+    // which could otherwise name the other party and send mail "from" them.
     const bookingId = body.bookingId as string | undefined;
-    const actorId = body.actorId as string | undefined;
     const activity = body.activity as 'note' | 'flyer' | undefined;
-    if (!bookingId || !actorId || !activity) {
+    if (!bookingId || !activity) {
       return NextResponse.json(
-        { error: 'booking_activity requires bookingId, actorId, activity' },
+        { error: 'booking_activity requires bookingId, activity' },
         { status: 400 },
       );
     }
@@ -2612,6 +2652,21 @@ export async function POST(req: Request) {
     // Only club/bar bookings have notes/flyers visible to both sides.
     if (booking.booking_type !== 'club') {
       return NextResponse.json({ ok: true, skipped: 'not club booking' });
+    }
+
+    // Derive the ACTOR from the authenticated caller mapped to a booking party —
+    // never a body-supplied actorId. A team seat acts as the owner (acting.djId).
+    // Internal/secret callers (none today) may still pass actorId explicitly.
+    let actorId: string | null = null;
+    if (authUser) {
+      const acting = await getActingContext(authUser.id);
+      if (booking.requester_id === authUser.id) actorId = booking.requester_id;
+      else if (booking.dj_id && booking.dj_id === acting.djId) actorId = booking.dj_id;
+    } else {
+      actorId = (body.actorId as string | undefined) || null;
+    }
+    if (!actorId) {
+      return NextResponse.json({ error: 'Not a party to this booking' }, { status: 403 });
     }
 
     // The "other party" is whichever side ISN'T the actor.
