@@ -479,7 +479,7 @@ export async function approveClaimAction(
     try {
       const emailRes = await fetch(`${siteBase}/api/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
         body: JSON.stringify({
           type: 'profile_claimed',
           email: newEmail,
