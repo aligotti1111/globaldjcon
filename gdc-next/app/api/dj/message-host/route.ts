@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { getActingContext } from '@/lib/acting';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
@@ -62,23 +63,29 @@ export async function POST(req: Request) {
     if (!message) return NextResponse.json({ error: 'Type a message first.' }, { status: 400 });
     if (message.length > 4000) return NextResponse.json({ error: 'Message is too long.' }, { status: 400 });
 
+    // Act on the OWNER's account: a teammate messages a host on the owner's
+    // bookings, so the booking is scoped to acting.djId (the owner), not the
+    // member's raw auth id. Keying this to user.id 404'd every teammate.
+    const acting = await getActingContext(user.id);
+
     const admin = createAdminClient() as unknown as SupabaseClient;
     const { data: bData } = await admin
       .from('bookings')
       .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name')
       .eq('id', bookingId).maybeSingle();
     const b = bData as unknown as BookingRow | null;
-    if (!b || b.dj_id !== user.id) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    if (!b || b.dj_id !== acting.djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
     // Recipient: the host's delivery address, then their account email.
     const to = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
     if (!to) return NextResponse.json({ error: "This host has no email on file — reach them by phone." }, { status: 400 });
     if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email is not configured.' }, { status: 500 });
 
-    // DJ name + reply-to, so the host can respond directly to the DJ.
-    const { data: djData } = await admin.from('users').select('name').eq('id', user.id).maybeSingle();
+    // DJ name + reply-to come from the OWNER account (acting.djId) so the host
+    // sees the DJ they booked and replies reach them — not the teammate who sent it.
+    const { data: djData } = await admin.from('users').select('name').eq('id', acting.djId).maybeSingle();
     const djName = (djData as unknown as { name?: string | null } | null)?.name || 'Your DJ';
-    const replyTo = await resolveUserEmail(user.id);
+    const replyTo = await resolveUserEmail(acting.djId);
 
     const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
     const when = fmtDate(b.event_date);
