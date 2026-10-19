@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
 import { ConsentCheckbox } from './SignupFlow';
+import { useAuth } from '@/components/AuthProvider';
 import styles from './signup.module.css';
 
 /** Same E.164 shape the SMS helper and the lookup route use. */
@@ -114,6 +115,7 @@ export default function HostCodeSignup({
   canSwitchMethod, onSwitchMethod, onDone,
 }: Props) {
   const supabase = createClient();
+  const { patchUser } = useAuth();
   const isPhone = method === 'phone';
 
   const [phone, setPhone] = useState('');
@@ -392,6 +394,18 @@ export default function HostCodeSignup({
         } as unknown as never));
       }
       if (rowErr) console.error('[signup] profile row failed:', rowErr);
+
+      // Push the fresh verification into the live auth context so the
+      // "please confirm your email" banner (always mounted in the layout)
+      // hides immediately — without this it reads the stale pre-verify value
+      // and lingers until a manual refresh. Matters most on the embedded
+      // (onDone) path, which doesn't do a full page reload.
+      const nowIso = new Date().toISOString();
+      if (isPhone) {
+        patchUser({ phone_verified: true } as never);
+      } else {
+        patchUser({ email_verified: true, email_verified_at: nowIso } as never);
+      }
 
       finishUp();
     } catch (err) {
