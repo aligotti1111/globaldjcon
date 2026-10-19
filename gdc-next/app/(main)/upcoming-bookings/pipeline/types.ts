@@ -26,6 +26,9 @@ export type PipelineStep = {
    * a two-tone "Paid / New Balance" caption and the step reopens to collect it.
    */
   newBalanceDue?: number;
+  /** Deposit/Balance only: the rail the DJ recorded this as paid with (a label
+   *  like "Venmo" / "Cash" / "Other"). Shown as that brand's logo beside "Paid". */
+  paidRail?: string | null;
   actions?: { label: string; run: () => void; danger?: boolean; disabled?: boolean; title?: string }[];
 };
 
