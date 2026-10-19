@@ -188,7 +188,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
 import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
-  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, autoDepositReceipt = true, autoBalanceReceipt = true, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
+  booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, plannerLeadDays = 14, autoDepositReceipt = true, autoBalanceReceipt = true, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
 }: {
   booking: UpcomingBooking;
   /** Only the "New activity" sort highlights the changed stage; By Date and
@@ -215,6 +215,7 @@ export default function BookingRow({
   onMutated?: () => void;
   /** Tier 2. A courtesy so the row doesn't offer what the server will refuse. */
   canPro: boolean;
+  plannerLeadDays?: number;
   autoDepositReceipt?: boolean;
   autoBalanceReceipt?: boolean;
   /** The booking's planner, or undefined if one was never requested. */
@@ -917,7 +918,7 @@ export default function BookingRow({
     requestPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
