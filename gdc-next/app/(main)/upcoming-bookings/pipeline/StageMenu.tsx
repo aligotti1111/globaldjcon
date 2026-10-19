@@ -10,6 +10,7 @@
 // stopPropagation because, being position:fixed, they're still DOM children of
 // the row and their clicks would otherwise bubble into the row's expand toggle.
 
+import { useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { NEON } from '../shared';
 import {
@@ -115,6 +116,50 @@ export default function StageMenu({
   // normal way you mark a Venmo/Cash App/Zelle/cash payment received.
   // 'invoice' is the balance/final-invoice stage's key; 'deposit' is the deposit.
   const payStage = st.key === 'deposit' || st.key === 'balance' || st.key === 'invoice';
+
+  // "Mark Paid" opens a SECOND box listing the methods (logo + name). This local
+  // flag swaps the menu to that picker; back arrow returns to the main menu.
+  const [pickPay, setPickPay] = useState(false);
+
+  if (pickPay && payStage && !st.done) {
+    const methods = payMethods ?? [];
+    const methodBtn = (name: string, type: string, onClick: () => void, key: string) => (
+      <button
+        key={key}
+        type="button"
+        disabled={overrideLocked}
+        title={overrideLocked ? NO_ACCESS : undefined}
+        onClick={() => { if (overrideLocked) return; onClick(); }}
+        onMouseEnter={(e) => { if (!overrideLocked) e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: overrideLocked ? 'var(--muted,#7a7a90)' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
+      >
+        {markForType(type)}
+        <span style={{ flex: 1, minWidth: 0, color: 'var(--white,#fff)' }}>{name}{overrideLocked ? '  \u{1F512}' : ''}</span>
+      </button>
+    );
+    return (
+      <>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); onClose(); }} />
+        <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 180, maxWidth: 220, whiteSpace: 'nowrap' }}>
+          <button
+            type="button"
+            onClick={() => setPickPay(false)}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: 'pointer', transition: 'background .12s' }}
+          >
+            <svg {...ico}><polyline points="15 18 9 12 15 6" /></svg>
+            Mark Paid
+          </button>
+          <div style={{ height: 1, background: 'rgba(255,255,255,.1)', margin: '3px 6px' }} />
+          {methods.map((m) => methodBtn(m.label, m.type, () => onToggleOverride(m.label), `pk-${m.type}`))}
+          {methodBtn('Other', 'other', () => onToggleOverride(), 'pk-other')}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={(e) => { e.stopPropagation(); onClose(); }} />
@@ -170,17 +215,6 @@ export default function StageMenu({
         })}
         {st.overridable && (() => {
           // One override button renderer, reused for every variant below.
-          // A "Mark Paid" row: the verb stays neon, then an arrow, then the method's
-          // real logo + its name in WHITE so the chosen rail is what stands out.
-          const markPaidLabel = (method: string, type: string): ReactNode => (
-            <>
-              Mark Paid
-              <span style={{ color: '#7a7a90', margin: '0 3px' }}>&rarr;</span>
-              <span style={{ color: 'var(--white,#fff)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                {markForType(type)}{method}
-              </span>
-            </>
-          );
           const overrideBtn = (label: ReactNode, done: boolean, onClick: () => void, key?: string) => (
             <button
               key={key || (typeof label === 'string' ? label : undefined)}
@@ -196,7 +230,6 @@ export default function StageMenu({
               <span style={{ flex: 1, minWidth: 0 }}>{label}{overrideLocked ? '  \u{1F512}' : ''}</span>
             </button>
           );
-          const methods = payMethods ?? [];
           return (
             <>
               {(st.actions ?? []).length > 0 && (
@@ -206,12 +239,14 @@ export default function StageMenu({
                 // Already marked → single un-mark (no method needed to clear it).
                 ? overrideBtn(payStage ? 'Mark Not Paid' : 'Mark Not Complete', true, () => onToggleOverride())
                 : payStage
-                  // A pay stage: one "Mark Paid — <rail>" per accepted manual rail,
-                  // so the method prints on the receipt, plus a plain no-method row.
-                  ? (<>
-                      {methods.map((m) => overrideBtn(markPaidLabel(m.label, m.type), false, () => onToggleOverride(m.label), `pm-${m.type}`))}
-                      {overrideBtn(markPaidLabel('Other', 'other'), false, () => onToggleOverride(), 'pm-other')}
-                    </>)
+                  // A pay stage: a single "Mark Paid" row that opens a second box
+                  // to choose the method (so the rail prints on the receipt).
+                  ? overrideBtn(
+                      (<span style={{ display: 'flex', alignItems: 'center', width: '100%' }}>Mark Paid<svg {...ico} style={{ ...ico.style, marginLeft: 'auto' }}><polyline points="9 18 15 12 9 6" /></svg></span>),
+                      false,
+                      () => setPickPay(true),
+                      'mark-paid',
+                    )
                   : overrideBtn('Mark Complete', false, () => onToggleOverride())}
               {!payStage && (
                 <div style={{ color: 'var(--muted,#7a7a90)', fontSize: '.66rem', padding: '2px 8px 5px', whiteSpace: 'normal', maxWidth: 190, lineHeight: 1.4 }}>For steps handled outside the app.</div>
