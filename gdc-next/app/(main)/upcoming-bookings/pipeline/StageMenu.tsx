@@ -226,13 +226,17 @@ export default function StageMenu({
                           onMouseEnter={() => setPickPay(true)}
                           onMouseLeave={() => setPickPay(false)}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: pickPay ? 'rgba(255,255,255,.08)' : 'transparent', color: overrideLocked ? 'var(--muted,#7a7a90)' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}>
+                          <div
+                            onClick={() => { if (!overrideLocked) setPickPay((v) => !v); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: pickPay ? 'rgba(255,255,255,.08)' : 'transparent', color: overrideLocked ? 'var(--muted,#7a7a90)' : NEON, fontWeight: 700, fontSize: '.78rem', padding: '.5rem .6rem', borderRadius: 6, cursor: overrideLocked ? 'not-allowed' : 'pointer', opacity: overrideLocked ? 0.55 : 1, transition: 'background .12s' }}
+                          >
                             <IconCheck />
                             <span style={{ flex: 1, minWidth: 0 }}>Mark Paid</span>
-                            <svg {...ico}><polyline points="9 18 15 12 9 6" /></svg>
+                            {/* Chevron points down — the methods drop below on hover or tap. */}
+                            <svg {...ico}><polyline points="6 9 12 15 18 9" /></svg>
                           </div>
                           {pickPay && !overrideLocked && (
-                            <div style={{ position: 'absolute', top: -4, left: '100%', marginLeft: 4, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, minWidth: 170, whiteSpace: 'nowrap', zIndex: 10000 }}>
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, whiteSpace: 'nowrap', zIndex: 10000 }}>
                               {methods.map((m) => methodBtn(m.label, m.type, () => onToggleOverride(m.label), `pk-${m.type}`))}
                               {methodBtn('Other', 'other', () => onToggleOverride(), 'pk-other')}
                             </div>
