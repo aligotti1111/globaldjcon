@@ -409,17 +409,27 @@ export async function POST(req: Request) {
       // sees the deadline in the email that first asks them to fill it in.
       const leadDays = djRow?.planner_lead_days ?? 14;
       let dueLabel = '';
+      // Past the due date? Compare date-only (midnight) so the deadline day
+      // itself isn't flagged as overdue. A past-due banner reads RED, not amber.
+      let pastDue = false;
       if (b.event_date) {
         const due = new Date(`${b.event_date}T12:00:00`);
         due.setDate(due.getDate() - leadDays);
         dueLabel = due.toLocaleDateString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
         });
+        const dueMid = new Date(due); dueMid.setHours(0, 0, 0, 0);
+        const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+        pastDue = dueMid.getTime() < todayMid.getTime();
       }
       const dueBanner = dueLabel
-        ? `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+        ? (pastDue
+          ? `<div style="background:#fdecec;border:1px solid #f3b6b6;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#8a1f1f;font-size:14px;line-height:1.6;">Past due &mdash; your Planner &amp; Playlist was due<br/><strong style="color:#6f1515;font-size:16px;">${esc(dueLabel)}</strong><br/>Please complete it as soon as you can.</p>
 </div>`
+          : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+</div>`)
         : '';
 
       const testNote = isTest
