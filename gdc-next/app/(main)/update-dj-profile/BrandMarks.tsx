@@ -168,6 +168,24 @@ export function CheckMark({ size = 20, color }: MarkProps) {
   );
 }
 
+/**
+ * Pick the right mark from a free-text rail label or type ("Venmo", "Cash App",
+ * "cashapp", "Cash", "Check", "Other", …). Returns null for an empty rail.
+ * Order matters: "cash app" contains "cash", so match Cash App first.
+ */
+export function RailMark({ rail, size = 14 }: { rail?: string | null; size?: number }) {
+  const r = (rail || '').trim().toLowerCase();
+  if (!r) return null;
+  if (r.includes('venmo')) return <VenmoMark size={size} />;
+  if (r.includes('cash app') || r.includes('cashapp')) return <CashAppMark size={size} />;
+  if (r.includes('paypal')) return <PaypalMark size={size} />;
+  if (r.includes('zelle')) return <ZelleMark size={size} />;
+  if (r.includes('check')) return <CheckMark size={size} />;
+  if (r.includes('cash')) return <CashMark size={size} />;
+  if (r.includes('card') || r.includes('visa') || r.includes('stripe')) return <CardMark size={size} />;
+  return <OtherMark size={size} />;
+}
+
 export const OTHER_HEX = '#8a8aa0';
 export function OtherMark({ size = 20, color }: MarkProps) {
   return (
