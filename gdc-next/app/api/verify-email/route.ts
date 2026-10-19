@@ -243,7 +243,11 @@ export async function GET(request: Request) {
     try {
       const res = await fetch(`${origin}/api/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Server-to-server call (no user cookie) — authorize with the internal secret.
+          'x-internal-secret': process.env.CRON_SECRET || '',
+        },
         body: JSON.stringify({
           type: 'welcome',
           name,
