@@ -203,7 +203,7 @@ export async function POST(req: Request) {
               subject: `Contract declined${where ? ` — ${where}` : ''}`,
               html: emailTemplate(`
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Declined</h2>
-                <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName)}, the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
+                <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName.split(' ')[0])}, the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
                 ${reasonBlock}
                 <p style="color:#666;margin-bottom:24px;">You can review the booking and send a new contract when you're ready.</p>
                 ${ctaButton(`${SITE_URL}/upcoming-bookings`, 'View Booking')}
@@ -223,7 +223,7 @@ export async function POST(req: Request) {
               subject: `Contract declined${where ? ` — ${where}` : ''}`,
               html: emailTemplate(`
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Declined</h2>
-                <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, this confirms the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
+                <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName.split(' ')[0])}, this confirms the contract${whereHtml} was declined and was not signed. Nothing has been executed.</p>
                 ${reasonBlock}
                 <p style="color:#666;margin-bottom:24px;">If this was a mistake, please reach out to your DJ to have a new contract sent.</p>
                 ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
@@ -330,7 +330,7 @@ export async function POST(req: Request) {
           subject: `Your signed contract${where ? ` — ${where}` : ''}`,
           html: emailTemplate(`
             <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Signed ✅</h2>
-            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName)}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email.</p>
+            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName.split(' ')[0])}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email.</p>
             <p style="color:#666;margin-bottom:24px;">You can also download them anytime from your Upcoming Bookings.</p>
             ${ctaButton(`${SITE_URL}/upcoming-bookings`, 'View Booking')}
           `),
@@ -371,7 +371,7 @@ export async function POST(req: Request) {
           subject: `Your signed contract${where ? ` — ${where}` : ''}`,
           html: emailTemplate(`
             <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contract Signed ✅</h2>
-            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName)}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email for your records.</p>
+            <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(clientName.split(' ')[0])}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email for your records.</p>
             <p style="color:#666;margin-bottom:24px;">Thanks for booking through Global DJ Connect.</p>
             ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
             ${progressBox ? `<div style="margin-top:28px;">${progressBox}</div>` : ''}
