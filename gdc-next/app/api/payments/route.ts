@@ -19,7 +19,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import { getActingContext, canMoney, canRequestDeposit, canInvoice } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
 import { getStripe } from '@/lib/stripe/server';
@@ -908,7 +908,8 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
     const reference = referenceCode(pay.booking_id, pay.kind || 'balance');
     const link = `${SITE_URL}/pay/${pay.id}`;
     const stopLink = `${SITE_URL}/api/pay/${pay.id}/stop-reminders`;
-    const hi = b.requester_name?.trim() ? esc(b.requester_name.trim().split(' ')[0]) : 'there';
+    const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+    const hi = esc(hostFull.split(' ')[0] || 'there');
     const venue = b.venue_name?.trim() ? ` for your event at ${esc(b.venue_name.trim())}` : '';
     const payBlocks = buildPayEmailBlocks({
       methods, amount, currency: cur, reference, djName, paymentId: pay.id,
@@ -1416,7 +1417,8 @@ ${optionsBlock}`
             const nm = (djRow as { name?: string | null } | null)?.name?.trim();
             if (nm) djName = nm;
           }
-          const who = b.requester_name?.trim() ? b.requester_name.trim().split(' ')[0] : 'there';
+          const whoFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+          const who = whoFull.split(' ')[0] || 'there';
           const amt = money(Number(p.amount), p.currency || b.currency || 'USD');
           const when = b.event_date ? ` for your ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} event` : '';
           const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
