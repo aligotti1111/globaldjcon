@@ -80,16 +80,37 @@ export function ZipLookup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zip, country]);
 
+  // Green check once a real location has resolved (not merely "Looking up…" or
+  // "ZIP not found") — matches the grey→green cue on the other signup fields.
+  const resolved = !!status && status.ok && status.msg !== 'Looking up...';
+
   return (
     <>
-      <input
-        id={inputId}
-        type="text"
-        placeholder={zipExample ? `e.g. ${zipExample}` : 'e.g. 10001'}
-        value={zip}
-        onChange={(e) => onZipChange(e.target.value)}
-        required={required}
-      />
+      <span style={{ position: 'relative', display: 'block' }}>
+        <input
+          id={inputId}
+          type="text"
+          placeholder={zipExample ? `e.g. ${zipExample}` : 'e.g. 10001'}
+          value={zip}
+          onChange={(e) => onZipChange(e.target.value)}
+          required={required}
+          style={{ paddingRight: '2.2rem' }}
+        />
+        <svg
+          aria-hidden="true"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={resolved ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,0.28)'}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ position: 'absolute', right: 12, top: 'calc(50% + 2px)', transform: 'translateY(-50%)', pointerEvents: 'none', transition: 'stroke .15s ease' }}
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </span>
       {status && (
         <div
           style={{
