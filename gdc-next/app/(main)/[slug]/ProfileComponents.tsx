@@ -3419,8 +3419,11 @@ export function AboutStatsRow({
         { key: 'backup', label: 'Backup equipment', control: 'yesno' },
       ];
 
+  // Picking a value auto-activates the fact (checks "show on profile"); clearing
+  // it back to blank auto-hides it. The owner no longer has to both answer AND
+  // tick the box — answering is the activation.
   function setAnswer(key: keyof AboutStats, v: string) {
-    setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), answer: (v || undefined) as 'Yes' | 'No' | undefined } }));
+    setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), answer: (v || undefined) as 'Yes' | 'No' | undefined, on: !!v } }));
   }
 
   // Renders the inline editor control that sits in place of a card's value, so
@@ -3439,7 +3442,7 @@ export function AboutStatsRow({
           value={draft.followers?.count ?? ''}
           onChange={(e) => {
             const digits = e.target.value.replace(/[^0-9]/g, '');
-            setDraft(d => ({ ...d, followers: { ...(d.followers || {}), count: digits || undefined } }));
+            setDraft(d => ({ ...d, followers: { ...(d.followers || {}), count: digits || undefined, on: !!digits } }));
           }}
         />
       );
@@ -3449,7 +3452,7 @@ export function AboutStatsRow({
         <select
           className={cls}
           value={draft.established?.year ?? ''}
-          onChange={(e) => setDraft(d => ({ ...d, established: { ...(d.established || {}), year: e.target.value ? parseInt(e.target.value, 10) : undefined } }))}
+          onChange={(e) => setDraft(d => ({ ...d, established: { ...(d.established || {}), year: e.target.value ? parseInt(e.target.value, 10) : undefined, on: !!e.target.value } }))}
         >
           <option value="">Year…</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -3461,7 +3464,7 @@ export function AboutStatsRow({
         <select
           className={cls}
           value={draft.events?.tier ?? ''}
-          onChange={(e) => setDraft(d => ({ ...d, events: { ...(d.events || {}), tier: e.target.value || undefined } }))}
+          onChange={(e) => setDraft(d => ({ ...d, events: { ...(d.events || {}), tier: e.target.value || undefined, on: !!e.target.value } }))}
         >
           <option value="">Amount…</option>
           {eventTiers.map(t => <option key={t} value={t}>{t}</option>)}
@@ -3473,7 +3476,7 @@ export function AboutStatsRow({
         <select
           className={cls}
           value={draft.deposit?.value ?? ''}
-          onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined } }))}
+          onChange={(e) => setDraft(d => ({ ...d, deposit: { ...(d.deposit || {}), value: e.target.value || undefined, on: !!e.target.value } }))}
         >
           <option value="">Percent…</option>
           {depositPcts.map(p => <option key={p} value={p}>{p}</option>)}
