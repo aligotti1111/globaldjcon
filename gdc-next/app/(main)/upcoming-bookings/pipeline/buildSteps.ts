@@ -637,11 +637,14 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
 
     // Percent is the caption whenever a planner exists (amber until 100%). An
     // override with no planner behind it reads as 100%. Otherwise Not sent.
+    // A planner that's gone out but isn't finished always reads "Pending" (amber),
+    // whatever the fill level — 0% through 99% are all just "in progress, waiting on
+    // the host". The exact percent still shows on hover and in the expanded panel
+    // (the `info` line below). Only a DJ/host completion flips it off Pending.
     const caption =
       overridden ? '100%'
-      : plannerPastDue ? (pct !== null ? `${pct}%/PAST DUE` : 'PAST DUE')
-      : pct !== null ? `${pct}%`
-      : pstatus === 'sent' ? 'Pending'
+      : plannerPastDue ? 'PAST DUE'
+      : (pct !== null || pstatus === 'sent') ? 'Pending'
       : 'Not Sent';
 
     const plannerUrl = planner ? `/planner/${planner.id}` : null;
