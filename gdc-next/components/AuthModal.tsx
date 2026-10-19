@@ -96,10 +96,14 @@ export default function AuthModal({
             gradient wordmark the site header renders — so it matches rather
             than being a lookalike. It's the box's heading now; the redundant
             "Create your account / Sign in" line was removed because the two
-            tabs directly below already say which is which. */}
-        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-          <span className="logo" style={{ fontSize: '2.3rem' }}>Global DJ Connect</span>
-        </div>
+            tabs directly below already say which is which. Hidden on the signup
+            success screen — the "Check your email" card is its own heading, so a
+            second wordmark above it is just noise. */}
+        {!onSuccessScreen && (
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <span className="logo" style={{ fontSize: '2.3rem' }}>Global DJ Connect</span>
+          </div>
+        )}
 
         {/* Tab switch. Two buttons rather than a link so nobody leaves the
             page to get to the other mode. Hidden on the signup success screen —
