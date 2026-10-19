@@ -236,7 +236,7 @@ export default function StageMenu({
                             <svg {...ico}><polyline points="6 9 12 15 18 9" /></svg>
                           </div>
                           {pickPay && !overrideLocked && (
-                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, whiteSpace: 'nowrap', zIndex: 10000 }}>
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 4, whiteSpace: 'nowrap', zIndex: 10000 }}>
                               {methods.map((m) => methodBtn(m.label, m.type, () => onToggleOverride(m.label), `pk-${m.type}`))}
                               {methodBtn('Other', 'other', () => onToggleOverride(), 'pk-other')}
                             </div>
