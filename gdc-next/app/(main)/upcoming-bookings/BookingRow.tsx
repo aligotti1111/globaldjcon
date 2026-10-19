@@ -770,10 +770,10 @@ export default function BookingRow({
       // Await the override write so the method (stored in receipt_overrides) is
       // in place BEFORE the balance receipt below is generated from it.
       await toggleStep(key, done, method);
-      // Marking the balance complete sends the final receipt automatically —
-      // unless the DJ turned off "auto-send receipt after balance is paid"
-      // (enforced server-side via the `auto` flag).
-      if (done && key === 'invoice') { sendReceipt('balance', true); }
+      // Marking the balance paid is an explicit DJ action (they chose the rail),
+      // so the final receipt always goes out — auto=false bypasses the "auto-send
+      // receipt" toggle (which only governs background sends when a client self-pays).
+      if (done && key === 'invoice') { sendReceipt('balance', false); }
     };
     if (done && key === 'deposit') {
       setConfirmModal({
