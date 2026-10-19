@@ -25,6 +25,7 @@ import {
   emailTemplate, ctaButton, offerButtons, bookingInfoBox, mobileBookingRequestBox, billBreakdownBox,
 } from '@/lib/emails/layout';
 import { billBreakdownForBooking, bookingProgressBox } from '@/lib/emails/bookingBoxes';
+import { canUsePro, type AccessFields } from '@/lib/access';
 
 // All email types supported by this route. Mirror of vanilla send-email.js.
 type EmailType =
@@ -207,6 +208,35 @@ export async function POST(req: Request) {
     const recipientSlug = body.slug as string | undefined;
     const isDj = recipientRole === 'dj';
 
+    // Free DJs get a prompt to subscribe — a subscription ACTIVATES the booking
+    // feature (accepting bookings through the site). DJs who already subscribed
+    // or hold comped access have it, so they don't see the prompt. Resolved live
+    // from the account's access fields at send time; shown only when we can
+    // confirm the account is NOT on pro (never shown to a payer on a lookup miss).
+    let showSubscribe = false;
+    if (isDj) {
+      try {
+        const uid = (body.userId as string | undefined)
+          || await resolveUserIdByEmail(recipientEmail);
+        if (uid) {
+          const { data: acc } = await createAdminClient()
+            .from('users')
+            .select('sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+            .eq('id', uid)
+            .maybeSingle();
+          if (acc) showSubscribe = !canUsePro(acc as unknown as AccessFields);
+        }
+      } catch { /* leave hidden on any lookup failure */ }
+    }
+    const subscribeBlock = showSubscribe
+      ? `
+        <div style="margin:24px 0 24px;padding:18px 20px;background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;">
+          <p style="margin:0 0 6px;color:#7a5a13;font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Activate Bookings</p>
+          <p style="margin:0 0 14px;color:#7a5a13;font-size:13px;line-height:1.6;">You're on the free plan. Subscribe to activate the booking feature — it lets you accept bookings directly through the site and manage requests, contracts, deposits, and payments all in one place.</p>
+          ${ctaButton(`${SITE_URL}/subscribe`, 'Subscribe & Activate Bookings')}
+        </div>`
+      : '';
+
     // For DJs only: include their shareable public profile link so they
     // can drop it into bios, socials, etc. right out of the gate.
     const profileShareBlock = (isDj && recipientSlug)
@@ -227,6 +257,7 @@ export async function POST(req: Request) {
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
         <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
         <p style="color:#666666;margin-bottom:24px;">Build your profile, manage &amp; automate booking requests, share your availability calendar, organize your schedule — everything you need in one place.</p>
+        ${subscribeBlock}
         ${profileShareBlock}
       `
       : `
