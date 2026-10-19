@@ -407,6 +407,9 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // the balance itself is marked not paid (both clear `balanceRequested`).
       overridable: !reallySettled && !depositSkipped && !(!!overrides.deposit && balanceRequested),
       done: allDone,
+      // The rail the DJ recorded this deposit paid with (receipt_overrides), so
+      // the strip can show that brand's logo beside "Paid".
+      paidRail: allDone ? ((booking as { receipt_overrides?: Record<string, { method?: string } | null> }).receipt_overrides?.deposit?.method ?? null) : null,
       // Done via the manual "Mark Complete" toggle — not a real (or partial)
       // payment in the ledger, and not the skip state.
       manualComplete: !!overrides.deposit && !reallySettled && !depositSkipped,
@@ -817,6 +820,8 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
         icon: 'money',
         overridable: !balanceSettled && !hasNewBalance,
         done,
+        // Rail this balance was recorded paid with, for the "Paid" logo.
+        paidRail: (done && !hasNewBalance) ? ((booking as { receipt_overrides?: Record<string, { method?: string } | null> }).receipt_overrides?.balance?.method ?? null) : null,
         newBalanceDue: hasNewBalance ? newBalanceDue : undefined,
         color: done ? NEON : AMBER,
         // Same vocabulary as the rest: Not sent / Pending / check.
