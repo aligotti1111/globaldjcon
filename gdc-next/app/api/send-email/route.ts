@@ -788,11 +788,12 @@ export async function POST(req: Request) {
   const PUBLIC_TYPES = new Set<EmailType>(['contact_us']);
   const internalSecret = req.headers.get('x-internal-secret');
   const isInternal = !!process.env.CRON_SECRET && internalSecret === process.env.CRON_SECRET;
-  if (!isInternal && !PUBLIC_TYPES.has(type)) {
-    const { data: { user: authUser } } = await (await createClient()).auth.getUser();
-    if (!authUser) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
-    }
+  // The authenticated caller, when there is one. Resolved once so sensitive
+  // branches can derive the SENDER from it (never trust a body-supplied sender
+  // identity) rather than only using it as a yes/no gate.
+  const authUser = isInternal ? null : (await (await createClient()).auth.getUser()).data.user;
+  if (!isInternal && !PUBLIC_TYPES.has(type) && !authUser) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }
 
   let emailPayload: Parameters<typeof resend.emails.send>[0] | null = null;
@@ -866,18 +867,30 @@ export async function POST(req: Request) {
 
   // ── 2. INBOX NOTIFICATION (new message arrived in user's inbox) ────
   } else if (type === 'inbox_notification') {
-    const recipientEmail = await pickEmail(
-      body.recipientEmail as string | undefined,
-      body.recipientUserId as string | undefined,
-    );
-    if (!recipientEmail) {
+    // RECIPIENT MUST BE A REAL ACCOUNT, resolved server-side — never a
+    // body-supplied email. Otherwise an authenticated user could blast branded
+    // "new message" mail to any address (phishing). We require recipientUserId
+    // and look up that account's email ourselves.
+    const recipientUserId = body.recipientUserId as string | undefined;
+    const recipientEmail = recipientUserId ? await resolveUserEmail(recipientUserId) : null;
+    if (!recipientUserId || !recipientEmail) {
       return NextResponse.json(
-        { error: 'Missing fields for inbox_notification' },
+        { error: 'inbox_notification requires a valid recipientUserId' },
         { status: 400 }
       );
     }
     const recipientName = body.recipientName as string | undefined;
-    const senderName = body.senderName as string | undefined;
+    // SENDER IDENTITY comes from the authenticated caller, not the body — so
+    // nobody can send a message that claims to be from someone else. Falls back
+    // to the generic label if the profile name can't be read.
+    let senderName: string | undefined;
+    if (authUser) {
+      try {
+        const { data: su } = await createAdminClient()
+          .from('users').select('name').eq('id', authUser.id).maybeSingle();
+        senderName = ((su as { name?: string | null } | null)?.name) || undefined;
+      } catch { /* fall through to generic */ }
+    }
     const subject = (body.subject as string | undefined) || '(no subject)';
     const message = (body.message as string | undefined) || '';
     emailPayload = {
