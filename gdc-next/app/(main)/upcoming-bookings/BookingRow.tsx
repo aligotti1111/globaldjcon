@@ -928,7 +928,14 @@ export default function BookingRow({
     try { await requestPlanner(); } finally { setBusyKey(null); }
   };
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner: requestPlannerSpin, resendRider, sendNamedRider, bookingTotalWithTax });
+  // Spin a stage circle for the duration of an async action (e.g. a download
+  // building its PDF). Clears when the promise settles, whatever the outcome.
+  const spinDownload = (key: string, run: () => Promise<unknown>) => {
+    setBusyKey(key);
+    Promise.resolve(run()).finally(() => setBusyKey(null));
+  };
+
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner: requestPlannerSpin, resendRider, sendNamedRider, bookingTotalWithTax, spinDownload });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
@@ -1300,6 +1307,7 @@ export default function BookingRow({
           archive={archive}
           contractAction={contractAction}
           onContractActionHandled={() => setContractAction(null)}
+          onContractBusy={(b) => setBusyKey(b ? 'contract' : null)}
           payments={payments}
           onPaymentsChange={onPaymentsChange}
           onMutated={onMutated}
