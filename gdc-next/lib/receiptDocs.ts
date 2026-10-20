@@ -719,8 +719,8 @@ export async function buildBookingDocAttachment(
       // receipt keeps the plain line (the event isn't done yet).
       note: isReceipt
         ? ((args.overtime || args.paymentKind === 'balance')
-            ? `Thank You For Doing Business With Us! ${docNumber} · ${dateText}.`
-            : `Thank you. ${docNumber} · ${dateText}.`)
+            ? `Thank You For Doing Business With Us!`
+            : `Thank you.`)
         : `Please include ${docNumber} in the payment note.`,
     });
 
