@@ -668,21 +668,15 @@ export default function BookingRow({
     } catch { alert('Could not send the reminder.'); }
   }
   async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
-  async function downloadReceipt(kind: 'deposit' | 'balance') {
-    setBusyKey(moneySlot(kind));
-    try {
-      const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download-receipt', bookingId: booking.id, kind }) });
-      if (!res.ok) { const raw = await res.text(); alert(raw.slice(0, 160) || 'Could not build the receipt.'); return; }
-      const blob = await res.blob();
-      const cd = res.headers.get('Content-Disposition') || '';
-      const m = /filename="?([^"]+)"?/.exec(cd);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = m ? m[1] : `Receipt-${booking.id.slice(0, 6)}.pdf`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch { alert('Could not build the receipt.'); } finally { setBusyKey(null); }
+  function downloadReceipt(kind: 'deposit' | 'balance') {
+    // Navigate the browser straight to a GET that returns the PDF with
+    // Content-Disposition: attachment. Every browser (Safari included) saves it
+    // as a file — the old fetch→Blob→<a download> path made Safari try to OPEN a
+    // blob: URL and fail ("WebKitBlobResource error 1").
+    const a = document.createElement('a');
+    a.href = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
+    a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
   }
   // Phase 2 — just opens the editor; the modal owns the form + submit.
   function editReceipt(kind: 'deposit' | 'balance') { setEditReceiptKind(kind); }
