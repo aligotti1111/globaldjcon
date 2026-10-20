@@ -673,11 +673,15 @@ export default function BookingRow({
     // attachment. The `download` attribute on a SAME-ORIGIN url makes every
     // browser (Safari included) save the file in place and STAY on the page —
     // no navigation, and no blob: URL (which Safari refused to open).
+    // Spin the stage circle (green, since it's a paid stage) while the browser
+    // builds + starts the download, then clear it.
+    setBusyKey(moneySlot(kind));
     const a = document.createElement('a');
     a.href = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
     a.download = `Receipt-${booking.id.slice(0, 6)}.pdf`;
     a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => setBusyKey(null), 1500);
   }
   // Phase 2 — just opens the editor; the modal owns the form + submit.
   function editReceipt(kind: 'deposit' | 'balance') { setEditReceiptKind(kind); }
