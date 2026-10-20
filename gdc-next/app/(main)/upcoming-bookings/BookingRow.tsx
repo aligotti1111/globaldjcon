@@ -668,20 +668,24 @@ export default function BookingRow({
     } catch { alert('Could not send the reminder.'); }
   }
   async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
-  function downloadReceipt(kind: 'deposit' | 'balance') {
+  async function downloadReceipt(kind: 'deposit' | 'balance') {
     // Point an anchor at a GET that returns the PDF with Content-Disposition:
     // attachment. The `download` attribute on a SAME-ORIGIN url makes every
     // browser (Safari included) save the file in place and STAY on the page —
     // no navigation, and no blob: URL (which Safari refused to open).
-    // Spin the stage circle (green, since it's a paid stage) while the browser
-    // builds + starts the download, then clear it.
+    const url = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
+    // Spin the stage circle (green — it's a paid stage) until the PDF is actually
+    // ready. A parallel fetch to the same endpoint resolves at the moment the
+    // server has built it, which is when the browser's own download begins — so
+    // the spinner clears right as the file starts downloading, not before.
     setBusyKey(moneySlot(kind));
     const a = document.createElement('a');
-    a.href = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
+    a.href = url;
     a.download = `Receipt-${booking.id.slice(0, 6)}.pdf`;
     a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => setBusyKey(null), 1500);
+    try { await fetch(url, { cache: 'no-store' }); } catch { /* the real download is the anchor above */ }
+    setBusyKey(null);
   }
   // Phase 2 — just opens the editor; the modal owns the form + submit.
   function editReceipt(kind: 'deposit' | 'balance') { setEditReceiptKind(kind); }
