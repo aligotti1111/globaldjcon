@@ -15,7 +15,7 @@
 // The whole row is a click-to-expand button, so every interactive element here
 // calls stopPropagation.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 
@@ -59,6 +59,8 @@ export default function ShareBookingButton({
   shareToken, djType = 'mobile', plannerId, phone, eventLabel, eventType, eventDate,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const iconRef = useRef<HTMLSpanElement | null>(null);
   const [copied, setCopied] = useState(false);
   // Default the planner link ON when one is available — the DJ asked for it,
   // so assume they want to send it unless they turn it off.
@@ -161,10 +163,19 @@ export default function ShareBookingButton({
     cursor: 'pointer', flexShrink: 0,
   } as const;
 
+  function openMenu(e: React.MouseEvent | React.KeyboardEvent) {
+    e.stopPropagation();
+    if (open) { setOpen(false); return; }
+    const r = iconRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: Math.round(r.bottom + 8), right: Math.max(8, Math.round(window.innerWidth - r.right)) });
+    setOpen(true);
+  }
+
   return (
     <>
       <span
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        ref={iconRef}
+        onClick={openMenu}
         onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--neon,#00e0a4)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#8a8aa0)'; }}
         role="button"
@@ -179,134 +190,98 @@ export default function ShareBookingButton({
         </svg>
       </span>
 
-      {open && typeof document !== 'undefined' && createPortal(
-        <div
-          onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 2147483000,
-            background: 'rgba(0,0,0,.66)', backdropFilter: 'blur(2px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
-          }}
-        >
+      {open && pos && typeof document !== 'undefined' && createPortal(
+        <>
+          {/* Transparent catcher: one click anywhere else closes the menu. */}
           <div
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 2147483000 }}
+          />
+          <div
+            role="menu"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 'min(440px, 96vw)', maxHeight: '90vh', overflowY: 'auto',
-              background: '#14141c', border: '1px solid rgba(255,255,255,.12)',
-              borderRadius: 14, padding: '1.1rem 1.2rem 1.3rem',
-              boxShadow: '0 24px 60px rgba(0,0,0,.6)', color: '#e9e9f2',
+              position: 'fixed', top: pos.top, right: pos.right, width: 212,
+              background: '#14141c', border: '1px solid rgba(255,255,255,.14)',
+              borderRadius: 11, padding: 5, zIndex: 2147483001,
+              boxShadow: '0 18px 46px rgba(0,0,0,.6)', color: '#e9e9f2',
               fontFamily: 'var(--font-inter), system-ui, sans-serif',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, letterSpacing: '.01em' }}>Share booking card</h3>
-              <button
-                type="button" onClick={() => setOpen(false)} aria-label="Close"
-                style={{ background: 'transparent', border: 'none', color: '#8a8aa0', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}
-              >×</button>
-            </div>
-
-            <p style={{ margin: '0 0 .7rem', fontSize: '.78rem', color: '#9b9baa' }}>
-              This is exactly what they&apos;ll see — a read-only card, no login needed.
-            </p>
-
-            {/* Live preview of the public card. pointer-events:none so it can't be
-                interacted with inside the sheet — it's a preview, not the page. */}
-            <div
-              style={{
-                borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)',
-                height: 240, marginBottom: '.5rem', background: '#0b0b12', position: 'relative',
-              }}
-            >
-              <iframe
-                src={cardUrl}
-                title="Card preview"
-                style={{
-                  width: '200%', height: '480px', border: 'none',
-                  transform: 'scale(0.5)', transformOrigin: 'top left', pointerEvents: 'none',
-                }}
-              />
-            </div>
-
+            {/* Include-planner toggle stays, as a tappable row at the top. */}
             {canPlanner && (
-              <label
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIncludePlanner((v) => !v); }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '.55rem',
-                  fontSize: '.82rem', color: '#d6d6e4', cursor: 'pointer',
-                  padding: '.6rem .7rem', margin: '0 0 .9rem',
-                  border: '1px solid rgba(0,224,164,.35)', borderRadius: 9,
-                  background: 'rgba(0,224,164,.06)',
+                  display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
+                  padding: '9px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 4,
+                  border: '1px solid rgba(0,224,164,.3)',
+                  background: includePlanner ? 'rgba(0,224,164,.1)' : 'rgba(255,255,255,.03)',
+                  color: includePlanner ? '#00e0a4' : '#cfcfe0', fontSize: '.78rem', fontWeight: 700,
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={includePlanner}
-                  onChange={(e) => setIncludePlanner(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: '#00e0a4', cursor: 'pointer' }}
-                />
-                <span>
-                  Also include a link to the <strong>event planner</strong>
-                </span>
-              </label>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  {includePlanner ? <polyline points="20 6 9 17 4 12" /> : <rect x="4" y="4" width="16" height="16" rx="3" />}
+                </svg>
+                Include planner link
+              </button>
             )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-              <MethodButton
-                onClick={copyLink}
-                active={copied}
-                label={copied ? 'Copied!' : 'Copy link'}
-                icon={copied
-                  ? <polyline points="20 6 9 17 4 12" />
-                  : <><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>}
-              />
-              <MethodButton
-                onClick={shareByEmail}
-                label="Email"
-                icon={<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
-              />
-              <MethodButton
-                onClick={shareByText}
-                label="Text"
-                icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
-              />
-              <MethodButton
-                onClick={downloadCard}
-                label="Download"
-                icon={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>}
-              />
-            </div>
+            <MenuRow
+              onClick={() => { copyLink(); }}
+              active={copied}
+              label={copied ? 'Copied!' : 'Copy link'}
+              icon={copied
+                ? <polyline points="20 6 9 17 4 12" />
+                : <><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>}
+            />
+            <MenuRow
+              onClick={() => { shareByEmail(); setOpen(false); }}
+              label="Email"
+              icon={<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
+            />
+            <MenuRow
+              onClick={() => { shareByText(); setOpen(false); }}
+              label="Text"
+              icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
+            />
+            <MenuRow
+              onClick={() => { downloadCard(); setOpen(false); }}
+              label="Download"
+              icon={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>}
+            />
           </div>
-        </div>,
+        </>,
         document.body,
       )}
     </>
   );
 }
 
-function MethodButton({
-  onClick, label, icon, active = false, busy = false,
+// One row in the share menu: a line icon on the left, the method name on the
+// right. `active` tints it teal (used for the "Copied!" confirmation).
+function MenuRow({
+  onClick, label, icon, active = false,
 }: {
   onClick: () => void;
   label: string;
   icon: React.ReactNode;
   active?: boolean;
-  busy?: boolean;
 }) {
   return (
     <button
       type="button"
-      disabled={busy}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.07)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
       style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.4rem',
-        padding: '.75rem .4rem', borderRadius: 10, cursor: busy ? 'wait' : 'pointer',
-        border: `1px solid ${active ? 'rgba(0,224,164,.6)' : 'rgba(255,255,255,.14)'}`,
-        background: active ? 'rgba(0,224,164,.1)' : 'rgba(255,255,255,.03)',
-        color: active ? '#00e0a4' : '#e9e9f2',
-        fontSize: '.74rem', fontWeight: 700, opacity: busy ? 0.7 : 1,
+        display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left',
+        padding: '10px 11px', borderRadius: 8, cursor: 'pointer', border: 'none',
+        background: 'transparent', color: active ? '#00e0a4' : '#e9e9f2',
+        fontSize: '.82rem', fontWeight: 600, transition: 'background .12s',
       }}
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: active ? '#00e0a4' : '#9b9baa' }}>
         {icon}
       </svg>
       {label}
