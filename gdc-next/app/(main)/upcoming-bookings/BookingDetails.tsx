@@ -490,6 +490,7 @@ export default function BookingDetails({
   // Re-email the client their copy to sign.
   async function resendContract() {
     setResendBusy(true); setResendDone(false);
+    onContractBusy?.(true); // spin the Contract stage circle while it re-sends
     try {
       const res = await fetch('/api/contracts/send-client', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -500,7 +501,7 @@ export default function BookingDetails({
       alert('Contract re-sent to the host.');
       onMutated?.();
     } catch { alert('Could not resend the contract. Try again in a moment.'); }
-    finally { setResendBusy(false); }
+    finally { setResendBusy(false); onContractBusy?.(false); }
   }
 
   // Void the sent contract and clear it so a new one can be sent.
