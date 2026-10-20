@@ -1335,12 +1335,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   transition: 'background .12s ease, border-color .12s ease',
                 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: 74, minWidth: 74, height: 26, flexShrink: 0, color: '#eaa94a' }}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, minWidth: 26, height: 26, flexShrink: 0, color: '#eaa94a' }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
                   </svg>
                 </span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: '#eef0f5', lineHeight: 1.25 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: '#eef0f5', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   Automatic Payments
                 </span>
               </button>
@@ -1685,7 +1685,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         there's no night-of choice: mail or drop off, full stop. */}
                     <div style={{ order: 0 }}>
                       <div style={depHead}>Deposit</div>
-                      <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: 'var(--white)' }}>Host will choose one of the options below to get you the deposit.</p>
+                      <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: '#9b9baa' }}>Host will choose one of the options below to get you the deposit.</p>
                       <div style={{ marginTop: '.6rem' }}>
                         <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
@@ -1760,7 +1760,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
                     <div style={{ order: 0 }}>
                       <div style={depHead}>Deposit</div>
-                      <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: 'var(--white)' }}>Host will choose one of the options below to get you the deposit.</p>
+                      <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: '#9b9baa' }}>Host will choose one of the options below to get you the deposit.</p>
                       <div style={{ marginTop: '.6rem' }}>
                         <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
