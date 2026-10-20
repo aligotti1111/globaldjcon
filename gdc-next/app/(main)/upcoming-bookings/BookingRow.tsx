@@ -905,7 +905,15 @@ export default function BookingRow({
     requestPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax });
+  // Spin the Planner stage circle while its reminder email sends (requestPlanner
+  // already owns `plannerBusy` for the menu's "Sending…" label; this also drives
+  // the pipeline icon's busy ring on the song_list slot).
+  const requestPlannerSpin = async () => {
+    setBusyKey('song_list');
+    try { await requestPlanner(); } finally { setBusyKey(null); }
+  };
+
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner: requestPlannerSpin, resendRider, sendNamedRider, bookingTotalWithTax });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
