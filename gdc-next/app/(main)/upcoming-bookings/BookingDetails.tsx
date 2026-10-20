@@ -952,6 +952,16 @@ export default function BookingDetails({
             )}
           </div>
         )}
+        {/* No deposit/balance split (e.g. no tax, deposit not required) but the
+            balance was marked paid — keep the Agreed Rate above and still show a
+            "Balance" line (PAID + method logo) so the wording matches every other
+            booking and the pricing reflects what the strip already says. */}
+        {sched.length === 0 && balancePaidLine && (
+          <div className={styles.priceRow} style={{ marginTop: 6 }}>
+            <span className={styles.priceKey}>Balance{paidTag}{railLogo(balRail)}</span>
+            <span className={styles.priceVal}>{cardTotal != null ? money(cardTotal) : money(collectedTotal)}</span>
+          </div>
+        )}
         {/* When the host has confirmed they'll hand over CASH or mail/bring a
             CHECK for a still-unpaid deposit or balance, note it here — with the
             date they confirmed — under the pricing. The balance is assumed paid
