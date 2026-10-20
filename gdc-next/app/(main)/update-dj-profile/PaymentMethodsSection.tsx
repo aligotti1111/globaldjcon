@@ -1214,15 +1214,21 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           </p>
         )}
 
-        {/* ── The rails, all of them, from the first paint ──────────── */}
+        {/* ── Two-column layout ──────────────────────────────────────
+            LEFT: a vertical list of the rails (brand mark + name + a green
+            check on live rails; the open rail's row is highlighted).
+            RIGHT: the setup panel for whichever rail is open. */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))',
-            gap: '.5rem',
+            gridTemplateColumns: '200px 1fr',
+            gap: '1rem',
             margin: '1rem 0 .25rem',
+            alignItems: 'start',
           }}
         >
+          {/* LEFT — the rail list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
           {TILE_ORDER.map((k) => {
             const live = tileLive(k);
             const open = openTile === k;
@@ -1240,112 +1246,57 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 title={blocked ? `${(allowedCur as string[]).join('/')} only — not available for ${rateCurrency}` : undefined}
                 style={{
                   position: 'relative',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  padding: '.7rem .4rem .6rem',
+                  display: 'flex', alignItems: 'center', gap: '.55rem',
+                  width: '100%',
+                  padding: '.5rem .6rem',
                   borderRadius: 8,
-                  // Green frame + green dot = live. NOTHING else changes.
-                  // A green wash behind the tile as well was a third signal for
-                  // the same fact, and it tinted the brand marks sitting on top
-                  // of it — the one thing on the tile that has to stay true to
-                  // itself. Frame and dot say the state; the body stays out of it.
-                  // Border reads the tile's state at a glance:
-                  //   neon solid  = live (offered to clients)
-                  //   white solid = available, click to set up
-                  //   dashed faint = disabled (currency can't use it)
-                  border: blocked
-                    ? '1px dashed rgba(255,255,255,.14)'
-                    : live
-                      ? '1.5px solid var(--neon)'
-                      : `1px solid ${open ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.28)'}`,
+                  // The open row is highlighted (teal-tinted fill + teal border);
+                  // every other row is a plain list item on the panel background.
+                  border: open
+                    ? '1px solid rgba(34,227,173,.4)'
+                    : '1px solid rgba(255,255,255,.08)',
                   background: blocked
                     ? 'rgba(255,255,255,.01)'
-                    : (open ? 'rgba(0,224,164,.12)' : 'rgba(255,255,255,.03)'),
-                  // The OPEN tile gets a neon ring + glow so it's obvious which
-                  // one the panel below is editing — this works even for a live
-                  // tile, whose neon border otherwise looks the same open or not.
-                  boxShadow: open && !blocked ? '0 0 0 2px var(--neon), 0 8px 20px rgba(0,224,164,.35)' : undefined,
+                    : (open ? 'rgba(34,227,173,.1)' : 'transparent'),
                   cursor: blocked ? 'not-allowed' : 'pointer',
                   opacity: blocked ? 0.45 : 1,
-                  textAlign: 'center',
-                  zIndex: open ? 2 : undefined,
-                  // Lift the open tile so it visibly separates from its neighbours,
-                  // which all share the same neon border when they're live.
-                  transform: open && !blocked ? 'translateY(-4px)' : undefined,
-                  transition: 'transform .12s ease, box-shadow .12s ease',
+                  textAlign: 'left',
+                  transition: 'background .12s ease, border-color .12s ease',
                 }}
               >
-                {/* Solid "EDITING" badge — the one signal that stands out against
-                    a row where every live tile already has a neon border. */}
-                {open && !blocked && (
-                  <span
-                    style={{
-                      position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
-                      background: 'var(--neon)', color: '#04121a',
-                      fontSize: '.5rem', fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase',
-                      padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap',
-                      boxShadow: '0 2px 6px rgba(0,0,0,.4)',
-                    }}
-                  >
-                    Editing
-                  </span>
-                )}
-                {/* Caret pointing down to the editor panel, so the open tile is
-                    visibly tied to the fields below it. */}
-                {open && !blocked && (
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute', bottom: -9, left: '50%', transform: 'translateX(-50%)',
-                      width: 0, height: 0,
-                      borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
-                      borderTop: '9px solid var(--neon)',
-                    }}
-                  />
-                )}
+                {/* Brand mark, left-aligned in a fixed-width cell so the labels
+                    line up. Wide marks (Card's four networks, the Venmo/PayPal
+                    glyphs) are capped so they don't overflow the compact row. */}
                 <span
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    height: 30,
+                    display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                    width: 74, minWidth: 74, height: 26, flexShrink: 0, overflow: 'hidden',
                     filter: blocked ? 'grayscale(1)' : undefined,
-                    // Always full colour, live or not. Greying the unset ones
-                    // made the grid read as "these are broken" rather than
-                    // "these are available" — and a DJ recognises Venmo by its
-                    // blue, which is the one thing greyscale takes away. The
-                    // frame and the dot carry the state; the logo is just the
-                    // logo.
                   }}
                 >
-                  {TILE_MARK[k]?.({ size: TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE })}
+                  {TILE_MARK[k]?.({ size: k === 'card' ? 10 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 26) })}
                 </span>
-                <span style={{ fontSize: '.72rem', fontWeight: 700, color: blocked ? 'var(--muted)' : 'var(--white)' }}>{TILE_LABEL[k]}</span>
-                {blocked && (
-                  <span style={{ fontSize: '.55rem', fontWeight: 700, color: '#f5a623', lineHeight: 1.2, letterSpacing: '.02em' }}>
-                    {(allowedCur as string[]).join('/')} only
-                  </span>
-                )}
-                {/* Only Card has one — don't leave an empty line reserving
-                    space under every other tile. */}
-                {TILE_BLURB[k] && (
-                  <span style={{ fontSize: '.6rem', color: 'var(--muted)', lineHeight: 1.3 }}>{TILE_BLURB[k]}</span>
-                )}
-                {/* The dot is the whole point of the grid: what can a client
-                    actually use right now, without opening anything. Hidden on a
-                    currency-blocked tile — a green "active" badge on a disabled
-                    rail is exactly the mixed signal that made it read clickable. */}
+                <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: blocked ? '#8a8aa0' : '#eef0f5', lineHeight: 1.25 }}>
+                  {TILE_LABEL[k]}
+                  {blocked && (
+                    <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 700, color: '#f5a623', lineHeight: 1.2, letterSpacing: '.02em' }}>
+                      {(allowedCur as string[]).join('/')} only
+                    </span>
+                  )}
+                </span>
+                {/* Small green circular check on the right when the rail is live
+                    (active) — what a client can actually use right now. Hidden on
+                    a currency-blocked rail. */}
                 {live && !blocked && (
                   <span
                     aria-label="Active"
                     style={{
-                      position: 'absolute', top: 5, right: 5, width: 14, height: 14,
-                      borderRadius: '50%', background: 'var(--neon)',
+                      flexShrink: 0, width: 16, height: 16,
+                      borderRadius: '50%', background: '#22e3ad',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    {/* A check, not a dot. A dot is a colour you have to be
-                        taught to read; a tick means done in every interface
-                        anyone has ever used. Same badge the booking pipeline
-                        puts on a finished step, so the two agree. */}
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#06231b" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#042" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </span>
@@ -1353,18 +1304,18 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               </button>
             );
           })}
-        </div>
+          {/* The green check on each live row says this already — kept only for
+              the empty state, where there's nothing green to read yet. */}
+          {liveCount === 0 && (
+            <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', marginTop: '.4rem' }}>
+              Nothing live yet — tap one to set it up.
+            </p>
+          )}
+          </div>
 
-        {/* The green check on each live tile says this already — a line
-            underneath restating it in words was the caption to a picture that
-            didn't need one. Kept only for the empty state, where there's
-            nothing green to read yet. */}
-        {liveCount === 0 && (
-          <p style={{ ...label, textTransform: 'none', letterSpacing: 0, fontSize: '.72rem', marginBottom: '1rem' }}>
-            Nothing live yet — tap one to set it up.
-          </p>
-        )}
-
+          {/* RIGHT — the open rail's setup panel. Same expanded-panel content
+              that used to render inline under the grid; only its location moved. */}
+          <div style={{ minWidth: 0 }}>
         {/* ── The expanded rail ────────────────────────────────────── */}
         {openTile === 'card' && (
           <div
@@ -2150,6 +2101,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             </div>
           );
         })()}
+          </div>{/* end RIGHT column */}
+        </div>{/* end two-column layout */}
 
         {feedback && (
           <p style={{ margin: '.7rem 0 0', fontSize: '.75rem', color: feedback.ok ? 'var(--success)' : '#ff6b6b', lineHeight: 1.5 }}>
