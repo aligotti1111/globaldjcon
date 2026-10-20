@@ -55,6 +55,7 @@ export function useSendActions({ booking, riderEnabled, archive, planner, onPlan
       const pdfUrl = db.pdfUrl || null;
       if ((m === 'upload' ? !!pdfUrl : items.length > 0) === false) return;
       await fetch('/api/rider/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: booking.id, items, mode: m, pdfUrl, name: db.name || undefined }) });
+      alert('Rider re-sent to the host.');
     } catch { /* ignore */ }
   }
 
@@ -64,6 +65,7 @@ export function useSendActions({ booking, riderEnabled, archive, planner, onPlan
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId: booking.id, items: r.items, mode: r.mode, pdfUrl: r.pdfUrl, name: r.name }),
       });
+      alert('Rider sent to the host.');
     } catch { /* best-effort quick send */ }
   }
 
@@ -89,6 +91,7 @@ export function useSendActions({ booking, riderEnabled, archive, planner, onPlan
         total: planner?.total ?? 0,
       });
       if (j.warning) setPlannerErr(j.warning);
+      else alert('Planner & Playlist sent to the host.');
     } catch {
       setPlannerErr('Could not send the planner.');
     } finally {
