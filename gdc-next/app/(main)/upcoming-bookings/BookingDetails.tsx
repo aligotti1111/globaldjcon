@@ -459,25 +459,27 @@ export default function BookingDetails({
    * panel's buttons appear as the fallback. The DJ gets the file either way.
    */
   async function openSignedDoc(which: 'contract' | 'audit') {
-    const known = which === 'audit' ? signedDocs?.audit : signedDocs?.contract;
-    if (known) { window.open(known, '_blank', 'noopener,noreferrer'); return; }
-
+    // DOWNLOAD, don't open-in-tab. The GET endpoint streams the PDF back with
+    // Content-Disposition: attachment, so a same-origin <a download> SAVES the
+    // file and keeps the DJ on the page — the remote Docuseal URL would just
+    // open a viewer tab. We fetch the bytes first (so we can surface a clear
+    // error if it isn't ready), then save them via a blob URL.
     setSignedBusy(true);
     try {
-      const res = await fetch('/api/contracts/signed-doc', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id }),
-      });
-      const json = (await res.json().catch(() => ({}))) as { contract?: string; audit?: string; error?: string };
-      if (res.ok && (json.contract || json.audit)) {
-        setSignedDocs({ contract: json.contract, audit: json.audit });
-        const url = which === 'audit' ? json.audit : json.contract;
-        if (url) window.open(url, '_blank', 'noopener,noreferrer');
-        else if (which === 'audit') alert('The audit log isn’t available for this contract yet.');
-        else alert('The signed contract isn’t ready yet.');
-      } else {
-        alert(json.error || 'The signed contract isn’t ready yet.');
+      const res = await fetch(`/api/contracts/signed-doc?bookingId=${encodeURIComponent(booking.id)}&which=${which}`, { cache: 'no-store' });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        alert(json.error || (which === 'audit' ? 'The audit log isn’t available yet.' : 'The signed contract isn’t ready yet.'));
+        return;
       }
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = which === 'audit' ? `Contract-Audit-${booking.id.slice(0, 6)}.pdf` : `Contract-${booking.id.slice(0, 6)}.pdf`;
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
     } catch { alert('Could not fetch the signed contract. Try again in a moment.'); }
     finally { setSignedBusy(false); }
   }
@@ -879,7 +881,7 @@ export default function BookingDetails({
     const depRail = ro.deposit?.method ?? null;
     const balRail = ro.balance?.method ?? null;
     const railLogo = (rail: string | null) => rail
-      ? <span style={{ marginLeft: 6, display: 'inline-flex', verticalAlign: 'middle' }}><RailMark rail={rail} size={13} /></span>
+      ? <span title={rail} style={{ marginLeft: 6, display: 'inline-flex', verticalAlign: 'middle', cursor: 'default' }}><RailMark rail={rail} size={13} /></span>
       : null;
     const isPaidLine = (l: string) => /Balance/i.test(l) && balancePaidLine;
     // Post-payment delta: a price change on an already-settled booking. The
