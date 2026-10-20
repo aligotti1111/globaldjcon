@@ -985,14 +985,23 @@ ${payBlocks}
     let received: number;
     let paidToDate: number;
     if (kind === 'deposit') {
-      received = b.deposit_amount != null ? Number(b.deposit_amount) : round2(agreed);
+      // Deposit amount if we have one; otherwise what actually landed; otherwise
+      // the agreed total. A manual booking hand-marked paid often has no stored
+      // deposit_amount, so without this fallback `received` was 0 and the send
+      // refused — even though the stage reads "Paid".
+      const dep = b.deposit_amount != null ? Number(b.deposit_amount) : 0;
+      received = dep > 0 ? dep : (paidSoFar > 0 ? paidSoFar : round2(agreed));
       paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
     } else {
       received = round2(Math.max(0, agreed - paidSoFar));
+      // Balance marked paid with nothing left outstanding (already collected, or
+      // hand-marked paid): receipt it as paid in full rather than refusing.
+      if (!(received > 0)) received = round2(agreed);
       paidToDate = round2(agreed);
     }
     if (!(received > 0)) {
-      return NextResponse.json({ error: 'Nothing to receipt on this booking.' }, { status: 400 });
+      // Only reached when the booking genuinely has no price on it at all.
+      return NextResponse.json({ error: 'There is no amount on this booking to receipt.' }, { status: 400 });
     }
 
     const to = await clientEmailFor(b);
