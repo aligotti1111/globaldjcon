@@ -630,7 +630,7 @@ export default function BookingRow({
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'confirm', paymentId, amountReceived: outstanding }),
           });
-          if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not mark it paid.'); return; }
+          if (!res.ok) { alert(errMsg(await res.text(), 'Could not mark it paid.')); return; }
           onPaymentsChange(booking.id, payments.map((pp) => pp.id === paymentId ? { ...pp, amount_paid: Number(pp.amount || 0), status: 'paid' } : pp));
           onMutated?.();
         } catch { alert('Could not mark it paid.'); }
@@ -648,7 +648,7 @@ export default function BookingRow({
       onOk: async () => {
         try {
           const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-request', paymentId }) });
-          if (!res.ok) { const t = await res.text(); alert(t.slice(0, 160) || 'Could not cancel the request.'); return; }
+          if (!res.ok) { alert(errMsg(await res.text(), 'Could not cancel the request.')); return; }
           onPaymentsChange(booking.id, payments.filter((pp) => pp.id !== paymentId));
           onMutated?.();
         } catch { alert('Could not cancel the request.'); }
@@ -658,6 +658,15 @@ export default function BookingRow({
   // Re-email the host the pay link for an unpaid deposit/balance request.
   // Server caps it at 3 per 24h per row (429 carries the message to show) and
   // records the send, which also surfaces on the host's notification bell.
+  // Pull a human message out of an API error body: prefer the JSON `error`
+  // field, so the toast never shows a raw `{"error":"…"}` blob. Falls back to
+  // plain non-JSON text, then a default.
+  function errMsg(raw: string, fallback: string): string {
+    try { const j = JSON.parse(raw); if (j?.error) return String(j.error); } catch { /* not JSON */ }
+    const t = raw.trim();
+    return t && !t.startsWith('{') ? t.slice(0, 160) : fallback;
+  }
+
   async function sendReminder(paymentId: string) {
     // Spin the stage circle this reminder belongs to (deposit → 'deposit',
     // balance → 'invoice' slot) while it sends.
@@ -673,7 +682,7 @@ export default function BookingRow({
     } catch { alert('Could not send the reminder.'); }
     finally { setBusyKey(null); }
   }
-  async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
+  async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(errMsg(raw, 'Could not send the receipt.')); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
     // Point an anchor at a GET that returns the PDF with Content-Disposition:
     // attachment. The `download` attribute on a SAME-ORIGIN url makes every
