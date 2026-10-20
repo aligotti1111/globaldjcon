@@ -677,12 +677,12 @@ export default function BookingRow({
       const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-reminder', paymentId }) });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) { alert(j?.error || 'Could not send the reminder.'); return; }
-      alert('Reminder sent to the client.');
+      alert('Reminder sent to the host.');
       onMutated?.();
     } catch { alert('Could not send the reminder.'); }
     finally { setBusyKey(null); }
   }
-  async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(errMsg(raw, 'Could not send the receipt.')); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
+  async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(errMsg(raw, 'Could not send the receipt.')); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the host.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
     // Point an anchor at a GET that returns the PDF with Content-Disposition:
     // attachment. The `download` attribute on a SAME-ORIGIN url makes every
