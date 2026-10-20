@@ -171,6 +171,7 @@ export default function ContractSendModal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId }),
       });
+      alert('Contract sent to the host to sign.');
     } catch { /* the send-client route also updates status; best-effort */ }
     setPhase('signed');
     onSent();
