@@ -669,12 +669,13 @@ export default function BookingRow({
   }
   async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
   function downloadReceipt(kind: 'deposit' | 'balance') {
-    // Navigate the browser straight to a GET that returns the PDF with
-    // Content-Disposition: attachment. Every browser (Safari included) saves it
-    // as a file — the old fetch→Blob→<a download> path made Safari try to OPEN a
-    // blob: URL and fail ("WebKitBlobResource error 1").
+    // Point an anchor at a GET that returns the PDF with Content-Disposition:
+    // attachment. The `download` attribute on a SAME-ORIGIN url makes every
+    // browser (Safari included) save the file in place and STAY on the page —
+    // no navigation, and no blob: URL (which Safari refused to open).
     const a = document.createElement('a');
     a.href = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
+    a.download = `Receipt-${booking.id.slice(0, 6)}.pdf`;
     a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
   }
