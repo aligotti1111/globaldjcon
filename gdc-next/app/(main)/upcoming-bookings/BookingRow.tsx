@@ -674,17 +674,20 @@ export default function BookingRow({
     // browser (Safari included) save the file in place and STAY on the page —
     // no navigation, and no blob: URL (which Safari refused to open).
     const url = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
-    // Spin the stage circle (green — it's a paid stage) until the PDF is actually
-    // ready. A parallel fetch to the same endpoint resolves at the moment the
-    // server has built it, which is when the browser's own download begins — so
-    // the spinner clears right as the file starts downloading, not before.
+    // Spin the stage circle (green — it's a paid stage) for the WHOLE time the
+    // PDF is being built, and clear it exactly when the download begins. The
+    // trick: fetch the PDF first (this is the slow part — the server builds it),
+    // keeping the spinner on until it resolves. The endpoint is briefly cacheable
+    // (Cache-Control: private, max-age=30), so the <a download> click right after
+    // is served from the browser cache INSTANTLY — one build, not two, so the
+    // download starts the same moment the spinner stops, never 2s early/late.
     setBusyKey(moneySlot(kind));
+    try { await fetch(url); } catch { /* fall through — the anchor is the real download */ }
     const a = document.createElement('a');
     a.href = url;
     a.download = `Receipt-${booking.id.slice(0, 6)}.pdf`;
     a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
-    try { await fetch(url, { cache: 'no-store' }); } catch { /* the real download is the anchor above */ }
     setBusyKey(null);
   }
   // Phase 2 — just opens the editor; the modal owns the form + submit.
