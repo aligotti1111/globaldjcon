@@ -1715,3 +1715,83 @@ Stripe's fee (2.9% + 30¢) comes out before payout; your first payout can take 7
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 }
+
+// GET /api/payments?action=download-receipt&bookingId=…&kind=deposit|balance
+//
+// The receipt as a real file download, streamed with Content-Disposition so the
+// browser saves it natively — no blob: URL. The old POST + Blob + <a download>
+// path worked in Chrome but Safari would try to OPEN the blob and fail
+// ("WebKitBlobResource error 1"). A plain GET that returns an attachment is the
+// only thing every browser downloads the same way.
+export async function GET(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const acting = await getActingContext(user.id);
+
+  const url = new URL(req.url);
+  const action = url.searchParams.get('action') || '';
+  if (action !== 'download-receipt') {
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  }
+
+  const bookingId = url.searchParams.get('bookingId') || '';
+  const kindRaw = url.searchParams.get('kind') || 'balance';
+  const kind = KINDS.has(kindRaw) ? kindRaw : 'balance';
+  if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+  const admin = createAdminClient();
+  const db = admin as unknown as SupabaseClient;
+
+  const { data: bData } = await admin
+    .from('bookings')
+    .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, currency, deposit_amount, total_with_tax, counter_rate, quoted_rate, offer_amount')
+    .eq('id', bookingId)
+    .maybeSingle();
+  const b = bData as BookingRow | null;
+  if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+  if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+  if (!canInvoice(acting.role)) return NextResponse.json({ error: 'Your role cannot send invoices.' }, { status: 403 });
+
+  const cur = b.currency || 'USD';
+  const agreed = Number(b.total_with_tax ?? b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0);
+  const { data: paidData } = await db
+    .from('booking_payments')
+    .select('amount_paid')
+    .eq('booking_id', bookingId);
+  const paidSoFar = ((paidData as { amount_paid?: number }[] | null) || [])
+    .reduce((s, r) => s + Number(r.amount_paid || 0), 0);
+
+  let received: number;
+  let paidToDate: number;
+  if (kind === 'deposit') {
+    received = b.deposit_amount != null ? Number(b.deposit_amount) : round2(agreed);
+    paidToDate = round2(paidSoFar > 0 ? paidSoFar : received);
+  } else {
+    received = round2(Math.max(0, agreed - paidSoFar));
+    paidToDate = round2(agreed);
+  }
+
+  const receiptAtt = await buildBookingDocAttachment(db, {
+    docKind: 'receipt',
+    bookingId,
+    djId: acting.djId,
+    currency: cur,
+    paymentKind: kind as 'deposit' | 'balance' | 'other',
+    receivedNow: received,
+    method: null,
+    paidToDate,
+    clientEmail: await clientEmailFor(b),
+  });
+  if (!receiptAtt) return NextResponse.json({ error: 'Could not build the receipt.' }, { status: 500 });
+
+  const pdf = Buffer.from(receiptAtt.content, 'base64');
+  return new NextResponse(pdf, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${receiptAtt.filename}"`,
+      'Cache-Control': 'no-store',
+    },
+  });
+}
