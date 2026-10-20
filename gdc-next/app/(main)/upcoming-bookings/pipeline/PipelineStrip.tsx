@@ -11,7 +11,6 @@ import styles from '../upcomingBookings.module.css';
 import { MUTED } from '../shared';
 import StageMenu from './StageMenu';
 import { stageLabel, type PipelineStep } from './types';
-import { RailMark } from '@/app/(main)/update-dj-profile/BrandMarks';
 
 // Stage icons — thin monochrome line icons (colour set by the caller via
 // `currentColor`), replacing the coloured emoji that made the row read busy.
@@ -152,9 +151,7 @@ export default function PipelineStrip({
         const capNode: React.ReactNode = (st.newBalanceDue && st.newBalanceDue > 0)
           ? (<><span style={{ color: '#3fd6ab' }}>Paid</span><span style={{ color: '#7a7a8c' }}> / </span><span style={{ color: '#f2f2f7' }}>{cap || 'New Balance'}</span></>)
           : isDeclined ? 'DECLINED'
-          : (positiveDone && st.paidRail)
-            ? (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>{cap || ''}<RailMark rail={st.paidRail} size={12} /></span>)
-            : (cap || '');
+          : (cap || '');
         // A stage the DJ turned OFF in their pipeline settings: it shows the
         // greyed icon + "Not Required" so it can still be deployed on a one-off,
         // but it must read as muted — NOT as an amber "your move" step. No dot,
