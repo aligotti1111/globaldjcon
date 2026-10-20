@@ -1849,7 +1849,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   rail below, where the client sends by hand. */}
               {t === 'paypal' && (
                 <>
-                  <div style={{ fontFamily: 'inherit', color: 'var(--neon)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-.01em', textTransform: 'none', margin: '0 0 .35rem' }}>Option 1 — Connect your PayPal business account</div>
+                  <div style={{ display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(0,245,196,.9), rgba(0,245,196,.12))', color: '#04121a', borderRadius: 6, margin: '0 0 .6rem' }}>Option 1 — Connect your PayPal business account</div>
                   <PaypalConnectSection onStatus={setPaypalReady} initialReady={paypalReady} blockedByManual={paypalManualFilled} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
@@ -1857,7 +1857,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
                   <div style={{ opacity: paypalManualDisabled ? 0.45 : 1 }}>
-                    <div style={{ fontFamily: 'inherit', color: 'var(--white)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-.01em', textTransform: 'none', margin: '0 0 .35rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
+                    <div style={{ display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.1))', color: '#eafff8', borderRadius: 6, margin: '0 0 .6rem' }}>Option 2 — Enter your PayPal.me link or PayPal Email Address</div>
                     {paypalManualDisabled ? (
                       <p style={{ margin: '0 0 .6rem', fontSize: '.8rem', color: 'var(--neon)', lineHeight: 1.55 }}>
                         PayPal is connected via Option 1 — the manual option isn&rsquo;t needed. Disconnect above to use it instead.
