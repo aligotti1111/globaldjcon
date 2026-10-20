@@ -1791,7 +1791,11 @@ export async function GET(req: Request) {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${receiptAtt.filename}"`,
-      'Cache-Control': 'no-store',
+      // Briefly cacheable (private) so the client can warm this with a fetch (to
+      // time the spinner) and then let the <a download> click serve the SAME
+      // response from cache instantly — one server build, not two, so the
+      // spinner clears exactly when the download begins.
+      'Cache-Control': 'private, max-age=30',
     },
   });
 }
