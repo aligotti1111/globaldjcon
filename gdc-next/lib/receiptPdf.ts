@@ -483,10 +483,11 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     y -= 6;
   }
 
-  // ── Note ──
+  // ── Note (centered) ──
   if (opts.note) {
     for (const ln of wrap(opts.note, reg, 9.5, rightX - MARGIN)) {
-      drawL(ln, MARGIN, y, 9.5, reg, MUTED);
+      const lw = reg.widthOfTextAtSize(ln, 9.5);
+      drawL(ln, MARGIN + (rightX - MARGIN - lw) / 2, y, 9.5, reg, MUTED);
       y -= 13;
     }
   }
