@@ -45,20 +45,26 @@ export default function Toaster() {
     <>
       <style>{`
         @keyframes gdcToastIn {
-          from { opacity: 0; transform: translateY(12px) scale(.98); }
+          from { opacity: 0; transform: translateY(8px) scale(.96); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes gdcToastOut {
+          from { opacity: 1; transform: scale(1); }
+          to   { opacity: 0; transform: scale(.97); }
         }
       `}</style>
       <div
         style={{
           position: 'fixed',
-          bottom: 20,
-          right: 20,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
           zIndex: 100000,
           display: 'flex',
           flexDirection: 'column',
+          alignItems: 'center',
           gap: 10,
-          maxWidth: 'min(92vw, 380px)',
+          width: 'min(92vw, 420px)',
           pointerEvents: 'none',
         }}
         aria-live="polite"
@@ -74,19 +80,22 @@ export default function Toaster() {
                 pointerEvents: 'auto',
                 cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'flex-start',
-                gap: 12,
-                padding: '13px 15px',
+                alignItems: 'center',
+                gap: 13,
+                padding: '18px 22px',
                 background: '#14141f',
                 color: '#fff',
-                border: '1px solid rgba(255,255,255,.12)',
-                borderLeft: `3px solid ${accent}`,
-                borderRadius: 12,
-                boxShadow: '0 12px 34px rgba(0,0,0,.55)',
+                border: `1px solid ${t.error ? 'rgba(255,107,107,.4)' : 'rgba(0,245,196,.35)'}`,
+                borderTop: `3px solid ${accent}`,
+                borderRadius: 14,
+                boxShadow: '0 24px 60px rgba(0,0,0,.6)',
                 fontFamily: "var(--font-inter, 'Inter'), system-ui, sans-serif",
-                fontSize: 13.5,
-                lineHeight: 1.45,
-                animation: 'gdcToastIn .22s cubic-bezier(.2,.8,.2,1)',
+                fontSize: 15,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                textAlign: 'left',
+                // Fade in, hold, then fade away on its own just before it's removed.
+                animation: `gdcToastIn .22s cubic-bezier(.2,.8,.2,1), gdcToastOut .5s ease forwards ${(t.error ? 6000 : 4200) - 500}ms`,
               }}
             >
               <span
