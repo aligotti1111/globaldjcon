@@ -178,7 +178,7 @@ const TILE_MARK: Partial<Record<TileKey, (p: { size?: number }) => React.ReactEl
 const TILE_ORDER: TileKey[] = ['card', ...TYPE_ORDER.filter((t) => t !== 'other')];
 
 const TILE_LABEL: Record<TileKey, string> = {
-  card: 'Card',
+  card: 'Credit Cards',
   venmo: 'Venmo',
   cashapp: 'Cash App',
   paypal: 'PayPal',
@@ -259,6 +259,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const [attempted, setAttempted] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
+  // "Automatic Payments" is its own entry in the left list, under all the rails.
+  // When selected, the right panel shows the reminder settings instead of a rail.
+  const [showReminders, setShowReminders] = useState(false);
   // True when this page load is the return from PayPal Connect onboarding
   // (?paypal=connected). Captured in a ref at mount — before PaypalConnectSection
   // cleans the URL — so the default-open effect knows to keep PayPal open instead
@@ -1241,7 +1244,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               <button
                 key={k}
                 type="button"
-                onClick={() => { if (!blocked) setOpenTile(open ? null : k); }}
+                onClick={() => { if (!blocked) { setShowReminders(false); setOpenTile(open ? null : k); } }}
                 disabled={blocked}
                 title={blocked ? `${(allowedCur as string[]).join('/')} only — not available for ${rateCurrency}` : undefined}
                 style={{
@@ -1278,6 +1281,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 </span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: blocked ? '#8a8aa0' : '#eef0f5', lineHeight: 1.25 }}>
                   {TILE_LABEL[k]}
+                  {k === 'card' && (
+                    <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.02em' }}>
+                      via Stripe
+                    </span>
+                  )}
                   {blocked && (
                     <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 700, color: '#f5a623', lineHeight: 1.2, letterSpacing: '.02em' }}>
                       {(allowedCur as string[]).join('/')} only
@@ -1311,13 +1319,42 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               Nothing live yet — tap one to set it up.
             </p>
           )}
+          {/* Automatic Payments — its own entry below all the rails. Opens the
+              reminder settings in the right panel instead of a payment rail. */}
+          {showPaymentReminder && (
+            <>
+              <div style={{ height: 1, background: 'rgba(255,255,255,.08)', margin: '.5rem 0 .35rem' }} />
+              <button
+                type="button"
+                onClick={() => { setOpenTile(null); setShowReminders(true); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '.55rem', width: '100%',
+                  padding: '.5rem .6rem', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+                  border: showReminders ? '1px solid rgba(34,227,173,.4)' : '1px solid rgba(255,255,255,.08)',
+                  background: showReminders ? 'rgba(34,227,173,.1)' : 'transparent',
+                  transition: 'background .12s ease, border-color .12s ease',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: 74, minWidth: 74, height: 26, flexShrink: 0, color: '#eaa94a' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+                  </svg>
+                </span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: '#eef0f5', lineHeight: 1.25 }}>
+                  Automatic Payments
+                </span>
+              </button>
+            </>
+          )}
           </div>
 
           {/* RIGHT — the open rail's setup panel. Same expanded-panel content
               that used to render inline under the grid; only its location moved. */}
           <div style={{ minWidth: 0 }}>
+        {/* ── Automatic Payments panel (its own left-list entry) ───── */}
+        {showReminders && <PaymentReminderBox />}
         {/* ── The expanded rail ────────────────────────────────────── */}
-        {openTile === 'card' && (
+        {!showReminders && openTile === 'card' && (
           <div
             style={
               card?.ready
@@ -1337,8 +1374,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             <style>{`
               @keyframes gdcStripeBlink { 0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(0,245,196,.8); } 50% { opacity: .25; transform: scale(.8); box-shadow: 0 0 10px 4px rgba(0,245,196,.55); } }
             `}</style>
+            {/* Hero header — same big display-font banner the other rails use, so
+                this panel reads as "Credit Cards" at a glance. Small "via stripe"
+                in Stripe's purple wordmark says who processes it. */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '.55rem', marginBottom: '.7rem', paddingBottom: '.55rem', borderBottom: '1px solid rgba(255,255,255,.5)' }}>
+              <span style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, color: 'var(--white)', fontSize: '2.4rem', letterSpacing: '.03em', lineHeight: 1 }}>Credit Cards</span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, paddingBottom: 3 }}>
+                <span style={{ fontSize: '.6rem', color: 'var(--muted,#8a8aa0)' }}>via</span>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 800, fontSize: '1rem', color: '#635BFF', letterSpacing: '-.02em' }}>stripe</span>
+              </span>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
-              <span style={{ fontWeight: 700, color: 'var(--white)', fontSize: '.9rem' }}>Card payments via Stripe</span>
               {card?.ready ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#00f5c4', display: 'inline-block', animation: 'gdcStripeBlink 1.2s ease-in-out infinite' }} />
@@ -1507,7 +1553,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           </div>
         )}
 
-        {openTile !== null && openTile !== 'card' && (() => {
+        {!showReminders && openTile !== null && openTile !== 'card' && (() => {
           const t = openTile;
           const cfg = METHOD_TYPES[t];
           const m = byType[t] || { id: 'draft', type: t, handle: '', note: '', enabled: true };
@@ -2109,8 +2155,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             {feedback.msg}
           </p>
         )}
-
-        {showPaymentReminder && <PaymentReminderBox />}
       </div>
     </div>
   );
