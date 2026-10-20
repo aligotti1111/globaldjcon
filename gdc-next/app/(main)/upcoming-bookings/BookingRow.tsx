@@ -675,20 +675,32 @@ export default function BookingRow({
     // no navigation, and no blob: URL (which Safari refused to open).
     const url = `/api/payments?action=download-receipt&bookingId=${encodeURIComponent(booking.id)}&kind=${kind}`;
     // Spin the stage circle (green — it's a paid stage) for the WHOLE time the
-    // PDF is being built, and clear it exactly when the download begins. The
-    // trick: fetch the PDF first (this is the slow part — the server builds it),
-    // keeping the spinner on until it resolves. The endpoint is briefly cacheable
-    // (Cache-Control: private, max-age=30), so the <a download> click right after
-    // is served from the browser cache INSTANTLY — one build, not two, so the
-    // download starts the same moment the spinner stops, never 2s early/late.
+    // PDF is being built, then save it the instant it's ready. We fetch the PDF
+    // ONCE as a blob — that single fetch is the slow part (the server builds the
+    // PDF), and the spinner stays on until it resolves. Then we save those exact
+    // bytes via a blob: URL with a `download` attribute, which fires instantly
+    // (no second server round-trip), so the download starts the same moment the
+    // spinner stops. Safari note: the `download` attr IS honored (so it saves in
+    // place and stays on the page), and we revoke the blob URL LATE so Safari has
+    // time to read it — revoking early is what caused "WebKitBlobResource error 1".
     setBusyKey(moneySlot(kind));
-    try { await fetch(url); } catch { /* fall through — the anchor is the real download */ }
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Receipt-${booking.id.slice(0, 6)}.pdf`;
-    a.rel = 'noopener';
-    document.body.appendChild(a); a.click(); a.remove();
-    setBusyKey(null);
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('receipt build failed');
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = `Receipt-${booking.id.slice(0, 6)}.pdf`;
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+    } catch {
+      // Last resort: navigate the browser straight to the attachment endpoint.
+      window.location.href = url;
+    } finally {
+      setBusyKey(null);
+    }
   }
   // Phase 2 — just opens the editor; the modal owns the form + submit.
   function editReceipt(kind: 'deposit' | 'balance') { setEditReceiptKind(kind); }
