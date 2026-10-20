@@ -25,35 +25,41 @@ export function confirmedRail(row: BookingPayment | null | undefined): 'cash' | 
 // drop the iframe once it signals. The user just gets the file, no page flash.
 // Falls back to the visible tab if the iframe can't produce the PDF (blocked CDN
 // / download restriction), so downloads never silently fail.
-function downloadRunSheet(bookingId: string): void {
-  if (typeof window === 'undefined') return;
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:0;opacity:0;';
-  let settled = false;
-  const cleanup = () => {
-    window.removeEventListener('message', onMsg);
-    try { iframe.remove(); } catch { /* ignore */ }
-  };
-  const fallbackTab = () => { try { window.open(`/sheet/${bookingId}?download=1`, '_blank'); } catch { /* ignore */ } };
-  const onMsg = (e: MessageEvent) => {
-    if (e.source !== iframe.contentWindow) return;
-    if (e.data === 'gdc:sheet-pdf-done') {
-      settled = true;
-      // A beat so the browser's download has fully kicked off before we yank
-      // the iframe out from under it.
-      setTimeout(cleanup, 1500);
-    } else if (e.data === 'gdc:sheet-pdf-fail') {
-      settled = true;
-      cleanup();
-      fallbackTab();
-    }
-  };
-  window.addEventListener('message', onMsg);
-  iframe.src = `/sheet/${bookingId}?download=1&embed=1`;
-  document.body.appendChild(iframe);
-  // Safety net: if the iframe never reports back (never loaded, script error),
-  // fall back to the visible tab so the DJ still gets their PDF.
-  setTimeout(() => { if (!settled) { cleanup(); fallbackTab(); } }, 9000);
+// Returns a promise that resolves once the PDF is built and the download is
+// about to start (or we've fallen back / timed out) — so the caller can spin
+// the Planner stage icon for exactly that window.
+function downloadRunSheet(bookingId: string): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:0;opacity:0;';
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    const cleanup = () => {
+      window.removeEventListener('message', onMsg);
+      try { iframe.remove(); } catch { /* ignore */ }
+    };
+    const fallbackTab = () => { try { window.open(`/sheet/${bookingId}?download=1`, '_blank'); } catch { /* ignore */ } };
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== iframe.contentWindow) return;
+      if (e.data === 'gdc:sheet-pdf-done') {
+        finish();
+        // A beat so the browser's download has fully kicked off before we yank
+        // the iframe out from under it.
+        setTimeout(cleanup, 1500);
+      } else if (e.data === 'gdc:sheet-pdf-fail') {
+        finish();
+        cleanup();
+        fallbackTab();
+      }
+    };
+    window.addEventListener('message', onMsg);
+    iframe.src = `/sheet/${bookingId}?download=1&embed=1`;
+    document.body.appendChild(iframe);
+    // Safety net: if the iframe never reports back (never loaded, script error),
+    // fall back to the visible tab so the DJ still gets their PDF.
+    setTimeout(() => { if (!settled) { finish(); cleanup(); fallbackTab(); } }, 9000);
+  });
 }
 
 export interface BuildStepsCtx {
@@ -114,10 +120,21 @@ export interface BuildStepsCtx {
   resendRider: () => Promise<void> | void;
   sendNamedRider: (r: NamedRider) => Promise<void> | void;
   bookingTotalWithTax: (b: UpcomingBooking, taxPct: number) => number | null;
+  // Spin a stage circle for the duration of an async action (e.g. a download
+  // building its PDF): the caller owns busyKey, so it sets the ring on `key`
+  // until the promise settles. Optional for land-in-either-order safety.
+  spinDownload?: (key: string, run: () => Promise<unknown>) => void;
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, taxPct, archive, payments, canPro, plannerLeadDays = 14, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax } = ctx;
+  const { booking, taxPct, archive, payments, canPro, plannerLeadDays = 14, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax, spinDownload } = ctx;
+  // Download the Planner & Playlist, spinning the Planner stage circle (via the
+  // row's busyKey) for the whole time the PDF is being built in the hidden
+  // iframe — the ring clears the moment the download is about to start.
+  const downloadPlanner = () => {
+    if (spinDownload) spinDownload('song_list', () => downloadRunSheet(booking.id));
+    else void downloadRunSheet(booking.id);
+  };
   // Receipt menu label — first send says "Send receipt", later sends "Re-send".
   const depRcptLabel = depositReceiptSent ? 'Re-send receipt' : 'Send receipt';
   const balRcptLabel = balanceReceiptSent ? 'Re-send receipt' : 'Send receipt';
@@ -745,15 +762,16 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             ...(planner
               ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
               : []),
-            { label: 'Download Planner & Playlist', run: () => { downloadRunSheet(booking.id); } },
+            { label: 'Download Planner & Playlist', run: () => { downloadPlanner(); } },
           ]
         : planner
           ? [
               { label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } },
               // Download only exists once a planner has been sent — before that
               // there's no specific planner to render. Builds the PDF in a hidden
-              // iframe (no flashing tab); see downloadRunSheet.
-              { label: 'Download Planner & Playlist', run: () => { downloadRunSheet(booking.id); } },
+              // iframe (no flashing tab) and spins the stage circle; see
+              // downloadPlanner / downloadRunSheet.
+              { label: 'Download Planner & Playlist', run: () => { downloadPlanner(); } },
               // Copy survives the host gate — the planner exists and the link is
               // live, and a DJ whose client lost it needs to hand it over by text.
               // Only Resend needs a recipient, so only Resend goes.
