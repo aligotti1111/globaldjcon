@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { createClient } from '@/lib/supabase/client';
+import { expiryInfo } from '@/lib/bookingExpiry';
 
 type Item = {
   id: string;
@@ -28,6 +29,10 @@ type Item = {
   eventDate: string | null;
   at: string | null;
   price: string | null;
+  // How long until the request auto-expires from no host/DJ response. `expired`
+  // when the window has already passed. Empty label when it can't be computed.
+  expiry: string;
+  expired: boolean;
 };
 
 // Money formatting for the price line — mirrors the reminder email.
@@ -126,6 +131,10 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
           // The STANDING amount: a counter, once made, supersedes the original
           // offer — so counter_rate wins. Falls back to the original ask.
           const rate = r.counter_rate ?? r.quoted_rate ?? r.offer_amount ?? null;
+          // Countdown to auto-expiry (created_at + 5 days, capped at the event
+          // day). tz is unknown here, so this falls back to US Eastern — close
+          // enough for a "N days left" line; the card page shows the exact value.
+          const ex = expiryInfo(r.created_at, r.event_date, null);
           return {
             id: r.id, kind,
             name: r.requester_name || 'A client',
@@ -133,6 +142,8 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
             eventDate: r.event_date,
             at: r.created_at,
             price: rate != null ? money(Number(rate), r.currency) : null,
+            expiry: ex.label,
+            expired: ex.expired,
           };
         });
       const byAt = (a: Item, b: Item) => Date.parse(b.at || '') - Date.parse(a.at || '');
@@ -278,6 +289,11 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                       ? (it.kind === 'counter' ? 'Awaiting response from host' : 'Awaiting response from DJ')
                       : 'Pending your response'}
                   </span>
+                  {it.expiry ? (
+                    <span style={{ display: 'block', color: it.expired ? '#ff6b6b' : 'rgba(255,255,255,.45)', fontSize: '.68rem', marginTop: 1, fontWeight: it.expired ? 700 : 500 }}>
+                      {it.expiry}
+                    </span>
+                  ) : null}
                 </span>
                 <span style={{ flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                   {it.price
