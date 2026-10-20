@@ -19,6 +19,43 @@ export function confirmedRail(row: BookingPayment | null | undefined): 'cash' | 
   return row.method === 'cash' ? 'cash' : row.method === 'check' ? 'check' : null;
 }
 
+// Download the Planner & Playlist PDF WITHOUT the old throwaway tab that flashed
+// open, saved, and closed itself. Instead we load the sheet in a hidden iframe
+// (?download=1&embed=1 → it auto-builds the PDF and posts back when done) and
+// drop the iframe once it signals. The user just gets the file, no page flash.
+// Falls back to the visible tab if the iframe can't produce the PDF (blocked CDN
+// / download restriction), so downloads never silently fail.
+function downloadRunSheet(bookingId: string): void {
+  if (typeof window === 'undefined') return;
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:0;opacity:0;';
+  let settled = false;
+  const cleanup = () => {
+    window.removeEventListener('message', onMsg);
+    try { iframe.remove(); } catch { /* ignore */ }
+  };
+  const fallbackTab = () => { try { window.open(`/sheet/${bookingId}?download=1`, '_blank'); } catch { /* ignore */ } };
+  const onMsg = (e: MessageEvent) => {
+    if (e.source !== iframe.contentWindow) return;
+    if (e.data === 'gdc:sheet-pdf-done') {
+      settled = true;
+      // A beat so the browser's download has fully kicked off before we yank
+      // the iframe out from under it.
+      setTimeout(cleanup, 1500);
+    } else if (e.data === 'gdc:sheet-pdf-fail') {
+      settled = true;
+      cleanup();
+      fallbackTab();
+    }
+  };
+  window.addEventListener('message', onMsg);
+  iframe.src = `/sheet/${bookingId}?download=1&embed=1`;
+  document.body.appendChild(iframe);
+  // Safety net: if the iframe never reports back (never loaded, script error),
+  // fall back to the visible tab so the DJ still gets their PDF.
+  setTimeout(() => { if (!settled) { cleanup(); fallbackTab(); } }, 9000);
+}
+
 export interface BuildStepsCtx {
   booking: UpcomingBooking;
   taxPct: number;
@@ -708,15 +745,15 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             ...(planner
               ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
               : []),
-            { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank'); } },
+            { label: 'Download Planner & Playlist', run: () => { downloadRunSheet(booking.id); } },
           ]
         : planner
           ? [
               { label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } },
               // Download only exists once a planner has been sent — before that
-              // there's no specific planner to render. window.open (no noopener)
-              // so the opened tab can download the PDF and close itself.
-              { label: 'Download Planner & Playlist', run: () => { window.open(`/sheet/${booking.id}?download=1`, '_blank'); } },
+              // there's no specific planner to render. Builds the PDF in a hidden
+              // iframe (no flashing tab); see downloadRunSheet.
+              { label: 'Download Planner & Playlist', run: () => { downloadRunSheet(booking.id); } },
               // Copy survives the host gate — the planner exists and the link is
               // live, and a DJ whose client lost it needs to hand it over by text.
               // Only Resend needs a recipient, so only Resend goes.
