@@ -39,7 +39,7 @@ import {
 
 export default function BookingDetails({
   booking, djType, userId, clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, flyerUrl, onFlyerChange, onContractSigned, archive,
-  payments, onMutated, canManageMoney = true, canManageContract = true, onEdit, onEditHost, contractAction, onContractActionHandled, isOwner = false,
+  payments, onMutated, canManageMoney = true, canManageContract = true, onEdit, onEditHost, contractAction, onContractActionHandled, onContractBusy, isOwner = false,
 }: {
   booking: UpcomingBooking;
   djType: 'club' | 'mobile';
@@ -87,6 +87,8 @@ export default function BookingDetails({
   // them lives a component up, on a row that may not even be expanded yet.
   contractAction?: ContractAction | null;
   onContractActionHandled?: () => void;
+  // Spin the Contract stage circle while a signed-doc download is building.
+  onContractBusy?: (busy: boolean) => void;
   /** Account owner only — gates the Booking log (owner-only feature). */
   isOwner?: boolean;
 }) {
@@ -465,6 +467,7 @@ export default function BookingDetails({
     // open a viewer tab. We fetch the bytes first (so we can surface a clear
     // error if it isn't ready), then save them via a blob URL.
     setSignedBusy(true);
+    onContractBusy?.(true); // spin the Contract stage circle while the PDF builds
     try {
       const res = await fetch(`/api/contracts/signed-doc?bookingId=${encodeURIComponent(booking.id)}&which=${which}`, { cache: 'no-store' });
       if (!res.ok) {
@@ -481,7 +484,7 @@ export default function BookingDetails({
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
     } catch { alert('Could not fetch the signed contract. Try again in a moment.'); }
-    finally { setSignedBusy(false); }
+    finally { setSignedBusy(false); onContractBusy?.(false); }
   }
 
   // Re-email the client their copy to sign.
@@ -494,6 +497,7 @@ export default function BookingDetails({
       });
       if (!res.ok) throw new Error('resend failed');
       setResendDone(true);
+      alert('Contract re-sent to the host.');
       onMutated?.();
     } catch { alert('Could not resend the contract. Try again in a moment.'); }
     finally { setResendBusy(false); }
