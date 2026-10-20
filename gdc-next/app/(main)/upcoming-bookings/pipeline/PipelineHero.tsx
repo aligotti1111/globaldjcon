@@ -103,8 +103,8 @@ export default function PipelineHero({
                 <span className={styles.heroName}>{name(st.key)}</span>
               )}
               <span className={styles.heroCap} style={{ color: capColor, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                {done && st.paidRail && !isDeclined ? <RailMark rail={st.paidRail} size={13} /> : null}
                 {isDeclined ? 'DECLINED' : (cap || '')}
+                {done && st.paidRail && !isDeclined ? <RailMark rail={st.paidRail} size={13} /> : null}
               </span>
               {open && hasMenu && pos && (
                 <StageMenu
