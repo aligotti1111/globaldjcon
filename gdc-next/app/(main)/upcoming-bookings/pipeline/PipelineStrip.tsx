@@ -153,7 +153,7 @@ export default function PipelineStrip({
           ? (<><span style={{ color: '#3fd6ab' }}>Paid</span><span style={{ color: '#7a7a8c' }}> / </span><span style={{ color: '#f2f2f7' }}>{cap || 'New Balance'}</span></>)
           : isDeclined ? 'DECLINED'
           : (positiveDone && st.paidRail)
-            ? (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><RailMark rail={st.paidRail} size={12} />{cap || ''}</span>)
+            ? (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>{cap || ''}<RailMark rail={st.paidRail} size={12} /></span>)
             : (cap || '');
         // A stage the DJ turned OFF in their pipeline settings: it shows the
         // greyed icon + "Not Required" so it can still be deployed on a one-off,
