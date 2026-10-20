@@ -1409,7 +1409,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
 
             <ul className={styles.bodyHint} style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem', lineHeight: 1.6 }}>
               <li>Clients pay by debit or credit card, straight into your own Stripe account.</li>
-              <li>You will be charged 2.9% + 30¢ per transaction. Amount is deducted from payment received.</li>
             </ul>
 
 
@@ -1640,10 +1639,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const depHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.12))', color: '#eafff8', borderRadius: 6 };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
-                  <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
+                  {/* Deposit STACKED OVER Balance (vertical), split by a divider. */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
                     {/* Balance column */}
-                    <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
+                    <div style={{ order: 2 }}>
                       <div style={balHead}>Balance</div>
                       <label style={{ ...qLabel, fontSize: '.95rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance by check the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
@@ -1680,11 +1679,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
                       )}
                     </div>
-                    {/* Center divider */}
-                    <span aria-hidden="true" style={{ width: 2, alignSelf: 'stretch', background: 'rgba(255,255,255,.75)', flexShrink: 0, borderRadius: 2 }} />
+                    {/* Divider between the stacked Deposit (top) and Balance. */}
+                    <span aria-hidden="true" style={{ order: 1, height: 1, width: '100%', background: 'rgba(255,255,255,.18)', margin: '.9rem 0', borderRadius: 2 }} />
                     {/* Deposit column — deposits are always paid ahead, so
                         there's no night-of choice: mail or drop off, full stop. */}
-                    <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
+                    <div style={{ order: 0 }}>
                       <div style={depHead}>Deposit</div>
                       <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: 'var(--white)' }}>Host will choose one of the options below to get you the deposit.</p>
                       <div style={{ marginTop: '.6rem' }}>
@@ -1716,10 +1715,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const depHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.12))', color: '#eafff8', borderRadius: 6 };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  {/* Balance and Deposit sit SIDE BY SIDE, split by a divider. */}
-                  <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexWrap: 'wrap' }}>
+                  {/* Deposit STACKED OVER Balance (vertical), split by a divider. */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
                     {/* Balance column */}
-                    <div style={{ flex: '1 1 0', minWidth: 260, paddingRight: '1.4rem' }}>
+                    <div style={{ order: 2 }}>
                       <div style={balHead}>Balance</div>
                       <label style={{ ...qLabel, fontSize: '.95rem', color: unanswered ? '#ff6b6b' : 'var(--white)' }}>Can the host pay the balance in cash the day of the event?</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.4rem' }}>
@@ -1755,11 +1754,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         <p style={{ margin: '.45rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>Please choose Yes or No before saving.</p>
                       )}
                     </div>
-                    {/* Center divider */}
-                    <span aria-hidden="true" style={{ width: 2, alignSelf: 'stretch', background: 'rgba(255,255,255,.75)', flexShrink: 0, borderRadius: 2 }} />
+                    {/* Divider between the stacked Deposit (top) and Balance. */}
+                    <span aria-hidden="true" style={{ order: 1, height: 1, width: '100%', background: 'rgba(255,255,255,.18)', margin: '.9rem 0', borderRadius: 2 }} />
                     {/* Deposit column — a cash deposit is always paid ahead and
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
-                    <div style={{ flex: '1 1 0', minWidth: 260, paddingLeft: '1.4rem' }}>
+                    <div style={{ order: 0 }}>
                       <div style={depHead}>Deposit</div>
                       <p style={{ ...qLabel, margin: 0, fontSize: '.95rem', color: 'var(--white)' }}>Host will choose one of the options below to get you the deposit.</p>
                       <div style={{ marginTop: '.6rem' }}>
