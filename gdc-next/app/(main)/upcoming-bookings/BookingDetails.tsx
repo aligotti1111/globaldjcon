@@ -13,6 +13,7 @@ import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment } from './page';
 import { confirmedRail } from './pipeline/buildSteps';
+import { RailMark } from '../update-dj-profile/BrandMarks';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import RiderSendModal from './RiderSendModal';
@@ -872,6 +873,14 @@ export default function BookingDetails({
     const paidTag = tag('Paid', NEON, 'rgba(0,245,196,.12)', 'rgba(0,245,196,.35)');
     const skippedTag = tag('Skipped', '#8a8aa0', 'rgba(255,255,255,.06)', 'rgba(255,255,255,.18)');
     const depTag = depositPaidLine ? paidTag : (depositSkippedLine ? skippedTag : null);
+    // The rail each portion was marked paid with (receipt_overrides) → brand logo
+    // beside its PAID tag.
+    const ro = (booking as { receipt_overrides?: Record<string, { method?: string } | null> }).receipt_overrides || {};
+    const depRail = ro.deposit?.method ?? null;
+    const balRail = ro.balance?.method ?? null;
+    const railLogo = (rail: string | null) => rail
+      ? <span style={{ marginLeft: 6, display: 'inline-flex', verticalAlign: 'middle' }}><RailMark rail={rail} size={13} /></span>
+      : null;
     const isPaidLine = (l: string) => /Balance/i.test(l) && balancePaidLine;
     // Post-payment delta: a price change on an already-settled booking. The
     // snapshot is what it was paid-in-full at; the difference against the current
@@ -922,7 +931,7 @@ export default function BookingDetails({
                 : c.value;
               return (
                 <div key={c.label} className={styles.priceRow}>
-                  <span className={styles.priceKey}>{c.label}{isDep ? depTag : (isPaidLine(c.label) ? paidTag : null)}</span>
+                  <span className={styles.priceKey}>{c.label}{isDep ? depTag : (isPaidLine(c.label) ? paidTag : null)}{isDep ? (depositPaidLine ? railLogo(depRail) : null) : (isPaidLine(c.label) ? railLogo(balRail) : null)}</span>
                   <span className={styles.priceVal}>{shown}</span>
                 </div>
               );
