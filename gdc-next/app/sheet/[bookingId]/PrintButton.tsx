@@ -52,6 +52,11 @@ export default function PrintButton() {
   // downloads on open, no second click. Guarded so it only fires once even under
   // React's dev double-mount.
   const autoFired = useRef(false);
+  // When the DJ's booking card triggers the download, it loads this page inside
+  // a HIDDEN iframe with ?embed=1 (no visible tab). In that mode we don't close
+  // or print the window — we post the outcome back to the opener, which removes
+  // the iframe (on success) or opens the visible tab (on failure).
+  const embedRef = useRef(false);
   // The button wrapper, so we can hide it FROM the capture only (not via a CSS
   // rule that also hides it on the page). On the client's download page the
   // page is already paper-white and stays that way — the buttons just blink out
@@ -60,16 +65,24 @@ export default function PrintButton() {
 
   useEffect(() => {
     if (autoFired.current) return;
-    const wantsDownload = new URLSearchParams(window.location.search).get('download') === '1';
+    const params = new URLSearchParams(window.location.search);
+    const wantsDownload = params.get('download') === '1';
     if (!wantsDownload) return;
+    embedRef.current = params.get('embed') === '1';
     autoFired.current = true;
     // A tick after paint, so the sheet is fully laid out before we capture.
-    // This page was opened just to produce the file — once the PDF actually
-    // saved, close the throwaway tab and return the user to where they were. We
-    // do NOT close if it fell back to the print dialog (that needs the tab).
+    // This page was opened just to produce the file. In a VISIBLE throwaway tab
+    // (no embed) we close it once the PDF saved. In the HIDDEN-iframe embed we
+    // tell the opener instead, which removes the iframe. We do NOT close/signal
+    // success if it fell back to the print dialog.
     const t = setTimeout(() => {
       void download().then((saved) => {
-        if (saved) setTimeout(() => { try { window.close(); } catch { /* ignore */ } }, 900);
+        if (!saved) return;
+        if (embedRef.current) {
+          try { window.parent?.postMessage('gdc:sheet-pdf-done', '*'); } catch { /* ignore */ }
+        } else {
+          setTimeout(() => { try { window.close(); } catch { /* ignore */ } }, 900);
+        }
       });
     }, 150);
     return () => clearTimeout(t);
@@ -132,9 +145,15 @@ export default function PrintButton() {
         .save();
       return true;
     } catch {
-      // CDN blocked, offline, or anything else — the print dialog always works,
-      // and its "Save as PDF" is the same result in two clicks instead of one.
-      window.print();
+      // CDN blocked, offline, or anything else. In the hidden-iframe embed we
+      // can't show a print dialog (the iframe is invisible) — tell the opener to
+      // fall back to the visible tab instead. Otherwise the print dialog always
+      // works, and its "Save as PDF" is the same result in two clicks.
+      if (embedRef.current) {
+        try { window.parent?.postMessage('gdc:sheet-pdf-fail', '*'); } catch { /* ignore */ }
+      } else {
+        window.print();
+      }
       return false;
     } finally {
       if (!alreadyPaper) page?.classList.remove(styles.export);
