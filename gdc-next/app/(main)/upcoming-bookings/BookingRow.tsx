@@ -659,6 +659,11 @@ export default function BookingRow({
   // Server caps it at 3 per 24h per row (429 carries the message to show) and
   // records the send, which also surfaces on the host's notification bell.
   async function sendReminder(paymentId: string) {
+    // Spin the stage circle this reminder belongs to (deposit → 'deposit',
+    // balance → 'invoice' slot) while it sends.
+    const row = payments.find((p) => p.id === paymentId);
+    const slot = row?.kind === 'balance' ? 'invoice' : 'deposit';
+    setBusyKey(slot);
     try {
       const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-reminder', paymentId }) });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
@@ -666,6 +671,7 @@ export default function BookingRow({
       alert('Reminder sent to the client.');
       onMutated?.();
     } catch { alert('Could not send the reminder.'); }
+    finally { setBusyKey(null); }
   }
   async function sendReceipt(kind: 'deposit' | 'balance', auto = false) { setBusyKey(moneySlot(kind)); try { const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send-receipt', bookingId: booking.id, kind, auto }) }); const raw = await res.text(); if (!res.ok) { if (!auto) alert(raw.slice(0, 160) || 'Could not send the receipt.'); } else { /* `auto` (fired when marking paid) stays silent and honours the DJ's auto-send toggle server-side; only a manual send alerts. */ if (!auto) alert('Receipt sent to the client.'); onMutated?.(); } } catch { if (!auto) alert('Could not send the receipt.'); } finally { setBusyKey(null); } }
   async function downloadReceipt(kind: 'deposit' | 'balance') {
