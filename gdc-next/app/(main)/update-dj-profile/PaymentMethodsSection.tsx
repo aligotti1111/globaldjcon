@@ -1981,7 +1981,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                               <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
                               {accountPhone && (m.checkPhone || '').trim() !== accountPhone && applyLink(accountPhone, () => patchType(t, { checkPhone: accountPhone }))}
                               <div style={{ display: 'flex', gap: '1.4rem', marginTop: '.55rem' }}>
-                                {([['Call', 'checkCall'], ['Text', 'checkText']] as const).map(([lbl, key]) => (
+                                {([['Text', 'checkText']] as const).map(([lbl, key]) => (
                                   <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.82rem', color: 'var(--white)' }}>
                                     <input type="checkbox" checked={m[key] !== false} onChange={(e) => patchType(t, { [key]: e.target.checked ? undefined : false })} style={{ accentColor: 'var(--neon)' }} />
                                     {lbl}
