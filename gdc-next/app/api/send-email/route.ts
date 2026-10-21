@@ -13,18 +13,24 @@ import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib
 import { getActingContext } from '@/lib/acting';
 import { loadBookingParties, recipientForParty } from '@/lib/emails/recipients';
 import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
-import { googleCalendarLink } from '@/lib/ics';
 // Shared email identity/links + the render + formatting helpers, now extracted
 // into lib/emails/* so this route holds orchestration + the per-type branches.
 import { FROM, REPLY_TO, ADMIN_EMAIL, SITE_URL } from '@/lib/emails/constants';
 import {
   escHtml, fmtDate, fmtTimeRange, eventTypeLabel,
-  statusColor, statusLabel, currencySymbol, setTypeLabel, venueTypeLabel,
+  statusLabel, currencySymbol, setTypeLabel, venueTypeLabel,
 } from '@/lib/emails/format';
 import {
   emailTemplate, ctaButton, offerButtons, bookingInfoBox, mobileBookingRequestBox, billBreakdownBox,
 } from '@/lib/emails/layout';
 import { billBreakdownForBooking, bookingProgressBox } from '@/lib/emails/bookingBoxes';
+import {
+  buildWelcomeBody, buildInboxNotificationBody, buildClaimRequestBody, buildClaimReceivedBody,
+  buildBookingRequestBody, buildBookingRequestConfirmationBody, buildBookingCancelledBody,
+  buildOfferSentBody, buildBookingStatusBody, buildMobBookingStatusBody, buildBookingCounterBody,
+  buildQuoteSentBody, buildBookingApprovedBody, buildContactUsBody, buildProfileClaimedBody,
+  buildManualBookingInviteBody, buildEventInviteFromHostBody, buildBookingActivityBody,
+} from '@/lib/emails/messages';
 import { canUsePro, type AccessFields } from '@/lib/access';
 
 // All email types supported by this route. Mirror of vanilla send-email.js.
@@ -228,51 +234,12 @@ export async function POST(req: Request) {
         }
       } catch { /* leave hidden on any lookup failure */ }
     }
-    const subscribeBlock = showSubscribe
-      ? `
-        <div style="margin:24px 0 24px;padding:18px 20px;background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;">
-          <p style="margin:0 0 6px;color:#7a5a13;font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Activate Bookings</p>
-          <p style="margin:0 0 14px;color:#7a5a13;font-size:13px;line-height:1.6;">You're on the free plan. Subscribe to activate the booking feature — it lets you accept bookings directly through the site and manage requests, contracts, deposits, and payments all in one place.</p>
-          ${ctaButton(`${SITE_URL}/subscribe`, 'Subscribe & Activate Bookings')}
-        </div>`
-      : '';
-
-    // For DJs only: include their shareable public profile link so they
-    // can drop it into bios, socials, etc. right out of the gate.
-    const profileShareBlock = (isDj && recipientSlug)
-      ? `
-        <div style="margin:24px 0 24px;padding:16px 20px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;">
-          <p style="margin:0 0 6px;color:#1a1a2e;font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Your Profile Link</p>
-          <p style="margin:0 0 12px;color:#666;font-size:13px;">Share this anywhere — bios, socials, business cards. Hosts and venues can book you directly from it.</p>
-          <p style="margin:0 0 14px;word-break:break-all;"><a href="${SITE_URL}/${encodeURIComponent(recipientSlug)}" style="color:#0a6f61;text-decoration:none;font-weight:600;">${SITE_URL}/${escHtml(recipientSlug)}</a></p>
-          ${ctaButton(`${SITE_URL}/${encodeURIComponent(recipientSlug)}`, 'View My Profile')}
-        </div>`
-      : '';
-
-    // DJs get a dedicated welcome: DJ-focused copy + their profile link box,
-    // and NO dashboard button. Hosts/venues keep the generic welcome with the
-    // "Open Dashboard" CTA.
-    const welcomeBody = isDj
-      ? `
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
-        <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
-        <p style="color:#666666;margin-bottom:24px;">Build your profile, manage &amp; automate booking requests, share your availability calendar, organize your schedule — everything you need in one place.</p>
-        ${subscribeBlock}
-        ${profileShareBlock}
-      `
-      : `
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Welcome${recipientName ? `, ${escHtml(recipientName)}` : ''}!</h2>
-        <p style="color:#666666;margin-bottom:8px;">You're officially on the Global DJ Connect network.</p>
-        <p style="color:#666666;margin-bottom:24px;">Browse DJs, send booking requests, manage gigs — everything you need is in your dashboard.</p>
-        ${ctaButton(`${SITE_URL}`, 'Open Dashboard')}
-      `;
-
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: 'Welcome to Global DJ Connect 🎧',
-      html: emailTemplate(welcomeBody),
+      html: emailTemplate(buildWelcomeBody({ isDj, recipientName, recipientSlug, showSubscribe })),
     };
 
   // ── 2. INBOX NOTIFICATION (new message arrived in user's inbox) ────
@@ -312,15 +279,7 @@ export async function POST(req: Request) {
       subject: senderName
         ? `New message from ${senderName}`
         : `New message: ${subject}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Message</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, you have a new message from <strong>${escHtml(senderName || 'a Global DJ Connect user')}</strong>.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;color:#1a1a2e;font-size:13px;font-weight:600;">${escHtml(subject)}</p>
-          <p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p>
-        </div>
-        ${ctaButton(`${SITE_URL}/inbox`, 'View Inbox')}
-      `),
+      html: emailTemplate(buildInboxNotificationBody({ recipientName, senderName, subject, message })),
     };
 
     if (body.recipientUserId) {
@@ -360,12 +319,7 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [ADMIN_EMAIL],
       subject: `New profile claim: ${profileName || profileSlug}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Profile Claim</h2>
-        <p style="color:#666;margin-bottom:16px;"><strong>${escHtml(claimerName || 'Someone')}</strong> (${escHtml(claimerEmail || 'no email')}) has claimed the profile <strong>${escHtml(profileName || profileSlug || '?')}</strong>.</p>
-        ${message ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;"><p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p></div>` : ''}
-        ${ctaButton(`${SITE_URL}/admin`, 'Review in Admin Panel')}
-      `),
+      html: emailTemplate(buildClaimRequestBody({ claimerName, claimerEmail, profileName, profileSlug, message })),
     };
 
   // ── 4. CLAIM RECEIVED (auto-confirmation to the claimer) ───────────
@@ -390,10 +344,7 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: 'We received your profile claim',
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Claim Received</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(claimerName || 'there')}, we got your claim for <strong>${escHtml(profileName || 'your profile')}</strong>. We'll review it and get back to you shortly.</p>
-      `),
+      html: emailTemplate(buildClaimReceivedBody({ claimerName, profileName })),
     };
 
   // ── 5. BOOKING REQUEST (alert DJ of new booking) ──────────────────
@@ -438,7 +389,6 @@ export async function POST(req: Request) {
     // Mobile vs club: the club booking form always sends a setType; the
     // mobile form never does. Mobile bookings render via the shared
     // mobileBookingRequestBox; club keeps its existing inline card.
-    const isMobileBooking = !setType;
     // Optional rate fields. A host request carries a price in one of two
     // ways depending on the DJ's rate type:
     //   • offers mode  → offerAmount  (the booker's own offer)
@@ -452,116 +402,12 @@ export async function POST(req: Request) {
       || (body.currency as string | undefined) || 'USD';
     const totalHours = body.totalHours as number | string | undefined;
     const hourlyRate = body.hourlyRate as number | string | undefined;
-    const hasOffer = offerAmount != null && String(offerAmount).trim() !== '';
-    const hasQuoted = quotedRate != null && String(quotedRate).trim() !== '';
-    const rateValueNum = hasOffer ? Number(offerAmount)
-      : hasQuoted ? Number(quotedRate)
-      : null;
-    // Per-hour rate — present only for hourly-rate bookings. When set, the
-    // rate box shows the "$X/hr × N hr" breakdown beside the total.
-    const hourlyRateNum = hourlyRate != null && String(hourlyRate).trim() !== ''
-      ? Number(hourlyRate) : null;
-
-    // Discount breakdown — when the booking used a sale/promo code, show the
-    // original price + which discount, as the rate's parenthetical.
     const discAmt = body.discountAmount != null ? Number(body.discountAmount) : 0;
     const origRate = body.originalRate != null ? Number(body.originalRate) : null;
     const discLabel = (body.discountLabel as string) || 'Discount';
-    const discountBreakdown =
-      discAmt > 0 && origRate != null
-        ? `was ${currencySymbol(offerCurrency)}${origRate.toLocaleString()} — ${discLabel}, save ${currencySymbol(offerCurrency)}${discAmt.toLocaleString()}`
-        : undefined;
 
     const dateStr = fmtDate(eventDate);
     const timeStr = fmtTimeRange(startTime, endTime);
-    // Set type (club) — "Event Type" labelling belongs to mobile bookings.
-    // setTypeLabel / venueTypeLabel title-case the stored value.
-    const setTypeText = setTypeLabel(setType);
-    const venueTypeDisplay = venueTypeLabel(venueType);
-    // Equipment — booker picks which gear the DJ supplies. Maps the stored
-    // code to the same wording shown in the booking form.
-    const equipmentLabel = ({
-      sound_system: 'DJ provides system + decks',
-      decks_only: 'DJ provides decks',
-      venue_provides: 'Venue provides all',
-    } as Record<string, string>)[equipment || ''] || '';
-    // Address row — link to Google Maps so the DJ/host can tap straight
-    // through to directions.
-    const mapsHref = venueAddress
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venueAddress)}`
-      : '';
-    const row = (label: string, value: string) =>
-      `<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
-    const lastRow = (label: string, value: string) =>
-      `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${label}:</strong> ${value}</p>`;
-
-    // DJ-facing rate box. Mobile and club share this — for mobile it
-    // renders the "respond with your quote" prompt when no rate is set.
-    const djRateBox = rateValueNum != null && !isNaN(rateValueNum)
-      ? `<div style="background:#eafaf4;border:1px solid #b6e8d6;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-           <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>${hasOffer ? 'Offered Rate' : 'Quoted Rate'}:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(rateValueNum.toLocaleString()))} ${escHtml(offerCurrency)}${
-             totalHours != null && String(totalHours).trim() !== '' && !hasOffer
-               ? ` <span style="color:#666;">(${escHtml(String(totalHours))} hr total)</span>`
-               : ''
-           }</p>${
-             hourlyRateNum != null && !isNaN(hourlyRateNum) && totalHours != null && String(totalHours).trim() !== ''
-               ? `<p style="margin:6px 0 0;color:#666;font-size:13px;">${currencySymbol(offerCurrency)}${escHtml(String(hourlyRateNum.toLocaleString()))}/hr × ${escHtml(String(totalHours))} hr</p>`
-               : ''
-           }
-         </div>`
-      : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-           <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
-         </div>`;
-
-    // Mobile bookings: card built by the shared helper with the fixed
-    // field order, package details, and wedding/cocktail rows. The Quoted
-    // Rate row is folded into the card; the prompt box only shows when
-    // there's no rate. Club bookings keep their original inline card.
-    const mobileCard = mobileBookingRequestBox({
-      eventTypeText: eventTypeLabel(eventType),
-      eventDetails: (body.eventDetails as string | undefined) || undefined,
-      date: eventDate,
-      startTime,
-      endTime,
-      venueName,
-      venueAddress,
-      packageTitle,
-      packageDetails,
-      rateLabel: rateValueNum != null && !isNaN(rateValueNum) ? 'Quoted Rate' : undefined,
-      rateValue: rateValueNum != null && !isNaN(rateValueNum)
-        ? `${currencySymbol(offerCurrency)}${rateValueNum.toLocaleString()} ${offerCurrency}`
-        : undefined,
-      rateBreakdown: discountBreakdown,
-      isWedding,
-      cocktailNeeded,
-      cocktailStart,
-      cocktailSameRoom,
-      ceremonyNeeded,
-      ceremonyStart,
-      ceremonySameRoom,
-      setupHours,
-    });
-
-    const djBody = isMobileBooking
-      ? `${mobileCard}${
-          rateValueNum != null && !isNaN(rateValueNum)
-            ? ''
-            : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-                 <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate. Open the booking request and <strong>respond with your quote</strong> to move it forward.</p>
-               </div>`
-        }`
-      : `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          ${row('Date', dateStr)}
-          ${timeStr !== '—' ? row('Time', escHtml(timeStr)) : ''}
-          ${packageTitle ? row('Package', escHtml(packageTitle)) : ''}
-          ${eventTypeLabel(eventType) ? row('Event Type', escHtml(eventTypeLabel(eventType))) : ''}
-          ${venueName ? row('Venue', escHtml(venueName)) : ''}
-          ${venueAddress ? row('Address', `<a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(venueAddress)}</a>`) : ''}
-          ${venueTypeDisplay ? row('Venue Type', escHtml(venueTypeDisplay)) : ''}
-          ${setTypeText ? row('Set Type', escHtml(setTypeText)) : ''}
-          ${equipmentLabel ? lastRow('Equipment', escHtml(equipmentLabel)) : ''}
-        </div>
-        ${djRateBox}`;
 
     const billBox = await billBreakdownForBooking(body.bookingId as string | undefined, offerCurrency);
 
@@ -570,14 +416,17 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [djEmail],
       subject: `New Booking Request from ${requesterName || 'a booker'} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Booking Request</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName || 'there')}, you have a new booking request from <strong>${escHtml(requesterName || 'a booker')}</strong>.</p>
-        <p style="color:#8a6d00;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;margin:0 0 16px;font-size:13px;line-height:1.6;">Please respond within <strong>5 days</strong> (or by the event date, whichever comes first), or this request will be automatically declined.</p>
-        ${djBody}
-        ${billBox}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Request')}
-      `),
+      html: emailTemplate(buildBookingRequestBody({
+        djName, requesterName, eventType,
+        eventDetails: body.eventDetails as string | undefined,
+        packageTitle, packageDetails,
+        eventDate, startTime, endTime, venueName, venueAddress,
+        isWedding, cocktailNeeded, cocktailStart, cocktailSameRoom,
+        ceremonyNeeded, ceremonyStart, ceremonySameRoom, setupHours,
+        setType, venueType, equipment,
+        offerAmount, quotedRate, offerCurrency, totalHours, hourlyRate,
+        discAmt, origRate, discLabel, dateStr, timeStr, billBox,
+      })),
     };
 
     // SMS to the DJ. Short, no HTML, links to the booking-requests page.
@@ -637,8 +486,6 @@ export async function POST(req: Request) {
     const setType = body.setType as string | undefined;
     const venueType = body.venueType as string | undefined;
     const equipment = body.equipment as string | undefined;
-    // Mobile vs club — same discriminator the DJ-side email uses.
-    const isMobileBooking = !setType;
     // Rate fields — mirror the DJ-side request email so the booker keeps
     // a record of the price they requested at.
     const offerAmount = body.offerAmount as number | string | undefined;
@@ -647,112 +494,33 @@ export async function POST(req: Request) {
       || (body.currency as string | undefined) || 'USD';
     const confTotalHours = body.totalHours as number | string | undefined;
     const confHourlyRate = body.hourlyRate as number | string | undefined;
-    const confHasOffer = offerAmount != null && String(offerAmount).trim() !== '';
-    const confHasQuoted = quotedRate != null && String(quotedRate).trim() !== '';
-    const confRateNum = confHasOffer ? Number(offerAmount)
-      : confHasQuoted ? Number(quotedRate)
-      : null;
-    const confHourlyNum = confHourlyRate != null && String(confHourlyRate).trim() !== ''
-      ? Number(confHourlyRate) : null;
     const confDiscAmt = body.discountAmount != null ? Number(body.discountAmount) : 0;
     const confOrigRate = body.originalRate != null ? Number(body.originalRate) : null;
     const confDiscLabel = (body.discountLabel as string) || 'Discount';
-    const confDiscountBreakdown =
-      confDiscAmt > 0 && confOrigRate != null
-        ? `was ${currencySymbol(confCurrency)}${confOrigRate.toLocaleString()} — ${confDiscLabel}, save ${currencySymbol(confCurrency)}${confDiscAmt.toLocaleString()}`
-        : undefined;
-    const confEquipmentLabel = ({
-      sound_system: 'DJ provides system + decks',
-      decks_only: 'DJ provides decks',
-      venue_provides: 'Venue provides all',
-    } as Record<string, string>)[equipment || ''] || '';
     const dateStr = fmtDate(eventDate);
-    // Mobile bookings render the identical card the DJ receives, via the
-    // shared helper. Club bookings keep the existing bookingInfoBox layout.
-    const confCard = isMobileBooking
-      ? mobileBookingRequestBox({
-          eventTypeText: eventTypeLabel(eventType),
-          eventDetails: (body.eventDetails as string | undefined) || undefined,
-          date: eventDate,
-          startTime,
-          endTime,
-          venueName,
-          venueAddress,
-          packageTitle,
-          packageDetails,
-          rateLabel: confRateNum != null && !isNaN(confRateNum) ? 'Quoted Rate' : undefined,
-          rateValue: confRateNum != null && !isNaN(confRateNum)
-            ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}`
-            : undefined,
-          rateBreakdown: confDiscountBreakdown,
-          isWedding,
-          cocktailNeeded,
-          cocktailStart,
-          cocktailSameRoom,
-          ceremonyNeeded,
-          ceremonyStart,
-          ceremonySameRoom,
-          setupHours,
-        })
-      : bookingInfoBox({
-          eventTypeText: eventTypeLabel(eventType),
-          setTypeText: setTypeLabel(setType),
-          date: eventDate,
-          timeRange: fmtTimeRange(startTime, endTime),
-          packageTitle,
-          venueTypeText: venueTypeLabel(venueType),
-          venueName,
-          venueAddress,
-          equipmentText: confEquipmentLabel,
-          rateLabel: confRateNum != null && !isNaN(confRateNum)
-            ? (confHasOffer ? 'Offered Rate' : 'Quoted Rate')
-            : undefined,
-          rateValue: confRateNum != null && !isNaN(confRateNum)
-            ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}${
-                confTotalHours != null && String(confTotalHours).trim() !== '' && !confHasOffer
-                  ? ` (${confTotalHours} hr total)` : ''
-              }`
-            : undefined,
-          rateBreakdown: confHourlyNum != null && !isNaN(confHourlyNum)
-            && confTotalHours != null && String(confTotalHours).trim() !== ''
-            ? `${currencySymbol(confCurrency)}${confHourlyNum.toLocaleString()}/hr × ${confTotalHours} hr`
-            : undefined,
-        });
-    // Mobile quote-style requests: tell the booker the DJ will reply with
-    // an offer, matching the prompt the DJ sees on their side.
-    const confQuoteNote = isMobileBooking && (confRateNum == null || isNaN(confRateNum))
-      ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:14px 20px;margin:24px 0;">
-           <p style="margin:0;color:#7a5a13;font-size:14px;">This request doesn't include a set rate — the DJ will <strong>respond with an offer</strong>.</p>
-         </div>`
-      : '';
-    // Full bill breakdown for a package-priced (auto-quoted) booking. Uses the
-    // frozen tax/deposit snapshot the client forwards from the create response.
-    // Renders nothing for a quote-mode request (no price yet) or a flat price
-    // with no tax/deposit — so it never shows an empty or one-line "breakdown".
-    const confBill = billBreakdownBox({
-      quotedRate: confRateNum != null && !isNaN(confRateNum) ? confRateNum : null,
-      cocktailPrice: body.cocktailPrice != null ? Number(body.cocktailPrice) : null,
-      ceremonyPrice: body.ceremonyPrice != null ? Number(body.ceremonyPrice) : null,
-      taxPct: body.taxPct != null ? Number(body.taxPct) : null,
-      taxAmount: body.taxAmount != null ? Number(body.taxAmount) : null,
-      totalWithTax: body.totalWithTax != null ? Number(body.totalWithTax) : null,
-      depositPct: body.depositPct != null ? Number(body.depositPct) : null,
-      depositAmount: body.depositAmount != null ? Number(body.depositAmount) : null,
-    }, currencySymbol(confCurrency), confCurrency);
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
       to: [requesterEmail],
       subject: `Booking request sent to ${djName || 'your DJ'} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Sent</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((requesterName || '').trim().split(' ')[0] || 'there')}, your booking request has been sent to <strong>${escHtml(djName || 'the DJ')}</strong>. They'll respond shortly — you'll get an email when they do.</p>
-        <p style="color:#8a6d00;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;margin:0 0 16px;font-size:13px;line-height:1.6;">The DJ has up to <strong>5 days</strong> (or until your event date, whichever comes first) to respond. If they send you a quote or offer, you'll then have <strong>5 days</strong> to approve or decline it — otherwise it's automatically declined and you can send a new request anytime.</p>
-        ${confCard}
-        ${confBill}
-        ${confQuoteNote}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Your Request')}
-      `),
+      html: emailTemplate(buildBookingRequestConfirmationBody({
+        djName, requesterName, eventType,
+        eventDetails: body.eventDetails as string | undefined,
+        packageTitle, packageDetails,
+        eventDate, startTime, endTime, venueName, venueAddress,
+        isWedding, cocktailNeeded, cocktailStart, cocktailSameRoom,
+        ceremonyNeeded, ceremonyStart, ceremonySameRoom, setupHours,
+        setType, venueType, equipment,
+        offerAmount, quotedRate, confCurrency, confTotalHours, confHourlyRate,
+        confDiscAmt, confOrigRate, confDiscLabel,
+        cocktailPrice: body.cocktailPrice,
+        ceremonyPrice: body.ceremonyPrice,
+        taxPct: body.taxPct,
+        taxAmount: body.taxAmount,
+        totalWithTax: body.totalWithTax,
+        depositPct: body.depositPct,
+        depositAmount: body.depositAmount,
+      })),
     };
 
   // ── BOOKING CANCELLED (booker cancelled a pending request) ────────
@@ -843,12 +611,7 @@ export async function POST(req: Request) {
     const subject = `Booking request cancelled by ${cancelledByName} – ${dateStr}`;
 
     // Build a recipient-specific email body. "you" wording differs per side.
-    const buildHtml = (intro: string): string => emailTemplate(`
-      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking Request Cancelled</h2>
-      <p style="color:#666;margin-bottom:20px;">${intro}</p>
-      ${infoCard}
-      ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking Requests')}
-    `);
+    const buildHtml = (intro: string): string => emailTemplate(buildBookingCancelledBody(intro, infoCard));
 
     // Send to the DJ.
     if (djEmail) {
@@ -1269,14 +1032,7 @@ export async function POST(req: Request) {
     const bookerButtons = offerButtons(approveUrl, declineUrl, viewUrl);
     const djButton = ctaButton(viewUrl, 'View Booking Requests');
 
-    const buildHtml = (intro: string, cta: string): string => emailTemplate(`
-      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">DJ Offer Sent</h2>
-      <p style="color:#666;margin-bottom:20px;">${intro}</p>
-      ${infoCard}
-      ${billBox}
-      ${extraRows}
-      ${cta}
-    `);
+    const buildHtml = (intro: string, cta: string): string => emailTemplate(buildOfferSentBody(intro, cta, infoCard, billBox, extraRows));
 
     // To the booker — they need this to decide.
     if (requesterEmail) {
@@ -1349,16 +1105,7 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [requesterEmail],
       subject: `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel(status).charAt(0).toUpperCase() + statusLabel(status).slice(1)}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((requesterName || '').trim().split(' ')[0] || 'there')}, your booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
-          ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
-        </div>
-        ${billBox}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
-      `),
+      html: emailTemplate(buildBookingStatusBody({ requesterName, djName, status, dateStr, venueName, billBox })),
     };
 
     if (body.requesterUserId) {
@@ -1408,16 +1155,7 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [requesterEmail],
       subject: `Your booking with ${djName || 'the DJ'} was ${statusLabel(status)}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Booking ${statusLabel(status).charAt(0).toUpperCase() + statusLabel(status).slice(1)}</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((requesterName || '').trim().split(' ')[0] || 'there')}, your mobile booking request with <strong>${escHtml(djName || 'the DJ')}</strong> was <span style="color:${statusColor(status)};font-weight:600;">${escHtml(statusLabel(status))}</span>.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Date:</strong> ${dateStr}</p>
-          ${venueName ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(venueName)}</p>` : ''}
-        </div>
-        ${billBox}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
-      `),
+      html: emailTemplate(buildMobBookingStatusBody({ requesterName, djName, status, dateStr, venueName, billBox })),
     };
 
     if (body.requesterUserId) {
@@ -1488,24 +1226,11 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: `Counter Offer from ${senderSubjectName} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Counter Offer</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((recipientName || '').trim().split(' ')[0] || 'there')}, <strong>${escHtml(senderName || 'the other party')}</strong> sent a counter offer on your booking.</p>
-        ${bookingInfoBox({
-          setTypeText: setTypeLabel(setType),
-          date: eventDate,
-          timeRange: fmtTimeRange(startTime, endTime),
-          packageTitle,
-          venueTypeText: venueTypeLabel(venueType),
-          venueName,
-          venueAddress,
-          rateLabel: 'Counter Offer',
-          rateValue: counterRate ? `${sym}${Number(counterRate).toLocaleString()} ${currency}` : '',
-          message: counterMessage,
-        })}
-        ${billBox}
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Counter Offer')}
-      `),
+      html: emailTemplate(buildBookingCounterBody({
+        recipientName, senderName, setType, eventDate, startTime, endTime,
+        packageTitle, venueType, venueName, venueAddress,
+        counterRate, counterMessage, currency, sym, billBox,
+      })),
     };
 
   // ── 8b. QUOTE SENT (DJ has responded to a quote request with a price) ─
@@ -1546,24 +1271,11 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: `Quote received from ${djName || 'your DJ'} – ${dateStr}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Quote Received</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((recipientName || '').trim().split(' ')[0] || 'there')}, <strong>${escHtml(djName || 'your DJ')}</strong> sent you a quote for your booking request.</p>
-        ${bookingInfoBox({
-          setTypeText: setTypeLabel(setType),
-          date: eventDate,
-          timeRange: fmtTimeRange(startTime, endTime),
-          venueTypeText: venueTypeLabel(venueType),
-          venueName,
-          venueAddress,
-          rateLabel: 'Quoted Rate',
-          rateValue: quotedRate ? `${sym}${Number(quotedRate).toLocaleString()} ${currency}` : '',
-          message: quoteMessage,
-        })}
-        ${billBox}
-        <p style="color:#666;margin-bottom:16px;font-size:13px;">You can accept this quote, propose a counter-offer, or decline.</p>
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'Review Quote')}
-      `),
+      html: emailTemplate(buildQuoteSentBody({
+        recipientName, djName, setType, eventDate, startTime, endTime,
+        venueType, venueName, venueAddress,
+        quotedRate, quoteMessage, currency, sym, billBox,
+      })),
     };
 
   // ── 8c. BOOKING APPROVED (sent to BOTH parties when booking is confirmed) ─
@@ -1614,59 +1326,20 @@ export async function POST(req: Request) {
     );
     const progressBox = await bookingProgressBox(body.bookingId as string | undefined);
 
-    // ── Add to Calendar ── A one-tap Google Calendar link + a .ics attachment
-    // (which Apple Mail / Outlook / Gmail all offer "Add to Calendar" for), so
-    // this single booking lands on a calendar without waiting on the feed. Same
-    // floating-time model as the subscription feed (lib/ics).
-    let addToCalHtml = '';
-    if (eventDate && startTime) {
-      const calSummary = `${eventType ? eventTypeLabel(eventType) : 'DJ Booking'}${venueName ? ` @ ${venueName}` : ''}`;
-      const calLocation = [venueName, venueAddress].filter(Boolean).join(', ') || null;
-      const calDetails = [
-        otherPartyName ? `${otherLabel}: ${otherPartyName}` : null,
-        agreedPrice ? `Agreed: ${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : null,
-        `${SITE_URL}/booking-requests`,
-      ].filter(Boolean).join('\n');
-      const gLink = googleCalendarLink({ summary: calSummary, date: eventDate, startTime, endTime, location: calLocation, details: calDetails });
-      // Google's own button styling — white, hairline grey border, Roboto grey
-      // text with the 4-colour "G" — instead of the site's teal, so it reads as
-      // a trusted Google control. The G is a hosted PNG (SVG doesn't render in
-      // Gmail); if a client blocks the image the button still reads correctly.
-      // No .ics attachment — the Google link is the single add-to-calendar path.
-      addToCalHtml = `<div style="margin:14px 0 22px;text-align:center;"><a href="${gLink}" style="display:inline-block;padding:10px 20px;background:#ffffff;color:#3c4043;text-decoration:none;font-weight:600;font-size:13px;border-radius:6px;border:1px solid #dadce0;font-family:Roboto,Arial,sans-serif;"><img src="https://developers.google.com/identity/images/g-logo.png" alt="" width="18" height="18" style="vertical-align:middle;margin-right:10px;">Add to Google Calendar</a></div>`;
-    }
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: `Booking confirmed with ${otherPartyName || otherLabel} – ${dateStr}`,
-      html: emailTemplate(`
-        <!-- Approved badge — green pill above the heading. -->
-        <div style="display:inline-block;padding:5px 12px;background:rgba(61,220,132,0.12);border:1px solid rgba(61,220,132,0.4);border-radius:14px;color:#3ddc84;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">✓ Booking Approved</div>
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin:4px 0 8px;">Price Agreed – Booking Confirmed</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml((recipientName || '').trim().split(' ')[0] || 'there')}, your booking with <strong>${escHtml(otherPartyName || ('the ' + otherLabel.toLowerCase()))}</strong> has been confirmed.</p>
-        ${bookingInfoBox({
-          eventTypeText: eventType ? eventTypeLabel(eventType) : undefined,
-          eventDetails: (body.eventDetails as string | undefined) || undefined,
-          setTypeText: setTypeLabel(setType),
-          date: eventDate,
-          timeRange: fmtTimeRange(startTime, endTime),
-          packageTitle,
-          venueTypeText: venueTypeLabel(venueType),
-          venueName,
-          venueAddress,
-          rateLabel: 'Agreed Price',
-          rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : '',
-        })}
-        ${billBox}
-        ${overtimeRate != null
-          ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()} ${currency}/hr</p></div>`
-          : ''}
-        <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
-        ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
-        ${addToCalHtml}
-        ${progressBox}
-      `),
+      html: emailTemplate(buildBookingApprovedBody({
+        recipientName, otherPartyName, recipientRole,
+        eventType,
+        eventDetails: body.eventDetails as string | undefined,
+        setType, venueType, venueName, venueAddress,
+        startTime, endTime, packageTitle,
+        agreedPrice, overtimeRate, currency, eventDate,
+        billBox, progressBox,
+      })),
     };
 
     // Approval fires booking_approved to BOTH parties (DJ + booker), each
@@ -1703,14 +1376,7 @@ export async function POST(req: Request) {
       replyTo: senderEmail || REPLY_TO,
       to: [ADMIN_EMAIL],
       subject: `Contact form: ${subject}`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Contact Form Submission</h2>
-        <p style="color:#666;margin-bottom:16px;"><strong>${escHtml(senderName || 'Someone')}</strong> (${escHtml(senderEmail || 'no email')}) sent a message.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;color:#1a1a2e;font-size:13px;font-weight:600;">${escHtml(subject)}</p>
-          <p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p>
-        </div>
-      `),
+      html: emailTemplate(buildContactUsBody({ senderName, senderEmail, subject, message })),
     };
 
   // ── 10. PROFILE CLAIMED (admin approved the claim) ────────────────
@@ -1733,11 +1399,7 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject: `Your profile claim was approved`,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">Profile Approved</h2>
-        <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(claimerName || 'there')}, your claim on <strong>${escHtml(profileName || 'your profile')}</strong> has been approved. You can now sign in and edit your profile.</p>
-        ${ctaButton(`${SITE_URL}/${profileSlug || ''}`, 'View Profile')}
-      `),
+      html: emailTemplate(buildProfileClaimedBody({ claimerName, profileName, profileSlug })),
     };
 
   // ── 11. MANUAL BOOKING INVITE (DJ-added booking sent to host's email) ──
@@ -1792,59 +1454,10 @@ export async function POST(req: Request) {
     const cocktailStart = body.cocktailStart as string | null | undefined;
     const ceremonyNeeded = body.ceremonyNeeded === true;
     const ceremonyStart = body.ceremonyStart as string | null | undefined;
-    const hasPrice = rate != null && Number.isFinite(rate) && rate > 0;
-    const fmtAmt = (n: number) => `${currency} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const row = (label: string, val: string, bold = false, muted = false) =>
-      `<tr><td style="padding:4px 0;font-size:14px;color:${muted ? '#888888' : '#333333'};${bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:4px 0;font-size:14px;text-align:right;color:${muted ? '#888888' : '#1a1a2e'};${bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
-    const priceBlock = hasPrice
-      ? `<div style="border:1px solid #eeeeee;border-radius:8px;padding:16px 18px;margin:0 0 20px;">
-           <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;">Price</div>
-           <table style="width:100%;border-collapse:collapse;">
-             ${row('Rate', fmtAmt(rate as number))}
-             ${taxAmount > 0 ? row(`Sales tax (${taxPct}%)`, fmtAmt(taxAmount)) : ''}
-             ${row('Total', fmtAmt(total != null ? total : (rate as number) + taxAmount), true)}
-           </table>
-           ${depositAmount > 0 ? `
-           <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin:22px 0 10px;text-transform:uppercase;letter-spacing:.04em;">Payment Schedule</div>
-           <table style="width:100%;border-collapse:collapse;">
-             ${row(`Deposit${depositPct > 0 ? ` (${depositPct}%)` : ''} to reserve the date`, fmtAmt(depositAmount))}
-             ${row('Balance due on event day', fmtAmt(balanceDue != null ? balanceDue : ((total != null ? total : (rate as number) + taxAmount) - depositAmount)), true)}
-           </table>` : ''}
-           ${overtimeRate != null ? `
-           <div style="border-top:1px solid #eeeeee;margin:14px 0 0;"></div>
-           <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-             ${row('Overtime rate', `${fmtAmt(overtimeRate)} / hr`, false, true)}
-           </table>` : ''}
-         </div>`
-      : '';
-
     // Build the CTA. If the host's email already has an account, send them
     // to a dedicated claim landing page (which requires login + email match);
     // otherwise send them to signup with email prefilled + booking id stashed.
     const existingUserId = await resolveUserIdByEmail(recipientEmail);
-    const ctaHref = existingUserId
-      ? `${SITE_URL}/claim-booking?id=${encodeURIComponent(bookingId || '')}`
-      : `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${
-          bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''
-        }`;
-    const ctaLabel = existingUserId ? 'Add Booking to My Account' : 'Create Account';
-    const accountPitch = existingUserId
-      ? `You already have an account at Global DJ Connect — click below to add this booking to your account.`
-      : `Create a free account to keep track of this booking, message ${escHtml(djName)} directly, and manage any future bookings — all in one place.`;
-
-    // Account creation is OPTIONAL for a brand-new host — the booking proceeds
-    // entirely through the token links ${escHtml(djName)} emails as each step comes up
-    // (contract, deposit, etc., only the ones that apply). So instead of a big
-    // "Create Account" gate, a new host gets a reassurance line + a de-emphasized
-    // optional link. An existing account keeps the click-to-add button.
-    const accountBlock = existingUserId
-      ? `<p style="color:#666666;margin-bottom:20px;">${accountPitch}</p>${ctaButton(ctaHref, ctaLabel)}`
-      : `${ctaButton(ctaHref, 'Create a Free Account')}
-         <p style="color:#999999;margin-bottom:20px;font-size:13px;line-height:1.6;text-align:center;">Manage your booking and all the details within the account. The account is optional — details will continue to be emailed to this address with or without an account.</p>`;
-
-    const intro = isResend
-      ? `${escHtml(djName)} has updated the details for your upcoming booking. Here's the latest info on file:`
-      : `${escHtml(djName)} is your DJ for an upcoming event and wants to share the booking details with you. Here's everything on file:`;
 
     // Add a scannable tail to the subject: date first, then the venue — except
     // on a mobile booking, where the event type is more useful than the venue,
@@ -1865,31 +1478,14 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${isResend ? 'Booking Updated' : 'Your Booking Details'}</h2>
-        <p style="color:#666666;margin-bottom:20px;">${intro}</p>
-        ${bookingInfoBox({
-          eventTypeText: djType === 'mobile' ? eventTypeLabel(eventType || undefined) : undefined,
-          eventDetails: djType === 'mobile' ? (eventDetails || undefined) : undefined,
-          setTypeText: djType === 'club' ? setTypeLabel(setType) : undefined,
-          venueTypeText: djType === 'club' ? venueTypeLabel(venueType) : undefined,
-          date: eventDate,
-          timeRange: fmtTimeRange(startTime, endTime),
-          packageTitle: djType === 'mobile' ? (packageTitle || undefined) : undefined,
-          packageDetails: djType === 'mobile' ? (packageDetails || undefined) : undefined,
-          venueName: venueName || undefined,
-          venueAddress: venueAddress || undefined,
-          // Cocktail-hour / ceremony start times (weddings) — surfaced in the box.
-          isWedding: djType === 'mobile' && eventType === 'weddings',
-          ceremonyStart: (djType === 'mobile' && ceremonyNeeded) ? (ceremonyStart || undefined) : undefined,
-          cocktailStart: (djType === 'mobile' && cocktailNeeded) ? (cocktailStart || undefined) : undefined,
-          // Price moved into its own breakdown block below (rate + tax +
-          // payment schedule), so it's not duplicated as a bare "Rate" line here.
-        })}
-        ${priceBlock}
-        ${accountBlock}
-        <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
-      `),
+      html: emailTemplate(buildManualBookingInviteBody({
+        djName, djType, bookingId, eventDate, startTime, endTime,
+        venueName, venueAddress, venueType, setType, eventType, eventDetails,
+        packageTitle, packageDetails, rate, currency, isResend,
+        taxPct, taxAmount, total, depositPct, depositAmount, balanceDue, overtimeRate,
+        cocktailNeeded, cocktailStart, ceremonyNeeded, ceremonyStart,
+        existingUserId, recipientEmail,
+      })),
     };
 
   } else if (type === 'event_invite_from_host') {
@@ -1920,40 +1516,6 @@ export async function POST(req: Request) {
     const rate = body.rate as number | null | undefined;
     const currency = (body.currency as string | undefined) || 'USD';
 
-    // Type-mismatch note: club/bar event going to a mobile DJ (or vice versa).
-    // Only relevant when the DJ exists on the system AND their dj_type
-    // doesn't match the event's booking_type.
-    const eventTypeLabelStr = eventType === 'club' ? 'Club / Bar' : eventType === 'mobile' ? 'Mobile / Private' : 'Event';
-    const typeMismatch = djFound && djType && eventType && djType !== eventType;
-    const mismatchNote = typeMismatch
-      ? `<p style="color:#666666;margin-bottom:14px;font-size:13px;line-height:1.5;background:#fff3cd;border-left:3px solid #f0ad4e;padding:10px 12px;border-radius:4px;"><strong>Note:</strong> This is a ${escHtml(eventTypeLabelStr)} event. Your profile is registered as a ${escHtml(djType === 'club' ? 'Club / Bar' : 'Mobile')} DJ. You can still accept the booking — it will appear in your upcoming bookings — but it won't be displayed publicly on your profile event list.</p>`
-      : '';
-
-    const rateLine = (rate != null && Number.isFinite(rate) && rate > 0)
-      ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Rate:</strong> ${escHtml(currency)} ${rate.toLocaleString()}</p>`
-      : '';
-
-    // Compose a one-line "shared event details for {date} at {venue}"
-    // summary used in the intro paragraph and subject line.
-    const fmtDateShort = (d: string | null | undefined): string => {
-      if (!d) return '';
-      const [y, m, day] = d.split('-').map((s) => parseInt(s, 10));
-      const dt = new Date(y, m - 1, day);
-      return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    };
-    const dateStr = fmtDateShort(eventDate);
-    const venueStr = (venueName || '').trim() || (venueAddress || '').split(',')[0].trim();
-    const detailsLine = [dateStr, venueStr].filter(Boolean).join(' at ');
-
-    const ctaHref = djFound
-      ? `${SITE_URL}/claim-booking?id=${encodeURIComponent(bookingId || '')}`
-      : `${SITE_URL}/signup?email=${encodeURIComponent(recipientEmail)}${bookingId ? `&claim_booking=${encodeURIComponent(bookingId)}` : ''}`;
-    const ctaLabel = djFound ? 'Add Booking to My Account' : 'Create Account';
-
-    const intro = djFound
-      ? `${escHtml(hostName)} has shared event details${detailsLine ? ` for ${escHtml(detailsLine)}` : ''}. Log in to see this in your upcoming bookings.`
-      : `${escHtml(hostName)} has shared event details${detailsLine ? ` for ${escHtml(detailsLine)}` : ''}. Create a free account to manage it and access future bookings.`;
-
     const subject = `New event from ${hostName}`;
 
     emailPayload = {
@@ -1961,20 +1523,10 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">You've Been Added to an Event</h2>
-        <p style="color:#666666;margin-bottom:20px;">${intro}</p>
-        ${mismatchNote}
-        ${bookingInfoBox({
-          date: eventDate,
-          timeRange: fmtTimeRange(startTime, endTime),
-          venueName: venueName || undefined,
-          venueAddress: venueAddress || undefined,
-        })}
-        ${rateLine ? `<div style="margin:14px 0;">${rateLine}</div>` : ''}
-        ${ctaButton(ctaHref, ctaLabel)}
-        <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
-      `),
+      html: emailTemplate(buildEventInviteFromHostBody({
+        hostName, djFound, djType, bookingId, eventDate, startTime, endTime,
+        eventType, venueName, venueAddress, rate, currency, recipientEmail,
+      })),
     };
 
   } else if (type === 'booking_activity') {
@@ -2083,13 +1635,7 @@ export async function POST(req: Request) {
       replyTo: REPLY_TO,
       to: [recipientEmail],
       subject,
-      html: emailTemplate(`
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">${h2}</h2>
-        <p style="color:#666666;margin-bottom:20px;">
-          <strong>${escHtml(actorName)}</strong> ${actionLabel} on your booking${eventDescriptor ? ` for ${escHtml(eventDescriptor)}` : ''}.
-        </p>
-        ${ctaButton(ctaUrl, 'View Booking')}
-      `),
+      html: emailTemplate(buildBookingActivityBody({ h2, actorName, actionLabel, eventDescriptor, ctaUrl })),
     };
 
   } else {
