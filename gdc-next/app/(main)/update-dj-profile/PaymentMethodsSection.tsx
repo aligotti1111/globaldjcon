@@ -223,7 +223,7 @@ const DEPOSIT_LEAD_OPTIONS = [
   '1 week', '2 weeks', '3 weeks', '4 weeks', '5 weeks', '6 weeks',
 ];
 
-export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean }) {
+export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder, depositRequired = false }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean; depositRequired?: boolean }) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
   // edits). The two are equal right after a load or a save; the moment the DJ
@@ -781,6 +781,17 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       if (t === openTile && t === 'check' && m.checkNightOf === false && m.checkLeadWeeks == null) {
         return 'Choose how far in advance the check must be received.';
       }
+      // When the DJ requires a deposit (Booking Settings), the deposit-lead
+      // dropdown is mandatory — the host needs a deadline for it.
+      if (t === openTile && t === 'check' && depositRequired && !(m.depositLeadLabel || '').trim()) {
+        return 'Choose how long the host has to get you the deposit.';
+      }
+      // A way to receive the check must exist when a deposit is required (it's
+      // paid ahead) OR the balance can't be paid the day of the event.
+      if (t === openTile && t === 'check' && (depositRequired || m.checkNightOf === false)
+        && !(m.checkMail !== false || m.checkMeet === true || m.checkOffice === true)) {
+        return "Pick at least one way you'll accept the check.";
+      }
       // Cash mirrors check: the night-of question must be answered, and a lead
       // time chosen when the host can't pay in cash the day of the event.
       if (t === openTile && t === 'cash' && m.cashNightOf === undefined) {
@@ -788,6 +799,15 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
       }
       if (t === openTile && t === 'cash' && m.cashNightOf === false && m.cashLeadWeeks == null) {
         return 'Choose how far in advance the cash must be dropped off.';
+      }
+      // Cash mirrors check: deposit-lead required when a deposit is required,
+      // and a way to receive the cash required when deposit or no-night-of.
+      if (t === openTile && t === 'cash' && depositRequired && !(m.depositLeadLabel || '').trim()) {
+        return 'Choose how long the host has to get you the deposit.';
+      }
+      if (t === openTile && t === 'cash' && (depositRequired || m.cashNightOf === false)
+        && !(m.cashMeet !== false || m.cashOffice === true)) {
+        return "Pick at least one way you'll accept the cash.";
       }
       // A phone with no name is half a Cash rail: the client rings a stranger
       // and says "...hi?". Both halves or neither.
@@ -1693,17 +1713,20 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <div style={{ order: 0 }}>
                       <div style={depHead}>Deposit</div>
                       <div style={{ marginTop: '.6rem' }}>
-                        <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: 'var(--white)' }}>How long does the host have to get you the deposit?</label>
+                        <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (depositRequired && attempted && !(m.depositLeadLabel || '').trim()) ? '#ff6b6b' : 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
                           value={m.depositLeadLabel ?? ''}
                           onChange={(e) => { const v = e.target.value; patchType(t, { depositLeadLabel: v || undefined }); }}
-                          style={{ ...field, marginTop: 0, width: 'auto', minWidth: 140 }}
+                          style={{ ...field, marginTop: 0, width: 'auto', minWidth: 140, borderColor: (depositRequired && attempted && !(m.depositLeadLabel || '').trim()) ? '#ff6b6b' : 'var(--border)' }}
                         >
                           <option value="">Select…</option>
                           {DEPOSIT_LEAD_OPTIONS.map((o) => (
                             <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
+                        {!depositRequired && (
+                          <p style={{ margin: '.35rem 0 0', color: '#8a8aa0', fontSize: '.72rem' }}>Requiring a deposit is off in Booking Settings.</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1767,17 +1790,20 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <div style={{ order: 0 }}>
                       <div style={depHead}>Deposit</div>
                       <div style={{ marginTop: '.6rem' }}>
-                        <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: 'var(--white)' }}>How long does the host have to get you the deposit?</label>
+                        <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (depositRequired && attempted && !(m.depositLeadLabel || '').trim()) ? '#ff6b6b' : 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
                           value={m.depositLeadLabel ?? ''}
                           onChange={(e) => { const v = e.target.value; patchType(t, { depositLeadLabel: v || undefined }); }}
-                          style={{ ...field, marginTop: 0, width: 'auto', minWidth: 140 }}
+                          style={{ ...field, marginTop: 0, width: 'auto', minWidth: 140, borderColor: (depositRequired && attempted && !(m.depositLeadLabel || '').trim()) ? '#ff6b6b' : 'var(--border)' }}
                         >
                           <option value="">Select…</option>
                           {DEPOSIT_LEAD_OPTIONS.map((o) => (
                             <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
+                        {!depositRequired && (
+                          <p style={{ margin: '.35rem 0 0', color: '#8a8aa0', fontSize: '.72rem' }}>Requiring a deposit is off in Booking Settings.</p>
+                        )}
                       </div>
                     </div>
                   </div>
