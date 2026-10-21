@@ -1309,7 +1309,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {/* Venmo rides on a connected PayPal — show "via PayPal Connect"
                       only when that's how it's live; manual Venmo shows nothing. */}
                   {k === 'venmo' && paypalReady && (
-                    <span style={{ display: 'block', fontSize: '.52rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.01em', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.02em' }}>
                       via PayPal Connect
                     </span>
                   )}
