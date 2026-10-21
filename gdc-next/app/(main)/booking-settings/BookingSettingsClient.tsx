@@ -291,7 +291,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         { id: 'settings', label: 'Settings' },
         { id: 'packages', label: 'Packages' },
         ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
-        { id: 'payments', label: 'Payments' },
+        { id: 'payments', label: 'Payments Accepted' },
         ...(hasBookingAccess ? [{ id: 'receipts', label: 'Receipts' }] : []),
         ...(hasBookingAccess ? [{ id: 'planners', label: 'Planner & Playlist' }] : []),
         { id: 'discounts', label: 'Discounts' },
@@ -302,7 +302,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
         ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
         { id: 'rider', label: 'DJ Rider' },
         { id: 'guests', label: 'Guest List' },
-        { id: 'payments', label: 'Payments' },
+        { id: 'payments', label: 'Payments Accepted' },
         ...(hasBookingAccess ? [{ id: 'receipts', label: 'Receipts' }] : []),
         { id: 'discounts', label: 'Discounts' },
       ]
