@@ -1730,10 +1730,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 return (
                   <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                    {(() => { const nOn = (meetOn ? 1 : 0) + (officeOn ? 1 : 0); return (
-                    <div style={{ ...waysHero, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem' }}>
+                    {(() => { const nOn = (meetOn ? 1 : 0) + (officeOn ? 1 : 0); const noWay = attempted && (depositRequired || m.cashNightOf === false) && nOn === 0; return (
+                    <div style={{ ...waysHero, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', ...(noWay ? { background: '#b42318', color: '#fff' } : {}) }}>
                       <span>Choose the ways the host can get you the cash</span>
-                      <span style={{ flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: nOn > 0 ? '#0a7d5a' : '#9aa0a6', whiteSpace: 'nowrap' }}>{nOn} active</span>
+                      <span style={{ flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: noWay ? '#fff' : (nOn > 0 ? '#0a7d5a' : '#9aa0a6'), whiteSpace: 'nowrap' }}>{nOn} active</span>
                     </div>
                     ); })()}
 
@@ -1896,10 +1896,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                        {(() => { const nOn = (m.checkMail !== false ? 1 : 0) + (m.checkMeet === true ? 1 : 0) + (m.checkOffice === true ? 1 : 0); return (
-                        <div style={{ ...waysHero, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem' }}>
+                        {(() => { const nOn = (m.checkMail !== false ? 1 : 0) + (m.checkMeet === true ? 1 : 0) + (m.checkOffice === true ? 1 : 0); const usable = (m.checkMail !== false) || (m.checkMeet === true && !!(m.checkPhone || '').trim()) || (m.checkOffice === true && !!(m.dropoffAddress || '').trim()); const noWay = attempted && (depositRequired || m.checkNightOf === false) && !usable; return (
+                        <div style={{ ...waysHero, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', ...(noWay ? { background: '#b42318', color: '#fff' } : {}) }}>
                           <span>Choose the ways the host can get you the check</span>
-                          <span style={{ flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: nOn > 0 ? '#0a7d5a' : '#9aa0a6', whiteSpace: 'nowrap' }}>{nOn} active</span>
+                          <span style={{ flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: noWay ? '#fff' : (nOn > 0 ? '#0a7d5a' : '#9aa0a6'), whiteSpace: 'nowrap' }}>{nOn} active</span>
                         </div>
                         ); })()}
 
