@@ -1833,10 +1833,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
                   </span>
                 );
-                // Distinct amber hero — a different hue from the teal/green
-                // Deposit & Balance heroes, thicker bar and a different (bold
-                // sans) font so "ways to pay" reads as its own thing.
-                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: 'linear-gradient(90deg, rgba(190,120,20,.95), rgba(234,169,74,.1))', color: '#ffffff', margin: '0 0 .8rem' };
+                // White bar, grey text — thick, bold-sans, so "ways to pay"
+                // reads as its own thing, distinct from the Deposit/Balance heroes.
+                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#6b727b', margin: '0 0 .8rem' };
                 const lbl: React.CSSProperties = { ...label, color: '#6b727b' };
                 const meetOn = m.cashMeet !== false;   // default ON
                 const officeOn = m.cashOffice === true; // default OFF
@@ -1990,7 +1989,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       </span>
                     );
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
-                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: 'linear-gradient(90deg, rgba(190,120,20,.95), rgba(234,169,74,.1))', color: '#ffffff', margin: '0 0 .8rem' };
+                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#6b727b', margin: '0 0 .8rem' };
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
