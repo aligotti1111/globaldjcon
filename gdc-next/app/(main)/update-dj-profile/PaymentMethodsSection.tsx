@@ -1831,14 +1831,15 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
                   </span>
                 );
-                // Green hero bar for the section header — white title, like a hero.
-                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, fontSize: '1.05rem', letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.4rem .85rem', borderRadius: 6, background: 'linear-gradient(90deg, rgba(8,120,100,.95), rgba(0,245,196,.1))', color: '#ffffff', margin: '0 0 .7rem' };
+                // Distinct amber hero — a different hue from the teal/green
+                // Deposit & Balance heroes, so "ways to pay" reads as its own thing.
+                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, fontSize: '1.05rem', letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.4rem .85rem', borderRadius: 6, background: 'linear-gradient(90deg, rgba(190,120,20,.95), rgba(234,169,74,.1))', color: '#ffffff', margin: '0 0 .7rem' };
                 const lbl: React.CSSProperties = { ...label, color: '#6b727b' };
                 const meetOn = m.cashMeet !== false;   // default ON
                 const officeOn = m.cashOffice === true; // default OFF
                 return (
                   <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={waysHero}>Ways you&rsquo;ll accept the cash — pick any</div>
+                    <div style={waysHero}>Choose the ways you&rsquo;ll accept the cash</div>
 
                     {/* 1 · Exchange In Person */}
                     <div style={cardWrap(meetOn)}>
@@ -1985,10 +1986,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       </span>
                     );
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
-                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, fontSize: '1.05rem', letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.4rem .85rem', borderRadius: 6, background: 'linear-gradient(90deg, rgba(8,120,100,.95), rgba(0,245,196,.1))', color: '#ffffff', margin: '0 0 .7rem' };
+                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, fontSize: '1.05rem', letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.4rem .85rem', borderRadius: 6, background: 'linear-gradient(90deg, rgba(190,120,20,.95), rgba(234,169,74,.1))', color: '#ffffff', margin: '0 0 .7rem' };
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
-                        <div style={waysHero}>Ways you&rsquo;ll accept the check — pick any</div>
+                        <div style={waysHero}>Choose the ways you&rsquo;ll accept the check</div>
 
                         {/* 1 · Mail it to me — ON by default */}
                         <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
