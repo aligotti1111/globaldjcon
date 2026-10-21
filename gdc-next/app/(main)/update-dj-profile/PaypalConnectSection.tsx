@@ -155,7 +155,7 @@ export default function PaypalConnectSection(
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: 'var(--white,#fff)', fontSize: '.9rem' }}>PayPal payments</span>
         {live && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase' }}>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '.8rem', fontWeight: 800, letterSpacing: '.06em', color: '#00f5c4', background: '#04121a', padding: '5px 13px', borderRadius: 999, border: '1px solid rgba(0,245,196,.6)', boxShadow: '0 0 14px rgba(0,245,196,.4)', textTransform: 'uppercase' }}>
             <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#00f5c4', display: 'inline-block', animation: 'gdcPaypalBlink 1.2s ease-in-out infinite' }} />
             Connected
           </span>
