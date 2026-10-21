@@ -1293,11 +1293,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 <span
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-                    width: 74, minWidth: 74, height: 26, flexShrink: 0, overflow: 'hidden',
+                    width: 46, minWidth: 46, height: 26, flexShrink: 0, overflow: 'hidden',
                     filter: blocked ? 'grayscale(1)' : undefined,
                   }}
                 >
-                  {TILE_MARK[k]?.({ size: k === 'card' ? 10 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 26) })}
+                  {TILE_MARK[k]?.({ size: k === 'card' ? 9 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 24) })}
                 </span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: blocked ? '#8a8aa0' : '#eef0f5', lineHeight: 1.25 }}>
                   {TILE_LABEL[k]}
@@ -1309,7 +1309,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {/* Venmo rides on a connected PayPal — show "via PayPal Connect"
                       only when that's how it's live; manual Venmo shows nothing. */}
                   {k === 'venmo' && paypalReady && (
-                    <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.02em' }}>
+                    <span style={{ display: 'block', fontSize: '.52rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       via PayPal Connect
                     </span>
                   )}
