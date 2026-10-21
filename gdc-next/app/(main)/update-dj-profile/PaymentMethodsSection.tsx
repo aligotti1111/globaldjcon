@@ -1713,7 +1713,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       <div style={{ ...depHead, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                         <span>Deposit</span>
                         {!depositRequired && (
-                          <span style={{ marginLeft: 'auto', fontSize: '.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', opacity: .9 }}>Requiring a deposit is off in Booking Settings.</span>
+                          <span style={{ marginLeft: 'auto', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#ffffff', whiteSpace: 'nowrap' }}>Requiring a deposit is off in Booking Settings.</span>
                         )}
                       </div>
                       <div style={{ marginTop: '.6rem' }}>
@@ -1793,7 +1793,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       <div style={{ ...depHead, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                         <span>Deposit</span>
                         {!depositRequired && (
-                          <span style={{ marginLeft: 'auto', fontSize: '.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', opacity: .9 }}>Requiring a deposit is off in Booking Settings.</span>
+                          <span style={{ marginLeft: 'auto', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#ffffff', whiteSpace: 'nowrap' }}>Requiring a deposit is off in Booking Settings.</span>
                         )}
                       </div>
                       <div style={{ marginTop: '.6rem' }}>
