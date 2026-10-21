@@ -810,7 +810,7 @@ export default function BookingTab({
               Kept mounted (display:none when inactive) so in-progress edits
               survive a tab switch instead of being unmounted and lost. */}
           <div style={{ display: (!activeSection || activeSection === 'payments') ? undefined : 'none' }}>
-            <PaymentMethodsSection userId={userId} currency={rateCurrency} onDirtyChange={onPaymentsDirtyChange} showPaymentReminder depositRequired={deposit > 0} />
+            <PaymentMethodsSection userId={userId} currency={rateCurrency} onDirtyChange={onPaymentsDirtyChange} showPaymentReminder depositRequired={deposit > 0} ownerHint />
           </div>
 
         </>
