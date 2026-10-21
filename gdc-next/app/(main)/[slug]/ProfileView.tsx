@@ -25,9 +25,7 @@ import { optimizedImageUrl } from '@/lib/img';
 import { parseAlbums, pruneAlbums, type Album } from '@/lib/albums';
 import { effectiveTier, TIERS, type AccessFields } from '@/lib/access';
 import AvatarCrop from '../update-dj-profile/AvatarCrop';
-import {
-  LocationPinIcon, ClaimAlertIcon,
-} from './icons';
+import { ClaimAlertIcon } from './icons';
 
 
 // Shared profile types now live in ./profileTypes. Re-export DjProfileData
@@ -46,6 +44,13 @@ import {
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
 import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
+import { HeroColorMenu } from './profile-view/HeroColorMenu';
+import { bandSpanStyle } from './profile-view/colorUtils';
+import { Lightbox } from './profile-view/Lightbox';
+import { CaptionEditorModal } from './profile-view/CaptionEditorModal';
+import { OwnerViewToggle } from './profile-view/OwnerViewToggle';
+import { useHeroColors } from './profile-view/useHeroColors';
+import { HeroIdentity } from './profile-view/HeroIdentity';
 
 // Parse booking settings ONCE, outside the component (it's pure data) —
 // but we need profile.dj_type and booking_settings, so it has to live inside.
@@ -65,94 +70,6 @@ interface Props {
   // Phone paywall: true when the owner is on a paid/comped plan. A free DJ's
   // saved number stays editable but is hidden from visitors until this is true.
   ownerIsPro?: boolean;
-}
-
-// Owner-only "⋯" menu shown next to the hero name and the location. One button
-// opens a small popover where the text colour and the semi-transparent colour
-// band are set separately (band can also be removed). One instance per element.
-function HeroColorMenu({ which, textColor, onText, band, onBand }: {
-  which: 'name' | 'location';
-  textColor: string;
-  onText: (hex: string) => void;
-  band: string | null;
-  onBand: (hex: string | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const noun = which === 'name' ? 'Name' : 'Location';
-  const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '7px 4px' };
-  const labelStyle: React.CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#fff', textTransform: 'uppercase', letterSpacing: '.05em' };
-  const swatchInput: React.CSSProperties = { width: 30, height: 22, padding: 0, border: '1px solid rgba(255,255,255,.4)', borderRadius: 5, background: 'transparent', cursor: 'pointer' };
-  // Live preview band behind the "Color band" label: the chosen band colour at
-  // ~50% opacity, or a subtle neutral tint when no band is set yet.
-  const bandLabelBg = (() => {
-    const m = band ? /^#?([0-9a-fA-F]{6})$/.exec(band) : null;
-    if (!m) return 'rgba(255,255,255,.14)';
-    const n = parseInt(m[1], 16);
-    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, .5)`;
-  })();
-
-  return (
-    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', marginLeft: 10, transform: 'translateY(-2px)', verticalAlign: 'middle', flexShrink: 0, zIndex: open ? 3000 : undefined }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        title={`Style the ${noun.toLowerCase()}`}
-        aria-label={`Style the ${noun.toLowerCase()}`}
-        aria-expanded={open}
-        style={{ height: 26, width: 16, padding: 0, borderRadius: 5, background: 'rgba(0,0,0,.55)', border: '1px solid var(--neon)', color: 'var(--neon)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 0 }}
-      >
-        <svg width="4" height="14" viewBox="0 0 4 14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
-          <circle cx="2" cy="2" r="1.7" />
-          <circle cx="2" cy="7" r="1.7" />
-          <circle cx="2" cy="12" r="1.7" />
-        </svg>
-      </button>
-      {open && (
-        <div
-          role="menu"
-          style={{ position: 'absolute', top: 30, right: 0, zIndex: 3000, minWidth: 214, background: '#14141f', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.55)', padding: '6px 10px 8px', textAlign: 'left' }}
-        >
-          <div style={{ ...labelStyle, fontSize: 9.5, color: 'var(--neon)', padding: '4px 4px 2px' }}>{noun} style</div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>Text color</span>
-            <input type="color" value={textColor} onChange={(e) => onText(e.target.value)} style={swatchInput} aria-label={`${noun} text color`} />
-          </div>
-          <div style={{ height: 1, background: 'rgba(255,255,255,.1)' }} />
-          <div style={rowStyle}>
-            <span style={{ ...labelStyle, background: bandLabelBg, padding: '.12em .4em', borderRadius: 4 }}>Color band</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {band && (
-                <button type="button" onClick={() => onBand(null)} style={{ background: 'none', border: 'none', color: 'var(--muted,#8a8aa0)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', cursor: 'pointer' }}>
-                  Remove
-                </button>
-              )}
-              <input
-                type="color"
-                value={band || textColor}
-                onChange={(e) => onBand(e.target.value)}
-                style={swatchInput}
-                title={band ? 'Change band color' : 'Add a color band'}
-                aria-label={`${noun} color band`}
-              />
-            </span>
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--muted,#8a8aa0)', lineHeight: 1.4, padding: '2px 4px 0' }}>
-            The band is a semi-transparent strip behind the {noun.toLowerCase()}.
-          </div>
-        </div>
-      )}
-    </span>
-  );
 }
 
 export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess, ownerIsPro = false }: Props) {
@@ -451,95 +368,16 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [deletedUrls, setDeletedUrls] = useState<Set<string>>(new Set());
 
   // ── Hero name/location color ────────────────────────────────────────
-  // Owner-chosen color applied to BOTH the hero name and the location line.
-  // Default is white when unset so nothing changes for existing profiles.
-  // Held in local state so the owner's color-picker recolors LIVE, then
-  // persisted via /api/dj/profile-color.
-  const [nameColor, setNameColor] = useState<string>(data.profile_name_color || '#ffffff');
-  // Location now has its OWN text colour (falls back to the name colour if the
-  // owner never set one, so existing profiles look unchanged). Plus an optional
-  // semi-transparent band behind each of the name and the location, stored as a
-  // hex colour (null = no band). All four are independently editable.
-  const [locationColor, setLocationColor] = useState<string>(
-    data.profile_location_color || data.profile_name_color || '#ffffff',
-  );
-  const [nameBg, setNameBg] = useState<string | null>(data.profile_name_bg || null);
-  const [locationBg, setLocationBg] = useState<string | null>(data.profile_location_bg || null);
-
-  // Persist one field to the DJ's row. `value` null clears it (band off). The
-  // route validates and maps the field name → its column.
-  async function saveColorField(field: 'name' | 'location' | 'name_bg' | 'location_bg', value: string | null) {
-    try {
-      await fetch('/api/dj/profile-color', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field, color: value }),
-      });
-    } catch {
-      // Best-effort; the live colour still applies until reload.
-    }
-  }
-  function handleNameColorChange(color: string) { setNameColor(color); saveColorField('name', color); }
-  function handleLocationColorChange(color: string) { setLocationColor(color); saveColorField('location', color); }
-  function handleNameBgChange(color: string | null) { setNameBg(color); saveColorField('name_bg', color); }
-  function handleLocationBgChange(color: string | null) { setLocationBg(color); saveColorField('location_bg', color); }
-
-  // Hex → rgba at a fixed opacity, for the semi-transparent band. Guards against
-  // a bad value by falling back to a neutral dark band.
-  function bandRgba(hex: string | null, alpha = 0.85): string | undefined {
-    if (!hex) return undefined;
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-    if (!m) return undefined;
-    const n = parseInt(m[1], 16);
-    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-  }
-  // Style for the colour band behind the hero name / location. Tuned per element:
-  //
-  //   name  — Bebas Neue, all-caps. An INLINE span's background is locked to the
-  //           font's line box, which reserves a big block of empty descender
-  //           space that gets painted no matter what padding/line-height you set —
-  //           that's why the band looked oversized and wouldn't tighten. Making it
-  //           `inline-block` lets the box follow line-height, so a tight
-  //           line-height (.78) + small padding wraps the band snugly around the
-  //           caps like a highlighter. (No box-decoration-break needed: the name
-  //           is single-line; the size tiers shrink long names to fit.)
-  //
-  //   location — Space Mono, small mixed-case with real descenders. Left inline
-  //           with clone so it can wrap, full line-height, and even generous
-  //           top/bottom padding so the strip reads as a solid band.
-  //
-  // Both verified on the live rendered hero.
-  function bandSpanStyle(hex: string | null, which: 'name' | 'location' = 'name'): React.CSSProperties {
-    const bg = bandRgba(hex);
-    if (!bg) return {};
-    if (which === 'location') {
-      return {
-        background: bg,
-        lineHeight: 1,
-        padding: '.34em .3em',
-        borderRadius: '.16em',
-        boxDecorationBreak: 'clone',
-        WebkitBoxDecorationBreak: 'clone',
-      };
-    }
-    return {
-      background: bg,
-      display: 'inline-block',
-      lineHeight: 0.78,
-      // More top than bottom: at line-height .78 the caps sit low in the box, so
-      // .17/.06 evens the gap above and below the letters. Verified on the hero.
-      padding: '.17em .16em .06em',
-      borderRadius: '.16em',
-    };
-  }
+  // All four colour states + their persistence live in a dedicated hook.
+  const heroColors = useHeroColors(data);
   // One three-dot (⋯) button per element opens a small popover where the owner
   // sets the text colour and the band colour separately. Rendered next to both
   // the name and the location.
   const nameColorControlEl = canEdit ? (
-    <HeroColorMenu which="name" textColor={nameColor} onText={handleNameColorChange} band={nameBg} onBand={handleNameBgChange} />
+    <HeroColorMenu which="name" textColor={heroColors.nameColor} onText={heroColors.handleNameColorChange} band={heroColors.nameBg} onBand={heroColors.handleNameBgChange} />
   ) : null;
   const locationColorControlEl = canEdit ? (
-    <HeroColorMenu which="location" textColor={locationColor} onText={handleLocationColorChange} band={locationBg} onBand={handleLocationBgChange} />
+    <HeroColorMenu which="location" textColor={heroColors.locationColor} onText={heroColors.handleLocationColorChange} band={heroColors.locationBg} onBand={heroColors.handleLocationBgChange} />
   ) : null;
 
   // Set page title to the DJ's name (matches vanilla document.title)
@@ -1001,45 +839,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // booking calendar's header, next to "Embed Calendar" (desktop only) rather
   // than as a floating overlay — see where it's passed to the calendars below.
   const ownerViewToggle = baseCanEdit ? (
-    // Two fixed segments — the highlight moves to the active one (the label text
-    // never changes). Click a segment to switch mode.
-    <div
-      role="tablist"
-      aria-label="Preview mode"
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 2,
-        background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.14)',
-        borderRadius: 999, padding: 2,
-      }}
-    >
-      {([
-        { on: false, label: 'Owner view' },
-        { on: true, label: 'Public view' },
-      ] as const).map((seg) => {
-        const active = previewPublic === seg.on;
-        return (
-          <button
-            key={seg.label}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => setPreviewPublic(seg.on)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: active ? 'var(--neon,#00e0a4)' : 'transparent',
-              color: active ? '#06231b' : 'rgba(255,255,255,.7)',
-              border: 'none', borderRadius: 999, padding: '.28rem .7rem',
-              fontSize: '.62rem', fontWeight: 700, letterSpacing: '.03em',
-              textTransform: 'uppercase', cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap',
-              transition: 'background .12s, color .12s',
-            }}
-          >
-            {seg.on ? null : <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? '#06231b' : 'var(--neon,#00e0a4)' }} />}
-            {seg.label}
-          </button>
-        );
-      })}
-    </div>
+    <OwnerViewToggle previewPublic={previewPublic} onChange={setPreviewPublic} />
   ) : null;
 
   return (
@@ -1365,17 +1165,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 directly under the name here (mobile); on desktop it lives in
                 heroInfo below and this whole column is display:none. */}
             <div className={styles.heroNameCol}>
-              <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
-                <span style={bandSpanStyle(nameBg)}>{data.name || 'Unknown DJ'}</span>
-                {nameColorControlEl}
-              </div>
-              {heroBadgesEl}
-              {location && (
-                <div className={styles.heroLocation} style={{ color: locationColor }}>
-                  <span style={bandSpanStyle(locationBg, 'location')}><LocationPinIcon /> {location}</span>
-                  {locationColorControlEl}
-                </div>
-              )}
+              <HeroIdentity
+                variant="mobile"
+                name={data.name || 'Unknown DJ'}
+                location={location}
+                nameSizeClass={nameSizeClass}
+                nameColor={heroColors.nameColor}
+                locationColor={heroColors.locationColor}
+                nameBg={heroColors.nameBg}
+                locationBg={heroColors.locationBg}
+                bandSpanStyle={bandSpanStyle}
+                nameColorControlEl={nameColorControlEl}
+                locationColorControlEl={locationColorControlEl}
+                heroBadges={heroBadgesEl}
+              />
             </div>
           </div>
 
@@ -1383,19 +1186,20 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               via the descendant selector .heroInfo .heroName / .heroInfo .heroBadges
               inside the @media (max-width:900px) block in profile.module.css */}
           <div className={styles.heroInfo}>
-            <div className={`${styles.heroName} ${nameSizeClass}`} style={{ color: nameColor }}>
-              <span style={bandSpanStyle(nameBg)}>{data.name || 'Unknown DJ'}</span>
-              {nameColorControlEl}
-            </div>
-            {heroBadgesEl}
-            <div className={styles.heroMobileDivider} />
-
-            {location && (
-              <div className={styles.heroLocation} style={{ color: locationColor }}>
-                <span style={bandSpanStyle(locationBg, 'location')}><LocationPinIcon /> {location}</span>
-                {locationColorControlEl}
-              </div>
-            )}
+            <HeroIdentity
+              variant="desktop"
+              name={data.name || 'Unknown DJ'}
+              location={location}
+              nameSizeClass={nameSizeClass}
+              nameColor={heroColors.nameColor}
+              locationColor={heroColors.locationColor}
+              nameBg={heroColors.nameBg}
+              locationBg={heroColors.locationBg}
+              bandSpanStyle={bandSpanStyle}
+              nameColorControlEl={nameColorControlEl}
+              locationColorControlEl={locationColorControlEl}
+              heroBadges={heroBadgesEl}
+            />
 
             {/* Event types + genres as hero tags. Mobile DJs now have
                 their Events Serviced list inside the type-badge dropdown
@@ -2174,110 +1978,27 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       </div>
 
       {/* Lightbox — full-screen image overlay */}
-      <div
-        className={`${styles.lightbox} ${lightboxSrc ? styles.lightboxActive : ''}`}
-        onClick={() => setLightboxSrc(null)}
-      >
-        <button
-          className={styles.lightboxClose}
-          onClick={(e) => { e.stopPropagation(); setLightboxSrc(null); }}
-          type="button"
-          aria-label="Close"
-        >
-          ×
-        </button>
-        {lightboxSrc && (
-          /* Wrap the image so the prev/next arrows can sit at the image's own
-             left/right edges (not the far screen edges). */
-          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
-            {lightboxListRef.current.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  aria-label="Previous photo"
-                  onClick={(e) => { e.stopPropagation(); stepLightbox(-1); }}
-                  style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-                </button>
-                <button
-                  type="button"
-                  aria-label="Next photo"
-                  onClick={(e) => { e.stopPropagation(); stepLightbox(1); }}
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-                </button>
-              </>
-            )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={lightboxSrc}
-              alt={captions[lightboxSrc] || ''}
-              style={{ transform: `scale(${lightboxZoom})`, transition: 'transform .15s ease', transformOrigin: 'center center', maxWidth: '90vw', maxHeight: '88vh', width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 8 }}
-            />
-            {/* Caption band — transparent black strip along the bottom of the
-                photo, shown when this photo has a caption. */}
-            {captions[lightboxSrc] && (
-              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '.7rem 1rem', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: '.9rem', lineHeight: 1.35, textAlign: 'center', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, pointerEvents: 'none' }}>
-                {captions[lightboxSrc]}
-              </div>
-            )}
-          </div>
-        )}
-        {/* Zoom controls — bottom center. Zoom out disabled at fit (1x). */}
-        {lightboxSrc && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ position: 'fixed', left: '50%', bottom: 20, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', borderRadius: 999, padding: '.3rem .4rem', zIndex: 3 }}
-          >
-            <button
-              type="button"
-              aria-label="Zoom out"
-              disabled={lightboxZoom <= 1}
-              onClick={(e) => { e.stopPropagation(); setLightboxZoom((z) => Math.max(1, Math.round((z - 0.5) * 10) / 10)); }}
-              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', cursor: lightboxZoom <= 1 ? 'default' : 'pointer', opacity: lightboxZoom <= 1 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
-            </button>
-            <span style={{ color: '#fff', fontSize: '.78rem', minWidth: 38, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{Math.round(lightboxZoom * 100)}%</span>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              disabled={lightboxZoom >= 4}
-              onClick={(e) => { e.stopPropagation(); setLightboxZoom((z) => Math.min(4, Math.round((z + 0.5) * 10) / 10)); }}
-              style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', cursor: lightboxZoom >= 4 ? 'default' : 'pointer', opacity: lightboxZoom >= 4 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
-            </button>
-          </div>
-        )}
-      </div>
+      <Lightbox
+        src={lightboxSrc}
+        zoom={lightboxZoom}
+        list={lightboxListRef.current}
+        captions={captions}
+        onClose={() => setLightboxSrc(null)}
+        onStep={stepLightbox}
+        onZoom={setLightboxZoom}
+      />
 
       {/* Caption editor — owner-only. Small modal to write/edit the caption
           shown at the bottom of the photo in the lightbox. */}
       {captionFor && canEdit && (
-        <div onClick={() => setCaptionFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100, padding: '1rem' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#14141b', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.25rem', width: '100%', maxWidth: 420 }}>
-            <div style={{ fontSize: '.95rem', fontWeight: 600, color: '#fff', marginBottom: '.75rem' }}>Photo caption</div>
-            <textarea
-              value={captionDraft}
-              onChange={(e) => setCaptionDraft(e.target.value)}
-              maxLength={200}
-              rows={3}
-              autoFocus
-              placeholder="Write a caption…"
-              style={{ width: '100%', padding: '.6rem .8rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: '#0c0c11', color: '#fff', fontSize: '.9rem', resize: 'vertical', fontFamily: 'inherit' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.4rem' }}>
-              <span style={{ fontSize: '.7rem', color: 'var(--muted,#888)' }}>{captionDraft.length}/200</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem', marginTop: '.9rem' }}>
-              <button type="button" onClick={() => setCaptionFor(null)} style={{ padding: '.5rem 1rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: 'transparent', color: '#fff', fontSize: '.8rem', cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={photoBusy} onClick={() => saveCaption(captionFor, captionDraft)} style={{ padding: '.5rem 1.1rem', borderRadius: 8, border: 'none', background: 'var(--neon)', color: '#04121a', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', opacity: photoBusy ? 0.6 : 1 }}>{photoBusy ? 'Saving…' : 'Save'}</button>
-            </div>
-          </div>
-        </div>
+        <CaptionEditorModal
+          target={captionFor}
+          draft={captionDraft}
+          busy={photoBusy}
+          onDraftChange={setCaptionDraft}
+          onSave={() => saveCaption(captionFor, captionDraft)}
+          onClose={() => setCaptionFor(null)}
+        />
       )}
 
       {/* Confirm modal — for owner delete-video. Renders only when an
