@@ -658,10 +658,18 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
         return 'Choose how long the host has to get you the deposit.';
       }
       // A way to receive the check must exist when a deposit is required (it's
-      // paid ahead) OR the balance can't be paid the day of the event.
+      // paid ahead) OR the balance can't be paid the day of the event. A way
+      // only counts if it would actually show the host an option on the pay
+      // page: Mail It (unless turned off), Exchange In Person WITH a phone, or
+      // Drop Off At Office WITH an address. A toggle on with its field blank is
+      // dropped by the pay page, so it can't count here either.
       if (t === openTile && t === 'check' && (depositRequired || m.checkNightOf === false)
-        && !(m.checkMail !== false || m.checkMeet === true || m.checkOffice === true)) {
-        return "Pick at least one way you'll accept the check.";
+        && !(
+          m.checkMail !== false
+          || (m.checkMeet === true && !!(m.checkPhone || '').trim())
+          || (m.checkOffice === true && !!(m.dropoffAddress || '').trim())
+        )) {
+        return "Pick at least one way the host can get you the check — and add the phone or address it needs.";
       }
       // Cash mirrors check: the night-of question must be answered, and a lead
       // time chosen when the host can't pay in cash the day of the event.
