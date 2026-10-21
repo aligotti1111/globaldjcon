@@ -1642,9 +1642,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--white)', lineHeight: 1.55 }}>
                     Venmo is owned by PayPal, so when you connected your PayPal account the
                     &ldquo;Pay with Venmo&rdquo; option became available automatically. When a host/client pays via
-                    Venmo, the money is sent directly to your <strong>PayPal account</strong> — and because it comes
-                    through PayPal Connect, we&rsquo;re able to track the payment and mark it paid once it&rsquo;s complete
-                    (unlike a Venmo payment made manually, which you&rsquo;d have to mark paid yourself). For the
+                    Venmo, the money is sent directly to your <strong>PayPal account</strong>. For the
                     host/client, it&rsquo;s the same experience as paying through Venmo normally. To use a manual Venmo
                     handle instead, disconnect PayPal on the PayPal tile.
                   </p>
