@@ -1702,7 +1702,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 // No per-card frame: a plain neutral border, and the WHOLE card
                 // dims when it's off so the active ones pop.
                 const cardWrap = (_on: boolean): React.CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
-                const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
+                const cardHead: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '.5rem', cursor: 'pointer', padding: '.65rem .7rem' };
                 const numBadge = (n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: CLR, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                 const title: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
                 const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
@@ -1720,7 +1720,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 // see and flip it. Opacity compounds, so the dim lives on the
                 // content wrapper, never the card or the toggle.
                 const dim = (on: boolean): React.CSSProperties => ({ opacity: on ? 1 : 0.45, transition: 'opacity .15s' });
-                const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', flex: 1, minWidth: 0 };
+                const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', width: '100%', minWidth: 0 };
                 // White bar, grey text — thick, bold-sans, so "ways to pay"
                 // reads as its own thing, distinct from the Deposit/Balance heroes.
                 const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
@@ -1730,7 +1730,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 return (
                   <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                    <div style={waysHero}>Choose the ways the host can get you the cash</div>
+                    {(() => { const nOn = (meetOn ? 1 : 0) + (officeOn ? 1 : 0); return (
+                    <div style={{ ...waysHero, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem' }}>
+                      <span>Choose the ways the host can get you the cash</span>
+                      <span style={{ flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: nOn > 0 ? '#0a7d5a' : '#9aa0a6', whiteSpace: 'nowrap' }}>{nOn} active</span>
+                    </div>
+                    ); })()}
 
                     {/* 1 · Exchange In Person */}
                     <div style={cardWrap(meetOn)}>
@@ -1871,7 +1876,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   {t === 'check' && (() => {
                     // No per-card frame: neutral border, whole card dims when off.
                     const cardWrap = (_clr: string, _on: boolean): React.CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
-                    const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
+                    const cardHead: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '.5rem', cursor: 'pointer', padding: '.65rem .7rem' };
                     const numBadge = (clr: string, n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                     const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
                     const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
@@ -1885,13 +1890,18 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     );
                     // Dim only the content, never the toggle (opacity compounds).
                     const dim = (on: boolean): React.CSSProperties => ({ opacity: on ? 1 : 0.45, transition: 'opacity .15s' });
-                    const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', flex: 1, minWidth: 0 };
+                    const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', width: '100%', minWidth: 0 };
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
                     const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                        <div style={waysHero}>Choose the ways the host can get you the check</div>
+                        {(() => { const nOn = (m.checkMail !== false ? 1 : 0) + (m.checkMeet === true ? 1 : 0) + (m.checkOffice === true ? 1 : 0); return (
+                        <div style={{ ...waysHero, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem' }}>
+                          <span>Choose the ways the host can get you the check</span>
+                          <span style={{ flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: nOn > 0 ? '#0a7d5a' : '#9aa0a6', whiteSpace: 'nowrap' }}>{nOn} active</span>
+                        </div>
+                        ); })()}
 
                         {/* 1 · Mail it to me — ON by default */}
                         <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
