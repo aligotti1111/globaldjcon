@@ -1793,9 +1793,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 <>
                   <div style={{ display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(0,245,196,.9), rgba(0,245,196,.12))', color: '#04121a', borderRadius: 6, margin: '0 0 .6rem' }}>Option 1 — Connect your PayPal business account</div>
                   <PaypalConnectSection onStatus={setPaypalReady} initialReady={paypalReady} blockedByManual={paypalManualFilled} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', margin: '1.1rem 0 .7rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.9rem', margin: '2rem 0 1.6rem' }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                    <span style={{ fontSize: '.66rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>Or</span>
+                    <span style={{ fontSize: '.85rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.12em', fontWeight: 800 }}>Or</span>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
                   <div style={{ opacity: paypalManualDisabled ? 0.45 : 1 }}>
