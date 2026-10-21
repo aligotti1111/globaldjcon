@@ -130,6 +130,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
   const [attempted, setAttempted] = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
+  // The open method panel — scrolled into view on a failed Save so the DJ sees
+  // the error/field even when they clicked Save from the bottom of a long panel.
+  const panelRef = useRef<HTMLDivElement | null>(null);
   // "Automatic Payments" is its own entry in the left list, under all the rails.
   // When selected, the right panel shows the reminder settings instead of a rail.
   const [showReminders, setShowReminders] = useState(false);
@@ -839,6 +842,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
     setAttempted(true);
     if (firstError) {
       setFeedback({ msg: firstError, ok: false });
+      // The field that triggered the error can be scrolled off the top (the DJ
+      // clicked Save at the bottom). Bring the panel back into view so the red
+      // hero / field they need to fix is on screen.
+      panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     setSaving(true);
@@ -1492,7 +1499,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           const venmoViaPaypal = t === 'venmo' && paypalReady;
           const shown = cleanHandle(m) ? displayHandle(m) : '';
           return (
-            <div style={{ padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
+            <div ref={panelRef} style={{ scrollMarginTop: 80, padding: '.9rem', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(255,255,255,.02)' }}>
               {/* Hero header — the method you're editing reads big, in the
                   display font, so it's obvious which rail this panel is for. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.7rem', paddingBottom: '.55rem', borderBottom: '1px solid rgba(255,255,255,.5)' }}>
