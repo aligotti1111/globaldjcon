@@ -1826,9 +1826,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const title: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
                 const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
                 const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
-                // On / Off pill (replaces the toggle switch).
-                const onOffPill = (on: boolean) => (
-                  <span style={{ fontSize: '.58rem', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 999, flexShrink: 0, ...(on ? { background: CLR, color: '#04121a' } : { color: '#8a8aa0', border: '1px solid var(--border)' }) }}>{on ? 'On' : 'Off'}</span>
+                const toggleSwitch = (on: boolean) => (
+                  <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? CLR : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                  </span>
                 );
                 // Green hero bar for the section header — white title, like a hero.
                 const waysHero: React.CSSProperties = { display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, fontSize: '1.05rem', letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.4rem .85rem', borderRadius: 6, background: 'linear-gradient(90deg, rgba(8,120,100,.95), rgba(0,245,196,.1))', color: '#ffffff', margin: '0 0 .7rem' };
@@ -1842,10 +1843,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* 1 · Exchange In Person */}
                     <div style={cardWrap(meetOn)}>
                       <div style={cardHead} onClick={() => patchType(t, { cashMeet: meetOn ? false : undefined })}>
+                        {toggleSwitch(meetOn)}
                         {numBadge(1)}
                         <span style={title}>Exchange In Person</span>
                         <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🤝</span>
-                        {onOffPill(meetOn)}
                       </div>
                       <div style={bodyPad}>
                         <label style={lbl}>Phone for the host to call or text to arrange the cash drop-off</label>
@@ -1862,10 +1863,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* 2 · Drop Off At Office */}
                     <div style={cardWrap(officeOn)}>
                       <div style={cardHead} onClick={() => patchType(t, { cashOffice: officeOn ? undefined : true })}>
+                        {toggleSwitch(officeOn)}
                         {numBadge(2)}
                         <span style={title}>Drop Off At Office</span>
                         <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🏠</span>
-                        {onOffPill(officeOn)}
                       </div>
                       <div style={bodyPad}>
                         <label style={lbl}>Office address</label>
@@ -1978,9 +1979,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     const numBadge = (clr: string, n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                     const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
                     const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
-                    // On / Off pill (replaces the toggle switch).
-                    const onOffPill = (on: boolean) => (
-                      <span style={{ fontSize: '.58rem', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 999, flexShrink: 0, ...(on ? { background: '#00f5c4', color: '#04121a' } : { color: '#8a8aa0', border: '1px solid var(--border)' }) }}>{on ? 'On' : 'Off'}</span>
+                    const toggleSwitch = (on: boolean, clr: string) => (
+                      <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? clr : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
+                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                      </span>
                     );
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
                     const waysHero: React.CSSProperties = { display: 'block', fontFamily: "'Bebas Neue', Impact, sans-serif", fontWeight: 400, fontSize: '1.05rem', letterSpacing: '.05em', textTransform: 'uppercase', lineHeight: 1.1, padding: '.4rem .85rem', borderRadius: 6, background: 'linear-gradient(90deg, rgba(8,120,100,.95), rgba(0,245,196,.1))', color: '#ffffff', margin: '0 0 .7rem' };
@@ -1991,10 +1993,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         {/* 1 · Mail it to me — ON by default */}
                         <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkMail: m.checkMail !== false ? false : undefined })}>
+                            {toggleSwitch(m.checkMail !== false, '#00f5c4')}
                             {numBadge('#00f5c4', 1)}
                             <span style={ckTitle}>Mail It</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>📭</span>
-                            {onOffPill(m.checkMail !== false)}
                           </div>
                           {(
                             <div style={bodyPad}>
@@ -2009,10 +2011,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         {/* 2 · Arrange a meet-up — OFF by default */}
                         <div style={cardWrap('#00f5c4', m.checkMeet === true)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkMeet: m.checkMeet === true ? undefined : true })}>
+                            {toggleSwitch(m.checkMeet === true, '#00f5c4')}
                             {numBadge('#00f5c4', 2)}
                             <span style={ckTitle}>Exchange In Person</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🤝</span>
-                            {onOffPill(m.checkMeet === true)}
                           </div>
                           {(
                             <div style={bodyPad}>
@@ -2034,10 +2036,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         {/* 3 · Drop off at my office — OFF by default */}
                         <div style={cardWrap('#00f5c4', m.checkOffice === true)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkOffice: m.checkOffice === true ? undefined : true })}>
+                            {toggleSwitch(m.checkOffice === true, '#00f5c4')}
                             {numBadge('#00f5c4', 3)}
                             <span style={ckTitle}>Drop Off At Office</span>
                             <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🏠</span>
-                            {onOffPill(m.checkOffice === true)}
                           </div>
                           {(
                             <div style={bodyPad}>
