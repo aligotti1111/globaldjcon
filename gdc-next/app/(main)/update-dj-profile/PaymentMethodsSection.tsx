@@ -1701,7 +1701,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const CLR = '#00f5c4';
                 // No per-card frame: a plain neutral border, and the WHOLE card
                 // dims when it's off so the active ones pop.
-                const cardWrap = (on: boolean): React.CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden', opacity: on ? 1 : 0.5, transition: 'opacity .15s' });
+                const cardWrap = (_on: boolean): React.CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
                 const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
                 const numBadge = (n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: CLR, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                 const title: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
@@ -1857,7 +1857,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       gets them a stranger saying "who?". */}
                   {t === 'check' && (() => {
                     // No per-card frame: neutral border, whole card dims when off.
-                    const cardWrap = (clr: string, on: boolean): React.CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden', opacity: on ? 1 : 0.5, transition: 'opacity .15s' });
+                    const cardWrap = (_clr: string, _on: boolean): React.CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '.55rem', overflow: 'hidden' });
                     const cardHead: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', padding: '.65rem .7rem' };
                     const numBadge = (clr: string, n: number) => (<span style={{ width: 20, height: 20, borderRadius: '50%', background: clr, color: '#04121a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '.64rem', fontWeight: 800, flexShrink: 0 }}>{n}</span>);
                     const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
