@@ -1664,7 +1664,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const depHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.12))', color: '#eafff8', borderRadius: 6 };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .6rem', textAlign: 'right' }}>Step 1</div>
+                  <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'right' }}>Step 1</div>
                   {/* Deposit STACKED OVER Balance (vertical), split by a divider. */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
                     {/* Balance column */}
@@ -1745,7 +1745,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const depHead: React.CSSProperties = { ...headBase, display: 'block', padding: '.35rem .8rem', background: 'linear-gradient(90deg, rgba(10,155,134,.9), rgba(10,155,134,.12))', color: '#eafff8', borderRadius: 6 };
                 return (
                 <div style={{ margin: '0 0 .85rem', paddingBottom: '.85rem', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .6rem', textAlign: 'right' }}>Step 1</div>
+                  <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'right' }}>Step 1</div>
                   {/* Deposit STACKED OVER Balance (vertical), split by a divider. */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
                     {/* Balance column */}
@@ -1842,7 +1842,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const officeOn = m.cashOffice === true; // default OFF
                 return (
                   <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .6rem', textAlign: 'right' }}>Step 2</div>
+                    <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'right' }}>Step 2</div>
                     <div style={waysHero}>Choose the ways you&rsquo;ll accept the cash</div>
 
                     {/* 1 · Exchange In Person */}
@@ -1993,7 +1993,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: 'linear-gradient(90deg, rgba(190,120,20,.95), rgba(234,169,74,.1))', color: '#ffffff', margin: '0 0 .8rem' };
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .6rem', textAlign: 'right' }}>Step 2</div>
+                        <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'right' }}>Step 2</div>
                         <div style={waysHero}>Choose the ways you&rsquo;ll accept the check</div>
 
                         {/* 1 · Mail it to me — ON by default */}
