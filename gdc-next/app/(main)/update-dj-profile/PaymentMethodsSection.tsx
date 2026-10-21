@@ -64,10 +64,22 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
 import SectionBanner from './SectionBanner';
 import PaypalConnectSection from './PaypalConnectSection';
-import {
-  CardNetworksMark, VenmoMark, CashAppMark, PaypalMark, ZelleMark, CashMark, CheckMark, VENMO_HEX,
-} from './BrandMarks';
+import { PaymentReminderBox } from './PaymentReminderBox';
 import { VENMO_V_ICON } from './venmoVIcon';
+import {
+  newId,
+  prettyRequirement,
+  DISCONNECTED,
+  TILE_MARK,
+  TILE_ORDER,
+  TILE_LABEL,
+  TILE_BLURB,
+  TILE_MARK_SIZE,
+  DEFAULT_MARK_SIZE,
+  DEPOSIT_LEAD_OPTIONS,
+  type TileKey,
+  type CardState,
+} from './paymentMethods.constants';
 import {
   METHOD_TYPES,
   TYPE_ORDER,
@@ -80,149 +92,6 @@ import {
 import { searchAddresses } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 import { COUNTRY_FLAGS } from '../upcoming-bookings/shared';
-
-function newId(): string {
-  try {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  } catch { /* fall through */ }
-  return `m${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
-}
-
-/** Card is a tile like the rest, but it isn't a payment_methods row. */
-type TileKey = 'card' | PaymentMethodType;
-
-/**
- * What /api/stripe/connect?action=status reports back.
- *
- * `actionNeeded` is the important one: charges_enabled:false means cards are
- * off, but it does NOT mean the DJ did something wrong. Stripe may simply be
- * verifying. Conflating those two produced a "Finish setup" button that
- * looped forever on an account with nothing left to finish.
- */
-interface CardState {
-  connected: boolean;
-  ready: boolean;
-  detailsSubmitted: boolean;
-  actionNeeded: boolean;
-  currentlyDue: string[];
-  pastDue: string[];
-  pendingVerification: string[];
-  disabledReason: string | null;
-  payoutsEnabled: boolean;
-}
-
-const DISCONNECTED: CardState = {
-  connected: false, ready: false, detailsSubmitted: false, actionNeeded: false,
-  currentlyDue: [], pastDue: [], pendingVerification: [], disabledReason: null,
-  payoutsEnabled: false,
-};
-
-/**
- * Stripe names requirements for engineers: "individual.verification.document".
- * A DJ reading that has no idea they need to photograph a driving licence.
- */
-function prettyRequirement(field: string): string {
-  const MAP: Record<string, string> = {
-    'external_account': 'Bank account for payouts',
-    'individual.verification.document': 'Photo ID',
-    'individual.verification.additional_document': 'A second proof of identity',
-    'individual.id_number': 'Social Security number',
-    'individual.ssn_last_4': 'Last 4 of your SSN',
-    'individual.dob.day': 'Date of birth',
-    'individual.dob.month': 'Date of birth',
-    'individual.dob.year': 'Date of birth',
-    'individual.address.line1': 'Home address',
-    'individual.address.city': 'Home address',
-    'individual.address.postal_code': 'Home address',
-    'individual.address.state': 'Home address',
-    'individual.first_name': 'Your first name',
-    'individual.last_name': 'Your last name',
-    'individual.email': 'Email address',
-    'individual.phone': 'Phone number',
-    'business_profile.url': 'Your website (your Global DJ Connect profile URL works)',
-    'business_profile.mcc': 'What kind of business you run',
-    'business_profile.product_description': 'A description of what you sell',
-    'tos_acceptance.date': 'Accept Stripe’s terms',
-    'tos_acceptance.ip': 'Accept Stripe’s terms',
-    'settings.dashboard.display_name': 'A public business name',
-  };
-  if (MAP[field]) return MAP[field];
-  const tail = field.split('.').pop() || field;
-  const words = tail.replace(/_/g, ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-/**
- * Tile faces — the real marks, in each brand's own colour.
- *
- * A DJ scanning this grid recognises the Venmo blue before they've read a word;
- * that's the entire job of the tile. Emoji stand-ins made them all read as
- * generic coloured dots, which is the opposite.
- */
-const TILE_MARK: Partial<Record<TileKey, (p: { size?: number }) => React.ReactElement>> = {
-  card: CardNetworksMark,
-  venmo: VenmoMark,
-  cashapp: CashAppMark,
-  paypal: PaypalMark,
-  zelle: ZelleMark,
-  cash: CashMark,
-  check: CheckMark,
-};
-
-/**
- * The tiles, in order. 'other' is deliberately NOT here: a free-text "describe
- * how to pay me" box is the one rail we can't validate, can't link, can't QR
- * and can't explain to a client — every other tile earns its place by doing at
- * least one of those. Existing 'other' rows are still saved and still shown to
- * clients; they just can't be created any more.
- */
-const TILE_ORDER: TileKey[] = ['card', ...TYPE_ORDER.filter((t) => t !== 'other')];
-
-const TILE_LABEL: Record<TileKey, string> = {
-  card: 'Credit Cards',
-  venmo: 'Venmo',
-  cashapp: 'Cash App',
-  paypal: 'PayPal',
-  zelle: 'Zelle',
-  cash: 'Cash',
-  check: 'Check',
-  other: 'Other',
-};
-
-/**
- * Only Card gets a subtitle, because only Card needs one: four network logos
- * don't say where the money goes, and "via Stripe Connect" is the answer to
- * the question they raise.
- *
- * The rest had blurbs describing their quirks — "Phone only", "Copy by hand".
- * True, but that's a caveat, and a grid of caveats reads as a list of reasons
- * not to bother. The quirks belong in the expanded panel, where the DJ has
- * actually chosen the rail and the hint can be a full sentence instead of two
- * words. A logo and a name is all a tile owes anyone.
- */
-const TILE_BLURB: Partial<Record<TileKey, string>> = {
-  card: 'via Stripe Connect',
-};
-
-/**
- * Per-tile mark size. Not one number: these are different KINDS of mark.
- * Venmo's is a wordmark — five letters squeezed into the same 24px box that
- * holds Cash App's single $ glyph, so at a shared size it renders half as
- * legible. Card is four marks in a row and needs the opposite treatment.
- */
-const TILE_MARK_SIZE: Partial<Record<TileKey, number>> = {
-  card: 14,
-  venmo: 40,
-  paypal: 30,
-};
-const DEFAULT_MARK_SIZE = 24;
-
-// Deposit lead-time choices, shown in order: short day options, then weeks.
-// Stored verbatim as the label so "7 days" and "1 week" stay distinct.
-const DEPOSIT_LEAD_OPTIONS = [
-  '2 days', '3 days', '4 days', '5 days', '6 days', '7 days',
-  '1 week', '2 weeks', '3 weeks', '4 weeks', '5 weeks', '6 weeks',
-];
 
 export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder, depositRequired = false }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean; depositRequired?: boolean }) {
   const router = useRouter();
@@ -2200,160 +2069,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             {feedback.msg}
           </p>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Payment Reminder ──────────────────────────────────────────────────
-// A standalone box (own load + save, own GET/POST to /api/dj/payment-reminders)
-// so it doesn't entangle the rail editor's dirty/save machinery above. Each kind
-// (deposit, balance) gets up to TWO reminders, each a "days after the request was
-// sent" dropdown, both defaulting to None (off). Every reminder email carries a
-// one-click link to stop reminders for that one payment.
-
-// Dropdown choices — None (off) plus a sensible spread of days-after-request.
-const PR_DAY_OPTIONS = [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60];
-
-function PaymentReminderBox() {
-  // Each value is '' (None) or a stringified day count.
-  const [d1, setD1] = useState<string>(''); // deposit reminder 1
-  const [d2, setD2] = useState<string>(''); // deposit reminder 2
-  const [b1, setB1] = useState<string>(''); // balance reminder 1
-  const [b2, setB2] = useState<string>(''); // balance reminder 2
-  const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ d1: string; d2: string; b1: string; b2: string } | null>(null);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch('/api/dj/payment-reminders');
-        const j = (await r.json().catch(() => ({}))) as {
-          depositDays?: number | null; depositDays2?: number | null;
-          balanceDays?: number | null; balanceDays2?: number | null;
-        };
-        if (cancelled) return;
-        const s = (n: number | null | undefined) => (n != null ? String(n) : '');
-        const next = { d1: s(j.depositDays), d2: s(j.depositDays2), b1: s(j.balanceDays), b2: s(j.balanceDays2) };
-        setD1(next.d1); setD2(next.d2); setB1(next.b1); setB2(next.b2);
-        setSaved(next);
-      } catch { /* leave as None */ }
-      finally { if (!cancelled) setLoaded(true); }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const dirty = !!saved && (d1 !== saved.d1 || d2 !== saved.d2 || b1 !== saved.b1 || b2 !== saved.b2);
-
-  const save = async () => {
-    setSaving(true); setMsg(null);
-    const num = (v: string) => (v === '' ? null : parseInt(v, 10));
-    try {
-      const r = await fetch('/api/dj/payment-reminders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ depositDays: num(d1), depositDays2: num(d2), balanceDays: num(b1), balanceDays2: num(b2) }),
-      });
-      if (!r.ok) {
-        const j = (await r.json().catch(() => ({}))) as { error?: string };
-        setMsg({ text: j.error || 'Could not save.', ok: false });
-      } else {
-        setSaved({ d1, d2, b1, b2 });
-        setMsg({ text: 'Saved.', ok: true });
-      }
-    } catch {
-      setMsg({ text: 'Could not save.', ok: false });
-    } finally { setSaving(false); }
-  };
-
-  const selectStyle: CSSProperties = {
-    background: 'var(--panel, #11151a)', color: '#f4f6f8', border: '1px solid var(--border)',
-    borderRadius: 7, padding: '.5rem .6rem', fontSize: '.85rem', fontFamily: "'Space Mono', monospace",
-    minWidth: 150,
-  };
-  const groupTitle: CSSProperties = {
-    fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.05rem', letterSpacing: '.04em',
-    color: '#aeb4bc', marginBottom: '.5rem',
-  };
-
-  // `exclude` is the sibling reminder's value — the two reminders for one kind
-  // can't fire on the same day, so that option is disabled here.
-  const picker = (value: string, onChange: (v: string) => void, id: string, exclude: string) => (
-    <select id={id} value={value} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
-      <option value="">None</option>
-      {PR_DAY_OPTIONS.map((n) => (
-        <option key={n} value={String(n)} disabled={exclude !== '' && String(n) === exclude}>
-          {n} day{n === 1 ? '' : 's'} after request
-        </option>
-      ))}
-    </select>
-  );
-
-  return (
-    <div style={{ marginTop: '1.4rem', border: '1px solid var(--border)', borderRadius: 10, background: 'rgba(255,255,255,.02)', overflow: 'hidden' }}>
-      {/* Hero banner — full-width gradient strip, same language as the
-          Balance/Deposit heads above. */}
-      <div style={{
-        background: 'linear-gradient(90deg, rgba(0,245,196,.9), rgba(0,245,196,.12))',
-        padding: '.75rem 1.1rem',
-      }}>
-        <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.6rem', letterSpacing: '.04em', color: '#04121a', lineHeight: 1 }}>
-          Automatic Payment Reminder
-        </div>
-      </div>
-
-      <div style={{ padding: '1.1rem 1.1rem 1.2rem' }}>
-      <p style={{ margin: '0 0 1.1rem', fontSize: '.78rem', color: '#8d95a0', lineHeight: 1.55 }}>
-        Nudge a host who hasn&rsquo;t paid yet. Pick when to remind them — up to two reminders each for the deposit and the balance. Every email has a one-tap link to stop reminders for that payment.
-      </p>
-
-      {!loaded ? (
-        <p style={{ margin: 0, fontSize: '.78rem', color: '#6b727b' }}>Loading…</p>
-      ) : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.3rem' }}>
-            <div>
-              <div style={groupTitle}>Deposit</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-                {picker(d1, setD1, 'pr-d1', d2)}
-                {picker(d2, setD2, 'pr-d2', d1)}
-              </div>
-            </div>
-            <div>
-              <div style={groupTitle}>Balance</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
-                {picker(b1, setB1, 'pr-b1', b2)}
-                {picker(b2, setB2, 'pr-b2', b1)}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.9rem', marginTop: '1.2rem' }}>
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={saving || !dirty}
-              style={{
-                background: !saving && dirty ? 'var(--neon)' : 'transparent',
-                color: !saving && dirty ? '#04121a' : 'var(--muted)',
-                border: `1px solid ${!saving && dirty ? 'var(--neon)' : 'var(--border)'}`,
-                borderRadius: 7, padding: '.55rem 1.2rem',
-                fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700,
-                letterSpacing: '.06em', textTransform: 'uppercase',
-                cursor: !saving && dirty ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {saving ? 'Saving…' : dirty ? 'Save' : '✓ Saved'}
-            </button>
-            {msg && (
-              <span style={{ fontSize: '.75rem', color: msg.ok ? 'var(--success)' : '#ff6b6b' }}>{msg.text}</span>
-            )}
-          </div>
-        </>
-      )}
       </div>
     </div>
   );
