@@ -1711,7 +1711,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Deposit column — deposits are always paid ahead, so
                         there's no night-of choice: mail or drop off, full stop. */}
                     <div style={{ order: 0 }}>
-                      <div style={depHead}>Deposit</div>
+                      <div style={{ ...depHead, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                        <span>Deposit</span>
+                        {!depositRequired && (
+                          <span style={{ marginLeft: 'auto', fontSize: '.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', opacity: .9 }}>Requiring a deposit is off in Booking Settings.</span>
+                        )}
+                      </div>
                       <div style={{ marginTop: '.6rem' }}>
                         <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (depositRequired && attempted && !(m.depositLeadLabel || '').trim()) ? '#ff6b6b' : 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
@@ -1724,9 +1729,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
-                        {!depositRequired && (
-                          <p style={{ margin: '.35rem 0 0', color: '#8a8aa0', fontSize: '.72rem' }}>Requiring a deposit is off in Booking Settings.</p>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -1788,7 +1790,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     {/* Deposit column — a cash deposit is always paid ahead and
                         cash can't be mailed, so it's an in-person drop-off, full stop. */}
                     <div style={{ order: 0 }}>
-                      <div style={depHead}>Deposit</div>
+                      <div style={{ ...depHead, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                        <span>Deposit</span>
+                        {!depositRequired && (
+                          <span style={{ marginLeft: 'auto', fontSize: '.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', opacity: .9 }}>Requiring a deposit is off in Booking Settings.</span>
+                        )}
+                      </div>
                       <div style={{ marginTop: '.6rem' }}>
                         <label style={{ ...qLabel, display: 'block', marginBottom: '.3rem', color: (depositRequired && attempted && !(m.depositLeadLabel || '').trim()) ? '#ff6b6b' : 'var(--white)' }}>How long does the host have to get you the deposit?</label>
                         <select
@@ -1801,9 +1808,6 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                             <option key={o} value={o}>{o}</option>
                           ))}
                         </select>
-                        {!depositRequired && (
-                          <p style={{ margin: '.35rem 0 0', color: '#8a8aa0', fontSize: '.72rem' }}>Requiring a deposit is off in Booking Settings.</p>
-                        )}
                       </div>
                     </div>
                   </div>
