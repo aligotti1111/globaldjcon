@@ -1708,10 +1708,19 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
                 const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
                 const toggleSwitch = (on: boolean) => (
-                  <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? CLR : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
-                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', flexShrink: 0 }}>
+                    <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? CLR : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
+                      <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                    </span>
+                    <span style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.08em', color: on ? CLR : '#6b727b', width: 24 }}>{on ? 'ON' : 'OFF'}</span>
                   </span>
                 );
+                // Dims a card's content (label, fields, emoji) when the option is
+                // off — but NOT the toggle, which stays full-strength so the DJ can
+                // see and flip it. Opacity compounds, so the dim lives on the
+                // content wrapper, never the card or the toggle.
+                const dim = (on: boolean): React.CSSProperties => ({ opacity: on ? 1 : 0.45, transition: 'opacity .15s' });
+                const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', flex: 1, minWidth: 0 };
                 // White bar, grey text — thick, bold-sans, so "ways to pay"
                 // reads as its own thing, distinct from the Deposit/Balance heroes.
                 const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
@@ -1727,11 +1736,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <div style={cardWrap(meetOn)}>
                       <div style={cardHead} onClick={() => patchType(t, { cashMeet: meetOn ? false : undefined })}>
                         {toggleSwitch(meetOn)}
-                        {numBadge(1)}
-                        <span style={title}>Exchange In Person</span>
-                        <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🤝</span>
+                        <span style={{ ...headRest, ...dim(meetOn) }}>
+                          {numBadge(1)}
+                          <span style={title}>Exchange In Person</span>
+                          <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🤝</span>
+                        </span>
                       </div>
-                      <div style={bodyPad}>
+                      <div style={{ ...bodyPad, ...dim(meetOn) }}>
                         <label style={lbl}>Phone for the host to call or text to arrange the cash drop-off</label>
                         <input value={m.handle} placeholder="" onChange={(e) => patchType(t, { handle: e.target.value })} style={{ ...field, marginTop: '.35rem', borderColor: err ? '#ff6b6b' : 'var(--border)' }} />
                         {err && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
@@ -1747,11 +1758,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <div style={cardWrap(officeOn)}>
                       <div style={cardHead} onClick={() => patchType(t, { cashOffice: officeOn ? undefined : true })}>
                         {toggleSwitch(officeOn)}
-                        {numBadge(2)}
-                        <span style={title}>Drop Off At Office</span>
-                        <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🏠</span>
+                        <span style={{ ...headRest, ...dim(officeOn) }}>
+                          {numBadge(2)}
+                          <span style={title}>Drop Off At Office</span>
+                          <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🏠</span>
+                        </span>
                       </div>
-                      <div style={bodyPad}>
+                      <div style={{ ...bodyPad, ...dim(officeOn) }}>
                         <label style={lbl}>Office address</label>
                         {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
                         {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { dropoffAddress: accountAddress }))}
@@ -1863,10 +1876,16 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     const bodyPad: React.CSSProperties = { padding: '0 .7rem .75rem 2.7rem' };
                     const applyLink = (val: string, apply: () => void) => (<button type="button" onClick={apply} style={{ marginTop: '.4rem', background: 'transparent', border: 'none', padding: 0, color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>{`Apply ${val}`}</button>);
                     const toggleSwitch = (on: boolean, clr: string) => (
-                      <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? clr : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
-                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', flexShrink: 0 }}>
+                        <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 999, flexShrink: 0, background: on ? clr : 'rgba(255,255,255,.18)', transition: 'background .15s', display: 'inline-flex', alignItems: 'center', padding: 2 }}>
+                          <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: on ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .15s', display: 'block' }} />
+                        </span>
+                        <span style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.08em', color: on ? clr : '#6b727b', width: 24 }}>{on ? 'ON' : 'OFF'}</span>
                       </span>
                     );
+                    // Dim only the content, never the toggle (opacity compounds).
+                    const dim = (on: boolean): React.CSSProperties => ({ opacity: on ? 1 : 0.45, transition: 'opacity .15s' });
+                    const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', flex: 1, minWidth: 0 };
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
                     const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
                     return (
@@ -1878,12 +1897,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkMail: m.checkMail !== false ? false : undefined })}>
                             {toggleSwitch(m.checkMail !== false, '#00f5c4')}
-                            {numBadge('#00f5c4', 1)}
-                            <span style={ckTitle}>Mail It</span>
-                            <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>📭</span>
+                            <span style={{ ...headRest, ...dim(m.checkMail !== false) }}>
+                              {numBadge('#00f5c4', 1)}
+                              <span style={ckTitle}>Mail It</span>
+                              <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>📭</span>
+                            </span>
                           </div>
                           {(
-                            <div style={bodyPad}>
+                            <div style={{ ...bodyPad, ...dim(m.checkMail !== false) }}>
                               <label style={{ ...label, color: '#6b727b' }}>Mailing address</label>
                               {addressField({ value: m.contact || '', onChange: (v) => patchType(t, { contact: v }), placeholder: '', invalid: !!contactErr })}
                               {contactErr && <p style={{ margin: '.3rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{contactErr}</p>}
@@ -1896,12 +1917,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         <div style={cardWrap('#00f5c4', m.checkMeet === true)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkMeet: m.checkMeet === true ? undefined : true })}>
                             {toggleSwitch(m.checkMeet === true, '#00f5c4')}
-                            {numBadge('#00f5c4', 2)}
-                            <span style={ckTitle}>Exchange In Person</span>
-                            <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🤝</span>
+                            <span style={{ ...headRest, ...dim(m.checkMeet === true) }}>
+                              {numBadge('#00f5c4', 2)}
+                              <span style={ckTitle}>Exchange In Person</span>
+                              <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🤝</span>
+                            </span>
                           </div>
                           {(
-                            <div style={bodyPad}>
+                            <div style={{ ...bodyPad, ...dim(m.checkMeet === true) }}>
                               <label style={{ ...label, color: '#6b727b' }}>Phone for the host to call or text to arrange drop-off (optional)</label>
                               <input value={m.checkPhone || ''} placeholder="" onChange={(e) => patchType(t, { checkPhone: e.target.value })} style={{ ...field, marginTop: '.35rem' }} />
                               {accountPhone && (m.checkPhone || '').trim() !== accountPhone && applyLink(accountPhone, () => patchType(t, { checkPhone: accountPhone }))}
@@ -1921,12 +1944,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                         <div style={cardWrap('#00f5c4', m.checkOffice === true)}>
                           <div style={cardHead} onClick={() => patchType(t, { checkOffice: m.checkOffice === true ? undefined : true })}>
                             {toggleSwitch(m.checkOffice === true, '#00f5c4')}
-                            {numBadge('#00f5c4', 3)}
-                            <span style={ckTitle}>Drop Off At Office</span>
-                            <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🏠</span>
+                            <span style={{ ...headRest, ...dim(m.checkOffice === true) }}>
+                              {numBadge('#00f5c4', 3)}
+                              <span style={ckTitle}>Drop Off At Office</span>
+                              <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: '1.4rem', lineHeight: 1 }}>🏠</span>
+                            </span>
                           </div>
                           {(
-                            <div style={bodyPad}>
+                            <div style={{ ...bodyPad, ...dim(m.checkOffice === true) }}>
                               <label style={{ ...label, color: '#6b727b' }}>Office address</label>
                               {addressField({ value: m.dropoffAddress || '', onChange: (v) => patchType(t, { dropoffAddress: v }), placeholder: '' })}
                               {accountAddress && (m.dropoffAddress || '').trim() !== accountAddress && applyLink(accountAddress, () => patchType(t, { dropoffAddress: accountAddress }))}
