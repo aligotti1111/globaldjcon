@@ -1184,7 +1184,7 @@ export default function ClubBookingTab({
           {/* Kept mounted (display:none when inactive) so in-progress payment
               edits survive a tab switch instead of being unmounted and lost. */}
           <div style={{ display: (!activeSection || activeSection === 'payments') ? undefined : 'none' }}>
-            <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} onDirtyChange={onPaymentsDirtyChange} showPaymentReminder depositRequired={clubDepositPct > 0} />
+            <PaymentMethodsSection userId={userId} currency={ratesDraft.rate_currency} onDirtyChange={onPaymentsDirtyChange} showPaymentReminder depositRequired={clubDepositPct > 0} ownerHint />
           </div>
 
         </>
