@@ -58,6 +58,7 @@
 // used. That readback is the cheapest defense that exists.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import styles from './updateDjProfile.module.css';
@@ -224,6 +225,7 @@ const DEPOSIT_LEAD_OPTIONS = [
 ];
 
 export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder, depositRequired = false }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean; depositRequired?: boolean }) {
+  const router = useRouter();
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
   // edits). The two are equal right after a load or a save; the moment the DJ
@@ -1713,7 +1715,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       <div style={{ ...depHead, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                         <span>Deposit</span>
                         {!depositRequired && (
-                          <span style={{ marginLeft: 'auto', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#ffffff', whiteSpace: 'nowrap' }}>Requiring a deposit is off in Booking Settings.</span>
+                          <span style={{ marginLeft: 'auto', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#ffffff', whiteSpace: 'nowrap' }}>Requiring a deposit is off in <button type="button" onClick={() => router.push('?section=settings')} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: '#ffffff', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}>Booking Settings</button>.</span>
                         )}
                       </div>
                       <div style={{ marginTop: '.6rem' }}>
@@ -1793,7 +1795,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       <div style={{ ...depHead, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                         <span>Deposit</span>
                         {!depositRequired && (
-                          <span style={{ marginLeft: 'auto', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#ffffff', whiteSpace: 'nowrap' }}>Requiring a deposit is off in Booking Settings.</span>
+                          <span style={{ marginLeft: 'auto', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#ffffff', whiteSpace: 'nowrap' }}>Requiring a deposit is off in <button type="button" onClick={() => router.push('?section=settings')} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: '#ffffff', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}>Booking Settings</button>.</span>
                         )}
                       </div>
                       <div style={{ marginTop: '.6rem' }}>
