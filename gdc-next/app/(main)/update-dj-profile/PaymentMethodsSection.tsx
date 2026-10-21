@@ -1837,14 +1837,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 );
                 // White bar, grey text — thick, bold-sans, so "ways to pay"
                 // reads as its own thing, distinct from the Deposit/Balance heroes.
-                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#6b727b', margin: '0 0 .8rem' };
+                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
                 const lbl: React.CSSProperties = { ...label, color: '#6b727b' };
                 const meetOn = m.cashMeet !== false;   // default ON
                 const officeOn = m.cashOffice === true; // default OFF
                 return (
                   <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                    <div style={waysHero}>Choose the ways you&rsquo;ll accept the cash</div>
+                    <div style={waysHero}>Choose the ways the host can get you the cash</div>
 
                     {/* 1 · Exchange In Person */}
                     <div style={cardWrap(meetOn)}>
@@ -1991,11 +1991,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       </span>
                     );
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
-                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#6b727b', margin: '0 0 .8rem' };
+                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                        <div style={waysHero}>Choose the ways you&rsquo;ll accept the check</div>
+                        <div style={waysHero}>Choose the ways the host can get you the check</div>
 
                         {/* 1 · Mail it to me — ON by default */}
                         <div style={cardWrap('#00f5c4', m.checkMail !== false)}>
