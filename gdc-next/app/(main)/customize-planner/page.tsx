@@ -205,7 +205,10 @@ export default function CustomizePlannerPage() {
   }
 
   return (
-    <div className={styles.editor}>
+    // The whole editor surface takes the chosen background, so the page the DJ
+    // changes the colour on IS the colour — not a themed card floating on black.
+    // The toolbar strips above the sheet stay dark so their controls never vanish.
+    <div className={styles.editor} style={{ background: theme === 'light' ? '#ffffff' : '#000000' }}>
       <div className={styles.editorBar}>
         <button type="button" className={styles.ghost} onClick={handleClose}>
           {dirty ? 'Close (unsaved)' : 'Close'}
@@ -224,6 +227,9 @@ export default function CustomizePlannerPage() {
           display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap',
           padding: '.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,.08)',
           fontSize: '.82rem', color: '#c7c7d6',
+          // Explicit dark strip so this stays a readable toolbar even when the
+          // sheet below flips to a light background.
+          background: '#0f0f16',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
