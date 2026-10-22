@@ -137,10 +137,13 @@ export default async function PlannerPreviewPage({
       .maybeSingle();
     b = bData as unknown as BookingRow | null;
     if (!b) notFound();
-    // A logged-in viewer may preview only their OWN booking (404, not 403 — don't
-    // confirm an id exists). A viewer with no session is the client following the
-    // test link: allowed, because the bookingId is the capability token.
-    if (user && b.dj_id !== user.id) notFound();
+    // The bookingId IS the capability token here — same model as /planner/[id],
+    // the no-login client page. Anyone with the link sees the preview, whether
+    // they're logged out (the client), logged in as this DJ, or logged in as
+    // some OTHER account (a DJ testing from a browser signed into a different
+    // login). We render AS the booking's DJ regardless; we do NOT 404 a
+    // logged-in non-owner, or the "send test to my email" link breaks exactly
+    // when the DJ opens it in the wrong browser session.
     if (!b.dj_id) notFound();
     djId = b.dj_id;
   } else {
@@ -321,7 +324,7 @@ export default async function PlannerPreviewPage({
         known={known}
         preview
       />
-      {user && <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />}
+      {user?.id === b.dj_id && <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />}
     </>
   );
 }
