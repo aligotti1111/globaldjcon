@@ -226,13 +226,16 @@ export default async function PlannerPreviewPage({
   // This is what makes a just-saved customization show up: pickTemplate returns
   // the DJ's row (whatever its id) over the stock one.
   const { base, override } = pickTemplate(templates, user.id, wantType);
-  if (!base) notFound();
+  // A custom event type (e.g. 'birthday') can have only the DJ's OWN planner
+  // (an override) and no stock base — the send composes from override alone, so
+  // the preview must too. 404 only when neither exists.
+  if (!base && !override) notFound();
 
   // Strip the questions the booking already answers (ceremony toggle always;
   // ceremony / cocktail fields when the booking has none) so the preview equals
   // exactly what the client will be asked.
   const composed = dropFieldsAnsweredByBooking(
-    composeFields(base.fields || [], override?.fields || []),
+    composeFields(base?.fields || [], override?.fields || []),
     b,
   );
 
@@ -270,7 +273,7 @@ export default async function PlannerPreviewPage({
 
   // The template being previewed (the DJ's override for this type, else base) —
   // passed to the test send so the emailed copy matches this preview exactly.
-  const previewPlannerId = override?.id || base.id;
+  const previewPlannerId = override?.id || base?.id || '';
 
   return (
     <>
