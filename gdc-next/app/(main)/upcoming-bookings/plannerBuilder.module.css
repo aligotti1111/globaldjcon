@@ -5,8 +5,51 @@
  */
 
 .wrap {
+  /* The editor recolours to the DJ's chosen theme, in place — so the page you
+     change the colour on is the page that changes. Dark is the default; a light
+     planner overrides the neutrals below. The accent is set inline per DJ. */
+  --pb-bg: #000000;
+  --pb-text: #f2f2f7;
+  --pb-heading: #ffffff;
+  --pb-soft: #ffffff;      /* known-value text */
+  --pb-muted: #9d9db5;
+  --pb-muted2: #8a8aa0;
+  --pb-faint: #75758d;
+  --pb-faint2: #5e5e77;
+  --pb-faint3: #4e4e66;
+  --pb-dim: #4a4a60;       /* empty preview-control text */
+  --pb-surface: #0a0a10;   /* preview-control fill */
+  --pb-border: #23233a;    /* preview-control border */
+  --pb-hairline: rgba(255, 255, 255, .08);
+  --pb-line: rgba(255, 255, 255, .12);
+  --pb-line2: rgba(255, 255, 255, .16);
+  --pb-accent: var(--neon, #00f5c4);
+  --pb-accent-ink: #06231b;
+
   display: flex;
   flex-direction: column;
+  background: var(--pb-bg);
+  color: var(--pb-text);
+  border-radius: 12px;
+  padding: 1.25rem 1.1rem 1.6rem;
+}
+
+.wrap[data-theme="light"] {
+  --pb-bg: #ffffff;
+  --pb-text: #1c1c26;
+  --pb-heading: #0e0e16;
+  --pb-soft: #1c1c26;
+  --pb-muted: #55556a;
+  --pb-muted2: #6a6a80;
+  --pb-faint: #7a7a90;
+  --pb-faint2: #7a7a90;
+  --pb-faint3: #8a8aa0;
+  --pb-dim: #9a9ab0;
+  --pb-surface: #f4f4f7;
+  --pb-border: #d6d6e0;
+  --pb-hairline: rgba(0, 0, 0, .10);
+  --pb-line: rgba(0, 0, 0, .14);
+  --pb-line2: rgba(0, 0, 0, .16);
 }
 
 /* The DJ's logo at the top of the editor — where the client sees it. Wrapped in
@@ -32,21 +75,21 @@
   align-self: flex-start;
   margin-bottom: 1rem;
   padding: .5rem .8rem;
-  border: 1px dashed rgba(0, 224, 164, .45);
+  border: 1px dashed color-mix(in srgb, var(--pb-accent) 45%, transparent);
   border-radius: 8px;
-  background: rgba(0, 224, 164, .06);
-  color: #00e0a4;
+  background: color-mix(in srgb, var(--pb-accent) 6%, transparent);
+  color: var(--pb-accent);
   font-family: inherit;
   font-size: .8rem;
   font-weight: 600;
   cursor: pointer;
 }
-.addLogo:hover { background: rgba(0, 224, 164, .14); }
+.addLogo:hover { background: color-mix(in srgb, var(--pb-accent) 14%, transparent); }
 
 /* Logo + a quiet Remove beside it. */
 .logoRow { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
 .logoRemove {
-  background: none; border: none; color: #6c6c86; font-family: inherit;
+  background: none; border: none; color: var(--pb-faint2); font-family: inherit;
   font-size: .78rem; text-decoration: underline; cursor: pointer; padding: .2rem;
 }
 .logoRemove:hover { color: #ff7676; }
@@ -55,22 +98,22 @@
 .logoChoice {
   display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
   margin: -.4rem 0 1rem; padding: .6rem .7rem;
-  border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px;
-  background: rgba(255, 255, 255, .02);
+  border: 1px solid var(--pb-line); border-radius: 8px;
+  background: color-mix(in srgb, var(--pb-text) 3%, transparent);
 }
-.logoChoiceQ { font-size: .8rem; color: #9d9db5; }
+.logoChoiceQ { font-size: .8rem; color: var(--pb-muted); }
 .logoChoiceBtn {
-  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 6px; color: #e8e8f0; font-family: inherit; font-size: .78rem;
+  background: color-mix(in srgb, var(--pb-text) 5%, transparent); border: 1px solid var(--pb-line2);
+  border-radius: 6px; color: var(--pb-text); font-family: inherit; font-size: .78rem;
   padding: .35rem .6rem; cursor: pointer;
 }
-.logoChoiceBtn:hover { border-color: rgba(0, 224, 164, .4); color: #00e0a4; }
+.logoChoiceBtn:hover { border-color: color-mix(in srgb, var(--pb-accent) 40%, transparent); color: var(--pb-accent); }
 .logoChoiceBtn:disabled { opacity: .5; cursor: wait; }
 .logoChoiceCancel {
-  background: none; border: none; color: #6c6c86; font-family: inherit;
+  background: none; border: none; color: var(--pb-faint2); font-family: inherit;
   font-size: .78rem; text-decoration: underline; cursor: pointer;
 }
-.logoMsg { font-size: .8rem; color: #8a8aa0; margin: -.4rem 0 1rem; }
+.logoMsg { font-size: .8rem; color: var(--pb-muted2); margin: -.4rem 0 1rem; }
 
 /* ── Brand row: logo left, business address stacked on the right ───────── */
 .brandTop {
@@ -85,46 +128,46 @@
    edge (flush-left), so street / city / phone line up. */
 .brandRight { flex: 0 1 auto; display: flex; flex-direction: column; align-items: flex-start; }
 /* The DJ's company name, above the address like letterhead. */
-.brandName { font-size: .95rem; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: .15rem; }
-.addrPhone { margin-top: .15rem; font-size: .82rem; line-height: 1.4; color: #c9c9de; text-align: left; }
+.brandName { font-size: .95rem; font-weight: 700; color: var(--pb-heading); line-height: 1.3; margin-bottom: .15rem; }
+.addrPhone { margin-top: .15rem; font-size: .82rem; line-height: 1.4; color: var(--pb-muted); text-align: left; }
 
 /* ── Business address ─────────────────────────────────────────────────── */
 /* When it's set: the address (stacked) + a pencil, click to edit. */
 .addrShow {
   display: inline-flex; align-items: center; gap: .4rem;
   max-width: 100%; background: none; border: none; padding: .1rem 0;
-  color: #c9c9de; font-family: inherit; font-size: .82rem; line-height: 1.4;
+  color: var(--pb-muted); font-family: inherit; font-size: .82rem; line-height: 1.4;
   cursor: pointer;
 }
-.addrShow:hover { color: #fff; }
-.addrShow:hover :global(svg) { color: #00e0a4; }
+.addrShow:hover { color: var(--pb-heading); }
+.addrShow:hover :global(svg) { color: var(--pb-accent); }
 .addrText { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 .addrText span { display: block; }
 /* When it's empty: a dashed add button, matching + Add your logo. */
 .addrAdd {
   align-self: flex-start; padding: .5rem .8rem;
-  border: 1px dashed rgba(0, 224, 164, .45); border-radius: 8px;
-  background: rgba(0, 224, 164, .06); color: #00e0a4;
+  border: 1px dashed color-mix(in srgb, var(--pb-accent) 45%, transparent); border-radius: 8px;
+  background: color-mix(in srgb, var(--pb-accent) 6%, transparent); color: var(--pb-accent);
   font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
 }
-.addrAdd:hover { background: rgba(0, 224, 164, .14); }
+.addrAdd:hover { background: color-mix(in srgb, var(--pb-accent) 14%, transparent); }
 /* Editing. */
 .addrEditRow { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .addrInput {
-  flex: 1 1 16rem; min-width: 0; background: #0a0a10;
-  border: 1px solid rgba(0, 224, 164, .5); border-radius: 6px;
-  color: #f2f2f7; font-family: inherit; font-size: .85rem; padding: .4rem .55rem;
+  flex: 1 1 16rem; min-width: 0; background: var(--pb-surface);
+  border: 1px solid color-mix(in srgb, var(--pb-accent) 50%, transparent); border-radius: 6px;
+  color: var(--pb-text); font-family: inherit; font-size: .85rem; padding: .4rem .55rem;
   outline: none;
 }
 .addrSave {
-  flex: 0 0 auto; background: rgba(0, 224, 164, .14);
-  border: 1px solid rgba(0, 224, 164, .5); border-radius: 6px;
-  color: #00e0a4; font-family: inherit; font-size: .78rem; font-weight: 600;
+  flex: 0 0 auto; background: color-mix(in srgb, var(--pb-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-accent) 50%, transparent); border-radius: 6px;
+  color: var(--pb-accent); font-family: inherit; font-size: .78rem; font-weight: 600;
   padding: .38rem .8rem; cursor: pointer;
 }
-.addrSave:hover { background: rgba(0, 224, 164, .24); }
+.addrSave:hover { background: color-mix(in srgb, var(--pb-accent) 24%, transparent); }
 .addrCancel {
-  flex: 0 0 auto; background: none; border: none; color: #6c6c86;
+  flex: 0 0 auto; background: none; border: none; color: var(--pb-faint2);
   font-size: .9rem; cursor: pointer; padding: .2rem .35rem;
 }
 .addrCancel:hover { color: #ff7676; }
@@ -134,25 +177,25 @@
 .pageHead {
   padding-bottom: .9rem;
   margin-bottom: .9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid var(--pb-hairline);
 }
 .brand {
   font-family: var(--font-space-mono), monospace;
   font-size: .56rem;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: #00e0a4;
+  color: var(--pb-accent);
   margin-bottom: .35rem;
 }
 .pageTitle {
   font-family: var(--font-bebas), sans-serif;
   font-size: 1.5rem;
   letter-spacing: .04em;
-  color: #f2f2f7;
+  color: var(--pb-text);
 }
 .pageSub {
   font-size: .76rem;
-  color: #75758d;
+  color: var(--pb-faint);
   margin-top: .2rem;
 }
 
@@ -163,7 +206,7 @@
 .known {
   margin: 0 0 1.1rem;
   padding: 0 0 .9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid var(--pb-hairline);
   display: flex;
   flex-direction: column;
   gap: .25rem;
@@ -173,7 +216,7 @@
   font-size: .56rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: #4e4e66;
+  color: var(--pb-faint3);
   margin-bottom: .3rem;
 }
 .knownRow {
@@ -182,12 +225,12 @@
   align-items: baseline;
   font-size: .82rem;
 }
-.knownK { flex: 0 0 130px; color: #5e5e77; font-size: .76rem; }
-.knownV { color: #ffffff; font-style: italic; min-width: 0; }
+.knownK { flex: 0 0 130px; color: var(--pb-faint2); font-size: .76rem; }
+.knownV { color: var(--pb-soft); font-style: italic; min-width: 0; }
 .knownNote {
   margin: .5rem 0 0;
   font-size: .72rem;
-  color: #4e4e66;
+  color: var(--pb-faint3);
   line-height: 1.5;
 }
 
@@ -221,15 +264,15 @@
 .dragging {
   opacity: .95;
   transform: scale(1.02) rotate(-.5deg);
-  border-color: rgba(0, 224, 164, .55);
-  background: rgba(0, 224, 164, .06);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, .5), 0 0 0 1px rgba(0, 224, 164, .45);
+  border-color: color-mix(in srgb, var(--pb-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--pb-accent) 6%, transparent);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .5), 0 0 0 1px color-mix(in srgb, var(--pb-accent) 45%, transparent);
   cursor: grabbing;
 }
 /* Where it'll drop: a glowing neon bar above the target row. */
 .over {
-  border-top: 3px solid #00e0a4;
-  box-shadow: 0 -7px 16px -5px rgba(0, 224, 164, .55);
+  border-top: 3px solid var(--pb-accent);
+  box-shadow: 0 -7px 16px -5px color-mix(in srgb, var(--pb-accent) 55%, transparent);
 }
 
 /* ── Drag rail ────────────────────────────────────────────────────────── */
@@ -244,15 +287,15 @@
 }
 
 .grip {
-  color: #5e5e77;
+  color: var(--pb-faint2);
   font-size: 1rem;
   cursor: grab;
   line-height: 1;
   user-select: none;
   transition: color .12s ease, transform .1s ease;
 }
-.grip:hover { color: #00e0a4; }
-.grip:active { cursor: grabbing; color: #00e0a4; transform: scale(1.25); }
+.grip:hover { color: var(--pb-accent); }
+.grip:active { cursor: grabbing; color: var(--pb-accent); transform: scale(1.25); }
 
 /* The touch fallback. Drag fights the page scroll on a phone; arrows never do.
    Hidden on a pointer that hovers (a mouse); shown on touch. */
@@ -265,9 +308,9 @@
   width: 22px;
   height: 20px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, .14);
+  border: 1px solid var(--pb-line);
   border-radius: 4px;
-  color: #8a8aa0;
+  color: var(--pb-muted2);
   font-size: .7rem;
   cursor: pointer;
   line-height: 1;
@@ -288,13 +331,13 @@
    strip with a neon left rule, so questions are visually chunked. */
 .questionBanner {
   align-items: center;
-  background: linear-gradient(90deg, rgba(0, 224, 164, .16), rgba(0, 224, 164, .02) 60%, transparent);
-  border: 1px solid rgba(255, 255, 255, .08);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--pb-accent) 16%, transparent), color-mix(in srgb, var(--pb-accent) 2%, transparent) 60%, transparent);
+  border: 1px solid var(--pb-hairline);
   border-radius: 8px;
   padding: .5rem .7rem;
   margin-bottom: .55rem;
 }
-.questionBanner .label { color: #fff; font-weight: 700; }
+.questionBanner .label { color: var(--pb-heading); font-weight: 700; }
 
 /* Do NOT play — red TITLE text so it can never be mistaken for a must-play.
    Banner stays the normal green. */
@@ -312,23 +355,23 @@
   font-family: inherit;
   font-size: .96rem;
   font-weight: 500;
-  color: #f2f2f7;
+  color: var(--pb-text);
   cursor: text;
   display: flex;
   align-items: baseline;
   gap: .4rem;
   flex-wrap: wrap;
 }
-.label:hover { color: #fff; }
+.label:hover { color: var(--pb-heading); }
 
 .labelEdit {
   flex: 1;
   min-width: 0;
-  background: #0a0a10;
-  border: 1px solid rgba(0, 224, 164, .5);
+  background: var(--pb-surface);
+  border: 1px solid color-mix(in srgb, var(--pb-accent) 50%, transparent);
   border-radius: 6px;
   padding: .3rem .5rem;
-  color: #f2f2f7;
+  color: var(--pb-text);
   font-family: inherit;
   font-size: .96rem;
   outline: none;
@@ -354,8 +397,8 @@
   font-size: .56rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #00e0a4;
-  border: 1px solid rgba(0, 224, 164, .4);
+  color: var(--pb-accent);
+  border: 1px solid color-mix(in srgb, var(--pb-accent) 40%, transparent);
   border-radius: 3px;
   padding: .03rem .28rem;
 }
@@ -375,7 +418,7 @@
   border-radius: 5px;
   opacity: .8;
 }
-.act:hover { opacity: 1; background: rgba(255, 255, 255, .06); }
+.act:hover { opacity: 1; background: color-mix(in srgb, var(--pb-text) 7%, transparent); }
 .lock { font-size: .8rem; padding: .1rem .2rem; opacity: .6; }
 
 /* The rename pencil — a clean line icon beside the title. Quiet muted grey by
@@ -391,13 +434,13 @@
   background: none;
   border: none;
   border-radius: 7px;
-  color: #6f6f88;
+  color: var(--pb-faint2);
   cursor: pointer;
   padding: 0;
   transition: color .12s ease, background .12s ease;
 }
 .editPencil svg { display: block; }
-.editPencil:hover { color: #00e0a4; background: rgba(255, 255, 255, .05); }
+.editPencil:hover { color: var(--pb-accent); background: color-mix(in srgb, var(--pb-text) 6%, transparent); }
 .editPencil:active { transform: translateY(.5px); }
 
 /* A section HERO BANNER — not a question, not a draggable row. Full-width, bold,
@@ -410,14 +453,14 @@
   gap: .6rem;
   margin: .8rem 0 .2rem;
   padding-bottom: .55rem;
-  border-bottom: 1px solid rgba(140, 140, 170, .25);
+  border-bottom: 1px solid var(--pb-line);
 }
 .sectionBannerText {
   font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
   font-size: 1.5rem;
   line-height: 1;
   letter-spacing: .04em;
-  color: #f2f2f7;
+  color: var(--pb-text);
 }
 .sectionBannerEditBtn {
   flex: 0 0 auto;
@@ -429,21 +472,21 @@
   background: none;
   border: none;
   border-radius: 7px;
-  color: #6f6f88;
+  color: var(--pb-faint2);
   cursor: pointer;
   padding: 0;
   transition: color .12s ease, background .12s ease;
 }
 .sectionBannerEditBtn svg { display: block; }
-.sectionBannerEditBtn:hover { color: #00e0a4; background: rgba(255, 255, 255, .05); }
+.sectionBannerEditBtn:hover { color: var(--pb-accent); background: color-mix(in srgb, var(--pb-text) 6%, transparent); }
 .sectionBannerEdit {
   flex: 1 1 auto;
   min-width: 0;
-  background: #0a0a10;
-  border: 1px solid rgba(0, 224, 164, .5);
+  background: var(--pb-surface);
+  border: 1px solid color-mix(in srgb, var(--pb-accent) 50%, transparent);
   border-radius: 6px;
   padding: .3rem .5rem;
-  color: #f2f2f7;
+  color: var(--pb-text);
   font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
   font-size: 1.4rem;
   letter-spacing: .04em;
@@ -454,39 +497,39 @@
    doesn't shout over the question; the label is the point. */
 .toggle {
   background: none;
-  border: 1px solid rgba(255, 255, 255, .16);
+  border: 1px solid var(--pb-line2);
   border-radius: 5px;
   cursor: pointer;
   font-family: inherit;
   font-size: .68rem;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: #9d9db5;
+  color: var(--pb-muted);
   padding: .18rem .5rem;
   white-space: nowrap;
 }
-.toggle:hover { color: #f2f2f7; border-color: rgba(255, 255, 255, .3); }
+.toggle:hover { color: var(--pb-text); border-color: var(--pb-line2); }
 
 .help {
   font-size: .74rem;
-  color: #75758d;
+  color: var(--pb-faint);
   margin: .15rem 0 .4rem;
 }
 
 /* ── Field previews — dead controls, real shapes ──────────────────────── */
 
 .pv {
-  background: #0a0a10;
-  border: 1px solid #23233a;
+  background: var(--pb-surface);
+  border: 1px solid var(--pb-border);
   border-radius: 7px;
   padding: .55rem .7rem;
   min-height: 1.1rem;
-  color: #4a4a60;
+  color: var(--pb-dim);
   font-size: .86rem;
   margin-top: .3rem;
 }
 .pvArea { min-height: 2.6rem; }
-.pvPh { color: #3a3a4a; }
+.pvPh { color: var(--pb-dim); }
 
 .pvSelect {
   display: flex;
@@ -498,17 +541,17 @@
   width: 0; height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-top: 5px solid #4a4a60;
+  border-top: 5px solid var(--pb-dim);
 }
 
-.pvSong { color: #5e5e77; }
+.pvSong { color: var(--pb-faint2); }
 
 .pvStack { display: flex; flex-direction: column; gap: .3rem; margin-top: .3rem; }
 .pvStack .pv { margin-top: 0; }
 
 .pvAdd {
   font-size: .8rem;
-  color: rgba(0, 224, 164, .55);
+  color: color-mix(in srgb, var(--pb-accent) 55%, transparent);
   padding-left: .1rem;
 }
 
@@ -516,11 +559,11 @@
 .pvToggle {
   min-width: 64px;
   text-align: center;
-  background: #0a0a10;
-  border: 1px solid #23233a;
+  background: var(--pb-surface);
+  border: 1px solid var(--pb-border);
   border-radius: 7px;
   padding: .45rem .8rem;
-  color: #5e5e77;
+  color: var(--pb-faint2);
   font-size: .84rem;
 }
 
@@ -534,22 +577,22 @@
   grid-template-columns: 1.6fr 1.4fr;
 }
 .pvPeople span {
-  background: #0a0a10;
-  border: 1px solid #23233a;
+  background: var(--pb-surface);
+  border: 1px solid var(--pb-border);
   border-radius: 7px;
   padding: .45rem .6rem;
-  color: #4a4a60;
+  color: var(--pb-dim);
   font-size: .8rem;
 }
 
 .pvTimeline { display: flex; gap: .4rem; }
 .pvTimeCell {
   flex: 0 0 110px;
-  background: #0a0a10;
-  border: 1px solid #23233a;
+  background: var(--pb-surface);
+  border: 1px solid var(--pb-border);
   border-radius: 7px;
   padding: .45rem .6rem;
-  color: #4a4a60;
+  color: var(--pb-dim);
   font-size: .8rem;
 }
 
@@ -559,16 +602,16 @@
 
 .addBtn {
   width: 100%;
-  background: rgba(255, 255, 255, .03);
-  border: 1px dashed rgba(255, 255, 255, .2);
+  background: color-mix(in srgb, var(--pb-text) 4%, transparent);
+  border: 1px dashed var(--pb-line2);
   border-radius: 8px;
-  color: #9d9db5;
+  color: var(--pb-muted);
   font-family: inherit;
   font-size: .86rem;
   padding: .7rem;
   cursor: pointer;
 }
-.addBtn:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+.addBtn:hover { color: var(--pb-accent); border-color: color-mix(in srgb, var(--pb-accent) 40%, transparent); }
 
 /* Add controls: a small side-by-side "section title / divider" row on top, then
    the primary "add a question" button. */
@@ -579,23 +622,23 @@
 .addBtnAlt {
   flex: 1 1 0;
   background: transparent;
-  border: 1px dashed rgba(255, 255, 255, .16);
+  border: 1px dashed var(--pb-line2);
   border-radius: 8px;
-  color: #8a8aa0;
+  color: var(--pb-muted2);
   font-family: inherit;
   font-size: .78rem;
   font-weight: 600;
   padding: .5rem;
   cursor: grab;
 }
-.addBtnAlt:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+.addBtnAlt:hover { color: var(--pb-accent); border-color: color-mix(in srgb, var(--pb-accent) 40%, transparent); }
 .addBtnAlt:active { cursor: grabbing; }
 /* While being dragged into the list. */
-.addBtnDragging { opacity: .55; color: #00e0a4; border-color: rgba(0, 224, 164, .5); }
+.addBtnDragging { opacity: .55; color: var(--pb-accent); border-color: color-mix(in srgb, var(--pb-accent) 50%, transparent); }
 
 /* The "how to customise" hint above the question list. */
-.editHint { font-size: .78rem; line-height: 1.5; color: #8a8aa0; margin: 0 0 .8rem; }
-.editHint span { color: #00e0a4; }
+.editHint { font-size: .78rem; line-height: 1.5; color: var(--pb-muted2); margin: 0 0 .8rem; }
+.editHint span { color: var(--pb-accent); }
 
 /* Structural rows in the editor (section title / divider) reuse the field-row
    chrome (rail, drag, delete) with a distinct body. Frameless like the rest. */
@@ -603,13 +646,13 @@
 .sectionTitleBtn {
   flex: 0 1 auto; text-align: left; background: none; border: none; padding: 0;
   font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
-  font-size: 1.4rem; letter-spacing: .04em; color: #f2f2f7; cursor: pointer;
+  font-size: 1.4rem; letter-spacing: .04em; color: var(--pb-text); cursor: pointer;
 }
-.sectionTitleBtn:hover { color: #fff; }
-.dividerLine { flex: 1 1 auto; height: 0; border-top: 1px solid rgba(140, 140, 170, .35); }
+.sectionTitleBtn:hover { color: var(--pb-heading); }
+.dividerLine { flex: 1 1 auto; height: 0; border-top: 1px solid var(--pb-line); }
 .structTag {
   flex-shrink: 0; font-size: .6rem; letter-spacing: .08em; text-transform: uppercase;
-  color: #75758d; border: 1px solid rgba(255, 255, 255, .14); border-radius: 5px; padding: .12rem .4rem;
+  color: var(--pb-faint); border: 1px solid var(--pb-line); border-radius: 5px; padding: .12rem .4rem;
 }
 
 .addMenu {
@@ -617,7 +660,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: .35rem;
-  border: 1px dashed rgba(255, 255, 255, .2);
+  border: 1px dashed var(--pb-line2);
   border-radius: 8px;
   padding: .6rem;
 }
@@ -625,28 +668,28 @@
   font-size: .68rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: #8a8aa0;
+  color: var(--pb-muted2);
   margin: 0 0 .2rem;
 }
 .addPick {
   width: 100%;
   text-align: left;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid rgba(255, 255, 255, .12);
+  background: color-mix(in srgb, var(--pb-text) 5%, transparent);
+  border: 1px solid var(--pb-line);
   border-radius: 5px;
-  color: #9d9db5;
+  color: var(--pb-muted);
   font-family: inherit;
   font-size: .76rem;
   padding: .45rem .6rem;
   cursor: pointer;
 }
-.addPick:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .4); }
+.addPick:hover { color: var(--pb-accent); border-color: color-mix(in srgb, var(--pb-accent) 40%, transparent); }
 .addCancel {
   align-self: flex-end;
   margin-top: .1rem;
   background: none;
   border: none;
-  color: #6c6c86;
+  color: var(--pb-faint2);
   font-family: inherit;
   font-size: .76rem;
   text-decoration: underline;
@@ -656,7 +699,7 @@
 .foot {
   font-size: .78rem;
   line-height: 1.55;
-  color: #75758d;
+  color: var(--pb-faint);
   margin: 1rem 0 0;
 }
-.foot strong { color: #e8e8f0; }
+.foot strong { color: var(--pb-text); }
