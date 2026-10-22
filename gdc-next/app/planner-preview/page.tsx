@@ -13,9 +13,14 @@
 // per event type, so resolving by type is what lets a just-saved change appear
 // here. No eventType param → the booking's own type (the "auto" planner).
 //
-// DJ-ONLY. This reads with the DJ's session and refuses any booking that isn't
-// theirs — the opposite of /planner/[id], which is a no-login capability URL
-// for the client. No planner row is created; nothing is emailed.
+// ACCESS. Two ways in:
+//   · The DJ, logged in, previewing — refused any booking that isn't theirs.
+//   · The "send test to my email" link, which is meant to show what the CLIENT
+//     sees and the client never logs in. With a bookingId and no session, the
+//     bookingId is the capability token (like /planner/[id]) and the page renders
+//     as that booking's DJ. The no-booking template preview stays DJ-only.
+// Either way nothing saves, no planner row is created, and nothing is emailed
+// (the test-send button shows only to the logged-in DJ).
 
 import { redirect, notFound } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -90,20 +95,66 @@ export default async function PlannerPreviewPage({
   //   · key present, value   → that event type
   //   · key present, empty    → the base/default planner (event_type null)
   const rawType = sp.eventType;
-  // DJ session — this is the DJ looking, not the client. No capability URL here.
+  // Who we render AS. Normally the DJ's own session — they're previewing their
+  // own booking. But "send test to my email" exists to show what the CLIENT
+  // sees, and the client never logs in. So when there's a bookingId and no
+  // session, the bookingId itself is the capability token (exactly like
+  // /planner/[id], the no-login client page) and we render as the booking's DJ.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?redirect=/planner-preview`);
 
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
+
+  const hasBooking = /^[0-9a-f-]{36}$/i.test(bookingId);
+
+  // Load the booking up front (when there is one): it resolves the acting DJ for
+  // a no-login test link AND supplies the prefill used further down.
+  type BookingRow = Record<string, unknown> & {
+    dj_id: string | null;
+    event_type: string | null;
+    event_date: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    venue_name: string | null;
+    venue_address: string | null;
+    guest_count: number | null;
+    phone: string | null;
+    requester_name: string | null;
+    cocktail_start_time: string | null;
+    ceremony_needed: boolean | null;
+    ceremony_start_time: string | null;
+  };
+  let b: BookingRow | null = null;
+  let djId: string;
+  if (hasBooking) {
+    // Same columns the client page and request route read (a mistyped column
+    // blanks the whole row).
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id, event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time')
+      .eq('id', bookingId)
+      .maybeSingle();
+    b = bData as unknown as BookingRow | null;
+    if (!b) notFound();
+    // A logged-in viewer may preview only their OWN booking (404, not 403 — don't
+    // confirm an id exists). A viewer with no session is the client following the
+    // test link: allowed, because the bookingId is the capability token.
+    if (user && b.dj_id !== user.id) notFound();
+    if (!b.dj_id) notFound();
+    djId = b.dj_id;
+  } else {
+    // No booking to key off — a bare template preview is DJ-only.
+    if (!user) redirect(`/login?redirect=/planner-preview`);
+    djId = user.id;
+  }
 
   // The DJ's display name and brand logo — same as the client would see. Read
   // up front because BOTH the booking and no-booking previews need it.
   const { data: djData } = await admin
     .from('users')
     .select('name, contract_logo_url, address, phone')
-    .eq('id', user.id)
+    .eq('id', djId)
     .maybeSingle();
   const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
   const djName = dj?.name || 'your DJ';
@@ -116,7 +167,7 @@ export default async function PlannerPreviewPage({
   const { data: tData } = await db
     .from('planners')
     .select('id, dj_id, name, event_type, is_standard, fields')
-    .or(`is_standard.eq.true,dj_id.eq.${user.id}`);
+    .or(`is_standard.eq.true,dj_id.eq.${djId}`);
   const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
   // ── No-booking preview ── Opened from Booking Settings → Planner & Playlist.
@@ -127,19 +178,19 @@ export default async function PlannerPreviewPage({
     let overNB: PlannerTemplate | null;
     let wantTypeNB: string | null;
     if (templateId) {
-      const r = pickTemplateById(templates, user.id, templateId);
+      const r = pickTemplateById(templates, djId, templateId);
       if (!r) notFound();
       baseNB = r.base; overNB = r.override;
       wantTypeNB = (overNB || baseNB)?.event_type ?? null;
     } else {
       wantTypeNB = rawType === undefined ? null : (rawType.trim() ? rawType.trim() : null);
-      ({ base: baseNB, override: overNB } = pickTemplate(templates, user.id, wantTypeNB));
+      ({ base: baseNB, override: overNB } = pickTemplate(templates, djId, wantTypeNB));
       // Disambiguate by name when a type has more than one template.
       if (wantName && wantTypeNB) {
         const sameType = templates.filter((t) => t.event_type === wantTypeNB);
         if (sameType.length > 1) {
           const byName =
-            sameType.find((t) => t.dj_id === user.id && !t.is_standard && t.name === wantName) ??
+            sameType.find((t) => t.dj_id === djId && !t.is_standard && t.name === wantName) ??
             sameType.find((t) => t.name === wantName);
           if (byName) overNB = byName;
         }
@@ -193,31 +244,9 @@ export default async function PlannerPreviewPage({
     );
   }
 
-  // ── Booking preview ── the real booking, prefilled. Same columns the client
-  // page and request route read (a mistyped column blanks the whole row).
-  const { data: bData } = await admin
-    .from('bookings')
-    .select('id, dj_id, event_type, event_date, start_time, end_time, venue_name, venue_address, guest_count, phone, requester_name, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time')
-    .eq('id', bookingId)
-    .maybeSingle();
-  const b = bData as unknown as (Record<string, unknown> & {
-    dj_id: string | null;
-    event_type: string | null;
-    event_date: string | null;
-    start_time: string | null;
-    end_time: string | null;
-    venue_name: string | null;
-    venue_address: string | null;
-    guest_count: number | null;
-    phone: string | null;
-    requester_name: string | null;
-    cocktail_start_time: string | null;
-    ceremony_needed: boolean | null;
-    ceremony_start_time: string | null;
-  }) | null;
+  // ── Booking preview ── the real booking (loaded up top, ownership already
+  // enforced), prefilled. Re-narrow for the type checker.
   if (!b) notFound();
-  // Theirs, or nobody's. 404 not 403 — don't confirm a booking id exists.
-  if (b.dj_id !== user.id) notFound();
 
   // wantType, mirroring /api/planners GET and the Customize editor exactly:
   const wantType = rawType === undefined ? b.event_type : (rawType.trim() ? rawType.trim() : null);
@@ -225,7 +254,7 @@ export default async function PlannerPreviewPage({
   // Resolve by type — base + the DJ's override for that type if they have one.
   // This is what makes a just-saved customization show up: pickTemplate returns
   // the DJ's row (whatever its id) over the stock one.
-  const { base, override } = pickTemplate(templates, user.id, wantType);
+  const { base, override } = pickTemplate(templates, djId, wantType);
   // A custom event type (e.g. 'birthday') can have only the DJ's OWN planner
   // (an override) and no stock base — the send composes from override alone, so
   // the preview must too. 404 only when neither exists.
@@ -292,7 +321,7 @@ export default async function PlannerPreviewPage({
         known={known}
         preview
       />
-      <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />
+      {user && <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />}
     </>
   );
 }
