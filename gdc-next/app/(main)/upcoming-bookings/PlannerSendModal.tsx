@@ -70,11 +70,21 @@ const rowStyle: CSSProperties = {
   borderTop: '1px solid rgba(140,140,170,.12)',
   borderRadius: 7, transition: 'background .15s, box-shadow .15s',
 };
-// The selected planner is highlighted so it's obvious which one Send will use.
+// The selected planner is marked with a filled radio dot (below) plus a faint
+// tint — no bordered frame, which used to overlap the row's buttons.
 const rowSelectedStyle: CSSProperties = {
-  boxShadow: 'inset 0 0 0 1px rgba(0,245,196,.55)',
-  borderTopColor: 'transparent',
+  background: 'rgba(0,245,196,.07)',
 };
+// Radio indicator at the head of each row. Filled neon when that planner is the
+// one Send will use; hollow grey otherwise.
+function radioDot(selected: boolean): CSSProperties {
+  return {
+    flex: '0 0 auto', width: 15, height: 15, borderRadius: '50%',
+    border: selected ? '2px solid #00f5c4' : '2px solid rgba(140,140,170,.55)',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'border-color .15s',
+  };
+}
 const nameStyle: CSSProperties = {
   flex: '1 1 auto', minWidth: 0,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -283,6 +293,9 @@ export default function PlannerSendModal({
         aria-label={`Send ${t.name}`}
         style={{ ...(selected ? { ...rowStyle, ...rowSelectedStyle } : rowStyle), cursor: 'pointer' }}
       >
+        <span aria-hidden="true" style={radioDot(selected)}>
+          {selected && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00f5c4' }} />}
+        </span>
         {renameId === t.id ? (
           <>
             {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
