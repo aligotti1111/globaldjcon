@@ -1055,7 +1055,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!window.confirm('Remove your profile picture?')) return;
+                        if (!(await confirm({ title: 'Remove your profile picture?', confirmLabel: 'Remove', variant: 'danger' }))) return;
                         try {
                           await saveProfile(data.id, { avatar_url: null }, actingAsMember);
                           window.location.reload();
@@ -2030,6 +2030,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           file={pickedAvatarFile}
           userId={data.id}
           uploadFolder={profileUploadFolder(data.id)}
+          fitMode="contain"
           onClose={() => {
             setPickedAvatarFile(null);
             // Reset the input so picking the same file again still fires
