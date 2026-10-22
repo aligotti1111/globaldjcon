@@ -14,8 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import PlannerBuilder from '@/app/(main)/upcoming-bookings/PlannerBuilder';
-import PlannerForm from '@/app/planner/[id]/PlannerForm';
-import { visibleFields, type PlannerField, type PlannerFieldType } from '@/lib/planner';
+import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import styles from '@/app/(main)/upcoming-bookings/plannerSend.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -49,9 +48,6 @@ export default function CustomizePlannerPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [accent, setAccent] = useState<string | null>(null);
   const [themeStatus, setThemeStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  // Show the live client-view preview inline. It's fed the current theme/accent
-  // STATE (not the saved value), so it recolours the instant the DJ changes either.
-  const [showPreview, setShowPreview] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -280,11 +276,18 @@ export default function CustomizePlannerPage() {
           )}
         </div>
 
-        {/* Toggle the inline live preview below. It mirrors the client's view and
-            recolours live as the toggle/swatch change. */}
+        {/* The builder below is the layout editor — it stays dark. The colours
+            you pick apply to the page your CLIENT opens; this opens that page
+            (themed) in a new tab so you can see the result. Colours auto-save on
+            change, so the preview always reflects your latest pick. */}
         <button
           type="button"
-          onClick={() => setShowPreview((v) => !v)}
+          onClick={() => {
+            const q = /^[0-9a-f-]{36}$/i.test(bookingId || '')
+              ? `bookingId=${bookingId}`
+              : `eventType=${encodeURIComponent(eventType || '')}`;
+            window.open(`/planner-preview?${q}`, '_blank');
+          }}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '.3rem',
             padding: '.4rem .7rem', borderRadius: 8, cursor: 'pointer',
@@ -292,46 +295,16 @@ export default function CustomizePlannerPage() {
             color: '#c7c7d6', fontSize: '.78rem', fontWeight: 600,
           }}
         >
-          {showPreview ? 'Hide preview' : 'Show preview'}
+          See preview ↗
         </button>
 
         <span style={{ color: '#6a6a80', fontSize: '.74rem', marginLeft: 'auto' }}>
           {themeStatus === 'saving' ? 'Saving…'
-            : themeStatus === 'saved' ? 'Colours saved ✓'
+            : themeStatus === 'saved' ? 'Colours saved ✓ — open preview to see them'
             : themeStatus === 'error' ? 'Could not save colours'
             : 'Colours apply to what your client sees, on all your templates'}
         </span>
       </div>
-
-      {/* LIVE PREVIEW of the client's view. Fed the current theme/accent STATE,
-          so it recolours the instant the DJ flips Dark/Light or picks an accent —
-          this is the "see it change as I change it" the editor itself can't do
-          (the builder below is the authoring UI, intentionally unthemed). Prefill
-          fields are dropped, same as the real client page. */}
-      {showPreview && loaded && (
-        <div style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-          <div style={{ padding: '.5rem 1rem 0', fontSize: '.72rem', color: '#6a6a80' }}>
-            Live preview — exactly what your client sees. Changes with the colours above.
-          </div>
-          <div style={{ maxHeight: 460, overflow: 'auto', padding: '0 1rem 1rem' }}>
-            <PlannerForm
-              plannerId="preview"
-              fields={visibleFields(fields).filter((f) => !f.prefill)}
-              initialResponses={{}}
-              initialStatus="sent"
-              djName="Your DJ"
-              hostName={null}
-              eventDateLabel=""
-              venueName={null}
-              logoUrl={null}
-              known={[]}
-              preview
-              theme={theme}
-              accent={accent}
-            />
-          </div>
-        </div>
-      )}
 
       <div className={styles.editorSheet}>
         {!loaded ? (
