@@ -524,11 +524,13 @@ function Field({
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 11, fontWeight: 700, lineHeight: 1,
                 background: answered ? 'var(--neon,#00e0a4)' : 'transparent',
-                color: answered ? '#06231b' : 'transparent',
-                border: answered ? 'none' : '2px solid #d9a441',
+                // Not answered: a DIMMED check inside a muted ring, instead of an
+                // empty circle, so every row reads as "check this off" at a glance.
+                color: answered ? '#06231b' : 'rgba(217,164,65,.5)',
+                border: answered ? 'none' : '2px solid rgba(217,164,65,.45)',
               }}
             >
-              {answered ? '✓' : ''}
+              ✓
             </span>
             <label className={styles.label} style={field.id === DO_NOT_PLAY_FIELD_ID ? { color: '#ff5f5f' } : undefined}>{titleCaseLabel(field.label)}</label>
           </span>
