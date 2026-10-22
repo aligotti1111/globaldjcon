@@ -28,7 +28,7 @@
 //   · Guest of honour / Do NOT play / Notes are draggable here, but the server
 //     re-pins them (first / last) on save — so the DJ sees a lock, not a fight.
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import { NOTES_FIELD_ID, DO_NOT_PLAY_FIELD_ID, HONOREE_FIELD_ID, isDivider, isSpace, isStructural, titleCaseLabel } from '@/lib/planner';
 import { createClient } from '@/lib/supabase/client';
@@ -61,6 +61,7 @@ function PencilIcon() {
 export default function PlannerBuilder({
   fields, eventType, bookingId,
   onPatch, onReorder, onRemove, onAdd,
+  theme = 'dark', accent = null,
 }: {
   fields: PlannerField[];
   eventType: string | null;
@@ -72,6 +73,10 @@ export default function PlannerBuilder({
   onReorder: (next: PlannerField[]) => void;
   onRemove: (id: string) => void;
   onAdd: (type: PlannerFieldType) => void;
+  // The DJ's chosen planner colours — so the editor itself recolours to match
+  // the page the client will see, in place, as they pick.
+  theme?: 'dark' | 'light';
+  accent?: string | null;
 }) {
   // The row being dragged, and the row it's hovering over — for the drop line.
   const [dragI, setDragI] = useState<number | null>(null);
@@ -261,8 +266,26 @@ export default function PlannerBuilder({
     setOverI(null);
   }
 
+  // The accent colour the DJ picked → CSS variables on the editor root, with a
+  // legible ink colour chosen from the accent's brightness. A valid 6-digit hex
+  // only; otherwise the stylesheet's brand default stands.
+  const accentHex = /^#[0-9a-fA-F]{6}$/.test(accent || '') ? (accent as string) : null;
+  const wrapStyle: Record<string, string> = {};
+  if (accentHex) {
+    const r = parseInt(accentHex.slice(1, 3), 16);
+    const g = parseInt(accentHex.slice(3, 5), 16);
+    const b = parseInt(accentHex.slice(5, 7), 16);
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    wrapStyle['--pb-accent'] = accentHex;
+    wrapStyle['--pb-accent-ink'] = lum > 0.6 ? '#06231b' : '#ffffff';
+  }
+
   return (
-    <div className={styles.wrap}>
+    <div
+      className={styles.wrap}
+      data-theme={theme === 'light' ? 'light' : undefined}
+      style={wrapStyle as CSSProperties}
+    >
       {/* Logo CENTERED at the top — exactly as the client sees it. No address:
           the client's planner shows the logo alone, so the editor must match. */}
       <div className={styles.brandTop} style={{ justifyContent: 'center' }}>
