@@ -148,14 +148,18 @@ export default async function PlannerPage({
   // and a fallback that reads fine is how it goes unnoticed.
   const { data: djData } = await admin
     .from('users')
-    .select('name, contract_logo_url, address, phone, planner_lead_days')
+    .select('name, contract_logo_url, address, phone, planner_lead_days, planner_theme, planner_accent')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null; planner_lead_days?: number | null } | null;
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null; planner_lead_days?: number | null; planner_theme?: string | null; planner_accent?: string | null } | null;
   const djName = dj?.name || 'your DJ';
   const djAddress = dj?.address?.trim() || null;
   const djPhone = dj?.phone?.trim() || null;
   const leadDays = dj?.planner_lead_days ?? 14;
+  // The DJ's chosen planner theme — background (dark|light) + accent hex. Applies
+  // to every planner they send; the client just sees whatever the DJ set.
+  const plannerTheme: 'dark' | 'light' = dj?.planner_theme === 'light' ? 'light' : 'dark';
+  const plannerAccent = dj?.planner_accent || null;
   // Has the submission deadline (event date − leadDays) arrived? Used with 100%
   // completion to lock the planner. Date-only, T12:00:00 so it doesn't slip a day.
   let duePassed = false;
@@ -252,6 +256,8 @@ export default async function PlannerPage({
       dueDateLabel={dueDateLabel}
       known={known}
       lockedView={lockedView}
+      theme={plannerTheme}
+      accent={plannerAccent}
     />
   );
 }
