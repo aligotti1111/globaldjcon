@@ -156,14 +156,17 @@ export default async function PlannerPreviewPage({
   // up front because BOTH the booking and no-booking previews need it.
   const { data: djData } = await admin
     .from('users')
-    .select('name, contract_logo_url, address, phone')
+    .select('name, contract_logo_url, address, phone, planner_theme, planner_accent')
     .eq('id', djId)
     .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null } | null;
+  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null; planner_theme?: string | null; planner_accent?: string | null } | null;
   const djName = dj?.name || 'your DJ';
   const logoUrl = dj?.contract_logo_url || null;
   const djAddress = dj?.address?.trim() || null;
   const djPhone = dj?.phone?.trim() || null;
+  // The DJ's planner theme — so the Preview shows the SAME colours the client gets.
+  const plannerTheme: 'dark' | 'light' = dj?.planner_theme === 'light' ? 'light' : 'dark';
+  const plannerAccent = dj?.planner_accent || null;
 
   // Templates the DJ can use: stock + their own. Resolve EXACTLY as the send
   // does so the preview equals what would be delivered.
@@ -243,6 +246,8 @@ export default async function PlannerPreviewPage({
         djPhone={djPhone}
         known={knownNB}
         preview
+        theme={plannerTheme}
+        accent={plannerAccent}
       />
     );
   }
@@ -323,6 +328,8 @@ export default async function PlannerPreviewPage({
         djPhone={djPhone}
         known={known}
         preview
+        theme={plannerTheme}
+        accent={plannerAccent}
       />
       {user?.id === b.dj_id && <PreviewTestButton bookingId={bookingId} plannerId={previewPlannerId} />}
     </>
