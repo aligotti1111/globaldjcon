@@ -2015,8 +2015,10 @@
 /* Owner editing — the exact public boxes, made editable: the value becomes an
    inline dropdown styled like the teal value, plus a small show/hide checkbox
    in the corner. Collapses to the same list as the public view on phones. */
-.aboutStatCardOff {
-  opacity: .5;
+/* An off row dims only its LABEL (below), never the checkbox or dropdown, so
+   it stays obvious the DJ can pick an answer to turn the fact on. */
+.aboutStatLabelOff {
+  opacity: .45;
 }
 .aboutStatShowCheck {
   order: 0;
