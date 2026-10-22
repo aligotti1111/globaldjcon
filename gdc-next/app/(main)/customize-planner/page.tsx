@@ -40,6 +40,42 @@ export default function CustomizePlannerPage() {
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  // ── Planner theme (per-DJ, not per-template) ──────────────────────────────
+  // The background (dark/light) and accent colour apply to EVERY planner this DJ
+  // sends, so these save to the DJ's row via /api/dj/planner-theme — separate
+  // from the template's fields, which save to /api/planners. Auto-saved on change.
+  const DEFAULT_ACCENT = '#00f5c4';
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [accent, setAccent] = useState<string | null>(null);
+  const [themeStatus, setThemeStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/dj/planner-theme');
+        const j = await res.json().catch(() => ({}));
+        if (res.ok) {
+          setTheme(j.theme === 'light' ? 'light' : 'dark');
+          setAccent(typeof j.accent === 'string' ? j.accent : null);
+        }
+      } catch { /* non-fatal — the defaults stand */ }
+    })();
+  }, []);
+
+  async function saveTheme(patch: { theme?: 'dark' | 'light'; accent?: string | null }) {
+    setThemeStatus('saving');
+    try {
+      const res = await fetch('/api/dj/planner-theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      setThemeStatus(res.ok ? 'saved' : 'error');
+    } catch {
+      setThemeStatus('error');
+    }
+  }
+
   // Read params from the URL (client-only, so no Suspense boundary needed), then
   // load the template the same way the modal did.
   useEffect(() => {
@@ -180,6 +216,74 @@ export default function CustomizePlannerPage() {
         </button>
       </div>
       {err && <div className={styles.editorErr}>{err}</div>}
+
+      {/* Planner colours. One row: a light/dark background toggle and the accent
+          picker. These are the DJ's, not this template's — the note says so. */}
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap',
+          padding: '.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,.08)',
+          fontSize: '.82rem', color: '#c7c7d6',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+          <span style={{ color: '#8a8aa0' }}>Background</span>
+          <div style={{ display: 'inline-flex', border: '1px solid #2b2b40', borderRadius: 8, overflow: 'hidden' }}>
+            {(['dark', 'light'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setTheme(t); saveTheme({ theme: t }); }}
+                style={{
+                  padding: '.4rem .8rem', border: 'none', cursor: 'pointer',
+                  background: theme === t ? '#00f5c4' : 'transparent',
+                  color: theme === t ? '#06231b' : '#9a9ab0',
+                  fontWeight: theme === t ? 700 : 500, fontSize: '.8rem',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+          <span style={{ color: '#8a8aa0' }}>Accent</span>
+          <input
+            type="color"
+            aria-label="Accent colour"
+            value={accent || DEFAULT_ACCENT}
+            onChange={(e) => setAccent(e.target.value)}
+            onBlur={() => saveTheme({ accent: accent || DEFAULT_ACCENT })}
+            style={{
+              width: 34, height: 28, padding: 0, border: '1px solid #2b2b40',
+              borderRadius: 6, background: 'transparent', cursor: 'pointer',
+            }}
+          />
+          <code style={{ color: '#9a9ab0', fontSize: '.76rem' }}>{(accent || DEFAULT_ACCENT).toUpperCase()}</code>
+          {accent && accent.toLowerCase() !== DEFAULT_ACCENT && (
+            <button
+              type="button"
+              onClick={() => { setAccent(null); saveTheme({ accent: null }); }}
+              style={{
+                background: 'none', border: 'none', color: '#6a6a80',
+                textDecoration: 'underline', cursor: 'pointer', fontSize: '.74rem',
+              }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
+        <span style={{ color: '#6a6a80', fontSize: '.74rem', marginLeft: 'auto' }}>
+          {themeStatus === 'saving' ? 'Saving…'
+            : themeStatus === 'saved' ? 'Colours saved ✓'
+            : themeStatus === 'error' ? 'Could not save colours'
+            : 'Affects all your planner templates'}
+        </span>
+      </div>
+
       <div className={styles.editorSheet}>
         {!loaded ? (
           <div style={{ color: '#8a8aa0', padding: '2rem 0' }}>Loading…</div>
