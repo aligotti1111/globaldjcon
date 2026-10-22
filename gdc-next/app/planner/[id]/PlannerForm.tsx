@@ -18,7 +18,7 @@
 // demo their cousin recorded on a phone must be able to answer. See
 // `source: 'manual'` in lib/planner.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import styles from './planner.module.css';
 import {
   isNa,
@@ -85,6 +85,7 @@ function infoText(f: PlannerField, responses: PlannerResponses): string {
 export default function PlannerForm({
   plannerId, fields, initialResponses, initialStatus,
   djName, hostName, eventDateLabel, venueName, logoUrl, leadDays = 14, duePassed = false, dueDateLabel = '', known, preview = false, lockedView = false,
+  theme = 'dark', accent = null,
 }: {
   plannerId: string;
   fields: PlannerField[];
@@ -115,6 +116,13 @@ export default function PlannerForm({
   /** View-only mode (host opening a PAST event's planner): locked from edits,
    *  still downloadable. Unlike preview, this is the real planner with real data. */
   lockedView?: boolean;
+  /** Background theme the DJ chose (users.planner_theme). 'dark' is the default
+   *  near-black page; 'light' flips to white with dark text. Applies to every
+   *  one of this DJ's planners. */
+  theme?: 'dark' | 'light';
+  /** Accent colour the DJ chose (users.planner_accent) — the green on checkmarks,
+   *  buttons and banners. Any hex; null falls back to the brand neon. */
+  accent?: string | null;
 }) {
   const [responses, setResponses] = useState<PlannerResponses>(initialResponses);
   const [status, setStatus] = useState(initialStatus);
@@ -302,8 +310,25 @@ export default function PlannerForm({
   const layout = layoutFields(fields, responses);
   const info = infoFields(fields, responses);
 
+  // Theme → inline CSS variables on the page wrapper. The accent sets --pl-accent
+  // (and every accent tint in the stylesheet is color-mixed off it); --pl-accent-ink
+  // is the text colour that sits ON the accent, picked dark or light by the
+  // accent's own brightness so a button label is never lost on its fill. A valid
+  // 6-digit hex only; anything else falls back to the stylesheet's brand default.
+  const accentHex = /^#[0-9a-fA-F]{6}$/.test(accent || '') ? (accent as string) : null;
+  const pageStyle: CSSProperties = {};
+  if (accentHex) {
+    const r = parseInt(accentHex.slice(1, 3), 16);
+    const g = parseInt(accentHex.slice(3, 5), 16);
+    const b = parseInt(accentHex.slice(5, 7), 16);
+    // Perceived luminance (sRGB weights). Bright accent → dark ink; dark accent → light ink.
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    (pageStyle as Record<string, string>)['--pl-accent'] = accentHex;
+    (pageStyle as Record<string, string>)['--pl-accent-ink'] = lum > 0.6 ? '#06231b' : '#ffffff';
+  }
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-theme={theme === 'light' ? 'light' : undefined} style={pageStyle}>
       <div className={styles.sheet}>
 
         {/* DJ preview banner — only ever shown when the DJ opens this from the
@@ -523,10 +548,10 @@ function Field({
                 width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 11, fontWeight: 700, lineHeight: 1,
-                background: answered ? 'var(--neon,#00e0a4)' : 'transparent',
+                background: answered ? 'var(--pl-accent)' : 'transparent',
                 // Not answered: a DIMMED check inside a muted ring, instead of an
                 // empty circle, so every row reads as "check this off" at a glance.
-                color: answered ? '#06231b' : 'rgba(217,164,65,.5)',
+                color: answered ? 'var(--pl-accent-ink)' : 'rgba(217,164,65,.5)',
                 border: answered ? 'none' : '2px solid rgba(217,164,65,.45)',
               }}
             >
