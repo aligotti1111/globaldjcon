@@ -318,6 +318,8 @@ export default function CustomizePlannerPage() {
             onReorder={reorder}
             onRemove={remove}
             onAdd={add}
+            theme={theme}
+            accent={accent}
           />
         )}
       </div>
