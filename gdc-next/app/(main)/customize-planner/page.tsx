@@ -276,11 +276,33 @@ export default function CustomizePlannerPage() {
           )}
         </div>
 
+        {/* The editor below is the field BUILDER, not a themed preview — the
+            colours only show on the page the client sees. This opens that page
+            so the DJ can actually see the background/accent they picked. Colours
+            auto-save on change, so the preview reflects the latest pick. */}
+        <button
+          type="button"
+          onClick={() => {
+            const q = /^[0-9a-f-]{36}$/i.test(bookingId || '')
+              ? `bookingId=${bookingId}`
+              : `eventType=${encodeURIComponent(eventType || '')}`;
+            window.open(`/planner-preview?${q}`, '_blank');
+          }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '.3rem',
+            padding: '.4rem .7rem', borderRadius: 8, cursor: 'pointer',
+            border: '1px solid #2b2b40', background: 'transparent',
+            color: '#c7c7d6', fontSize: '.78rem', fontWeight: 600,
+          }}
+        >
+          See preview ↗
+        </button>
+
         <span style={{ color: '#6a6a80', fontSize: '.74rem', marginLeft: 'auto' }}>
           {themeStatus === 'saving' ? 'Saving…'
-            : themeStatus === 'saved' ? 'Colours saved ✓'
+            : themeStatus === 'saved' ? 'Colours saved ✓ — open preview to see them'
             : themeStatus === 'error' ? 'Could not save colours'
-            : 'Affects all your planner templates'}
+            : 'Colours apply to what your client sees, on all your templates'}
         </span>
       </div>
 
