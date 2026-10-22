@@ -45,11 +45,11 @@
   --pb-faint2: #7a7a90;
   --pb-faint3: #8a8aa0;
   --pb-dim: #9a9ab0;
-  --pb-surface: #f4f4f7;
-  --pb-border: #d6d6e0;
-  --pb-hairline: rgba(0, 0, 0, .10);
-  --pb-line: rgba(0, 0, 0, .14);
-  --pb-line2: rgba(0, 0, 0, .16);
+  --pb-surface: #eef0f4;
+  --pb-border: #b9bccb;      /* input / preview borders — darker so frames read on white */
+  --pb-hairline: rgba(0, 0, 0, .18);
+  --pb-line: rgba(0, 0, 0, .22);
+  --pb-line2: rgba(0, 0, 0, .26);
 }
 
 /* The DJ's logo at the top of the editor — where the client sees it. Wrapped in
