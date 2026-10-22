@@ -1,4 +1,4 @@
-route.ts// /api/dj/planner-theme — the DJ's Planner & Playlist colour theme.
+// /api/dj/planner-theme — the DJ's Planner & Playlist colour theme.
 //
 //   GET  → { theme: 'dark' | 'light', accent: string | null }  (current values)
 //   POST { theme?, accent? } → update either/both on the acting DJ's row.
