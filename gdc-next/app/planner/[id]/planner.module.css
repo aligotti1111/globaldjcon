@@ -8,14 +8,66 @@
  * viewport when you focus an input under 16px, and it does not zoom back out.
  * A 13px field (which is what the DJ side uses) makes this form actively
  * hostile on the device most people will open it on.
+ *
+ * ── THEME ──────────────────────────────────────────────────────────────────
+ * Every colour below comes from a variable defined on .page, so the DJ can
+ * recolour the whole planner from one setting. Two things are controlled:
+ *   · the BACKGROUND — dark (default) or light, via data-theme="light" on .page.
+ *     Text, inputs, borders and muted shades all flip with it so nothing hides.
+ *   · the ACCENT — the green on checkmarks, buttons and banners — set inline as
+ *     --pl-accent on .page (with --pl-accent-ink, the legible text colour on top
+ *     of it, computed from the accent's brightness). Accent TINTS use color-mix
+ *     so they track whatever colour the DJ picks.
+ * This is per-DJ and applies to ALL of that DJ's planner templates.
  */
 
 .page {
+  /* Dark theme (default). A light planner overrides these in the block below. */
+  --pl-bg: #000;
+  --pl-surface: #0a0a10;      /* input / toggle fill */
+  --pl-surface2: #0d0d14;     /* dropdown fill */
+  --pl-border: #23233a;       /* input border */
+  --pl-text: #f0f0f8;         /* base body text */
+  --pl-heading: #ffffff;      /* titles, labels, section heads */
+  --pl-soft: #b8b8c8;         /* known-value text */
+  --pl-muted: #9d9db5;        /* sub, progress, help */
+  --pl-muted2: #8a8aa0;       /* intro, placeholders-ish, artist */
+  --pl-faint: #5e5e77;        /* known-key, na link, note */
+  --pl-faint2: #4e4e66;       /* known-head, song hint */
+  --pl-placeholder: #4a4a60;  /* input placeholder */
+  --pl-hairline: rgba(255, 255, 255, .08);  /* section rules */
+  --pl-line: rgba(255, 255, 255, .12);      /* control borders */
+
+  /* Accent — the brand green by default; overridden inline per DJ. --pl-accent-ink
+     is the text colour that sits ON the accent (dark for a bright accent). */
+  --pl-accent: var(--neon, #00f5c4);
+  --pl-accent-ink: #06231b;
+
   min-height: 100vh;
-  background: var(--black, #000);
-  color: var(--white, #fff);
+  background: var(--pl-bg);
+  color: var(--pl-text);
   padding: 2rem 1rem 5rem;
   font-family: var(--font-inter), 'DM Sans', sans-serif;
+}
+
+/* Light theme — same layout, flipped shades. Text goes dark, surfaces go pale,
+   hairlines go to dark-on-light so they stay visible. The accent is untouched
+   (it's the DJ's pick); only the neutrals move. */
+.page[data-theme="light"] {
+  --pl-bg: #ffffff;
+  --pl-surface: #f4f4f7;
+  --pl-surface2: #ffffff;
+  --pl-border: #d6d6e0;
+  --pl-text: #1c1c26;
+  --pl-heading: #0e0e16;
+  --pl-soft: #3a3a48;
+  --pl-muted: #55556a;
+  --pl-muted2: #6a6a80;
+  --pl-faint: #7a7a90;
+  --pl-faint2: #8a8aa0;
+  --pl-placeholder: #9a9ab0;
+  --pl-hairline: rgba(0, 0, 0, .10);
+  --pl-line: rgba(0, 0, 0, .14);
 }
 
 .sheet {
@@ -78,7 +130,7 @@
   text-align: right;
   font-size: .78rem;
   line-height: 1.45;
-  color: var(--muted, #8a8aa0);
+  color: var(--pl-muted2);
 }
 .djAddress span { display: block; white-space: nowrap; }
 .djPhone {
@@ -87,7 +139,7 @@
   white-space: nowrap;
   font-size: .78rem;
   line-height: 1.45;
-  color: var(--muted, #8a8aa0);
+  color: var(--pl-muted2);
 }
 .brandRowSolo .djAddress { text-align: center; max-width: 100%; }
 
@@ -106,10 +158,10 @@
   gap: .35rem;
   margin-top: .2rem;
   padding: .45rem .8rem;
-  border: 1px solid rgba(0, 224, 164, .4);
+  border: 1px solid color-mix(in srgb, var(--pl-accent) 40%, transparent);
   border-radius: 8px;
-  background: rgba(0, 224, 164, .06);
-  color: var(--neon, #00e0a4);
+  background: color-mix(in srgb, var(--pl-accent) 6%, transparent);
+  color: var(--pl-accent);
   font-family: inherit;
   font-size: .8rem;
   font-weight: 600;
@@ -117,14 +169,14 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.download:hover { background: rgba(0, 224, 164, .14); }
+.download:hover { background: color-mix(in srgb, var(--pl-accent) 14%, transparent); }
 
 .brand {
   font-family: var(--font-space-mono), monospace;
   font-size: .6rem;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: var(--neon, #00e0a4);
+  color: var(--pl-accent);
   margin-bottom: .6rem;
 }
 
@@ -133,38 +185,39 @@
   font-size: 1.55rem;
   letter-spacing: .04em;
   margin: 0 0 .3rem;
-  color: var(--white, #fff);
+  color: var(--pl-heading);
 }
 
 .sub {
   font-size: .88rem;
-  color: #9d9db5;
+  color: var(--pl-muted);
   margin: 0 0 1rem;
 }
 
 .intro {
   font-size: .9rem;
   line-height: 1.6;
-  color: #8a8aa0;
+  color: var(--pl-muted2);
   margin: 0;
   padding-bottom: 1.2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid var(--pl-hairline);
 }
 
 .submitted {
   margin-top: 1.2rem;
   padding: .8rem 1rem;
-  border: 1px solid rgba(0, 224, 164, .35);
-  background: rgba(0, 224, 164, .06);
+  border: 1px solid color-mix(in srgb, var(--pl-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--pl-accent) 6%, transparent);
   border-radius: 8px;
   font-size: .84rem;
   line-height: 1.55;
-  color: #b8f0dd;
+  color: var(--pl-text);
 }
-.submitted strong { color: #4ddcb4; }
+.submitted strong { color: var(--pl-accent); }
 
 /* Locked — complete and past the deadline. Amber, distinct from the green
-   "submitted" note; the questions below are shown but frozen. */
+   "submitted" note; the questions below are shown but frozen. Amber reads on
+   both themes, so it stays fixed. */
 .locked {
   margin-top: 1.2rem;
   padding: .8rem 1rem;
@@ -173,9 +226,9 @@
   border-radius: 8px;
   font-size: .84rem;
   line-height: 1.55;
-  color: #f0dcb8;
+  color: var(--pl-text);
 }
-.locked strong { color: #e8c477; }
+.locked strong { color: #c79a3b; }
 /* The frozen questions: visible so the client can read what they sent, but no
    interaction — every control is inert. */
 .fieldsLocked { pointer-events: none; opacity: .6; }
@@ -191,7 +244,7 @@
 .known {
   margin: 0 0 1.8rem;
   padding: .9rem 0 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid var(--pl-hairline);
   display: flex;
   flex-direction: column;
   gap: .3rem;
@@ -202,7 +255,7 @@
   font-size: .58rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: #4e4e66;
+  color: var(--pl-faint2);
   margin-bottom: .3rem;
 }
 
@@ -216,11 +269,11 @@
 
 .knownK {
   flex: 0 0 88px;
-  color: #5e5e77;
+  color: var(--pl-faint);
   font-size: .76rem;
 }
 
-.knownV { color: #b8b8c8; min-width: 0; word-break: break-word; }
+.knownV { color: var(--pl-soft); min-width: 0; word-break: break-word; }
 
 /* Why it's read-only, in words. These facts are in the signed contract — the
    planner can't be a second place they're editable or the two disagree and the
@@ -228,7 +281,7 @@
 .knownNote {
   margin: .55rem 0 0;
   font-size: .74rem;
-  color: #4e4e66;
+  color: var(--pl-faint2);
   line-height: 1.5;
 }
 
@@ -250,7 +303,7 @@
 /* A plain rule between questions — purely visual spacing the DJ dropped in. */
 .divider {
   border: none;
-  border-top: 1px solid rgba(140, 140, 170, .18);
+  border-top: 1px solid var(--pl-hairline);
   margin: .2rem 0;
   width: 100%;
 }
@@ -262,10 +315,10 @@
   font-family: var(--font-bebas), sans-serif;
   font-size: 1.5rem;
   letter-spacing: .04em;
-  color: var(--white, #fff);
+  color: var(--pl-heading);
   margin: .6rem 0 -.4rem;
   padding-bottom: .55rem;
-  border-bottom: 1px solid rgba(140, 140, 170, .2);
+  border-bottom: 1px solid var(--pl-line);
 }
 
 /* Greyed, not hidden. The question stays on screen so they can undo it — and
@@ -276,10 +329,13 @@
   display: flex;
   align-items: center;
   gap: .6rem;
-  /* Hero-banner header — matches the DJ's planner editor: a subtle green
+  /* Hero-banner header — matches the DJ's planner editor: a subtle accent
      gradient strip with a thin border, so each question reads as its own bar. */
-  background: linear-gradient(90deg, rgba(0, 224, 164, .16), rgba(0, 224, 164, .02) 60%, transparent);
-  border: 1px solid rgba(255, 255, 255, .08);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--pl-accent) 16%, transparent),
+    color-mix(in srgb, var(--pl-accent) 2%, transparent) 60%,
+    transparent);
+  border: 1px solid var(--pl-hairline);
   border-radius: 8px;
   padding: .5rem .7rem;
   margin-bottom: .55rem;
@@ -288,7 +344,7 @@
 .label {
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--pl-heading);
 }
 
 /* Deliberately quiet. It's on EVERY field — at any weight it would shout
@@ -300,26 +356,26 @@
   padding: .2rem .1rem;
   font-family: inherit;
   font-size: .74rem;
-  color: #5e5e77;
+  color: var(--pl-faint);
   text-decoration: underline;
   cursor: pointer;
   flex-shrink: 0;
 }
-.naBtn:hover { color: #9d9db5; }
+.naBtn:hover { color: var(--pl-muted); }
 
 .naBox {
-  border: 1px solid rgba(255, 255, 255, .1);
+  border: 1px solid var(--pl-line);
   border-radius: 8px;
   padding: .7rem .9rem;
   font-size: .88rem;
-  color: #8a8aa0;
-  background: rgba(255, 255, 255, .02);
+  color: var(--pl-muted2);
+  background: color-mix(in srgb, var(--pl-text) 4%, transparent);
 }
 
 .help {
   font-size: .8rem;
   line-height: 1.5;
-  color: #75758d;
+  color: var(--pl-muted);
   margin: 0 0 .55rem;
 }
 
@@ -329,30 +385,30 @@
 .textarea {
   width: 100%;
   box-sizing: border-box;
-  background: #0a0a10;
-  border: 1px solid #23233a;
+  background: var(--pl-surface);
+  border: 1px solid var(--pl-border);
   border-radius: 8px;
   /* Compact — every text box on the form is this height, matching the must-play
      boxes. Font stays 16px (iOS zooms anything smaller and never zooms back);
      only the vertical padding comes down. */
   padding: .45rem .7rem;
-  color: #f2f2f7;
+  color: var(--pl-text);
   font-size: 16px;
   font-family: inherit;
   outline: none;
   transition: border-color .15s;
 }
 .input:focus,
-.textarea:focus { border-color: rgba(0, 224, 164, .5); }
+.textarea:focus { border-color: color-mix(in srgb, var(--pl-accent) 50%, transparent); }
 .input::placeholder,
-.textarea::placeholder { color: #4a4a60; }
+.textarea::placeholder { color: var(--pl-placeholder); }
 
 .textarea { resize: vertical; line-height: 1.5; }
 
 select.input {
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, #5e5e77 50%),
-                    linear-gradient(135deg, #5e5e77 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, var(--pl-faint) 50%),
+                    linear-gradient(135deg, var(--pl-faint) 50%, transparent 50%);
   background-position: calc(100% - 18px) .85rem, calc(100% - 13px) .85rem;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
@@ -387,7 +443,7 @@ select.input {
   font-size: .62rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: #4e4e66;
+  color: var(--pl-faint2);
 }
 
 .peopleRow {
@@ -421,9 +477,9 @@ select.input {
 .mv,
 .rm {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, .12);
+  border: 1px solid var(--pl-line);
   border-radius: 6px;
-  color: #6c6c86;
+  color: var(--pl-faint);
   width: 32px;
   height: 32px;
   font-size: .85rem;
@@ -434,7 +490,7 @@ select.input {
   justify-content: center;
   transition: color .15s, border-color .15s;
 }
-.mv:hover { color: #f2f2f7; border-color: rgba(255, 255, 255, .3); }
+.mv:hover { color: var(--pl-text); border-color: color-mix(in srgb, var(--pl-text) 30%, transparent); }
 .mv:disabled { opacity: .25; cursor: default; }
 .rm:hover { color: #ff7676; border-color: rgba(255, 118, 118, .4); }
 
@@ -445,7 +501,7 @@ select.input {
   padding: .35rem .1rem;
   font-family: inherit;
   font-size: .84rem;
-  color: var(--neon, #00e0a4);
+  color: var(--pl-accent);
   cursor: pointer;
 }
 .add:hover { text-decoration: underline; }
@@ -463,8 +519,8 @@ select.input {
   right: 0;
   z-index: 20;
   margin-top: 2px;
-  background: #0d0d14;
-  border: 1px solid #23233a;
+  background: var(--pl-surface2);
+  border: 1px solid var(--pl-border);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
@@ -484,14 +540,14 @@ select.input {
   cursor: pointer;
   min-width: 0;
 }
-.hit + .hit { border-top: 1px solid #16161f; }
-.hit:hover { background: rgba(255, 255, 255, .04); }
+.hit + .hit { border-top: 1px solid var(--pl-border); }
+.hit:hover { background: color-mix(in srgb, var(--pl-text) 6%, transparent); }
 
-/* The picked one. Neon frame — it's an answer now, not a search. */
+/* The picked one. Accent frame — it's an answer now, not a search. */
 .chosen {
   cursor: default;
-  background: rgba(0, 224, 164, .06);
-  border: 1px solid rgba(0, 224, 164, .35);
+  background: color-mix(in srgb, var(--pl-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pl-accent) 35%, transparent);
   border-radius: 8px;
   padding: .5rem .6rem;
 }
@@ -505,7 +561,7 @@ select.input {
   border-radius: 3px;
   object-fit: cover;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, .05);
+  background: color-mix(in srgb, var(--pl-text) 6%, transparent);
 }
 
 .hitText {
@@ -517,7 +573,7 @@ select.input {
 
 .hitTitle {
   font-size: .9rem;
-  color: #f2f2f7;
+  color: var(--pl-text);
   /* One line. Two-line titles make every row a different height and the list
      stops being scannable. */
   white-space: nowrap;
@@ -527,7 +583,7 @@ select.input {
 
 .hitArtist {
   font-size: .76rem;
-  color: #8a8aa0;
+  color: var(--pl-muted2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -540,9 +596,9 @@ select.input {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, .16);
+  border: 1px solid var(--pl-line);
   background: transparent;
-  color: #9d9db5;
+  color: var(--pl-muted);
   font-size: .7rem;
   line-height: 1;
   cursor: pointer;
@@ -550,12 +606,12 @@ select.input {
   align-items: center;
   justify-content: center;
 }
-.play:hover { color: #00e0a4; border-color: rgba(0, 224, 164, .45); }
+.play:hover { color: var(--pl-accent); border-color: color-mix(in srgb, var(--pl-accent) 45%, transparent); }
 
 .songHint {
   margin: .3rem 0 0;
   font-size: .74rem;
-  color: #4e4e66;
+  color: var(--pl-faint2);
   line-height: 1.4;
 }
 
@@ -577,20 +633,20 @@ select.input {
 .toggle {
   flex: 0 0 auto;
   min-width: 76px;
-  background: #0a0a10;
-  border: 1px solid #23233a;
+  background: var(--pl-surface);
+  border: 1px solid var(--pl-border);
   border-radius: 8px;
   padding: .6rem 1rem;
-  color: #8a8aa0;
+  color: var(--pl-muted2);
   font-family: inherit;
   font-size: .9rem;
   cursor: pointer;
   transition: all .15s;
 }
 .toggleOn {
-  background: rgba(0, 224, 164, .12);
-  border-color: rgba(0, 224, 164, .5);
-  color: #4ddcb4;
+  background: color-mix(in srgb, var(--pl-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--pl-accent) 50%, transparent);
+  color: var(--pl-accent);
   font-weight: 500;
 }
 
@@ -599,7 +655,7 @@ select.input {
 .foot {
   margin-top: 2.4rem;
   padding-top: 1.4rem;
-  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-top: 1px solid var(--pl-hairline);
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -608,16 +664,16 @@ select.input {
 
 .progress {
   font-size: .82rem;
-  color: #75758d;
+  color: var(--pl-muted);
 }
 
 .submit {
   margin-left: auto;
-  background: var(--neon, #00e0a4);
+  background: var(--pl-accent);
   border: none;
   border-radius: 8px;
   padding: .8rem 1.6rem;
-  color: #06231b;
+  color: var(--pl-accent-ink);
   font-family: inherit;
   font-size: .95rem;
   font-weight: 700;
@@ -630,7 +686,7 @@ select.input {
 .note {
   margin: .9rem 0 0;
   font-size: .74rem;
-  color: #5e5e77;
+  color: var(--pl-faint);
   min-height: 1em;
   text-align: right;
 }
@@ -651,14 +707,14 @@ select.input {
     grid-template-columns: 1fr;
     gap: .3rem;
     padding: .6rem;
-    border: 1px solid rgba(255, 255, 255, .07);
+    border: 1px solid var(--pl-hairline);
     border-radius: 8px;
   }
   .timeRow {
     grid-template-columns: 1fr;
     gap: .3rem;
     padding: .6rem;
-    border: 1px solid rgba(255, 255, 255, .07);
+    border: 1px solid var(--pl-hairline);
     border-radius: 8px;
   }
   .rowTools { justify-content: flex-start; }
@@ -683,7 +739,9 @@ select.input {
  * first time anyone tried it.)
  *
  * So: paper gets black on white, the empty input boxes become RULED LINES to
- * write on, and everything that only makes sense on a screen goes away.
+ * write on, and everything that only makes sense on a screen goes away. These
+ * rules use !important and win over the theme variables, so a dark OR light
+ * planner both print the same clean black-on-white.
  *
  * Last in the file on purpose — media queries add no specificity, so a print
  * rule above its screen twin loses on source order and does nothing.
