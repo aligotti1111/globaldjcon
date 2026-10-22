@@ -387,7 +387,11 @@ export async function POST(req: Request) {
     // A test with no saved planner has no /planner/[id] yet — link the DJ to the
     // DJ-only preview (they are the recipient) instead of a dead URL.
     const url = (isTest && !planner.id)
-      ? `${SITE_URL}/planner-preview${b.event_type ? `?eventType=${encodeURIComponent(b.event_type)}` : ''}`
+      // Carry the bookingId so the preview renders the booking-scoped view
+      // (with the "Your booking" strip) rather than the generic no-booking
+      // template. planner-preview is DJ-only and a test goes to the DJ, so they
+      // can open it. eventType stays so a non-auto template choice is honoured.
+      ? `${SITE_URL}/planner-preview?bookingId=${encodeURIComponent(bookingId)}${b.event_type ? `&eventType=${encodeURIComponent(b.event_type)}` : ''}`
       : `${SITE_URL}/planner/${planner.id}`;
 
     // ── The email ─────────────────────────────────────────────────────────
