@@ -329,7 +329,7 @@ export function AboutStatsRow({
             {STAT_FIELDS.map(f => {
               const on = !!draft[f.key]?.on;
               return (
-                <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit} ${on ? '' : styles.aboutStatCardOff}`}>
+                <div key={f.key} className={`${styles.aboutStatCard} ${styles.aboutStatCardEdit}`}>
                   <input
                     type="checkbox"
                     className={styles.aboutStatShowCheck}
@@ -338,7 +338,7 @@ export function AboutStatsRow({
                     title={on ? 'Showing to visitors — uncheck to hide' : 'Hidden — check to show'}
                   />
                   <div className={styles.aboutStatValue}>{renderStatControl(f.key, f.control, true)}</div>
-                  <div className={styles.aboutStatLabel}>{f.label}?</div>
+                  <div className={`${styles.aboutStatLabel} ${on ? '' : styles.aboutStatLabelOff}`}>{f.label}?</div>
                 </div>
               );
             })}
