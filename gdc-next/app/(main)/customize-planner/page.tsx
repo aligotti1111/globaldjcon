@@ -210,11 +210,24 @@ export default function CustomizePlannerPage() {
     // The toolbar strips above the sheet stay dark so their controls never vanish.
     <div className={styles.editor} style={{ background: theme === 'light' ? '#ffffff' : '#000000' }}>
       <div className={styles.editorBar}>
-        <button type="button" className={styles.ghost} onClick={handleClose}>
-          {dirty ? 'Close (unsaved)' : 'Close'}
-        </button>
-        <span className={styles.editorTitle}>{isCustom ? `New: ${name}` : `Customize ${name}`}</span>
-        <button type="button" className={styles.primary} disabled={saving || !loaded} onClick={save}>
+        <span
+          className={styles.editorTitle}
+          style={{
+            fontFamily: 'var(--font-bebas), "Bebas Neue", sans-serif',
+            fontSize: '1.7rem',
+            letterSpacing: '.04em',
+            color: '#ffffff',
+            textAlign: 'left',
+          }}
+        >
+          {isCustom ? `New: ${name}` : `Customize ${name}`}
+        </span>
+        <button
+          type="button"
+          className={styles.primary}
+          disabled={saving || !loaded || !dirty}
+          onClick={save}
+        >
           {saving ? 'Saving…' : saved && !dirty ? 'Saved ✓' : isCustom ? 'Create template' : 'Save'}
         </button>
       </div>
