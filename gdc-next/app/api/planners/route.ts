@@ -304,14 +304,42 @@ export async function GET(req: Request) {
     // editor can ask for a SPECIFIC one via ?eventType= — that's how "customise"
     // next to a planner in the list opens that planner, not the resolved one.
     // The empty string means the base (event_type null).
-    const raw = new URL(req.url).searchParams.get('eventType');
+    const bUrl = new URL(req.url);
+    const raw = bUrl.searchParams.get('eventType');
+    // A specific template id (weddings: with / without ceremony) can't be told
+    // apart by event type alone, so the editor/preview passes the exact row.
+    const bTemplateId = bUrl.searchParams.get('templateId');
     const wantType = raw === null ? b.event_type : (raw.trim() || null);
 
-    const { base, override } = pickTemplate(templates, userId, wantType);
-    if (!base) {
+    let base: ReturnType<typeof pickTemplate>['base'];
+    let override: ReturnType<typeof pickTemplate>['override'];
+    // A standalone row (the DJ's fork or custom) is used VERBATIM — no base
+    // spine composed under it. editTemplateKey is the key a Save forks onto: the
+    // stock id for a fork, null for a from-scratch custom.
+    let standalone = false;
+    let editTemplateKey: string | null = null;
+    if (bTemplateId) {
+      const r = pickTemplateById(templates, userId, bTemplateId);
+      if (!r) return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
+      base = r.base; override = r.override;
+      standalone = r.standalone; editTemplateKey = r.templateKey;
+    } else {
+      ({ base, override } = pickTemplate(templates, userId, wantType));
+      if (override && !override.is_standard && override.dj_id === userId) {
+        standalone = true;
+        editTemplateKey = override.template_key ?? null;
+      } else if (override && override.is_standard) {
+        editTemplateKey = override.id;
+      } else if (base) {
+        editTemplateKey = base.is_standard ? base.id : (base.template_key ?? null);
+      }
+    }
+    if (!base && !override) {
       return NextResponse.json({ error: 'No planner template available.' }, { status: 500 });
     }
-    const fields = composeFields(base.fields || [], override?.fields || []);
+    const fields = standalone
+      ? (override?.fields || [])
+      : composeFields(base?.fields || [], override?.fields || []);
 
     // Prefill is computed here for the COUNT only, and thrown away. The real
     // one runs at send time in /api/planner/request and is what gets stored —
@@ -322,12 +350,17 @@ export async function GET(req: Request) {
     // Whichever row decided the outcome for the requested type — override if
     // there is one, else base. That's the row the DJ edits, and `editEventType`
     // is what a Save must write to (null = the base planner).
-    const resolved = override || base;
-    const editEventType = wantType;
+    const resolved = override || base!;
+    const editEventType = resolved.event_type;
 
     return NextResponse.json({
       resolved: {
         id: resolved.id,
+        // The id this planner appears under in the templates LIST below. A fork
+        // is listed under its STOCK id (template_key), so the modal must match
+        // the auto row on this, not on the fork's own uuid — otherwise no row
+        // ever shows as pre-selected.
+        listId: (!resolved.is_standard && resolved.template_key) ? resolved.template_key : resolved.id,
         name: resolved.name,
         eventType: resolved.event_type,
         isStandard: resolved.is_standard,
@@ -339,6 +372,10 @@ export async function GET(req: Request) {
       // The event type this composed set edits. The client-facing `event.date`
       // etc. still describe the BOOKING; this describes the TEMPLATE.
       editEventType,
+      // The key a Save forks onto — same contract as the no-booking branch, so
+      // customising a wedding from a booking forks the right stock template
+      // instead of silently creating a from-scratch custom.
+      editTemplateKey,
       fields,
       prefillCount: Object.keys(prefilled).length,
       // Which ones the client will be SHOWN rather than asked. Derived from the
@@ -597,7 +634,13 @@ export async function PUT(req: Request) {
     // The stock rows are shared by every DJ on the platform and are never
     // written to here — is_standard rows have dj_id null and no path to this
     // code touches them.
-    const name = clamp(body.name, 80) || (eventType ? `My ${eventType} planner` : 'My planner');
+    //
+    // The name a Save overwrites with ONLY when one was actually sent. A
+    // questions-save that omits the name must not clobber a prior rename back to
+    // the derived default — so an UPDATE touches name only when provided, and an
+    // INSERT (first save, no row yet) falls back to the derived default.
+    const providedName = clamp(body.name, 80);
+    const name = providedName || (eventType ? `My ${eventType} planner` : 'My planner');
 
     const mine = db
       .from('planners')
@@ -621,8 +664,10 @@ export async function PUT(req: Request) {
       const { error } = await db
         .from('planners')
         // template_key is set on update too, so a row created before this
-        // migration (or via the legacy path) gets keyed on first save.
-        .update({ name, fields, ...(templateKey !== null ? { template_key: templateKey } : {}) } as unknown as never)
+        // migration (or via the legacy path) gets keyed on first save. name is
+        // written only when the client actually sent one — otherwise a
+        // questions-only save would revert a rename to the derived default.
+        .update({ fields, ...(providedName ? { name } : {}), ...(templateKey !== null ? { template_key: templateKey } : {}) } as unknown as never)
         .eq('id', row.id);
       if (error) return NextResponse.json({ error: 'Could not save.' }, { status: 500 });
       return NextResponse.json({ id: row.id, saved: true });
