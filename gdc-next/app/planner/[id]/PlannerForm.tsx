@@ -28,6 +28,7 @@ import {
   isSection,
   isDivider,
   isSpace,
+  isStructural,
   titleCaseLabel,
   type PlannerField,
   type PlannerResponses,
@@ -169,12 +170,23 @@ export default function PlannerForm({
   // Mirror of `locked` for the save/edit handlers (which are memoised and must
   // not depend on progress). Once true, every edit and save is a no-op.
   const lockedRef = useRef(false);
+  // SERIALISE SAVES. Two PATCHes in flight at once is a read-modify-write race:
+  // the server merges each batch onto whatever it last stored, so if save A
+  // (older answers) lands after save B (newer answers), B's answers get rolled
+  // back. This flag guarantees one save at a time; anything queued meanwhile is
+  // picked up by the follow-up scheduled in `finally`, so no answer is stranded.
+  const flushing = useRef(false);
 
   const flush = useCallback(async () => {
+    // A save is already in flight — leave this batch in `pending`; the running
+    // save reschedules a follow-up when it finishes (see finally).
+    if (flushing.current) return;
     const batch = pending.current;
     if (Object.keys(batch).length === 0) return;
     pending.current = {};
+    flushing.current = true;
     setSave('saving');
+    let ok = false;
     try {
       const res = await fetch(`/api/planner/${plannerId}`, {
         method: 'PATCH',
@@ -185,12 +197,22 @@ export default function PlannerForm({
       const j = await res.json() as { status?: 'sent' | 'partial' | 'submitted' };
       if (j.status) setStatus(j.status);
       setSave('saved');
+      ok = true;
     } catch {
       // Put it BACK. A failed save must not silently drop the answer — the
       // next keystroke retries the whole batch, and closing the tab is the only
       // way to lose it.
       pending.current = { ...batch, ...pending.current };
       setSave('error');
+    } finally {
+      flushing.current = false;
+    }
+    // Edits that queued WHILE this save was in flight (or a restored failed
+    // batch) still need to go up. Schedule the next flush — quickly after a
+    // success, on the normal debounce after a failure so we don't hammer.
+    if (Object.keys(pending.current).length > 0) {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => { void flush(); }, ok ? 50 : 800);
     }
   }, [plannerId]);
 
@@ -268,8 +290,11 @@ export default function PlannerForm({
     let answered = 0;
     let total = 0;
     for (const f of fields) {
-      // Section headings and dividers are structure, not questions — never counted.
-      if (isSection(f) || isDivider(f)) continue;
+      // Section headings, dividers AND blank spaces are structure, not
+      // questions — never counted. (Counting a `space` left total above the
+      // answerable fields, so a fully-answered planner never reached 100% or
+      // locked.)
+      if (isStructural(f)) continue;
       total++;
       const r = responses[f.id];
       if (!r) continue;
@@ -296,7 +321,7 @@ export default function PlannerForm({
     let answered = 0;
     let total = 0;
     for (const f of fields) {
-      if (isSection(f) || isDivider(f)) continue;
+      if (isStructural(f)) continue;
       total++;
       const r = initialResponses[f.id];
       if (!r) continue;
@@ -969,22 +994,31 @@ function SongList({
   value: Track[];
   onChange: (v: Track[]) => void;
 }) {
-  // undefined = an empty row they haven't filled yet. Kept in local state so an
-  // empty row can exist on screen without being saved as an answer.
+  // Each row carries a STABLE key, not just its track. Keying the list by array
+  // index meant removing a middle row shifted every row below up one index —
+  // React then reused the wrong <SongInput>, so its in-progress query text and
+  // focus jumped to a different song (and a half-typed row could overwrite its
+  // neighbour). A per-row id pins each input to its own row through adds/removes.
+  // track === undefined = an empty row they haven't filled yet; it lives in
+  // local state without being saved as an answer.
   //
   // Open with FIVE empty rows. A must-play list wants a few songs, and one lone
   // box reads like "name a song" — five boxes read like "list your songs". They
   // still only cross to the server when filled, and "+ Add another" adds more.
   const MIN_ROWS = 5;
-  const [rows, setRows] = useState<(Track | undefined)[]>(() =>
-    value.length >= MIN_ROWS
+  type SongRow = { key: string; track: Track | undefined };
+  const makeRow = (track: Track | undefined): SongRow => ({ key: crypto.randomUUID(), track });
+  const [rows, setRows] = useState<SongRow[]>(() => {
+    const tracks: (Track | undefined)[] = value.length >= MIN_ROWS
       ? [...value]
-      : [...value, ...Array(MIN_ROWS - value.length).fill(undefined)]);
+      : [...value, ...Array(MIN_ROWS - value.length).fill(undefined)];
+    return tracks.map(makeRow);
+  });
 
-  const push = (next: (Track | undefined)[]) => {
+  const push = (next: SongRow[]) => {
     setRows(next);
     // Only real answers cross to the server. An empty row is someone mid-thought.
-    onChange(next.filter((t): t is Track => !!t && !!t.title.trim()));
+    onChange(next.map((r) => r.track).filter((t): t is Track => !!t && !!t.title.trim()));
   };
 
   return (
@@ -993,12 +1027,12 @@ function SongList({
       <p className={styles.songHint} style={{ marginTop: 0 }}>
         Can&rsquo;t find it? Type it in, or paste a link — that works too.
       </p>
-      {rows.map((t, i) => (
-        <div key={i} className={styles.songRow}>
+      {rows.map((r, i) => (
+        <div key={r.key} className={styles.songRow}>
           <div className={styles.songRowMain}>
             <SongInput
-              value={t}
-              onChange={(v) => { const n = [...rows]; n[i] = v || undefined; push(n); }}
+              value={r.track}
+              onChange={(v) => { const n = [...rows]; n[i] = { ...n[i], track: v || undefined }; push(n); }}
               hideHint
             />
           </div>
@@ -1012,7 +1046,7 @@ function SongList({
           )}
         </div>
       ))}
-      <button type="button" className={styles.add} onClick={() => push([...rows, undefined])}>
+      <button type="button" className={styles.add} onClick={() => push([...rows, makeRow(undefined)])}>
         + Add another
       </button>
     </div>
