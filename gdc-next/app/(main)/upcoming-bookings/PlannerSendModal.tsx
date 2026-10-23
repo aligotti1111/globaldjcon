@@ -331,15 +331,16 @@ export default function PlannerSendModal({
           </>
         ) : (
           <>
-            <span style={nameStyle} title={t.name}>{t.name}</span>
+            {/* The name IS the rename control — click it to edit in place (no
+                separate pencil). stopPropagation so it doesn't toggle the row. */}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); startRename(t); }}
-              style={iconBtnStyle}
-              title="Rename"
+              style={{ ...nameStyle, background: 'none', border: 'none', textAlign: 'left', padding: 0, color: 'inherit' }}
+              title="Click to rename"
               aria-label={`Rename ${t.name}`}
             >
-              ✎
+              {t.name}
             </button>
             <button
               type="button"
