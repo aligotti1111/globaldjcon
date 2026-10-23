@@ -662,19 +662,20 @@
 /* While being dragged into the list. */
 .addBtnDragging { opacity: .55; color: var(--pb-accent); border-color: color-mix(in srgb, var(--pb-accent) 50%, transparent); }
 
-/* The "how to customise" hint above the question list. */
-/* The "how to customise" hint — a white-on-black strip so it reads as a clear
-   instruction bar on either theme. */
+/* The "how to customise" hint above the question list — a light callout strip
+   with dark text, so it reads the same on either theme (black text, not a black
+   background). */
 .editHint {
   font-size: .78rem;
   line-height: 1.5;
-  color: #ffffff;
-  background: #0f0f16;
+  color: #000000;
+  background: #ffffff;
+  border: 1px solid rgba(20, 20, 30, .15);
   border-radius: 8px;
   padding: .6rem .8rem;
   margin: 0 0 .9rem;
 }
-.editHint span { color: var(--pb-accent); }
+.editHint span { color: #000000; }
 
 /* Structural rows in the editor (section title / divider) reuse the field-row
    chrome (rail, drag, delete) with a distinct body. Frameless like the rest. */
