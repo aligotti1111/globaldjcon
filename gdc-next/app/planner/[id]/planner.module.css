@@ -38,10 +38,12 @@
   --pl-hairline: rgba(255, 255, 255, .08);  /* section rules */
   --pl-line: rgba(255, 255, 255, .12);      /* control borders */
 
-  /* Accent — the brand green by default; overridden inline per DJ. --pl-accent-ink
-     is the text colour that sits ON the accent (dark for a bright accent). */
-  --pl-accent: var(--neon, #00f5c4);
-  --pl-accent-ink: #06231b;
+  /* Accent — defaults to the theme's own contrast colour: WHITE on the dark
+     background (overridden to black in the light theme below). A DJ who picks a
+     colour overrides this inline. --pl-accent-ink is the text colour that sits
+     ON the accent, so it's the opposite of the accent. */
+  --pl-accent: #ffffff;
+  --pl-accent-ink: #000000;
 
   min-height: 100vh;
   background: var(--pl-bg);
@@ -68,6 +70,10 @@
   --pl-placeholder: #9a9ab0;
   --pl-hairline: rgba(0, 0, 0, .10);
   --pl-line: rgba(0, 0, 0, .14);
+  /* Light theme's default accent is BLACK (the dark theme's is white), so an
+     un-customised planner reads as black-on-white. A DJ's inline pick wins. */
+  --pl-accent: #000000;
+  --pl-accent-ink: #ffffff;
 }
 
 .sheet {
