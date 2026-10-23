@@ -44,8 +44,12 @@ export default function CustomizePlannerPage() {
   // The background (dark/light) and accent colour apply to EVERY planner this DJ
   // sends, so these save to the DJ's row via /api/dj/planner-theme — separate
   // from the template's fields, which save to /api/planners. Auto-saved on change.
-  const DEFAULT_ACCENT = '#00f5c4';
+  // The default accent follows the background: WHITE on a dark planner, BLACK on
+  // a light one — so an un-customised planner always reads as its theme's own
+  // contrast colour. A DJ's picked colour overrides it. Derived from `theme` so
+  // flipping the background flips the default too.
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const DEFAULT_ACCENT = theme === 'light' ? '#000000' : '#ffffff';
   const [accent, setAccent] = useState<string | null>(null);
   const [themeStatus, setThemeStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   // The native colour input is UNCONTROLLED (defaultValue + ref). A controlled
@@ -60,16 +64,29 @@ export default function CustomizePlannerPage() {
         const res = await fetch('/api/dj/planner-theme');
         const j = await res.json().catch(() => ({}));
         if (res.ok) {
-          setTheme(j.theme === 'light' ? 'light' : 'dark');
+          const loadedTheme = j.theme === 'light' ? 'light' : 'dark';
+          setTheme(loadedTheme);
           const loaded = typeof j.accent === 'string' ? j.accent : null;
           setAccent(loaded);
           // Sync the uncontrolled input to the saved colour (it won't pick up a
-          // state change on its own).
-          if (accentColorRef.current) accentColorRef.current.value = loaded || DEFAULT_ACCENT;
+          // state change on its own). Fall back to the loaded theme's default,
+          // not the stale render-time one.
+          const themeDefault = loadedTheme === 'light' ? '#000000' : '#ffffff';
+          if (accentColorRef.current) accentColorRef.current.value = loaded || themeDefault;
         }
       } catch { /* non-fatal — the defaults stand */ }
     })();
   }, []);
+
+  // When the DJ flips the background and hasn't picked a custom accent, the
+  // swatch should show the new theme's default (white ↔ black) rather than
+  // keeping the old one. Only touches the uncontrolled input when accent is null.
+  useEffect(() => {
+    if (accent) return;
+    if (accentColorRef.current) {
+      accentColorRef.current.value = theme === 'light' ? '#000000' : '#ffffff';
+    }
+  }, [theme, accent]);
 
   async function saveTheme(patch: { theme?: 'dark' | 'light'; accent?: string | null }) {
     setThemeStatus('saving');
