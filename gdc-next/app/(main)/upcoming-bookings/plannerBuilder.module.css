@@ -23,8 +23,10 @@
   --pb-hairline: rgba(255, 255, 255, .08);
   --pb-line: rgba(255, 255, 255, .12);
   --pb-line2: rgba(255, 255, 255, .16);
-  --pb-accent: var(--neon, #00f5c4);
-  --pb-accent-ink: #06231b;
+  /* Default accent follows the theme — WHITE on the dark background (black in
+     the light theme below). A DJ's inline pick overrides it. */
+  --pb-accent: #ffffff;
+  --pb-accent-ink: #000000;
 
   display: flex;
   flex-direction: column;
@@ -50,6 +52,9 @@
   --pb-hairline: rgba(0, 0, 0, .18);
   --pb-line: rgba(0, 0, 0, .22);
   --pb-line2: rgba(0, 0, 0, .26);
+  /* Light theme default accent is BLACK (dark theme's is white). */
+  --pb-accent: #000000;
+  --pb-accent-ink: #ffffff;
 }
 
 /* The DJ's logo at the top of the editor — where the client sees it. Wrapped in
