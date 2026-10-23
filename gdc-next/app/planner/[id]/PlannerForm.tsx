@@ -378,10 +378,6 @@ export default function PlannerForm({
               </button>
             )}
           </div>
-          <p className={styles.sub}>
-            {hostName ? `${hostName} · ` : ''}{eventDateLabel}
-            {venueName ? ` · ${venueName}` : ''}
-          </p>
           <p className={styles.intro}>
             The information you enter will save as you go. Fill in what you know, come back
             {dueDateLabel ? (
@@ -443,11 +439,6 @@ export default function PlannerForm({
                 <span className={styles.knownV}>{infoText(f, responses)}</span>
               </div>
             ))}
-            <p className={styles.knownNote}>
-              These come from your booking and contract. If something has changed &mdash;
-              a new venue, a different time &mdash; message {djName} directly; it has to be
-              changed there, not here.
-            </p>
           </div>
         )}
 
