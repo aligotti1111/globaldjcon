@@ -286,42 +286,47 @@ export default function PlannerBuilder({
       data-theme={theme === 'light' ? 'light' : undefined}
       style={wrapStyle as CSSProperties}
     >
-      {/* Logo CENTERED at the top — exactly as the client sees it. No address:
-          the client's planner shows the logo alone, so the editor must match. */}
-      <div className={styles.brandTop} style={{ justifyContent: 'center' }}>
-        <div className={styles.brandLeft}>
-          {logoUrl ? (
-            <div className={styles.logoRow}>
+      {/* HERO masthead — the EXACT layout the client sees: logo, brand tag and
+          big title stacked and centred on the accent-tinted band. (The Remove
+          control is editor-only chrome; the client never sees it.) */}
+      <div className={styles.pageHead}>
+        <div className={styles.brandTop} style={{ justifyContent: 'center', marginBottom: '1rem' }}>
+          <div className={styles.brandLeft}>
+            {logoUrl ? (
+              <div className={styles.logoRow}>
+                <button
+                  type="button"
+                  className={styles.logoBtn}
+                  disabled={logoBusy}
+                  onClick={() => fileRef.current?.click()}
+                  title="Replace your logo"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logoUrl} alt="Your logo" className={styles.logo} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.logoRemove}
+                  disabled={logoBusy}
+                  onClick={() => setShowRemove((v) => !v)}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                className={styles.logoBtn}
+                className={styles.addLogo}
                 disabled={logoBusy}
                 onClick={() => fileRef.current?.click()}
-                title="Replace your logo"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logoUrl} alt="Your logo" className={styles.logo} />
+                {logoBusy ? 'Uploading…' : '+ Add your logo'}
               </button>
-              <button
-                type="button"
-                className={styles.logoRemove}
-                disabled={logoBusy}
-                onClick={() => setShowRemove((v) => !v)}
-              >
-                Remove
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className={styles.addLogo}
-              disabled={logoBusy}
-              onClick={() => fileRef.current?.click()}
-            >
-              {logoBusy ? 'Uploading…' : '+ Add your logo'}
-            </button>
-          )}
+            )}
+          </div>
         </div>
+        <div className={styles.brand}>Global DJ Connect</div>
+        <div className={styles.pageTitle}>Planner &amp; Playlist</div>
       </div>
 
       {showRemove && (
@@ -340,14 +345,6 @@ export default function PlannerBuilder({
       )}
       {logoMsg && <div className={styles.logoMsg}>{logoMsg}</div>}
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
-
-      {/* The page's own header, faint — so the DJ is looking at the client's
-          actual page, chrome and all, not a bare list floating in a modal. */}
-      <div className={styles.pageHead}>
-        <div className={styles.brand}>Global DJ Connect</div>
-        <div className={styles.pageTitle}>Planner &amp; Playlist</div>
-        <div className={styles.pageSub}>This is exactly what your client sees.</div>
-      </div>
 
       {/* Your booking — the SAME read-only facts the client sees on the live
           planner, filled from the booking. Shown here as labels (there's no
