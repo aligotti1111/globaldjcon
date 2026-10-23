@@ -12,7 +12,7 @@
 // event type (templates are per-DJ per-event-type, not per-booking); the
 // bookingId is only there so the API can mark which fields the booking prefills.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PlannerBuilder from '@/app/(main)/upcoming-bookings/PlannerBuilder';
 import type { PlannerField, PlannerFieldType } from '@/lib/planner';
 import styles from '@/app/(main)/upcoming-bookings/plannerSend.module.css';
@@ -48,6 +48,11 @@ export default function CustomizePlannerPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [accent, setAccent] = useState<string | null>(null);
   const [themeStatus, setThemeStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // The native colour input is UNCONTROLLED (defaultValue + ref). A controlled
+  // value re-renders mid-pick, and Safari closes the OS colour picker whenever
+  // the value prop changes — so the box "kept closing" on every click. Uncontrolled
+  // keeps the picker open; we sync the ref when the saved colour loads / resets.
+  const accentColorRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -56,7 +61,11 @@ export default function CustomizePlannerPage() {
         const j = await res.json().catch(() => ({}));
         if (res.ok) {
           setTheme(j.theme === 'light' ? 'light' : 'dark');
-          setAccent(typeof j.accent === 'string' ? j.accent : null);
+          const loaded = typeof j.accent === 'string' ? j.accent : null;
+          setAccent(loaded);
+          // Sync the uncontrolled input to the saved colour (it won't pick up a
+          // state change on its own).
+          if (accentColorRef.current) accentColorRef.current.value = loaded || DEFAULT_ACCENT;
         }
       } catch { /* non-fatal — the defaults stand */ }
     })();
@@ -270,11 +279,12 @@ export default function CustomizePlannerPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
           <span style={{ color: '#8a8aa0' }}>Accent</span>
           <input
+            ref={accentColorRef}
             type="color"
             aria-label="Accent colour"
-            value={accent || DEFAULT_ACCENT}
+            defaultValue={accent || DEFAULT_ACCENT}
             onChange={(e) => setAccent(e.target.value)}
-            onBlur={() => saveTheme({ accent: accent || DEFAULT_ACCENT })}
+            onBlur={() => saveTheme({ accent: accentColorRef.current?.value || DEFAULT_ACCENT })}
             style={{
               width: 34, height: 28, padding: 0, border: '1px solid #2b2b40',
               borderRadius: 6, background: 'transparent', cursor: 'pointer',
@@ -284,7 +294,11 @@ export default function CustomizePlannerPage() {
           {accent && accent.toLowerCase() !== DEFAULT_ACCENT && (
             <button
               type="button"
-              onClick={() => { setAccent(null); saveTheme({ accent: null }); }}
+              onClick={() => {
+                setAccent(null);
+                if (accentColorRef.current) accentColorRef.current.value = DEFAULT_ACCENT;
+                saveTheme({ accent: null });
+              }}
               style={{
                 background: 'none', border: 'none', color: '#6a6a80',
                 textDecoration: 'underline', cursor: 'pointer', fontSize: '.74rem',
