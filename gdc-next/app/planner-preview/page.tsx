@@ -262,7 +262,23 @@ export default async function PlannerPreviewPage({
   // Resolve by type — base + the DJ's override for that type if they have one.
   // This is what makes a just-saved customization show up: pickTemplate returns
   // the DJ's row (whatever its id) over the stock one.
-  const { base, override } = pickTemplate(templates, djId, wantType);
+  //
+  // EXCEPT weddings: two templates share event_type 'weddings' (with / without
+  // ceremony music), so type alone can't tell them apart. When the Preview
+  // button pinned the exact row (templateId), resolve by id — a stock id maps to
+  // the DJ's fork of it, so a saved customization still shows.
+  let base: PlannerTemplate | null;
+  let override: PlannerTemplate | null;
+  if (templateId) {
+    const r = pickTemplateById(templates, djId, templateId);
+    if (r) {
+      base = r.base; override = r.override;
+    } else {
+      ({ base, override } = pickTemplate(templates, djId, wantType));
+    }
+  } else {
+    ({ base, override } = pickTemplate(templates, djId, wantType));
+  }
   // A custom event type (e.g. 'birthday') can have only the DJ's OWN planner
   // (an override) and no stock base — the send composes from override alone, so
   // the preview must too. 404 only when neither exists.
