@@ -830,10 +830,13 @@ function TrackRow({ t, onPick }: { t: Track; onPick: () => void }) {
  * to answer, so the picker is a convenience and NEVER a gate.
  */
 function SongInput({
-  value, onChange,
+  value, onChange, hideHint = false,
 }: {
   value: Track | undefined;
   onChange: (v: Track | null) => void;
+  /** Suppress the per-row "Can't find it?" hint — the must-play LIST shows it
+   *  once at the top instead of repeating it under every row. */
+  hideHint?: boolean;
 }) {
   // Local text so the caret doesn't jump: the stored value is a parsed object,
   // and re-deriving the string from it on every keystroke would fight the user
@@ -939,10 +942,14 @@ function SongInput({
         </div>
       )}
       {/* Says the quiet part out loud. A client who can't find their song has
-          to know the box isn't the only way through, or they abandon here. */}
-      <p className={styles.songHint}>
-        {searching ? 'Searching…' : 'Can\'t find it? Type it in, or paste a link — that works too.'}
-      </p>
+          to know the box isn't the only way through, or they abandon here.
+          In a must-play LIST the static hint is shown ONCE at the top, so each
+          row only speaks when it's actively searching. */}
+      {(!hideHint || searching) && (
+        <p className={styles.songHint}>
+          {searching ? 'Searching…' : 'Can\'t find it? Type it in, or paste a link — that works too.'}
+        </p>
+      )}
     </div>
   );
 }
@@ -982,12 +989,17 @@ function SongList({
 
   return (
     <div className={styles.list}>
+      {/* The hint once, above the first song — not repeated under every row. */}
+      <p className={styles.songHint} style={{ marginTop: 0 }}>
+        Can&rsquo;t find it? Type it in, or paste a link — that works too.
+      </p>
       {rows.map((t, i) => (
         <div key={i} className={styles.songRow}>
           <div className={styles.songRowMain}>
             <SongInput
               value={t}
               onChange={(v) => { const n = [...rows]; n[i] = v || undefined; push(n); }}
+              hideHint
             />
           </div>
           {rows.length > 1 && (
