@@ -286,8 +286,8 @@ export default function CustomizePlannerPage() {
                 onClick={() => { setTheme(t); saveTheme({ theme: t }); }}
                 style={{
                   padding: '.4rem .8rem', border: 'none', cursor: 'pointer',
-                  background: theme === t ? '#00f5c4' : 'transparent',
-                  color: theme === t ? '#06231b' : '#9a9ab0',
+                  background: theme === t ? '#ffffff' : 'transparent',
+                  color: theme === t ? '#0e0e16' : '#9a9ab0',
                   fontWeight: theme === t ? 700 : 500, fontSize: '.8rem',
                   textTransform: 'capitalize',
                 }}
