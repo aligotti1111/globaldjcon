@@ -297,25 +297,30 @@
 
 .knownHead {
   font-family: var(--font-space-mono), monospace;
-  font-size: .58rem;
+  font-size: .66rem;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--pl-faint2);
-  margin-bottom: .3rem;
+  margin-bottom: .4rem;
 }
+/* Light theme: the faint shades wash out on white, so darken the booking-strip
+   label, the field-name keys and the intro note for legibility. */
+.page[data-theme="light"] .knownHead { color: #4a4a5e; }
+.page[data-theme="light"] .knownK { color: #33333f; }
+.page[data-theme="light"] .intro { color: #2a2a36; }
 
 .knownRow {
   display: flex;
   gap: .7rem;
   align-items: baseline;
-  font-size: .84rem;
-  line-height: 1.5;
+  font-size: .9rem;
+  line-height: 1.55;
 }
 
 .knownK {
-  flex: 0 0 88px;
+  flex: 0 0 96px;
   color: var(--pl-faint);
-  font-size: .76rem;
+  font-size: .82rem;
 }
 
 .knownV { color: var(--pl-soft); min-width: 0; word-break: break-word; }
