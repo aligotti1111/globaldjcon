@@ -283,7 +283,18 @@ export default function CustomizePlannerPage() {
               <button
                 key={t}
                 type="button"
-                onClick={() => { setTheme(t); saveTheme({ theme: t }); }}
+                onClick={() => {
+                  // Flipping the background resets the accent to that theme's
+                  // own contrast colour — WHITE for dark, BLACK for light — so a
+                  // colour that was legible on the old background can't end up
+                  // invisible on the new one. (null = the theme default.)
+                  setTheme(t);
+                  setAccent(null);
+                  if (accentColorRef.current) {
+                    accentColorRef.current.value = t === 'light' ? '#000000' : '#ffffff';
+                  }
+                  saveTheme({ theme: t, accent: null });
+                }}
                 style={{
                   padding: '.4rem .8rem', border: 'none', cursor: 'pointer',
                   background: theme === t ? '#ffffff' : 'transparent',
