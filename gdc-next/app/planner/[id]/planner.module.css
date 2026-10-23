@@ -358,12 +358,13 @@
    .fields gap spaces it, so the two groups read as two groups. */
 .section {
   font-family: var(--font-bebas), sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   letter-spacing: .04em;
   color: var(--pl-heading);
   margin: .6rem 0 -.4rem;
   padding-bottom: .55rem;
   border-bottom: 1px solid var(--pl-line);
+  text-align: center;
 }
 
 /* Greyed, not hidden. The question stays on screen so they can undo it — and
