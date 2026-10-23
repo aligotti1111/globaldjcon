@@ -117,7 +117,10 @@ export default function CustomizePlannerPage() {
         // the API composes fields to edit rather than returning the template list.
         const hasBooking = /^[0-9a-f-]{36}$/i.test(bId);
         const apiUrl = hasBooking
-          ? `/api/planners?bookingId=${bId}${et && et.trim() ? `&eventType=${encodeURIComponent(et)}` : ''}`
+          // templateId pins the exact row (weddings: with / without ceremony),
+          // which event type alone can't; the booking GET forks onto the right
+          // stock template and returns editTemplateKey so Save forks correctly.
+          ? `/api/planners?bookingId=${bId}${et && et.trim() ? `&eventType=${encodeURIComponent(et)}` : ''}${tid ? `&templateId=${encodeURIComponent(tid)}` : ''}`
           // A specific template id (weddings: with / without ceremony) takes
           // priority over event type, which can't tell the two apart. Without an
           // id we still send the name so the API can disambiguate on it.
@@ -196,9 +199,11 @@ export default function CustomizePlannerPage() {
           // independent). Absent on a from-scratch custom, which keys on its
           // own event_type marker instead.
           templateKey,
-          // A custom planner keeps the name the DJ typed; the derived
-          // "My … planner" is only for editing a stock event-type template.
-          name: isCustom ? name : (eventType ? `My ${eventType} planner` : 'My planner'),
+          // Send the planner's REAL name (loaded from the URL / its current
+          // name) so saving questions never reverts a prior rename back to the
+          // derived "My … planner". Only fall back to the derived name when we
+          // genuinely don't have one (a fresh, never-named template).
+          name: name.trim() || (isCustom ? '' : (eventType ? `My ${eventType} planner` : 'My planner')),
           fields: cleaned,
         }),
       });
