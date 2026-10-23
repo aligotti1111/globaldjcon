@@ -128,6 +128,39 @@ export default function PlannerForm({
   const [status, setStatus] = useState(initialStatus);
   const [save, setSave] = useState<SaveState>('idle');
   const [submitting, setSubmitting] = useState(false);
+  // Downloading the PDF — true while the hidden iframe builds the file.
+  const [downloading, setDownloading] = useState(false);
+
+  // Download the PDF IN PLACE — no visible page that opens, downloads, and
+  // closes itself. We load the printable copy in a HIDDEN iframe
+  // (?download=1&embed=1 → it builds the PDF and posts back when done), then
+  // drop the iframe. The client just gets the file. Falls back to a visible tab
+  // only if the iframe can't produce the PDF (blocked CDN, offline, timeout).
+  const downloadPlanner = useCallback(() => {
+    if (typeof window === 'undefined' || downloading) return;
+    setDownloading(true);
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:0;opacity:0;';
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; setDownloading(false); } };
+    const cleanup = () => { window.removeEventListener('message', onMsg); try { iframe.remove(); } catch { /* ignore */ } };
+    const fallbackTab = () => { try { window.open(`/planner/${plannerId}/print?download=1`, '_blank'); } catch { /* ignore */ } };
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== iframe.contentWindow) return;
+      if (e.data === 'gdc:sheet-pdf-done') {
+        finish();
+        // A beat so the browser's download has started before we yank the iframe.
+        setTimeout(cleanup, 1500);
+      } else if (e.data === 'gdc:sheet-pdf-fail') {
+        finish(); cleanup(); fallbackTab();
+      }
+    };
+    window.addEventListener('message', onMsg);
+    iframe.src = `/planner/${plannerId}/print?download=1&embed=1`;
+    document.body.appendChild(iframe);
+    // Safety net: if it never reports back, fall back to the visible tab.
+    setTimeout(() => { if (!settled) { finish(); cleanup(); fallbackTab(); } }, 9000);
+  }, [plannerId, downloading]);
 
   // What hasn't reached the server yet. A ref, not state: it's written on every
   // keystroke and must not re-render the form to do it.
@@ -370,11 +403,12 @@ export default function PlannerForm({
               <button
                 type="button"
                 className={styles.download}
-                onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
-                aria-label="Download PDF"
-                title="Download PDF"
+                onClick={downloadPlanner}
+                disabled={downloading}
+                aria-label={downloading ? 'Preparing your PDF' : 'Download PDF'}
+                title={downloading ? 'Preparing your PDF…' : 'Download PDF'}
               >
-                ↓
+                {downloading ? '…' : '↓'}
               </button>
             )}
           </div>
