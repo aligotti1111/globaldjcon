@@ -378,17 +378,6 @@ export default function PlannerForm({
               </button>
             )}
           </div>
-          <p className={styles.intro}>
-            The information you enter will save as you go. Fill in what you know, come back
-            {dueDateLabel ? (
-              <> and complete the form before <strong>{dueDateLabel}</strong>.</>
-            ) : preview ? (
-              // No booking behind a preview, so no real date, show a placeholder.
-              <> and complete the form before <strong>(date will be inserted)</strong>.</>
-            ) : (
-              <> and complete the form.</>
-            )}
-          </p>
           {status === 'submitted' && !locked && (
             <div className={styles.submitted}>
               <strong>Sent to {djName}.</strong> You still have time to update the
@@ -441,6 +430,21 @@ export default function PlannerForm({
             ))}
           </div>
         )}
+
+        {/* The "fill in as you go / complete by" note — placed UNDER the booking
+            details so the page opens with WHO/WHAT/WHERE, then tells the client
+            how the form works right before the questions start. */}
+        <p className={styles.intro} style={{ borderBottom: 'none', paddingBottom: 0, margin: '0 0 1.6rem' }}>
+          The information you enter will save as you go. Fill in what you know, come back
+          {dueDateLabel ? (
+            <> and complete the form before <strong>{dueDateLabel}</strong>.</>
+          ) : preview ? (
+            // No booking behind a preview, so no real date, show a placeholder.
+            <> and complete the form before <strong>(date will be inserted)</strong>.</>
+          ) : (
+            <> and complete the form.</>
+          )}
+        </p>
 
         <div className={`${styles.fields} ${locked ? styles.fieldsLocked : ''}`} aria-disabled={locked || undefined}>
           {layout.map((f) => (
