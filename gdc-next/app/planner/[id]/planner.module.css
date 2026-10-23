@@ -217,6 +217,11 @@
   color: var(--pl-accent);
   margin-bottom: .6rem;
 }
+/* A bright accent on a pale hero band is unreadable — darken the brand tag
+   toward the ink colour in light theme, keeping a hint of the accent hue. */
+.page[data-theme="light"] .brand {
+  color: color-mix(in srgb, var(--pl-accent) 40%, #14141c);
+}
 
 .title {
   font-family: var(--font-bebas), sans-serif;
