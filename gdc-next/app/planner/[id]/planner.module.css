@@ -77,8 +77,33 @@
 
 /* ── Head ─────────────────────────────────────────────────────────────── */
 
+/* HERO masthead — the logo, brand tag and the big title sit on a soft
+   accent-tinted panel so the top of the planner reads like a banner, not plain
+   text on a page. Tints are color-mixed off the DJ's accent, so it recolours
+   with the theme. (Stripped flat for print — see the @media print block.) */
 .head {
+  position: relative;
   margin-bottom: 2rem;
+  padding: 1.8rem 1.3rem 1.5rem;
+  border-radius: 16px;
+  background:
+    radial-gradient(130% 150% at 50% -10%,
+      color-mix(in srgb, var(--pl-accent) 16%, transparent),
+      transparent 60%),
+    color-mix(in srgb, var(--pl-accent) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pl-accent) 22%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--pl-accent) 10%, transparent) inset;
+}
+/* A thin accent rule under the title, inside the hero, as a finishing line. */
+.head::after {
+  content: '';
+  display: block;
+  height: 2px;
+  width: 64px;
+  margin: .9rem auto 0;
+  border-radius: 2px;
+  background: var(--pl-accent);
+  opacity: .8;
 }
 
 /* Three zones across the top: title LEFT, logo CENTRE, address RIGHT. A grid so
@@ -769,6 +794,10 @@ select.input {
     padding: 0;
     min-height: 0;
   }
+
+  /* Flatten the hero banner for paper — no tinted panel, no accent rule. */
+  .head { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+  .head::after { display: none !important; }
 
   .brand { color: #000 !important; }
   .djAddress { color: #000 !important; }
