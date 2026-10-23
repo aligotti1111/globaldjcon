@@ -371,8 +371,10 @@ export default function PlannerForm({
                 type="button"
                 className={styles.download}
                 onClick={() => window.open(`/planner/${plannerId}/print?download=1`, '_blank')}
+                aria-label="Download PDF"
+                title="Download PDF"
               >
-                ↓ Download PDF
+                ↓
               </button>
             )}
           </div>
