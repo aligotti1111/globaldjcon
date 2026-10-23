@@ -270,7 +270,7 @@ export async function POST(req: Request) {
       // theirs. Both, one query, resolved in code by pickTemplate.
       const { data: tData } = await db
         .from('planners')
-        .select('id, dj_id, name, event_type, is_standard, fields')
+        .select('id, dj_id, name, event_type, is_standard, fields, template_key')
         .or(`is_standard.eq.true,dj_id.eq.${acting.djId}`);
       const templates = (tData as unknown as PlannerTemplate[] | null) || [];
 
@@ -302,7 +302,16 @@ export async function POST(req: Request) {
       // Do NOT play and Notes and the shared spine every event needs; the
       // override is the event-specific half. "Send the wedding one instead"
       // means swap that half — not throw away the questions every planner has.
-      const forcedTpl = forcedId ? templates.find((t) => t.id === forcedId) : undefined;
+      const forcedRaw = forcedId ? templates.find((t) => t.id === forcedId) : undefined;
+      // The send modal lists every template under its STOCK id (so a stock
+      // template and the DJ's saved fork of it read as one row). If the DJ
+      // forced a STOCK row but has saved their own fork of it, send the FORK —
+      // their customised questions — not the stock defaults. The fork is keyed
+      // by template_key === the stock id. Without this, clicking your own
+      // customised planner would mail the client the un-customised version.
+      const forcedTpl = forcedRaw && forcedRaw.is_standard
+        ? (templates.find((t) => !t.is_standard && t.dj_id === acting.djId && t.template_key === forcedRaw.id) ?? forcedRaw)
+        : forcedRaw;
       // A custom planner the DJ built from scratch is standalone — it carries
       // exactly the questions they authored and does NOT fold in the base spine.
       // Everything else composes onto the base as before.
