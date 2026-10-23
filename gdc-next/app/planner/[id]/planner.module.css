@@ -552,10 +552,16 @@ select.input {
   padding: .35rem .1rem;
   font-family: inherit;
   font-size: .84rem;
+  font-weight: 600;
   color: var(--pl-accent);
   cursor: pointer;
 }
 .add:hover { text-decoration: underline; }
+/* A bright accent on white is hard to read — darken "+ Add another" in light
+   theme while keeping the accent hue. */
+.page[data-theme="light"] .add {
+  color: color-mix(in srgb, var(--pl-accent) 45%, #14141c);
+}
 
 /* ── Song picker ──────────────────────────────────────────────────────── */
 
@@ -664,6 +670,14 @@ select.input {
   font-size: .74rem;
   color: var(--pl-faint2);
   line-height: 1.4;
+}
+/* Light theme: these small helper labels (column heads "NAME" / "SAY IT LIKE",
+   the song-picker "Can't find it?" hint, and the per-question help line) go
+   near-black so they read clearly on white. */
+.page[data-theme="light"] .songHint,
+.page[data-theme="light"] .peopleHead span,
+.page[data-theme="light"] .help {
+  color: #2a2a36;
 }
 
 /* A must-play row: the picker, plus a remove. The picker has to be able to
