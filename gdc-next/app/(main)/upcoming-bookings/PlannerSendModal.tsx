@@ -39,7 +39,7 @@ interface TemplateLite {
 }
 
 interface Loaded {
-  resolved: { id: string; name: string; eventType: string | null; isStandard: boolean; isMine: boolean };
+  resolved: { id: string; listId?: string; name: string; eventType: string | null; isStandard: boolean; isMine: boolean };
   editEventType: string | null;
   prefillCount: number;
   recipient: { name: string | null; email: string | null; hasAccount: boolean };
@@ -179,16 +179,20 @@ export default function PlannerSendModal({
   // fixed planner id would keep pointing at the old (stock) row.
   //   · auto row  → omit eventType, so it resolves the booking's own type
   //   · other row → that template's event type ('' means the base planner)
-  function openPreview(auto: boolean, eventType: string | null) {
+  function openPreview(auto: boolean, eventType: string | null, templateId?: string) {
     const qs = new URLSearchParams({ bookingId });
     if (!auto) qs.set('eventType', eventType ?? '');
+    // Weddings have two templates under one event type (with / without ceremony
+    // music). eventType alone can't tell them apart, so pin the exact row.
+    if (templateId) qs.set('templateId', templateId);
     window.open(`/planner-preview?${qs.toString()}`, '_blank');
   }
 
   // Open the editor for a SPECIFIC planner, in its own window.
-  function openCustomize(eventType: string | null, name: string) {
+  function openCustomize(eventType: string | null, name: string, templateId?: string) {
     const qs = new URLSearchParams({ bookingId, name });
     if (eventType) qs.set('eventType', eventType);
+    if (templateId) qs.set('templateId', templateId);
     window.open(`/customize-planner?${qs.toString()}`, '_blank');
   }
 
@@ -249,6 +253,11 @@ export default function PlannerSendModal({
   // auto pick sits at the top and is pre-selected. Most event types have one; a
   // wedding has two. Event types with no template of their own fall back to the
   // base planner (eventType === null).
+  // The auto (resolved) row's id in THIS list. A fork is listed under its stock
+  // id, so prefer listId — otherwise a customised planner never matches its row
+  // and the pre-selection / Send-target points at the wrong template.
+  const autoId: string | null = data ? (data.resolved.listId ?? data.resolved.id) : null;
+
   const matchedRows: TemplateLite[] = (() => {
     if (!data) return [];
     const et = data.eventType;
@@ -257,12 +266,12 @@ export default function PlannerSendModal({
       ? forType
       : data.templates.filter((t) => t.eventType === null);
     // Guarantee the resolved (auto) row is present even if the filter missed it.
-    const withResolved = relevant.some((t) => t.id === data.resolved.id)
+    const withResolved = relevant.some((t) => t.id === autoId)
       ? relevant
-      : [...data.templates.filter((t) => t.id === data.resolved.id), ...relevant];
+      : [...data.templates.filter((t) => t.id === autoId), ...relevant];
     return [
-      ...withResolved.filter((t) => t.id === data.resolved.id),
-      ...withResolved.filter((t) => t.id !== data.resolved.id),
+      ...withResolved.filter((t) => t.id === autoId),
+      ...withResolved.filter((t) => t.id !== autoId),
     ];
   })();
 
@@ -274,14 +283,14 @@ export default function PlannerSendModal({
   })();
 
   function rowSelected(t: TemplateLite): boolean {
-    return t.id === data?.resolved.id ? forcedId === null : forcedId === t.id;
+    return t.id === autoId ? forcedId === null : forcedId === t.id;
   }
 
   // One planner row — used for both the matched list and the "view all" rest.
   function renderRow(t: TemplateLite) {
     if (!data) return null;
     const selected = rowSelected(t);
-    const isAuto = t.id === data.resolved.id;
+    const isAuto = t.id === autoId;
     return (
       <div
         key={t.id}
@@ -344,14 +353,14 @@ export default function PlannerSendModal({
             </button>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType); }}
+              onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType, t.id); }}
               style={miniBtnStyle}
             >
               Preview
             </button>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name); }}
+              onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name, t.id); }}
               style={miniBtnStyle}
             >
               Edit Template
