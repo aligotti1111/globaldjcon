@@ -663,7 +663,17 @@
 .addBtnDragging { opacity: .55; color: var(--pb-accent); border-color: color-mix(in srgb, var(--pb-accent) 50%, transparent); }
 
 /* The "how to customise" hint above the question list. */
-.editHint { font-size: .78rem; line-height: 1.5; color: var(--pb-muted2); margin: 0 0 .8rem; }
+/* The "how to customise" hint — a white-on-black strip so it reads as a clear
+   instruction bar on either theme. */
+.editHint {
+  font-size: .78rem;
+  line-height: 1.5;
+  color: #ffffff;
+  background: #0f0f16;
+  border-radius: 8px;
+  padding: .6rem .8rem;
+  margin: 0 0 .9rem;
+}
 .editHint span { color: var(--pb-accent); }
 
 /* Structural rows in the editor (section title / divider) reuse the field-row
