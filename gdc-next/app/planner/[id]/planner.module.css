@@ -175,6 +175,14 @@
   cursor: pointer;
 }
 .download:hover { background: color-mix(in srgb, var(--pl-accent) 14%, transparent); }
+/* On a LIGHT planner a faint accent-tinted arrow washes out against white, so
+   fill it solid — the arrow sits in the legible ink colour, visible on any bg. */
+.page[data-theme="light"] .download {
+  background: var(--pl-accent);
+  color: var(--pl-accent-ink);
+  border-color: color-mix(in srgb, var(--pl-accent) 55%, #000);
+}
+.page[data-theme="light"] .download:hover { filter: brightness(.94); }
 
 .brand {
   font-family: var(--font-space-mono), monospace;
