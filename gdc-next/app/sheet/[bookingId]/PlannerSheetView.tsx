@@ -114,16 +114,19 @@ export default function PlannerSheetView({
       <div className={styles.sheet} data-sheet>
 
         <header className={styles.head}>
+          {/* The same branded masthead the client sees on the live planner —
+              logo centred on top, the brand tag, the big title and a rule —
+              so the downloaded PDF reads as a Planner & Playlist, not a loose
+              list of answers. The Download button floats top-right (and is
+              hidden during PDF capture / print). */}
+          <div className={styles.dlFloat}><PrintButton /></div>
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="Logo" className={styles.sheetLogo} />
           ) : null}
-          <div className={styles.headTop}>
-            <h1 className={styles.title}>
-              {honoree ? peopleText(responses[honoree.id]) || (b?.requester_name ?? 'Planner & Playlist') : (b?.requester_name ?? 'Planner & Playlist')}
-            </h1>
-            <PrintButton />
-          </div>
+          <div className={styles.brand}>Global DJ Connect</div>
+          <h1 className={styles.title}>Planner &amp; Playlist</h1>
+          <div className={styles.titleRule} aria-hidden="true" />
           <div className={styles.known}>
             {known.map((row) => (
               <div key={row.k} className={styles.knownRow}>
