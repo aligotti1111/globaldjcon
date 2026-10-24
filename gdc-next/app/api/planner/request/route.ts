@@ -230,10 +230,18 @@ export async function POST(req: Request) {
     // cannot do is lose a form somebody spent a week filling in.
     const { data: existingData } = await db
       .from('booking_planners')
-      .select('id, fields, responses, status, manual_reminder_sends')
+      .select('id, fields, responses, status, manual_reminder_sends, cancelled_at')
       .eq('booking_id', bookingId)
       .maybeSingle();
-    let planner = existingData as unknown as PlannerRow | null;
+    let planner = existingData as unknown as (PlannerRow & { cancelled_at?: string | null }) | null;
+    // A CANCELLED planner is treated as if none exists — this send is a fresh
+    // start, not a resend. Drop the cancelled row first so the compose-and-insert
+    // path below builds a clean new one (new link; the old cancelled link 404s,
+    // which is right once a replacement has gone out).
+    if (planner && planner.cancelled_at) {
+      await db.from('booking_planners').delete().eq('id', planner.id).eq('dj_id', acting.djId);
+      planner = null;
+    }
     const isResend = !!planner;
 
     // A resend is a reminder — cap it at 3 per rolling 24h. (The first send,
@@ -543,25 +551,29 @@ export async function DELETE(req: Request) {
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
-    // Delete the planner row(s) for this booking. dj_id is pinned too, belt-and-
-    // braces, so a row can only be removed by its owner.
-    const { error: delErr } = await db
+    // SOFT-cancel, not delete. The row stays so the host's old link can land on
+    // a friendly "this was cancelled" page instead of a bare 404. cancelled_at
+    // is what every reader keys off: the pipeline stage treats it as not-sent
+    // (so a different planner can go out), and the client page shows the message.
+    // dj_id is pinned too — a row can only be cancelled by its owner.
+    const { error: cancErr } = await db
       .from('booking_planners')
-      .delete()
+      .update({ cancelled_at: new Date().toISOString() } as unknown as never)
       .eq('booking_id', bookingId)
       .eq('dj_id', acting.djId);
     // 500, never 502 — see the header.
-    if (delErr) return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
+    if (cancErr) return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
 
-    // Clear the send stamp so a future send re-stamps cleanly and the stage
-    // reads as never-sent. planner_status is owned by trg_sync_planner_status,
-    // which flips to not-sent once the row is gone — not written here.
+    // Clear the send stamp and the booking's planner_status so the stage reads as
+    // never-sent. planner_status is normally owned by trg_sync_planner_status,
+    // but the row's status is left untouched here (cancelled_at is the signal),
+    // so nothing re-fires the trigger — this write stands until the next send.
     try {
       await admin
         .from('bookings')
-        .update({ planner_sent_at: null } as unknown as never)
+        .update({ planner_sent_at: null, planner_status: null } as unknown as never)
         .eq('id', bookingId);
-    } catch { /* non-fatal — the row is already gone */ }
+    } catch { /* non-fatal — the planner is already cancelled */ }
 
     await logActivity(acting, {
       action: 'planner.cancelled',
