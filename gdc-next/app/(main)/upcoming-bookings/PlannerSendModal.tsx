@@ -70,10 +70,13 @@ const rowStyle: CSSProperties = {
   borderTop: '1px solid rgba(140,140,170,.12)',
   borderRadius: 7, transition: 'background .15s, box-shadow .15s',
 };
-// The selected planner is marked with a filled radio dot (below) plus a faint
-// tint — no bordered frame, which used to overlap the row's buttons.
+// The selected planner is marked with a filled radio dot (below) plus a thin
+// frame — no green background wash. An outline (not a border) draws the frame
+// without shifting the row's layout or fighting its top hairline.
 const rowSelectedStyle: CSSProperties = {
-  background: 'rgba(0,245,196,.07)',
+  outline: '1px solid rgba(0,245,196,.6)',
+  outlineOffset: '-1px',
+  borderRadius: 7,
 };
 // Radio indicator at the head of each row. Filled neon when that planner is the
 // one Send will use; hollow grey otherwise.
@@ -88,7 +91,9 @@ function radioDot(selected: boolean): CSSProperties {
 const nameStyle: CSSProperties = {
   flex: '1 1 auto', minWidth: 0,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-  fontWeight: 600, fontSize: '.8rem', cursor: 'pointer',
+  fontWeight: 600, fontSize: '.8rem',
+  // Plain near-white text — not the neon accent the row used to tint it.
+  color: '#f2f2f7',
 };
 const iconBtnStyle: CSSProperties = {
   flex: '0 0 auto',
@@ -305,68 +310,23 @@ export default function PlannerSendModal({
         <span aria-hidden="true" style={radioDot(selected)}>
           {selected && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00f5c4' }} />}
         </span>
-        {renameId === t.id ? (
-          <>
-            {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-            <input
-              autoFocus
-              value={renameDraft}
-              disabled={renameBusy}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => setRenameDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void saveRename(t);
-                if (e.key === 'Escape') setRenameId(null);
-              }}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); void saveRename(t); }}
-              disabled={renameBusy}
-              style={{ ...miniBtnStyle }}
-            >
-              {renameBusy ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setRenameId(null); }}
-              disabled={renameBusy}
-              style={iconBtnStyle}
-              aria-label="Cancel rename"
-            >
-              ✕
-            </button>
-          </>
-        ) : (
-          <>
-            {/* The name IS the rename control — click it to edit in place (no
-                separate pencil). stopPropagation so it doesn't toggle the row. */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); startRename(t); }}
-              style={{ ...nameStyle, background: 'none', border: 'none', textAlign: 'left', padding: 0, color: 'inherit' }}
-              title="Click to rename"
-              aria-label={`Rename ${t.name}`}
-            >
-              {t.name}
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType, t.id); }}
-              style={miniBtnStyle}
-            >
-              Preview
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name, t.id); }}
-              style={miniBtnStyle}
-            >
-              Edit Template
-            </button>
-          </>
-        )}
+        {/* The name is plain, read-only text — renaming lives in Edit Template,
+            not here. Clicking it selects the row like the rest of the row does. */}
+        <span style={nameStyle}>{t.name}</span>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); openPreview(isAuto, isAuto ? data.editEventType : t.eventType, t.id); }}
+          style={miniBtnStyle}
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name, t.id); }}
+          style={miniBtnStyle}
+        >
+          Edit Template
+        </button>
       </div>
     );
   }
