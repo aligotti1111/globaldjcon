@@ -26,12 +26,12 @@ export async function GET(req: Request) {
     const admin = createAdminClient();
     const { data } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, planner_theme')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, receipt_logo_backing')
       .eq('id', acting.djId)
       .maybeSingle();
     const dj = (data || {}) as {
       name?: string | null; address?: string | null; city?: string | null; state?: string | null;
-      zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null; planner_theme?: string | null;
+      zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null; receipt_logo_backing?: string | null;
     };
 
     // Same address resolution the real receipt uses: the receipt override wins
@@ -70,9 +70,11 @@ export async function GET(req: Request) {
         address: addressLine || null,
         phone: phoneLine,
         logo,
-        // Receipts are always a white page — always plate the logo so a light
-        // one shows (harmless behind a dark one). Matches the real receipt.
-        logoOnPlate: true,
+        // The DJ's chosen logo backing — same as the real receipt, so the
+        // sample previews exactly what their documents will show.
+        logoBacking: (['none', 'light', 'dark'].includes(dj.receipt_logo_backing || '')
+          ? dj.receipt_logo_backing
+          : 'light') as 'none' | 'light' | 'dark',
       },
       client: { name: 'Sample Client', email: 'client@example.com' },
       event: {
