@@ -59,6 +59,11 @@ export interface ReceiptDocOptions {
     email?: string | null;
     /** PNG or JPG bytes for the logo, already fetched. */
     logo?: { bytes: Uint8Array; type: 'png' | 'jpg' } | null;
+    /** What sits behind the logo on this white page. 'light' saves a white/light
+     *  logo; 'dark' saves a white/grey logo; 'none' = straight on white (fine for
+     *  a dark logo). The DJ chooses — a flat grey plate collides with a grey logo,
+     *  so no single backing is right for every mark. Defaults to 'light'. */
+    logoBacking?: 'none' | 'light' | 'dark' | null;
   };
 
   // ── Who it's for ──
@@ -254,6 +259,21 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
       const scale = Math.min(targetH / img.height, 150 / img.width);
       const w = img.width * scale;
       const h = img.height * scale;
+      // The DJ's chosen backing behind the logo so it shows on this white page.
+      // Padded a few points around the logo; drawn first so the logo sits on top.
+      const backing = opts.business.logoBacking ?? 'light';
+      if (backing !== 'none') {
+        const pad = 5;
+        page.drawRectangle({
+          x: MARGIN - pad,
+          y: y - h - 1 - pad,
+          width: w + pad * 2,
+          height: h + pad * 2,
+          // Light grey for a white/light logo; a near-black plate for a
+          // white/grey logo (where light grey would collide).
+          color: backing === 'dark' ? rgb(0.11, 0.11, 0.13) : rgb(0.87, 0.87, 0.89),
+        });
+      }
       // Top of the logo lines up with the top of the name.
       page.drawImage(img, { x: MARGIN, y: y - h - 1, width: w, height: h });
       textLeftX = MARGIN + w + 14;
