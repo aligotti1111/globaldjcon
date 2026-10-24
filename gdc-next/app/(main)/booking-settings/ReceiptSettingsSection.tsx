@@ -161,6 +161,9 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
   // Auto-send-receipt toggles — on by default.
   const [autoDeposit, setAutoDeposit] = useState(true);
   const [autoBalance, setAutoBalance] = useState(true);
+  // What sits behind the logo on the (always-white) documents, so a white, grey
+  // or dark logo each stays visible. Defaults to a light-grey plate.
+  const [logoBacking, setLogoBacking] = useState<'none' | 'light' | 'dark'>('light');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -178,7 +181,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
 
   // Last-saved values, per field — used to detect unsaved edits so we can warn
   // the DJ before they leave the page with changes they didn't Save.
-  const baseline = useRef({ street: '', city: '', stateVal: '', zip: '', country: DEFAULT_COUNTRY, phone: '', color: DEFAULT_COLOR, autoDeposit: true, autoBalance: true });
+  const baseline = useRef<{ street: string; city: string; stateVal: string; zip: string; country: string; phone: string; color: string; autoDeposit: boolean; autoBalance: boolean; logoBacking: 'none' | 'light' | 'dark' }>({ street: '', city: '', stateVal: '', zip: '', country: DEFAULT_COUNTRY, phone: '', color: DEFAULT_COLOR, autoDeposit: true, autoBalance: true, logoBacking: 'light' });
 
 
   useEffect(() => {
@@ -186,11 +189,13 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
     (async () => {
       try {
         const r = await fetch('/api/dj/receipt-settings');
-        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string; businessName?: string; logoUrl?: string | null; autoDeposit?: boolean; autoBalance?: boolean };
+        const j = (await r.json().catch(() => ({}))) as { receiptAddress?: string | null; accountAddress?: string; accountCity?: string; accountState?: string; accountZip?: string; receiptColor?: string | null; receiptPhone?: string | null; accountPhone?: string; businessName?: string; logoUrl?: string | null; autoDeposit?: boolean; autoBalance?: boolean; logoBacking?: string };
         if (!alive) return;
         const iAutoDep = j.autoDeposit !== false;
         const iAutoBal = j.autoBalance !== false;
         setAutoDeposit(iAutoDep); setAutoBalance(iAutoBal);
+        const iLogoBacking: 'none' | 'light' | 'dark' = (j.logoBacking === 'none' || j.logoBacking === 'dark') ? j.logoBacking : 'light';
+        setLogoBacking(iLogoBacking);
         setBizName(j.businessName || '');
         setLogoUrl(j.logoUrl ?? null);
         setAccountAddress(j.accountAddress || '');
@@ -218,7 +223,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         setPhone(iPhone);
         setPhoneDefault(j.receiptPhone == null);
         // Baseline = what's currently persisted, so nothing reads as "unsaved" on load.
-        baseline.current = { street: iStreet, city: iCity, stateVal: iState, zip: iZip, country: iCountry, phone: iPhone, color: iColor, autoDeposit: iAutoDep, autoBalance: iAutoBal };
+        baseline.current = { street: iStreet, city: iCity, stateVal: iState, zip: iZip, country: iCountry, phone: iPhone, color: iColor, autoDeposit: iAutoDep, autoBalance: iAutoBal, logoBacking: iLogoBacking };
       } catch { /* optional */ }
       finally { if (alive) setLoaded(true); }
     })();
@@ -272,11 +277,12 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
       color: colorOk ? color : '',
       autoDeposit,
       autoBalance,
+      logoBacking,
     }, '✓ Receipt settings saved.');
     setUsingDefault(composed === '');
     setPhoneDefault(false);
     setColorIsDefault(!colorOk);
-    baseline.current = { street, city, stateVal, zip, country, phone, color: colorOk ? color : DEFAULT_COLOR, autoDeposit, autoBalance };
+    baseline.current = { street, city, stateVal, zip, country, phone, color: colorOk ? color : DEFAULT_COLOR, autoDeposit, autoBalance, logoBacking };
   }
   // Secondary resets — local only; the change is persisted by the Save button.
   function clearAddress() { setStreet(''); setCity(''); setStateVal(''); setZip(''); }
@@ -289,7 +295,8 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
     stateVal !== baseline.current.stateVal || zip !== baseline.current.zip ||
     country !== baseline.current.country || phone !== baseline.current.phone ||
     color !== baseline.current.color ||
-    autoDeposit !== baseline.current.autoDeposit || autoBalance !== baseline.current.autoBalance
+    autoDeposit !== baseline.current.autoDeposit || autoBalance !== baseline.current.autoBalance ||
+    logoBacking !== baseline.current.logoBacking
   );
   // Report dirty state up so the tab bar shows its "unsaved" dot.
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
@@ -422,6 +429,33 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
             onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
             style={{ ...input, width: 120, fontFamily: 'monospace' }} maxLength={7} />
           {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
+        </div>
+
+        {/* Logo backing — receipts are a white page, so a light logo vanishes
+            and a flat grey plate collides with a grey logo. The DJ picks. */}
+        <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Logo backing</label>
+        <p style={hint}>Receipts and invoices are on white paper. If your logo is light or white it can disappear on it — pick a backing so it always shows.</p>
+        <div style={{ display: 'inline-flex', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, overflow: 'hidden' }}>
+          {([
+            { v: 'none' as const, label: 'None' },
+            { v: 'light' as const, label: 'Light grey' },
+            { v: 'dark' as const, label: 'Dark' },
+          ]).map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              disabled={!loaded || busy}
+              onClick={() => setLogoBacking(o.v)}
+              style={{
+                padding: '.5rem .9rem', border: 'none', cursor: (!loaded || busy) ? 'default' : 'pointer',
+                fontSize: '.85rem', fontWeight: logoBacking === o.v ? 700 : 500,
+                background: logoBacking === o.v ? '#00e0a4' : 'transparent',
+                color: logoBacking === o.v ? '#04121a' : 'rgba(235,235,245,.75)',
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
 
         {/* Auto-send receipt toggles — on by default. */}
