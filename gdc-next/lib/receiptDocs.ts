@@ -212,9 +212,9 @@ interface DjDocRow {
   receipt_phone: string | null;
   payment_methods: unknown;
   stripe_connect_ready: boolean | null;
-  // The DJ's planner background theme. Dark → their logo is likely light, so the
-  // receipt draws a grey plate behind it to keep it visible on the white page.
-  planner_theme: string | null;
+  // What sits behind the logo on documents: 'none' | 'light' | 'dark'. The DJ
+  // picks, so a white, grey or dark logo each shows on the white page.
+  receipt_logo_backing: string | null;
 }
 
 export interface BuildDocArgs {
@@ -263,7 +263,7 @@ export async function buildBookingDocAttachment(
 
     const { data: dData } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, payment_methods, stripe_connect_ready, planner_theme')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, payment_methods, stripe_connect_ready, receipt_logo_backing')
       .eq('id', args.djId)
       .maybeSingle();
     const dj = dData as DjDocRow | null;
@@ -697,10 +697,11 @@ export async function buildBookingDocAttachment(
         address: addressLine || null,
         phone: phoneLine,
         logo,
-        // A receipt is ALWAYS a white page, so a light/white logo would vanish
-        // on it. Always sit the logo on a light-grey plate: it saves a light
-        // logo and is harmless behind a dark one (reads as a subtle logo chip).
-        logoOnPlate: true,
+        // The DJ's chosen backing behind the logo (a flat grey plate collides
+        // with a grey logo, so this is their call). Defaults to 'light'.
+        logoBacking: (['none', 'light', 'dark'].includes(dj.receipt_logo_backing || '')
+          ? dj.receipt_logo_backing
+          : 'light') as 'none' | 'light' | 'dark',
       },
       client: {
         name: ovStr(ov?.clientName, billToName || b.requester_name),
