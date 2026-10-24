@@ -934,8 +934,29 @@ export default function BookingRow({
     sendOpen, setSendOpen,
     riderChooserOpen, setRiderChooserOpen,
     savedRiders, riderSent,
-    requestPlanner, resendRider, sendNamedRider,
+    requestPlanner, cancelPlanner, resendRider, sendNamedRider,
   } = useSendActions({ booking, riderEnabled, archive, planner, onPlannerChange });
+
+  // Cancel (retract) a sent planner. Always confirms; confirms HARDER once the
+  // host has started filling it in, because that's exactly the work this throws
+  // away. On success, refresh so the stage drops back to "Not sent".
+  async function runCancelPlanner() {
+    const ok = await cancelPlanner();
+    if (ok) { setBusyKey(null); onMutated?.(); }
+  }
+  function confirmCancelPlanner() {
+    const started = (planner?.answered ?? 0) > 0;
+    setConfirmModal({
+      title: started ? 'Cancel this planner?' : 'Cancel this planner?',
+      body: started
+        ? 'The host has already started filling this out. Cancelling deletes the Planner & Playlist and everything they’ve entered so far — this can’t be undone. Confirm cancel?'
+        : 'This removes the sent Planner & Playlist so you can send a different one. This can’t be undone.',
+      okLabel: started ? 'Confirm cancel' : 'Cancel planner',
+      cancelLabel: 'Keep it',
+      danger: true,
+      onOk: () => { void runCancelPlanner(); },
+    });
+  }
 
   // Spin the Planner stage circle while its reminder email sends (requestPlanner
   // already owns `plannerBusy` for the menu's "Sending…" label; this also drives
@@ -952,7 +973,7 @@ export default function BookingRow({
     Promise.resolve(run()).finally(() => setBusyKey(null));
   };
 
-  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner: requestPlannerSpin, resendRider, sendNamedRider, bookingTotalWithTax, spinDownload });
+  const { steps, rowValue } = buildBookingSteps({ booking, taxPct, archive, payments, canPro, plannerLeadDays, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent: !!booking.deposit_receipt_sent_at || autoDepositReceipt, balanceReceiptSent: !!booking.balance_receipt_sent_at || autoBalanceReceipt, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner: requestPlannerSpin, cancelPlanner: confirmCancelPlanner, resendRider, sendNamedRider, bookingTotalWithTax, spinDownload });
 
   // The type-mismatch info is now shown only in the expanded details
   // panel's callout banner (see BookingDetails below) — keeping the row
