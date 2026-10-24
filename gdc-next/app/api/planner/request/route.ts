@@ -508,3 +508,68 @@ This link is private to your booking — anyone with it can see and edit your pl
     return NextResponse.json({ error: 'Could not send the planner.' }, { status: 500 });
   }
 }
+
+// DELETE /api/planner/request?bookingId=…
+//
+// RETRACT the sent Planner & Playlist. Removes the booking_planners row for this
+// booking — including anything the client has already filled in — so the stage
+// goes back to "Not sent" and the DJ can send a different one. Permanent: the
+// client's answers are gone, which is why the UI gates this behind a confirm
+// (and a stronger one once the host has started filling it out).
+//
+// Session-required, ownership-checked — same as POST. The client's no-session
+// link (/api/planner/[id]) can never reach here.
+export async function DELETE(req: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    const acting = await getActingContext(user.id);
+
+    const bookingId = new URL(req.url).searchParams.get('bookingId') || '';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+    const admin = createAdminClient();
+    const db = admin as unknown as SupabaseClient;
+
+    // Ownership — the booking must be this acting DJ's. 403 (not 404) matches POST.
+    const { data: bData } = await admin
+      .from('bookings')
+      .select('id, dj_id')
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as unknown as { id: string; dj_id: string | null } | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+
+    // Delete the planner row(s) for this booking. dj_id is pinned too, belt-and-
+    // braces, so a row can only be removed by its owner.
+    const { error: delErr } = await db
+      .from('booking_planners')
+      .delete()
+      .eq('booking_id', bookingId)
+      .eq('dj_id', acting.djId);
+    // 500, never 502 — see the header.
+    if (delErr) return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
+
+    // Clear the send stamp so a future send re-stamps cleanly and the stage
+    // reads as never-sent. planner_status is owned by trg_sync_planner_status,
+    // which flips to not-sent once the row is gone — not written here.
+    try {
+      await admin
+        .from('bookings')
+        .update({ planner_sent_at: null } as unknown as never)
+        .eq('id', bookingId);
+    } catch { /* non-fatal — the row is already gone */ }
+
+    await logActivity(acting, {
+      action: 'planner.cancelled',
+      summary: 'Cancelled the Planner & Playlist',
+      bookingId,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
+  }
+}
