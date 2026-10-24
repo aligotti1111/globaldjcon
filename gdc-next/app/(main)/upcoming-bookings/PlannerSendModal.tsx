@@ -376,13 +376,14 @@ export default function PlannerSendModal({
               {otherRows.length > 0 && !showAll && (
                 <div style={{ position: 'relative', marginTop: '.1rem' }}>
                   <div
-                    aria-hidden="true"
                     style={{
                       maxHeight: 96,
                       overflow: 'hidden',
-                      pointerEvents: 'none',
-                      WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%)',
-                      maskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%)',
+                      // Fade the peek out toward the bottom, but keep the rows
+                      // clickable — the DJ can select one of these without having
+                      // to open the full list first.
+                      WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)',
+                      maskImage: 'linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)',
                     }}
                   >
                     {otherRows.slice(0, 3).map((t) => renderRow(t))}
