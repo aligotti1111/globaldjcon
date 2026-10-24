@@ -533,12 +533,13 @@ export async function DELETE(req: Request) {
     const db = admin as unknown as SupabaseClient;
 
     // Ownership — the booking must be this acting DJ's. 403 (not 404) matches POST.
+    // Pull the fields the cancellation email needs while we're here.
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id')
+      .select(BOOKING_COLS)
       .eq('id', bookingId)
       .maybeSingle();
-    const b = bData as unknown as { id: string; dj_id: string | null } | null;
+    const b = bData as unknown as BookingRow | null;
     if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
@@ -568,7 +569,45 @@ export async function DELETE(req: Request) {
       bookingId,
     });
 
-    return NextResponse.json({ ok: true });
+    // Tell the host their Planner & Playlist was cancelled — the link they had
+    // now 404s, so they shouldn't be left wondering. Best-effort: the retract has
+    // already succeeded and must not fail because an email couldn't go out.
+    let emailed = false;
+    const to = await clientEmailFor(b);
+    if (to && process.env.RESEND_API_KEY) {
+      try {
+        const { data: djData } = await admin
+          .from('users')
+          .select('name, mob_custom_event_types')
+          .eq('id', acting.djId)
+          .maybeSingle();
+        const djRow = djData as unknown as { name?: string | null; mob_custom_event_types?: unknown } | null;
+        const djName = djRow?.name || 'your DJ';
+        const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+        const hi = esc(hostFull.split(' ')[0] || 'there');
+        const custom = parseCustomEventTypes(djRow?.mob_custom_event_types);
+        const eventTypeLabel = b.event_type ? mobEventLabel(b.event_type, custom) : 'Event';
+        const when = fmtDate(b.event_date);
+        const content = `
+<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, your Planner &amp; Playlist was cancelled</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
+${esc(djName)} has cancelled the Planner &amp; Playlist for your ${esc(eventTypeLabel.toLowerCase())}${when ? ` on ${esc(when)}` : ''}. The link you had will no longer work.
+</p>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
+If this is a surprise, or you'd started filling it in, just reply to ${esc(djName)} and they can send you a fresh one.
+</p>`;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: FROM,
+          to,
+          subject: `${b.event_date ? `${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ` : ''}${eventTypeLabel} Planner & Playlist — cancelled`,
+          html: shell(content),
+        });
+        emailed = true;
+      } catch { /* non-fatal — the planner is already cancelled */ }
+    }
+
+    return NextResponse.json({ ok: true, emailed });
   } catch {
     return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
   }
