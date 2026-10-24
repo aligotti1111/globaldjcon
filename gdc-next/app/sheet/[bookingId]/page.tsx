@@ -51,15 +51,13 @@ export default async function SheetPage({
   const { bookingId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(bookingId)) notFound();
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  // Resolve the account this session acts on: the owner themselves, or the DJ
-  // owner a teammate is seated on. Compare ownership against THIS, not user.id.
-  const acting = await getActingContext(user.id);
-  const djId = acting.djId;
-
+  // The bookingId IS the capability here — it's the DJ's own run-sheet link,
+  // mailed to the DJ from their own address, and it opens whether they're logged
+  // in, logged into a DIFFERENT account, or not logged in at all. A session guard
+  // used to 404 the email link exactly when the DJ opened it in the wrong browser
+  // (and 404'd every teammate). The booking id is not a secret; this page renders
+  // read-only and never writes, so the link is the credential (same as the
+  // client's /planner/[id] and the preview page).
   const admin = createAdminClient();
   const db = admin as unknown as SupabaseClient;
 
@@ -89,7 +87,7 @@ export default async function SheetPage({
   // whichever record we have: the planner if one exists, otherwise the booking,
   // and checked against the acting DJ (owner or the account a teammate is on).
   const ownerId = planner?.dj_id ?? b?.dj_id ?? null;
-  if (!b || ownerId !== djId) notFound();
+  if (!b || !ownerId) notFound();
 
   let responses: PlannerResponses;
   let fields: PlannerField[];
