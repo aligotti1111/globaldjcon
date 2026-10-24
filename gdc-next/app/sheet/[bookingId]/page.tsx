@@ -131,12 +131,17 @@ export default async function SheetPage({
   // hidden on this booking's planner.
   const { data: logoData } = await admin
     .from('users')
-    .select('contract_logo_url')
+    .select('contract_logo_url, planner_theme')
     .eq('id', ownerId)
     .maybeSingle();
+  const logoRow = logoData as unknown as { contract_logo_url?: string | null; planner_theme?: string | null } | null;
   const logoUrl = planner?.logo_hidden
     ? null
-    : (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
+    : logoRow?.contract_logo_url || null;
+  // When the DJ's planner background is DARK, their logo is almost certainly a
+  // light/white one made for that background — which vanishes on the white
+  // downloaded sheet. So on the download/print we sit it on a grey plate.
+  const logoOnPlate = logoRow?.planner_theme === 'dark';
 
   return (
     <PlannerSheetView
@@ -147,6 +152,7 @@ export default async function SheetPage({
       submittedAt={submittedAt}
       plannerExists={!!planner}
       logoUrl={logoUrl}
+      logoOnPlate={logoOnPlate}
     />
   );
 }
