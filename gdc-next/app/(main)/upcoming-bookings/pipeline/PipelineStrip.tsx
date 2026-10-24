@@ -199,7 +199,10 @@ export default function PipelineStrip({
                   it's heading. Neon only when the stage is already done (e.g.
                   re-sending a receipt on a completed stage). */}
               {busy && (
-                <span className={positiveDone ? styles.stSpin : styles.stSpinPending} aria-hidden="true" />
+                <span
+                  className={positiveDone ? styles.stSpin : isPastDue ? styles.stSpinPastDue : styles.stSpinPending}
+                  aria-hidden="true"
+                />
               )}
               {positiveDone && (
                 <span className={styles.stBadge}>
