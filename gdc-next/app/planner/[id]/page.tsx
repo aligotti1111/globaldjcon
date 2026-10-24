@@ -55,6 +55,10 @@ interface PlannerRow {
   // Per-booking logo off-switch — set when the DJ hides the logo on just this
   // client's planner.
   logo_hidden: boolean | null;
+  // Set when the DJ cancels (retracts) this planner. The row is kept, not
+  // deleted, so this page can show a friendly cancellation message instead of a
+  // bare 404.
+  cancelled_at: string | null;
 }
 
 /** "19:30:00" -> "7:30 PM". The DB stores seconds; nobody reads clocks in 24h. */
@@ -100,11 +104,29 @@ export default async function PlannerPage({
 
   const { data: pData } = await db
     .from('booking_planners')
-    .select('id, booking_id, dj_id, fields, responses, status, submitted_at, logo_hidden')
+    .select('id, booking_id, dj_id, fields, responses, status, submitted_at, logo_hidden, cancelled_at')
     .eq('id', id)
     .maybeSingle();
   const planner = pData as unknown as PlannerRow | null;
   if (!planner) notFound();
+
+  // Cancelled by the DJ → a friendly dead-end, not the form and not a 404. The
+  // link they had still resolves here so they're told what happened.
+  if (planner.cancelled_at) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#f0f0f8', padding: '2rem', fontFamily: 'var(--font-inter), "DM Sans", sans-serif' }}>
+        <div style={{ maxWidth: 440, textAlign: 'center' }}>
+          <div style={{ fontSize: '2.2rem', marginBottom: '1rem' }} aria-hidden="true">🎧</div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 .75rem', color: '#fff' }}>
+            This Planner &amp; Playlist has been cancelled
+          </h1>
+          <p style={{ fontSize: '1rem', lineHeight: 1.6, color: '#b8b8c8', margin: 0 }}>
+            This Planner &amp; Playlist has been cancelled by your DJ. Reach out to your DJ for further clarification.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Client opened their planner — record the view (skips the DJ's own visits).
   await recordStageView(planner.booking_id, 'planner', planner.dj_id);
