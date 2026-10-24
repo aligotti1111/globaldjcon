@@ -318,6 +318,11 @@ export default function PlannerForm({
     // A past-event view is always locked (view-only), regardless of completion.
     if (lockedView) return true;
     if (preview || !duePassed) return false;
+    // SUBMITTED after the deadline → locked, right now. Submitting past the due
+    // date locks it then and there, so the client never sees a "you can still
+    // change this" that a refresh quietly retracts. (Before the deadline,
+    // !duePassed already returned above, so a pre-deadline submit stays open.)
+    if (status === 'submitted') return true;
     let answered = 0;
     let total = 0;
     for (const f of fields) {
@@ -333,7 +338,7 @@ export default function PlannerForm({
       answered++;
     }
     return total > 0 && answered >= total;
-  }, [preview, duePassed, fields, initialResponses]);
+  }, [preview, duePassed, status, lockedView, fields, initialResponses]);
   useEffect(() => { lockedRef.current = locked; }, [locked]);
 
   async function submit() {
