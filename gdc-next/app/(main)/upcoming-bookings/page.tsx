@@ -583,7 +583,7 @@ export default async function UpcomingBookingsPage({
   if (bookingIds.length > 0) {
     const { data: planRows } = await db
       .from('booking_planners')
-      .select('id, booking_id, status, fields, responses, submitted_at')
+      .select('id, booking_id, status, fields, responses, submitted_at, cancelled_at')
       .in('booking_id', bookingIds);
     for (const p of (((planRows as unknown) as {
       id: string;
@@ -592,7 +592,11 @@ export default async function UpcomingBookingsPage({
       fields: PlannerField[] | null;
       responses: PlannerResponses | null;
       submitted_at: string | null;
+      cancelled_at: string | null;
     }[] | null) || [])) {
+      // A cancelled planner reads as never-sent — skip it, so the stage reverts
+      // to "Not sent" and the DJ can send a different one.
+      if (p.cancelled_at) continue;
       const { answered, total } = plannerProgress(p.fields || [], p.responses || {});
       plannersByBooking[p.booking_id] = { id: p.id, status: p.status, answered, total };
       plannerSubmittedByBooking[p.booking_id] = p.submitted_at;
