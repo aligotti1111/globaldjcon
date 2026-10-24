@@ -99,11 +99,36 @@ export function useSendActions({ booking, riderEnabled, archive, planner, onPlan
     }
   }
 
+  // RETRACT a sent planner (DELETE). The confirm lives in the caller (BookingRow),
+  // which varies the wording by whether the host has started — this just does the
+  // delete and reports success so the caller can refresh the row.
+  async function cancelPlanner(): Promise<boolean> {
+    if (plannerBusy) return false;
+    setPlannerBusy(true);
+    setPlannerErr(null);
+    try {
+      const res = await fetch(`/api/planner/request?bookingId=${encodeURIComponent(booking.id)}`, {
+        method: 'DELETE',
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPlannerErr(j?.error || 'Could not cancel the planner.');
+        return false;
+      }
+      return true;
+    } catch {
+      setPlannerErr('Could not cancel the planner.');
+      return false;
+    } finally {
+      setPlannerBusy(false);
+    }
+  }
+
   return {
     plannerBusy, plannerErr, setPlannerErr,
     sendOpen, setSendOpen,
     riderChooserOpen, setRiderChooserOpen,
     savedRiders, riderSent,
-    requestPlanner, resendRider, sendNamedRider,
+    requestPlanner, cancelPlanner, resendRider, sendNamedRider,
   };
 }
