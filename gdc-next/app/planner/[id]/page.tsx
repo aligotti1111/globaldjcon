@@ -111,8 +111,15 @@ export default async function PlannerPage({
   if (!planner) notFound();
 
   // Cancelled by the DJ → a friendly dead-end, not the form and not a 404. The
-  // link they had still resolves here so they're told what happened.
+  // link they had still resolves here so they're told what happened. Name the DJ
+  // so "reach out to …" points at a real person, not a generic "your DJ".
   if (planner.cancelled_at) {
+    const { data: djCancelData } = await admin
+      .from('users')
+      .select('name')
+      .eq('id', planner.dj_id)
+      .maybeSingle();
+    const cancelDjName = (djCancelData as unknown as { name?: string | null } | null)?.name || 'your DJ';
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#f0f0f8', padding: '2rem', fontFamily: 'var(--font-inter), "DM Sans", sans-serif' }}>
         <div style={{ maxWidth: 440, textAlign: 'center' }}>
@@ -121,7 +128,7 @@ export default async function PlannerPage({
             This Planner &amp; Playlist has been cancelled
           </h1>
           <p style={{ fontSize: '1rem', lineHeight: 1.6, color: '#b8b8c8', margin: 0 }}>
-            This Planner &amp; Playlist has been cancelled by your DJ. Reach out to your DJ for further clarification.
+            This Planner &amp; Playlist has been cancelled by {cancelDjName}. Reach out to {cancelDjName} for further clarification.
           </p>
         </div>
       </div>
