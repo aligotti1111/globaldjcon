@@ -248,49 +248,61 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   const blockH = nameBlockH + wrappedSmall.length * 13; // full vertical span of the text
 
   // Logo, if we were handed bytes — sized to the text block's height, capped on
-  // width so a wide logo can't run across the page.
+  // width so a wide logo can't run across the page. Embedded first (no draw yet)
+  // so the header band can be sized and drawn BEHIND both the logo and the text.
   let textLeftX = MARGIN;
+  let logoImg: Awaited<ReturnType<typeof pdf.embedPng>> | null = null;
+  let logoW = 0, logoH = 0;
   if (opts.business.logo) {
     try {
-      const img = opts.business.logo.type === 'png'
+      logoImg = opts.business.logo.type === 'png'
         ? await pdf.embedPng(opts.business.logo.bytes)
         : await pdf.embedJpg(opts.business.logo.bytes);
       const targetH = Math.max(blockH, 30);
-      const scale = Math.min(targetH / img.height, 150 / img.width);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      // The DJ's chosen backing behind the logo so it shows on this white page.
-      // Padded a few points around the logo; drawn first so the logo sits on top.
-      const backing = opts.business.logoBacking ?? 'light';
-      if (backing !== 'none') {
-        const pad = 5;
-        page.drawRectangle({
-          x: MARGIN - pad,
-          y: y - h - 1 - pad,
-          width: w + pad * 2,
-          height: h + pad * 2,
-          // Light grey for a white/light logo; a near-black plate for a
-          // white/grey logo (where light grey would collide).
-          color: backing === 'dark' ? rgb(0.11, 0.11, 0.13) : rgb(0.87, 0.87, 0.89),
-        });
-      }
-      // Top of the logo lines up with the top of the name.
-      page.drawImage(img, { x: MARGIN, y: y - h - 1, width: w, height: h });
-      textLeftX = MARGIN + w + 14;
+      const scale = Math.min(targetH / logoImg.height, 150 / logoImg.width);
+      logoW = logoImg.width * scale;
+      logoH = logoImg.height * scale;
+      textLeftX = MARGIN + logoW + 14;
     } catch {
       // A bad/oversized image must never sink the whole document — skip it.
-      textLeftX = MARGIN;
+      logoImg = null; textLeftX = MARGIN;
     }
+  }
+
+  // The DJ's chosen backing colours the WHOLE header band — not just behind the
+  // logo — so logo, business block and the title all sit on it. On a DARK band
+  // the business text flips to white to stay legible; the title keeps its accent.
+  const backing: 'none' | 'light' | 'dark' = opts.business.logoBacking ?? 'light';
+  const headerInk = backing === 'dark' ? rgb(1, 1, 1) : INK;
+  const headerMuted = backing === 'dark' ? rgb(0.79, 0.79, 0.82) : MUTED;
+  if (backing !== 'none') {
+    const pad = 6;
+    // The band bottom is the lowest of the logo, the business block and the
+    // title/date/reference column; the top sits just above the name/logo.
+    const bandBottom = Math.min(y - blockH, y - 58, logoImg ? y - logoH - 1 : y) - pad;
+    const bandTop = y + 6;
+    page.drawRectangle({
+      x: MARGIN - pad,
+      y: bandBottom,
+      width: (rightX - MARGIN) + pad * 2,
+      height: bandTop - bandBottom,
+      color: backing === 'dark' ? rgb(0.11, 0.11, 0.13) : rgb(0.87, 0.87, 0.89),
+    });
+  }
+
+  // Now the logo, on top of the band. Top of the logo lines up with the name.
+  if (logoImg) {
+    page.drawImage(logoImg, { x: MARGIN, y: y - logoH - 1, width: logoW, height: logoH });
   }
 
   // Draw the business text lines beside the logo.
   let by = y;
   if (opts.business.name) {
-    drawL(opts.business.name, textLeftX, by - 12, 15, bold);
+    drawL(opts.business.name, textLeftX, by - 12, 15, bold, headerInk);
     by -= 20;
   }
   for (const ln of wrappedSmall) {
-    drawL(ln, textLeftX, by - 10, 9.5, reg, MUTED);
+    drawL(ln, textLeftX, by - 10, 9.5, reg, headerMuted);
     by -= 13;
   }
   headerBottom = Math.min(headerBottom - blockH, by);
@@ -298,8 +310,8 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   // Right column: title, then the DATE, then the reference number — so the date
   // sits directly ABOVE the reference.
   drawR(title, rightX, y - 20, 26, bold, accent);
-  drawR(opts.dateText, rightX, y - 38, 11, reg, MUTED);
-  drawR(`Reference: ${opts.docNumber}`, rightX, y - 53, 11, reg, MUTED);
+  drawR(opts.dateText, rightX, y - 38, 11, reg, headerMuted);
+  drawR(`Reference: ${opts.docNumber}`, rightX, y - 53, 11, reg, headerMuted);
 
   y = headerBottom - 12;
 
