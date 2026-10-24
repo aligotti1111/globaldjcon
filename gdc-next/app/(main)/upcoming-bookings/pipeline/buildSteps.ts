@@ -117,6 +117,10 @@ export interface BuildStepsCtx {
   savedRiders: NamedRider[];
   riderSent: boolean;
   requestPlanner: () => Promise<void> | void;
+  // Retract a sent planner (DELETE /api/planner/request). Owns its own confirm —
+  // a stronger one once the host has started filling it out. Optional for
+  // land-in-either-order safety with BookingRow.
+  cancelPlanner?: () => Promise<void> | void;
   resendRider: () => Promise<void> | void;
   sendNamedRider: (r: NamedRider) => Promise<void> | void;
   bookingTotalWithTax: (b: UpcomingBooking, taxPct: number) => number | null;
@@ -127,7 +131,7 @@ export interface BuildStepsCtx {
 }
 
 export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; rowValue: number | null } {
-  const { booking, taxPct, archive, payments, canPro, plannerLeadDays = 14, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, resendRider, sendNamedRider, bookingTotalWithTax, spinDownload } = ctx;
+  const { booking, taxPct, archive, payments, canPro, plannerLeadDays = 14, planner, riderEnabled, guestlistEnabled, onAddHost, onEdit, overrides, signedOverride, isCancelled, depositRow, cstatus, needsContract, hasHostContact, canRequestDeposit, everHadContract, runContract, openRequest, cancelRequest, markBalancePaid, sendReminder, sendReceipt, downloadReceipt, editReceipt, depositReceiptSent, balanceReceiptSent, toggleStep, setMethodsOpen, plannerBusy, plannerErr, setPlannerErr, setSendOpen, setRiderChooserOpen, savedRiders, riderSent, requestPlanner, cancelPlanner, resendRider, sendNamedRider, bookingTotalWithTax, spinDownload } = ctx;
   // Download the Planner & Playlist, spinning the Planner stage circle (via the
   // row's busyKey) for the whole time the PDF is being built in the hidden
   // iframe — the ring clears the moment the download is about to start.
@@ -762,7 +766,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
             ...(planner
               ? [{ label: 'Open Planner & Playlist', run: () => { if (plannerUrl) window.open(plannerUrl, '_blank', 'noopener,noreferrer'); } }]
               : []),
-            { label: 'Download Planner & Playlist', run: () => { downloadPlanner(); } },
+            { label: 'Download', run: () => { downloadPlanner(); } },
           ]
         : planner
           ? [
@@ -771,7 +775,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
               // there's no specific planner to render. Builds the PDF in a hidden
               // iframe (no flashing tab) and spins the stage circle; see
               // downloadPlanner / downloadRunSheet.
-              { label: 'Download Planner & Playlist', run: () => { downloadPlanner(); } },
+              { label: 'Download', run: () => { downloadPlanner(); } },
               // Copy survives the host gate — the planner exists and the link is
               // live, and a DJ whose client lost it needs to hand it over by text.
               // Only Resend needs a recipient, so only Resend goes.
@@ -793,6 +797,12 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                     ? [{ label: 'Add host details…', run: (onAddHost || onEdit) as () => void }]
                     : [])
                 : [{ label: plannerBusy ? 'Sending…' : 'Send reminder email', run: requestPlanner }]),
+              // Retract the sent planner — back to "Not sent" so a different one
+              // can go out. Destructive (the client's answers go with it), so the
+              // handler confirms, and confirms harder once they've started.
+              ...(cancelPlanner
+                ? [{ label: 'Cancel Planner', run: () => { cancelPlanner(); }, danger: true }]
+                : []),
             ]
           : blockedNoHost
               ? (onAddHost || onEdit
