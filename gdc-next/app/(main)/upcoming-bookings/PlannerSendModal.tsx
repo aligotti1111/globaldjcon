@@ -364,9 +364,9 @@ export default function PlannerSendModal({
             </div>
 
             {/* The planner for THIS booking's event type, at the top. Name, its
-                own Preview / Edit, a pencil to rename. The row selects which one
-                Send uses. */}
-            <div className={styles.altList}>
+                own Preview / Edit. The row selects which one Send uses. A little
+                gap so the selected row's frame doesn't touch the info strip. */}
+            <div className={styles.altList} style={{ marginTop: '.6rem' }}>
               {matchedRows.map((t) => renderRow(t))}
 
               {/* View all — reveal every other planner beneath, matched still on
