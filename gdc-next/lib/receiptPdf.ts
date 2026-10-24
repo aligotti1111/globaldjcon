@@ -281,12 +281,20 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
     // title/date/reference column; the top sits just above the name/logo.
     const bandBottom = Math.min(y - blockH, y - 58, logoImg ? y - logoH - 1 : y) - pad;
     const bandTop = y + 6;
-    page.drawRectangle({
-      x: MARGIN - pad,
-      y: bandBottom,
-      width: (rightX - MARGIN) + pad * 2,
-      height: bandTop - bandBottom,
+    const bandLeft = MARGIN - pad;
+    const bandW = (rightX - MARGIN) + pad * 2;
+    const bandH = bandTop - bandBottom;
+    const R = 8; // rounded corners, like the on-screen preview
+    // pdf-lib rectangles have square corners, so draw a rounded-rect PATH instead.
+    // drawSvgPath uses SVG coords (y DOWN) anchored at the top-left {x,y}.
+    const rr = `M ${R},0 H ${bandW - R} A ${R},${R} 0 0 1 ${bandW},${R} V ${bandH - R} `
+      + `A ${R},${R} 0 0 1 ${bandW - R},${bandH} H ${R} A ${R},${R} 0 0 1 0,${bandH - R} `
+      + `V ${R} A ${R},${R} 0 0 1 ${R},0 Z`;
+    page.drawSvgPath(rr, {
+      x: bandLeft,
+      y: bandTop,
       color: backing === 'dark' ? rgb(0.11, 0.11, 0.13) : rgb(0.87, 0.87, 0.89),
+      borderWidth: 0,
     });
   }
 
