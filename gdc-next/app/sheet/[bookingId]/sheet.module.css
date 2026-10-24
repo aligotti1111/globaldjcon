@@ -398,6 +398,9 @@
    (visibility toggled just for the snapshot), NOT by a CSS rule here — so they
    stay visible on the client's always-paper download page. */
 .export .head { border-color: #000 !important; }
+/* DJ's background isn't white → their logo is likely light. Shade the download
+   masthead light grey so it still reads against the otherwise-white page. */
+.export .headShaded { background: #dedee4 !important; }
 .export .title { color: #000 !important; }
 .export .brand { color: #555 !important; }
 .export .titleRule { background: #000 !important; }
@@ -448,6 +451,7 @@
   .sheet { max-width: none; }
 
   .head { border-color: #000 !important; }
+  .headShaded { background: #dedee4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .title { font-size: 1.6rem; color: #000 !important; }
   .brand { color: #555 !important; }
   .titleRule { background: #000 !important; }
