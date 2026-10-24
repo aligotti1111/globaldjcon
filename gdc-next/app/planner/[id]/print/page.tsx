@@ -58,12 +58,14 @@ export default async function PlannerPrintPage({
   // the DJ hid it on THIS client's planner.
   const { data: logoData } = await admin
     .from('users')
-    .select('contract_logo_url')
+    .select('contract_logo_url, planner_theme')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const logoUrl = planner.logo_hidden
-    ? null
-    : (logoData as unknown as { contract_logo_url?: string | null } | null)?.contract_logo_url || null;
+  const logoRow = logoData as unknown as { contract_logo_url?: string | null; planner_theme?: string | null } | null;
+  const logoUrl = planner.logo_hidden ? null : logoRow?.contract_logo_url || null;
+  // DJ's planner background isn't white (a dark theme) → their logo is likely
+  // light, so shade the download masthead grey to keep it visible on white paper.
+  const logoOnPlate = logoRow?.planner_theme === 'dark';
 
   const { data: bData } = await admin
     .from('bookings')
@@ -83,6 +85,7 @@ export default async function PlannerPrintPage({
       submittedAt={planner.submitted_at}
       plannerExists
       logoUrl={logoUrl}
+      logoOnPlate={logoOnPlate}
       paper
     />
   );
