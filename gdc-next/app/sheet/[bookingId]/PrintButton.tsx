@@ -70,6 +70,27 @@ export default function PrintButton() {
     if (!wantsDownload) return;
     embedRef.current = params.get('embed') === '1';
     autoFired.current = true;
+
+    // VISIBLE throwaway tab: the raw paper sheet looks broken on screen while
+    // html2pdf works, and the client sees it flash before the tab closes. Cover
+    // it with a clean "preparing" screen for those ~2 seconds. Appended to BODY,
+    // OUTSIDE #runSheet, so the capture never includes it.
+    let overlay: HTMLDivElement | null = null;
+    if (!embedRef.current) {
+      overlay = document.createElement('div');
+      overlay.style.cssText = [
+        'position:fixed', 'inset:0', 'z-index:2147483647',
+        'display:flex', 'flex-direction:column', 'align-items:center', 'justify-content:center',
+        'gap:14px', 'background:#0b0b10', 'color:#00f5c4', 'text-align:center', 'padding:24px',
+        "font:600 15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      ].join(';');
+      overlay.innerHTML =
+        '<div style="width:34px;height:34px;border:3px solid rgba(0,245,196,.25);border-top-color:#00f5c4;border-radius:50%;animation:gdcspin .8s linear infinite"></div>'
+        + '<div>Preparing your Planner &amp; Playlist…<br><span style="color:#8a8aa0;font-weight:500;font-size:13px">Your download will start in a moment.</span></div>'
+        + '<style>@keyframes gdcspin{to{transform:rotate(360deg)}}</style>';
+      document.body.appendChild(overlay);
+    }
+
     // A tick after paint, so the sheet is fully laid out before we capture.
     // This page was opened just to produce the file. In a VISIBLE throwaway tab
     // (no embed) we close it once the PDF saved. In the HIDDEN-iframe embed we
@@ -77,10 +98,15 @@ export default function PrintButton() {
     // success if it fell back to the print dialog.
     const t = setTimeout(() => {
       void download().then((saved) => {
-        if (!saved) return;
+        if (!saved) {
+          // Fell back to the print dialog — let the client see the page again.
+          if (overlay) { overlay.remove(); overlay = null; }
+          return;
+        }
         if (embedRef.current) {
           try { window.parent?.postMessage('gdc:sheet-pdf-done', '*'); } catch { /* ignore */ }
         } else {
+          // Keep the clean overlay up until the tab closes — no deformed flash.
           setTimeout(() => { try { window.close(); } catch { /* ignore */ } }, 900);
         }
       });
@@ -126,8 +152,12 @@ export default function PrintButton() {
         .set({
           margin: [10, 10, 12, 10],
           filename: safeFilename(),
-          // PNG, not JPEG — crisp text, no compression fuzz on a dense sheet.
-          image: { type: 'png' },
+          // JPEG at high quality, NOT PNG. html2pdf rasterizes the whole page to
+          // one image and embeds it; a page-sized PNG is enormous (lossless on a
+          // mostly-white document is the worst case for PNG). JPEG at .95 is a
+          // fraction of the size with no visible fuzz on this text, and scale 2
+          // keeps it crisp. (A 5–8 MB PNG becomes well under 1 MB.)
+          image: { type: 'jpeg', quality: 0.95 },
           html2canvas: {
             scale: 2,
             backgroundColor: '#ffffff',
