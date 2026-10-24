@@ -38,10 +38,10 @@ export async function GET() {
     const admin = createAdminClient();
     const { data } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, receipt_auto_deposit, receipt_auto_balance')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, receipt_auto_deposit, receipt_auto_balance, receipt_logo_backing')
       .eq('id', acting.djId)
       .maybeSingle();
-    const dj = data as { name?: string | null; address?: string | null; city?: string | null; state?: string | null; zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null; receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null } | null;
+    const dj = data as { name?: string | null; address?: string | null; city?: string | null; state?: string | null; zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null; receipt_auto_deposit?: boolean | null; receipt_auto_balance?: boolean | null; receipt_logo_backing?: string | null } | null;
     return NextResponse.json({
       receiptAddress: dj?.receipt_address ?? null,
       accountAddress: accountAddressOf(dj),
@@ -60,6 +60,10 @@ export async function GET() {
       // Auto-send-receipt toggles — default ON when the column is null/unset.
       autoDeposit: dj?.receipt_auto_deposit ?? true,
       autoBalance: dj?.receipt_auto_balance ?? true,
+      // What sits behind the logo on documents: 'none' | 'light' | 'dark'.
+      logoBacking: (['none', 'light', 'dark'].includes(dj?.receipt_logo_backing || '')
+        ? dj?.receipt_logo_backing
+        : 'light'),
     });
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
     if (!canEditProfile(acting.role)) {
       return NextResponse.json({ error: 'You do not have permission to change receipt settings.' }, { status: 403 });
     }
-    const body = (await req.json().catch(() => ({}))) as { address?: string | null; color?: string | null; phone?: string | null; autoDeposit?: boolean; autoBalance?: boolean };
+    const body = (await req.json().catch(() => ({}))) as { address?: string | null; color?: string | null; phone?: string | null; autoDeposit?: boolean; autoBalance?: boolean; logoBacking?: string };
     const update: Record<string, string | boolean | null> = {};
     // Only touch the fields the caller actually sent (key present in body).
     if ('address' in body) {
@@ -93,6 +97,10 @@ export async function POST(req: Request) {
     }
     if ('autoDeposit' in body) update.receipt_auto_deposit = !!body.autoDeposit;
     if ('autoBalance' in body) update.receipt_auto_balance = !!body.autoBalance;
+    if ('logoBacking' in body) {
+      const lb = String(body.logoBacking || '');
+      update.receipt_logo_backing = ['none', 'light', 'dark'].includes(lb) ? lb : 'light';
+    }
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
     }
