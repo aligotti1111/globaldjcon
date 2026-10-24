@@ -346,8 +346,36 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         </p>
 
         {/* Logo */}
-        <div style={{ marginBottom: '1.4rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
           <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} />
+        </div>
+
+        {/* Logo backing — right under the logo. Receipts are a white page, so a
+            light logo vanishes and a flat grey plate collides with a grey logo;
+            the DJ picks. Stacked radio buttons. */}
+        <label style={{ ...label, margin: '0 0 .3rem' }}>Logo backing</label>
+        <p style={hint}>Receipts are on white paper, so a light or white logo can disappear. Pick a backing for the header so it always shows.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1.4rem' }}>
+          {([
+            { v: 'none' as const, label: 'None', desc: 'Logo straight on white (best for a dark logo).' },
+            { v: 'light' as const, label: 'Light grey', desc: 'Light-grey header band (shows a white/light logo).' },
+            { v: 'dark' as const, label: 'Dark', desc: 'Dark header band (shows a white or grey logo).' },
+          ]).map((o) => (
+            <label key={o.v} style={{ display: 'flex', alignItems: 'flex-start', gap: '.6rem', cursor: (!loaded || busy) ? 'default' : 'pointer' }}>
+              <input
+                type="radio"
+                name="receiptLogoBacking"
+                checked={logoBacking === o.v}
+                disabled={!loaded || busy}
+                onChange={() => setLogoBacking(o.v)}
+                style={{ marginTop: 3, accentColor: '#00e0a4', cursor: 'inherit' }}
+              />
+              <span>
+                <span style={{ fontSize: '.9rem', fontWeight: 600, color: '#ececf3' }}>{o.label}</span>
+                <span style={{ display: 'block', fontSize: '.78rem', color: 'rgba(235,235,245,.5)', lineHeight: 1.4 }}>{o.desc}</span>
+              </span>
+            </label>
+          ))}
         </div>
 
         {/* Address — discrete fields with autocomplete. */}
@@ -429,33 +457,6 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
             onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
             style={{ ...input, width: 120, fontFamily: 'monospace' }} maxLength={7} />
           {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
-        </div>
-
-        {/* Logo backing — receipts are a white page, so a light logo vanishes
-            and a flat grey plate collides with a grey logo. The DJ picks. */}
-        <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Logo backing</label>
-        <p style={hint}>Receipts and invoices are on white paper. If your logo is light or white it can disappear on it — pick a backing so it always shows.</p>
-        <div style={{ display: 'inline-flex', border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, overflow: 'hidden' }}>
-          {([
-            { v: 'none' as const, label: 'None' },
-            { v: 'light' as const, label: 'Light grey' },
-            { v: 'dark' as const, label: 'Dark' },
-          ]).map((o) => (
-            <button
-              key={o.v}
-              type="button"
-              disabled={!loaded || busy}
-              onClick={() => setLogoBacking(o.v)}
-              style={{
-                padding: '.5rem .9rem', border: 'none', cursor: (!loaded || busy) ? 'default' : 'pointer',
-                fontSize: '.85rem', fontWeight: logoBacking === o.v ? 700 : 500,
-                background: logoBacking === o.v ? '#00e0a4' : 'transparent',
-                color: logoBacking === o.v ? '#04121a' : 'rgba(235,235,245,.75)',
-              }}
-            >
-              {o.label}
-            </button>
-          ))}
         </div>
 
         {/* Auto-send receipt toggles — on by default. */}
