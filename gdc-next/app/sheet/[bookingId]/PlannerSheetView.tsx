@@ -69,16 +69,20 @@ function fmtDate(d: string | null): string {
 }
 
 export default function PlannerSheetView({
-  b, fields, responses, status, submittedAt, plannerExists, logoUrl = null, paper = false,
+  b, fields, responses, status, submittedAt, plannerExists, logoUrl = null, logoOnPlate = false, paper = false,
 }: {
   b: SheetBooking | null;
   fields: PlannerField[];
   responses: PlannerResponses;
   status: string;
-  submittedAt: string | null;
   plannerExists: boolean;
+  submittedAt: string | null;
   /** The DJ's business logo (users.contract_logo_url), printed at the top. */
   logoUrl?: string | null;
+  /** The DJ's planner background isn't white (a dark/colored theme), so their
+   *  logo is likely light. On the white downloaded/printed sheet, shade the top
+   *  masthead light grey so a light logo still reads. White theme → leave white. */
+  logoOnPlate?: boolean;
   // `paper` = always render black-on-white (the client's download page), so it
   // reads as a document and there's no dark flash when the PDF is captured. The
   // DJ's /sheet leaves this off — dark on screen for the booth, white only in
@@ -113,7 +117,7 @@ export default function PlannerSheetView({
     <div className={paper ? `${styles.page} ${styles.export}` : styles.page} id="runSheet">
       <div className={styles.sheet} data-sheet>
 
-        <header className={styles.head}>
+        <header className={logoOnPlate ? `${styles.head} ${styles.headShaded}` : styles.head}>
           {/* The same branded masthead the client sees on the live planner —
               logo centred on top, the brand tag, the big title and a rule —
               so the downloaded PDF reads as a Planner & Playlist, not a loose
