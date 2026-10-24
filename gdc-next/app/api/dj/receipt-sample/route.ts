@@ -26,12 +26,12 @@ export async function GET(req: Request) {
     const admin = createAdminClient();
     const { data } = await admin
       .from('users')
-      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone')
+      .select('name, address, city, state, zip, phone, contract_logo_url, receipt_address, receipt_color, receipt_phone, planner_theme')
       .eq('id', acting.djId)
       .maybeSingle();
     const dj = (data || {}) as {
       name?: string | null; address?: string | null; city?: string | null; state?: string | null;
-      zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null;
+      zip?: string | null; phone?: string | null; contract_logo_url?: string | null; receipt_address?: string | null; receipt_color?: string | null; receipt_phone?: string | null; planner_theme?: string | null;
     };
 
     // Same address resolution the real receipt uses: the receipt override wins
@@ -70,6 +70,9 @@ export async function GET(req: Request) {
         address: addressLine || null,
         phone: phoneLine,
         logo,
+        // Receipts are always a white page — always plate the logo so a light
+        // one shows (harmless behind a dark one). Matches the real receipt.
+        logoOnPlate: true,
       },
       client: { name: 'Sample Client', email: 'client@example.com' },
       event: {
