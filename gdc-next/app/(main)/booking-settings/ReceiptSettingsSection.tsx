@@ -345,37 +345,29 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
           receipt your clients receive. Set them here and watch the sample update.
         </p>
 
-        {/* Logo */}
-        <div style={{ marginBottom: '1rem' }}>
+        {/* Logo + its backing choice, side by side: logo LEFT, the three backing
+            radios (colour labels only) to its RIGHT. */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1.4rem' }}>
           <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} />
-        </div>
-
-        {/* Logo backing — right under the logo. Receipts are a white page, so a
-            light logo vanishes and a flat grey plate collides with a grey logo;
-            the DJ picks. Stacked radio buttons. */}
-        <label style={{ ...label, margin: '0 0 .3rem' }}>Logo backing</label>
-        <p style={hint}>Receipts are on white paper, so a light or white logo can disappear. Pick a backing for the header so it always shows.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1.4rem' }}>
-          {([
-            { v: 'none' as const, label: 'None', desc: 'Logo straight on white (best for a dark logo).' },
-            { v: 'light' as const, label: 'Light grey', desc: 'Light-grey header band (shows a white/light logo).' },
-            { v: 'dark' as const, label: 'Dark', desc: 'Dark header band (shows a white or grey logo).' },
-          ]).map((o) => (
-            <label key={o.v} style={{ display: 'flex', alignItems: 'flex-start', gap: '.6rem', cursor: (!loaded || busy) ? 'default' : 'pointer' }}>
-              <input
-                type="radio"
-                name="receiptLogoBacking"
-                checked={logoBacking === o.v}
-                disabled={!loaded || busy}
-                onChange={() => setLogoBacking(o.v)}
-                style={{ marginTop: 3, accentColor: '#00e0a4', cursor: 'inherit' }}
-              />
-              <span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+            {([
+              { v: 'none' as const, label: 'None' },
+              { v: 'light' as const, label: 'Light grey' },
+              { v: 'dark' as const, label: 'Dark' },
+            ]).map((o) => (
+              <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: (!loaded || busy) ? 'default' : 'pointer' }}>
+                <input
+                  type="radio"
+                  name="receiptLogoBacking"
+                  checked={logoBacking === o.v}
+                  disabled={!loaded || busy}
+                  onChange={() => setLogoBacking(o.v)}
+                  style={{ accentColor: '#00e0a4', cursor: 'inherit' }}
+                />
                 <span style={{ fontSize: '.9rem', fontWeight: 600, color: '#ececf3' }}>{o.label}</span>
-                <span style={{ display: 'block', fontSize: '.78rem', color: 'rgba(235,235,245,.5)', lineHeight: 1.4 }}>{o.desc}</span>
-              </span>
-            </label>
-          ))}
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Address — discrete fields with autocomplete. */}
