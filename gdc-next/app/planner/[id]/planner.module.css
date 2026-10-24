@@ -282,7 +282,10 @@
 .locked strong { color: #c79a3b; }
 /* The frozen questions: visible so the client can read what they sent, but no
    interaction — every control is inert. */
-.fieldsLocked { pointer-events: none; opacity: .6; }
+/* Locked = read-only, not greyed out. Block editing (pointer-events) but keep
+   everything at full brightness so the questions and answers stay easy to read
+   — a locked planner is still a reference the client comes back to. */
+.fieldsLocked { pointer-events: none; }
 
 /* ── What we already know ─────────────────────────────────────────────── */
 /*
