@@ -92,10 +92,13 @@
 .addLogo:hover { background: color-mix(in srgb, var(--pb-accent) 14%, transparent); }
 
 /* Logo + a quiet Remove beside it. */
-.logoRow { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
+/* Logo stacked over its Remove link — a column, centred — so the logo stays on
+   the masthead's centre line and "Remove" sits snug underneath it rather than
+   beside it (which pushed the logo off to the left). */
+.logoRow { display: flex; flex-direction: column; align-items: center; gap: .15rem; margin-bottom: 1rem; }
 .logoRemove {
   background: none; border: none; color: var(--pb-faint2); font-family: inherit;
-  font-size: .78rem; text-decoration: underline; cursor: pointer; padding: .2rem;
+  font-size: .72rem; text-decoration: underline; cursor: pointer; padding: 0;
 }
 .logoRemove:hover { color: #ff7676; }
 
