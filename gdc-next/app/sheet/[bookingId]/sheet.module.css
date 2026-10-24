@@ -33,9 +33,12 @@
 .head {
   position: relative;
   text-align: center;
-  border-bottom: 2px solid rgba(255, 255, 255, .18);
-  padding-bottom: 1rem;
-  margin-bottom: 1.2rem;
+  /* A framed masthead box — the whole header (logo, title, booking details)
+     sits inside a border so the top of the sheet reads as a titled panel. */
+  border: 1.5px solid rgba(255, 255, 255, .22);
+  border-radius: 12px;
+  padding: 1.3rem 1.3rem 1.1rem;
+  margin-bottom: 1.4rem;
 }
 
 /* The DJ's logo at the top of the printable, centred. An image prints as-is (no
@@ -394,7 +397,7 @@
 /* NOTE: buttons are hidden from the capture by the Download button itself
    (visibility toggled just for the snapshot), NOT by a CSS rule here — so they
    stay visible on the client's always-paper download page. */
-.export .head { border-bottom-color: #000 !important; }
+.export .head { border-color: #000 !important; }
 .export .title { color: #000 !important; }
 .export .brand { color: #555 !important; }
 .export .titleRule { background: #000 !important; }
@@ -416,7 +419,9 @@
 .export .na { color: #888 !important; }
 .export .foot { color: #888 !important; border-top-color: #ccc !important; }
 .export .label { border-bottom-color: #ccc !important; }
-.export .warn { color: #000 !important; font-weight: 700; }
+/* The "not submitted yet / still being filled in" note is a live-status cue for
+   the DJ on screen — it's noise on a printed/downloaded sheet, so drop it. */
+.export .warn { display: none !important; }
 .export .dnp { border: 2px solid #000 !important; border-radius: 0; }
 .export .dnpHead { color: #000 !important; }
 .export .dnpList { color: #000 !important; font-weight: 500; }
@@ -442,11 +447,12 @@
 
   .sheet { max-width: none; }
 
-  .head { border-bottom-color: #000 !important; }
+  .head { border-color: #000 !important; }
   .title { font-size: 1.6rem; color: #000 !important; }
   .brand { color: #555 !important; }
   .titleRule { background: #000 !important; }
   .dlFloat { display: none !important; }
+  .warn { display: none !important; }
   .meta { color: #000 !important; }
   .knownK { color: #444 !important; }
   .knownV { color: #000 !important; }
