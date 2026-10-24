@@ -250,10 +250,24 @@ async function notifySubmitted(admin: ReturnType<typeof createAdminClient>, plan
 
     const { data: djData } = await admin
       .from('users')
-      .select('name')
+      .select('name, planner_lead_days')
       .eq('id', b.dj_id as string)
       .maybeSingle();
-    const djName = (djData as unknown as { name?: string | null } | null)?.name || 'your DJ';
+    const djRow = djData as unknown as { name?: string | null; planner_lead_days?: number | null } | null;
+    const djName = djRow?.name || 'your DJ';
+
+    // Was this submitted AFTER the planning deadline (event date − the DJ's lead
+    // days)? If so the planner locks on submit, so the email must say "contact
+    // the DJ to change anything" instead of "you still have time to update".
+    const leadDays = djRow?.planner_lead_days ?? 14;
+    let pastDeadline = false;
+    if (b.event_date) {
+      const due = new Date(`${b.event_date}T12:00:00`);
+      due.setDate(due.getDate() - leadDays);
+      due.setHours(0, 0, 0, 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      pastDeadline = today.getTime() > due.getTime();
+    }
 
     const djEmail = b.dj_id ? await resolveUserEmail(b.dj_id) : null;
     const clientEmail = b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null);
@@ -278,7 +292,9 @@ async function notifySubmitted(admin: ReturnType<typeof createAdminClient>, plan
         subject: `${who} sent their Planner & Playlist — ${when}`,
         html: shell(`
 <h1 style="margin:0 0 6px;font-size:22px;color:#111;">${esc(who)} sent their planner</h1>
-<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Songs, names and the do-not-play list are in. They can still change things until the night, and anything they change appears here automatically.</p>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">Songs, names and the do-not-play list are in. ${pastDeadline
+  ? 'They submitted after the planning deadline, so their planner is now locked — they&rsquo;ll need to contact you directly for any changes.'
+  : 'They can still change things until the night, and anything they change appears here automatically.'}</p>
 ${recap}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
 <tr><td style="background:#000000;border-radius:8px;">
@@ -293,16 +309,22 @@ ${recap}
       await resend.emails.send({
         from: FROM,
         to: clientEmail,
-        subject: `Your Planner & Playlist is with ${djName}`,
+        subject: pastDeadline
+          ? `Your Planner & Playlist is locked — with ${djName}`
+          : `Your Planner & Playlist is with ${djName}`,
         html: shell(`
 <h1 style="margin:0 0 6px;font-size:22px;color:#111;">Sent to ${esc(djName)}</h1>
-<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">You still have time to update the information — ${esc(djName)} will be notified. Please have everything completed <strong style="color:#111;">at least 10 days before</strong> the event.</p>
+${pastDeadline
+  ? `<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">This was submitted after the planning deadline, so your planner is now <strong style="color:#111;">locked</strong> and can no longer be edited here. If anything still needs to change, please contact ${esc(djName)} directly.</p>`
+  : `<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">You still have time to update the information — ${esc(djName)} will be notified. Please have everything completed <strong style="color:#111;">at least ${leadDays} days before</strong> the event.</p>`}
 ${recap}
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
 <tr><td style="background:#000000;border-radius:8px;">
 <a href="${SITE_URL}/planner/${plannerId}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open your planner</a>
 </td></tr></table>
-<p style="margin:0;color:#999;font-size:12px;line-height:1.6;">Same link as before — it still works, and it still saves as you go.</p>`),
+<p style="margin:0;color:#999;font-size:12px;line-height:1.6;">${pastDeadline
+  ? 'Same link as before — you can still open it to view everything.'
+  : 'Same link as before — it still works, and it still saves as you go.'}</p>`),
       });
     }
   } catch {
