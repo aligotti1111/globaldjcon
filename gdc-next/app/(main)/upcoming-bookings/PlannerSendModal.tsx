@@ -369,20 +369,36 @@ export default function PlannerSendModal({
             <div className={styles.altList} style={{ marginTop: '.6rem' }}>
               {matchedRows.map((t) => renderRow(t))}
 
-              {/* View all — reveal every other planner beneath, matched still on
-                  top. Hidden if there are no others to show. */}
+              {/* A teaser — a few of the other planners peeking out beneath the
+                  matched one, fading to nothing, so it's obvious there are more
+                  and that "See all" opens them. The peek is a preview only
+                  (pointerEvents off); the button is what expands the full list. */}
               {otherRows.length > 0 && !showAll && (
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  style={{
-                    ...miniBtnStyle, width: '100%', marginTop: '.4rem',
-                    textAlign: 'center', justifyContent: 'center',
-                    padding: '.35rem .5rem', color: 'var(--muted,#8a8aa0)',
-                  }}
-                >
-                  View all planners ({otherRows.length})
-                </button>
+                <div style={{ position: 'relative', marginTop: '.1rem' }}>
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      maxHeight: 96,
+                      overflow: 'hidden',
+                      pointerEvents: 'none',
+                      WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%)',
+                      maskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%)',
+                    }}
+                  >
+                    {otherRows.slice(0, 3).map((t) => renderRow(t))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    style={{
+                      ...miniBtnStyle, width: '100%', marginTop: '.25rem',
+                      textAlign: 'center', justifyContent: 'center',
+                      padding: '.35rem .5rem', color: 'var(--muted,#8a8aa0)',
+                    }}
+                  >
+                    See all planners ({otherRows.length})
+                  </button>
+                </div>
               )}
 
               {showAll && otherRows.length > 0 && (
