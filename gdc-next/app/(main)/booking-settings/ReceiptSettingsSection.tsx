@@ -495,6 +495,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
           phone={phone.trim()}
           accent={/^#[0-9a-fA-F]{6}$/.test(color) ? color : DEFAULT_COLOR}
           kind={sampleKind}
+          logoBacking={logoBacking}
         />
         <p style={{ ...hint, margin: '.5rem 0 0' }}>
           Live preview with placeholder event details — your logo, address, phone and colour update instantly.
@@ -540,38 +541,47 @@ function Toggle({ checked, disabled, onChange, label }: { checked: boolean; disa
 // ── Live HTML receipt preview — mirrors the generated PDF layout, updates
 // instantly from props. Placeholder event details; logo/address/phone/colour
 // are the DJ's real settings. ────────────────────────────────────────────────
-function ReceiptPreview({ logoUrl, name, address, phone, accent, kind }: {
-  logoUrl: string | null; name: string; address: string; phone: string; accent: string; kind: 'deposit' | 'balance';
+function ReceiptPreview({ logoUrl, name, address, phone, accent, kind, logoBacking }: {
+  logoUrl: string | null; name: string; address: string; phone: string; accent: string; kind: 'deposit' | 'balance'; logoBacking: 'none' | 'light' | 'dark';
 }) {
   const ink = '#1a1a2e';
   const muted = '#777';
   const line = '1px solid #e5e5e5';
   const row: CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12.5, color: ink };
   const sec: CSSProperties = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: '#999', margin: '0 0 4px' };
+  // On a DARK header band the business text must flip to light to stay legible;
+  // on a light-grey (or no) band the normal dark ink reads fine.
+  const headerInk = logoBacking === 'dark' ? '#ffffff' : ink;
+  const headerMuted = logoBacking === 'dark' ? '#c9c9d2' : muted;
   return (
     <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(255,255,255,.14)', padding: '26px 28px', color: ink, minHeight: 540 }}>
-      {/* Header: left business block, right title/date/reference */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-        {/* Logo LEFT, business block to its RIGHT — mirrors the emailed PDF,
-            where the logo is sized to the full height of the name/address/phone
-            block beside it (up to 150px wide), not the small fixed tile. */}
+      {/* Header: left business block, right title/date/reference. The chosen
+          backing colours the WHOLE header band — not just behind the logo — so
+          on a dark band the business text flips to white to stay legible. */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16,
+        ...(logoBacking === 'none' ? {} : {
+          background: logoBacking === 'dark' ? '#1c1c22' : '#dedee4',
+          padding: '16px 18px', borderRadius: 8,
+        }),
+      }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0 }}>
           {logoUrl
             /* eslint-disable-next-line @next/next/no-img-element */
             ? <img src={logoUrl} alt="logo" style={{ maxWidth: 150, maxHeight: 64, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
             : null}
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 800 }}>{name}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: headerInk }}>{name}</div>
             {address.split('\n').filter(Boolean).map((ln, i) => (
-              <div key={i} style={{ color: muted, fontSize: 11, marginTop: i === 0 ? 3 : 1 }}>{ln}</div>
+              <div key={i} style={{ color: headerMuted, fontSize: 11, marginTop: i === 0 ? 3 : 1 }}>{ln}</div>
             ))}
-            {phone && <div style={{ color: muted, fontSize: 11, marginTop: 2 }}>{phone}</div>}
+            {phone && <div style={{ color: headerMuted, fontSize: 11, marginTop: 2 }}>{phone}</div>}
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: accent, letterSpacing: '.02em' }}>RECEIPT</div>
-          <div style={{ color: muted, fontSize: 11, marginTop: 4 }}>June 20, 2026</div>
-          <div style={{ color: muted, fontSize: 11 }}>Reference: GDC-SAMPLE</div>
+          <div style={{ color: headerMuted, fontSize: 11, marginTop: 4 }}>June 20, 2026</div>
+          <div style={{ color: headerMuted, fontSize: 11 }}>Reference: GDC-SAMPLE</div>
         </div>
       </div>
       <hr style={{ border: 'none', borderTop: line, margin: '16px 0' }} />
