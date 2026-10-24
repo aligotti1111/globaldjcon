@@ -1374,6 +1374,23 @@ select.input {
   pointer-events: none;
   animation: stSpinKf 1.1s linear infinite;
 }
+/* Past-due stage — a RED arc, so the spinner matches the red "PAST DUE" ring it
+   sweeps over instead of reading amber like a normal pending stage. */
+.stSpinPastDue {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #ff6b6b;
+  border-right-color: #ff6b6b;
+  box-sizing: border-box;
+  z-index: 2;
+  pointer-events: none;
+  animation: stSpinKf 1.1s linear infinite;
+}
 
 .stChev {
   color: #6c6c86;
