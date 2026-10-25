@@ -227,14 +227,22 @@ function CodeFields({
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
         <label style={labelStyle}>Expires (optional)</label>
-        <input
-          type="date"
-          className={`${styles.settingNumber} gdcDateWhite`}
-          style={{ ...dateInputStyle, ...fieldBox, width: '100%', color: 'var(--white,#fff)' }}
-          onClick={openPicker}
-          value={value.expires || ''}
-          onChange={(e) => onField({ expires: e.target.value || null })}
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <input
+            type="date"
+            className={`${styles.settingNumber} gdcDateWhite`}
+            style={{ ...dateInputStyle, ...fieldBox, width: '100%', color: value.expires ? 'var(--white,#fff)' : 'transparent' }}
+            onClick={openPicker}
+            value={value.expires || ''}
+            onChange={(e) => onField({ expires: e.target.value || null })}
+          />
+          {/* No native placeholder on date inputs — overlay "Select" when empty. */}
+          {!value.expires && (
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', pointerEvents: 'none' }}>
+              Select
+            </span>
+          )}
+        </div>
       </div>
     </>
   );
@@ -622,19 +630,27 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
-                <input
-                  type="date" className={`${styles.settingNumber} gdcDateWhite`}
-                  // Can't end before it starts — the picker is capped at the
-                  // start date, and a manually-typed earlier date is ignored.
-                  min={saleView.starts || todayStr}
-                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
-                  value={saleView.ends || ''}
-                  onChange={(e) => {
-                    const v = e.target.value || null;
-                    if (v && saleView.starts && v < saleView.starts) return; // before start — reject
-                    updateSale({ ends: v });
-                  }}
-                />
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <input
+                    type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                    // Can't end before it starts — the picker is capped at the
+                    // start date, and a manually-typed earlier date is ignored.
+                    min={saleView.starts || todayStr}
+                    style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px', color: saleView.ends ? 'var(--white,#fff)' : 'transparent' }}
+                    value={saleView.ends || ''}
+                    onChange={(e) => {
+                      const v = e.target.value || null;
+                      if (v && saleView.starts && v < saleView.starts) return; // before start — reject
+                      updateSale({ ends: v });
+                    }}
+                  />
+                  {/* No native placeholder on date inputs — overlay "Select" when empty. */}
+                  {!saleView.ends && (
+                    <span style={{ position: 'absolute', left: isNarrow ? 4 : 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: isNarrow ? '.6rem' : '.78rem', pointerEvents: 'none' }}>
+                      Select
+                    </span>
+                  )}
+                </div>
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
                 <label style={labelStyle}>Used</label>
