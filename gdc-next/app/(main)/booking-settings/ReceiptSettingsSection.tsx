@@ -345,19 +345,19 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
           receipt your clients receive. Set them here and watch the sample update.
         </p>
 
-        {/* Logo + its backing choice, side by side: logo LEFT, the three backing
-            radios (colour labels only) to its RIGHT. */}
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1.4rem' }}>
+        {/* Logo gets its own full-width row, centred. Below it, the Header
+            Background radios and the Receipt accent colour sit on one line. */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.4rem' }}>
           <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '2.5rem', marginBottom: '1.4rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
             <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'rgba(235,235,245,.75)', marginBottom: '.1rem' }}>Header Background</span>
             {([
-              // The label is coloured to match the backing that option paints —
-              // white for None (white page), light-grey for Light grey, near-black
-              // for Dark.
-              { v: 'none' as const, label: 'None', col: '#ffffff' },
-              { v: 'light' as const, label: 'Light grey', col: '#dedee4' },
-              { v: 'dark' as const, label: 'Dark', col: '#1c1c22' },
+              { v: 'none' as const, label: 'None' },
+              { v: 'light' as const, label: 'Light grey' },
+              { v: 'dark' as const, label: 'Dark' },
             ]).map((o) => (
               <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: (!loaded || busy) ? 'default' : 'pointer' }}>
                 <input
@@ -368,16 +368,12 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
                   onChange={() => setLogoBacking(o.v)}
                   style={{ accentColor: '#00e0a4', cursor: 'inherit' }}
                 />
-                {/* Name in legible white, then a swatch to its right showing the
-                    actual backing colour (readable on the dark panel, where a
-                    dark label would be invisible). */}
-                <span style={{ fontSize: '.9rem', fontWeight: 600, color: '#ececf3', minWidth: 68 }}>{o.label}</span>
-                <span style={{ width: 14, height: 14, flexShrink: 0, borderRadius: 3, background: o.col, border: '1px solid rgba(255,255,255,.25)' }} />
+                <span style={{ fontSize: '.9rem', fontWeight: 600, color: '#ececf3' }}>{o.label}</span>
               </label>
             ))}
           </div>
 
-          {/* Receipt accent colour — sits beside the logo + backing options. */}
+          {/* Receipt accent colour — on the same line as Header Background. */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
             <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'rgba(235,235,245,.75)' }}>Receipt accent color</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
