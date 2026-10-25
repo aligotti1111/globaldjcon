@@ -368,7 +368,11 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
                   onChange={() => setLogoBacking(o.v)}
                   style={{ accentColor: '#00e0a4', cursor: 'inherit' }}
                 />
-                <span style={{ fontSize: '.9rem', fontWeight: 600, color: o.col }}>{o.label}</span>
+                {/* A swatch shows the actual backing colour (readable on the dark
+                    panel, where a dark label would be invisible); the name stays
+                    in legible white. */}
+                <span style={{ width: 14, height: 14, flexShrink: 0, borderRadius: 3, background: o.col, border: '1px solid rgba(255,255,255,.25)' }} />
+                <span style={{ fontSize: '.9rem', fontWeight: 600, color: '#ececf3' }}>{o.label}</span>
               </label>
             ))}
           </div>
