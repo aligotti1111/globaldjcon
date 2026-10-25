@@ -182,15 +182,15 @@ function CodeFields({
         />
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
-        <label style={labelStyle}>Type</label>
+        <label style={labelStyle}>Type of discount</label>
         <select
           className={styles.settingSelect}
           style={{ ...fieldBox, width: '100%', minWidth: 0, color: 'var(--white,#fff)' }}
           value={value.type}
           onChange={(e) => onField({ type: e.target.value as 'percent' | 'flat' })}
         >
-          <option value="percent">% off</option>
-          <option value="flat">{currencySymbol} off</option>
+          <option value="percent">Percentage off</option>
+          <option value="flat">{currencySymbol} amount off</option>
         </select>
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
