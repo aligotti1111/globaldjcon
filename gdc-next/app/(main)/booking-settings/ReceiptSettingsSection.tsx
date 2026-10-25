@@ -386,11 +386,6 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
               <input type="text" value={color} disabled={!loaded || busy}
                 onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
                 style={{ ...input, width: 100, flexShrink: 0, fontFamily: 'monospace' }} maxLength={7} />
-              {/* Reserve the Reset slot so showing it never reflows the row (which
-                  pushed the layout down). nowrap + flexShrink:0 keep it on one line. */}
-              <span style={{ flexShrink: 0, minWidth: 44 }}>
-                {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={{ ...linkBtn, whiteSpace: 'nowrap' }} disabled={busy} onClick={resetColor}>Reset</button>}
-              </span>
             </div>
           </div>
         </div>
