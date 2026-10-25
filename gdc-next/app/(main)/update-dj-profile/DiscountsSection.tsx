@@ -230,8 +230,8 @@ function CodeFields({
         <div style={{ position: 'relative', width: '100%' }}>
           <input
             type="date"
-            className={`${styles.settingNumber} gdcDateWhite`}
-            style={{ ...dateInputStyle, ...fieldBox, width: '100%', color: value.expires ? 'var(--white,#fff)' : 'transparent' }}
+            className={`${styles.settingNumber} gdcDateWhite${value.expires ? '' : ' gdcDateHidden'}`}
+            style={{ ...dateInputStyle, ...fieldBox, width: '100%' }}
             onClick={openPicker}
             value={value.expires || ''}
             onChange={(e) => onField({ expires: e.target.value || null })}
@@ -543,6 +543,15 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           .gdcDateWhite::-webkit-datetime-edit-day-field,
           .gdcDateWhite::-webkit-datetime-edit-year-field { color: #fff; }
           .gdcDateWhite { color: #fff; }
+          /* When the field is empty we overlay a "Select" placeholder, so hide
+             the native mm/dd/yyyy text AND its "/" separators (which gdcDateWhite
+             would otherwise force white). */
+          .gdcDateHidden::-webkit-datetime-edit,
+          .gdcDateHidden::-webkit-datetime-edit-fields-wrapper,
+          .gdcDateHidden::-webkit-datetime-edit-text,
+          .gdcDateHidden::-webkit-datetime-edit-month-field,
+          .gdcDateHidden::-webkit-datetime-edit-day-field,
+          .gdcDateHidden::-webkit-datetime-edit-year-field { color: transparent !important; }
           @keyframes gdcLiveDot {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: .25; transform: scale(.55); }
@@ -632,11 +641,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
                 <div style={{ position: 'relative', width: '100%' }}>
                   <input
-                    type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                    type="date" className={`${styles.settingNumber} gdcDateWhite${saleView.ends ? '' : ' gdcDateHidden'}`}
                     // Can't end before it starts — the picker is capped at the
                     // start date, and a manually-typed earlier date is ignored.
                     min={saleView.starts || todayStr}
-                    style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px', color: saleView.ends ? 'var(--white,#fff)' : 'transparent' }}
+                    style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
                     value={saleView.ends || ''}
                     onChange={(e) => {
                       const v = e.target.value || null;
@@ -1080,8 +1089,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <label style={labelStyle}>Add a date</label>
             <div style={{ position: 'relative', width: '100%' }}>
               <input
-                type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem', color: newExclDate ? 'var(--white,#fff)' : 'transparent' }} onClick={openPicker}
+                type="date" className={`${styles.settingNumber} gdcDateWhite${newExclDate ? '' : ' gdcDateHidden'}`} min={todayStr}
+                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
                 value={newExclDate}
                 onChange={(e) => { setNewExclDate(e.target.value); setExclErr(''); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
