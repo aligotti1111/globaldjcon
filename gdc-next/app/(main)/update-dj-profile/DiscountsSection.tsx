@@ -959,43 +959,32 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', minWidth: 0, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, letterSpacing: '.04em', fontSize: '1rem', color: 'var(--white,#fff)' }}>
+                {/* Even columns: Code · Discount · Expires · Used. The Active/
+                    Inactive badge is dropped — the group header already says it. */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px,1.1fr) 1fr 1.4fr 0.8fr', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0, fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+                  <span style={{ fontWeight: 700, letterSpacing: '.04em', fontSize: '1rem', color: 'var(--white,#fff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {(c.code || '').toUpperCase()}
                   </span>
-                  <span
-                    style={{
-                      fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-                      padding: '2px 8px', borderRadius: 999,
-                      color: expired ? '#3a2a00' : off ? 'var(--muted,#8a8aa0)' : '#06231b',
-                      background: expired ? '#ffcf6b' : off ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)',
-                    }}
-                  >
-                    {expired ? 'Expired' : off ? 'Inactive' : 'Active'}
-                  </span>
-                  {/* Meta inline with the code: discount · expires · used. */}
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', marginLeft: '.4rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
-                    <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
-                    <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
-                    {(() => {
-                      const key = (c.code || '').trim().toUpperCase();
-                      const uses = usageByCode[key] || [];
-                      const open = expandedCode === key;
-                      if (uses.length === 0) {
-                        return <span><span style={metaLabel}>Used</span> 0</span>;
-                      }
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setExpandedCode(open ? null : key)}
-                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        >
-                          <span style={metaLabel}>Used</span> {uses.length}
-                          <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
-                        </button>
-                      );
-                    })()}
-                  </span>
+                  <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
+                  <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
+                  {(() => {
+                    const key = (c.code || '').trim().toUpperCase();
+                    const uses = usageByCode[key] || [];
+                    const open = expandedCode === key;
+                    if (uses.length === 0) {
+                      return <span><span style={metaLabel}>Used</span> 0</span>;
+                    }
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedCode(open ? null : key)}
+                        style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4, justifySelf: 'start' }}
+                      >
+                        <span style={metaLabel}>Used</span> {uses.length}
+                        <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
                 {confirmDel === i ? (
                   <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
