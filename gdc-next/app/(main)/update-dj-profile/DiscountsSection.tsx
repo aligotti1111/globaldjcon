@@ -739,6 +739,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {saleHistory.length > 0 && (
           <div style={{ marginTop: '1.1rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.9rem' }}>
             <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Past sales</div>
+            {/* Show ~4 at a glance; when there are more, the list scrolls inside
+                a fixed-height window instead of running down the whole page. */}
+            <div style={saleHistory.length > 4
+              ? { maxHeight: 304, overflowY: 'auto', paddingRight: '.3rem' }
+              : undefined}>
             {saleHistory.map((h, hi) => {
               const startMs = h.starts ? new Date(`${h.starts}T00:00:00`).getTime() : (h.started_at ? new Date(h.started_at).getTime() : null);
               const endMs = h.ends ? new Date(`${h.ends}T23:59:59`).getTime() : null;
@@ -826,6 +831,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 </div>
               );
             })}
+            </div>
           </div>
         )}
         </div>{/* end Run a sale block */}
