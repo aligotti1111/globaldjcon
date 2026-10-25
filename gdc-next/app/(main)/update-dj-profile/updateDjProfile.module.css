@@ -2741,7 +2741,7 @@
    hides overlay scrollbars by default. */
 .scrollList {
   scrollbar-width: thin;                 /* Firefox */
-  scrollbar-color: rgba(255,255,255,.35) transparent;
+  scrollbar-color: rgba(255,255,255,.5) rgba(255,255,255,.08);
 }
 .scrollList::-webkit-scrollbar {
   width: 10px;
@@ -2751,7 +2751,7 @@
   border-radius: 8px;
 }
 .scrollList::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.28);
+  background: rgba(255,255,255,.5);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
