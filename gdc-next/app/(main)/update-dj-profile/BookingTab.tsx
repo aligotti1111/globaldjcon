@@ -553,25 +553,29 @@ export default function BookingTab({
                   </select>
                 </div>
 
-                {/* Currency — applies to every price you set (packages, deposit,
-                    tax). Shown wherever money appears for your bookings. */}
-                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                  <div className={styles.settingLabelWrap}>
-                    <div className={styles.settingLabel}>Currency</div>
-                    <div className={styles.settingHint}>
-                      The currency all your prices are shown in. Frozen onto each booking, so changing it won&apos;t re-price existing ones.
+                {/* Currency — hidden for now (we only ship USD today) but the
+                    full picker + wiring is kept below so we can re-enable it by
+                    deleting the `false &&` guard. rateCurrency/setRateCurrency
+                    stay live, so every price still resolves through USD. */}
+                {false && (
+                  <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                    <div className={styles.settingLabelWrap}>
+                      <div className={styles.settingLabel}>Currency</div>
+                      <div className={styles.settingHint}>
+                        The currency all your prices are shown in. Frozen onto each booking, so changing it won&apos;t re-price existing ones.
+                      </div>
                     </div>
+                    <select
+                      value={rateCurrency}
+                      onChange={(e) => setRateCurrency(e.target.value)}
+                      className={styles.settingSelect}
+                    >
+                      {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
+                        <option key={code} value={code}>{code} ({sym})</option>
+                      ))}
+                    </select>
                   </div>
-                  <select
-                    value={rateCurrency}
-                    onChange={(e) => setRateCurrency(e.target.value)}
-                    className={styles.settingSelect}
-                  >
-                    {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
-                      <option key={code} value={code}>{code} ({sym})</option>
-                    ))}
-                  </select>
-                </div>
+                )}
 
                 {/* Deposit */}
                 <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
