@@ -348,10 +348,10 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         {/* Logo gets its own full-width row, centred. Below it, the Header
             Background radios and the Receipt accent colour sit on one line. */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.4rem' }}>
-          <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} />
+          <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} boxWidth={200} boxHeight={104} imgPad={14} />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '2.5rem', marginBottom: '1.4rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap', gap: '2.5rem', marginBottom: '1.4rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
             <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'rgba(235,235,245,.75)', marginBottom: '.1rem' }}>Header Background</span>
             {([
