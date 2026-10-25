@@ -376,13 +376,17 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
           {/* Receipt accent colour — sits beside the logo + backing options. */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
             <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'rgba(235,235,245,.75)' }}>Receipt accent color</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'nowrap' }}>
               <input type="color" value={color} disabled={!loaded || busy} onChange={(e) => setColor(e.target.value)}
-                style={{ width: 46, height: 34, border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, background: 'transparent', cursor: 'pointer', padding: 2 }} />
+                style={{ width: 46, height: 34, flexShrink: 0, border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, background: 'transparent', cursor: 'pointer', padding: 2 }} />
               <input type="text" value={color} disabled={!loaded || busy}
                 onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
-                style={{ ...input, width: 110, fontFamily: 'monospace' }} maxLength={7} />
-              {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
+                style={{ ...input, width: 100, flexShrink: 0, fontFamily: 'monospace' }} maxLength={7} />
+              {/* Reserve the Reset slot so showing it never reflows the row (which
+                  pushed the layout down). nowrap + flexShrink:0 keep it on one line. */}
+              <span style={{ flexShrink: 0, minWidth: 44 }}>
+                {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={{ ...linkBtn, whiteSpace: 'nowrap' }} disabled={busy} onClick={resetColor}>Reset</button>}
+              </span>
             </div>
           </div>
         </div>
