@@ -154,6 +154,11 @@ function emptyDraft(): PromoCode {
   return { code: '', type: 'percent', value: 0, active: true, expires: null, maxUses: null, uses: 0 };
 }
 
+// One box style for every field in the code form so Code Name, Type, Percent/
+// Amount and Expires all render at the same height (selects and inputs would
+// otherwise size differently).
+const fieldBox: React.CSSProperties = { height: 38, boxSizing: 'border-box', fontSize: '.78rem' };
+
 // Fields shared by the draft form and inline edit. `value` is the working copy.
 function CodeFields({
   value,
@@ -173,14 +178,14 @@ function CodeFields({
           className={styles.settingNumber}
           value={value.code}
           onChange={(e) => onField({ code: e.target.value.toUpperCase() })}
-          style={{ textTransform: 'uppercase', color: 'var(--white,#fff)' }}
+          style={{ ...fieldBox, textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
         <label style={labelStyle}>Type</label>
         <select
           className={styles.settingSelect}
-          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+          style={{ ...fieldBox, width: '100%', minWidth: 0, color: 'var(--white,#fff)' }}
           value={value.type}
           onChange={(e) => onField({ type: e.target.value as 'percent' | 'flat' })}
         >
@@ -193,7 +198,7 @@ function CodeFields({
         {value.type === 'percent' ? (
           <select
             className={styles.settingSelect}
-            style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+            style={{ ...fieldBox, width: '100%', minWidth: 0, color: 'var(--white,#fff)' }}
             value={value.value || ''}
             onChange={(e) => onField({ value: Number(e.target.value) })}
           >
@@ -212,7 +217,7 @@ function CodeFields({
               onWheel={(e) => e.currentTarget.blur()}
               min={1}
               className={`${styles.settingNumber} gdcNoSpin`}
-              style={{ width: '100%', boxSizing: 'border-box', textAlign: 'left', paddingLeft: 22, color: 'var(--white,#fff)' }}
+              style={{ ...fieldBox, width: '100%', textAlign: 'left', paddingLeft: 22, color: 'var(--white,#fff)' }}
               value={value.value ? value.value : ''}
               placeholder="0"
               onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
@@ -225,7 +230,7 @@ function CodeFields({
         <input
           type="date"
           className={`${styles.settingNumber} gdcDateWhite`}
-          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }}
+          style={{ ...dateInputStyle, ...fieldBox, width: '100%', color: 'var(--white,#fff)' }}
           onClick={openPicker}
           value={value.expires || ''}
           onChange={(e) => onField({ expires: e.target.value || null })}
