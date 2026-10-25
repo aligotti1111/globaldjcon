@@ -27,10 +27,19 @@ export default function BusinessLogoSection({
   // Called with the new logo URL (or null when removed) so a parent preview can
   // update instantly without re-fetching.
   onLogoChange,
+  // Tile size + inner breathing room. Defaults keep every existing caller
+  // (account settings, planner editor) exactly as it was; the receipt tab passes
+  // a larger, padded tile so a wide logo isn't jammed to the edges.
+  boxWidth = 132,
+  boxHeight = 68,
+  imgPad = 0,
 }: {
   label?: string;
   description?: string | null;
   onLogoChange?: (url: string | null) => void;
+  boxWidth?: number;
+  boxHeight?: number;
+  imgPad?: number;
 } = {}) {
   const [userId, setUserId] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -133,9 +142,10 @@ export default function BusinessLogoSection({
         <div
           style={{
             position: 'relative',
-            width: 132, height: 68, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
+            width: boxWidth, height: boxHeight, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
             border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.04)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: imgPad,
           }}
         >
           {logoUrl ? (
