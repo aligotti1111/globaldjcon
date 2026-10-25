@@ -1050,12 +1050,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
                 checked={newExclSale} onChange={(e) => setNewExclSale(e.target.checked)} />
-              Block Site Sale
+              Exclude Site Sale
             </label>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
                 checked={newExclCodes} onChange={(e) => setNewExclCodes(e.target.checked)} />
-              Block Promo Codes
+              Exclude Promo Codes
             </label>
           </div>
           <button
@@ -1080,6 +1080,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {exclusions.length === 0 ? (
           <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
         ) : (
+          <>
+          <div style={{ ...labelStyle, marginBottom: '.5rem', paddingLeft: '.9rem' }}>Exclusion Date</div>
           <div
             className={exclusions.length > 4 ? styles.scrollList : undefined}
             style={exclusions.length > 4 ? { maxHeight: 272, overflowY: 'scroll', paddingRight: '.3rem' } : undefined}
@@ -1100,12 +1102,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
                     checked={!!ex.sale} onChange={(e) => updateExclusion(i, { sale: e.target.checked })} />
-                  Block Site Sale
+                  Exclude Site Sale
                 </label>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
                     checked={!!ex.codes} onChange={(e) => updateExclusion(i, { codes: e.target.checked })} />
-                  Block Promo Codes
+                  Exclude Promo Codes
                 </label>
               </div>
               {confirmExclDel === i ? (
@@ -1127,6 +1129,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             </div>
           ))}
           </div>
+          </>
         )}
         </div>{/* end Exclusions block */}
       </div>
