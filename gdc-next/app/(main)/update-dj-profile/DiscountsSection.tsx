@@ -12,7 +12,7 @@
 // Nothing here applies the discount to a quote — that happens in the booking
 // form using computeDiscount() from bookingSettings.ts.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import type { PromoCode, Sale, DiscountExclusion } from '@/app/(main)/[slug]/bookingSettings';
@@ -56,7 +56,6 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
 };
 const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column', minWidth: 0 };
-const dateInputStyle: React.CSSProperties = { colorScheme: 'dark', cursor: 'pointer' };
 // Small uppercase caption before each meta value in a code row.
 const metaLabel: React.CSSProperties = {
   fontSize: '.6rem',
@@ -145,11 +144,6 @@ function ViewBookingLink({ id, eventDate }: { id: string | null; eventDate?: str
   );
 }
 
-function openPicker(e: React.MouseEvent<HTMLInputElement>) {
-  const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
-  try { el.showPicker?.(); } catch { /* unsupported */ }
-}
-
 function emptyDraft(): PromoCode {
   return { code: '', type: 'percent', value: 0, active: true, expires: null, maxUses: null, uses: 0 };
 }
@@ -158,6 +152,59 @@ function emptyDraft(): PromoCode {
 // Amount and Expires all render at the same height (selects and inputs would
 // otherwise size differently).
 const fieldBox: React.CSSProperties = { height: 38, boxSizing: 'border-box', fontSize: '.78rem' };
+
+// Stable, cross-browser date field. We render our OWN box (a calendar icon plus
+// either the chosen date or a placeholder) and keep the real <input type="date">
+// invisible — used only to hold the value and open the system picker. This dodges
+// every native-rendering quirk (e.g. Safari showing today's date as a greyed
+// "placeholder" on an empty field).
+function DateField({
+  value, onChange, min, placeholder = 'Select', height = 38, fontSize = '.78rem',
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  min?: string;
+  placeholder?: string;
+  height?: number;
+  fontSize?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const openPickerNow = () => {
+    const el = ref.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+    if (!el) return;
+    try { el.showPicker?.(); } catch { el.focus(); }
+  };
+  const label = value ? new Date(`${value}T00:00:00`).toLocaleDateString() : placeholder;
+  return (
+    <div
+      onClick={openPickerNow}
+      style={{
+        position: 'relative', width: '100%', height, boxSizing: 'border-box',
+        display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px',
+        background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+        cursor: 'pointer', fontSize, fontFamily: "'Space Mono', monospace",
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8aa0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+      <span style={{ color: value ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {label}
+      </span>
+      {/* Real control: invisible, 1×1, only drives the picker + holds the value. */}
+      <input
+        ref={ref}
+        type="date"
+        min={min}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ position: 'absolute', left: 10, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
+      />
+    </div>
+  );
+}
 
 // Fields shared by the draft form and inline edit. `value` is the working copy.
 function CodeFields({
@@ -227,22 +274,7 @@ function CodeFields({
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
         <label style={labelStyle}>Expires (optional)</label>
-        <div style={{ position: 'relative', width: '100%' }}>
-          <input
-            type="date"
-            className={`${styles.settingNumber} gdcDateWhite${value.expires ? '' : ' gdcDateHidden'}`}
-            style={{ ...dateInputStyle, ...fieldBox, width: '100%' }}
-            onClick={openPicker}
-            value={value.expires || ''}
-            onChange={(e) => onField({ expires: e.target.value || null })}
-          />
-          {/* No native placeholder on date inputs — overlay "Select" when empty. */}
-          {!value.expires && (
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', pointerEvents: 'none' }}>
-              Select
-            </span>
-          )}
-        </div>
+        <DateField value={value.expires || null} onChange={(v) => onField({ expires: v })} />
       </div>
     </>
   );
@@ -624,12 +656,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 3 : undefined }}>
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
-                <input
-                  type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
-                  value={saleView.starts || ''}
-                  onChange={(e) => {
-                    const v = e.target.value || null;
+                <DateField
+                  value={saleView.starts || null}
+                  min={todayStr}
+                  height={34}
+                  fontSize={isNarrow ? '.6rem' : '.78rem'}
+                  onChange={(v) => {
                     // If the new start is after the current end, that end is no
                     // longer valid — clear it so we never keep end < start.
                     const clearEnd = v && saleView.ends && saleView.ends < v;
@@ -639,27 +671,16 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <input
-                    type="date" className={`${styles.settingNumber} gdcDateWhite${saleView.ends ? '' : ' gdcDateHidden'}`}
-                    // Can't end before it starts — the picker is capped at the
-                    // start date, and a manually-typed earlier date is ignored.
-                    min={saleView.starts || todayStr}
-                    style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
-                    value={saleView.ends || ''}
-                    onChange={(e) => {
-                      const v = e.target.value || null;
-                      if (v && saleView.starts && v < saleView.starts) return; // before start — reject
-                      updateSale({ ends: v });
-                    }}
-                  />
-                  {/* No native placeholder on date inputs — overlay "Select" when empty. */}
-                  {!saleView.ends && (
-                    <span style={{ position: 'absolute', left: isNarrow ? 4 : 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: isNarrow ? '.6rem' : '.78rem', pointerEvents: 'none' }}>
-                      Select
-                    </span>
-                  )}
-                </div>
+                <DateField
+                  value={saleView.ends || null}
+                  min={saleView.starts || todayStr}
+                  height={34}
+                  fontSize={isNarrow ? '.6rem' : '.78rem'}
+                  onChange={(v) => {
+                    if (v && saleView.starts && v < saleView.starts) return; // before start — reject
+                    updateSale({ ends: v });
+                  }}
+                />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
                 <label style={labelStyle}>Used</label>
@@ -1076,22 +1097,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
           <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
             <label style={labelStyle}>Add a date</label>
-            <div style={{ position: 'relative', width: '100%' }}>
-              <input
-                type="date" className={`${styles.settingNumber} gdcDateWhite${newExclDate ? '' : ' gdcDateHidden'}`} min={todayStr}
-                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
-                value={newExclDate}
-                onChange={(e) => { setNewExclDate(e.target.value); setExclErr(''); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
-              />
-              {/* Native date inputs can't carry a placeholder, so when nothing is
-                  picked we lay "Select" over the (transparent-text) field. */}
-              {!newExclDate && (
-                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', pointerEvents: 'none' }}>
-                  Select
-                </span>
-              )}
-            </div>
+            <DateField
+              value={newExclDate || null}
+              min={todayStr}
+              onChange={(v) => { setNewExclDate(v || ''); setExclErr(''); }}
+            />
           </div>
           {/* Both checkboxes grouped so they always sit on the same line (the
               group wraps as a unit, never splitting one below the other). */}
