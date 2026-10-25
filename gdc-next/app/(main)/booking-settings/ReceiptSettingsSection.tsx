@@ -350,10 +350,14 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1.4rem' }}>
           <BusinessLogoSection label="Add/Edit Logo" description={null} onLogoChange={setLogoUrl} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+            <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'rgba(235,235,245,.75)', marginBottom: '.1rem' }}>Header Background</span>
             {([
-              { v: 'none' as const, label: 'None' },
-              { v: 'light' as const, label: 'Light grey' },
-              { v: 'dark' as const, label: 'Dark' },
+              // The label is coloured to match the backing that option paints —
+              // white for None (white page), light-grey for Light grey, near-black
+              // for Dark.
+              { v: 'none' as const, label: 'None', col: '#ffffff' },
+              { v: 'light' as const, label: 'Light grey', col: '#dedee4' },
+              { v: 'dark' as const, label: 'Dark', col: '#1c1c22' },
             ]).map((o) => (
               <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: (!loaded || busy) ? 'default' : 'pointer' }}>
                 <input
@@ -364,7 +368,7 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
                   onChange={() => setLogoBacking(o.v)}
                   style={{ accentColor: '#00e0a4', cursor: 'inherit' }}
                 />
-                <span style={{ fontSize: '.9rem', fontWeight: 600, color: '#ececf3' }}>{o.label}</span>
+                <span style={{ fontSize: '.9rem', fontWeight: 600, color: o.col }}>{o.label}</span>
               </label>
             ))}
           </div>
