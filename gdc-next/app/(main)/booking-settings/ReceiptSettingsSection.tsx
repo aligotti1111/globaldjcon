@@ -368,6 +368,19 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
               </label>
             ))}
           </div>
+
+          {/* Receipt accent colour — sits beside the logo + backing options. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+            <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'rgba(235,235,245,.75)' }}>Receipt accent color</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <input type="color" value={color} disabled={!loaded || busy} onChange={(e) => setColor(e.target.value)}
+                style={{ width: 46, height: 34, border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, background: 'transparent', cursor: 'pointer', padding: 2 }} />
+              <input type="text" value={color} disabled={!loaded || busy}
+                onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
+                style={{ ...input, width: 110, fontFamily: 'monospace' }} maxLength={7} />
+              {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
+            </div>
+          </div>
         </div>
 
         {/* Address — discrete fields with autocomplete. */}
@@ -437,18 +450,6 @@ export default function ReceiptSettingsSection({ onDirtyChange }: { onDirtyChang
           style={{ ...input, maxWidth: 260 }} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginTop: '.6rem' }}>
           <button type="button" style={linkBtn} disabled={!loaded || busy} onClick={clearPhone}>Clear phone</button>
-        </div>
-
-        {/* Colour */}
-        <label style={{ ...label, margin: '1.6rem 0 .35rem' }}>Receipt colour</label>
-        <p style={hint}>The accent colour for the title, totals box and payment tiles on your receipts.</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.7rem', alignItems: 'center' }}>
-          <input type="color" value={color} disabled={!loaded || busy} onChange={(e) => setColor(e.target.value)}
-            style={{ width: 46, height: 34, border: '1px solid rgba(255,255,255,.14)', borderRadius: 8, background: 'transparent', cursor: 'pointer', padding: 2 }} />
-          <input type="text" value={color} disabled={!loaded || busy}
-            onChange={(e) => { const v = e.target.value; setColor(v.startsWith('#') ? v : '#' + v); }}
-            style={{ ...input, width: 120, fontFamily: 'monospace' }} maxLength={7} />
-          {color.toLowerCase() !== DEFAULT_COLOR && <button type="button" style={linkBtn} disabled={busy} onClick={resetColor}>Reset</button>}
         </div>
 
         {/* Auto-send receipt toggles — on by default. */}
