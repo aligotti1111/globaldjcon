@@ -741,9 +741,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Past sales</div>
             {/* Show ~4 at a glance; when there are more, the list scrolls inside
                 a fixed-height window instead of running down the whole page. */}
-            <div style={saleHistory.length > 4
-              ? { maxHeight: 304, overflowY: 'auto', paddingRight: '.3rem' }
-              : undefined}>
+            <div
+              className={saleHistory.length > 4 ? styles.scrollList : undefined}
+              style={saleHistory.length > 4
+                ? { maxHeight: 304, overflowY: 'auto', paddingRight: '.3rem' }
+                : undefined}
+            >
             {saleHistory.map((h, hi) => {
               const startMs = h.starts ? new Date(`${h.starts}T00:00:00`).getTime() : (h.started_at ? new Date(h.started_at).getTime() : null);
               const endMs = h.ends ? new Date(`${h.ends}T23:59:59`).getTime() : null;
@@ -884,7 +887,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         )}
 
         {/* Show ~4 codes at a glance; scroll inside a fixed window past that. */}
-        <div style={promoCodes.length > 4 ? { maxHeight: 304, overflowY: 'auto', paddingRight: '.3rem' } : undefined}>
+        <div
+          className={promoCodes.length > 4 ? styles.scrollList : undefined}
+          style={promoCodes.length > 4 ? { maxHeight: 304, overflowY: 'auto', paddingRight: '.3rem' } : undefined}
+        >
         {promoCodes.map((c, i) => {
           const isEditing = editIndex === i;
           const off = c.active === false;
@@ -1070,7 +1076,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {exclusions.length === 0 ? (
           <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
         ) : (
-          <div style={exclusions.length > 4 ? { maxHeight: 272, overflowY: 'auto', paddingRight: '.3rem' } : undefined}>
+          <div
+            className={exclusions.length > 4 ? styles.scrollList : undefined}
+            style={exclusions.length > 4 ? { maxHeight: 272, overflowY: 'auto', paddingRight: '.3rem' } : undefined}
+          >
           {exclusions.map((ex, i) => (
             <div
               key={ex.date}
