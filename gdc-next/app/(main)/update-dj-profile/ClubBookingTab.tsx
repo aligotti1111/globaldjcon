@@ -698,25 +698,28 @@ export default function ClubBookingTab({
                 subtitle="Currency, booking window, deposit and tax."
               />
               <div className={styles.sectionBody}>
-                {/* Currency — same placement as the mobile DJ booking tab. Applies to
-                    every price you set (rates, deposit, tax) and to the payment rails below. */}
-                <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
-                  <div className={styles.settingLabelWrap}>
-                    <div className={styles.settingLabel}>Currency</div>
-                    <div className={styles.settingHint}>
-                      The currency all your prices are shown in. Frozen onto each booking, so changing it won&rsquo;t re-price existing ones.
+                {/* Currency — hidden for now (USD-only today). The picker + wiring
+                    is kept below behind a `false &&` guard so we can bring it back
+                    by deleting the guard; ratesDraft.rate_currency stays live. */}
+                {false && (
+                  <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
+                    <div className={styles.settingLabelWrap}>
+                      <div className={styles.settingLabel}>Currency</div>
+                      <div className={styles.settingHint}>
+                        The currency all your prices are shown in. Frozen onto each booking, so changing it won&rsquo;t re-price existing ones.
+                      </div>
                     </div>
+                    <select
+                      value={ratesDraft.rate_currency}
+                      onChange={(e) => setRateField('rate_currency', e.target.value)}
+                      className={styles.settingSelect}
+                    >
+                      {CURRENCIES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.label}</option>
+                      ))}
+                    </select>
                   </div>
-                  <select
-                    value={ratesDraft.rate_currency}
-                    onChange={(e) => setRateField('rate_currency', e.target.value)}
-                    className={styles.settingSelect}
-                  >
-                    {CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
+                )}
                 <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
