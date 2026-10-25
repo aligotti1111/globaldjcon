@@ -2735,3 +2735,28 @@
   .secTabNav { display: none; }
   .secTabSelect { display: block; }
 }
+
+/* Fixed-height lists (past sales, promo codes, exclusions) that scroll past ~4
+   rows. Force a visible scrollbar so it's obvious there's more below — WebKit
+   hides overlay scrollbars by default. */
+.scrollList {
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: rgba(255,255,255,.35) transparent;
+}
+.scrollList::-webkit-scrollbar {
+  width: 10px;
+}
+.scrollList::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.05);
+  border-radius: 8px;
+}
+.scrollList::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.28);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.scrollList::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,.45);
+  background-clip: padding-box;
+}
