@@ -275,12 +275,17 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   const backing: 'none' | 'light' | 'dark' = opts.business.logoBacking ?? 'light';
   const headerInk = backing === 'dark' ? rgb(1, 1, 1) : INK;
   const headerMuted = backing === 'dark' ? rgb(0.79, 0.79, 0.82) : MUTED;
+  // Captured so the content that follows the header can be pushed below the band
+  // (the extra vertical padding extends the band past the text block).
+  let bandBottomY: number | null = null;
   if (backing !== 'none') {
-    const pad = 6;
+    const pad = 6;      // horizontal breathing room around the content
+    const vpad = 16;    // more top/bottom padding so the band isn't cramped
     // The band bottom is the lowest of the logo, the business block and the
-    // title/date/reference column; the top sits just above the name/logo.
-    const bandBottom = Math.min(y - blockH, y - 58, logoImg ? y - logoH - 1 : y) - pad;
-    const bandTop = y + 6;
+    // title/date/reference column; the top sits above the name/logo.
+    const bandBottom = Math.min(y - blockH, y - 58, logoImg ? y - logoH - 1 : y) - vpad;
+    bandBottomY = bandBottom;
+    const bandTop = y + vpad;
     const bandLeft = MARGIN - pad;
     const bandW = (rightX - MARGIN) + pad * 2;
     const bandH = bandTop - bandBottom;
@@ -321,7 +326,11 @@ export async function buildDocumentPdf(opts: ReceiptDocOptions): Promise<Uint8Ar
   drawR(opts.dateText, rightX, y - 38, 11, reg, headerMuted);
   drawR(`Reference: ${opts.docNumber}`, rightX, y - 53, 11, reg, headerMuted);
 
+  // Clear the coloured band before the divider — with the extra vertical
+  // padding the band now extends below the text block, so drop the divider to
+  // just under it (plus a little breathing room).
   y = headerBottom - 12;
+  if (bandBottomY != null) y = Math.min(y, bandBottomY - 14);
 
   // Divider.
   page.drawLine({ start: { x: MARGIN, y }, end: { x: rightX, y }, thickness: 1, color: LINE });
