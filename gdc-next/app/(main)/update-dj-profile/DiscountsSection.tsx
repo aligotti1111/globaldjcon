@@ -1,2762 +1,1130 @@
-/* update-dj-profile styles — port of update-dj-profile.css plus the
-   inline styles from update-dj-profile.html. Class names hashed by
-   CSS modules — the public-facing class names don't need to match
-   vanilla. */
+'use client';
 
-/* ── Page shell ───────────────────────────────────────────── */
-.container {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-.headerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: .75rem;
-}
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  color: var(--neon);
-  text-decoration: none;
-  font-size: .85rem;
-}
-.header {
-  margin-bottom: 2rem;
-  padding-left: .5rem;
-  padding-top: 2rem;
-}
-.header h1 {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.1rem;
-  letter-spacing: .04em;
-  color: var(--white);
-  margin: 0;
-  line-height: 1;
-}
-.header p {
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  margin: .35rem 0 0;
-}
-.card {
-  background: #000000;
-  border: 1px solid rgba(255, 255, 255, .6);
-  border-radius: 10px;
-  padding: 2.5rem;
-}
-.alert {
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  font-size: .9rem;
-}
-.alertError {
-  background: rgba(255, 95, 95, .1);
-  border: 1px solid rgba(255, 95, 95, .3);
-  color: #ff5f5f;
-}
-.alertSuccess {
-  background: rgba(61, 220, 132, .1);
-  border: 1px solid rgba(61, 220, 132, .3);
-  color: #3ddc84;
+// DiscountsSection — DJ-facing management for the automatic sale + promo
+// codes. Shared by the mobile (BookingTab) and club (ClubBookingTab) settings.
+// Presentational: reads current values, reports changes via onChange, which
+// the parent folds into booking_settings via patch().
+//
+// Promo codes: you build a code in the draft form, hit Activate, and it drops
+// into a single list. That list holds active AND deactivated codes (it doubles
+// as history), each with inline Edit and Deactivate/Reactivate.
+//
+// Nothing here applies the discount to a quote — that happens in the booking
+// form using computeDiscount() from bookingSettings.ts.
+
+import { useEffect, useState } from 'react';
+import styles from './updateDjProfile.module.css';
+import { createClient } from '@/lib/supabase/client';
+import type { PromoCode, Sale, DiscountExclusion } from '@/app/(main)/[slug]/bookingSettings';
+
+interface Props {
+  promoCodes: PromoCode[];
+  sale: Sale;
+  // Past (ended) sales, most recent first. Shown as a read-only history below
+  // the Run-a-sale controls.
+  saleHistory?: Sale[];
+  // Dates where the sale and/or promo codes are blocked.
+  exclusions?: DiscountExclusion[];
+  currencySymbol?: string;
+  onChange: (patch: { promo_codes?: PromoCode[]; sale?: Sale; sale_history?: Sale[]; exclusions?: DiscountExclusion[] }) => void;
 }
 
-/* ── Tabs ─────────────────────────────────────────────────── */
-.tabsBar {
-  display: flex;
-  gap: .4rem;
-  margin-bottom: 1.5rem;
-  background: var(--deep);
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  overflow-x: auto;
-}
-.tabBtn {
-  flex: 1;
-  padding: .6rem .5rem;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  color: var(--muted);
-  transition: all .2s;
-  white-space: nowrap;
-}
-.tabBtnActive {
-  background: var(--neon-dim);
-  color: var(--neon);
-  border: 1px solid var(--neon);
+interface Redemption {
+  id: string | null;
+  requester_name: string | null;
+  event_date: string | null;
+  created_at: string | null;
+  discount_code: string | null;
+  discount_label: string | null;
+  discount_amount: number | null;
+  original_rate: number | null;
+  currency: string | null;
 }
 
-/* ── Form groups ──────────────────────────────────────────── */
-.formGroup {
-  margin-bottom: 1.5rem;
-}
-.formGroup label {
-  display: block;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--white);
-  margin-bottom: .5rem;
-}
-.input,
-.select,
-.textarea {
-  width: 100%;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .7rem .9rem;
-  color: var(--white);
-  font-size: .9rem;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-  transition: border-color .2s;
-  box-sizing: border-box;
-}
-.input:focus,
-.select:focus,
-.textarea:focus {
-  border-color: var(--neon);
-}
-.input:read-only {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.textarea {
-  resize: vertical;
-}
-.fieldHint {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 5px 0 0;
-}
-.fieldHint strong {
-  color: var(--neon);
+function fmtDate(s: string | null): string {
+  if (!s) return '';
+  const d = new Date(s.length <= 10 ? `${s}T00:00:00` : s);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
 
-/* ── Specialization (mobile-events / club-genres) ──────────── */
-.specBox {
-  margin-top: .5rem;
-  padding: .8rem 1rem 1rem;
-  background: rgba(10, 10, 16, .6);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.checkboxGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: .35rem;
-  margin-top: .4rem;
-}
-/* Subtle subheading above each mobile party-type group (General / Specialty).
-   Quiet by design — small, muted, uppercase Space Mono. */
-.partyGroupLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  font-weight: 700;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  opacity: .65;
-}
-/* The second group ("Specialty Events") needs breathing room above it
-   to separate it from the General grid. */
-.partyGroupLabelLater {
-  margin-top: 1rem;
-}
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .45rem .7rem;
-  background: transparent;
-  border: 1px solid rgba(30, 30, 48, .5);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: .8rem;
-  color: var(--white);
-  margin: 0;
-  /* Prevent the text label from collapsing the input. */
-  min-width: 0;
-}
-.checkboxLabel:hover {
-  border-color: var(--neon);
-}
-/* Direct class on the input — avoids any CSS Modules attribute-selector
-   issues. The previous `.checkboxLabel input[type='checkbox']` rule was
-   silently not winning the cascade for reasons that weren't obvious. */
-.checkboxInput {
-  appearance: auto;
-  -webkit-appearance: checkbox;
-  accent-color: var(--neon);
-  flex: 0 0 15px;
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  cursor: pointer;
-}
+const labelStyle: React.CSSProperties = {
+  fontSize: '.7rem',
+  textTransform: 'uppercase',
+  letterSpacing: '.05em',
+  color: 'var(--muted, #8a8aa0)',
+  marginBottom: '.25rem',
+  display: 'block',
+};
+const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column', minWidth: 0 };
+const dateInputStyle: React.CSSProperties = { colorScheme: 'dark', cursor: 'pointer' };
+// Small uppercase caption before each meta value in a code row.
+const metaLabel: React.CSSProperties = {
+  fontSize: '.6rem',
+  textTransform: 'uppercase',
+  letterSpacing: '.06em',
+  color: 'var(--muted, #8a8aa0)',
+  marginRight: '.35rem',
+};
+// Brand gradient used across this section (badge headers, status pill, CTA).
+const GRAD = 'linear-gradient(100deg,#22e3ad,#31d0ff)';
 
-/* ── Private profile toggle (top of General tab) ────────────── */
-.privateRow {
-  margin-bottom: 1.25rem;
-  display: flex;
-  align-items: flex-start;
-  gap: .6rem;
-}
-.privateRow input[type='checkbox'] {
-  accent-color: var(--neon);
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.privateLabel {
-  font-size: .82rem;
-  color: var(--white);
-  font-weight: 500;
-}
-.privateHint {
-  font-size: .72rem;
-  color: var(--muted);
-  margin-top: 2px;
-  line-height: 1.4;
-}
-.privateUrl {
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-}
-
-/* ── Submit button ────────────────────────────────────────── */
-.submitBtn {
-  display: block;
-  width: 100%;
-  padding: .9rem;
-  background: var(--neon-dim);
-  border: 1px solid var(--neon);
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .75rem;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-top: 1.5rem;
-}
-.submitBtn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-.submitBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ── Placeholder for tabs not yet built ─────────────────────── */
-.placeholderPane {
-  padding: 2.5rem 1rem;
-  text-align: center;
-  background: rgba(255, 179, 71, .06);
-  border: 1px dashed rgba(255, 179, 71, .25);
-  border-radius: 8px;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-  letter-spacing: .04em;
-  line-height: 1.6;
-}
-.placeholderTitle {
-  color: var(--amber);
-  font-size: .8rem;
-  margin-bottom: .5rem;
-}
-
-/* ─────────────────────────────────────────────────────────── */
-/* BOOKING TAB                                                 */
-/* ─────────────────────────────────────────────────────────── */
-
-.bookingEnabledRow {
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.bookingEnabledLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--white);
-  margin-bottom: .25rem;
-}
-.bookingEnabledHint {
-  font-size: .8rem;
-  color: var(--muted);
-}
-/* Toggle switch */
-.toggleSwitch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-.toggleSwitch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.toggleTrack {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background: var(--border);
-  border-radius: 24px;
-  transition: .3s;
-}
-.toggleSwitch input:checked + .toggleTrack {
-  background: var(--neon);
-}
-.toggleThumb {
-  position: absolute;
-  pointer-events: none;
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background: var(--muted);
-  border-radius: 50%;
-  transition: .3s;
-}
-.toggleSwitch input:checked + .toggleTrack + .toggleThumb {
-  transform: translateX(20px);
-  background: var(--black);
-}
-
-/* Section card with neon header bar */
-.sectionCard {
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 1.25rem;
-}
-.sectionHeader {
-  background: rgba(0, 245, 196, .08);
-  border-bottom: 1px solid rgba(0, 245, 196, .2);
-  padding: .6rem 1.25rem;
-  text-align: center;
-}
-.sectionTitle {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2rem;
-  letter-spacing: .08em;
-  color: var(--white);
-  line-height: 1;
-}
-.sectionBody {
-  padding: 1.25rem;
-}
-.settingsBody {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.settingRow {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.settingLabelWrap {
-  flex: 1;
-  min-width: 180px;
-}
-.settingLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--neon);
-  margin-bottom: .3rem;
-}
-.settingHint {
-  font-size: .75rem;
-  color: var(--muted);
-}
-.settingSelect {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .55rem .9rem;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  cursor: pointer;
-  min-width: 140px;
-  outline: none;
-}
-.settingNumber {
-  width: 80px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .55rem .75rem;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  text-align: center;
-  outline: none;
-}
-
-.bodyHint {
-  font-size: .8rem;
-  color: var(--muted);
-  margin-bottom: 1rem;
-  line-height: 1.5;
-}
-/* Brighter, slightly larger variant for the Add Packages intro — the muted
-   bodyHint gray wasn't legible enough for this longer explanatory copy. */
-.packageIntro {
-  font-size: .85rem;
-  color: rgba(255, 255, 255, .85);
-  margin-bottom: 1rem;
-  line-height: 1.55;
-}
-/* Bold (no color change) for the category names inside the Add Packages intro. */
-.packageIntroHi {
-  font-weight: 700;
-}
-
-/* No-types warning (when DJ has no mobile event types selected yet) */
-.noTypesNotice {
-  background: rgba(107, 107, 136, .08);
-  border: 1px solid rgba(107, 107, 136, .2);
-  border-radius: 8px;
-  padding: 1rem;
-  text-align: center;
-  margin-bottom: 1rem;
-}
-.noTypesNoticeText {
-  font-size: .82rem;
-  color: var(--muted);
-  margin-bottom: .75rem;
-}
-.noTypesGoBtn {
-  padding: .5rem 1rem;
-  background: var(--neon-dim);
-  border: 1px solid var(--neon);
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  border-radius: 6px;
-  cursor: pointer;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-/* ── Package card ─────────────────────────────────────────── */
-.pkgCard {
-  background: #000000;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: .75rem;
-}
-.pkgHeader {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.25rem;
-  padding-bottom: .3rem;
-  border-bottom: 1px solid rgba(0, 245, 196, .3);
-}
-.pkgHeaderTitle {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.6rem;
-  letter-spacing: .08em;
-  color: var(--neon);
-  text-align: center;
-}
-.pkgRemoveBtn {
-  position: absolute;
-  right: 0;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .85rem;
-}
-/* Wrapper: bordered tab frame on top, pill row beneath (outside the frame). */
-.innerCatTabsWrap {
-  margin-bottom: 1rem;
-}
-.innerCatTabs {
-  display: flex;
-  gap: .35rem;
-  background: rgba(10, 10, 16, .6);
-  padding: 3px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  overflow-x: auto;
-}
-.innerCatTab {
-  flex: 1;
-  padding: .45rem .5rem;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: .95rem;
-  font-weight: 400;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  white-space: nowrap;
-  background: transparent;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .3rem;
-}
-/* Pill row sits BELOW the bordered tab frame. Padding matches the frame's
-   border(1px) + inner padding(3px) so each column lines up under its tab. */
-.catStatusRow {
-  display: flex;
-  gap: .35rem;
-  padding: 0 4px;
-}
-.catStatusCol {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  justify-content: flex-start;
-}
-/* Tiny rectangular saved/unsaved pill, snug under the frame, far-left of its
-   column. Text + border color set inline (neon vs amber). */
-.catTabStatus {
-  margin-top: -1px;
-  margin-left: 2px;
-  padding: .1rem .4rem .12rem;
-  border: 1px solid;
-  border-radius: 4px;
-  background: #0d0d14;
-  font-family: 'Space Mono', monospace;
-  font-size: .5rem;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  line-height: 1;
-  white-space: nowrap;
-}
-.innerCatTabActive {
-  background: var(--neon-dim);
-  color: var(--neon);
-  border: 1px solid var(--neon);
-}
-.innerCatBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  background: #ff5f5f;
-  color: #fff;
-  font-size: .6rem;
-  font-weight: 900;
-  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-  flex-shrink: 0;
-}
-/* ── Category checkmark row (sits ABOVE the tab boxes) ───────────────── */
-.catCheckRow {
-  display: flex;
-  align-items: center;
-  margin-bottom: .5rem;
-  padding: 0 3px;
-}
-.catCheckStep {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.catCheck {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, .18);
-  color: rgba(255, 255, 255, .25);
-  font-size: .65rem;
-  font-weight: 900;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-  background: rgba(255, 255, 255, .06);
-  transition: all .2s;
-}
-.catCheckDone {
-  background: var(--neon, #00f5c4);
-  border-color: var(--neon, #00f5c4);
-  color: #050507;
-}
-/* Connecting line: runs between circles, meeting each circle's edge.
-   Incomplete segments are dashed (jagged); completed segments solid green. */
-.catStepLine {
-  position: absolute;
-  top: 50%;
-  left: calc(50% + 9px);
-  width: calc(100% - 18px);
-  height: 0;
-  border-top: 2px dashed rgba(255, 255, 255, .22);
-  transform: translateY(-50%);
-  z-index: 0;
-  transition: border-color .2s;
-}
-.catStepLineDone {
-  border-top: 2px solid var(--neon, #00f5c4);
-}
-.catStepLineFromDone {
-  border-top: 2px dashed var(--neon, #00f5c4);
-}
-/* ── General coverage arrow (inside the General tab) + dropdown ──────── */
-.generalCoverageArrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: .35rem;
-  font-size: .7rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform .2s;
-}
-.generalCoverageArrowOpen {
-  transform: rotate(180deg);
-}
-.generalCoverageList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .4rem;
-  margin: -.5rem 0 1rem;
-}
-.generalCoverageChip {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .04em;
-  padding: .3rem .55rem;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: rgba(10, 10, 16, .6);
-  color: var(--white);
-}
-
-.pkgFieldGroup {
-  margin-bottom: .75rem;
-}
-/* Thin divider between the major sections of a package card (Title,
-   Details, Pricing, Setup Photos) so they don't read as one bunched block. */
-.pkgDivider {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 1.15rem 0;
-}
-.pkgFieldLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #ffffff;
-  display: block;
-  margin-bottom: .35rem;
-}
-.pkgFieldRequired {
-  color: #ff5f5f;
-}
-.pkgInput {
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .5rem .75rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-  box-sizing: border-box;
-}
-.pkgInput:focus {
-  border-color: var(--neon);
-}
-
-/* Rich-text toolbar + editor */
-.rteToolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .3rem;
-  margin-bottom: .35rem;
-  align-items: center;
-}
-.rteBtn {
-  padding: .2rem .45rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--white);
-  font-size: .72rem;
-  cursor: pointer;
-  line-height: 1;
-}
-.rteBtnBold { font-weight: 700; }
-.rteBtnItalic { font-style: italic; }
-.rteBtnUnder { text-decoration: underline; }
-.rteBtnCheck { color: var(--neon); }
-.rteSeparator {
-  width: 1px;
-  height: 18px;
-  background: var(--border);
-  margin: 0 2px;
-}
-.rteEditor {
-  min-height: 80px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 1rem 1.1rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-  line-height: 1.6;
-  outline: none;
-}
-.rteEditor:focus {
-  border-color: var(--neon);
-}
-.rteEditor :global(ul),
-.rteEditor :global(ol) {
-  padding-left: 1.5rem;
-  margin: 0 0 .5rem;
-}
-.rteEditor :global(li) {
-  margin-bottom: .25rem;
-}
-.rteEditor :global(ul.gdj-check-list) {
-  list-style: none;
-  padding-left: .25rem;
-}
-.rteEditor :global(ul.gdj-check-list) li {
-  position: relative;
-  padding-left: 1.5rem;
-  margin-bottom: .25rem;
-}
-.rteEditor :global(ul.gdj-check-list) li::before {
-  content: "\2713";
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: var(--neon);
-  font-weight: 700;
-}
-
-/* Pricing rows */
-.priceRow {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  margin-bottom: .4rem;
-  flex-wrap: wrap;
-}
-.priceRowLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  color: var(--neon, #00f5c4);
-  white-space: nowrap;
-  min-width: 80px;
-}
-.priceCurrency {
-  color: var(--muted);
-  font-size: .85rem;
-}
-.priceInput {
-  flex: 1;
-  max-width: 120px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .4rem .6rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.priceInput::-webkit-outer-spin-button,
-.priceInput::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.priceInput:disabled {
-  opacity: 0.35;
-}
-.priceCurrencyDisabled {
-  opacity: 0.35;
-}
-.perHourLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  color: var(--neon);
-  white-space: nowrap;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.reqAllRow {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  margin: .6rem 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  cursor: pointer;
-}
-.reqAllRow input {
-  accent-color: var(--neon);
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-.reqAllLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .06em;
-  text-transform: none;
-  color: var(--white);
-  cursor: pointer;
-  line-height: 1.4;
-}
-.reqAllLabel .reqAllHighlight {
-  color: var(--neon, #00f5c4);
-}
-
-/* Inner label that actually toggles the checkbox. The ? sits OUTSIDE this
-   label (sibling in .reqAllRow) so tapping it opens the tooltip instead of
-   flipping the toggle. */
-.reqAllToggle {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  cursor: pointer;
-}
-/* The ? info badge + its hover/tap tooltip. */
-.reqAllInfo {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 1px solid var(--muted, #8a8a99);
-  color: var(--muted, #8a8a99);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  font-weight: 700;
-  cursor: pointer;
-  user-select: none;
-}
-.reqAllInfo:hover,
-.reqAllInfo:focus {
-  border-color: var(--neon, #00f5c4);
-  color: var(--neon, #00f5c4);
-  outline: none;
-}
-.reqAllTip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 250px;
-  max-width: 72vw;
-  background: #0a0a10;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .65rem .75rem;
-  font-family: 'DM Sans', sans-serif;
-  font-size: .72rem;
-  font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--white, #fff);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .55);
-  z-index: 50;
-  display: none;
-}
-.reqAllInfo:hover .reqAllTip,
-.reqAllInfo:focus .reqAllTip {
-  display: block;
-}
-
-/* Cocktail block (wedding category only) */
-.cocktailBlock {
-  margin-bottom: .75rem;
-  padding: .75rem;
-  background: rgba(0, 245, 196, .04);
-  border: 1px solid rgba(0, 245, 196, .12);
-  border-radius: 6px;
-}
-.cocktailBanner {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.15rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--neon, #00f5c4);
-  margin-bottom: .6rem;
-  padding-bottom: .3rem;
-  border-bottom: 1px solid rgba(0, 245, 196, .25);
-}
-.cocktailCheckbox {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  cursor: pointer;
-  accent-color: var(--neon, #00f5c4);
-}
-.cocktailRow {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  cursor: pointer;
-}
-.cocktailRow input {
-  accent-color: var(--neon);
-}
-.cocktailPrompt {
-  font-size: .82rem;
-  color: var(--white);
-}
-.cocktailPriceWrap {
-  margin-top: .5rem;
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-}
-
-/* Setup hours row */
-.setupRow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .5rem;
-  margin-bottom: .75rem;
-  text-align: center;
-}
-.setupSelect {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .4rem 1.2rem;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  cursor: pointer;
-  outline: none;
-  text-align: center;
-  min-width: 120px;
-}
-
-/* Photo upload box */
-.uploadBox {
-  position: relative;
-  border: 2px dashed var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  overflow: hidden;
-  background: var(--deep);
-  min-height: 90px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.25rem .75rem;
-  gap: .4rem;
-}
-.uploadBoxLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.uploadBoxHint {
-  font-size: .68rem;
-  color: var(--muted);
-}
-.uploadInput {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-}
-.photoPreviewRow {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-}
-.photoPreviewImg {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-  display: block;
-}
-.photoActions {
-  display: flex;
-  flex-direction: column;
-  gap: .4rem;
-}
-.photoActionLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .4rem .75rem;
-  background: var(--neon-dim);
-  border: 1px solid var(--neon);
-  border-radius: 5px;
-  cursor: pointer;
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--neon);
-}
-.photoActionRemove {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .4rem .75rem;
-  background: transparent;
-  border: 1px solid rgba(255, 95, 95, .3);
-  border-radius: 5px;
-  cursor: pointer;
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #ff5f5f;
-}
-.photoPreviewWrap {
-  position: relative;
-  display: inline-block;
-  flex-shrink: 0;
-}
-.photoIconActions {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  right: 6px;
-  display: flex;
-  justify-content: space-between;
-}
-.photoIconBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  cursor: pointer;
-  background: rgba(0, 0, 0, .45);
-  border: none;
-  color: #ffffff;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
-  transition: background .15s;
-}
-.photoIconBtn svg {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
-}
-.photoIconBtn:hover {
-  background: rgba(0, 0, 0, .7);
-}
-.uploadStatus {
-  margin-top: .35rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .04em;
-  min-height: 1.2em;
-}
-.uploadStatusUploading { color: var(--amber); }
-.uploadStatusDone { color: var(--neon); }
-.uploadStatusError { color: #ff5f5f; }
-
-/* Save row inside package card */
-.pkgSaveRow {
-  margin-top: .75rem;
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  flex-wrap: wrap;
-}
-.pkgSaveBtn {
-  padding: .5rem 1.1rem;
-  background: var(--neon);
-  border: none;
-  border-radius: 6px;
-  color: var(--black);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.pkgSaveBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.pkgSaveStatus {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-}
-.pkgSaveStatusOk { color: var(--neon); }
-.pkgSaveStatusErr { color: #ff5f5f; }
-
-.addPkgBtn {
-  margin-top: .75rem;
-  width: 100%;
-  padding: 1.1rem;
-  background: #ffffff;
-  border: 1px solid #ffffff;
-  border-radius: 6px;
-  color: #000000;
-  font-family: 'Space Mono', monospace;
-  font-size: .95rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.addPkgBtn:hover {
-  background: #e8e8e8;
-  border-color: #e8e8e8;
-}
-.addPkgBtn:hover {
-  border-color: var(--neon);
-  color: var(--neon);
-}
-
-/* Empty wedding/mitzvah notice */
-.catEmptyNotice {
-  display: flex;
-  align-items: flex-start;
-  gap: .6rem;
-  padding: .75rem 1rem;
-  background: rgba(255, 95, 95, .08);
-  border: 1px solid rgba(255, 95, 95, .3);
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-.catEmptyIcon {
-  color: #ff5f5f;
-  font-size: 1rem;
-  flex-shrink: 0;
-  line-height: 1.4;
-}
-.catEmptyText {
-  font-size: .8rem;
-  color: #ff5f5f;
-  line-height: 1.5;
-}
-
-/* ─────────────────────────────────────────────────────────── */
-/* Calendar (mobile DJ availability — owner edit mode)         */
-/* ─────────────────────────────────────────────────────────── */
-
-.calNav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-.calNavBtn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  border-radius: 5px;
-  padding: .35rem .7rem;
-  cursor: pointer;
-  font-size: .85rem;
-}
-.calNavLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.calContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-.calMonthWrap {
-  background: rgba(255, 255, 255, .02);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .5rem;
-}
-.calMonthHeader {
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--white);
-  margin-bottom: .5rem;
-  text-align: center;
-}
-.calLabelRow {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  margin-bottom: 2px;
-}
-.calLabel {
-  text-align: center;
-  font-family: 'Space Mono', monospace;
-  font-size: .5rem;
-  color: var(--muted);
-  padding: .15rem 0;
-}
-.calGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-.calCell {
-  position: relative;
-  border-radius: 4px;
-  padding: 4px 2px 2px;
-  text-align: center;
-  border: 1px solid var(--border);
-  background: transparent;
-  min-height: 52px;
-  transition: all 0.15s;
-}
-.calCellPast,
-.calCellBeyond {
-  background: transparent;
-  border-color: rgba(30, 30, 48, .5);
-  opacity: 0.5;
-}
-.calCellBooked {
-  /* Solid red fill (matches embed) */
-  background: #ff5f5f;
-  border-color: #ff5f5f;
-}
-.calCellUnavail {
-  /* Diagonal stripe pattern (matches embed) */
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 4px,
-    rgba(255, 255, 255, 0.15) 4px,
-    rgba(255, 255, 255, 0.15) 5px
+// A section block: pure-black card with a bright hairline border. The two
+// blocks (Run a sale / Promo codes) sit inside the panel and read as distinct.
+const blockStyle: React.CSSProperties = {
+  background: '#000',
+  border: '1px solid rgba(255,255,255,.16)',
+  borderRadius: 16,
+  padding: '1.35rem 1.35rem 1.2rem',
+  marginBottom: '1.15rem',
+};
+// Highlighted, gradient-badge header. Renders an icon chip + bold title inside
+// a tinted gradient pill so each section clearly stands out from the black card.
+function SecHeader({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 12,
+        padding: '10px 18px 10px 12px', borderRadius: 14,
+        background: 'linear-gradient(100deg,rgba(34,227,173,.18),rgba(49,208,255,.14))',
+        border: '1px solid rgba(255,255,255,.26)', marginBottom: 16,
+      }}
+    >
+      <span
+        style={{
+          width: 30, height: 30, borderRadius: 9, background: GRAD,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          boxShadow: '0 6px 18px -6px rgba(34,227,173,.7)',
+        }}
+      >
+        {icon}
+      </span>
+      <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff' }}>{label}</span>
+    </div>
   );
-  border-color: var(--border);
 }
-.calCellFull {
-  background: rgba(255, 179, 71, .12);
-  border-color: rgba(255, 179, 71, .5);
-}
-.calCellEmpty {
-  background: transparent;
-  border: none;
-}
-.calCellNum {
-  font-size: .72rem;
-  font-family: 'DM Sans', sans-serif;
-  color: var(--white);
-  line-height: 1.2;
-}
-.calCellNumPast { color: var(--muted); }
-.calCellNumBooked { color: #ffffff; }
-.calCellNumUnavail { color: var(--muted); }
-.calCellNumFull { color: #ffb347; }
-.calCellQuickBtn {
-  position: absolute;
-  bottom: 3px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: .65rem;
-  padding: 0;
-  line-height: 1;
-  font-weight: 700;
-}
-.calCellQuickBtnX {
-  left: 2px;
-  color: rgba(255, 255, 255, .2);
-}
-.calCellQuickBtnCheck {
-  left: 2px;
-  color: var(--neon);
-}
-.calCellEditBtn {
-  position: absolute;
-  bottom: 3px;
-  right: 2px;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .65rem;
-  padding: 0;
-  line-height: 1;
-}
-.calEditedDot {
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Space Mono', monospace;
-  font-size: .38rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--neon);
-  opacity: .9;
-  white-space: nowrap;
-}
-.calLegendRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: .75rem;
-  border-top: 1px solid var(--border);
-}
-.calLegendItem {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  color: var(--muted);
+const iconSale = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+const iconPromo = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 12V7H4v5a2 2 0 0 1 0 4v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1a2 2 0 0 1 0-4z" />
+    <line x1="12" y1="7" x2="12" y2="19" />
+  </svg>
+);
+const iconExcl = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+    <line x1="9" y1="16" x2="15" y2="16" />
+  </svg>
+);
+const usedCellValue: React.CSSProperties = {
+  height: 38, display: 'inline-flex', alignItems: 'center', gap: 4,
+  color: 'var(--white,#fff)', fontSize: '.88rem', fontWeight: 700,
+};
+
+// A small link that jumps to a booking's card via the ?open=<id> deep link
+// (expands and scrolls to it). A booking whose event date has passed lives on
+// the Past Bookings page, so route there; otherwise Upcoming Bookings. Both
+// pages read ?open.
+function ViewBookingLink({ id, eventDate }: { id: string | null; eventDate?: string | null }) {
+  if (!id) return null;
+  const isPast = !!eventDate && new Date(`${eventDate}T23:59:59`).getTime() < Date.now();
+  const base = isPast ? '/past-bookings' : '/upcoming-bookings';
+  return (
+    <a
+      href={`${base}?open=${id}`}
+      onClick={(e) => e.stopPropagation()}
+      style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+    >
+      View booking
+    </a>
+  );
 }
 
-/* ── Day editor modal ─────────────────────────────────────── */
-.modalBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  background: rgba(0, 0, 0, .8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-.modalInner {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.75rem;
-  width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.modalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
-.modalTitle {
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .06em;
-  color: var(--neon);
-}
-.modalCloseBtn {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 1.2rem;
-}
-.modalRadioGroup {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
-.modalRadioLabel {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  cursor: pointer;
-}
-.modalRadioLabel input {
-  flex-shrink: 0;
-}
-.modalActions {
-  display: flex;
-  gap: .75rem;
-  margin-top: 1rem;
-}
-.modalCancelBtn {
-  flex: 1;
-  padding: .75rem;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  cursor: pointer;
-}
-.modalSaveBtn {
-  flex: 1;
-  padding: .75rem;
-  background: var(--neon);
-  border: none;
-  border-radius: 6px;
-  color: var(--black);
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.modalField {
-  margin-bottom: .75rem;
-}
-.modalLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--white);
-  display: block;
-  margin-bottom: .35rem;
-}
-.modalLabelNeon {
-  color: var(--neon);
-}
-.modalInput {
-  width: 100%;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .5rem .75rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-  box-sizing: border-box;
-}
-.modalNumberInput {
-  width: 80px;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .5rem .75rem;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .8rem;
-  text-align: center;
-  outline: none;
-}
-.modalTimeRow {
-  display: flex;
-  gap: .75rem;
-}
-.modalTimeRow > div {
-  flex: 1;
+function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+  const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+  try { el.showPicker?.(); } catch { /* unsupported */ }
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/* Avatar (top of General tab) + Crop Modal                    */
-/* Faithful port of update-dj-profile.css avatar-* + crop-*    */
-/* ─────────────────────────────────────────────────────────── */
-
-.avatarTop {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.25rem;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  cursor: pointer;
-  transition: border-color .2s;
-}
-.avatarTop:hover {
-  border-color: var(--neon);
-}
-.avatarCircle {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--card);
-  border: 2px solid var(--border);
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.4rem;
-  letter-spacing: .05em;
-  position: relative;
-}
-.avatarCircleImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  position: absolute;
-  inset: 0;
-}
-.avatarTopInfo {
-  flex: 1;
-}
-.avatarTopInfo strong {
-  display: block;
-  font-size: .9rem;
-  color: var(--white);
-  margin-bottom: .2rem;
-}
-.avatarTopInfo span {
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--neon);
-}
-.avatarTopInfoUpdated span {
-  color: #3ddc84;
-}
-.avatarTopInfoErr span {
-  color: #ff5f5f;
-}
-.avatarDeleteBtn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, .8);
-  border: 1px solid rgba(255, 95, 95, .7);
-  color: #ff5f5f;
-  font-size: .7rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .2s;
-  padding: 0;
-  line-height: 1;
-}
-.avatarDeleteBtn:hover {
-  background: rgba(255, 95, 95, .3);
+function emptyDraft(): PromoCode {
+  return { code: '', type: 'percent', value: 0, active: true, expires: null, maxUses: null, uses: 0 };
 }
 
-/* Crop modal */
-.cropModal {
-  display: flex;
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, .85);
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-.cropModalInner {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  max-width: 500px;
-  width: 95%;
-}
-.cropModalInner h3 {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.6rem;
-  letter-spacing: .04em;
-  color: var(--white);
-  margin: 0 0 1rem;
-}
-.cropCanvasWrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #000;
-  cursor: grab;
-  user-select: none;
-  border: 1px solid var(--border);
-  touch-action: none;
-}
-.cropCanvasWrap:active {
-  cursor: grabbing;
-}
-.cropCanvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.cropCircleOverlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.cropCircleOverlay::after {
-  content: '';
-  position: absolute;
-  top: 10%;
-  left: 10%;
-  right: 10%;
-  bottom: 10%;
-  border-radius: 50%;
-  border: 2px solid var(--neon);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .55);
-}
-.cropControls {
-  margin-top: 1rem;
-}
-.cropControls label {
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  display: block;
-  margin-bottom: .4rem;
-}
-.cropZoomInput {
-  width: 100%;
-  accent-color: var(--neon);
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-.cropError {
-  margin-top: .75rem;
-  padding: .5rem .75rem;
-  background: rgba(255, 95, 95, .1);
-  border: 1px solid rgba(255, 95, 95, .3);
-  border-radius: 6px;
-  color: #ff5f5f;
-  font-size: .75rem;
-}
-.cropBtnsRow {
-  display: flex;
-  gap: .6rem;
-  margin-top: 1rem;
-}
-.cropBtnCancel,
-.cropBtnApply {
-  flex: 1;
-  padding: .75rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-.cropBtnCancel {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-}
-.cropBtnCancel:hover:not(:disabled) {
-  border-color: var(--white);
-  color: var(--white);
-}
-.cropBtnApply {
-  background: var(--neon);
-  border: 1px solid var(--neon);
-  color: var(--black);
-}
-.cropBtnApply:hover:not(:disabled) {
-  opacity: .85;
-}
-.cropBtnCancel:disabled,
-.cropBtnApply:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+// Fields shared by the draft form and inline edit. `value` is the working copy.
+function CodeFields({
+  value,
+  onField,
+  currencySymbol,
+}: {
+  value: PromoCode;
+  onField: (p: Partial<PromoCode>) => void;
+  currencySymbol: string;
+}) {
+  return (
+    <>
+      <div style={{ ...fieldWrap, flex: '1 1 130px' }}>
+        <label style={labelStyle}>Code Name</label>
+        <input
+          type="text"
+          className={styles.settingNumber}
+          value={value.code}
+          onChange={(e) => onField({ code: e.target.value.toUpperCase() })}
+          style={{ textTransform: 'uppercase', color: 'var(--white,#fff)' }}
+        />
+      </div>
+      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+        <label style={labelStyle}>Type</label>
+        <select
+          className={styles.settingSelect}
+          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+          value={value.type}
+          onChange={(e) => onField({ type: e.target.value as 'percent' | 'flat' })}
+        >
+          <option value="percent">% off</option>
+          <option value="flat">{currencySymbol} off</option>
+        </select>
+      </div>
+      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+        <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
+        {value.type === 'percent' ? (
+          <select
+            className={styles.settingSelect}
+            style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', color: 'var(--white,#fff)' }}
+            value={value.value || ''}
+            onChange={(e) => onField({ value: Number(e.target.value) })}
+          >
+            <option value="">%</option>
+            {Array.from({ length: 99 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n}%</option>
+            ))}
+          </select>
+        ) : (
+          <div style={{ position: 'relative', width: '100%' }}>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: '.82rem', pointerEvents: 'none' }}>
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              onWheel={(e) => e.currentTarget.blur()}
+              min={1}
+              className={`${styles.settingNumber} gdcNoSpin`}
+              style={{ width: '100%', boxSizing: 'border-box', textAlign: 'left', paddingLeft: 22, color: 'var(--white,#fff)' }}
+              value={value.value ? value.value : ''}
+              placeholder="0"
+              onChange={(e) => onField({ value: e.target.value === '' ? 0 : Number(e.target.value) })}
+            />
+          </div>
+        )}
+      </div>
+      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+        <label style={labelStyle}>Expires (optional)</label>
+        <input
+          type="date"
+          className={`${styles.settingNumber} gdcDateWhite`}
+          style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }}
+          onClick={openPicker}
+          value={value.expires || ''}
+          onChange={(e) => onField({ expires: e.target.value || null })}
+        />
+      </div>
+    </>
+  );
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/* Photos tab — gallery upload grid                            */
-/* Faithful port of vanilla .gallery-thumb-grid + .upload-box  */
-/* ─────────────────────────────────────────────────────────── */
+const btnPrimary: React.CSSProperties = {
+  background: 'var(--neon, #00e0a4)', color: '#06231b', border: 'none',
+  borderRadius: 6, padding: '.5rem .9rem', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer',
+};
+const btnOutline: React.CSSProperties = {
+  background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.25))',
+  color: 'var(--white, #fff)', borderRadius: 6, padding: '.45rem .8rem', fontSize: '.78rem', cursor: 'pointer',
+};
+const btnDanger: React.CSSProperties = {
+  background: 'transparent', border: '1px solid rgba(255,80,80,.4)',
+  color: '#ff6b6b', borderRadius: 6, padding: '.45rem .8rem', fontSize: '.78rem', cursor: 'pointer',
+};
 
-.galleryGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-.galleryItem {
-  margin-bottom: 0;
-}
-.galleryItemLabel {
-  display: block;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .4rem;
-}
-.galleryBox {
-  position: relative;
-  border: 2px dashed var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color .2s;
-  aspect-ratio: 1 / 1;
-}
-.galleryBox:hover {
-  border-color: var(--neon);
-}
-.galleryBoxFilled {
-  border-style: solid;
-  border-color: var(--neon);
-}
-.galleryInput {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-}
-.galleryImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.galleryOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, .55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity .2s;
-  pointer-events: none;
-  z-index: 1;
-}
-.galleryBox:hover .galleryOverlay {
-  opacity: 1;
-}
-.galleryOverlay span {
-  color: var(--neon);
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  background: rgba(0, 245, 196, .2);
-  border: 1px solid var(--neon);
-  padding: .4rem .9rem;
-  border-radius: 4px;
-}
-.galleryRemoveBtn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 10;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, .8);
-  border: 1px solid rgba(255, 95, 95, .7);
-  color: #ff5f5f;
-  font-size: .7rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .2s;
-  padding: 0;
-  line-height: 1;
-}
-.galleryRemoveBtn:hover {
-  background: rgba(255, 95, 95, .3);
-}
-.galleryPlaceholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .35rem;
-  padding: .75rem .5rem;
-  text-align: center;
-}
-.galleryPlaceholder svg {
-  color: var(--muted);
-  opacity: .6;
-}
-.galleryPlaceholder span {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.galleryPlaceholder small {
-  font-size: .6rem;
-  color: var(--muted);
-  opacity: .7;
-}
+export default function DiscountsSection({ promoCodes, sale, saleHistory = [], exclusions = [], currencySymbol = '$', onChange }: Props) {
+  const [draft, setDraft] = useState<PromoCode | null>(null);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [editBuf, setEditBuf] = useState<PromoCode | null>(null);
+  const [error, setError] = useState('');
+  // Which code row is expanded to show its usage.
+  const [expandedCode, setExpandedCode] = useState<string | null>(null);
+  // Redemptions grouped by uppercased code, pulled from the DJ's bookings.
+  const [usageByCode, setUsageByCode] = useState<Record<string, Redemption[]>>({});
+  // Bookings that used the automatic sale (a discount was applied but no code).
+  const [saleUsage, setSaleUsage] = useState<Redemption[]>([]);
+  const [saleOpen, setSaleOpen] = useState(false);
+  // Which past-sale row is expanded to show who used it.
+  const [expandedPast, setExpandedPast] = useState<number | null>(null);
+  // Which promo code is pending a delete confirmation.
+  const [confirmDel, setConfirmDel] = useState<number | null>(null);
+  // The date + which discounts to block, for the "add exclusion" row.
+  const [newExclDate, setNewExclDate] = useState('');
+  const [newExclSale, setNewExclSale] = useState(true);
+  const [newExclCodes, setNewExclCodes] = useState(true);
+  // Which excluded date is pending a remove confirmation.
+  const [confirmExclDel, setConfirmExclDel] = useState<number | null>(null);
+  // Inline message for the add-exclusion row (e.g. duplicate date).
+  const [exclErr, setExclErr] = useState('');
 
-.uploadStatus {
-  font-size: .7rem;
-  margin-top: .4rem;
-  font-family: 'Space Mono', monospace;
-  letter-spacing: .06em;
-  min-height: 1rem;
-}
-.uploadStatusUploading {
-  color: #ffb347;
-}
-.uploadStatusDone {
-  color: #3ddc84;
-}
-.uploadStatusError {
-  color: #ff5f5f;
-}
+  // On narrow screens the sale row's flex-wrap fields land in a cramped,
+  // uneven arrangement; below this breakpoint we lay them out as a clean grid.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChangeMq = () => setIsNarrow(mq.matches);
+    onChangeMq();
+    mq.addEventListener('change', onChangeMq);
+    return () => mq.removeEventListener('change', onChangeMq);
+  }, []);
 
-/* ─────────────────────────────────────────────────────────── */
-/* Testimonials tab                                            */
-/* Faithful port of vanilla .testimonial-card                  */
-/* ─────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, requester_name, event_date, created_at, discount_code, discount_label, discount_amount, original_rate, currency')
+        .eq('dj_id', user.id)
+        .not('discount_amount', 'is', null)
+        .order('created_at', { ascending: false });
+      if (!mounted) return;
+      const map: Record<string, Redemption[]> = {};
+      const sales: Redemption[] = [];
+      ((data as unknown as Redemption[]) || []).forEach((r) => {
+        const key = (r.discount_code || '').trim().toUpperCase();
+        if (key) {
+          (map[key] = map[key] || []).push(r);
+        } else if ((r.discount_amount || 0) > 0) {
+          sales.push(r); // sale redemption (no code)
+        }
+      });
+      setUsageByCode(map);
+      setSaleUsage(sales);
+    })();
+    return () => { mounted = false; };
+  }, []);
 
-.testimonialsHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  color: var(--muted);
-  letter-spacing: .06em;
-  margin-bottom: 1.5rem;
-}
-.testimonialCard {
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  position: relative;
-}
-.testimonialCard label {
-  display: block;
-  font-family: 'Space Mono', monospace;
-  font-size: .65rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .35rem;
-  margin-top: .75rem;
-}
-.testimonialCard label:first-of-type {
-  margin-top: 0;
-}
-.testimonialRemove {
-  position: absolute;
-  top: .6rem;
-  right: .75rem;
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .85rem;
-  transition: color .2s;
-  padding: 0;
-  line-height: 1;
-}
-.testimonialRemove:hover {
-  color: #ff5f5f;
-}
-.testimonialInput {
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .6rem .8rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-}
-.testimonialInput:focus {
-  border-color: var(--neon);
-}
-.testimonialTextarea {
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .6rem .8rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-  resize: vertical;
-  min-height: 80px;
-  line-height: 1.5;
-}
-.testimonialTextarea:focus {
-  border-color: var(--neon);
-}
-.testimonialAddBtn {
-  display: inline-block;
-  margin-bottom: 1.5rem;
-  padding: .6rem 1.2rem;
-  background: transparent;
-  border: 1px solid var(--neon);
-  color: var(--neon);
-  border-radius: 6px;
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .2s;
-}
-.testimonialAddBtn:hover {
-  background: rgba(0, 245, 196, .1);
-}
+  // A sale is only worth saving once it has BOTH a percent and a start date.
+  // Until then it's a draft: shown in the form for the session, but never
+  // written to booking_settings — so leaving and coming back doesn't resurrect
+  // a half-set "3%" that was never actually turned into a sale.
+  const [saleDraft, setSaleDraft] = useState<Sale | null>(null);
+  const saleView: Sale = saleDraft ?? sale;
 
-/* ── Club DJ day editor modal ─────────────────────────────────────
-   Used by ClubOwnerCalendar for the per-day status editor. Shares
-   the same look as other modals on this page (card bg + border,
-   blurred backdrop, rounded). */
-.dayEditorBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  background: rgba(0, 0, 0, .8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  backdrop-filter: blur(3px);
-}
-.dayEditorBox {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.75rem;
-  width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.dayEditorHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
-.dayEditorDate {
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .06em;
-  color: var(--neon);
-}
-.dayEditorClose {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: .25rem .5rem;
-}
-.dayEditorClose:hover { color: var(--white); }
+  // On mount, migrate any previously-persisted incomplete sale (percent but no
+  // start date, from before this rule) into a local draft and clear it from
+  // saved settings, so it stops persisting.
+  useEffect(() => {
+    if ((sale.percent ?? 0) > 0 && !sale.starts) {
+      setSaleDraft({ ...sale });
+      onChange({ sale: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-.dayEditorStatusRow {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
-.dayEditorStatusLabel {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  cursor: pointer;
-  font-size: .85rem;
-}
-
-.dayEditorBookedFields {
-  background: var(--deep);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-.dayEditorFieldGroup {
-  margin-bottom: .75rem;
-}
-.dayEditorFieldLabel {
-  display: block;
-  font-size: .75rem;
-  color: var(--muted);
-  margin-bottom: .25rem;
-}
-.dayEditorInput {
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .5rem .75rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-}
-.dayEditorComingSoon {
-  margin: 0;
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .05em;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-.dayEditorActions {
-  display: flex;
-  gap: .75rem;
-}
-.dayEditorCancelBtn {
-  flex: 1;
-  padding: .75rem;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.dayEditorCancelBtn:hover { color: var(--white); border-color: var(--white); }
-.dayEditorSaveBtn {
-  flex: 1;
-  padding: .75rem;
-  background: var(--neon);
-  border: none;
-  border-radius: 6px;
-  color: var(--black);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: opacity .2s;
-}
-.dayEditorSaveBtn:hover { opacity: .85; }
-
-/* ── Club booking tab — Equipment section ──────────────────────── */
-.equipOptions {
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
-  margin-bottom: .25rem;
-}
-.equipOption {
-  display: flex;
-  align-items: flex-start;
-  gap: .6rem;
-  cursor: pointer;
-  padding: .8rem .9rem;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  transition: border-color .15s;
-}
-.equipOption:hover {
-  border-color: var(--neon-dim);
-}
-.equipOption input[type="radio"] {
-  margin-top: 3px;
-  flex-shrink: 0;
-  accent-color: var(--neon);
-}
-.equipOptionBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
-.equipOptionTitle {
-  font-size: .9rem;
-  color: var(--white);
-  line-height: 1.4;
-}
-.equipDetailInput {
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .5rem .75rem;
-  color: var(--white);
-  font-size: .85rem;
-  font-family: 'DM Sans', sans-serif;
-}
-.equipDetailInput:focus {
-  outline: none;
-  border-color: var(--neon);
-}
-
-/* ── Club booking tab — Rates section ──────────────────────────── */
-.rateTypeRow {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .5rem;
-}
-.rateTypeLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--white);
-  font-weight: 700;
-}
-.rateTypePillGroup {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  overflow: hidden;
-}
-.rateTypePill {
-  padding: .55rem 1.5rem;
-  border: none;
-  border-right: 1px solid var(--border);
-  background: transparent;
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  font-size: .7rem;
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-.rateTypePill:last-child { border-right: none; }
-.rateTypePillActive {
-  background: var(--neon-dim);
-  color: var(--neon);
-}
-
-.rateOffersHint {
-  font-size: .8rem;
-  color: var(--white);
-  line-height: 1.5;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.rateFieldGroup {
-  margin-bottom: .85rem;
-}
-.rateFieldLabel {
-  display: block;
-  font-family: 'Space Mono', monospace;
-  font-size: .6rem;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .3rem;
-}
-.rateSelect {
-  width: 100%;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: .55rem .75rem;
-  color: var(--white);
-  font-size: .88rem;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-}
-.rateInputWrap {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  background: var(--deep);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 0 .75rem;
-}
-.rateInputWrap:focus-within { border-color: var(--neon); }
-.rateSymbol {
-  color: var(--muted);
-  font-size: .9rem;
-}
-.rateInput {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: .55rem 0;
-  color: var(--white);
-  font-size: .88rem;
-  font-family: 'DM Sans', sans-serif;
-}
-
-.rateSaveRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: .75rem;
-  flex-wrap: wrap;
-  padding-top: .85rem;
-  margin-top: .85rem;
-  border-top: 1px solid var(--border);
-}
-.rateSaveStatus {
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-  letter-spacing: .05em;
-}
-.rateSaveBtn {
-  font-family: 'Space Mono', monospace;
-  font-size: .68rem;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  padding: .55rem 1.1rem;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  cursor: not-allowed;
-  opacity: 0.6;
-  font-weight: 700;
-}
-.rateSaveBtnEnabled {
-  border-color: var(--neon);
-  background: var(--neon-dim);
-  color: var(--neon);
-  cursor: pointer;
-  opacity: 1;
-}
-
-/* ──────────────────────────────────────────────────────────────────────
-   MOBILE BREAKPOINT — phones ≤600px wide
-   Surgical overrides. Desktop styles above are untouched.
-   ────────────────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  /* Page shell — reclaim space eaten by desktop padding */
-  .card {
-    padding: 1rem;
-    border-radius: 8px;
-  }
-  .header {
-    margin-bottom: 1.25rem;
-  }
-  .header h1 {
-    font-size: 2.2rem;
-  }
-  .header p {
-    font-size: .6rem;
-    letter-spacing: .08em;
-  }
-  .headerRow {
-    margin-bottom: 1rem;
+  function updateSale(p: Partial<Sale>) {
+    const next: Sale = { ...saleView, ...p };
+    const pct = next.percent ?? 0;
+    if (pct > 0 && next.starts) {
+      // Complete sale — persist it (and clear any local draft).
+      setSaleDraft(null);
+      onChange({ sale: { ...next, active: true, started_at: next.started_at || new Date().toISOString() } });
+    } else if (pct > 0) {
+      // Draft: percent chosen but no start date yet. Hold locally, and make
+      // sure nothing incomplete lingers in saved settings.
+      setSaleDraft(next);
+      if ((sale.percent ?? 0) > 0 || sale.starts) onChange({ sale: {} });
+    } else {
+      // Percent cleared — drop everything.
+      setSaleDraft(null);
+      onChange({ sale: {} });
+    }
   }
 
-  /* Tabs — keep horizontal but smaller */
-  .tabBtn {
-    padding: .55rem .35rem;
-    font-size: .58rem;
+  // End the running sale right now. If it had already started, archive it with
+  // today as the end date; if it was only scheduled (start still in the future),
+  // just clear it — there's nothing to record. Either way the form empties for
+  // a fresh sale.
+  function endSaleNow() {
+    const now = Date.now();
+    const started = !sale.starts || new Date(`${sale.starts}T00:00:00`).getTime() <= now;
+    if (started) {
+      const ended: Sale = { ...sale, ends: todayStr, active: false };
+      onChange({ sale: {}, sale_history: [ended, ...saleHistory] });
+    } else {
+      onChange({ sale: {} });
+    }
+    setSaleDraft(null);
+    setSaleOpen(false);
   }
 
-  /* Form groups — slightly tighter */
-  .formGroup {
-    margin-bottom: 1.15rem;
-  }
-  .formGroup label {
-    font-size: .6rem;
+  // Today as an ISO date (YYYY-MM-DD) — used as the min for a new sale's start
+  // date so it can't begin in the past.
+  const todayStr = (() => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  })();
+
+  // Auto-archive: once a sale's end date has passed, move it into sale_history
+  // and clear the live sale so the DJ can set up a fresh one. Runs whenever the
+  // sale changes; after archiving the live sale is empty so it won't loop.
+  useEffect(() => {
+    const pct = sale.percent ?? 0;
+    if (pct <= 0 || !sale.ends) return;
+    const ended = new Date(`${sale.ends}T23:59:59`).getTime() < Date.now();
+    if (!ended) return;
+    onChange({ sale: {}, sale_history: [{ ...sale }, ...saleHistory] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sale.percent, sale.ends, sale.starts]);
+
+  function activateDraft() {
+    if (!draft) return;
+    const code = (draft.code || '').trim();
+    if (!code) { setError('Enter a code.'); return; }
+    if (!draft.value || draft.value <= 0) { setError('Enter a discount value.'); return; }
+    if (promoCodes.some((c) => (c.code || '').trim().toUpperCase() === code.toUpperCase())) {
+      setError('That code already exists.'); return;
+    }
+    onChange({ promo_codes: [...promoCodes, { ...draft, code: code.toUpperCase(), active: true, uses: draft.uses || 0 }] });
+    setDraft(null);
+    setError('');
   }
 
-  /* Spec box (Mobile Party Types / Music Genres) —
-     remove the desktop left indent that pushed content off-screen */
-  .specBox {
-    margin-left: 0;
-    padding: .65rem .6rem .75rem;
-    border-left-width: 1px;
-  }
-  .checkboxGrid {
-    gap: .3rem;
-  }
-
-  /* Settings rows — let label/control stack instead of cramming inline */
-  .settingLabelWrap {
-    min-width: 0;
-    flex: 1 1 100%;
-  }
-  .settingSelect,
-  .settingNumber {
-    min-width: 0;
-  }
-  .settingRow {
-    gap: .55rem;
+  function saveEdit() {
+    if (editIndex == null || !editBuf) return;
+    const code = (editBuf.code || '').trim();
+    if (!code) { setError('Enter a code.'); return; }
+    onChange({ promo_codes: promoCodes.map((c, i) => (i === editIndex ? { ...editBuf, code: code.toUpperCase() } : c)) });
+    setEditIndex(null);
+    setEditBuf(null);
+    setError('');
   }
 
-  /* Avatar header card */
-  .avatarTop {
-    padding: 1rem;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
+  // ── Date exclusions ─────────────────────────────────────────────
+  function addExclusion() {
+    if (!newExclDate) return;
+    if (exclusions.some((e) => e.date === newExclDate)) {
+      // Already on the list — tell the DJ instead of silently doing nothing.
+      setExclErr(`${new Date(`${newExclDate}T00:00:00`).toLocaleDateString()} is already excluded — edit it below.`);
+      return;
+    }
+    const next = [...exclusions, { date: newExclDate, sale: newExclSale, codes: newExclCodes }]
+      .sort((a, b) => a.date.localeCompare(b.date));
+    onChange({ exclusions: next });
+    // Clear the date so the picker is ready for the next one; keep the toggles.
+    setNewExclDate('');
+    setExclErr('');
   }
-  .avatarCircle {
-    width: 60px;
-    height: 60px;
-    font-size: 1.2rem;
+  function updateExclusion(i: number, patch: Partial<DiscountExclusion>) {
+    onChange({ exclusions: exclusions.map((e, idx) => (idx === i ? { ...e, ...patch } : e)) });
   }
-  .avatarTopInfo strong {
-    font-size: .85rem;
-  }
-  .avatarTopInfo span {
-    font-size: .58rem;
-  }
-
-  /* Section cards (Embed, etc.) inherit card padding implicitly via parent */
-  .sectionHeader {
-    padding: .85rem 1rem;
-  }
-  .sectionBody {
-    padding: 1rem;
-  }
-  .sectionTitle {
-    font-size: 1rem;
+  function removeExclusion(i: number) {
+    onChange({ exclusions: exclusions.filter((_, idx) => idx !== i) });
   }
 
-  /* Package editor cards */
-  .pkgCard {
-    padding: .75rem;
+  function setActive(i: number, active: boolean) {
+    onChange({ promo_codes: promoCodes.map((c, idx) => (idx === i ? { ...c, active } : c)) });
   }
-  .pkgHeaderTitle {
-    font-size: 1.4rem;
-  }
-  .innerCatTabs {
-    flex-wrap: nowrap;
-    gap: .2rem;
-  }
-  .catStatusCol {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .catStatusRow {
-    gap: .2rem;
-  }
-  .innerCatTab {
-    flex: 1 1 0;
-    min-width: 0;
-    font-size: .8rem;
-    letter-spacing: .04em;
-    padding: .45rem .2rem;
-    gap: .15rem;
-  }
-  .pkgFieldLabel {
-    font-size: .6rem;
+  function removeCode(i: number) {
+    onChange({ promo_codes: promoCodes.filter((_, idx) => idx !== i) });
+    if (editIndex === i) { setEditIndex(null); setEditBuf(null); }
   }
 
-  /* RTE toolbar — wrap on small screens */
-  .rteToolbar {
-    flex-wrap: wrap;
-    gap: 4px;
+  function valueLabel(c: PromoCode): string {
+    return c.type === 'percent' ? `${c.value}% off` : `${currencySymbol}${c.value} off`;
   }
 
-  /* Price / setup / cocktail rows — already flex-wrap, just tighten */
-  .priceRowLabel {
-    min-width: 0;
-  }
-  .priceInput {
-    max-width: none;
-  }
+  // Bookings that used the CURRENT sale — i.e. sale-discounted bookings that
+  // landed inside this sale's window. An empty/new sale (no percent) has none,
+  // so the "Used" cell reads 0 instead of the all-time total.
+  const currentSaleUsage = (() => {
+    if ((sale.percent ?? 0) <= 0) return [];
+    const startMs = sale.starts ? new Date(`${sale.starts}T00:00:00`).getTime()
+      : (sale.started_at ? new Date(sale.started_at).getTime() : null);
+    const endMs = sale.ends ? new Date(`${sale.ends}T23:59:59`).getTime() : null;
+    return saleUsage.filter((r) => {
+      if (!r.created_at) return false;
+      const t = new Date(r.created_at).getTime();
+      if (startMs != null && t < startMs) return false;
+      if (endMs != null && t > endMs) return false;
+      return true;
+    });
+  })();
 
-  /* Photo upload */
-  .uploadBox {
-    padding: 1rem .5rem;
-    min-height: 80px;
-  }
+  // Is a sale actually running right now (percent set + inside its window)? Drives
+  // the "Sale live" badge in the banner.
+  const saleLiveNow = (() => {
+    const pct = sale.percent ?? 0;
+    if (pct <= 0) return false;
+    // A start date is required — a percent with no start date is a draft, not
+    // a running sale.
+    if (!sale.starts) return false;
+    const now = new Date();
+    if (new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime()) return false;
+    if (sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime()) return false;
+    return true;
+  })();
 
-  /* Photos gallery — keep 2 columns but tighter gap */
-  .galleryGrid {
-    gap: .6rem;
-  }
+  return (
+    <div className={styles.sectionCard}>
+      {/* Banner — gradient top accent, icon chip, title + subtitle, and a live
+          badge that only appears while a sale is actually running. */}
+      <div
+        style={{
+          position: 'relative', display: 'flex', alignItems: 'center', gap: 16,
+          padding: '20px 26px', borderBottom: '1px solid rgba(255,255,255,.14)',
+          background: 'linear-gradient(180deg,rgba(34,227,173,.10),rgba(34,227,173,.02))',
+        }}
+      >
+        <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: GRAD }} />
+        <span
+          style={{
+            width: 44, height: 44, borderRadius: 12, background: GRAD, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 22px -8px rgba(34,227,173,.7)',
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#04241b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+        </span>
+        <div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.55rem', letterSpacing: '.04em', lineHeight: 1, color: '#fff' }}>
+            Discounts &amp; Promo Codes
+          </div>
+          <div style={{ marginTop: 4, fontSize: '.78rem', color: 'var(--muted,#8b8da3)' }}>
+            Run sales and hand out private codes to win more bookings.
+          </div>
+        </div>
+        {saleLiveNow && (
+          <span
+            style={{
+              marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 7,
+              fontSize: '.72rem', fontWeight: 700, color: '#04241b', background: GRAD,
+              padding: '7px 14px', borderRadius: 999,
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#04241b' }} /> Sale live
+          </span>
+        )}
+      </div>
+      <div className={`${styles.sectionBody} ${styles.settingsBody}`}>
 
-  /* Calendar — month cells need to fit 7 across in ~340px */
-  .calMonthWrap {
-    padding: .4rem;
-  }
-  .calMonthHeader {
-    font-size: .62rem;
-  }
-  .calGrid {
-    gap: 2px;
-  }
-  .calCell {
-    min-height: 44px;
-    padding: 3px 1px 1px;
-  }
-  .calCellNum {
-    font-size: .65rem;
-  }
-  .calCellQuickBtn,
-  .calCellEditBtn {
-    font-size: .6rem;
-  }
-  .calEditedDot {
-    font-size: .34rem;
-  }
-  .calLabel {
-    font-size: .45rem;
-  }
-  .calLegendItem {
-    font-size: .5rem;
-  }
+        {/* ── Automatic sale ─────────────────────────────────────── */}
+        <style>{`
+          .gdcDateWhite::-webkit-datetime-edit,
+          .gdcDateWhite::-webkit-datetime-edit-text,
+          .gdcDateWhite::-webkit-datetime-edit-month-field,
+          .gdcDateWhite::-webkit-datetime-edit-day-field,
+          .gdcDateWhite::-webkit-datetime-edit-year-field { color: #fff; }
+          .gdcDateWhite { color: #fff; }
+          @keyframes gdcLiveDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .25; transform: scale(.55); }
+          }
+          .gdcLiveDot { animation: gdcLiveDot 1.1s ease-in-out infinite; }
+          input.gdcNoSpin::-webkit-outer-spin-button,
+          input.gdcNoSpin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+          input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
+        `}</style>
 
-  /* Day editor modal */
-  .modalBackdrop {
-    padding: 1rem;
-  }
-  .modalInner {
-    padding: 1.25rem;
-    border-radius: 10px;
-  }
-  .dayEditorBox {
-    padding: 1.25rem;
-  }
-  .dayEditorDate {
-    font-size: .95rem;
-  }
-  .modalTimeRow {
-    flex-direction: column;
-    gap: .5rem;
-  }
-  .modalActions {
-    flex-direction: column-reverse;
-  }
-  .modalCancelBtn,
-  .modalSaveBtn,
-  .dayEditorCancelBtn,
-  .dayEditorSaveBtn {
-    width: 100%;
-    justify-content: center;
-  }
+        <div style={blockStyle}>
+        <SecHeader label="Sale" icon={iconSale} />
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
+          A site-wide % off applied automatically to every quote. Set a window and it switches
+          itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
+        </div>
 
-  /* Avatar crop modal */
-  .cropModalInner {
-    padding: 1rem;
-    width: 100%;
-  }
-  .cropModalInner h3 {
-    font-size: 1.35rem;
-  }
-  .cropBtnsRow {
-    flex-direction: column-reverse;
-  }
-  .cropBtnCancel,
-  .cropBtnApply {
-    width: 100%;
-  }
+        {/* One row: percent · start date · end date · used · status. The sale's
+            on/off state is decided by the dates, so Status is a read-out
+            (Scheduled → Active → Ended), not a button. */}
+        {(() => {
+          const pct = saleView.percent ?? 0;
+          let statLabel = 'Inactive';
+          let tone: 'on' | 'sched' | 'off' = 'off';
+          // A percent alone isn't a sale — it needs a start date. Until one is
+          // set the sale stays Inactive (a draft), so it never reads "Active"
+          // just because a percentage was picked.
+          if (pct > 0 && saleView.starts) {
+            const now = new Date();
+            const startFuture = new Date(`${saleView.starts}T00:00:00`).getTime() > now.getTime();
+            const ended = !!saleView.ends && new Date(`${saleView.ends}T23:59:59`).getTime() < now.getTime();
+            if (startFuture) { statLabel = 'Scheduled'; tone = 'sched'; }
+            else if (ended) { statLabel = 'Ended'; tone = 'off'; }
+            else { statLabel = 'Active'; tone = 'on'; }
+          }
+          const pillStyle: React.CSSProperties =
+            tone === 'on'
+              ? { color: '#04241b', background: 'linear-gradient(100deg,#22e3ad,#31d0ff)', boxShadow: '0 6px 20px -6px rgba(34,227,173,.7)' }
+              : tone === 'sched'
+                ? { color: '#3a2a00', background: '#ffcf6b' }
+                : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
+          const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
+          return (
+            <>
+            <div
+              style={
+                isNarrow
+                  ? { display: 'grid', gridTemplateColumns: '62px 100px 100px 1fr', columnGap: '.4rem', rowGap: '.85rem', alignItems: 'end' }
+                  : { display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }
+              }
+            >
+              <div style={{ ...fieldWrap, flex: '0 0 96px', order: isNarrow ? 2 : undefined }}>
+                <label style={{ ...labelStyle, ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Percent off</label>
+                <select
+                  className={styles.settingSelect}
+                  style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.7rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px', color: 'var(--white,#fff)' }}
+                  value={saleView.percent || ''}
+                  onChange={(e) => {
+                    const v = e.target.value === '' ? 0 : Number(e.target.value);
+                    // updateSale decides whether this becomes a saved sale (has
+                    // a start date) or stays a local-only draft.
+                    updateSale({ percent: v });
+                  }}
+                >
+                  <option value="">%</option>
+                  {Array.from({ length: 99 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{n}%</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 3 : undefined }}>
+                <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
+                <input
+                  type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
+                  value={saleView.starts || ''}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    // If the new start is after the current end, that end is no
+                    // longer valid — clear it so we never keep end < start.
+                    const clearEnd = v && saleView.ends && saleView.ends < v;
+                    updateSale(clearEnd ? { starts: v, ends: null } : { starts: v });
+                  }}
+                />
+              </div>
+              <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
+                <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
+                <input
+                  type="date" className={`${styles.settingNumber} gdcDateWhite`}
+                  // Can't end before it starts — the picker is capped at the
+                  // start date, and a manually-typed earlier date is ignored.
+                  min={saleView.starts || todayStr}
+                  style={{ ...dateInputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.6rem' : '.78rem', padding: isNarrow ? '0 2px' : '0 8px' }}
+                  value={saleView.ends || ''}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    if (v && saleView.starts && v < saleView.starts) return; // before start — reject
+                    updateSale({ ends: v });
+                  }}
+                />
+              </div>
+              <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
+                <label style={labelStyle}>Used</label>
+                {currentSaleUsage.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSaleOpen((o) => !o)}
+                    style={{ ...usedCellValue, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)' }}
+                  >
+                    {currentSaleUsage.length}
+                    <span style={{ fontSize: '.7rem' }}>{saleOpen ? '▲' : '▼'}</span>
+                  </button>
+                ) : (
+                  <span style={usedCellValue}>0</span>
+                )}
+              </div>
+              <div
+                style={
+                  isNarrow
+                    ? { ...fieldWrap, order: 1, gridColumn: '1 / -1', justifySelf: 'end', width: 'fit-content', alignItems: 'center', textAlign: 'center' }
+                    : { ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto', alignItems: 'center', textAlign: 'center' }
+                }
+              >
+                <label style={labelStyle}>Status</label>
+                <span
+                  style={{
+                    height: 30, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px',
+                    borderRadius: 999, fontSize: '.68rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
+                    ...pillStyle,
+                  }}
+                >
+                  <span
+                    className={tone === 'on' ? 'gdcLiveDot' : undefined}
+                    style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
+                  />
+                  {statLabel}
+                </span>
+              </div>
+            </div>
+            {/* End-now escape hatch — a sale with no end date (or a future one)
+                has no other way to stop, so let the DJ end it on the spot. Only
+                shown once the sale is actually running or scheduled; a percent
+                with no start date is just a draft, so there's nothing to end. */}
+            {(tone === 'on' || tone === 'sched') && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
+                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>
+                  No end date? The sale runs until you end it here.
+                </span>
+                <button
+                  type="button"
+                  onClick={endSaleNow}
+                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#ff8f8f', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  {tone === 'sched' ? 'Cancel scheduled sale' : 'End sale now'}
+                </button>
+              </div>
+            )}
+            </>
+          );
+        })()}
 
-  /* Rate pills — keep one row but smaller */
-  .rateTypePill {
-    padding: .5rem .9rem;
-    font-size: .65rem;
-  }
+        {/* Sale usage detail — who booked during the sale window. The count that
+            toggles this lives in the "Used" cell of the row above. */}
+        {currentSaleUsage.length > 0 && saleOpen && (
+          <div style={{ padding: '0 0 1rem' }}>
+            <div style={{ marginBottom: '.4rem', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={metaLabel}>Sale window</span>
+              <span style={{ color: 'var(--white,#fff)' }}>
+                {sale.starts ? fmtDate(sale.starts) : (sale.started_at ? fmtDate(sale.started_at) : '—')}
+                {' – '}
+                {sale.active
+                  ? (sale.ends ? fmtDate(sale.ends) : 'ongoing')
+                  : (sale.ends ? fmtDate(sale.ends) : 'ended')}
+              </span>
+            </div>
+            {(
+              <div style={{ marginTop: '.6rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.6rem' }}>
+                {currentSaleUsage.map((r, ri) => (
+                  <div
+                    key={ri}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem' }}
+                  >
+                    <span style={{ color: 'var(--white,#fff)' }}>
+                      {r.requester_name || 'Someone'}
+                      <span style={{ color: 'var(--muted,#8a8aa0)' }}>
+                        {' '}· booked {fmtDate(r.created_at)}
+                        {r.discount_label ? ` · ${r.discount_label}` : ''}
+                      </span>
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                        saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                      </span>
+                      <ViewBookingLink id={r.id} eventDate={r.event_date} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-  /* Testimonials — already a card, just tighten */
-  .testimonialCard {
-    padding: 1rem;
-  }
+        {/* Past sales — ended sales archived automatically. Read-only history so
+            the DJ can see what they ran; the "Used" count is the bookings that
+            landed inside each sale's window. */}
+        {saleHistory.length > 0 && (
+          <div style={{ marginTop: '1.1rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.9rem' }}>
+            <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Past sales</div>
+            {/* Show ~4 at a glance; when there are more, the list scrolls inside
+                a fixed-height window instead of running down the whole page. */}
+            <div
+              className={saleHistory.length > 4 ? styles.scrollList : undefined}
+              style={saleHistory.length > 4
+                ? { maxHeight: 304, overflowY: 'scroll', paddingRight: '.3rem' }
+                : undefined}
+            >
+            {saleHistory.map((h, hi) => {
+              const startMs = h.starts ? new Date(`${h.starts}T00:00:00`).getTime() : (h.started_at ? new Date(h.started_at).getTime() : null);
+              const endMs = h.ends ? new Date(`${h.ends}T23:59:59`).getTime() : null;
+              const people = saleUsage.filter((r) => {
+                if (!r.created_at) return false;
+                const t = new Date(r.created_at).getTime();
+                if (startMs != null && t < startMs) return false;
+                if (endMs != null && t > endMs) return false;
+                return true;
+              });
+              const open = expandedPast === hi;
+              const clickable = people.length > 0;
+              return (
+                <div
+                  key={hi}
+                  style={{
+                    marginBottom: '.5rem', borderRadius: 10,
+                    border: `1px solid ${open ? 'var(--neon, #00e0a4)' : 'var(--border, rgba(255,255,255,.12))'}`,
+                    background: 'rgba(255,255,255,.02)', overflow: 'hidden',
+                  }}
+                >
+                  {/* Header row — click to open the panel of people who used it. */}
+                  <div
+                    role={clickable ? 'button' : undefined}
+                    onClick={clickable ? () => setExpandedPast(open ? null : hi) : undefined}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+                      padding: '.7rem .9rem', cursor: clickable ? 'pointer' : 'default',
+                    }}
+                  >
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '1rem', color: 'var(--white,#fff)', minWidth: 84, display: 'inline-block' }}>
+                      {h.percent ?? 0}% off
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                        padding: '2px 9px', borderRadius: 999, color: '#fff', background: '#d64545',
+                        flexShrink: 0, minWidth: 58, textAlign: 'center',
+                      }}
+                    >
+                      Ended
+                    </span>
+                    <span style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.6)' }}>
+                      {startMs != null ? fmtDate(h.starts || h.started_at || null) : '—'}
+                      {' – '}
+                      {h.ends ? fmtDate(h.ends) : '—'}
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: 'auto', fontSize: '.82rem',
+                        color: clickable ? 'var(--neon,#00e0a4)' : 'var(--white,#fff)',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}
+                    >
+                      <span style={metaLabel}>Used</span>{people.length}
+                      {clickable && <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>}
+                    </span>
+                  </div>
 
-  /* Submit button — full width on mobile */
-  .submitBtn {
-    width: 100%;
-  }
+                  {/* Expanded panel — the people who booked during this sale. */}
+                  {open && people.length > 0 && (
+                    <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,.12))', padding: '.6rem .9rem .8rem' }}>
+                      {people.map((r, ri) => (
+                        <div
+                          key={ri}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem' }}
+                        >
+                          <span style={{ color: 'var(--white,#fff)' }}>
+                            {r.requester_name || 'Someone'}
+                            <span style={{ color: 'var(--muted,#8a8aa0)' }}>
+                              {' '}· booked {fmtDate(r.created_at)}
+                              {r.discount_label ? ` · ${r.discount_label}` : ''}
+                            </span>
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                              saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                            </span>
+                            <ViewBookingLink id={r.id} eventDate={r.event_date} />
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            </div>
+          </div>
+        )}
+        </div>{/* end Run a sale block */}
 
-  /* Equip option blocks — already vertical, no change needed */
-  .equipOption {
-    padding: .85rem;
-  }
-}
+        {/* ── Promo codes ────────────────────────────────────────── */}
+        <div style={blockStyle}>
+        <SecHeader label="Promo Codes" icon={iconPromo} />
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
+          Private codes you hand out — referrals, socials, repeat clients. Build one, switch it on,
+          and it drops into your list. Your public price stays the same.
+        </div>
 
-/* ── Package photo slots (up to 4; slot 1 is the main card photo) ────── */
-.photoSlotGrid {
-  display: flex;
-  gap: .6rem;
-  flex-wrap: wrap;
-}
-.photoSlot {
-  width: 110px;
-  height: 110px;
-}
-.photoSlotImg {
-  width: 110px;
-  height: 110px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  display: block;
-}
-.photoMainBadge {
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
-  font-family: 'Space Mono', monospace;
-  font-size: .5rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  padding: .15rem .35rem;
-  border-radius: 3px;
-  background: var(--neon, #00f5c4);
-  color: #050507;
-  font-weight: 700;
-}
-.photoSlotEmpty {
-  width: 110px;
-  height: 110px;
-  border: 2px dashed var(--border);
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .25rem;
-  cursor: pointer;
-  background: rgba(255, 255, 255, .02);
-  transition: border-color .15s, background .15s;
-}
-.photoSlotEmpty:hover {
-  border-color: var(--neon, #00f5c4);
-  background: rgba(0, 245, 196, .04);
-}
-.photoSlotPlus {
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--muted);
-}
-.photoSlotHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .55rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
+        {error && <div style={{ color: '#ff6b6b', fontSize: '.8rem', marginBottom: '.6rem' }}>{error}</div>}
 
+        {/* Draft form */}
+        {draft && (
+          <div style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.9rem' }}>
+            <div style={isNarrow
+              ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', alignItems: 'flex-end' }
+              : { display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
+              <CodeFields value={draft} onField={(p) => setDraft({ ...draft, ...p })} currencySymbol={currencySymbol} />
+            </div>
+            <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setDraft(null); setError(''); }} style={btnOutline}>Cancel</button>
+              <button type="button" onClick={activateDraft} style={btnPrimary}>Activate</button>
+            </div>
+          </div>
+        )}
 
+        {!draft && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => { setDraft(emptyDraft()); setError(''); }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: GRAD, color: '#04241b', border: 'none',
+              borderRadius: 11, padding: '.7rem 1.1rem', fontSize: '.85rem', fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 8px 22px -8px rgba(34,227,173,.7)',
+            }}
+          >
+            <span style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1 }}>+</span> Add Promo Code
+          </button>
+          </div>
+        )}
 
-/* "Use the same photos as my General package" — one-click copy button shown
-   on Wedding/Mitzvah package editors. Fills this package's photo slots with
-   independent copies of the General package's photos. */
-.useGeneralPhotosBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .45rem;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--neon, #00f5c4);
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  letter-spacing: .03em;
-  cursor: pointer;
-  transition: opacity .15s;
-}
-.useGeneralPhotosBtn:hover {
-  opacity: .75;
-}
-.useGeneralPhotosBtn:active {
-  transform: translateY(1px);
-}
-/* Header row: "Package Setup Photos" label left, copy button right. */
-.photoHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-  flex-wrap: wrap;
-  margin-bottom: .5rem;
-}
+        {/* Codes list (active + deactivated = history) */}
+        {promoCodes.length === 0 && !draft && (
+          <div style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>No promo codes yet.</div>
+        )}
 
-/* Tiny size/format hint shown inside empty photo slots. */
-.photoSlotSize {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  line-height: 1.3;
-  letter-spacing: .02em;
-  color: #ffffff;
-  text-align: center;
-  margin-top: .2rem;
-}
+        {/* Show ~4 codes at a glance; scroll inside a fixed window past that. */}
+        <div
+          className={promoCodes.length > 4 ? styles.scrollList : undefined}
+          style={promoCodes.length > 4 ? { maxHeight: 304, overflowY: 'scroll', paddingRight: '.3rem' } : undefined}
+        >
+        {promoCodes.map((c, i) => {
+          const isEditing = editIndex === i;
+          const off = c.active === false;
+          // Past its expiry date? An expired code can't apply to a booking even
+          // if it's "active", so we surface it distinctly and offer Renew.
+          const expired = !!c.expires && new Date(`${c.expires}T23:59:59`).getTime() < Date.now();
+          if (isEditing && editBuf) {
+            return (
+              <div key={i} style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.75rem' }}>
+                <div style={isNarrow
+                  ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', alignItems: 'flex-end' }
+                  : { display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
+                  <CodeFields value={editBuf} onField={(p) => setEditBuf({ ...editBuf, ...p })} currencySymbol={currencySymbol} />
+                </div>
+                <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => { setEditIndex(null); setEditBuf(null); setError(''); }} style={btnOutline}>Cancel</button>
+                  <button type="button" onClick={saveEdit} style={btnPrimary}>Save</button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={i}
+              style={{
+                padding: '.85rem 1rem',
+                marginBottom: '.6rem',
+                border: '1px solid var(--border, rgba(255,255,255,.14))',
+                borderRadius: 10,
+                background: 'rgba(255,255,255,.02)',
+                opacity: (off || expired) ? 0.6 : 1,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', minWidth: 0, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, letterSpacing: '.04em', fontSize: '1rem', color: 'var(--white,#fff)' }}>
+                    {(c.code || '').toUpperCase()}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
+                      padding: '2px 8px', borderRadius: 999,
+                      color: expired ? '#3a2a00' : off ? 'var(--muted,#8a8aa0)' : '#06231b',
+                      background: expired ? '#ffcf6b' : off ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)',
+                    }}
+                  >
+                    {expired ? 'Expired' : off ? 'Inactive' : 'Active'}
+                  </span>
+                  {/* Meta inline with the code: discount · expires · used. */}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', marginLeft: '.4rem', fontSize: '.82rem', color: 'var(--white,#fff)' }}>
+                    <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
+                    <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
+                    {(() => {
+                      const key = (c.code || '').trim().toUpperCase();
+                      const uses = usageByCode[key] || [];
+                      const open = expandedCode === key;
+                      if (uses.length === 0) {
+                        return <span><span style={metaLabel}>Used</span> 0</span>;
+                      }
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCode(open ? null : key)}
+                          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <span style={metaLabel}>Used</span> {uses.length}
+                          <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
+                        </button>
+                      );
+                    })()}
+                  </span>
+                </div>
+                {confirmDel === i ? (
+                  <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '.8rem', color: 'var(--white,#fff)' }}>Delete this code?</span>
+                    <button type="button" onClick={() => { removeCode(i); setConfirmDel(null); }} style={btnDanger}>Delete</button>
+                    <button type="button" onClick={() => setConfirmDel(null)} style={btnOutline}>Cancel</button>
+                  </div>
+                ) : (
+                <div style={{ display: 'flex', gap: '.5rem' }}>
+                  <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
+                  {expired ? (
+                    // Renew: reopen the editor with the stale expiry cleared and the
+                    // code re-enabled, so the DJ picks a fresh date (or leaves it
+                    // "Never") instead of ending up "active but expired".
+                    <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c, active: true, expires: null }); setError(''); }} style={btnOutline}>Renew</button>
+                  ) : off ? (
+                    <button type="button" onClick={() => setActive(i, true)} style={btnOutline}>Reactivate</button>
+                  ) : (
+                    <button type="button" onClick={() => setActive(i, false)} style={btnOutline}>Deactivate</button>
+                  )}
+                  <button type="button" onClick={() => setConfirmDel(i)} style={btnDanger}>Delete</button>
+                </div>
+                )}
+              </div>
 
-/* Red outline on a required field that failed validation on save attempt. */
-.pkgFieldError {
-  border: 1px solid #ff5f5f !important;
-  box-shadow: 0 0 0 1px #ff5f5f;
-}
+              {/* Unfolded usage — who booked with this code and when. */}
+              {expandedCode === (c.code || '').trim().toUpperCase() &&
+                (usageByCode[(c.code || '').trim().toUpperCase()] || []).length > 0 && (
+                <div style={{ marginTop: '.7rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.7rem' }}>
+                  {(usageByCode[(c.code || '').trim().toUpperCase()] || []).map((r, ri) => (
+                    <div
+                      key={ri}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        flexWrap: 'wrap', gap: '.5rem', padding: '.4rem 0', fontSize: '.82rem',
+                      }}
+                    >
+                      <span style={{ color: 'var(--white,#fff)' }}>
+                        {r.requester_name || 'Someone'}
+                        <span style={{ color: 'var(--muted,#8a8aa0)' }}> · booked {fmtDate(r.created_at)}</span>
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ color: 'var(--neon,#00e0a4)' }}>
+                          saved {currencySymbol}{Number(r.discount_amount || 0).toLocaleString()}
+                        </span>
+                        <ViewBookingLink id={r.id} eventDate={r.event_date} />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        </div>
+        </div>{/* end Promo codes block */}
 
-/* Bare "+" add affordance for 2nd-4th photos — no box, no text. Sized to
-   match the photo slots so it aligns to the right of filled thumbnails. */
-.photoSlotAddBare {
-  width: 110px;
-  height: 110px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.photoSlotPlusBare {
-  font-size: 2.4rem;
-  line-height: 1;
-  color: var(--muted);
-  transition: color .15s;
-}
-.photoSlotAddBare:hover .photoSlotPlusBare {
-  color: var(--neon, #00f5c4);
-}
+        {/* ── Exclusions ─────────────────────────────────────────── */}
+        <div style={blockStyle}>
+        <SecHeader label="Exclusions" icon={iconExcl} />
+        <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
+          Block discounts on specific dates. Pick a date, then choose whether to turn off the
+          site sale, promo codes, or both for that day — bookings on excluded dates pay full price.
+        </div>
 
-/* Muted hint at the bottom of the Package Setup Photos area (was on the
-   right of the header; moved straight down, so still right-aligned). */
-.photoAreaHint {
-  font-family: 'Space Mono', monospace;
-  font-size: .62rem;
-  font-style: italic;
-  letter-spacing: .03em;
-  color: var(--muted);
-  margin-top: .65rem;
-  width: 100%;
-  text-align: right;
-}
+        {/* Add row: pick a date, choose what to block, hit Confirm. The date box
+            clears on confirm so it's ready for the next date. */}
+        <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
+          <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
+            <label style={labelStyle}>Add a date</label>
+            <input
+              type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
+              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
+              value={newExclDate}
+              onChange={(e) => { setNewExclDate(e.target.value); setExclErr(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
+            />
+          </div>
+          {/* Both checkboxes grouped so they always sit on the same line (the
+              group wraps as a unit, never splitting one below the other). */}
+          <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '1.1rem', alignItems: 'center', height: 38 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                checked={newExclSale} onChange={(e) => setNewExclSale(e.target.checked)} />
+              Block Site Sale
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                checked={newExclCodes} onChange={(e) => setNewExclCodes(e.target.checked)} />
+              Block Promo Codes
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={addExclusion}
+            disabled={!newExclDate || (!newExclSale && !newExclCodes)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, marginLeft: 'auto',
+              background: (newExclDate && (newExclSale || newExclCodes)) ? GRAD : 'rgba(255,255,255,.06)',
+              color: (newExclDate && (newExclSale || newExclCodes)) ? '#04241b' : 'var(--muted,#8a8aa0)',
+              border: 'none', borderRadius: 10, padding: '0 18px', fontSize: '.82rem', fontWeight: 700,
+              cursor: (newExclDate && (newExclSale || newExclCodes)) ? 'pointer' : 'not-allowed',
+              boxShadow: (newExclDate && (newExclSale || newExclCodes)) ? '0 8px 22px -8px rgba(34,227,173,.7)' : 'none',
+            }}
+          >
+            Confirm
+          </button>
+        </div>
 
-/* ── Booking-settings section tabs (Option A underline on desktop,
-      dropdown on mobile) ─────────────────────────────────────────── */
-.secTabNav {
-  display: flex;
-  gap: 1.6rem;
-  border-bottom: 1px solid var(--border);
-  margin: 0 0 1.5rem;
-  overflow-x: auto;
-}
-.secTabBtn {
-  position: relative;
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: none;
-  border: none;
-  padding: 0 .2rem 13px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color .15s;
-}
-.secTabBtn:hover { color: var(--white); }
-/* Active tab: white text + a teal→cyan gradient underline with a soft glow. */
-.secTabBtnActive { color: var(--white); }
-.secTabBtnActive::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 3px;
-  background: linear-gradient(100deg, #22e3ad, #31d0ff);
-  box-shadow: 0 4px 14px -2px rgba(34, 227, 173, .6);
-}
-.secTabSelect {
-  display: none;
-  width: 100%;
-  margin: 0 0 1.5rem;
-  background: var(--card);
-  color: var(--white);
-  border: 1px solid var(--neon);
-  border-radius: 8px;
-  padding: .7rem .8rem;
-  font-family: 'Space Mono', monospace;
-  font-size: .72rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-@media (max-width: 640px) {
-  .secTabNav { display: none; }
-  .secTabSelect { display: block; }
-}
+        {exclErr && <div style={{ color: '#ffb020', fontSize: '.8rem', marginTop: '-.5rem', marginBottom: '.8rem' }}>{exclErr}</div>}
 
-/* Fixed-height lists (past sales, promo codes, exclusions) that scroll past ~4
-   rows. Force a visible scrollbar so it's obvious there's more below — WebKit
-   hides overlay scrollbars by default. */
-.scrollList {
-  scrollbar-width: thin;                 /* Firefox */
-  scrollbar-color: rgba(255,255,255,.5) rgba(255,255,255,.08);
-}
-.scrollList::-webkit-scrollbar {
-  width: 10px;
-}
-.scrollList::-webkit-scrollbar-track {
-  background: rgba(255,255,255,.05);
-  border-radius: 8px;
-}
-.scrollList::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.5);
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-.scrollList::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,.45);
-  background-clip: padding-box;
+        {exclusions.length === 0 ? (
+          <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
+        ) : (
+          <div
+            className={exclusions.length > 4 ? styles.scrollList : undefined}
+            style={exclusions.length > 4 ? { maxHeight: 272, overflowY: 'scroll', paddingRight: '.3rem' } : undefined}
+          >
+          {exclusions.map((ex, i) => (
+            <div
+              key={ex.date}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap',
+                padding: '.7rem .9rem', marginBottom: '.5rem', borderRadius: 10,
+                border: '1px solid var(--border, rgba(255,255,255,.12))', background: 'rgba(255,255,255,.02)',
+              }}
+            >
+              <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: '.9rem', color: 'var(--white,#fff)', minWidth: 96 }}>
+                {new Date(`${ex.date}T00:00:00`).toLocaleDateString()}
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '1.1rem', alignItems: 'center' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                    checked={!!ex.sale} onChange={(e) => updateExclusion(i, { sale: e.target.checked })} />
+                  Block Site Sale
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '.82rem', color: 'var(--white,#fff)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" style={{ width: 15, height: 15, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                    checked={!!ex.codes} onChange={(e) => updateExclusion(i, { codes: e.target.checked })} />
+                  Block Promo Codes
+                </label>
+              </div>
+              {confirmExclDel === i ? (
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '.6rem' }}>
+                  <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>Remove?</span>
+                  <button type="button" onClick={() => { removeExclusion(i); setConfirmExclDel(null); }} style={btnDanger}>Remove</button>
+                  <button type="button" onClick={() => setConfirmExclDel(null)} style={btnOutline}>Cancel</button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmExclDel(i)}
+                  aria-label="Remove excluded date"
+                  style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#ff8f8f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .2rem' }}
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+          ))}
+          </div>
+        )}
+        </div>{/* end Exclusions block */}
+      </div>
+    </div>
+  );
 }
