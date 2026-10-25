@@ -890,12 +890,17 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           <div style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>No promo codes yet.</div>
         )}
 
-        {/* Show ~4 codes at a glance; scroll inside a fixed window past that. */}
-        <div
-          className={promoCodes.length > 4 ? styles.scrollList : undefined}
-          style={promoCodes.length > 4 ? { maxHeight: 304, overflowY: 'scroll', paddingRight: '.3rem' } : undefined}
-        >
-        {promoCodes.map((c, i) => {
+        {promoCodes.length > 0 && (() => {
+          // Split into Active and Deactivated, each in its own labelled, scrollable
+          // group with Active on top. Original index `i` is preserved so edit /
+          // delete / (re)activate still target the right code.
+          const indexed = promoCodes.map((c, i) => ({ c, i }));
+          const activeCodes = indexed.filter(({ c }) => c.active !== false);
+          const deactivated = indexed.filter(({ c }) => c.active === false);
+          const groupScroll = (n: number): React.CSSProperties | undefined =>
+            n > 4 ? { maxHeight: 304, overflowY: 'scroll', paddingRight: '.3rem' } : undefined;
+
+          const renderCode = ({ c, i }: { c: PromoCode; i: number }) => {
           const isEditing = editIndex === i;
           const off = c.active === false;
           // Past its expiry date? An expired code can't apply to a booking even
@@ -1019,8 +1024,29 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               )}
             </div>
           );
-        })}
-        </div>
+          };
+
+          return (
+            <>
+              {activeCodes.length > 0 && (
+                <>
+                  <div style={{ ...labelStyle, marginBottom: '.5rem' }}>Active Promo Codes</div>
+                  <div className={activeCodes.length > 4 ? styles.scrollList : undefined} style={groupScroll(activeCodes.length)}>
+                    {activeCodes.map(renderCode)}
+                  </div>
+                </>
+              )}
+              {deactivated.length > 0 && (
+                <>
+                  <div style={{ ...labelStyle, marginBottom: '.5rem', marginTop: activeCodes.length > 0 ? '1.1rem' : 0 }}>Deactivated Promo Codes</div>
+                  <div className={deactivated.length > 4 ? styles.scrollList : undefined} style={groupScroll(deactivated.length)}>
+                    {deactivated.map(renderCode)}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
         </div>{/* end Promo codes block */}
 
         {/* ── Exclusions ─────────────────────────────────────────── */}
@@ -1036,13 +1062,22 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
           <div style={{ ...fieldWrap, flex: '0 0 158px' }}>
             <label style={labelStyle}>Add a date</label>
-            <input
-              type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
-              style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem' }} onClick={openPicker}
-              value={newExclDate}
-              onChange={(e) => { setNewExclDate(e.target.value); setExclErr(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
-            />
+            <div style={{ position: 'relative', width: '100%' }}>
+              <input
+                type="date" className={`${styles.settingNumber} gdcDateWhite`} min={todayStr}
+                style={{ ...dateInputStyle, width: '100%', boxSizing: 'border-box', height: 38, fontSize: '.78rem', color: newExclDate ? 'var(--white,#fff)' : 'transparent' }} onClick={openPicker}
+                value={newExclDate}
+                onChange={(e) => { setNewExclDate(e.target.value); setExclErr(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExclusion(); } }}
+              />
+              {/* Native date inputs can't carry a placeholder, so when nothing is
+                  picked we lay "Select" over the (transparent-text) field. */}
+              {!newExclDate && (
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted,#8a8aa0)', fontSize: '.78rem', pointerEvents: 'none' }}>
+                  Select
+                </span>
+              )}
+            </div>
           </div>
           {/* Both checkboxes grouped so they always sit on the same line (the
               group wraps as a unit, never splitting one below the other). */}
@@ -1079,14 +1114,15 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
 
         {exclusions.length === 0 ? (
           <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
-        ) : (
-          <>
-          <div style={{ ...labelStyle, marginBottom: '.5rem', paddingLeft: '.9rem' }}>Exclusion Date</div>
-          <div
-            className={exclusions.length > 4 ? styles.scrollList : undefined}
-            style={exclusions.length > 4 ? { maxHeight: 272, overflowY: 'scroll', paddingRight: '.3rem' } : undefined}
-          >
-          {exclusions.map((ex, i) => (
+        ) : (() => {
+          // Split into upcoming (today or later) and past, keeping each row's
+          // ORIGINAL index so edit/remove still target the right exclusion.
+          const todayStr = new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
+          const indexed = exclusions.map((ex, i) => ({ ex, i }));
+          const upcoming = indexed.filter(({ ex }) => (ex.date || '') >= todayStr);
+          const past = indexed.filter(({ ex }) => (ex.date || '') < todayStr);
+
+          const renderRow = ({ ex, i }: { ex: DiscountExclusion; i: number }) => (
             <div
               key={ex.date}
               style={{
@@ -1127,10 +1163,35 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 </button>
               )}
             </div>
-          ))}
-          </div>
-          </>
-        )}
+          );
+
+          return (
+            <>
+              {upcoming.length > 0 && (
+                <>
+                  <div style={{ ...labelStyle, marginBottom: '.5rem', paddingLeft: '.9rem' }}>Exclusion Date</div>
+                  <div
+                    className={upcoming.length > 4 ? styles.scrollList : undefined}
+                    style={upcoming.length > 4 ? { maxHeight: 272, overflowY: 'scroll', paddingRight: '.3rem' } : undefined}
+                  >
+                    {upcoming.map(renderRow)}
+                  </div>
+                </>
+              )}
+              {past.length > 0 && (
+                <>
+                  <div style={{ ...labelStyle, marginBottom: '.5rem', marginTop: upcoming.length > 0 ? '1.1rem' : 0, paddingLeft: '.9rem' }}>Past Dates</div>
+                  <div
+                    className={past.length > 4 ? styles.scrollList : undefined}
+                    style={past.length > 4 ? { maxHeight: 272, overflowY: 'scroll', paddingRight: '.3rem', opacity: .75 } : { opacity: .75 }}
+                  >
+                    {past.map(renderRow)}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
         </div>{/* end Exclusions block */}
       </div>
     </div>
