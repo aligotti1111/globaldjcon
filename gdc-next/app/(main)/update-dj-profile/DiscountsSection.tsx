@@ -883,6 +883,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           <div style={{ color: 'var(--muted, #8a8aa0)', fontSize: '.85rem' }}>No promo codes yet.</div>
         )}
 
+        {/* Show ~4 codes at a glance; scroll inside a fixed window past that. */}
+        <div style={promoCodes.length > 4 ? { maxHeight: 304, overflowY: 'auto', paddingRight: '.3rem' } : undefined}>
         {promoCodes.map((c, i) => {
           const isEditing = editIndex === i;
           const off = c.active === false;
@@ -1008,6 +1010,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             </div>
           );
         })}
+        </div>
         </div>{/* end Promo codes block */}
 
         {/* ── Exclusions ─────────────────────────────────────────── */}
@@ -1067,7 +1070,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {exclusions.length === 0 ? (
           <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.85rem' }}>No excluded dates.</div>
         ) : (
-          exclusions.map((ex, i) => (
+          <div style={exclusions.length > 4 ? { maxHeight: 272, overflowY: 'auto', paddingRight: '.3rem' } : undefined}>
+          {exclusions.map((ex, i) => (
             <div
               key={ex.date}
               style={{
@@ -1108,7 +1112,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 </button>
               )}
             </div>
-          ))
+          ))}
+          </div>
         )}
         </div>{/* end Exclusions block */}
       </div>
