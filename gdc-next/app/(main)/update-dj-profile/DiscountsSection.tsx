@@ -70,24 +70,14 @@ const GRAD = 'linear-gradient(100deg,#22e3ad,#31d0ff)';
 
 // A section block: pure-black card with a bright hairline border. The two
 // blocks (Run a sale / Promo codes) sit inside the panel and read as distinct.
-const blockStyle: React.CSSProperties = {
-  background: '#000',
-  border: '1px solid rgba(255,255,255,.16)',
-  borderRadius: 16,
-  padding: '1.35rem 1.35rem 1.2rem',
-  marginBottom: '1.15rem',
-};
-// Highlighted, gradient-badge header. Renders an icon chip + bold title inside
-// a tinted gradient pill so each section clearly stands out from the black card.
+// Full-width header band for each stacked section card — mirrors the Payments
+// Accepted page's section headers: a tinted top strip with a centred icon chip
+// + title that spans the card edge-to-edge.
 function SecHeader({ label, icon }: { label: string; icon: React.ReactNode }) {
   return (
     <div
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 12,
-        padding: '10px 18px 10px 12px', borderRadius: 14,
-        background: 'linear-gradient(100deg,rgba(34,227,173,.18),rgba(49,208,255,.14))',
-        border: '1px solid rgba(255,255,255,.26)', marginBottom: 16,
-      }}
+      className={styles.sectionHeader}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}
     >
       <span
         style={{
@@ -611,8 +601,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
         `}</style>
 
-        <div style={blockStyle}>
+        <div className={styles.sectionCard}>
         <SecHeader label="Sale" icon={iconSale} />
+        <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           A site-wide % off applied automatically to every quote. Set a window and it switches
           itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
@@ -939,11 +930,13 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             </div>
           </div>
         )}
+        </div>
         </div>{/* end Run a sale block */}
 
         {/* ── Promo codes ────────────────────────────────────────── */}
-        <div style={blockStyle}>
+        <div className={styles.sectionCard}>
         <SecHeader label="Promo Codes" icon={iconPromo} />
+        <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           Private codes you hand out — referrals, socials, repeat clients. Build one, switch it on,
           and it drops into your list. Your public price stays the same.
@@ -1158,11 +1151,13 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             </>
           );
         })()}
+        </div>
         </div>{/* end Promo codes block */}
 
         {/* ── Exclusions ─────────────────────────────────────────── */}
-        <div style={blockStyle}>
+        <div className={styles.sectionCard}>
         <SecHeader label="Exclusions" icon={iconExcl} />
+        <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
           Block discounts on specific dates. Pick a date, then choose whether to turn off the
           site sale, promo codes, or both for that day — bookings on excluded dates pay full price.
@@ -1292,6 +1287,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             </>
           );
         })()}
+        </div>
         </div>{/* end Exclusions block */}
       </div>
       {confirmDialog}
