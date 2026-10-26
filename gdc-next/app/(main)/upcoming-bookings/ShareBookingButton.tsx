@@ -180,13 +180,14 @@ export default function ShareBookingButton({
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted,#8a8aa0)'; }}
         role="button"
         tabIndex={0}
-        aria-label="Share booking card"
-        title="Share a view-only link to this booking card"
+        aria-label="Share options"
+        title="Share, copy link or download this booking card"
         style={{ ...iconBtn, transition: 'color .12s' }}
       >
-        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <line x1="22" y1="2" x2="11" y2="13" />
-          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.8" />
+          <circle cx="12" cy="12" r="1.8" />
+          <circle cx="19" cy="12" r="1.8" />
         </svg>
       </span>
 
