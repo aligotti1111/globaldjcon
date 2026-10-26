@@ -162,6 +162,10 @@ export interface Sale {
   starts?: string | null;      // ISO date the DJ chooses; null = starts immediately
   ends?: string | null;        // ISO date; null = no end date
   started_at?: string | null;  // ISO timestamp set when the sale is activated
+  // Whether to advertise the sale on the public profile. The sale still APPLIES
+  // to quotes either way — this only controls the "X% off" badge. Undefined is
+  // treated as true (shown), so existing sales keep advertising.
+  show_on_profile?: boolean;
 }
 
 // Result of resolving the best discount for a quote.
