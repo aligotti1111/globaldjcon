@@ -86,7 +86,7 @@
 .gdc-dash .card{background:var(--card);border:1px solid var(--line);border-radius:16px}
 .gdc-dash .section.mobile .card{box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 28px rgba(0,245,196,.05)}
 .gdc-dash .section.club .card{box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 28px rgba(245,230,66,.05)}
-.gdc-dash .toprow{display:flex;align-items:center;gap:12px;padding:14px 16px 12px}
+.gdc-dash .toprow{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 12px}
 .gdc-dash .trtime{font-size:.86rem;color:var(--ink);white-space:nowrap;flex-shrink:0}
 .gdc-dash .trevent{font-weight:700;font-size:.9rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gdc-dash .trchev{margin-left:auto;color:var(--muted);display:inline-flex;flex-shrink:0}
@@ -227,3 +227,7 @@
 /* Keep the expand chevron clear of the top-right dots: push it to the bottom. */
 .gdc-dash .drow .rowchev{align-self:end}
 .gdc-dash .toprow .trchev{align-self:flex-end}
+
+/* Badge header above the date/time/event row (mobile card). */
+.gdc-dash .cardbadges{padding:12px 16px 0;cursor:pointer}
+.gdc-dash .cardbadges .evtags{align-items:flex-start}
