@@ -112,6 +112,44 @@ function deriveSlugFromName(name: string | null | undefined): string {
     .replace(/^-|-$/g, '');
 }
 
+// Record one redemption of a promo code on the DJ's stored settings. Makes the
+// per-code `maxUses` cap real: isPromoUsable() already refuses a code once
+// `uses >= maxUses`, but nothing ever incremented `uses`, so the cap could
+// never be hit. Re-reads the settings immediately before the bump to shrink
+// (not eliminate) the read-modify-write window; best-effort — a failure here
+// never fails the booking that already inserted. No-op when the code has no
+// cap, so DJs who don't limit uses pay nothing for this.
+async function recordPromoUse(djId: string, code: string): Promise<void> {
+  const target = (code || '').trim().toUpperCase();
+  if (!target) return;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('users')
+      .select('booking_settings')
+      .eq('id', djId)
+      .maybeSingle<{ booking_settings: string | null }>();
+    const current: BookingSettings = parseBookingSettings(data?.booking_settings) || {};
+    const codes = Array.isArray(current.promo_codes) ? current.promo_codes : [];
+    let changed = false;
+    const next = codes.map((p) => {
+      if ((p.code || '').trim().toUpperCase() === target && p.maxUses != null) {
+        changed = true;
+        return { ...p, uses: (p.uses || 0) + 1 };
+      }
+      return p;
+    });
+    if (!changed) return; // code gone or uncapped — nothing to track
+    const merged = { ...current, promo_codes: next };
+    await admin
+      .from('users')
+      .update({ booking_settings: JSON.stringify(merged) } as unknown as never)
+      .eq('id', djId);
+  } catch (e) {
+    console.warn('[bookings/create] promo use increment failed:', e);
+  }
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -243,7 +281,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data: djRow, error: djErr } = await admin
     .from('users')
-    .select('id, name, slug, booking_settings, mob_custom_event_types')
+    .select('id, name, slug, booking_settings, mob_custom_event_types, timezone')
     .eq('id', djId)
     .maybeSingle<{
       id: string;
@@ -251,12 +289,18 @@ export async function POST(req: Request) {
       slug: string | null;
       booking_settings: string | null;
       mob_custom_event_types: unknown;
+      timezone: string | null;
     }>();
   if (djErr) return bad('DJ lookup failed: ' + djErr.message, 500);
   if (!djRow) return bad('DJ not found.', 404);
 
   const settings: BookingSettings = parseBookingSettings(djRow.booking_settings) || {};
   const djSlug = djRow.slug || deriveSlugFromName(djRow.name) || null;
+  // The DJ's own timezone decides whether a sale/code window is "active today"
+  // (see computeDiscount / isSaleActive). Without it the server would judge the
+  // window in UTC while the booker's browser judged it locally — they could
+  // disagree near midnight and trip the price-drift guard below.
+  const djTz = djRow.timezone || undefined;
 
   // Shared non-money fields
   const venueName = str(body.venueName).trim();
@@ -292,7 +336,8 @@ export async function POST(req: Request) {
   const endTime = str(body.endTime);
   const venueLat = numOrNull(body.venueLat);
   const venueLon = numOrNull(body.venueLon);
-  const promoCode = str(body.promoCode).trim().toUpperCase();
+  // Capped so a hostile client can't send a megabyte "code" into the matcher.
+  const promoCode = str(body.promoCode).trim().toUpperCase().slice(0, 64);
   const hasExpected = Object.prototype.hasOwnProperty.call(body, 'expectedTotal');
   const expectedTotal = hasExpected ? numOrNull(body.expectedTotal) : null;
 
@@ -405,7 +450,7 @@ export async function POST(req: Request) {
 
     const finalDiscount: DiscountResult =
       finalPrice.price != null
-        ? computeDiscount(finalPrice.price, settings, promoCode, dateKey)
+        ? computeDiscount(finalPrice.price, settings, promoCode, dateKey, djTz)
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
       finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
@@ -570,6 +615,8 @@ export async function POST(req: Request) {
 
     await saveContactEmail(user.id, contactEmail);
     await saveSmsPhone(user.id, phone);
+    // Count this redemption against the code's usage cap (if any).
+    if (finalDiscount.kind === 'code') await recordPromoUse(djRow.id, promoCode);
 
     // Server-computed money snapshot — the client uses this (not its own
     // preview) for the notification emails so they always match the DB row.
@@ -661,7 +708,7 @@ export async function POST(req: Request) {
   // Apply discount to the computed total (sale/promo). quoted_rate stores
   // the discounted price; original_rate keeps the pre-discount total.
   const clubFinalDiscount: DiscountResult = computedTotal != null
-    ? computeDiscount(Number(computedTotal), settings, promoCode, dateKey)
+    ? computeDiscount(Number(computedTotal), settings, promoCode, dateKey, djTz)
     : { amount: 0, kind: null, label: '' };
   const computedTotalDiscounted = computedTotal != null
     ? Math.max(0, Number(computedTotal) - clubFinalDiscount.amount)
@@ -789,6 +836,8 @@ export async function POST(req: Request) {
 
   await saveContactEmail(user.id, contactEmail);
   await saveSmsPhone(user.id, phone);
+  // Count this redemption against the code's usage cap (if any).
+  if (clubFinalDiscount.kind === 'code') await recordPromoUse(djRow.id, promoCode);
 
   return NextResponse.json({
     ok: true,
