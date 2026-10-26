@@ -177,7 +177,6 @@ function DateField({
   const label = value ? new Date(`${value}T00:00:00`).toLocaleDateString() : placeholder;
   return (
     <div
-      onClick={openPickerNow}
       style={{
         position: 'relative', width: '100%', height, boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px',
@@ -191,16 +190,17 @@ function DateField({
       <span style={{ color: value ? 'var(--white,#fff)' : 'var(--muted,#8a8aa0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {label}
       </span>
-      {/* Real control: invisible, 1×1, only drives the picker + holds the value. */}
+      {/* The REAL control: a transparent date input covering the whole box. It's
+          the actual thing clicked and picked, so the browser commits the choice
+          normally; our icon + label show through beneath it. */}
       <input
         ref={ref}
         type="date"
         min={min}
         value={value || ''}
+        onClick={openPickerNow}
         onChange={(e) => { onChange(e.target.value || null); e.currentTarget.blur(); }}
-        tabIndex={-1}
-        aria-hidden="true"
-        style={{ position: 'absolute', left: 10, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
       />
     </div>
   );
