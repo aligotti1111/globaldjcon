@@ -112,7 +112,10 @@ const iconExcl = (
   </svg>
 );
 const usedCellValue: React.CSSProperties = {
-  height: 38, display: 'inline-flex', alignItems: 'center', gap: 4,
+  // Match the date fields' height (34) so the number sits on the same line as
+  // the values beside it — the row aligns on flex-end, so a taller cell here
+  // floated the "0" above the dates and the status pill.
+  height: 34, display: 'inline-flex', alignItems: 'center', gap: 4,
   color: 'var(--white,#fff)', fontSize: '.88rem', fontWeight: 700,
 };
 
