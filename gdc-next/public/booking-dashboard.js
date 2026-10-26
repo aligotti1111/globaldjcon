@@ -257,7 +257,11 @@ function mobCardHTML(m,mi){
   const d=m.det||{};
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const venueSubM=(m.type!=='club'&&d.venue)?`<span class="dvvenue">${d.venue}</span>`:'';
-  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<div class="trmid">${badges}<div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}${venueSubM}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  const ocard=canOpen?` onclick="toggleCard(${mi},event)"`:'';
+  // Badges (e.g. "Includes ceremony music") ride ABOVE the row so the date,
+  // time and event name all sit on the same top line.
+  const badgeHead=badges?`<div class="cardbadges"${ocard}>${badges}</div>`:'';
+  const top=`${badgeHead}<div class="toprow"${ocard}>${dateHTML(m)}<div class="trmid"><div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}${venueSubM}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
   return `<div class="card${open?' open':''}">
     ${shareBtnHTML(mi)}
     ${top}
