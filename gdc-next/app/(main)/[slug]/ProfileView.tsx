@@ -93,8 +93,12 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // matching vanilla bookingTabBtn.textContent flips at line 707 of dj-profile.html.
   const bookingSettings = parseBookingSettings(data.booking_settings);
   // Site-wide sale badge — shown on the public profile when the DJ has an
-  // active sale (and booking is live for them).
-  const saleActive = hasBookingAccess && isSaleActive(bookingSettings?.sale);
+  // active sale (and booking is live for them) AND has opted to advertise it.
+  // The sale still applies to quotes even when the badge is hidden; this only
+  // controls whether it's shown on the profile. Undefined => shown (default).
+  const saleActive = hasBookingAccess
+    && isSaleActive(bookingSettings?.sale)
+    && bookingSettings?.sale?.show_on_profile !== false;
   const salePercent = bookingSettings?.sale?.percent;
   const isClubDJ = data.dj_type === 'club';
   const isMobileDJBooking = data.dj_type === 'mobile';
