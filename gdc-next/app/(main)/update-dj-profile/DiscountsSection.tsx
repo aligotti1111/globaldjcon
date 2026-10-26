@@ -270,6 +270,26 @@ function CodeFields({
         <label style={labelStyle}>Expires (optional)</label>
         <DateField value={value.expires || null} onChange={(v) => onField({ expires: v })} />
       </div>
+      <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
+        <label style={labelStyle}>Max uses (optional)</label>
+        <input
+          type="number"
+          onWheel={(e) => e.currentTarget.blur()}
+          min={1}
+          step={1}
+          className={`${styles.settingNumber} gdcNoSpin`}
+          style={{ ...fieldBox, width: '100%', color: 'var(--white,#fff)' }}
+          value={value.maxUses != null ? value.maxUses : ''}
+          placeholder="Unlimited"
+          onChange={(e) => {
+            // Blank = no cap. Otherwise a whole number ≥ 1.
+            const raw = e.target.value;
+            if (raw === '') { onField({ maxUses: null }); return; }
+            const n = Math.floor(Number(raw));
+            onField({ maxUses: Number.isFinite(n) && n >= 1 ? n : null });
+          }}
+        />
+      </div>
     </>
   );
 }
@@ -1097,16 +1117,20 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     const key = (c.code || '').trim().toUpperCase();
                     const uses = usageByCode[key] || [];
                     const open = expandedCode === key;
+                    // When the DJ set a cap, show "used / max" and flag a code
+                    // that's hit its limit (it stops applying at checkout).
+                    const cap = c.maxUses != null ? ` / ${c.maxUses}` : '';
+                    const maxedOut = c.maxUses != null && uses.length >= c.maxUses;
                     if (uses.length === 0) {
-                      return <span>0</span>;
+                      return <span>0{cap}</span>;
                     }
                     return (
                       <button
                         type="button"
                         onClick={() => setExpandedCode(open ? null : key)}
-                        style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4, justifySelf: 'start' }}
+                        style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: maxedOut ? '#ffb020' : 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4, justifySelf: 'start' }}
                       >
-                        {uses.length}
+                        {uses.length}{cap}
                         <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
                       </button>
                     );
