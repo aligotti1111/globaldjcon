@@ -177,7 +177,7 @@ export function buildBookingRequestBody(opts: {
   // original price + which discount, as the rate's parenthetical.
   const discountBreakdown =
     discAmt > 0 && origRate != null
-      ? `was ${currencySymbol(offerCurrency)}${origRate.toLocaleString()} — ${discLabel}, save ${currencySymbol(offerCurrency)}${discAmt.toLocaleString()}`
+      ? `was ${currencySymbol(offerCurrency)}${origRate.toLocaleString()} — ${escHtml(discLabel)}, save ${currencySymbol(offerCurrency)}${discAmt.toLocaleString()}`
       : undefined;
 
   // Set type (club) — "Event Type" labelling belongs to mobile bookings.
@@ -342,7 +342,7 @@ export function buildBookingRequestConfirmationBody(opts: {
     ? Number(confHourlyRate) : null;
   const confDiscountBreakdown =
     confDiscAmt > 0 && confOrigRate != null
-      ? `was ${currencySymbol(confCurrency)}${confOrigRate.toLocaleString()} — ${confDiscLabel}, save ${currencySymbol(confCurrency)}${confDiscAmt.toLocaleString()}`
+      ? `was ${currencySymbol(confCurrency)}${confOrigRate.toLocaleString()} — ${escHtml(confDiscLabel)}, save ${currencySymbol(confCurrency)}${confDiscAmt.toLocaleString()}`
       : undefined;
   const confEquipmentLabel = ({
     sound_system: 'DJ provides system + decks',
