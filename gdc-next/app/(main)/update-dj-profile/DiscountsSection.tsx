@@ -879,7 +879,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                       }}
                     >
                       <span style={metaLabel}>Used</span>{people.length}
-                      {clickable && <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>}
+                      {/* Reserve the caret slot even when there's nothing to
+                          expand, so the Used numbers line up across every row. */}
+                      <span style={{ fontSize: '.7rem', width: 12, display: 'inline-block', textAlign: 'center' }}>{clickable ? (open ? '▲' : '▼') : ''}</span>
                     </span>
                   </div>
 
