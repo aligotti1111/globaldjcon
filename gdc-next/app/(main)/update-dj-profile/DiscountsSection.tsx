@@ -212,7 +212,7 @@ function CodeFields({
 }) {
   return (
     <>
-      <div style={{ ...fieldWrap, flex: '1 1 110px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
         <label style={labelStyle}>Code Name</label>
         <input
           type="text"
