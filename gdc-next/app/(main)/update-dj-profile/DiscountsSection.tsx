@@ -722,7 +722,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           const locked = tone === 'on' || tone === 'sched';
           return (
             <>
-            <div style={{ ...labelStyle, display: 'block', background: 'rgba(255,255,255,.05)', border: '1px solid var(--border, rgba(255,255,255,.1))', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: 'var(--white,#fff)' }}>Current sale</div>
+            <div style={{ ...labelStyle, display: 'block', background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: '#06231b' }}>Current sale</div>
             {/* Scheduled sales get a quieter amber heads-up until they go live. */}
             {tone === 'sched' && (
               <div style={{
@@ -931,7 +931,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             landed inside each sale's window. */}
         {saleHistory.length > 0 && (
           <div style={{ marginTop: '1.1rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.9rem' }}>
-            <div style={{ ...labelStyle, display: 'block', background: 'rgba(255,255,255,.05)', border: '1px solid var(--border, rgba(255,255,255,.1))', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: 'var(--white,#fff)' }}>Past sales</div>
+            <div style={{ ...labelStyle, display: 'block', background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: '#06231b' }}>Past sales</div>
             {/* Show ~4 at a glance; when there are more, the list scrolls inside
                 a fixed-height window instead of running down the whole page. */}
             <div
