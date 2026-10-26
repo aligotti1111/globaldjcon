@@ -707,30 +707,29 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               <div
                 style={
                   isNarrow
-                    ? { ...fieldWrap, order: 1, gridColumn: '1 / -1', justifySelf: 'end', width: 'fit-content', alignItems: 'center', textAlign: 'center' }
-                    : { ...fieldWrap, flex: '0 0 auto', marginLeft: 'auto', alignItems: 'center', textAlign: 'center' }
+                    ? { order: 1, gridColumn: '1 / -1', justifySelf: 'end', display: 'flex', alignItems: 'flex-end', gap: '1.6rem' }
+                    : { flex: '0 0 auto', marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: '1.6rem' }
                 }
               >
-                <label style={labelStyle}>Status</label>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '1.6rem' }}>
-                  {/* Nothing is applied until the DJ confirms. Confirm stays
-                      visible while the sale is staged (not yet live) — but it's
-                      only clickable once a percent AND start date are set. The
-                      moment it's confirmed, the draft clears and this disappears. */}
-                  {saleDirty && (
-                    <button
-                      type="button"
-                      onClick={confirmSale}
-                      disabled={!canConfirmSale}
-                      style={{
-                        ...btnPrimary, height: 30, padding: '0 14px', borderRadius: 999,
-                        opacity: canConfirmSale ? 1 : 0.4,
-                        cursor: canConfirmSale ? 'pointer' : 'not-allowed',
-                      }}
-                    >
-                      Confirm
-                    </button>
-                  )}
+                {/* Confirm — shown until the sale is actually live or scheduled.
+                    It's only clickable once a percent AND start date are staged;
+                    once confirmed the sale goes live and this disappears. */}
+                {tone !== 'on' && tone !== 'sched' && (
+                  <button
+                    type="button"
+                    onClick={confirmSale}
+                    disabled={!canConfirmSale}
+                    style={{
+                      ...btnPrimary, height: 30, padding: '0 16px', borderRadius: 999,
+                      opacity: canConfirmSale ? 1 : 0.4,
+                      cursor: canConfirmSale ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    Confirm
+                  </button>
+                )}
+                <div style={{ ...fieldWrap, alignItems: 'center', textAlign: 'center' }}>
+                  <label style={labelStyle}>Status</label>
                   <span
                     style={{
                       height: 30, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px',
