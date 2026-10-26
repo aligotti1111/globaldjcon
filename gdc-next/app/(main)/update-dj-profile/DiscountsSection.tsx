@@ -722,24 +722,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           return (
             <>
             <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Current sale</div>
-            {/* Live ribbon — gives a running sale an unmistakable "it's on right
-                now" feel beyond the status pill: a soft neon glow + pulsing dot
-                stating exactly what's being applied. Scheduled sales get a
-                quieter amber heads-up instead. */}
-            {tone === 'on' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, marginBottom: '.9rem',
-                padding: '10px 14px', borderRadius: 10,
-                background: 'linear-gradient(100deg, rgba(34,227,173,.16), rgba(49,208,255,.10))',
-                border: '1px solid rgba(34,227,173,.35)',
-                boxShadow: '0 0 26px -8px rgba(34,227,173,.6)',
-              }}>
-                <span className="gdcLiveDot" style={{ width: 9, height: 9, borderRadius: '50%', background: '#22e3ad', flex: '0 0 auto' }} />
-                <span style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--white,#fff)' }}>
-                  Live now — {pct}% off is applied automatically to every quote.
-                </span>
-              </div>
-            )}
+            {/* Scheduled sales get a quieter amber heads-up until they go live. */}
             {tone === 'sched' && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 10, marginBottom: '.9rem',
