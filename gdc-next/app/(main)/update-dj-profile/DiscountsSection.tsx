@@ -378,16 +378,16 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
 
   function updateSale(p: Partial<Sale>) {
     const next: Sale = { ...saleView, ...p };
-    const pct = next.percent ?? 0;
-    if (pct <= 0) {
-      // Percent cleared — drop the draft AND any saved sale.
+    const hasAnything = (next.percent ?? 0) > 0 || !!next.starts || !!next.ends;
+    if (!hasAnything) {
+      // Nothing set at all — drop the draft AND any saved sale.
       setSaleDraft(null);
       if ((sale.percent ?? 0) > 0 || sale.starts) onChange({ sale: {} });
       return;
     }
-    // Everything else just stages locally. Nothing is activated or persisted
-    // until the DJ hits Confirm (confirmSale), so picking a date never turns
-    // the sale on by itself.
+    // Any partial edit (a percent OR a date on its own) stays staged in the
+    // form. Nothing is activated or persisted until Confirm (confirmSale), so
+    // picking a date never turns the sale on by itself — but it IS remembered.
     setSaleDraft(next);
   }
 
