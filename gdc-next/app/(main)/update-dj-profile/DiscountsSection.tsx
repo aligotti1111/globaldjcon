@@ -713,21 +713,6 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   <span style={usedCellValue}>0</span>
                 )}
               </div>
-              {/* Advertise-on-profile toggle. Checked = the "X% off" badge shows
-                  on the public profile; unchecked = sale still applies to quotes
-                  but isn't advertised. Only shown once a sale exists. */}
-              {(saleView.percent ?? 0) > 0 && (
-                <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 6 : undefined, alignItems: 'center', textAlign: 'center' }}>
-                  <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Show on profile</label>
-                  <input
-                    type="checkbox"
-                    checked={saleView.show_on_profile !== false}
-                    onChange={(e) => setSaleShown(e.target.checked)}
-                    style={{ width: 16, height: 16, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
-                    title="Show this sale on your public profile"
-                  />
-                </div>
-              )}
               <div
                 style={
                   isNarrow
@@ -771,6 +756,20 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 </div>
               </div>
             </div>
+            {/* Advertise-on-profile toggle on its own line. Checked = the "X% off"
+                badge shows on the public profile; unchecked = the sale still
+                applies to quotes but isn't advertised. */}
+            {(saleView.percent ?? 0) > 0 && (
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: '.7rem', cursor: 'pointer', fontSize: '.8rem', color: 'var(--white,#fff)' }}>
+                <input
+                  type="checkbox"
+                  checked={saleView.show_on_profile !== false}
+                  onChange={(e) => setSaleShown(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                />
+                Show sale banner on profile
+              </label>
+            )}
             {/* End-now escape hatch — a sale with no end date (or a future one)
                 has no other way to stop, so let the DJ end it on the spot. Only
                 shown once the sale is actually running or scheduled; a percent
