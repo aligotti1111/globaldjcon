@@ -710,13 +710,13 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           }
           const pillStyle: React.CSSProperties =
             tone === 'on'
-              // Same understated pill shape as "Ended", just green — a soft
-              // translucent fill with matching text, not the bright gradient.
-              ? { color: '#22e3ad', background: 'rgba(34,227,173,.12)' }
+              // Same understated pill shape as "Ended" — soft translucent fill,
+              // white label, a solid (non-blinking) green dot.
+              ? { color: 'var(--white,#fff)', background: 'rgba(34,227,173,.12)' }
               : tone === 'sched'
                 ? { color: '#3a2a00', background: '#ffcf6b' }
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
-          const dotColor = tone === 'on' ? '#22e3ad' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
+          const dotColor = tone === 'on' ? '#22c55e' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
           // Only one sale at a time: while one is running or scheduled, the
           // fields lock and Confirm hides. To start a different sale the DJ
           // ends/cancels the current one first (the link below the row).
@@ -844,7 +844,6 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     }}
                   >
                     <span
-                      className={tone === 'on' ? 'gdcLiveDot' : undefined}
                       style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
                     />
                     {statLabel}
