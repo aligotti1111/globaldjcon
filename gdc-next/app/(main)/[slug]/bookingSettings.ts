@@ -1,6 +1,8 @@
 // Types and helpers for the booking_settings JSON field on users.
 // Vanilla stores this as a JSON-stringified string in users.booking_settings.
 
+import { currencySymbol } from '@/lib/constants';
+
 // Per-day booking data keyed by YYYY-MM-DD in booking_settings.booking_days
 // (used by club DJs for the public calendar view)
 export interface DayData {
@@ -175,31 +177,49 @@ export interface DiscountResult {
   label: string;               // e.g. "15% OFF" / "SPRING10 (10% off)"
 }
 
-// Is a promo code currently usable? (active, not expired, uses remaining)
-export function isPromoUsable(p: PromoCode, now: Date = new Date()): boolean {
-  if (!p || p.active === false) return false;
-  if (p.expires) {
-    const end = new Date(`${p.expires}T23:59:59`);
-    if (!isNaN(end.getTime()) && end.getTime() < now.getTime()) return false;
+// Today's date as YYYY-MM-DD in the given IANA timezone. Sale/promo windows
+// are whole dates (starts/ends/expires are date-only), so the "is it active
+// now?" test is a DATE comparison, not a timestamp one. Comparing date STRINGS
+// against this key avoids the drift the old `new Date("…T00:00:00")` parse
+// produced — that parsed in the runtime's local zone, so a UTC server and a
+// browser in another zone could disagree about today near midnight. Passing
+// the DJ's timezone makes every surface agree on the DJ's own calendar day;
+// with no tz it falls back to the runtime's local date (previous behaviour).
+export function todayKey(tz?: string, d: Date = new Date()): string {
+  if (tz) {
+    try {
+      // en-CA formats as YYYY-MM-DD.
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(d);
+    } catch { /* invalid tz → fall through to local */ }
   }
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Is a promo code currently usable? (active, not expired, uses remaining)
+export function isPromoUsable(p: PromoCode, tz?: string): boolean {
+  if (!p || p.active === false) return false;
+  // Expires at the END of its day: usable through p.expires inclusive.
+  if (p.expires && p.expires < todayKey(tz)) return false;
   if (p.maxUses != null && (p.uses || 0) >= p.maxUses) return false;
   return true;
 }
 
 // Is a sale currently active?
-export function isSaleActive(s: Sale | null | undefined, now: Date = new Date()): boolean {
+export function isSaleActive(s: Sale | null | undefined, tz?: string): boolean {
   if (!s || !s.active) return false;
   if (!s.percent || s.percent <= 0) return false;
   // A start date is required: a percent with no start date is a draft, and a
   // start date in the future means the sale is only scheduled — neither is
   // active yet. This mirrors the DJ-facing status readout.
   if (!s.starts) return false;
-  const start = new Date(`${s.starts}T00:00:00`);
-  if (!isNaN(start.getTime()) && start.getTime() > now.getTime()) return false;
-  if (s.ends) {
-    const end = new Date(`${s.ends}T23:59:59`);
-    if (!isNaN(end.getTime()) && end.getTime() < now.getTime()) return false;
-  }
+  const today = todayKey(tz);
+  if (s.starts > today) return false;        // scheduled (starts in the future)
+  if (s.ends && s.ends < today) return false; // ended (last active day was s.ends)
   return true;
 }
 
@@ -209,13 +229,19 @@ export function isSaleActive(s: Sale | null | undefined, now: Date = new Date())
 // typed (may be empty). Discount never exceeds the subtotal.
 export function computeDiscount(
   subtotal: number,
-  settings: Pick<BookingSettings, 'promo_codes' | 'sale' | 'exclusions'> | null | undefined,
+  settings: Pick<BookingSettings, 'promo_codes' | 'sale' | 'exclusions' | 'rate_currency'> | null | undefined,
   enteredCode?: string | null,
   eventDate?: string | null,
-  now: Date = new Date()
+  // IANA timezone of the DJ whose discounts these are. Threaded through so the
+  // sale/code windows resolve on the DJ's own calendar day (see todayKey).
+  tz?: string
 ): DiscountResult {
   const none: DiscountResult = { amount: 0, kind: null, label: '' };
   if (!settings || !Number.isFinite(subtotal) || subtotal <= 0) return none;
+
+  // Currency symbol for the flat-code label — the DJ's rate currency, not a
+  // hardcoded "$" (a DJ priced in £/€ showed the wrong symbol on their receipt).
+  const sym = currencySymbol(settings.rate_currency);
 
   // Date exclusions — if the booking's event date is flagged, block the sale
   // and/or codes independently on that day.
@@ -228,7 +254,7 @@ export function computeDiscount(
   const candidates: DiscountResult[] = [];
 
   // Sale
-  if (!saleExcluded && isSaleActive(settings.sale, now)) {
+  if (!saleExcluded && isSaleActive(settings.sale, tz)) {
     const pct = Math.min(100, Math.max(0, settings.sale!.percent || 0));
     candidates.push({
       amount: (subtotal * pct) / 100,
@@ -241,20 +267,21 @@ export function computeDiscount(
   const typed = (enteredCode || '').trim().toUpperCase();
   if (!codesExcluded && typed && Array.isArray(settings.promo_codes)) {
     const match = settings.promo_codes.find(
-      (p) => (p.code || '').trim().toUpperCase() === typed && isPromoUsable(p, now)
+      (p) => (p.code || '').trim().toUpperCase() === typed && isPromoUsable(p, tz)
     );
     if (match) {
-      const amount =
-        match.type === 'percent'
-          ? (subtotal * Math.min(100, Math.max(0, match.value))) / 100
-          : Math.max(0, match.value);
+      // Clamp here so the LABEL reflects what actually comes off: a percent is
+      // 0–100, and a flat amount can never exceed the subtotal.
+      const pct = Math.min(100, Math.max(0, match.value));
+      const flat = Math.max(0, Math.min(subtotal, match.value));
+      const amount = match.type === 'percent' ? (subtotal * pct) / 100 : flat;
       candidates.push({
         amount,
         kind: 'code',
         label:
           match.type === 'percent'
-            ? `${match.code.toUpperCase()} (${match.value}% off)`
-            : `${match.code.toUpperCase()} ($${match.value} off)`,
+            ? `${match.code.toUpperCase()} (${pct}% off)`
+            : `${match.code.toUpperCase()} (${sym}${flat.toLocaleString()} off)`,
       });
     }
   }
