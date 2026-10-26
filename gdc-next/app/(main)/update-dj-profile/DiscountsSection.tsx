@@ -403,6 +403,15 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
     setSaleDraft(null);
   }
 
+  // Advertise-on-profile toggle. It's a display preference, not part of the
+  // sale window, so it applies immediately: to the staged draft if one exists,
+  // otherwise straight to the saved live sale (no Confirm needed). The sale
+  // still applies to quotes either way.
+  function setSaleShown(show: boolean) {
+    if (saleDraft) { setSaleDraft({ ...saleDraft, show_on_profile: show }); return; }
+    if ((sale.percent ?? 0) > 0) onChange({ sale: { ...sale, show_on_profile: show } });
+  }
+
   // End the running sale right now. If it had already started, archive it with
   // today as the end date; if it was only scheduled (start still in the future),
   // just clear it — there's nothing to record. Either way the form empties for
@@ -704,6 +713,21 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   <span style={usedCellValue}>0</span>
                 )}
               </div>
+              {/* Advertise-on-profile toggle. Checked = the "X% off" badge shows
+                  on the public profile; unchecked = sale still applies to quotes
+                  but isn't advertised. Only shown once a sale exists. */}
+              {(saleView.percent ?? 0) > 0 && (
+                <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 6 : undefined, alignItems: 'center', textAlign: 'center' }}>
+                  <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Show on profile</label>
+                  <input
+                    type="checkbox"
+                    checked={saleView.show_on_profile !== false}
+                    onChange={(e) => setSaleShown(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
+                    title="Show this sale on your public profile"
+                  />
+                </div>
+              )}
               <div
                 style={
                   isNarrow
