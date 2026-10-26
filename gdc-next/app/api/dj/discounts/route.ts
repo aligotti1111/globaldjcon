@@ -35,6 +35,86 @@ function parseSettings(raw: unknown): Record<string, unknown> {
   return {};
 }
 
+// ── Input validation ─────────────────────────────────────────────────────────
+// A teammate's save overwrites the owner's whole discount set, so the client is
+// trusted for shape today. Re-validate here (the boundary) so a crafted body
+// can't plant a negative percent, a NaN value, a non-date exclusion, or a
+// megabyte "code" into the money path. Each key is coerced to a known-good
+// shape; junk entries are dropped, not stored.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function finiteNum(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+function cleanSale(v: unknown): Record<string, unknown> {
+  if (!v || typeof v !== 'object') return {};
+  const s = v as Record<string, unknown>;
+  const pctRaw = finiteNum(s.percent);
+  const pct = pctRaw == null ? 0 : Math.min(100, Math.max(0, Math.round(pctRaw)));
+  // A percent of 0 means "no sale" — store an empty object (cleared) so the
+  // rest of the app treats it as off.
+  if (pct <= 0) return {};
+  const out: Record<string, unknown> = { percent: pct, active: s.active === true };
+  out.starts = DATE_RE.test(String(s.starts)) ? s.starts : null;
+  out.ends = DATE_RE.test(String(s.ends)) ? s.ends : null;
+  if (typeof s.started_at === 'string') out.started_at = s.started_at;
+  if (typeof s.show_on_profile === 'boolean') out.show_on_profile = s.show_on_profile;
+  return out;
+}
+function cleanCodes(v: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(v)) return [];
+  const out: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+  for (const raw of v) {
+    if (!raw || typeof raw !== 'object') continue;
+    const c = raw as Record<string, unknown>;
+    const code = String(c.code ?? '').trim().toUpperCase().slice(0, 64);
+    if (!code || seen.has(code)) continue;
+    const type = c.type === 'flat' ? 'flat' : 'percent';
+    const valRaw = finiteNum(c.value);
+    if (valRaw == null || valRaw <= 0) continue;
+    const value = type === 'percent' ? Math.min(100, Math.max(1, Math.round(valRaw))) : Math.round(valRaw);
+    const entry: Record<string, unknown> = { code, type, value, active: c.active !== false };
+    if (DATE_RE.test(String(c.expires))) entry.expires = c.expires;
+    const maxUses = finiteNum(c.maxUses);
+    if (maxUses != null && maxUses >= 1) entry.maxUses = Math.round(maxUses);
+    const uses = finiteNum(c.uses);
+    if (uses != null && uses >= 0) entry.uses = Math.round(uses);
+    seen.add(code);
+    out.push(entry);
+  }
+  return out;
+}
+function cleanExclusions(v: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(v)) return [];
+  const out: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+  for (const raw of v) {
+    if (!raw || typeof raw !== 'object') continue;
+    const e = raw as Record<string, unknown>;
+    const date = String(e.date ?? '');
+    if (!DATE_RE.test(date) || seen.has(date)) continue;
+    const sale = e.sale === true;
+    const codes = e.codes === true;
+    // Both false is a no-op exclusion — drop it rather than store dead data.
+    if (!sale && !codes) continue;
+    seen.add(date);
+    out.push({ date, sale, codes });
+  }
+  return out;
+}
+function sanitizeDiscountValue(key: DiscountKey, value: unknown): unknown {
+  switch (key) {
+    case 'sale': return cleanSale(value);
+    case 'promo_codes': return cleanCodes(value);
+    case 'exclusions': return cleanExclusions(value);
+    // History is an append-only archive of ended sales — preserve its entries
+    // (and any fields they carry) verbatim; only guard that it's an array.
+    case 'sale_history': return Array.isArray(value) ? value : [];
+    default: return value;
+  }
+}
+
 // ── Activity-log summary ────────────────────────────────────────────────────
 // The client sends the whole discount set on every save, so we can't tell what
 // changed from the body alone. Diff the OWNER's stored settings (before) against
@@ -142,7 +222,7 @@ export async function POST(req: Request) {
   const after: Record<string, unknown> = { ...before };
   let touched = false;
   for (const k of DISCOUNT_KEYS) {
-    if (k in body) { after[k] = body[k as DiscountKey]; touched = true; }
+    if (k in body) { after[k] = sanitizeDiscountValue(k, body[k as DiscountKey]); touched = true; }
   }
   if (!touched) return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 });
 
