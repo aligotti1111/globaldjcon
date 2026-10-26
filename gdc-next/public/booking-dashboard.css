@@ -48,13 +48,13 @@
 .gdc-dash .rowchev svg{width:18px;height:18px}
 
 
-.gdc-dash .deskwrap{--dcols:74px 62px 190px 1fr 112px 112px 112px 112px 58px}
+.gdc-dash .deskwrap{--dcols:74px 62px 190px 1fr 112px 112px 112px 112px 26px}
 /* Club / bar rows carry a 5th stage (Deposit — Not Required). Keep the leading
    columns (date / flyer / time) and gap IDENTICAL to the mobile rows so the
    first stage (CONTRACT) starts at the same x across every card; only the stage
    columns shrink to fit the extra icon. Total stage width ≈ the mobile total so
    the 1fr event column ends at the same point. */
-.gdc-dash .section.club .deskwrap{--dcols:74px 62px 190px 1fr 87px 87px 87px 87px 87px 58px}
+.gdc-dash .section.club .deskwrap{--dcols:74px 62px 190px 1fr 87px 87px 87px 87px 87px 26px}
 .gdc-dash .section.club .strip{grid-template-columns:repeat(5,1fr)}
 .gdc-dash .drow .flyer{margin-left:0;justify-self:center;width:56px;height:56px}
 .gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
@@ -211,12 +211,9 @@
 .gdc-dash .reset{background:none;border:1px solid rgba(255,255,255,.14);color:var(--muted);font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;padding:.6rem 1.1rem;border-radius:100px;cursor:pointer}
 .gdc-dash .reset:hover{color:var(--ink);border-color:var(--ink)}
 
-/* ── Card "⋯" share menu — inline next to the chevron, overflow-safe ─────── */
-.gdc-dash .rowend{justify-self:end;display:inline-flex;align-items:center;gap:6px;position:relative}
-.gdc-dash .rowend .rowchev{justify-self:auto}
-.gdc-dash .trend{margin-left:auto;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;position:relative;flex-shrink:0}
-.gdc-dash .trend .trchev{margin-left:0}
-.gdc-dash .sharewrap{position:relative;display:inline-flex}
+/* ── Card "⋯" share menu — pinned to the card's top-right corner ─────────── */
+.gdc-dash .drowwrap,.gdc-dash .card{position:relative}
+.gdc-dash .sharewrap{position:absolute;top:12px;right:14px;z-index:70;display:inline-flex}
 .gdc-dash .sharebtn{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--muted);cursor:pointer;border-radius:7px;padding:0;transition:.12s}
 .gdc-dash .sharebtn:hover,.gdc-dash .sharebtn.open{color:var(--neon);background:rgba(255,255,255,.06)}
 .gdc-dash .sharebtn svg{width:18px;height:18px}
@@ -226,4 +223,7 @@
 .gdc-dash .shrow:hover{background:rgba(255,255,255,.07)}
 .gdc-dash .shrow svg{width:16px;height:16px;color:#9b9baa;flex-shrink:0}
 .gdc-dash .shrow.done,.gdc-dash .shrow.done svg{color:var(--neon)}
-.gdc-dash .drowwrap:has(.sharebtn.open),.gdc-dash .card:has(.sharebtn.open){position:relative;z-index:140}
+.gdc-dash .drowwrap:has(.sharebtn.open),.gdc-dash .card:has(.sharebtn.open){z-index:140}
+/* Keep the expand chevron clear of the top-right dots: push it to the bottom. */
+.gdc-dash .drow .rowchev{align-self:end}
+.gdc-dash .toprow .trchev{align-self:flex-end}
