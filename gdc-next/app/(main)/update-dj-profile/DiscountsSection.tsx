@@ -722,7 +722,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           const locked = tone === 'on' || tone === 'sched';
           return (
             <>
-            <div style={{ ...labelStyle, display: 'block', background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: '#06231b' }}>Current sale</div>
+            <div style={{ ...labelStyle, display: 'block', background: '#fff', border: 'none', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: '#000', fontWeight: 800 }}>Current sale</div>
             {/* Scheduled sales get a quieter amber heads-up until they go live. */}
             {tone === 'sched' && (
               <div style={{
@@ -855,17 +855,32 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             {/* Advertise-on-profile toggle on its own line. Checked = the "X% off"
                 badge shows on the public profile; unchecked = the sale still
                 applies to quotes but isn't advertised. */}
-            {(saleView.percent ?? 0) > 0 && (
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: '.7rem', cursor: 'pointer', fontSize: '.8rem', color: 'var(--white,#fff)' }}>
-                <input
-                  type="checkbox"
-                  checked={saleView.show_on_profile !== false}
-                  onChange={(e) => setSaleShown(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--neon,#00e0a4)', cursor: 'pointer' }}
-                />
-                Show sale banner on profile
-              </label>
-            )}
+            {(saleView.percent ?? 0) > 0 && (() => {
+              const shown = saleView.show_on_profile !== false;
+              return (
+                <div
+                  role="switch"
+                  aria-checked={shown}
+                  tabIndex={0}
+                  onClick={() => setSaleShown(!shown)}
+                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setSaleShown(!shown); } }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: '.7rem', cursor: 'pointer', fontSize: '.8rem', color: 'var(--white,#fff)', userSelect: 'none' }}
+                >
+                  <span style={{
+                    position: 'relative', width: 38, height: 22, borderRadius: 999, flex: '0 0 auto',
+                    background: shown ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                    transition: 'background .15s ease',
+                  }}>
+                    <span style={{
+                      position: 'absolute', top: 2, left: shown ? 18 : 2, width: 18, height: 18,
+                      borderRadius: '50%', background: '#fff', transition: 'left .15s ease',
+                      boxShadow: '0 1px 2px rgba(0,0,0,.35)',
+                    }} />
+                  </span>
+                  Show sale banner on profile
+                </div>
+              );
+            })()}
             {/* End-now escape hatch — a sale with no end date (or a future one)
                 has no other way to stop, so let the DJ end it on the spot. Only
                 shown once the sale is actually running or scheduled; a percent
@@ -931,7 +946,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             landed inside each sale's window. */}
         {saleHistory.length > 0 && (
           <div style={{ marginTop: '1.1rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.9rem' }}>
-            <div style={{ ...labelStyle, display: 'block', background: 'var(--neon,#00e0a4)', border: 'none', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: '#06231b' }}>Past sales</div>
+            <div style={{ ...labelStyle, display: 'block', background: '#fff', border: 'none', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: '#000', fontWeight: 800 }}>Past sales</div>
             {/* Show ~4 at a glance; when there are more, the list scrolls inside
                 a fixed-height window instead of running down the whole page. */}
             <div
