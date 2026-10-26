@@ -687,8 +687,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         <SecHeader label="Sale" icon={iconSale} />
         <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
-          A site-wide % off applied automatically to every quote. Set a window and it switches
-          itself on and off — a sale and a promo code don&apos;t stack, the bigger discount wins.
+          An account-wide % off applied automatically to every quote. A sale and a promo code
+          don&apos;t stack, the bigger discount wins. Only one sale runs at a time.
         </div>
 
         {/* One row: percent · start date · end date · used · status. The sale's
@@ -870,10 +870,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 shown once the sale is actually running or scheduled; a percent
                 with no start date is just a draft, so there's nothing to end. */}
             {(tone === 'on' || tone === 'sched') && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
-                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>
-                  Only one sale runs at a time — end this one to start another.
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
                 <button
                   type="button"
                   onClick={endSaleNow}
