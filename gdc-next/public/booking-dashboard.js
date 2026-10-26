@@ -243,7 +243,7 @@ function drowHTML(m,mi){
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
   const venueSub=(m.type!=='club'&&d.venue)?`<span class="dvvenue">${d.venue}</span>`:'';
-  const row=`<div class="drow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}${venueSub}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  const row=`<div class="drow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}${venueSub}</span>${cells}<span class="rowend">${shareBtnHTML(mi)}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></span></div>`;
   // Value now lives in a full-width "Total Value" footer at the bottom of the
   // card (matching the booking card), not an inline column.
   const valuebar=`<div class="deskvaluebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>`;
