@@ -711,8 +711,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           const pillStyle: React.CSSProperties =
             tone === 'on'
               // Same understated pill shape as "Ended" — soft translucent fill,
-              // white label, a solid (non-blinking) green dot.
-              ? { color: 'var(--white,#fff)', background: 'rgba(34,227,173,.12)' }
+              // neon-green label, no dot.
+              ? { color: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.12)' }
               : tone === 'sched'
                 ? { color: '#3a2a00', background: '#ffcf6b' }
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
@@ -723,7 +723,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           const locked = tone === 'on' || tone === 'sched';
           return (
             <>
-            <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Current sale</div>
+            <div style={{ ...labelStyle, display: 'block', background: 'rgba(255,255,255,.05)', border: '1px solid var(--border, rgba(255,255,255,.1))', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: 'var(--white,#fff)' }}>Current sale</div>
             {/* Scheduled sales get a quieter amber heads-up until they go live. */}
             {tone === 'sched' && (
               <div style={{
@@ -843,9 +843,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                       ...pillStyle,
                     }}
                   >
-                    <span
-                      style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
-                    />
+                    {tone !== 'on' && (
+                      <span
+                        style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
+                      />
+                    )}
                     {statLabel}
                   </span>
                 </div>
@@ -930,7 +932,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             landed inside each sale's window. */}
         {saleHistory.length > 0 && (
           <div style={{ marginTop: '1.1rem', borderTop: '1px solid var(--border, rgba(255,255,255,.1))', paddingTop: '.9rem' }}>
-            <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Past sales</div>
+            <div style={{ ...labelStyle, display: 'block', background: 'rgba(255,255,255,.05)', border: '1px solid var(--border, rgba(255,255,255,.1))', borderRadius: 8, padding: '9px 14px', marginBottom: '.8rem', color: 'var(--white,#fff)' }}>Past sales</div>
             {/* Show ~4 at a glance; when there are more, the list scrolls inside
                 a fixed-height window instead of running down the whole page. */}
             <div
