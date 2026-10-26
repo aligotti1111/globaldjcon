@@ -710,8 +710,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           }
           const pillStyle: React.CSSProperties =
             tone === 'on'
-              // Solid Christmas-tree-green pill with white label, no dot.
-              ? { color: '#fff', background: '#1a7f37' }
+              // Dark muted-green fill with white label, no dot.
+              ? { color: '#fff', background: '#15332c' }
               : tone === 'sched'
                 ? { color: '#3a2a00', background: '#ffcf6b' }
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
