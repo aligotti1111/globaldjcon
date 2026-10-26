@@ -210,16 +210,20 @@
 .gdc-dash .resetbar{display:flex;justify-content:center;margin:8px 0 0}
 .gdc-dash .reset{background:none;border:1px solid rgba(255,255,255,.14);color:var(--muted);font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;padding:.6rem 1.1rem;border-radius:100px;cursor:pointer}
 .gdc-dash .reset:hover{color:var(--ink);border-color:var(--ink)}
-/* ── Card share / actions menu (⋯) — mirrors the real booking card ───────── */
-.gdc-dash .drowwrap,.gdc-dash .card{position:relative}
-.gdc-dash .sharewrap{position:absolute;top:9px;right:46px;z-index:70}
-.gdc-dash .card .sharewrap{top:12px;right:44px}
+
+/* ── Card "⋯" share menu — inline next to the chevron, overflow-safe ─────── */
+.gdc-dash .rowend{justify-self:end;display:inline-flex;align-items:center;gap:6px;position:relative}
+.gdc-dash .rowend .rowchev{justify-self:auto}
+.gdc-dash .trend{margin-left:auto;display:inline-flex;align-items:center;gap:6px;position:relative;flex-shrink:0}
+.gdc-dash .trend .trchev{margin-left:0}
+.gdc-dash .sharewrap{position:relative;display:inline-flex}
 .gdc-dash .sharebtn{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--muted);cursor:pointer;border-radius:7px;padding:0;transition:.12s}
 .gdc-dash .sharebtn:hover,.gdc-dash .sharebtn.open{color:var(--neon);background:rgba(255,255,255,.06)}
 .gdc-dash .sharebtn svg{width:18px;height:18px}
-.gdc-dash .shmenu{position:absolute;top:30px;right:0;width:172px;background:#14141c;border:1px solid rgba(255,255,255,.14);border-radius:11px;padding:5px;box-shadow:0 18px 46px rgba(0,0,0,.6)}
+.gdc-dash .shscreen{position:fixed;inset:0;z-index:120}
+.gdc-dash .shmenu{position:absolute;top:calc(100% + 6px);right:0;width:180px;max-width:min(200px,calc(100vw - 40px));background:#14141c;border:1px solid rgba(255,255,255,.14);border-radius:11px;padding:5px;box-shadow:0 18px 46px rgba(0,0,0,.6);z-index:130}
 .gdc-dash .shrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 10px;border-radius:8px;border:none;background:transparent;color:#e9e9f2;font-size:.82rem;font-weight:600;cursor:pointer}
 .gdc-dash .shrow:hover{background:rgba(255,255,255,.07)}
 .gdc-dash .shrow svg{width:16px;height:16px;color:#9b9baa;flex-shrink:0}
 .gdc-dash .shrow.done,.gdc-dash .shrow.done svg{color:var(--neon)}
-.gdc-dash .drowwrap:has(.sharebtn.open),.gdc-dash .card:has(.sharebtn.open){z-index:80}
+.gdc-dash .drowwrap:has(.sharebtn.open),.gdc-dash .card:has(.sharebtn.open){position:relative;z-index:140}
