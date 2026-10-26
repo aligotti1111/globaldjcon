@@ -153,7 +153,7 @@ const fieldBox: React.CSSProperties = { height: 38, boxSizing: 'border-box', fon
 // every native-rendering quirk (e.g. Safari showing today's date as a greyed
 // "placeholder" on an empty field).
 function DateField({
-  value, onChange, min, placeholder = 'Select', height = 38, fontSize = '.78rem',
+  value, onChange, min, placeholder = 'Select', height = 38, fontSize = '.78rem', disabled = false,
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
@@ -161,6 +161,7 @@ function DateField({
   placeholder?: string;
   height?: number;
   fontSize?: string;
+  disabled?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const openPickerNow = () => {
@@ -175,7 +176,8 @@ function DateField({
         position: 'relative', width: '100%', height, boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px',
         background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
-        cursor: 'pointer', fontSize, fontFamily: "'Space Mono', monospace",
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+        fontSize, fontFamily: "'Space Mono', monospace",
       }}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8aa0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
@@ -187,15 +189,17 @@ function DateField({
       {/* The REAL control: a transparent date input covering the whole box. It's
           the actual thing clicked and picked, so the browser commits the choice
           normally; our icon + label show through beneath it. */}
-      <input
-        ref={ref}
-        type="date"
-        min={min}
-        value={value || ''}
-        onClick={openPickerNow}
-        onChange={(e) => { onChange(e.target.value || null); e.currentTarget.blur(); }}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
-      />
+      {!disabled && (
+        <input
+          ref={ref}
+          type="date"
+          min={min}
+          value={value || ''}
+          onClick={openPickerNow}
+          onChange={(e) => { onChange(e.target.value || null); e.currentTarget.blur(); }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
+        />
+      )}
     </div>
   );
 }
@@ -711,8 +715,43 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 ? { color: '#3a2a00', background: '#ffcf6b' }
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
           const dotColor = tone === 'on' ? '#04241b' : tone === 'sched' ? '#3a2a00' : 'var(--muted,#8a8aa0)';
+          // Only one sale at a time: while one is running or scheduled, the
+          // fields lock and Confirm hides. To start a different sale the DJ
+          // ends/cancels the current one first (the link below the row).
+          const locked = tone === 'on' || tone === 'sched';
           return (
             <>
+            <div style={{ ...labelStyle, marginBottom: '.6rem' }}>Current sale</div>
+            {/* Live ribbon — gives a running sale an unmistakable "it's on right
+                now" feel beyond the status pill: a soft neon glow + pulsing dot
+                stating exactly what's being applied. Scheduled sales get a
+                quieter amber heads-up instead. */}
+            {tone === 'on' && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, marginBottom: '.9rem',
+                padding: '10px 14px', borderRadius: 10,
+                background: 'linear-gradient(100deg, rgba(34,227,173,.16), rgba(49,208,255,.10))',
+                border: '1px solid rgba(34,227,173,.35)',
+                boxShadow: '0 0 26px -8px rgba(34,227,173,.6)',
+              }}>
+                <span className="gdcLiveDot" style={{ width: 9, height: 9, borderRadius: '50%', background: '#22e3ad', flex: '0 0 auto' }} />
+                <span style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--white,#fff)' }}>
+                  Live now — {pct}% off is applied automatically to every quote.
+                </span>
+              </div>
+            )}
+            {tone === 'sched' && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, marginBottom: '.9rem',
+                padding: '10px 14px', borderRadius: 10,
+                background: 'rgba(255,207,107,.1)', border: '1px solid rgba(255,207,107,.3)',
+              }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ffcf6b', flex: '0 0 auto' }} />
+                <span style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--white,#fff)' }}>
+                  Scheduled — {pct}% off goes live on {sale.starts ? new Date(`${sale.starts}T00:00:00`).toLocaleDateString() : 'its start date'}.
+                </span>
+              </div>
+            )}
             <div
               style={
                 isNarrow
@@ -723,8 +762,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               <div style={{ ...fieldWrap, flex: '0 0 84px', order: isNarrow ? 2 : undefined }}>
                 <label style={{ ...labelStyle, ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Percent off</label>
                 <select
+                  disabled={locked}
                   className={styles.settingSelect}
-                  style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.7rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px', color: 'var(--white,#fff)' }}
+                  style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', height: 34, fontSize: isNarrow ? '.7rem' : '.78rem', padding: isNarrow ? '0 4px' : '0 8px', color: 'var(--white,#fff)', opacity: locked ? 0.5 : 1, cursor: locked ? 'not-allowed' : 'pointer' }}
                   value={saleView.percent || ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? 0 : Number(e.target.value);
@@ -745,6 +785,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   value={saleView.starts || null}
                   min={todayStr}
                   height={34}
+                  disabled={locked}
                   fontSize={isNarrow ? '.6rem' : '.78rem'}
                   onChange={(v) => {
                     // If the new start is after the current end, that end is no
@@ -760,6 +801,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   value={saleView.ends || null}
                   min={saleView.starts || todayStr}
                   height={34}
+                  disabled={locked}
                   fontSize={isNarrow ? '.6rem' : '.78rem'}
                   onChange={(v) => {
                     if (v && saleView.starts && v < saleView.starts) return; // before start — reject
@@ -846,12 +888,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             {(tone === 'on' || tone === 'sched') && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
                 <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)' }}>
-                  No end date? The sale runs until you end it here.
+                  Only one sale runs at a time — end this one to start another.
                 </span>
                 <button
                   type="button"
                   onClick={endSaleNow}
-                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#ff8f8f', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline' }}
+                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#ff8f8f', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline', textTransform: 'uppercase', letterSpacing: '.04em' }}
                 >
                   {tone === 'sched' ? 'Cancel scheduled sale' : 'End sale now'}
                 </button>
