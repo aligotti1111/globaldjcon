@@ -307,6 +307,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const { confirm, confirmDialog } = useConfirm();
   // Inline message for the add-exclusion row (e.g. duplicate date).
   const [exclErr, setExclErr] = useState('');
+  // Which of the three options is open. Mirrors the Payments Accepted page: a
+  // stacked list of tabs on the left, the open one's panel on the right.
+  const [activeDisc, setActiveDisc] = useState<'sale' | 'promo' | 'exclusions'>('sale');
 
   // On narrow screens the sale row's flex-wrap fields land in a cramped,
   // uneven arrangement; below this breakpoint we lay them out as a clean grid.
@@ -599,9 +602,53 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           input.gdcNoSpin::-webkit-outer-spin-button,
           input.gdcNoSpin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
           input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
+          @media (max-width: 760px) { .gdcDiscGrid { grid-template-columns: 1fr !important; } }
         `}</style>
 
-        <div className={styles.sectionCard}>
+        {/* Two-column master/detail, mirroring the Payments Accepted page: a
+            stacked list of the three options on the left, the open one's panel
+            on the right. */}
+        <div
+          className="gdcDiscGrid"
+          style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem', alignItems: 'start' }}
+        >
+          {/* LEFT — stacked tab list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+            {([
+              { id: 'sale' as const, label: 'Sale', icon: iconSale },
+              { id: 'promo' as const, label: 'Promo Codes', icon: iconPromo },
+              { id: 'exclusions' as const, label: 'Exclusions', icon: iconExcl },
+            ]).map((t) => {
+              const open = activeDisc === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveDisc(t.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '.6rem', width: '100%',
+                    padding: '.7rem .7rem', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    border: open ? '1px solid rgba(34,227,173,.4)' : '1px solid rgba(255,255,255,.08)',
+                    background: open ? 'rgba(34,227,173,.1)' : 'transparent',
+                    transition: 'background .12s ease, border-color .12s ease',
+                  }}
+                >
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: GRAD, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {t.icon}
+                  </span>
+                  <span style={{ fontSize: '.85rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: open ? '#fff' : 'rgba(255,255,255,.68)' }}>
+                    {t.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* RIGHT — the open option's panel */}
+          <div style={{ minWidth: 0 }}>
+
+        {activeDisc === 'sale' && (
+        <div className={styles.sectionCard} style={{ marginBottom: 0 }}>
         <SecHeader label="Sale" icon={iconSale} />
         <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
@@ -931,10 +978,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           </div>
         )}
         </div>
-        </div>{/* end Run a sale block */}
+        </div>
+        )}{/* end Run a sale block */}
 
         {/* ── Promo codes ────────────────────────────────────────── */}
-        <div className={styles.sectionCard}>
+        {activeDisc === 'promo' && (
+        <div className={styles.sectionCard} style={{ marginBottom: 0 }}>
         <SecHeader label="Promo Codes" icon={iconPromo} />
         <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
@@ -1152,10 +1201,12 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           );
         })()}
         </div>
-        </div>{/* end Promo codes block */}
+        </div>
+        )}{/* end Promo codes block */}
 
         {/* ── Exclusions ─────────────────────────────────────────── */}
-        <div className={styles.sectionCard}>
+        {activeDisc === 'exclusions' && (
+        <div className={styles.sectionCard} style={{ marginBottom: 0 }}>
         <SecHeader label="Exclusions" icon={iconExcl} />
         <div className={styles.sectionBody}>
         <div className={styles.settingHint} style={{ marginBottom: '.9rem', color: 'var(--white,#fff)' }}>
@@ -1288,7 +1339,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           );
         })()}
         </div>
-        </div>{/* end Exclusions block */}
+        </div>
+        )}{/* end Exclusions block */}
+          </div>{/* end right panel */}
+        </div>{/* end two-column grid */}
       </div>
       {confirmDialog}
     </div>
