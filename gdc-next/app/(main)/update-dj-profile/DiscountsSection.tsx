@@ -710,9 +710,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           }
           const pillStyle: React.CSSProperties =
             tone === 'on'
-              // Same understated pill shape as "Ended" — soft translucent fill,
-              // neon-green label, no dot.
-              ? { color: 'var(--neon,#00e0a4)', background: 'rgba(34,227,173,.12)' }
+              // Solid Christmas-tree-green pill with white label, no dot.
+              ? { color: '#fff', background: '#1a7f37' }
               : tone === 'sched'
                 ? { color: '#3a2a00', background: '#ffcf6b' }
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
