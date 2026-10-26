@@ -711,10 +711,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     : { flex: '0 0 auto', marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: '1.6rem' }
                 }
               >
-                {/* Confirm — shown until the sale is actually live or scheduled.
-                    It's only clickable once a percent AND start date are staged;
-                    once confirmed the sale goes live and this disappears. */}
-                {tone !== 'on' && tone !== 'sched' && (
+                {/* Confirm — shown until the sale is live/scheduled, AND again
+                    whenever there are unsaved edits (e.g. a scheduled sale whose
+                    date was pulled to today needs re-confirming to go live now).
+                    Only clickable once a percent AND start date are staged. */}
+                {(saleDirty || (tone !== 'on' && tone !== 'sched')) && (
                   <button
                     type="button"
                     onClick={confirmSale}
