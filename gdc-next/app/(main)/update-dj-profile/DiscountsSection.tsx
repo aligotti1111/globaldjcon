@@ -197,7 +197,7 @@ function DateField({
         type="date"
         min={min}
         value={value || ''}
-        onChange={(e) => onChange(e.target.value || null)}
+        onChange={(e) => { onChange(e.target.value || null); e.currentTarget.blur(); }}
         tabIndex={-1}
         aria-hidden="true"
         style={{ position: 'absolute', left: 10, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
@@ -379,20 +379,28 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   function updateSale(p: Partial<Sale>) {
     const next: Sale = { ...saleView, ...p };
     const pct = next.percent ?? 0;
-    if (pct > 0 && next.starts) {
-      // Complete sale — persist it (and clear any local draft).
+    if (pct <= 0) {
+      // Percent cleared — drop the draft AND any saved sale.
       setSaleDraft(null);
-      onChange({ sale: { ...next, active: true, started_at: next.started_at || new Date().toISOString() } });
-    } else if (pct > 0) {
-      // Draft: percent chosen but no start date yet. Hold locally, and make
-      // sure nothing incomplete lingers in saved settings.
-      setSaleDraft(next);
       if ((sale.percent ?? 0) > 0 || sale.starts) onChange({ sale: {} });
-    } else {
-      // Percent cleared — drop everything.
-      setSaleDraft(null);
-      onChange({ sale: {} });
+      return;
     }
+    // Everything else just stages locally. Nothing is activated or persisted
+    // until the DJ hits Confirm (confirmSale), so picking a date never turns
+    // the sale on by itself.
+    setSaleDraft(next);
+  }
+
+  // A staged sale is ready to confirm once it has both a percent and a start
+  // date, and it actually differs from what's already saved.
+  const saleDirty = !!saleDraft && JSON.stringify({ percent: saleDraft.percent ?? 0, starts: saleDraft.starts ?? null, ends: saleDraft.ends ?? null })
+    !== JSON.stringify({ percent: sale.percent ?? 0, starts: sale.starts ?? null, ends: sale.ends ?? null });
+  const canConfirmSale = saleDirty && (saleDraft!.percent ?? 0) > 0 && !!saleDraft!.starts;
+
+  function confirmSale() {
+    if (!saleDraft || !canConfirmSale) return;
+    onChange({ sale: { ...saleDraft, active: true, started_at: saleDraft.started_at || new Date().toISOString() } });
+    setSaleDraft(null);
   }
 
   // End the running sale right now. If it had already started, archive it with
@@ -605,16 +613,15 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             on/off state is decided by the dates, so Status is a read-out
             (Scheduled → Active → Ended), not a button. */}
         {(() => {
-          const pct = saleView.percent ?? 0;
+          // Status reflects the SAVED sale, not the staged draft — a sale is only
+          // live once the DJ confirms it, so editing fields never flips the pill.
+          const pct = sale.percent ?? 0;
           let statLabel = 'Inactive';
           let tone: 'on' | 'sched' | 'off' = 'off';
-          // A percent alone isn't a sale — it needs a start date. Until one is
-          // set the sale stays Inactive (a draft), so it never reads "Active"
-          // just because a percentage was picked.
-          if (pct > 0 && saleView.starts) {
+          if (pct > 0 && sale.starts) {
             const now = new Date();
-            const startFuture = new Date(`${saleView.starts}T00:00:00`).getTime() > now.getTime();
-            const ended = !!saleView.ends && new Date(`${saleView.ends}T23:59:59`).getTime() < now.getTime();
+            const startFuture = new Date(`${sale.starts}T00:00:00`).getTime() > now.getTime();
+            const ended = !!sale.ends && new Date(`${sale.ends}T23:59:59`).getTime() < now.getTime();
             if (startFuture) { statLabel = 'Scheduled'; tone = 'sched'; }
             else if (ended) { statLabel = 'Ended'; tone = 'off'; }
             else { statLabel = 'Active'; tone = 'on'; }
@@ -735,6 +742,28 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#ff8f8f', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   {tone === 'sched' ? 'Cancel scheduled sale' : 'End sale now'}
+                </button>
+              </div>
+            )}
+            {/* Nothing is applied until Confirm — picking a percent and dates
+                only stages the sale. Shown whenever there are unsaved changes. */}
+            {saleDirty && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.6rem', flexWrap: 'wrap', marginTop: '.9rem' }}>
+                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginRight: 'auto' }}>
+                  {canConfirmSale ? 'Not live yet — confirm to start the sale.' : 'Pick a percent and a start date, then confirm.'}
+                </span>
+                <button type="button" onClick={() => setSaleDraft(null)} style={btnOutline}>Discard</button>
+                <button
+                  type="button"
+                  onClick={confirmSale}
+                  disabled={!canConfirmSale}
+                  style={{
+                    ...btnPrimary,
+                    opacity: canConfirmSale ? 1 : 0.5,
+                    cursor: canConfirmSale ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Confirm &amp; start sale
                 </button>
               </div>
             )}
@@ -986,14 +1015,14 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   <span style={{ fontWeight: 700, letterSpacing: '.04em', fontSize: '1rem', color: 'var(--white,#fff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {(c.code || '').toUpperCase()}
                   </span>
-                  <span><span style={metaLabel}>Discount</span> {valueLabel(c)}</span>
-                  <span style={{ color: expired ? '#ffb020' : undefined }}><span style={metaLabel}>Expires</span> {c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
+                  <span>{valueLabel(c)}</span>
+                  <span style={{ color: expired ? '#ffb020' : undefined }}>{c.expires ? new Date(`${c.expires}T00:00:00`).toLocaleDateString() : 'Never'}{expired ? ' · expired' : ''}</span>
                   {(() => {
                     const key = (c.code || '').trim().toUpperCase();
                     const uses = usageByCode[key] || [];
                     const open = expandedCode === key;
                     if (uses.length === 0) {
-                      return <span><span style={metaLabel}>Used</span> 0</span>;
+                      return <span>0</span>;
                     }
                     return (
                       <button
@@ -1001,7 +1030,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                         onClick={() => setExpandedCode(open ? null : key)}
                         style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', display: 'inline-flex', alignItems: 'center', gap: 4, justifySelf: 'start' }}
                       >
-                        <span style={metaLabel}>Used</span> {uses.length}
+                        {uses.length}
                         <span style={{ fontSize: '.7rem' }}>{open ? '▲' : '▼'}</span>
                       </button>
                     );
@@ -1061,11 +1090,25 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           );
           };
 
+          // Column headings, aligned to each row's 4-column grid (left of the
+          // action buttons), shown once at the top of each group.
+          const colHeader = (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0 1rem', marginBottom: '.4rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px,1.1fr) 1fr 1.4fr 0.8fr', gap: '1rem', flex: 1, minWidth: 0 }}>
+                <span style={metaLabel}>Code</span>
+                <span style={metaLabel}>Discount</span>
+                <span style={metaLabel}>Expires</span>
+                <span style={metaLabel}>Used</span>
+              </div>
+            </div>
+          );
+
           return (
             <>
               {activeCodes.length > 0 && (
                 <>
                   <div style={{ ...labelStyle, marginBottom: '.5rem' }}>Active Promo Codes</div>
+                  {colHeader}
                   <div className={activeCodes.length > 4 ? styles.scrollList : undefined} style={groupScroll(activeCodes.length)}>
                     {activeCodes.map(renderCode)}
                   </div>
@@ -1074,6 +1117,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               {deactivated.length > 0 && (
                 <>
                   <div style={{ ...labelStyle, marginBottom: '.5rem', marginTop: activeCodes.length > 0 ? '1.1rem' : 0 }}>Deactivated Promo Codes</div>
+                  {colHeader}
                   <div className={deactivated.length > 4 ? styles.scrollList : undefined} style={groupScroll(deactivated.length)}>
                     {deactivated.map(renderCode)}
                   </div>
