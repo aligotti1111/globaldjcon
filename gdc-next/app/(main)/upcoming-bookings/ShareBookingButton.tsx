@@ -62,9 +62,9 @@ export default function ShareBookingButton({
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const iconRef = useRef<HTMLSpanElement | null>(null);
   const [copied, setCopied] = useState(false);
-  // Default the planner link ON when one is available — the DJ asked for it,
-  // so assume they want to send it unless they turn it off.
-  const [includePlanner, setIncludePlanner] = useState(true);
+  // Default OFF — share the booking card only. The DJ can opt in to also
+  // including the planner link via the toggle at the top of the menu.
+  const [includePlanner, setIncludePlanner] = useState(false);
   // The DJ's account email, read once so Email can route to their webmail's
   // compose page (Gmail / Outlook / Yahoo / AOL) instead of a flaky mailto:.
   const [acctEmail, setAcctEmail] = useState<string | null>(null);
