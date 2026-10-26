@@ -139,7 +139,7 @@
 .gdc-dash .dk2{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 /* toprow middle: badges + value */
 .gdc-dash .trmid{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
-.gdc-dash .trline{display:flex;align-items:center;gap:10px;min-width:0}
+.gdc-dash .trline{display:flex;align-items:flex-start;gap:10px;min-width:0}
 .gdc-dash .evtags{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .gdc-dash .evtag{font-family:var(--sans);font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#4ddcb4;white-space:nowrap;line-height:1.25}
 .gdc-dash .trval{font-family:var(--mono);font-weight:700;font-size:.86rem;color:var(--neon);flex-shrink:0}
