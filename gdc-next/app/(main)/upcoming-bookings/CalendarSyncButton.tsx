@@ -25,19 +25,21 @@ export default function CalendarSyncButton({ className }: { className?: string }
 
   return (
     <>
-      {/* A text link (not a filled button) — opens the sync popup. */}
+      {/* Ghost-outline button — a neutral bordered pill with a neon calendar
+          icon and white label. Opens the sync popup. */}
       <button
         type="button"
         className={className}
         onClick={() => setOpen(true)}
         style={{
-          background: 'transparent', border: 'none', padding: 0, font: 'inherit',
-          fontWeight: 600, color: 'var(--neon,#00e0a4)', textDecoration: 'underline',
+          background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.18))',
+          borderRadius: 10, padding: '8px 14px', font: 'inherit', fontSize: '.78rem',
+          fontWeight: 600, letterSpacing: '.02em', color: 'var(--white,#fff)',
           cursor: 'pointer', whiteSpace: 'nowrap', textTransform: 'uppercase',
-          display: 'inline-flex', alignItems: 'center', gap: 8,
+          display: 'inline-flex', alignItems: 'center', gap: 8, lineHeight: 1,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--neon,#00e0a4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
           <rect x="3" y="4" width="18" height="18" rx="2" />
           <path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
