@@ -243,12 +243,12 @@ function drowHTML(m,mi){
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const timeCell=badges?`<span class="dvtime stacked">${badges}<span>${m.time}</span></span>`:`<span class="dvtime">${m.time}</span>`;
   const venueSub=(m.type!=='club'&&d.venue)?`<span class="dvvenue">${d.venue}</span>`:'';
-  const row=`<div class="drow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}${venueSub}</span>${cells}<span class="rowend">${shareBtnHTML(mi)}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></span></div>`;
+  const row=`<div class="drow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}${m.type==='club'?flyerHTML(m):'<div></div>'}${timeCell}<span class="dvevent">${m.event}${venueSub}</span>${cells}<span class="rowchev${open?' up':''}">${DOWNCHEV}</span></div>`;
   // Value now lives in a full-width "Total Value" footer at the bottom of the
   // card (matching the booking card), not an inline column.
   const valuebar=`<div class="deskvaluebar"><span class="lbl">Total Value</span><span class="amt">${m.val}</span></div>`;
   const detail=open?`<div class="deskdetail">${mobDetailHTML(m)}</div>`:'';
-  return `<div class="drowwrap${open?' open':''}">${row}${m.note?noteHTML(mi,m.note):''}${detail}${valuebar}</div>`;
+  return `<div class="drowwrap${open?' open':''}">${shareBtnHTML(mi)}${row}${m.note?noteHTML(mi,m.note):''}${detail}${valuebar}</div>`;
 }
 function mobCardHTML(m,mi){
   const cells=m.slots.map(k=>cellHTML(m,mi,k)).join('');
@@ -257,8 +257,9 @@ function mobCardHTML(m,mi){
   const d=m.det||{};
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const venueSubM=(m.type!=='club'&&d.venue)?`<span class="dvvenue">${d.venue}</span>`:'';
-  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<div class="trmid">${badges}<div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}${venueSubM}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trend">${shareBtnHTML(mi)}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></span></div>`;
+  const top=`<div class="toprow"${canOpen?` onclick="toggleCard(${mi},event)"`:''}>${dateHTML(m)}<div class="trmid">${badges}<div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}${venueSubM}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
   return `<div class="card${open?' open':''}">
+    ${shareBtnHTML(mi)}
     ${top}
     <div class="strip">${cells}</div>
     ${m.note?noteHTML(mi,m.note):''}
