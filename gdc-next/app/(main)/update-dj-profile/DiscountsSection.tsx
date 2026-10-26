@@ -712,19 +712,32 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 }
               >
                 <label style={labelStyle}>Status</label>
-                <span
-                  style={{
-                    height: 30, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px',
-                    borderRadius: 999, fontSize: '.68rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
-                    ...pillStyle,
-                  }}
-                >
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem' }}>
+                  {/* Nothing is applied until the DJ confirms — once a percent and
+                      start date are staged, Confirm sits just left of the pill. */}
+                  {canConfirmSale && (
+                    <button
+                      type="button"
+                      onClick={confirmSale}
+                      style={{ ...btnPrimary, height: 30, padding: '0 14px', borderRadius: 999 }}
+                    >
+                      Confirm
+                    </button>
+                  )}
                   <span
-                    className={tone === 'on' ? 'gdcLiveDot' : undefined}
-                    style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
-                  />
-                  {statLabel}
-                </span>
+                    style={{
+                      height: 30, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px',
+                      borderRadius: 999, fontSize: '.68rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
+                      ...pillStyle,
+                    }}
+                  >
+                    <span
+                      className={tone === 'on' ? 'gdcLiveDot' : undefined}
+                      style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
+                    />
+                    {statLabel}
+                  </span>
+                </div>
               </div>
             </div>
             {/* End-now escape hatch — a sale with no end date (or a future one)
@@ -742,28 +755,6 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#ff8f8f', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   {tone === 'sched' ? 'Cancel scheduled sale' : 'End sale now'}
-                </button>
-              </div>
-            )}
-            {/* Nothing is applied until Confirm — picking a percent and dates
-                only stages the sale. Shown whenever there are unsaved changes. */}
-            {saleDirty && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.6rem', flexWrap: 'wrap', marginTop: '.9rem' }}>
-                <span style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginRight: 'auto' }}>
-                  {canConfirmSale ? 'Not live yet — confirm to start the sale.' : 'Pick a percent and a start date, then confirm.'}
-                </span>
-                <button type="button" onClick={() => setSaleDraft(null)} style={btnOutline}>Discard</button>
-                <button
-                  type="button"
-                  onClick={confirmSale}
-                  disabled={!canConfirmSale}
-                  style={{
-                    ...btnPrimary,
-                    opacity: canConfirmSale ? 1 : 0.5,
-                    cursor: canConfirmSale ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Confirm &amp; start sale
                 </button>
               </div>
             )}
@@ -1037,13 +1028,13 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   })()}
                 </div>
                 {confirmDel === i ? (
-                  <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flex: '0 0 300px', justifyContent: 'flex-end' }}>
                     <span style={{ fontSize: '.8rem', color: 'var(--white,#fff)' }}>Delete this code?</span>
                     <button type="button" onClick={() => { removeCode(i); setConfirmDel(null); }} style={btnDanger}>Delete</button>
                     <button type="button" onClick={() => setConfirmDel(null)} style={btnOutline}>Cancel</button>
                   </div>
                 ) : (
-                <div style={{ display: 'flex', gap: '.5rem' }}>
+                <div style={{ display: 'flex', gap: '.5rem', flex: '0 0 300px', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
                   {expired ? (
                     // Renew: reopen the editor with the stale expiry cleared and the
@@ -1100,6 +1091,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <span style={metaLabel}>Expires</span>
                 <span style={metaLabel}>Used</span>
               </div>
+              {/* Spacer matching the row's fixed action-button column, so the
+                  headings line up with the values below. */}
+              <div style={{ flex: '0 0 300px' }} />
             </div>
           );
 
