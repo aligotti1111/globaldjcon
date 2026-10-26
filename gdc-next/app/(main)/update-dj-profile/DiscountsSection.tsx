@@ -712,14 +712,21 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 }
               >
                 <label style={labelStyle}>Status</label>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem' }}>
-                  {/* Nothing is applied until the DJ confirms — once a percent and
-                      start date are staged, Confirm sits just left of the pill. */}
-                  {canConfirmSale && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '1.6rem' }}>
+                  {/* Nothing is applied until the DJ confirms. Confirm stays
+                      visible while the sale is staged (not yet live) — but it's
+                      only clickable once a percent AND start date are set. The
+                      moment it's confirmed, the draft clears and this disappears. */}
+                  {saleDirty && (
                     <button
                       type="button"
                       onClick={confirmSale}
-                      style={{ ...btnPrimary, height: 30, padding: '0 14px', borderRadius: 999 }}
+                      disabled={!canConfirmSale}
+                      style={{
+                        ...btnPrimary, height: 30, padding: '0 14px', borderRadius: 999,
+                        opacity: canConfirmSale ? 1 : 0.4,
+                        cursor: canConfirmSale ? 'pointer' : 'not-allowed',
+                      }}
                     >
                       Confirm
                     </button>
