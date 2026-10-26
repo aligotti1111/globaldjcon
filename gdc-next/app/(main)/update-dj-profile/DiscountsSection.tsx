@@ -697,7 +697,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   : { display: 'flex', flexWrap: 'wrap', rowGap: '.9rem', columnGap: '1.1rem', alignItems: 'flex-end' }
               }
             >
-              <div style={{ ...fieldWrap, flex: '0 0 96px', order: isNarrow ? 2 : undefined }}>
+              <div style={{ ...fieldWrap, flex: '0 0 84px', order: isNarrow ? 2 : undefined }}>
                 <label style={{ ...labelStyle, ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Percent off</label>
                 <select
                   className={styles.settingSelect}
@@ -716,7 +716,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   ))}
                 </select>
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 3 : undefined }}>
+              <div style={{ ...fieldWrap, flex: '0 0 124px', order: isNarrow ? 3 : undefined }}>
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
                 <DateField
                   value={saleView.starts || null}
@@ -731,7 +731,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   }}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 150px', order: isNarrow ? 4 : undefined }}>
+              <div style={{ ...fieldWrap, flex: '0 0 124px', order: isNarrow ? 4 : undefined }}>
                 <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
                 <DateField
                   value={saleView.ends || null}
@@ -762,8 +762,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               <div
                 style={
                   isNarrow
-                    ? { order: 1, gridColumn: '1 / -1', justifySelf: 'end', display: 'flex', alignItems: 'flex-end', gap: '1.6rem' }
-                    : { flex: '0 0 auto', marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: '1.6rem' }
+                    ? { order: 1, gridColumn: '1 / -1', justifySelf: 'end', display: 'flex', alignItems: 'flex-end', gap: '1rem' }
+                    : { flex: '0 0 auto', marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: '1rem' }
                 }
               >
                 {/* Confirm — shown until the sale is live/scheduled, AND again
