@@ -401,7 +401,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   // otherwise straight to the saved live sale (no Confirm needed). The sale
   // still applies to quotes either way.
   function setSaleShown(show: boolean) {
-    if (saleDraft) { setSaleDraft({ ...saleDraft, show_on_profile: show }); return; }
+    // Keep the staged draft's copy in sync so the checkbox reflects the toggle.
+    if (saleDraft) setSaleDraft({ ...saleDraft, show_on_profile: show });
+    // Persist to the SAVED live sale immediately whenever one exists. The badge
+    // preference isn't part of the sale window, so it must not wait on — or be
+    // lost by abandoning — a Confirm that's pending for an unrelated date edit.
     if ((sale.percent ?? 0) > 0) onChange({ sale: { ...sale, show_on_profile: show } });
   }
 
@@ -482,7 +486,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
     setExclErr('');
   }
   function updateExclusion(i: number, patch: Partial<DiscountExclusion>) {
-    onChange({ exclusions: exclusions.map((e, idx) => (idx === i ? { ...e, ...patch } : e)) });
+    const next = { ...exclusions[i], ...patch };
+    // A row that blocks neither the sale nor codes does nothing — unchecking
+    // the last box removes the exclusion instead of leaving dead data behind.
+    if (!next.sale && !next.codes) { removeExclusion(i); return; }
+    onChange({ exclusions: exclusions.map((e, idx) => (idx === i ? next : e)) });
   }
   function removeExclusion(i: number) {
     onChange({ exclusions: exclusions.filter((_, idx) => idx !== i) });
