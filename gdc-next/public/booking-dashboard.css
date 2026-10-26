@@ -48,13 +48,13 @@
 .gdc-dash .rowchev svg{width:18px;height:18px}
 
 
-.gdc-dash .deskwrap{--dcols:74px 62px 190px 1fr 112px 112px 112px 112px 26px}
+.gdc-dash .deskwrap{--dcols:74px 62px 190px 1fr 112px 112px 112px 112px 58px}
 /* Club / bar rows carry a 5th stage (Deposit — Not Required). Keep the leading
    columns (date / flyer / time) and gap IDENTICAL to the mobile rows so the
    first stage (CONTRACT) starts at the same x across every card; only the stage
    columns shrink to fit the extra icon. Total stage width ≈ the mobile total so
    the 1fr event column ends at the same point. */
-.gdc-dash .section.club .deskwrap{--dcols:74px 62px 190px 1fr 87px 87px 87px 87px 87px 26px}
+.gdc-dash .section.club .deskwrap{--dcols:74px 62px 190px 1fr 87px 87px 87px 87px 87px 58px}
 .gdc-dash .section.club .strip{grid-template-columns:repeat(5,1fr)}
 .gdc-dash .drow .flyer{margin-left:0;justify-self:center;width:56px;height:56px}
 .gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
@@ -214,7 +214,7 @@
 /* ── Card "⋯" share menu — inline next to the chevron, overflow-safe ─────── */
 .gdc-dash .rowend{justify-self:end;display:inline-flex;align-items:center;gap:6px;position:relative}
 .gdc-dash .rowend .rowchev{justify-self:auto}
-.gdc-dash .trend{margin-left:auto;display:inline-flex;align-items:center;gap:6px;position:relative;flex-shrink:0}
+.gdc-dash .trend{margin-left:auto;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;position:relative;flex-shrink:0}
 .gdc-dash .trend .trchev{margin-left:0}
 .gdc-dash .sharewrap{position:relative;display:inline-flex}
 .gdc-dash .sharebtn{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--muted);cursor:pointer;border-radius:7px;padding:0;transition:.12s}
