@@ -227,8 +227,8 @@ function CodeFields({
           value={value.type}
           onChange={(e) => onField({ type: e.target.value as 'percent' | 'flat' })}
         >
-          <option value="percent">Percentage off</option>
-          <option value="flat">{currencySymbol} amount off</option>
+          <option value="percent">% off</option>
+          <option value="flat">{currencySymbol} off</option>
         </select>
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
