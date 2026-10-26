@@ -212,7 +212,7 @@ function CodeFields({
 }) {
   return (
     <>
-      <div style={{ ...fieldWrap, flex: '1 1 130px' }}>
+      <div style={{ ...fieldWrap, flex: '1 1 110px' }}>
         <label style={labelStyle}>Code Name</label>
         <input
           type="text"
@@ -222,8 +222,8 @@ function CodeFields({
           style={{ ...fieldBox, textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
-        <label style={labelStyle}>Type of discount</label>
+      <div style={{ ...fieldWrap, flex: '0 0 120px' }}>
+        <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Type of discount</label>
         <select
           className={styles.settingSelect}
           style={{ ...fieldBox, width: '100%', minWidth: 0, color: 'var(--white,#fff)' }}
@@ -234,7 +234,7 @@ function CodeFields({
           <option value="flat">{currencySymbol} OFF</option>
         </select>
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
         <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
         {value.type === 'percent' ? (
           <select
@@ -266,12 +266,12 @@ function CodeFields({
           </div>
         )}
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
-        <label style={labelStyle}>Expires (optional)</label>
+      <div style={{ ...fieldWrap, flex: '0 0 128px' }}>
+        <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Expires (optional)</label>
         <DateField value={value.expires || null} onChange={(v) => onField({ expires: v })} />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 140px' }}>
-        <label style={labelStyle}>Max uses (optional)</label>
+      <div style={{ ...fieldWrap, flex: '0 0 112px' }}>
+        <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Max uses</label>
         <input
           type="number"
           onWheel={(e) => e.currentTarget.blur()}
