@@ -112,41 +112,37 @@ function deriveSlugFromName(name: string | null | undefined): string {
     .replace(/^-|-$/g, '');
 }
 
-// Record one redemption of a promo code on the DJ's stored settings. Makes the
-// per-code `maxUses` cap real: isPromoUsable() already refuses a code once
-// `uses >= maxUses`, but nothing ever incremented `uses`, so the cap could
-// never be hit. Re-reads the settings immediately before the bump to shrink
-// (not eliminate) the read-modify-write window; best-effort — a failure here
-// never fails the booking that already inserted. No-op when the code has no
-// cap, so DJs who don't limit uses pay nothing for this.
-async function recordPromoUse(djId: string, code: string): Promise<void> {
+// Make the per-code `maxUses` cap real and exact. isPromoUsable() refuses a
+// code once `uses >= maxUses`, but `uses` is never otherwise maintained — so
+// instead of trusting a stored counter (which a lost increment or a race could
+// desync), we count how many existing bookings already redeemed this code for
+// this DJ and feed THAT into the matching code's `uses` before the discount is
+// computed. The count is the bookings that already consumed the code, so the
+// cap check runs against the true redemption total. No-op for uncapped codes.
+async function applyLiveUsageCount(
+  djId: string,
+  code: string,
+  settings: BookingSettings,
+): Promise<void> {
   const target = (code || '').trim().toUpperCase();
-  if (!target) return;
+  if (!target || !Array.isArray(settings.promo_codes)) return;
+  const capped = settings.promo_codes.find(
+    (p) => (p.code || '').trim().toUpperCase() === target && p.maxUses != null,
+  );
+  if (!capped) return; // uncapped → nothing to enforce
   try {
     const admin = createAdminClient();
-    const { data } = await admin
-      .from('users')
-      .select('booking_settings')
-      .eq('id', djId)
-      .maybeSingle<{ booking_settings: string | null }>();
-    const current: BookingSettings = parseBookingSettings(data?.booking_settings) || {};
-    const codes = Array.isArray(current.promo_codes) ? current.promo_codes : [];
-    let changed = false;
-    const next = codes.map((p) => {
-      if ((p.code || '').trim().toUpperCase() === target && p.maxUses != null) {
-        changed = true;
-        return { ...p, uses: (p.uses || 0) + 1 };
-      }
-      return p;
-    });
-    if (!changed) return; // code gone or uncapped — nothing to track
-    const merged = { ...current, promo_codes: next };
-    await admin
-      .from('users')
-      .update({ booking_settings: JSON.stringify(merged) } as unknown as never)
-      .eq('id', djId);
+    const { count } = await admin
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('dj_id', djId)
+      // discount_code isn't in the generated column union (it's written via the
+      // same untyped-insert cast the payload uses), so cast the filter.
+      .eq('discount_code' as never, target as never);
+    capped.uses = count || 0;
   } catch (e) {
-    console.warn('[bookings/create] promo use increment failed:', e);
+    // On a count failure, leave `uses` as stored rather than fail the booking.
+    console.warn('[bookings/create] promo usage count failed:', e);
   }
 }
 
@@ -448,6 +444,9 @@ export async function POST(req: Request) {
         )!
       : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
 
+    // Load the code's true redemption count into `settings` so the usage cap
+    // is enforced against reality before this quote is computed.
+    await applyLiveUsageCount(djRow.id, promoCode, settings);
     const finalDiscount: DiscountResult =
       finalPrice.price != null
         ? computeDiscount(finalPrice.price, settings, promoCode, dateKey, djTz)
@@ -615,8 +614,6 @@ export async function POST(req: Request) {
 
     await saveContactEmail(user.id, contactEmail);
     await saveSmsPhone(user.id, phone);
-    // Count this redemption against the code's usage cap (if any).
-    if (finalDiscount.kind === 'code') await recordPromoUse(djRow.id, promoCode);
 
     // Server-computed money snapshot — the client uses this (not its own
     // preview) for the notification emails so they always match the DB row.
@@ -707,6 +704,8 @@ export async function POST(req: Request) {
 
   // Apply discount to the computed total (sale/promo). quoted_rate stores
   // the discounted price; original_rate keeps the pre-discount total.
+  // Load the code's true redemption count so the usage cap is enforced.
+  await applyLiveUsageCount(djRow.id, promoCode, settings);
   const clubFinalDiscount: DiscountResult = computedTotal != null
     ? computeDiscount(Number(computedTotal), settings, promoCode, dateKey, djTz)
     : { amount: 0, kind: null, label: '' };
@@ -836,8 +835,6 @@ export async function POST(req: Request) {
 
   await saveContactEmail(user.id, contactEmail);
   await saveSmsPhone(user.id, phone);
-  // Count this redemption against the code's usage cap (if any).
-  if (clubFinalDiscount.kind === 'code') await recordPromoUse(djRow.id, promoCode);
 
   return NextResponse.json({
     ok: true,
