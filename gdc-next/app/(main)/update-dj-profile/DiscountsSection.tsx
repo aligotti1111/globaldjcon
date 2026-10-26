@@ -13,6 +13,7 @@
 // form using computeDiscount() from bookingSettings.ts.
 
 import { useEffect, useRef, useState } from 'react';
+import { useConfirm } from '@/components/ConfirmModal';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import type { PromoCode, Sale, DiscountExclusion } from '@/app/(main)/[slug]/bookingSettings';
@@ -313,8 +314,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const [newExclDate, setNewExclDate] = useState('');
   const [newExclSale, setNewExclSale] = useState(true);
   const [newExclCodes, setNewExclCodes] = useState(true);
-  // Which excluded date is pending a remove confirmation.
-  const [confirmExclDel, setConfirmExclDel] = useState<number | null>(null);
+  // Site-uniform yes/no popup (used for the "remove excluded date" confirm).
+  const { confirm, confirmDialog } = useConfirm();
   // Inline message for the add-exclusion row (e.g. duplicate date).
   const [exclErr, setExclErr] = useState('');
 
@@ -1215,22 +1216,22 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   Exclude Promo Codes
                 </label>
               </div>
-              {confirmExclDel === i ? (
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '.6rem' }}>
-                  <span style={{ fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>Remove?</span>
-                  <button type="button" onClick={() => { removeExclusion(i); setConfirmExclDel(null); }} style={btnDanger}>Remove</button>
-                  <button type="button" onClick={() => setConfirmExclDel(null)} style={btnOutline}>Cancel</button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmExclDel(i)}
-                  aria-label="Remove excluded date"
-                  style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#ff8f8f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .2rem' }}
-                >
-                  &times;
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Remove this excluded date?',
+                    message: `${new Date(`${ex.date}T00:00:00`).toLocaleDateString()} will no longer block discounts.`,
+                    confirmLabel: 'Remove',
+                    variant: 'danger',
+                  });
+                  if (ok) removeExclusion(i);
+                }}
+                aria-label="Remove excluded date"
+                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#ff8f8f', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer', padding: '0 .2rem' }}
+              >
+                &times;
+              </button>
             </div>
           );
 
@@ -1263,6 +1264,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         })()}
         </div>{/* end Exclusions block */}
       </div>
+      {confirmDialog}
     </div>
   );
 }
