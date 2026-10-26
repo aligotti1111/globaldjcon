@@ -212,7 +212,7 @@ function CodeFields({
 }) {
   return (
     <>
-      <div style={{ ...fieldWrap, flex: '0 0 150px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 130px' }}>
         <label style={labelStyle}>Code Name</label>
         <input
           type="text"
@@ -222,7 +222,7 @@ function CodeFields({
           style={{ ...fieldBox, textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 120px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 130px' }}>
         <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Type of discount</label>
         <select
           className={styles.settingSelect}
@@ -234,7 +234,7 @@ function CodeFields({
           <option value="flat">{currencySymbol} OFF</option>
         </select>
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 110px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 130px' }}>
         <label style={labelStyle}>{value.type === 'percent' ? 'Percent' : 'Amount'}</label>
         {value.type === 'percent' ? (
           <select
@@ -266,11 +266,11 @@ function CodeFields({
           </div>
         )}
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 128px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 130px' }}>
         <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Expires (optional)</label>
         <DateField value={value.expires || null} onChange={(v) => onField({ expires: v })} />
       </div>
-      <div style={{ ...fieldWrap, flex: '0 0 112px' }}>
+      <div style={{ ...fieldWrap, flex: '0 0 130px' }}>
         <label style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Max uses</label>
         <input
           type="number"
@@ -1028,8 +1028,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
         {draft && (
           <div style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.9rem' }}>
             <div style={isNarrow
-              ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', alignItems: 'flex-end' }
-              : { display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
+              ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'flex-end' }
+              : { display: 'flex', flexWrap: 'wrap', gap: '1.1rem', alignItems: 'flex-end' }}>
               <CodeFields value={draft} onField={(p) => setDraft({ ...draft, ...p })} currencySymbol={currencySymbol} />
             </div>
             <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
@@ -1081,8 +1081,8 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             return (
               <div key={i} style={{ border: '1px solid var(--neon, #00e0a4)', borderRadius: 10, padding: '.85rem', marginBottom: '.75rem' }}>
                 <div style={isNarrow
-                  ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', alignItems: 'flex-end' }
-                  : { display: 'flex', flexWrap: 'wrap', gap: '.75rem', alignItems: 'flex-end' }}>
+                  ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'flex-end' }
+                  : { display: 'flex', flexWrap: 'wrap', gap: '1.1rem', alignItems: 'flex-end' }}>
                   <CodeFields value={editBuf} onField={(p) => setEditBuf({ ...editBuf, ...p })} currencySymbol={currencySymbol} />
                 </div>
                 <div style={{ display: 'flex', gap: '.6rem', marginTop: '.85rem', justifyContent: 'flex-end' }}>
