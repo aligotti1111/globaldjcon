@@ -747,7 +747,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   }}
                 />
               </div>
-              <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : null) }}>
+              <div style={{ ...fieldWrap, flex: '0 0 auto', order: isNarrow ? 5 : undefined, ...(isNarrow ? { alignItems: 'flex-end', textAlign: 'right' } : { alignItems: 'center', textAlign: 'center' }) }}>
                 <label style={labelStyle}>Used</label>
                 {currentSaleUsage.length > 0 ? (
                   <button
