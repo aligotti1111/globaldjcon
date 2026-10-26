@@ -1101,7 +1101,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             <>
               {activeCodes.length > 0 && (
                 <>
-                  <div style={{ ...labelStyle, marginBottom: '.5rem' }}>Active Promo Codes</div>
+                  <div style={{ ...labelStyle, marginBottom: '.5rem', color: 'var(--white,#fff)' }}>Active Promo Codes</div>
                   {colHeader}
                   <div className={activeCodes.length > 4 ? styles.scrollList : undefined} style={groupScroll(activeCodes.length)}>
                     {activeCodes.map(renderCode)}
@@ -1110,7 +1110,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               )}
               {deactivated.length > 0 && (
                 <>
-                  <div style={{ ...labelStyle, marginBottom: '.5rem', marginTop: activeCodes.length > 0 ? '1.1rem' : 0 }}>Deactivated Promo Codes</div>
+                  <div style={{ ...labelStyle, marginBottom: '.5rem', marginTop: activeCodes.length > 0 ? '2rem' : 0, color: 'var(--white,#fff)' }}>Deactivated Promo Codes</div>
                   {colHeader}
                   <div className={deactivated.length > 4 ? styles.scrollList : undefined} style={groupScroll(deactivated.length)}>
                     {deactivated.map(renderCode)}
