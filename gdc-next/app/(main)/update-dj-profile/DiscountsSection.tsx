@@ -309,7 +309,6 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   // Which past-sale row is expanded to show who used it.
   const [expandedPast, setExpandedPast] = useState<number | null>(null);
   // Which promo code is pending a delete confirmation.
-  const [confirmDel, setConfirmDel] = useState<number | null>(null);
   // The date + which discounts to block, for the "add exclusion" row.
   const [newExclDate, setNewExclDate] = useState('');
   const [newExclSale, setNewExclSale] = useState(true);
@@ -1035,13 +1034,6 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     );
                   })()}
                 </div>
-                {confirmDel === i ? (
-                  <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flex: '0 0 300px', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '.8rem', color: 'var(--white,#fff)' }}>Delete this code?</span>
-                    <button type="button" onClick={() => { removeCode(i); setConfirmDel(null); }} style={btnDanger}>Delete</button>
-                    <button type="button" onClick={() => setConfirmDel(null)} style={btnOutline}>Cancel</button>
-                  </div>
-                ) : (
                 <div style={{ display: 'flex', gap: '.5rem', flex: '0 0 300px', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
                   {expired ? (
@@ -1054,9 +1046,22 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                   ) : (
                     <button type="button" onClick={() => setActive(i, false)} style={btnOutline}>Deactivate</button>
                   )}
-                  <button type="button" onClick={() => setConfirmDel(i)} style={btnDanger}>Delete</button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Delete this promo code?',
+                        message: `${(c.code || '').toUpperCase()} will be removed for good. This can't be undone.`,
+                        confirmLabel: 'Delete',
+                        variant: 'danger',
+                      });
+                      if (ok) removeCode(i);
+                    }}
+                    style={btnDanger}
+                  >
+                    Delete
+                  </button>
                 </div>
-                )}
               </div>
 
               {/* Unfolded usage — who booked with this code and when. */}
