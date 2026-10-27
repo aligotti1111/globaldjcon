@@ -273,13 +273,15 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
             {includesItems.length > 0 && (
               <div style={{ marginBottom: '.7rem' }}>
                 <div style={label}>Includes</div>
-                {/* INTEGER px font-size and line-height on each line. html2canvas
-                    rounds fractional line-heights (what .92rem/1.5 compute to) so
-                    consecutive short lines can land on the same y and merge —
-                    whole-pixel metrics render each item on its own line. */}
-                {includesItems.map((it, i) => (
-                  <div key={i} style={{ color: '#fff', fontSize: '15px', lineHeight: '24px', height: '24px' }}>{it}</div>
-                ))}
+                {/* Each item is absolutely positioned at a fixed pixel offset.
+                    html2canvas honors explicit top coordinates exactly, so the
+                    lines can't overlap/merge the way they do in normal flow (its
+                    line-height rounding bug collapses short first lines). */}
+                <div style={{ position: 'relative', marginTop: 4, height: includesItems.length * 24 }}>
+                  {includesItems.map((it, i) => (
+                    <div key={i} style={{ position: 'absolute', top: i * 24, left: 0, color: '#fff', fontSize: '15px', lineHeight: '24px' }}>{it}</div>
+                  ))}
+                </div>
               </div>
             )}
             {!isClub ? null : <Field l="Set Type" v={b.set_type} />}
