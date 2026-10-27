@@ -77,6 +77,24 @@ export default function ShareBookingButton({
     return () => { alive = false; };
   }, []);
 
+  // The menu is a position:fixed portal placed once at open time. Without this,
+  // scrolling the list leaves it floating where it opened. Re-anchor it to the ⋯
+  // on every scroll/resize so it stays glued to the card. (Capture=true so it
+  // also fires for scrolls inside any nested scroll container.)
+  useEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const r = iconRef.current?.getBoundingClientRect();
+      if (r) setPos({ top: Math.round(r.bottom + 8), right: Math.max(8, Math.round(window.innerWidth - r.right)) });
+    }
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
+
   if (!shareToken) return null;
 
   const canPlanner = djType === 'mobile' && !!plannerId;
