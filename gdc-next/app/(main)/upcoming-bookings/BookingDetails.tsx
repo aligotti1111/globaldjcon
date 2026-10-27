@@ -737,10 +737,20 @@ export default function BookingDetails({
       { label: 'Email', value: (booking as { host_email?: string | null }).host_email || (booking as { account_email?: string | null }).account_email || null },
     ],
     // Row 6: Agreed Rate. (Overtime moved out of the receipt to the Event card's
-    // bottom-right — see overtimeControl below.)
-    [
-      { label: 'Agreed Rate', value: agreedRateWithDiscount },
-    ],
+    // bottom-right — see overtimeControl below.) When a wedding carries a
+    // separately-charged cocktail hour and/or ceremony, ITEMIZE each charge on
+    // its own line (Base Rate / Cocktail Hour / Ceremony) with the Agreed Rate as
+    // the subtotal, instead of cramming "base + cocktail = total" onto one line.
+    ...((hasSeparateCocktail || hasSeparateCeremony)
+      ? [
+          [{ label: 'Base Rate', value: money(agreedBase) }],
+          ...(hasSeparateCocktail ? [[{ label: 'Cocktail Hour', value: money(cocktailCharge) }]] : []),
+          ...(hasSeparateCeremony ? [[{ label: 'Ceremony', value: money(ceremonyCharge) }]] : []),
+          [{ label: 'Agreed Rate', value: money(agreedTotal) }],
+        ] as DetailRow[]
+      : [
+          [{ label: 'Agreed Rate', value: agreedRateWithDiscount }],
+        ] as DetailRow[]),
     // Row 7: Deposit
     [
       {
