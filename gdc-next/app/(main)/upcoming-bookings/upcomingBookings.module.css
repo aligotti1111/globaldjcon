@@ -1823,9 +1823,10 @@ select.input {
     /* Top line holds date, time, event type and price together (with the
        chevron); the status icons and actions get their own full-width bands
        below. */
-    grid-template-columns: 64px auto minmax(0, 1fr) 24px 34px;
+    grid-template-columns: 64px auto minmax(0, 1fr) 26px 22px;
+    grid-template-rows: 58px auto auto;
     grid-template-areas:
-      "date  toggle  event  chev  acts"
+      "date  toggle  event  mcol  chev"
       "stat  stat    stat   stat  stat"
       "val   val     val    val   val";
     column-gap: .5rem;
@@ -1965,9 +1966,10 @@ select.input {
      ONLY, so mobile-DJ rows keep their 4-area grid with no empty gap. */
   .flyerInline { display: none; }
   .monthListClub .row {
-    grid-template-columns: 64px auto minmax(0, 1fr) 44px 24px 34px;
+    grid-template-columns: 64px auto minmax(0, 1fr) 44px 26px 22px;
+    grid-template-rows: 58px auto auto;
     grid-template-areas:
-      "date  toggle  event  flyer  chev  acts"
+      "date  toggle  event  flyer  mcol  chev"
       "stat  stat    stat   stat   stat  stat"
       "val   val     val    val    val   val";
   }
@@ -2053,20 +2055,22 @@ select.input {
    * That's what the desktop swap buys back: down here there's a full-width
    * band for them and nothing to compete with.
    */
-  /* Actions (⋯ share menu + MANUAL "M") pin to the card's TOP-RIGHT CORNER — no
-     more full-width band at the bottom of the card. The chevron drops to the
-     bottom-right beneath them so the two never collide. */
-  .rowActionsCell {
-    grid-area: acts;
-    /* ⋯ pinned to the top of this right column, the "M" pill pushed to the
-       bottom (lower portion). The column stretches to the row's height. */
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 4px;
-    padding: 0;
+  /* No more full-width actions band. The container dissolves so its children
+     become grid items: ⋯ in the top of the far-right column, the "M" pill on
+     its own in the column just LEFT of the arrow, pinned to the bottom. */
+  .rowActionsCell { display: contents; }
+  .rowActionsCell .shareCorner {
+    grid-area: chev;
+    align-self: start;
+    justify-self: center;
+    z-index: 6;
   }
-  .rowActionsCell:empty { display: none; }
+  .rowActionsCell .manualPill,
+  .rowActionsCell .cancelledInline {
+    grid-area: mcol;
+    align-self: end;
+    justify-self: center;
+  }
   .row .rowActionsCell .manualPill,
   .row:hover .rowActionsCell .manualPill { display: inline-block; }
   /* Space is tight on the top line: show just "M" for a manual booking. */
