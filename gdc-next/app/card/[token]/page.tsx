@@ -80,8 +80,18 @@ function fmtTime(t: string | null): string {
   const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
   return `${h}:${min} ${ap}`;
 }
+// Strip HTML to plain text but KEEP line breaks — <br> and the end of block
+// elements become newlines — so a multi-line "Includes" list stays on separate
+// lines instead of collapsing onto one.
 function htmlToText(s: string | null): string {
-  return String(s || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+  return String(s || '')
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/\s*(p|div|li|tr|h[1-6])\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .split('\n').map((l) => l.trim()).filter(Boolean).join('\n')
+    .trim();
 }
 
 export default async function ShareableBookingCardPage({ params }: { params: Promise<{ token: string }> }) {
@@ -259,7 +269,14 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
           <div style={section}>
             <span style={chip}>Package</span>
             <Field l="Package" v={b.package_title} />
-            <Field l="Includes" v={htmlToText(b.package_details) || null} />
+            {htmlToText(b.package_details) && (
+              <div style={{ marginBottom: '.7rem' }}>
+                <div style={label}>Includes</div>
+                {/* pre-line keeps the DJ's line breaks, so each item sits on its
+                    own line — on the page and in the downloaded/shared image. */}
+                <div style={{ ...value, whiteSpace: 'pre-line' }}>{htmlToText(b.package_details)}</div>
+              </div>
+            )}
             {!isClub ? null : <Field l="Set Type" v={b.set_type} />}
             <Field l="Equipment" v={b.equipment} />
           </div>
