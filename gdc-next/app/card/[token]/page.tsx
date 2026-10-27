@@ -109,16 +109,21 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   }
 
   // Host name: prefer what the booking captured; if blank, fall back to the
-  // host's account name (matched by phone, then email) so the card isn't left
-  // showing a phone number with no name attached.
+  // host's account name (matched by email, then phone) so the card isn't left
+  // showing a phone number with no name attached. Phones in `users` are stored
+  // as E.164 digits (with or without a leading +), while the booking's phone may
+  // be formatted — so match against all the common shapes.
   let hostName = b.requester_name || null;
-  if (!hostName && (b.phone || b.host_email)) {
-    const q = admin.from('users').select('name');
-    const { data: hu } = await (b.phone
-      ? q.eq('phone', b.phone)
-      : q.eq('email', b.host_email as string)
-    ).maybeSingle<{ name: string | null }>();
-    hostName = hu?.name || null;
+  if (!hostName && b.host_email) {
+    const { data } = await admin.from('users').select('name').eq('email', b.host_email).maybeSingle<{ name: string | null }>();
+    hostName = data?.name || null;
+  }
+  if (!hostName && b.phone) {
+    const d = String(b.phone).replace(/\D/g, '');
+    const d10 = d.slice(-10);
+    const cands = Array.from(new Set([d, d10, `1${d10}`, `+1${d10}`, `+${d}`].filter((x) => x.replace(/\D/g, '').length >= 7)));
+    const { data } = await admin.from('users').select('name').in('phone', cands).limit(1);
+    hostName = (data && data[0]?.name) || null;
   }
 
   const currency = b.currency || 'USD';
