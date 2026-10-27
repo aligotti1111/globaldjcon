@@ -108,6 +108,19 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
     djName = (dj?.company || dj?.name || djName) as string;
   }
 
+  // Host name: prefer what the booking captured; if blank, fall back to the
+  // host's account name (matched by phone, then email) so the card isn't left
+  // showing a phone number with no name attached.
+  let hostName = b.requester_name || null;
+  if (!hostName && (b.phone || b.host_email)) {
+    const q = admin.from('users').select('name');
+    const { data: hu } = await (b.phone
+      ? q.eq('phone', b.phone)
+      : q.eq('email', b.host_email as string)
+    ).maybeSingle<{ name: string | null }>();
+    hostName = hu?.name || null;
+  }
+
   const currency = b.currency || 'USD';
   const isClub = b.booking_type === 'club';
   const isCancelled = b.status === 'cancelled';
@@ -142,6 +155,13 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   const eventLabel = MOB_EVENT_LABELS[(b.event_type || '').toLowerCase()] || b.event_type || 'Event';
   const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
   const venueType = b.venue_type_desc || b.venue_type || '';
+  // Downloaded image name: "Event type - date - venue".
+  const downloadName = [eventLabel, b.event_date, b.venue_name || venueType]
+    .filter(Boolean)
+    .join(' - ')
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim() || 'booking';
 
   // ── Presentation ──────────────────────────────────────────────────────
   const page: React.CSSProperties = { minHeight: '100vh', background: '#0b0b12', color: '#fff', padding: '1.5rem 1rem', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" };
@@ -220,10 +240,10 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
         )}
 
         {/* Host */}
-        {(b.requester_name || b.host_email || b.phone) && (
+        {(hostName || b.host_email || b.phone) && (
           <div style={section}>
             <span style={chip}>Host</span>
-            <Field l="Host Name" v={b.requester_name} />
+            <Field l="Host Name" v={hostName} />
             <Field l="Email" v={b.host_email} />
             <Field l="Phone" v={b.phone} />
           </div>
@@ -287,7 +307,7 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
           </div>
         )}
       </div>
-      <CardDownloadButton targetId="gdc-share-card" fileName={`booking-${eventLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
+      <CardDownloadButton targetId="gdc-share-card" fileName={downloadName} />
       <div style={{ textAlign: 'center', color: '#5a5a72', fontSize: '.68rem', marginTop: '1rem' }}>
         Shared via Global DJ Connect · view only
       </div>
