@@ -258,10 +258,14 @@ function mobCardHTML(m,mi){
   const badges=(d.badges&&d.badges.length)?`<div class="evtags">${d.badges.map(b=>`<span class="evtag">${b}</span>`).join('')}</div>`:'';
   const venueSubM=(m.type!=='club'&&d.venue)?`<span class="dvvenue">${d.venue}</span>`:'';
   const ocard=canOpen?` onclick="toggleCard(${mi},event)"`:'';
-  // Badges (e.g. "Includes ceremony music") ride ABOVE the row so the date,
-  // time and event name all sit on the same top line.
-  const badgeHead=badges?`<div class="cardbadges"${ocard}>${badges}</div>`:'';
-  const top=`${badgeHead}<div class="toprow"${ocard}>${dateHTML(m)}<div class="trmid"><div class="trline"><span class="trtime">${m.time}</span><span class="trevent">${m.event}${venueSubM}</span></div></div>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
+  // Badges (e.g. "Includes ceremony music") sit INSIDE the right column, directly
+  // on top of the time — indented past the date, not spanning above it. The date
+  // block centers across from the time row.
+  // Three columns: date | [badge over time] | [event over venue] | chevron.
+  // Matches the real app card: the badge rides on top of the time, the event
+  // type sits across from the time, and the venue goes under the event.
+  const badgeHead=badges?`<div class="cardbadges">${badges}</div>`:'';
+  const top=`<div class="toprow"${ocard}>${dateHTML(m)}<div class="trmid">${badgeHead}<span class="trtime">${m.time}</span></div><div class="trright"><span class="trevent">${m.event}</span>${venueSubM}</div>${m.type==='club'?flyerHTML(m):''}<span class="trchev${open?' up':''}">${DOWNCHEV}</span></div>`;
   return `<div class="card${open?' open':''}">
     ${shareBtnHTML(mi)}
     ${top}
