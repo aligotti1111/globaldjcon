@@ -273,17 +273,14 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
             {includesItems.length > 0 && (
               <div style={{ marginBottom: '.7rem' }}>
                 <div style={label}>Includes</div>
-                {/* Each item is its OWN block element — not one string with
-                    newlines — so html2canvas captures them on separate lines in
-                    the downloaded image, exactly as they read on the page. */}
-                {includesItems.map((it, i) => (
-                  <div
-                    key={i}
-                    style={{ color: '#fff', fontSize: '.92rem', lineHeight: 1.55, padding: '2px 0', display: 'block' }}
-                  >
-                    {it}
-                  </div>
-                ))}
+                {/* A real bulleted list: the list marker gives each line its own
+                    anchored box, so html2canvas can't collapse short adjacent
+                    items (e.g. "1" + "2fgh") onto one line in the download. */}
+                <ul style={{ margin: '2px 0 0', paddingLeft: '1.15rem', listStyle: 'disc', color: '#fff', fontSize: '.92rem', lineHeight: 1.55 }}>
+                  {includesItems.map((it, i) => (
+                    <li key={i} style={{ marginBottom: 2 }}>{it}</li>
+                  ))}
+                </ul>
               </div>
             )}
             {!isClub ? null : <Field l="Set Type" v={b.set_type} />}
