@@ -1229,6 +1229,7 @@ export default function BookingRow({
               night — but it says so, loudly, before anything else in the cell. */}
           {isCancelled && (
             <span
+              className={styles.cancelledInline}
               title="This booking was cancelled"
               style={{
                 background: '#c0392b',
