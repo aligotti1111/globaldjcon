@@ -183,17 +183,17 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   return (
     <div style={page}>
       <div id="gdc-share-card" style={card}>
-        {/* Header */}
-        <div style={{ padding: '1.2rem 1.2rem 0', display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap' }}>
+        {/* Header — just the DJ / company name. Event type, date/time and the
+            "Booked with" line were removed (those details live in the sections
+            below). */}
+        <div style={{ padding: '1.2rem 1.2rem 1rem', display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.9rem', letterSpacing: '.03em', color: '#fff', lineHeight: 1 }}>{eventLabel}</div>
-            <div style={{ color: '#8a8aa0', fontSize: '.8rem', marginTop: 3 }}>{fmtDate(b.event_date)}{timeRange ? ` · ${timeRange}` : ''}</div>
+            <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.9rem', letterSpacing: '.03em', color: '#fff', lineHeight: 1 }}>{djName}</div>
           </div>
           {isCancelled && (
             <span style={{ background: '#c0392b', border: '1px solid #ff7676', color: '#fff', fontWeight: 800, fontSize: '.58rem', letterSpacing: '.06em', padding: '.2rem .5rem', borderRadius: 4 }}>CANCELLED</span>
           )}
         </div>
-        <div style={{ padding: '.3rem 1.2rem 1rem', color: '#8a8aa0', fontSize: '.74rem' }}>Booked with <strong style={{ color: '#fff' }}>{djName}</strong></div>
 
         {/* Event. Weddings can carry a ceremony and/or a cocktail hour, each with
             its own start time (and room note) — surface them above the main
