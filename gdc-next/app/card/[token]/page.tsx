@@ -277,7 +277,12 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
                     newlines — so html2canvas captures them on separate lines in
                     the downloaded image, exactly as they read on the page. */}
                 {includesItems.map((it, i) => (
-                  <div key={i} style={value}>{it}</div>
+                  <div
+                    key={i}
+                    style={{ color: '#fff', fontSize: '.92rem', lineHeight: 1.55, padding: '2px 0', display: 'block' }}
+                  >
+                    {it}
+                  </div>
                 ))}
               </div>
             )}
