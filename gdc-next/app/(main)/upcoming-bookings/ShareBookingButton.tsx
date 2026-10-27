@@ -222,29 +222,24 @@ export default function ShareBookingButton({
               label="Email"
               icon={<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>}
             />
-            <MenuRow
-              onClick={() => { shareByText(); setOpen(false); }}
-              label="Text"
-              icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
-            />
-            {/* Sub-option: tick this to also include the planner link in the
-                Email / Text share above. Does NOT affect Copy link or Download.
-                Toggling it leaves the menu open so the DJ can then pick a method. */}
+            {/* Sub-option under Email/Text: tick to also include the planner link
+                when sending by Email or Text. Does NOT affect Copy link or
+                Download. Tightly nested + green; toggling leaves the menu open. */}
             {canPlanner && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setIncludePlanner((v) => !v); }}
                 aria-pressed={includePlanner}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.05)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,224,164,.08)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
-                  padding: '8px 11px 8px 30px', borderRadius: 8, cursor: 'pointer', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+                  padding: '3px 10px 3px 28px', borderRadius: 7, cursor: 'pointer', border: 'none',
                   background: 'transparent',
-                  color: includePlanner ? '#00e0a4' : '#9b9baa', fontSize: '.74rem', fontWeight: 600,
+                  color: '#00e0a4', fontSize: '.68rem', fontWeight: 600,
                 }}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   {includePlanner
                     ? <><rect x="3" y="3" width="18" height="18" rx="3" /><polyline points="8 12 11 15 16 9" /></>
                     : <rect x="4" y="4" width="16" height="16" rx="3" />}
@@ -252,6 +247,11 @@ export default function ShareBookingButton({
                 Include planner link
               </button>
             )}
+            <MenuRow
+              onClick={() => { shareByText(); setOpen(false); }}
+              label="Text"
+              icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
+            />
             <MenuRow
               onClick={() => { downloadCard(); setOpen(false); }}
               label="Download"
