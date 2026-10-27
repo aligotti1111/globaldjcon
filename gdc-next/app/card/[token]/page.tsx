@@ -99,15 +99,13 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   if (!data) notFound();
   const b = data;
 
-  // DJ branding for the header.
+  // DJ branding for the header. (Logo intentionally not shown on the card.)
   let djName = 'Global DJ Connect';
-  let djLogo: string | null = null;
   if (b.dj_id) {
     const { data: dj } = await admin
-      .from('users').select('name, company, contract_logo_url').eq('id', b.dj_id)
-      .maybeSingle<{ name: string | null; company: string | null; contract_logo_url: string | null }>();
+      .from('users').select('name, company').eq('id', b.dj_id)
+      .maybeSingle<{ name: string | null; company: string | null }>();
     djName = (dj?.company || dj?.name || djName) as string;
-    djLogo = dj?.contract_logo_url || null;
   }
 
   const currency = b.currency || 'USD';
@@ -147,7 +145,7 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
 
   // ── Presentation ──────────────────────────────────────────────────────
   const page: React.CSSProperties = { minHeight: '100vh', background: '#0b0b12', color: '#fff', padding: '1.5rem 1rem', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" };
-  const card: React.CSSProperties = { maxWidth: 720, margin: '0 auto', background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, overflow: 'hidden' };
+  const card: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', background: 'var(--bg-card,#14141f)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, overflow: 'hidden' };
   const section: React.CSSProperties = { border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: '1rem 1.1rem', margin: '0 1rem 1rem' };
   const chip: React.CSSProperties = { display: 'inline-block', background: 'rgba(0,224,164,.15)', color: '#00e0a4', fontWeight: 800, fontSize: '.62rem', letterSpacing: '.08em', padding: '.25rem .6rem', borderRadius: 6, textTransform: 'uppercase', marginBottom: '.7rem' };
   const label: React.CSSProperties = { color: '#8a8aa0', fontSize: '.62rem', letterSpacing: '.08em', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" };
@@ -167,8 +165,6 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
       <div id="gdc-share-card" style={card}>
         {/* Header */}
         <div style={{ padding: '1.2rem 1.2rem 0', display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {djLogo && <img src={djLogo} alt="" style={{ maxHeight: 44, maxWidth: 140, borderRadius: 6 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.9rem', letterSpacing: '.03em', color: '#fff', lineHeight: 1 }}>{eventLabel}</div>
             <div style={{ color: '#8a8aa0', fontSize: '.8rem', marginTop: 3 }}>{fmtDate(b.event_date)}{timeRange ? ` · ${timeRange}` : ''}</div>
@@ -213,7 +209,7 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.venue_address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ ...value, color: '#00e0a4', textDecoration: 'none' }}
+                  style={{ ...value, color: '#00e0a4', textDecoration: 'underline' }}
                 >
                   {b.venue_address}
                 </a>
