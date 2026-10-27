@@ -652,6 +652,7 @@ export default function BookingDetails({
   // renderPricing (see the discount line there).
   const bkDiscountAmt = booking.discount_amount != null ? Number(booking.discount_amount) : 0;
   const agreedRateWithDiscount = agreedRateValue;
+  const isWedding = booking.event_type === 'weddings';
 
   // Build the rows. Null values get filtered out below.
   const rows: DetailRow[] = [
@@ -736,21 +737,20 @@ export default function BookingDetails({
     [
       { label: 'Email', value: (booking as { host_email?: string | null }).host_email || (booking as { account_email?: string | null }).account_email || null },
     ],
-    // Row 6: Agreed Rate. (Overtime moved out of the receipt to the Event card's
-    // bottom-right — see overtimeControl below.) When a wedding carries a
-    // separately-charged cocktail hour and/or ceremony, ITEMIZE each charge on
-    // its own line (Base Rate / Cocktail Hour / Ceremony) with the Agreed Rate as
-    // the subtotal, instead of cramming "base + cocktail = total" onto one line.
-    ...((hasSeparateCocktail || hasSeparateCeremony)
-      ? [
-          [{ label: 'Base Rate', value: money(agreedBase) }],
-          ...(hasSeparateCocktail ? [[{ label: 'Cocktail Hour', value: money(cocktailCharge) }]] : []),
+    // Rate lines. A WEDDING labels the base "Reception" and itemizes a
+    // separately-charged Ceremony and/or Cocktail Hour on their own lines (no
+    // combined subtotal — Tax and Total Event Cost follow). Every other event
+    // type is a single "Price" (the agreed rate). (Overtime moved out of the
+    // receipt to the Event card's bottom-right — see overtimeControl.)
+    ...((isWedding && (hasSeparateCocktail || hasSeparateCeremony))
+      ? ([
+          [{ label: 'Reception', value: money(agreedBase) }],
           ...(hasSeparateCeremony ? [[{ label: 'Ceremony', value: money(ceremonyCharge) }]] : []),
-          [{ label: 'Agreed Rate', value: money(agreedTotal) }],
-        ] as DetailRow[]
-      : [
-          [{ label: 'Agreed Rate', value: agreedRateWithDiscount }],
-        ] as DetailRow[]),
+          ...(hasSeparateCocktail ? [[{ label: 'Cocktail Hour', value: money(cocktailCharge) }]] : []),
+        ] as DetailRow[])
+      : ([
+          [{ label: isWedding ? 'Reception' : 'Price', value: agreedRateWithDiscount }],
+        ] as DetailRow[])),
     // Row 7: Deposit
     [
       {
@@ -807,7 +807,7 @@ export default function BookingDetails({
           : null,
       },
       {
-        label: 'Total (with tax)',
+        label: 'Total Event Cost',
         value: (effTaxPct > 0 && cardTotal != null && cardTax > 0)
           ? money(cardTotal)
           : null,
@@ -841,7 +841,7 @@ export default function BookingDetails({
     const s = row.map((c) => c.label).join('|');
     if (/Venue|Room|Equipment|Set Type|Set Time/.test(s)) return 'VENUE';
     if (/Booked By|Contact Phone|Email|Host name/.test(s)) return 'HOST';
-    if (/Agreed Rate|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
+    if (/Agreed Rate|Reception|Price|Ceremony|Cocktail Hour|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
     return 'EVENT';
   };
   const sectionOrder: Array<{ key: SectionKey; title: string }> = [
@@ -913,7 +913,7 @@ export default function BookingDetails({
       <>
         {main.map((c) => (
           <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
-            <span className={styles.priceKey}>{c.label}{c.label === 'Agreed Rate' ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
+            <span className={styles.priceKey}>{c.label}{(c.label === 'Agreed Rate' || c.label === 'Reception' || c.label === 'Price') ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
             <span className={styles.priceVal}>{c.value}</span>
           </div>
         ))}
