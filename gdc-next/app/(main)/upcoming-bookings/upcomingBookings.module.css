@@ -2063,12 +2063,15 @@ select.input {
     grid-area: chev;
     align-self: start;
     justify-self: center;
+    /* Pull the ⋯ up toward the card's top edge (clears the row's top padding). */
+    margin-top: -10px;
     z-index: 6;
   }
   .rowActionsCell .manualPill,
   .rowActionsCell .cancelledInline {
     grid-area: mcol;
-    align-self: end;
+    /* On the same line as the arrow (both vertically centered). */
+    align-self: center;
     justify-self: center;
   }
   .row .rowActionsCell .manualPill,
