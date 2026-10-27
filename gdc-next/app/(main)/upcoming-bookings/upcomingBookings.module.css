@@ -1823,12 +1823,12 @@ select.input {
     /* Top line holds date, time, event type and price together (with the
        chevron); the status icons and actions get their own full-width bands
        below. */
-    grid-template-columns: 64px auto minmax(0, 1fr) 22px;
+    position: relative;
+    grid-template-columns: 64px auto minmax(0, 1fr) 60px;
     grid-template-areas:
       "date  toggle  event  chev"
       "stat  stat    stat   stat"
-      "val   val     val    val"
-      "acts  acts    acts   acts";
+      "val   val     val    val";
     column-gap: .5rem;
     /* row-gap 0: the bands manage their OWN vertical spacing (icon band has
        margin-top, price band butts flush against it). A uniform grid row-gap
@@ -1966,12 +1966,11 @@ select.input {
      ONLY, so mobile-DJ rows keep their 4-area grid with no empty gap. */
   .flyerInline { display: none; }
   .monthListClub .row {
-    grid-template-columns: 64px auto minmax(0, 1fr) 44px 22px;
+    grid-template-columns: 64px auto minmax(0, 1fr) 44px 60px;
     grid-template-areas:
       "date  toggle  event  flyer  chev"
       "stat  stat    stat   stat   stat"
-      "val   val     val    val    val"
-      "acts  acts    acts   acts   acts";
+      "val   val     val    val    val";
   }
   .monthListClub .flyerInline {
     display: block;
@@ -2055,25 +2054,33 @@ select.input {
    * That's what the desktop swap buys back: down here there's a full-width
    * band for them and nothing to compete with.
    */
+  /* Actions (⋯ share menu + MANUAL "M") pin to the card's TOP-RIGHT CORNER — no
+     more full-width band at the bottom of the card. The chevron drops to the
+     bottom-right beneath them so the two never collide. */
   .rowActionsCell {
-    grid-area: acts;
-    justify-content: flex-end;
+    position: absolute;
+    top: 9px;
+    right: 8px;
+    z-index: 6;
+    /* DOM order is share-⋯ then MANUAL pill; reverse so the ⋯ sits at the very
+       corner and the "M" pill tucks in to its left. */
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
   }
-  /* Non-manual bookings render an EMPTY actions cell. Left in place it still
-     reserves its grid row, re-opening the very gap under the price strip we
-     just closed. Drop it entirely when empty. When it DOES hold the
-     edit/delete/MANUAL controls, give them breathing room above and below so
-     they don't kiss the price strip or the details panel (row-gap is 0 now). */
   .rowActionsCell:empty { display: none; }
-  .rowActionsCell:not(:empty) { padding: .6rem 0; }
   .row .rowActionsCell .manualPill,
   .row:hover .rowActionsCell .manualPill { display: inline-block; }
+  /* Space is tight on the top line: show just "M" for a manual booking. */
+  .rowActionsCell .manualPill { font-size: 0; padding: 3px 5px; letter-spacing: 0; }
+  .rowActionsCell .manualPill::before { content: "M"; font-size: 10px; font-weight: 700; letter-spacing: 0; }
   .row .rowActionsCell .editBtn,
   .row .rowActionsCell .deleteBtn { display: inline-flex; }
   .rowChevronBtn {
     grid-area: chev;
     justify-self: end;
-    align-self: center;
+    align-self: end;
   }
   /* No grid-area on the pill/buttons any more, and no translateX(36px) to fake
      a second button beside the first — they're flex children of .rowActionsCell
