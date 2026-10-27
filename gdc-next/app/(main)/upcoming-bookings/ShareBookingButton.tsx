@@ -7,10 +7,11 @@
 //      (the public, read-only /card/<token> page in an iframe), and
 //   2. offers three ways to send it: Copy link, Email, Text.
 //
-// For a MOBILE DJ booking that already has a planner, the sheet also offers a
-// toggle to include a link to the client's UNEDITABLE planner
-// (/planner/<id>/print — no login, read-only). When that's on, every share
-// method carries both links.
+// Copy link ALWAYS copies the booking-card link only. For a MOBILE DJ booking
+// that already has a planner, the sheet also offers an "Include planner link"
+// checkbox, nested under Email / Text: when ticked, those two methods also carry
+// a link to the client's UNEDITABLE planner (/planner/<id>/print — no login,
+// read-only). The checkbox never affects Copy link or Download.
 //
 // The whole row is a click-to-expand button, so every interactive element here
 // calls stopPropagation.
@@ -90,12 +91,9 @@ export default function ShareBookingButton({
     }
     return `Here are your event details:\n${cardUrl}`;
   }
-  function buildLinks(): string {
-    return canPlanner && includePlanner ? `${cardUrl}\n${plannerUrl}` : cardUrl;
-  }
-
   async function copyLink() {
-    const text = buildLinks();
+    // Copy link is ALWAYS the booking card only — never the planner link.
+    const text = cardUrl;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -209,25 +207,8 @@ export default function ShareBookingButton({
               fontFamily: 'var(--font-inter), system-ui, sans-serif',
             }}
           >
-            {/* Include-planner toggle stays, as a tappable row at the top. */}
-            {canPlanner && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setIncludePlanner((v) => !v); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
-                  padding: '9px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 4,
-                  border: '1px solid rgba(0,224,164,.3)',
-                  background: includePlanner ? 'rgba(0,224,164,.1)' : 'rgba(255,255,255,.03)',
-                  color: includePlanner ? '#00e0a4' : '#cfcfe0', fontSize: '.78rem', fontWeight: 700,
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  {includePlanner ? <polyline points="20 6 9 17 4 12" /> : <rect x="4" y="4" width="16" height="16" rx="3" />}
-                </svg>
-                Include planner link
-              </button>
-            )}
+            {/* Copy link is ALWAYS the booking card only — the planner checkbox
+                below does not affect it. */}
             <MenuRow
               onClick={() => { copyLink(); }}
               active={copied}
@@ -246,6 +227,31 @@ export default function ShareBookingButton({
               label="Text"
               icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />}
             />
+            {/* Sub-option: tick this to also include the planner link in the
+                Email / Text share above. Does NOT affect Copy link or Download.
+                Toggling it leaves the menu open so the DJ can then pick a method. */}
+            {canPlanner && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIncludePlanner((v) => !v); }}
+                aria-pressed={includePlanner}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,.05)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
+                  padding: '8px 11px 8px 30px', borderRadius: 8, cursor: 'pointer', border: 'none',
+                  background: 'transparent',
+                  color: includePlanner ? '#00e0a4' : '#9b9baa', fontSize: '.74rem', fontWeight: 600,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  {includePlanner
+                    ? <><rect x="3" y="3" width="18" height="18" rx="3" /><polyline points="8 12 11 15 16 9" /></>
+                    : <rect x="4" y="4" width="16" height="16" rx="3" />}
+                </svg>
+                Include planner link
+              </button>
+            )}
             <MenuRow
               onClick={() => { downloadCard(); setOpen(false); }}
               label="Download"
