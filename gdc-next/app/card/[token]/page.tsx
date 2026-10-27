@@ -170,6 +170,7 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
   const eventLabel = MOB_EVENT_LABELS[(b.event_type || '').toLowerCase()] || b.event_type || 'Event';
   const timeRange = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
   const venueType = b.venue_type_desc || b.venue_type || '';
+  const includesItems = htmlToText(b.package_details).split('\n').map((s) => s.trim()).filter(Boolean);
   // Downloaded image name: "Event type - date - venue".
   const downloadName = [eventLabel, b.event_date, b.venue_name || venueType]
     .filter(Boolean)
@@ -269,12 +270,15 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
           <div style={section}>
             <span style={chip}>Package</span>
             <Field l="Package" v={b.package_title} />
-            {htmlToText(b.package_details) && (
+            {includesItems.length > 0 && (
               <div style={{ marginBottom: '.7rem' }}>
                 <div style={label}>Includes</div>
-                {/* pre-line keeps the DJ's line breaks, so each item sits on its
-                    own line — on the page and in the downloaded/shared image. */}
-                <div style={{ ...value, whiteSpace: 'pre-line' }}>{htmlToText(b.package_details)}</div>
+                {/* Each item is its OWN block element — not one string with
+                    newlines — so html2canvas captures them on separate lines in
+                    the downloaded image, exactly as they read on the page. */}
+                {includesItems.map((it, i) => (
+                  <div key={i} style={value}>{it}</div>
+                ))}
               </div>
             )}
             {!isClub ? null : <Field l="Set Type" v={b.set_type} />}
