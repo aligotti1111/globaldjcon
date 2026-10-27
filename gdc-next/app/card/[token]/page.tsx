@@ -86,7 +86,11 @@ function fmtTime(t: string | null): string {
 function htmlToText(s: string | null): string {
   return String(s || '')
     .replace(/<\s*br\s*\/?>/gi, '\n')
-    .replace(/<\/\s*(p|div|li|tr|h[1-6])\s*>/gi, '\n')
+    // Break on BOTH opening and closing block tags. Contenteditable fields leave
+    // the first line as a bare text node and wrap the rest in <div>s, so without
+    // the opening-tag break "1" + "<div>2fgh</div>" collapsed into "12fgh".
+    .replace(/<\s*(?:div|p|li|tr|h[1-6])(?:\s[^>]*)?>/gi, '\n')
+    .replace(/<\/\s*(?:div|p|li|tr|h[1-6])\s*>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/[ \t]+/g, ' ')
@@ -273,15 +277,9 @@ export default async function ShareableBookingCardPage({ params }: { params: Pro
             {includesItems.length > 0 && (
               <div style={{ marginBottom: '.7rem' }}>
                 <div style={label}>Includes</div>
-                {/* Each item is absolutely positioned at a fixed pixel offset.
-                    html2canvas honors explicit top coordinates exactly, so the
-                    lines can't overlap/merge the way they do in normal flow (its
-                    line-height rounding bug collapses short first lines). */}
-                <div style={{ position: 'relative', marginTop: 4, height: includesItems.length * 24 }}>
-                  {includesItems.map((it, i) => (
-                    <div key={i} style={{ position: 'absolute', top: i * 24, left: 0, color: '#fff', fontSize: '15px', lineHeight: '24px' }}>{it}</div>
-                  ))}
-                </div>
+                {includesItems.map((it, i) => (
+                  <div key={i} style={{ ...value, marginTop: i === 0 ? 2 : 1 }}>{it}</div>
+                ))}
               </div>
             )}
             {!isClub ? null : <Field l="Set Type" v={b.set_type} />}
