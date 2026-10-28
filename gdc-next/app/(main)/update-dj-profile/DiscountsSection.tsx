@@ -385,6 +385,10 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const [saleDraft, setSaleDraft] = useState<Sale | null>(null);
   const saleView: Sale = saleDraft ?? sale;
 
+  // A scheduled/live sale normally locks its fields (one sale at a time). The
+  // DJ can hit "Edit" to temporarily unlock and adjust it, then re-Confirm.
+  const [editingSale, setEditingSale] = useState(false);
+
   // On mount, migrate any previously-persisted incomplete sale (percent but no
   // start date, from before this rule) into a local draft and clear it from
   // saved settings, so it stops persisting.
@@ -421,6 +425,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
     if (!saleDraft || !canConfirmSale) return;
     onChange({ sale: { ...saleDraft, active: true, started_at: saleDraft.started_at || new Date().toISOString() } });
     setSaleDraft(null);
+    setEditingSale(false);
   }
 
   // Advertise-on-profile toggle. It's a display preference, not part of the
@@ -451,6 +456,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
     }
     setSaleDraft(null);
     setSaleOpen(false);
+    setEditingSale(false);
   }
 
   // Today as an ISO date (YYYY-MM-DD) — used as the min for a new sale's start
@@ -725,7 +731,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           // Only one sale at a time: while one is running or scheduled, the
           // fields lock and Confirm hides. To start a different sale the DJ
           // ends/cancels the current one first (the link below the row).
-          const locked = tone === 'on' || tone === 'sched';
+          const locked = (tone === 'on' || tone === 'sched') && !editingSale;
           return (
             <>
             <div style={{ ...labelStyle, marginBottom: '.6rem', color: 'var(--neon,#00e0a4)' }}>Current sale</div>
@@ -786,7 +792,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 />
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 124px', order: isNarrow ? 4 : undefined }}>
-                <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
+                <label style={{ ...labelStyle, color: 'var(--white,#fff)', whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>{isNarrow ? 'End date' : 'End date (optional)'}</label>
                 <DateField
                   value={saleView.ends || null}
                   min={saleView.starts || todayStr}
@@ -893,7 +899,27 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 shown once the sale is actually running or scheduled; a percent
                 with no start date is just a draft, so there's nothing to end. */}
             {(tone === 'on' || tone === 'sched') && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1.4rem', flexWrap: 'wrap', marginTop: '.7rem' }}>
+                {/* Edit — unlock the locked fields so the DJ can adjust a
+                    scheduled (or live) sale in place, then re-Confirm. */}
+                {!editingSale && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingSale(true)}
+                    style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline', textTransform: 'uppercase', letterSpacing: '.04em' }}
+                  >
+                    {tone === 'sched' ? 'Edit scheduled sale' : 'Edit sale'}
+                  </button>
+                )}
+                {editingSale && !saleDirty && (
+                  <button
+                    type="button"
+                    onClick={() => { setSaleDraft(null); setEditingSale(false); }}
+                    style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--muted,#8a8aa0)', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline', textTransform: 'uppercase', letterSpacing: '.04em' }}
+                  >
+                    Done editing
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={endSaleNow}
