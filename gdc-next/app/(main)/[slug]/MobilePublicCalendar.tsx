@@ -196,6 +196,9 @@ export default function MobilePublicCalendar({
   // manual "mark booked" flag. Manual bookings insert a row but never set that
   // flag, which is why they weren't showing here. Mirrors PublicCalendar.
   const [countByDate, setCountByDate] = useState<Record<string, number>>({});
+  // A short label per booking on each date (venue + time), so the owner day
+  // modal can list a fully-booked date's bookings one line each.
+  const [eventsByDate, setEventsByDate] = useState<Record<string, string[]>>({});
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -217,11 +220,30 @@ export default function MobilePublicCalendar({
         const json = await res.json();
         if (!mounted) return;
         const counts: Record<string, number> = {};
-        for (const ev of (json?.events as Array<{ event_date: string | null }>) || []) {
+        const labels: Record<string, string[]> = {};
+        const fmtT = (t: string | null) => {
+          if (!t) return '';
+          const [hh, mm] = t.split(':');
+          let h = parseInt(hh, 10);
+          if (!Number.isFinite(h)) return '';
+          const ap = h >= 12 ? 'PM' : 'AM';
+          h = h % 12 || 12;
+          return `${h}:${mm ?? '00'} ${ap}`;
+        };
+        for (const ev of (json?.events as Array<{
+          event_date: string | null; venue_name?: string | null;
+          start_time?: string | null; end_time?: string | null;
+          set_type?: string | null; booking_type?: string | null;
+        }>) || []) {
           if (!ev.event_date) continue;
           counts[ev.event_date] = (counts[ev.event_date] || 0) + 1;
+          const times = [fmtT(ev.start_time || null), fmtT(ev.end_time || null)].filter(Boolean).join('–');
+          const label = [ev.venue_name || ev.set_type || ev.booking_type || 'Booking', times]
+            .filter(Boolean).join(' · ');
+          (labels[ev.event_date] ||= []).push(label);
         }
         setCountByDate(counts);
+        setEventsByDate(labels);
       } catch {
         // Non-fatal — calendar still renders from the booking_days flags.
       }
@@ -671,6 +693,7 @@ export default function MobilePublicCalendar({
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
           hasBooking={(countByDate[ownerEditKey] || 0) > 0}
+          bookingLabels={eventsByDate[ownerEditKey] || []}
           previewPackages={previewPackages}
           cur={previewCur}
           onClose={() => setOwnerEditKey(null)}
@@ -1166,6 +1189,7 @@ function OwnerDayEditModal({
   dateKey,
   dayData,
   hasBooking = false,
+  bookingLabels = [],
   previewPackages,
   cur,
   onClose,
@@ -1176,6 +1200,8 @@ function OwnerDayEditModal({
   // True when this date has a real booking on it (from the calendar's booking
   // counts), independent of the owner's manual "booked" flag.
   hasBooking?: boolean;
+  // One short label per booking on this date (venue · time).
+  bookingLabels?: string[];
   previewPackages: PreviewPkg[];
   cur: string;
   onClose: () => void;
@@ -1349,7 +1375,7 @@ function OwnerDayEditModal({
 
         {/* A day already at capacity is full on its own — no manual toggle,
             just a status line. */}
-        {naturallyFull && (
+        {naturallyFull && !hasRealBooking && (
           <div className={styles.ownerModalField}>
             <span className={styles.ownerModalHint}>
               This date has reached its booking capacity — it’s already full and closed to new requests, so there’s nothing to mark here.
@@ -1359,11 +1385,28 @@ function OwnerDayEditModal({
 
         {/* Already has a real booking on it — no manual toggle, just a status
             line. The booking itself is managed from Booking Requests. */}
-        {!naturallyFull && hasRealBooking && (
+        {hasRealBooking && (
           <div className={styles.ownerModalField}>
             <span className={styles.ownerModalHint}>
-              This date is already booked{dayData.eventName ? ` — ${dayData.eventName}` : ''}. Manage that booking from your Booking Requests.
+              This date is booked. Manage {bookingLabels.length > 1 ? 'these bookings' : 'this booking'} from your Booking Requests.
             </span>
+            {(bookingLabels.length > 0
+              ? bookingLabels
+              : (dayData.eventName ? [dayData.eventName] : [])
+            ).map((label, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
+                  padding: '.5rem .6rem', borderRadius: 7,
+                  background: 'rgba(255,95,95,.07)', border: '1px solid rgba(255,95,95,.28)',
+                  fontSize: '.8rem', color: '#ffb3b3', fontWeight: 600,
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f5f', flex: '0 0 auto' }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -1403,11 +1446,6 @@ function OwnerDayEditModal({
           </span>
         </div>
         )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', margin: '.2rem 0 .9rem', color: 'var(--muted)', fontSize: '.68rem', lineHeight: 1.4 }}>
-          <span aria-hidden="true">🔒</span>
-          <span>Only visible to account operators (you and your teammates). Clients never see these settings — just the date’s price and availability.</span>
-        </div>
 
         <div className={styles.ownerModalBtns}>
           <button
