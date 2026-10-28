@@ -1253,7 +1253,7 @@ function OwnerDayEditModal({
           </button>
         </div>
 
-        {!booked && canAdjust && (
+        {!booked && !hasRealBooking && canAdjust && (
           <div className={styles.ownerModalField}>
             <label className={styles.ownerModalLabel}>
               Charge more or less for a booking on this date.
@@ -1337,7 +1337,7 @@ function OwnerDayEditModal({
           </div>
         )}
 
-        {!booked && !canAdjust && (
+        {!booked && !hasRealBooking && !canAdjust && (
           <div className={styles.ownerModalField}>
             <span className={styles.ownerModalHint}>
               {pkgs.length === 0
