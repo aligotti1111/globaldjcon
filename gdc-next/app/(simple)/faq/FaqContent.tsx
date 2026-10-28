@@ -71,7 +71,7 @@ const HOST_FAQ: QA[] = [
     q: 'How do I pay my DJ?',
     a: (
       <>
-        Your DJ sets how they accept payment — that can include Venmo, Cash App, PayPal, or card, and many DJs
+        Your DJ sets how they accept payment — that can include Venmo, Cash App, Zelle, PayPal, or card, and many DJs
         also accept cash or check on the day of the event. Payments typically come in two parts: a deposit to
         lock in the date and the remaining balance before or at the event. You&rsquo;ll see exactly what&rsquo;s been paid
         and what&rsquo;s still due on your booking.
@@ -155,6 +155,17 @@ const DJ_FAQ: QA[] = [
     ),
   },
   {
+    q: 'Where do I find the QR code for my profile?',
+    a: (
+      <>
+        Go to <Link href="/update-dj-profile">Edit Profile</Link> and look in the <b>Account</b> section — your
+        downloadable QR code sits right under your public profile link. It encodes your profile so anyone can scan
+        it to open your page; print it on a business card, flyer, or booth sign, or save it to share online. The QR
+        code is a paid feature — on a free account you&rsquo;ll see it locked with an option to upgrade.
+      </>
+    ),
+  },
+  {
     q: 'How much does it cost?',
     a: (
       <>
@@ -177,7 +188,7 @@ const DJ_FAQ: QA[] = [
     q: 'How do payments work?',
     a: (
       <>
-        You connect the payment methods you want to accept — Venmo, Cash App, PayPal, and/or card — and set your
+        You connect the payment methods you want to accept — Venmo, Cash App, Zelle, PayPal, and/or card — and set your
         deposit and tax terms. Clients pay you directly; you can mark cash or check payments as received, and
         receipts can be sent automatically. You&rsquo;re always the merchant of record.
       </>
