@@ -1336,7 +1336,7 @@ function OwnerDayEditModal({
                 {showPrices && (
                   <div style={{ padding: '.35rem .7rem .55rem' }}>
                     <div style={{ fontSize: '.64rem', color: 'var(--muted)', padding: '.2rem 0 .3rem', lineHeight: 1.4 }}>
-                      Base package prices. Add-ons, deposit, tax and any active sale/promo are applied on top at booking.
+                      Base package prices.
                     </div>
                     {pkgs.map((p) => (
                       p.byRequest ? (
@@ -1465,7 +1465,7 @@ function OwnerDayEditModal({
           <span className={styles.ownerModalHint}>
             {booked
               ? 'This date is currently BOOKED — closed to new requests and shown red. Tap the button above to reopen it, then Save changes.'
-              : 'Closes this date to new booking requests and marks it red. Bookings already on this day stay put, and any pending requests for it can still be confirmed from your Booking Requests at your discretion.'}
+              : 'Closes this date to new booking requests and marks it red.'}
           </span>
         </div>
         )}
