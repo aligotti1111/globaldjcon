@@ -230,17 +230,19 @@ export default function MobilePublicCalendar({
           h = h % 12 || 12;
           return `${h}:${mm ?? '00'} ${ap}`;
         };
+        const pretty = (s: string | null | undefined) =>
+          (s || '').replace(/[_-]+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
         for (const ev of (json?.events as Array<{
           event_date: string | null; venue_name?: string | null;
           start_time?: string | null; end_time?: string | null;
-          set_type?: string | null; booking_type?: string | null;
-          share_token?: string | null;
+          set_type?: string | null; event_type?: string | null;
+          booking_type?: string | null; share_token?: string | null;
         }>) || []) {
           if (!ev.event_date) continue;
           counts[ev.event_date] = (counts[ev.event_date] || 0) + 1;
           const times = [fmtT(ev.start_time || null), fmtT(ev.end_time || null)].filter(Boolean).join('–');
-          const label = [ev.venue_name || ev.set_type || ev.booking_type || 'Booking', times]
-            .filter(Boolean).join(' · ');
+          const name = pretty(ev.event_type) || ev.venue_name || 'Booking';
+          const label = [name, times].filter(Boolean).join(' · ');
           (labels[ev.event_date] ||= []).push({ label, token: ev.share_token || null });
         }
         setCountByDate(counts);
@@ -1420,7 +1422,7 @@ function OwnerDayEditModal({
                   >
                     {dot}
                     {text}
-                    <span aria-hidden="true" style={{ color: 'var(--muted)', fontSize: '.8rem', flex: '0 0 auto' }}>↗</span>
+                    <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', flex: '0 0 auto' }}>View</span>
                   </a>
                 ) : (
                   <div key={i} style={rowStyle}>
