@@ -23,6 +23,7 @@
 // date currently shows an alert. Same placeholder pattern as Session 4.
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
@@ -1264,7 +1265,10 @@ function OwnerDayEditModal({
     onSave(Object.keys(next).length > 0 ? next : null);
   }
 
-  return (
+  // Render through a portal to <body> so the modal escapes the profile page's
+  // stacking contexts (the hero banner was painting over it otherwise).
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div className={styles.ownerModalBackdrop} onClick={onClose}>
       <div
         className={styles.ownerModalInner}
@@ -1489,6 +1493,7 @@ function OwnerDayEditModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
