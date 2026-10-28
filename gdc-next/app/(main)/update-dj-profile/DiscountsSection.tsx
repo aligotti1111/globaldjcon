@@ -634,6 +634,11 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
             50% { opacity: .25; transform: scale(.55); }
           }
           .gdcLiveDot { animation: gdcLiveDot 1.1s ease-in-out infinite; }
+          @keyframes gdcSalePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0,245,196,.6), 0 0 10px rgba(0,245,196,.5); opacity: 1; }
+            50% { box-shadow: 0 0 0 7px rgba(0,245,196,0), 0 0 2px rgba(0,245,196,.2); opacity: .72; }
+          }
+          .gdcSaleActive { animation: gdcSalePulse 1.3s ease-in-out infinite; }
           input.gdcNoSpin::-webkit-outer-spin-button,
           input.gdcNoSpin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
           input.gdcNoSpin { -moz-appearance: textfield; appearance: textfield; }
@@ -710,8 +715,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
           }
           const pillStyle: React.CSSProperties =
             tone === 'on'
-              // Dark muted-green fill with white label, no dot.
-              ? { color: '#fff', background: '#15332c' }
+              // Bright neon-green fill with dark label + a pulsing glow (see
+              // .gdcSaleActive) so a live sale reads unmistakably "active".
+              ? { color: '#04241b', background: 'var(--neon,#00e0a4)' }
               : tone === 'sched'
                 ? { color: '#3a2a00', background: '#ffcf6b' }
                 : { color: 'var(--muted,#8a8aa0)', background: 'rgba(255,255,255,.07)' };
@@ -744,7 +750,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               }
             >
               <div style={{ ...fieldWrap, flex: '0 0 84px', order: isNarrow ? 2 : undefined }}>
-                <label style={{ ...labelStyle, ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Percent off</label>
+                <label style={{ ...labelStyle, color: 'var(--white,#fff)', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Percent off</label>
                 <select
                   disabled={locked}
                   className={styles.settingSelect}
@@ -764,7 +770,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 </select>
               </div>
               <div style={{ ...fieldWrap, flex: '0 0 124px', order: isNarrow ? 3 : undefined }}>
-                <label style={{ ...labelStyle, whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
+                <label style={{ ...labelStyle, color: 'var(--white,#fff)', whiteSpace: 'nowrap', ...(isNarrow ? { fontSize: '.58rem', letterSpacing: 0 } : null) }}>Start date</label>
                 <DateField
                   value={saleView.starts || null}
                   min={todayStr}
@@ -836,17 +842,18 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                 <div style={{ ...fieldWrap, alignItems: 'center', textAlign: 'center' }}>
                   <label style={labelStyle}>Status</label>
                   <span
+                    className={tone === 'on' ? 'gdcSaleActive' : undefined}
                     style={{
                       height: 30, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px',
                       borderRadius: 999, fontSize: '.68rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
                       ...pillStyle,
                     }}
                   >
-                    {tone !== 'on' && (
-                      <span
-                        style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }}
-                      />
-                    )}
+                    {/* Active: a blinking dark dot on the neon fill. Otherwise the
+                        static tone dot. */}
+                    {tone === 'on'
+                      ? <span className="gdcLiveDot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#04241b' }} />
+                      : <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />}
                     {statLabel}
                   </span>
                 </div>
