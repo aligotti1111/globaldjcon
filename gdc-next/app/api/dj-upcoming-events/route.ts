@@ -40,10 +40,14 @@ export async function GET(req: Request) {
       .maybeSingle<{ dj_type: string | null }>();
     const djType = profile?.dj_type || null;
 
-    // Select only fields safe for public display.
-    const { data, error } = await admin
+    // Select only fields safe for public display. share_token powers the
+    // read-only booking card link; it isn't in the generated types yet, so we
+    // query through an untyped client (same approach as /card/[token]).
+    const { data, error } = await (admin as unknown as {
+      from: (t: string) => any;
+    })
       .from('bookings')
-      .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual, link_url, link_label, booking_type')
+      .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual, link_url, link_label, booking_type, share_token')
       .eq('dj_id', djId)
       .gte('event_date', from)
       .lt('event_date', to)
@@ -58,9 +62,9 @@ export async function GET(req: Request) {
     // Filter out type-mismatched bookings — e.g. a club event accepted by
     // a mobile DJ shouldn't render on the mobile DJ's public profile.
     // Bookings without a booking_type are kept (legacy / unknown).
-    const filtered = (data || []).filter((row) => {
+    const filtered = ((data || []) as Array<{ booking_type: string | null }>).filter((row) => {
       if (!djType) return true;
-      const bt = (row as { booking_type: string | null }).booking_type;
+      const bt = row.booking_type;
       if (!bt) return true;
       return bt === djType;
     });
