@@ -1033,8 +1033,10 @@ export default function BookingRow({
           collapsed card — same as the host card. The Total Value band below is
           left untinted, so the red reads as "above the value". */}
       <div className={styles.row} onClick={() => setExpanded((v) => !v)} style={{ cursor: 'pointer', ...(isCancelled && !expanded ? { background: 'rgba(192,57,43,.14)' } : null) }}>
-        {/* 1 — Date pill. Kept as-is: it's what you look for first. */}
-        <div className={styles.rowDate} style={(dateChangePending || dateChangeApproved) ? { flexDirection: 'column', alignItems: 'flex-start', gap: 4 } : undefined}>
+        {/* 1 — Date pill. Kept as-is: it's what you look for first. The
+            date-change badge only shows when the card is EXPANDED, so a collapsed
+            row stays clean. */}
+        <div className={styles.rowDate} style={(expanded && (dateChangePending || dateChangeApproved)) ? { flexDirection: 'column', alignItems: 'flex-start', gap: 4 } : undefined}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <div className={styles.dayNum}>{day}</div>
             <div className={styles.dayMeta}>
@@ -1042,7 +1044,7 @@ export default function BookingRow({
               <div className={styles.mo}>{mo}</div>
             </div>
           </div>
-          {(dateChangePending || dateChangeApproved) && (
+          {expanded && (dateChangePending || dateChangeApproved) && (
             <div
               title={dateChangePending ? 'A new date is pending the host’s approval' : 'The host approved a date change'}
               style={{
