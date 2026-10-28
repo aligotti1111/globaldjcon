@@ -1196,6 +1196,10 @@ function OwnerDayEditModal({
   // closed to new bookings on its own, so the manual "mark booked" toggle would
   // be redundant/confusing — hide it and just say the day is full.
   const naturallyFull = dayData.bookings_available != null && dayData.bookings_available <= 0;
+  // A date that already has a real booking on it (an approved event) is booked
+  // for real — the manual "mark booked" toggle is meaningless there, so hide it
+  // and just show a status line instead.
+  const hasRealBooking = !!dayData.eventName;
 
   // Format the date label e.g. "Friday, April 24, 2026"
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -1281,7 +1285,7 @@ function OwnerDayEditModal({
             </div>
             <span className={styles.ownerModalHint}>
               {adjustPct === 0
-                ? 'Charge more or less for a booking on this date — 0% is your normal rate. Built straight into the price the client sees, never shown as a discount or surcharge.'
+                ? 'Charge more or less for a booking on this date.'
                 : `${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal.`}
             </span>
 
@@ -1348,9 +1352,19 @@ function OwnerDayEditModal({
           </div>
         )}
 
+        {/* Already has a real booking on it — no manual toggle, just a status
+            line. The booking itself is managed from Booking Requests. */}
+        {!naturallyFull && hasRealBooking && (
+          <div className={styles.ownerModalField}>
+            <span className={styles.ownerModalHint}>
+              This date is already booked{dayData.eventName ? ` — ${dayData.eventName}` : ''}. Manage that booking from your Booking Requests.
+            </span>
+          </div>
+        )}
+
         {/* Booked = close the date to NEW bookings. Single toggle, no fields.
-            Hidden once the day fills naturally. */}
-        {!naturallyFull && (
+            Hidden once the day fills naturally or already has a real booking. */}
+        {!naturallyFull && !hasRealBooking && (
         <div className={styles.ownerModalField}>
           <button
             type="button"
@@ -1379,7 +1393,7 @@ function OwnerDayEditModal({
           </button>
           <span className={styles.ownerModalHint}>
             {booked
-              ? 'This date is currently BOOKED — closed to new requests and shown red. Tap the button above to reopen it, then Save Day.'
+              ? 'This date is currently BOOKED — closed to new requests and shown red. Tap the button above to reopen it, then Save changes.'
               : 'Closes this date to new booking requests and marks it red. Bookings already on this day stay put, and any pending requests for it can still be confirmed from your Booking Requests at your discretion.'}
           </span>
         </div>
@@ -1403,7 +1417,7 @@ function OwnerDayEditModal({
             onClick={handleSave}
             className={styles.ownerModalSave}
           >
-            Save Day
+            Save changes
           </button>
         </div>
       </div>
