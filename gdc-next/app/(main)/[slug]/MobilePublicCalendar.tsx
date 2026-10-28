@@ -670,6 +670,7 @@ export default function MobilePublicCalendar({
         <OwnerDayEditModal
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
+          hasBooking={(countByDate[ownerEditKey] || 0) > 0}
           previewPackages={previewPackages}
           cur={previewCur}
           onClose={() => setOwnerEditKey(null)}
@@ -1164,6 +1165,7 @@ function RollingMonthsView({
 function OwnerDayEditModal({
   dateKey,
   dayData,
+  hasBooking = false,
   previewPackages,
   cur,
   onClose,
@@ -1171,6 +1173,9 @@ function OwnerDayEditModal({
 }: {
   dateKey: string;
   dayData: MobileDayData;
+  // True when this date has a real booking on it (from the calendar's booking
+  // counts), independent of the owner's manual "booked" flag.
+  hasBooking?: boolean;
   previewPackages: PreviewPkg[];
   cur: string;
   onClose: () => void;
@@ -1186,8 +1191,8 @@ function OwnerDayEditModal({
   // Signed per-date price nudge (0 = normal price), clamped like the input.
   const [adjustPct, setAdjustPct] = useState<number>(dayData.price_adjust_pct ?? 0);
   const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
-  // "See new prices" box is CLOSED until the DJ opens it.
-  const [showPrices, setShowPrices] = useState(false);
+  // "See new prices" box is OPEN by default so the DJ sees the effect right away.
+  const [showPrices, setShowPrices] = useState(true);
   // The % control only makes sense when at least one package has a FIXED price.
   // No packages at all (pure-quote DJ) or all "by request" → nothing to adjust.
   const pkgs = previewPackages || [];
@@ -1199,7 +1204,7 @@ function OwnerDayEditModal({
   // A date that already has a real booking on it (an approved event) is booked
   // for real — the manual "mark booked" toggle is meaningless there, so hide it
   // and just show a status line instead.
-  const hasRealBooking = !!dayData.eventName;
+  const hasRealBooking = !!dayData.eventName || hasBooking;
 
   // Format the date label e.g. "Friday, April 24, 2026"
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -1251,7 +1256,7 @@ function OwnerDayEditModal({
         {!booked && canAdjust && (
           <div className={styles.ownerModalField}>
             <label className={styles.ownerModalLabel}>
-              Price for this day
+              Charge more or less for a booking on this date.
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
               <button
@@ -1283,11 +1288,11 @@ function OwnerDayEditModal({
                 style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               >+</button>
             </div>
-            <span className={styles.ownerModalHint}>
-              {adjustPct === 0
-                ? 'Charge more or less for a booking on this date.'
-                : `${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal.`}
-            </span>
+            {adjustPct !== 0 && (
+              <span className={styles.ownerModalHint}>
+                {`${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal.`}
+              </span>
+            )}
 
             {pkgs.some((p) => !p.byRequest) && (
               <div style={{ marginTop: '.6rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, overflow: 'hidden' }}>
