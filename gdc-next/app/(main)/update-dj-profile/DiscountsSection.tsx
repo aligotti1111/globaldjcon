@@ -223,7 +223,7 @@ function CodeFields({
           className={styles.settingNumber}
           value={value.code}
           onChange={(e) => onField({ code: e.target.value.toUpperCase() })}
-          style={{ ...fieldBox, textTransform: 'uppercase', color: 'var(--white,#fff)' }}
+          style={{ ...fieldBox, width: '100%', minWidth: 0, textTransform: 'uppercase', color: 'var(--white,#fff)' }}
         />
       </div>
       <div style={{ ...fieldWrap, flex: '0 0 130px' }}>
