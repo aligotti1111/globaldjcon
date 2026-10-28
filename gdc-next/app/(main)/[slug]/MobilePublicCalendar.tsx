@@ -196,9 +196,9 @@ export default function MobilePublicCalendar({
   // manual "mark booked" flag. Manual bookings insert a row but never set that
   // flag, which is why they weren't showing here. Mirrors PublicCalendar.
   const [countByDate, setCountByDate] = useState<Record<string, number>>({});
-  // A short label per booking on each date (venue + time), so the owner day
-  // modal can list a fully-booked date's bookings one line each.
-  const [eventsByDate, setEventsByDate] = useState<Record<string, string[]>>({});
+  // A short label + card token per booking on each date, so the owner day
+  // modal can list a date's bookings one line each, each linking to its card.
+  const [eventsByDate, setEventsByDate] = useState<Record<string, { label: string; token: string | null }[]>>({});
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -220,7 +220,7 @@ export default function MobilePublicCalendar({
         const json = await res.json();
         if (!mounted) return;
         const counts: Record<string, number> = {};
-        const labels: Record<string, string[]> = {};
+        const labels: Record<string, { label: string; token: string | null }[]> = {};
         const fmtT = (t: string | null) => {
           if (!t) return '';
           const [hh, mm] = t.split(':');
@@ -234,13 +234,14 @@ export default function MobilePublicCalendar({
           event_date: string | null; venue_name?: string | null;
           start_time?: string | null; end_time?: string | null;
           set_type?: string | null; booking_type?: string | null;
+          share_token?: string | null;
         }>) || []) {
           if (!ev.event_date) continue;
           counts[ev.event_date] = (counts[ev.event_date] || 0) + 1;
           const times = [fmtT(ev.start_time || null), fmtT(ev.end_time || null)].filter(Boolean).join('–');
           const label = [ev.venue_name || ev.set_type || ev.booking_type || 'Booking', times]
             .filter(Boolean).join(' · ');
-          (labels[ev.event_date] ||= []).push(label);
+          (labels[ev.event_date] ||= []).push({ label, token: ev.share_token || null });
         }
         setCountByDate(counts);
         setEventsByDate(labels);
@@ -693,7 +694,7 @@ export default function MobilePublicCalendar({
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
           hasBooking={(countByDate[ownerEditKey] || 0) > 0}
-          bookingLabels={eventsByDate[ownerEditKey] || []}
+          bookingLinks={eventsByDate[ownerEditKey] || []}
           previewPackages={previewPackages}
           cur={previewCur}
           onClose={() => setOwnerEditKey(null)}
@@ -1189,7 +1190,7 @@ function OwnerDayEditModal({
   dateKey,
   dayData,
   hasBooking = false,
-  bookingLabels = [],
+  bookingLinks = [],
   previewPackages,
   cur,
   onClose,
@@ -1200,8 +1201,9 @@ function OwnerDayEditModal({
   // True when this date has a real booking on it (from the calendar's booking
   // counts), independent of the owner's manual "booked" flag.
   hasBooking?: boolean;
-  // One short label per booking on this date (venue · time).
-  bookingLabels?: string[];
+  // One entry per booking on this date: a short label (venue · time) and the
+  // booking card's share token (null for bookings that have no card).
+  bookingLinks?: { label: string; token: string | null }[];
   previewPackages: PreviewPkg[];
   cur: string;
   onClose: () => void;
@@ -1385,30 +1387,51 @@ function OwnerDayEditModal({
 
         {/* Already has a real booking on it — no manual toggle, just a status
             line. The booking itself is managed from Booking Requests. */}
-        {hasRealBooking && (
-          <div className={styles.ownerModalField}>
-            <span className={styles.ownerModalHint}>
-              This date is booked. Manage {bookingLabels.length > 1 ? 'these bookings' : 'this booking'} from your Booking Requests.
-            </span>
-            {(bookingLabels.length > 0
-              ? bookingLabels
-              : (dayData.eventName ? [dayData.eventName] : [])
-            ).map((label, i) => (
-              <div
-                key={i}
-                style={{
+        {hasRealBooking && (() => {
+          const items = bookingLinks.length > 0
+            ? bookingLinks
+            : (dayData.eventName ? [{ label: dayData.eventName, token: null }] : []);
+          return (
+            <div className={styles.ownerModalField}>
+              <span className={styles.ownerModalHint}>
+                This date is booked. Manage {items.length > 1 ? 'these bookings' : 'this booking'} from your Booking Requests.
+              </span>
+              {items.map((it, i) => {
+                const rowStyle: React.CSSProperties = {
                   display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
                   padding: '.5rem .6rem', borderRadius: 7,
-                  background: 'rgba(255,95,95,.07)', border: '1px solid rgba(255,95,95,.28)',
-                  fontSize: '.8rem', color: '#ffb3b3', fontWeight: 600,
-                }}
-              >
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f5f', flex: '0 0 auto' }} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-              </div>
-            ))}
-          </div>
-        )}
+                  border: '1px solid var(--border)', background: 'transparent',
+                  fontSize: '.8rem', color: 'var(--white)', fontWeight: 600,
+                  textDecoration: 'none',
+                };
+                const dot = <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f5f', flex: '0 0 auto' }} />;
+                const text = (
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{it.label}</span>
+                );
+                // Link to the booking card in a new window when we have a token;
+                // otherwise just show the label.
+                return it.token ? (
+                  <a
+                    key={i}
+                    href={`/card/${it.token}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ ...rowStyle, cursor: 'pointer' }}
+                  >
+                    {dot}
+                    {text}
+                    <span aria-hidden="true" style={{ color: 'var(--muted)', fontSize: '.8rem', flex: '0 0 auto' }}>↗</span>
+                  </a>
+                ) : (
+                  <div key={i} style={rowStyle}>
+                    {dot}
+                    {text}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Booked = close the date to NEW bookings. Single toggle, no fields.
             Hidden once the day fills naturally or already has a real booking. */}
