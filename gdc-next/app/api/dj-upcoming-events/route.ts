@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       from: (t: string) => any;
     })
       .from('bookings')
-      .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, flyer_url, is_manual, link_url, link_label, booking_type, share_token')
+      .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, set_type, event_type, flyer_url, is_manual, link_url, link_label, booking_type, share_token')
       .eq('dj_id', djId)
       .gte('event_date', from)
       .lt('event_date', to)
