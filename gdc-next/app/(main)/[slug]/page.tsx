@@ -19,6 +19,7 @@
 //   - SEO metadata via generateMetadata (Session 6)
 // Everything that IS here matches vanilla 1:1 in markup, styling, and behavior.
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { preload } from 'react-dom';
 import { optimizedImageUrl } from '@/lib/img';
@@ -43,6 +44,19 @@ interface PageProps {
 
 // Vanilla regex for "is this a UUID slug" — used for legacy direct-id links
 const UUID_REGEX = /^[0-9a-f-]{36}$/;
+
+// Single source of truth for the profile row. React's cache() dedupes this
+// across generateMetadata() and the page component WITHIN the same request,
+// so a profile visit now hits the users table ONCE instead of twice (the
+// metadata lookup and the page body used to run as two separate round-trips).
+const getProfileRow = cache(async (slug: string) => {
+  const supabase = await createClient();
+  const isUUID = UUID_REGEX.test(slug);
+  const builder = isUUID
+    ? supabase.from('users').select('*').eq('id', slug)
+    : supabase.from('users').select('*').eq('slug', slug);
+  return builder.maybeSingle<DjProfileData>();
+});
 
 // Vanilla effective-slug fallback: if a row's slug column is null, derive one
 // from the name (lowercase, alpha-numeric + dashes). Matches dj-profile.html
@@ -71,23 +85,8 @@ function stripHtml(s: string | null | undefined): string {
 // their photo. Falls back to the banner image, then to no image.
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
-
-  const isUUID = UUID_REGEX.test(slug);
-  const cols = 'name, bio, dj_type, role, avatar_url, banner_url, profile_private';
-  const builder = isUUID
-    ? supabase.from('users').select(cols).eq('id', slug)
-    : supabase.from('users').select(cols).eq('slug', slug);
-
-  const { data } = await builder.maybeSingle<{
-    name: string | null;
-    bio: string | null;
-    dj_type: 'mobile' | 'club' | null;
-    role: string | null;
-    avatar_url: string | null;
-    banner_url: string | null;
-    profile_private: boolean | null;
-  }>();
+  // Shares the one cached row with the page component below (no second query).
+  const { data } = await getProfileRow(slug);
 
   // No profile, not a DJ, or private → generic metadata, no image leak.
   if (!data || data.role !== 'dj' || data.profile_private) {
@@ -130,13 +129,9 @@ export default async function DjProfilePage({ params }: PageProps) {
   // ── Step 1: try slug → users.slug match for a DJ ─────────────────────
   // The vanilla code does a venue-check first then queries .role='dj'. We
   // do a single lookup by slug WITHOUT the role filter so we can branch on
-  // role afterward (one query instead of two for the common case).
-  const isUUID = UUID_REGEX.test(slug);
-  const builder = isUUID
-    ? supabase.from('users').select('*').eq('id', slug)
-    : supabase.from('users').select('*').eq('slug', slug);
-
-  const { data: profile, error } = await builder.maybeSingle<DjProfileData>();
+  // role afterward. This reuses the SAME cached row generateMetadata() read,
+  // so the users table is hit once per request, not twice.
+  const { data: profile, error } = await getProfileRow(slug);
 
   if (error) {
     // Real query error — log it but show the same not-found UX
