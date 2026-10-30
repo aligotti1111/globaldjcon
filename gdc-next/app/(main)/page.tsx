@@ -622,6 +622,9 @@ const LANDING_CSS = String.raw`
 .gdc-landing .brgrid figcaption{font-family:var(--disp);font-size:clamp(1.3rem,2.2vw,1.8rem);letter-spacing:.02em;text-transform:uppercase;color:var(--ink);text-align:center;margin-bottom:8px}
 .gdc-landing .brgrid img{height:320px;width:auto;max-width:100%;border-radius:10px;display:block}
 .gdc-landing .brgrid .brimgwrap{position:relative;display:inline-block;line-height:0}
+/* Small neon arrow connecting Step 1 → Step 2 (centered between the cards). */
+.gdc-landing .brgrid .brarrow{display:flex;align-items:center;justify-content:center;flex:0 0 auto;align-self:center;color:var(--neon)}
+.gdc-landing .brgrid .brarrow svg{width:30px;height:30px;filter:drop-shadow(0 0 8px rgba(0,245,196,.5))}
 /* Connector under the two step cards → the interactive dashboard sample (Step 3). */
 .gdc-landing .brnext{display:flex;flex-direction:column;align-items:center;gap:12px;margin:34px auto 0;color:var(--neon)}
 .gdc-landing .brnext .brnextlabel{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
@@ -631,7 +634,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing #financesample .finsample img{display:block;width:100%;height:auto}
 /* Subtle role tag over each image: Host on the phone, DJ on the laptop. */
 .gdc-landing .brgrid .brtag{position:absolute;left:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
-@media(max-width:760px){.gdc-landing .brgrid{gap:16px}.gdc-landing .brgrid figure{width:100%;padding:12px 12px 16px}.gdc-landing .brgrid .brimgwrap{width:100%;height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}.gdc-landing .brgrid img{height:auto;width:auto;max-width:100%;max-height:100%}}`;
+@media(max-width:760px){.gdc-landing .brgrid{gap:16px}.gdc-landing .brgrid .brarrow{width:100%;transform:rotate(90deg)}.gdc-landing .brgrid figure{width:100%;padding:12px 12px 16px}.gdc-landing .brgrid .brimgwrap{width:100%;height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}.gdc-landing .brgrid img{height:auto;width:auto;max-width:100%;max-height:100%}}`;
 
 const LANDING_BODY = String.raw`
 
@@ -741,6 +744,9 @@ const LANDING_BODY = String.raw`
         <figcaption>Booking Requested</figcaption>
         <div class="brimgwrap"><img src="/booking-requested.webp" alt="A client requesting a booking on a DJ's Global DJ Connect page" loading="lazy" decoding="async"><span class="brtag">Host</span></div>
       </figure>
+      <div class="brarrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00f5c4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </div>
       <figure>
         <span class="brstep">Step 2</span>
         <figcaption>Approve Booking</figcaption>
