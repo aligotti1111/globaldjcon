@@ -5,8 +5,9 @@
 // deliberately free of specific prices (those live on /subscribe) so this page
 // never goes stale when plans change.
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/components/AuthProvider';
 import styles from './faq.module.css';
 
 type Audience = 'host' | 'dj';
@@ -314,7 +315,19 @@ function FaqList({ items }: { items: QA[] }) {
 }
 
 export default function FaqContent() {
+  const { user } = useAuth();
   const [audience, setAudience] = useState<Audience>('host');
+  // Default the tab to match the signed-in user: DJs (and their teammates)
+  // land on the DJ FAQ, hosts on the Host FAQ. Only auto-set until the user
+  // picks a tab themselves, so a manual choice is never overridden.
+  const touched = useRef(false);
+  useEffect(() => {
+    if (touched.current) return;
+    const role = user?.role as string | undefined;
+    if (role === 'dj' || role === 'teammate') setAudience('dj');
+    else if (role === 'host') setAudience('host');
+  }, [user?.role]);
+  const pickAudience = (a: Audience) => { touched.current = true; setAudience(a); };
   return (
     <div>
       <div className={styles.toggle} role="tablist" aria-label="Choose FAQ audience">
@@ -323,7 +336,7 @@ export default function FaqContent() {
           role="tab"
           aria-selected={audience === 'host'}
           className={`${styles.toggleBtn} ${audience === 'host' ? styles.toggleActive : ''}`}
-          onClick={() => setAudience('host')}
+          onClick={() => pickAudience('host')}
         >
           For Hosts
         </button>
@@ -332,7 +345,7 @@ export default function FaqContent() {
           role="tab"
           aria-selected={audience === 'dj'}
           className={`${styles.toggleBtn} ${audience === 'dj' ? styles.toggleActive : ''}`}
-          onClick={() => setAudience('dj')}
+          onClick={() => pickAudience('dj')}
         >
           For DJs
         </button>
