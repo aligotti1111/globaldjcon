@@ -241,16 +241,23 @@
 }
 .sortBtn {
   font-family: 'Space Mono', monospace;
-  font-size: .62rem;
+  font-size: .66rem;
   letter-spacing: .06em;
   text-transform: uppercase;
-  padding: .4rem .75rem;
+  height: 30px;
+  padding: 0 .8rem;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
   transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  white-space: nowrap;
 }
 .sortBtn:hover {
   color: var(--white);
