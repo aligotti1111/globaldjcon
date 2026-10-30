@@ -357,8 +357,10 @@ export function SocialAddButton({
         {icon}
         {/* Corner badge: "+" to add a new link, pencil to edit an existing one.
             The edit badge is bigger and neon-tinted so it reads as an obvious
-            "tap to edit" affordance rather than a smudge on the icon. */}
-        <span style={{
+            "tap to edit" affordance rather than a smudge on the icon. The
+            className lets the CSS re-anchor it per icon style (e.g. no-circle,
+            where the glyph is larger and the badge must tuck closer). */}
+        <span className={styles.socialAddBadge} style={{
           position: 'absolute',
           top: -3,
           right: -3,
