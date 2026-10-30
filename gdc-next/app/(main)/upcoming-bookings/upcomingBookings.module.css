@@ -294,17 +294,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 4px;
-  margin-left: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 7px;
   border-radius: 999px;
-  background: #050507;
-  color: var(--neon, #00f5c4);
-  font-size: .58rem;
-  font-weight: 700;
+  background: var(--neon, #00f5c4);
+  color: #04241b;
+  font-size: .64rem;
+  font-weight: 800;
   line-height: 1;
   vertical-align: middle;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+}
+/* When the New-activity button itself is the active (neon-filled) one, flip the
+   badge to dark-on-neon-button so the count stays visible. */
+.sortBtnActive .sortCount {
+  background: #04241b;
+  color: var(--neon, #00f5c4);
 }
 
 /* ── Empty state ────────────────────────────────────────────────────── */
