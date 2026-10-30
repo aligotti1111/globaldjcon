@@ -100,7 +100,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .hero h1 .b{color:var(--amber)}
 .gdc-landing .hero .heroline{font-family:var(--mono);font-weight:700;font-size:clamp(.85rem,1.5vw,1.05rem);letter-spacing:.12em;text-transform:uppercase;line-height:1.3;margin:.2rem 0 1.2rem;color:#fff}
 .gdc-landing .hero .heroline .a{color:var(--amber)}
-.gdc-landing .hero p.lede{font-size:1.14rem;color:#cfcfd6;max-width:40ch;margin-bottom:1.8rem}
+.gdc-landing .hero p.lede{font-family:'Archivo',sans-serif;font-size:1.14rem;color:#cfcfd6;max-width:40ch;margin-bottom:1.8rem}
 .gdc-landing .hero .lede .hl{color:var(--neon);font-weight:700}
 .gdc-landing .hero-cta{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.7rem}
 .gdc-landing .kpis{display:flex;gap:2rem;flex-wrap:wrap}
