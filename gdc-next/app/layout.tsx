@@ -45,6 +45,7 @@ import type { CurrentUser, UserProfile } from '@/types/db';
 // Safari's "reduce privacy protections" banner on iOS; @fontsource bundles the
 // woff2 files at build time and registers the SAME family names ('Inter',
 // 'Bebas Neue', etc.), so all existing `font-family: '…'` rules keep working.
+import '@fontsource/archivo/400.css';
 import '@fontsource/archivo/600.css';
 import '@fontsource/archivo/700.css';
 import '@fontsource/bebas-neue/400.css';
