@@ -2861,6 +2861,19 @@
   width: 15px;
   height: 15px;
 }
+/* "+" add badge: hug the icon's top-right corner tightly so it reads as part
+   of THIS icon and never overhangs into the neighbour. */
+.underBannerSocials .socialAddBadge,
+.underBannerContact .socialAddBadge {
+  top: -2px !important;
+  right: -2px !important;
+}
+/* No-circle style has a larger, frameless glyph — tuck the badge right onto
+   the glyph so it isn't floating off in empty box space. */
+.underBannerSocials.socialsNoCircle .socialAddBadge {
+  top: -1px !important;
+  right: 1px !important;
+}
 @media (max-width: 700px) {
   .underBannerSocials { gap: .35rem; padding: .45rem .7rem; width: 100%; margin-left: 0; margin-right: 0; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
