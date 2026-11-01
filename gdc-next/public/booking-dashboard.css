@@ -55,7 +55,12 @@
    columns shrink to fit the extra icon. Total stage width ≈ the mobile total so
    the 1fr event column ends at the same point. */
 .gdc-dash .section.club .deskwrap{--dcols:74px 62px 190px 1fr 87px 87px 87px 87px 87px 26px}
-.gdc-dash .section.club .strip{grid-template-columns:repeat(5,1fr)}
+.gdc-dash .section.club .strip{grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+/* 5 stages on a phone: let the columns shrink below their label width and let
+   the status labels wrap to a second line, so the 5th stage (GUESTS) never gets
+   pushed off the card. */
+.gdc-dash .section.club .strip .lab{white-space:normal;line-height:1.15;text-align:center}
+.gdc-dash .section.club .strip .stbtn{padding:4px 2px}
 .gdc-dash .drow .flyer{margin-left:0;justify-self:center;width:56px;height:56px}
 .gdc-dash .colheads{display:grid;grid-template-columns:var(--dcols);gap:12px;align-items:end;padding:0 18px 8px}
 .gdc-dash .colheads span{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;white-space:nowrap}
