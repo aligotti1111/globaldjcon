@@ -958,6 +958,7 @@
   padding: 0;
   line-height: 1;
   z-index: 2;
+  font-family: 'Space Mono', monospace;
   transition: color .15s, transform .15s;
 }
 .ownerCornerBtnBottomLeft {
