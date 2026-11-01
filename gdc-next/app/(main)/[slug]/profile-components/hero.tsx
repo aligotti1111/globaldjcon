@@ -364,33 +364,28 @@ export function SocialAddButton({
           position: 'absolute',
           top: -3,
           right: -3,
-          width: isEdit ? 17 : 14,
-          height: isEdit ? 17 : 14,
+          width: 14,
+          height: 14,
           borderRadius: '50%',
-          background: isEdit ? 'transparent' : '#fff',
+          background: '#fff',
           color: '#08080d',
           fontSize: '0.6rem',
           fontWeight: 800,
           lineHeight: 1,
           textAlign: 'center',
-          border: isEdit ? 'none' : '1.5px solid #08080d',
+          border: '1.5px solid #08080d',
           boxSizing: 'border-box',
           pointerEvents: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          {isEdit ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ filter: 'drop-shadow(0 0 1.5px rgba(0,0,0,.9))' }}>
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          ) : (
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#08080d" strokeWidth="4" strokeLinecap="round" aria-hidden="true" style={{ display: 'block' }}>
-              <path d="M12 5v14" />
-              <path d="M5 12h14" />
-            </svg>
-          )}
+          {/* Always a "+" — the badge means "manage this link" whether the icon
+              is empty (add) or already set (edit the existing link). */}
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#08080d" strokeWidth="4" strokeLinecap="round" aria-hidden="true" style={{ display: 'block' }}>
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
         </span>
       </button>
     );
