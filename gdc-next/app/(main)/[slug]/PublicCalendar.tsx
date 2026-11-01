@@ -343,8 +343,15 @@ export default function PublicCalendar({
   function quickToggleUnavail(key: string) {
     const cur = bookingDays[key];
     if (cur && cur.booked) return;
+    const hasRealBooking = (countByDate[key] || 0) > 0;
     const next: BookingDays = { ...bookingDays };
-    if (cur && cur.unavailable) {
+    if (hasRealBooking) {
+      // The day already has a confirmed booking, so "unavailable" here really
+      // means "close this date to NEW bookings" — mark it fully BOOKED (red),
+      // never unavailable (grey). This only writes the calendar overlay; the
+      // existing booking row is untouched.
+      next[key] = { ...cur, booked: true };
+    } else if (cur && cur.unavailable) {
       delete next[key];
     } else {
       next[key] = { unavailable: true };
