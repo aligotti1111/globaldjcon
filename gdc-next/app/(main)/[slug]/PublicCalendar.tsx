@@ -341,20 +341,30 @@ export default function PublicCalendar({
   // toggled from the cell — owner has to open the editor to clear an
   // event. (Matches MobilePublicCalendar.)
   function quickToggleUnavail(key: string) {
-    const cur = bookingDays[key];
-    if (cur && cur.booked) return;
+    const cur = bookingDays[key] || ({} as DayData);
     const hasRealBooking = (countByDate[key] || 0) > 0;
     const next: BookingDays = { ...bookingDays };
-    if (hasRealBooking) {
+    if (cur.booked) {
+      // Re-open a date the owner had force-closed. Drop just the booked
+      // flag; the real booking row (if any) is untouched and keeps the day
+      // shown as booked on its own.
+      const rest: DayData = { ...cur };
+      delete rest.booked;
+      if (Object.keys(rest).length > 0) next[key] = rest;
+      else delete next[key];
+    } else if (hasRealBooking) {
       // The day already has a confirmed booking, so "unavailable" here really
       // means "close this date to NEW bookings" — mark it fully BOOKED (red),
       // never unavailable (grey). This only writes the calendar overlay; the
       // existing booking row is untouched.
       next[key] = { ...cur, booked: true };
-    } else if (cur && cur.unavailable) {
-      delete next[key];
+    } else if (cur.unavailable) {
+      const rest: DayData = { ...cur };
+      delete rest.unavailable;
+      if (Object.keys(rest).length > 0) next[key] = rest;
+      else delete next[key];
     } else {
-      next[key] = { unavailable: true };
+      next[key] = { ...cur, unavailable: true };
     }
     setBookingDays(next);
     persistBookingDays(next);
@@ -696,8 +706,12 @@ function SingleMonthView({
       dayData.day_capacity != null ? dayData.day_capacity : globalCapacity));
     const rawCount = countByDate[key] || 0;
     const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
-    const isFull = bookedCount >= dayCap && bookedCount > 0;
-    const isPartial = bookedCount > 0 && bookedCount < dayCap;
+    // An explicit `booked` flag force-closes the day (fully red), even when a
+    // real booking exists under capacity — this is how the owner "closes a
+    // booked date to new bookings" from the ✕ control.
+    const isForcedBooked = !!dayData.booked;
+    const isFull = isForcedBooked || (bookedCount >= dayCap && bookedCount > 0);
+    const isPartial = !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
     const isBooked = isFull; // "booked" cell styling = fully booked only
     const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
     const isUnavail = !!dayData.unavailable;
@@ -799,9 +813,23 @@ function SingleMonthView({
     // in the corners so they sit on top of the public cell content
     // (event name / Book pill) without replacing it. ✕/✓ goes top-right;
     // ✏️ goes bottom-right.
+    // Quick ✕/✓ control. Hidden only when the day is genuinely full from real
+    // bookings (count has reached capacity) — there's nothing to close. On a
+    // partially-booked day it shows ✕ to fully close the date; on a
+    // force-closed day (owner set `booked`) it shows ✓ to re-open; on a free
+    // day it toggles unavailable as before.
+    const naturallyFull = rawCount > 0 && rawCount >= dayCap;
+    const quickIsReopen = isForcedBooked || isUnavail;
+    const quickTitle = isForcedBooked
+      ? 'Re-open this date'
+      : rawCount > 0
+        ? 'Close this date (mark fully booked)'
+        : isUnavail
+          ? 'Mark available'
+          : 'Mark unavailable';
     const ownerOverlay = isOwnProfile && !isPast ? (
       <>
-        {!isBooked && (
+        {!naturallyFull && (
           <button
             type="button"
             onClick={(e) => {
@@ -809,11 +837,11 @@ function SingleMonthView({
               onOwnerQuickToggle(key);
             }}
             className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomLeft} ${
-              isUnavail ? styles.ownerCornerBtnCheck : styles.ownerCornerBtnX
+              quickIsReopen ? styles.ownerCornerBtnCheck : styles.ownerCornerBtnX
             }`}
-            title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+            title={quickTitle}
           >
-            {isUnavail ? '✓' : '✕'}
+            {quickIsReopen ? '✓' : '✕'}
           </button>
         )}
         <button
@@ -1005,8 +1033,9 @@ function RollingMonthsView({
         dayData.day_capacity != null ? dayData.day_capacity : globalCapacity));
       const rawCount = countByDate[key] || 0;
       const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
-      const isFull = bookedCount >= dayCap && bookedCount > 0;
-      const isPartial = bookedCount > 0 && bookedCount < dayCap;
+      const isForcedBooked = !!dayData.booked;
+      const isFull = isForcedBooked || (bookedCount >= dayCap && bookedCount > 0);
+      const isPartial = !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
       const isBooked = isFull;
       const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
       const isUnavail = !!dayData.unavailable;
