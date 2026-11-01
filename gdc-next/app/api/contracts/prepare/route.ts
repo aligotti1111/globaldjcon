@@ -357,7 +357,9 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     cocktail_hour: cocktailHour,
     ceremony: ceremony,
     tax: (taxAmt > 0) ? `${money(taxAmt, currency)} (${taxPctEff}%)` : '',
-    grand_total: (taxAmt > 0 && totalWithTax != null) ? money(totalWithTax, currency) : '',
+    // Always show a total line. With no tax it equals the price; with tax it's
+    // the tax-inclusive amount. The label flips below (Total ↔ Total with Tax).
+    grand_total: (totalWithTax != null) ? money(totalWithTax, currency) : (price != null ? money(price, currency) : ''),
     client_name: clientName,
     dj_name: companyName || dj?.name || 'DJ',
     event_date: fmtDate(b.event_date as string),
@@ -396,7 +398,13 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     // throwaway template to submit from. Signatures are always present, so the
     // guard below is skipped for it.
     if (autoFit) {
-      const html = buildBookedContractHtml(cData?.body_text || '', values, cData?.logo_url || null);
+      // Dynamic total label: the stored body says "Total Event Cost with Tax:".
+      // When this booking has no tax, that reads wrong (the total is just the
+      // price), so relabel it — "Total with Tax:" when tax applies, "Total:"
+      // otherwise. Works for both newly-seeded and already-saved standard bodies.
+      const totalLabel = taxAmt > 0 ? 'Total with Tax' : 'Total';
+      const bodyForFit = (cData?.body_text || '').replace(/Total Event Cost with Tax\s*:/gi, `${totalLabel}:`);
+      const html = buildBookedContractHtml(bodyForFit, values, cData?.logo_url || null);
       const fitTpl = await withTimeout<{ id?: string | number }>(
         docuseal.createTemplateFromHtml({
           // Human-readable document name (shows as the email subject + attachment
