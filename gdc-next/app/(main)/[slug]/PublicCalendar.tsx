@@ -1449,43 +1449,35 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {/* Status radios — only when the day has NO bookings. Once a
-            booking exists, the day is committed; the DJ can't flip it to
-            Available/Unavailable. (A manual booking can be removed from
-            its own form, which clears the day and brings the radios
-            back on reopen.) */}
+        {/* Mark-booked toggle — only when the day has NO bookings. Once a
+            booking exists, the day is committed. Available/Unavailable are set
+            from the calendar cell's own ✕/✓ toggle, so this modal just carries
+            the booked toggle, styled to match the mobile-DJ day editor. */}
         {!bookingDetailsLoading && dayBookings.length === 0 && (
           <div className={styles.ownerEditStatusRow}>
-            <label className={styles.ownerEditStatusLabel}>
-              <input
-                type="radio"
-                name="day-status"
-                checked={status === 'available'}
-                onChange={() => setStatus('available')}
-                style={{ accentColor: 'var(--neon)' }}
-              />
-              <span style={{ color: 'var(--white)' }}>Available</span>
-            </label>
-            <label className={styles.ownerEditStatusLabel}>
-              <input
-                type="radio"
-                name="day-status"
-                checked={status === 'unavailable'}
-                onChange={() => setStatus('unavailable')}
-                style={{ accentColor: 'var(--muted)' }}
-              />
-              <span style={{ color: 'var(--muted)' }}>Unavailable</span>
-            </label>
-            <label className={styles.ownerEditStatusLabel}>
-              <input
-                type="radio"
-                name="day-status"
-                checked={status === 'booked'}
-                onChange={() => setStatus('booked')}
-                style={{ accentColor: '#ff5f5f' }}
-              />
-              <span style={{ color: '#ff5f5f' }}>Booked (has event)</span>
-            </label>
+            <button
+              type="button"
+              onClick={() => setStatus(status === 'booked' ? 'available' : 'booked')}
+              aria-pressed={status === 'booked'}
+              style={{
+                width: '100%',
+                padding: '.7rem',
+                borderRadius: 8,
+                border: `1px solid ${status === 'booked' ? 'rgba(0,224,164,.55)' : 'rgba(255,95,95,.5)'}`,
+                background: status === 'booked' ? 'rgba(0,224,164,.12)' : 'rgba(255,95,95,.06)',
+                color: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f',
+                fontWeight: 600,
+                fontSize: '.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '.45rem',
+              }}
+            >
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f', display: 'inline-block' }} />
+              {status === 'booked' ? 'Make this day available for booking' : 'Mark this day as booked'}
+            </button>
           </div>
         )}
 
@@ -1571,9 +1563,9 @@ function OwnerDayEditPopup({
                 );
               })()}
               {rateType === 'offers' && (
-                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '.8rem', lineHeight: 1.5 }}>
-                  This day will accept open offers from bookers — no rate
-                  shown publicly. Bookers submit what they want to pay.
+                <p style={{ margin: 0, color: 'var(--white,#fff)', fontSize: '.8rem', lineHeight: 1.5 }}>
+                  This day will accept open offers from host — no rate shown
+                  publicly. Bookers submit what they want to pay.
                 </p>
               )}
             </div>
