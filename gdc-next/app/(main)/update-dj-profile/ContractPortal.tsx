@@ -723,6 +723,12 @@ export default function ContractPortal({
   // each row, under a monthly-usage header — rather than the modal card grid.
   const contractsList = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+      {/* On phones the row wraps: name + type on the first line, the action
+          buttons drop to a full-width line below instead of overlapping. */}
+      <style>{`@media (max-width:640px){
+        .gdc-contract-row{flex-wrap:wrap}
+        .gdc-contract-actions{width:100%;justify-content:flex-start !important;margin-top:4px}
+      }`}</style>
       {contracts.map((c) => {
         const cType = c.is_standard
           ? { label: /wedding/i.test(c.name) ? 'Standard Wedding' : 'Standard', color: '#e8e2d0' }
@@ -731,7 +737,7 @@ export default function ContractPortal({
             : { label: 'Uploaded', color: 'var(--neon,#00e0a4)' };
         const edited = c.updated_at ? new Date(c.updated_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
         return (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '.8rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, padding: '.7rem .9rem', background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
+          <div key={c.id} className="gdc-contract-row" style={{ display: 'flex', alignItems: 'center', gap: '.8rem', border: '1px solid var(--border,rgba(255,255,255,.12))', borderRadius: 10, padding: '.7rem .9rem', background: 'var(--bg-elev,rgba(255,255,255,.03))' }}>
             <div style={{ fontSize: 20 }}>📄</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {renaming === c.id ? (
@@ -751,7 +757,7 @@ export default function ContractPortal({
                 <div style={{ fontSize: '.66rem', color: '#d9a441', marginTop: 3 }}>{useLockNote(c)}</div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div className="gdc-contract-actions" style={{ display: 'flex', gap: '.4rem', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {bookingMode ? (
                 <>
                   {/* Send this contract for the booking. Gated: a wedding contract
