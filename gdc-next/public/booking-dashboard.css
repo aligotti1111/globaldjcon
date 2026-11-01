@@ -113,7 +113,11 @@
 .gdc-dash .cardnote b{color:#4ddcb4}
 .gdc-dash .cnx{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--muted);font-size:.9rem;line-height:1;cursor:pointer;padding:2px 4px}
 .gdc-dash .cnx:hover{color:var(--ink)}
-.gdc-dash .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:14px 4px 16px;border-top:1px solid var(--line)}
+.gdc-dash .strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:14px 4px 16px;border-top:1px solid var(--line)}
+/* Status labels wrap instead of forcing the columns wider than the card, so no
+   stage ever gets pushed off (applies to both the 4-col mobile card and the
+   5-col club card). */
+.gdc-dash .strip .lab{white-space:normal;line-height:1.15;text-align:center}
 .gdc-dash .section:not(.club) .card .strip .st{transform:translateX(-7px)}
 .gdc-dash .valuebar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.03);border-top:1px solid var(--line);border-radius:0 0 16px 16px}
 .gdc-dash .valuebar .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#c9c9d3}
