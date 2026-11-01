@@ -1222,6 +1222,21 @@ function OwnerDayEditModal({
   // Signed per-date price nudge (0 = normal price), clamped like the input.
   const [adjustPct, setAdjustPct] = useState<number>(dayData.price_adjust_pct ?? 0);
   const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
+
+  // Unsaved-changes guard: set true whenever the DJ edits this day (the price
+  // nudge or the mark-booked toggle). Warns before closing the modal or leaving
+  // the page without saving. A successful Save closes/unmounts the modal.
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  const attemptClose = () => {
+    if (dirty && !window.confirm('You have unsaved changes to this day. Leave without saving?')) return;
+    onClose();
+  };
   // "See new prices" box is OPEN by default so the DJ sees the effect right away.
   const [showPrices, setShowPrices] = useState(true);
   // The % control only makes sense when at least one package has a FIXED price.
@@ -1269,7 +1284,7 @@ function OwnerDayEditModal({
   // stacking contexts (the hero banner was painting over it otherwise).
   if (typeof document === 'undefined') return null;
   return createPortal(
-    <div className={styles.ownerModalBackdrop} onClick={onClose}>
+    <div className={styles.ownerModalBackdrop}>
       <div
         className={styles.ownerModalInner}
         onClick={(e) => e.stopPropagation()}
@@ -1279,7 +1294,7 @@ function OwnerDayEditModal({
           <div className={styles.ownerModalDate}>{dateLabel}</div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={attemptClose}
             className={styles.ownerModalClose}
             aria-label="Close"
           >
@@ -1295,7 +1310,7 @@ function OwnerDayEditModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
               <button
                 type="button"
-                onClick={() => setAdjustPct((v) => clampPct(v - 5))}
+                onClick={() => { setDirty(true); setAdjustPct((v) => clampPct(v - 5)); }}
                 aria-label="Lower the price for this day"
                 style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               >−</button>
@@ -1308,6 +1323,7 @@ function OwnerDayEditModal({
                   value={adjustPct}
                   onChange={(e) => {
                     const n = parseInt(e.target.value, 10);
+                    setDirty(true);
                     setAdjustPct(Number.isFinite(n) ? clampPct(n) : 0);
                   }}
                   className={styles.ownerModalNumberInput}
@@ -1317,7 +1333,7 @@ function OwnerDayEditModal({
               </span>
               <button
                 type="button"
-                onClick={() => setAdjustPct((v) => clampPct(v + 5))}
+                onClick={() => { setDirty(true); setAdjustPct((v) => clampPct(v + 5)); }}
                 aria-label="Raise the price for this day"
                 style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               >+</button>
@@ -1445,7 +1461,7 @@ function OwnerDayEditModal({
         <div className={styles.ownerModalField}>
           <button
             type="button"
-            onClick={() => setBooked((b) => !b)}
+            onClick={() => { setDirty(true); setBooked((b) => !b); }}
             aria-pressed={booked}
             style={{
               width: '100%',
@@ -1479,7 +1495,7 @@ function OwnerDayEditModal({
         <div className={styles.ownerModalBtns}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={attemptClose}
             className={styles.ownerModalCancel}
           >
             Cancel
