@@ -109,7 +109,7 @@ export interface AboutStats {
   depositRequired?: { on?: boolean; answer?: 'Yes' | 'No' };
   // Club/bar-specific quick facts.
   ownEquipment?: { on?: boolean; answer?: 'Yes' | 'No' };
-  residencies?: { on?: boolean; answer?: 'Yes' | 'No' };
+  residencies?: { on?: boolean; text?: string; answer?: 'Yes' | 'No' };
   travels?: { on?: boolean; answer?: 'Yes' | 'No' };
   // Total social following across platforms — a free number the owner enters.
   followers?: { on?: boolean; count?: string };
