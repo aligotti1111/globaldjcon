@@ -568,7 +568,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
               </>
             ) : undefined}
           />
-          <ul className={styles.settingHint} style={{ margin: '1rem 0 1rem', paddingLeft: '1.2rem', listStyle: 'disc' }}>
+          <ul className={styles.settingHint} style={{ margin: '1rem 0 1rem', paddingLeft: '1.2rem', listStyle: 'disc', color: 'var(--white,#fff)' }}>
             <li>Upload or customize your contracts here.</li>
             <li>Set the Anchor Tags on the contract so information from your booking auto-populates on the contract.
               <ul style={{ margin: '.25rem 0 0', paddingLeft: '1.2rem', listStyle: 'circle' }}>
