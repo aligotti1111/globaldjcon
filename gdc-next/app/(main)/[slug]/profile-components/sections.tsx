@@ -183,6 +183,8 @@ export function AboutStatsRow({
   if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: eventsLabel, value: stats.events.tier });
   if (isClub) {
     if (stats.residencies?.on && stats.residencies.text) cards.push({ key: 'residencies', label: 'Current residence', value: stats.residencies.text });
+    if (stats.mixer?.on && stats.mixer.text) cards.push({ key: 'mixer', label: 'Preferred mixer / controller', value: stats.mixer.text });
+    if (stats.decks?.on && stats.decks.text) cards.push({ key: 'decks', label: 'Preferred decks', value: stats.decks.text });
     if (stats.travels?.on) cards.push({ key: 'travels', label: 'Travels for bookings', value: stats.travels.answer || 'Yes' });
     if (stats.followers?.on && stats.followers.count) cards.push({ key: 'followers', label: 'Total Followers', value: fmtFollowers(stats.followers.count) });
   } else {
@@ -212,6 +214,8 @@ export function AboutStatsRow({
         { key: 'events', label: eventsLabel, control: 'tier' },
         { key: 'followers', label: 'Total Followers', control: 'count' },
         { key: 'residencies', label: 'Current residence', control: 'text' },
+        { key: 'mixer', label: 'Preferred mixer or controller', control: 'text' },
+        { key: 'decks', label: 'Preferred decks', control: 'text' },
         { key: 'travels', label: 'Travels for bookings', control: 'yesno' },
       ]
     : [
@@ -236,17 +240,25 @@ export function AboutStatsRow({
   function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text', big?: boolean) {
     const cls = big ? styles.aboutStatValueSelect : styles.aboutStatsSelect;
     if (control === 'text') {
-      // Free text entry (Current residence). Typing a value activates the fact;
-      // clearing it hides the fact.
+      // Free text entry (Current residence, preferred gear). Typing a value
+      // activates the fact; clearing it hides the fact.
+      const cur = draft[key] as { text?: string } | undefined;
+      const placeholder = key === 'residencies'
+        ? 'e.g. Las Vegas, NV'
+        : key === 'mixer'
+          ? 'e.g. Pioneer DJM-900'
+          : key === 'decks'
+            ? 'e.g. Pioneer CDJ-3000'
+            : 'Type an answer…';
       return (
         <input
           type="text"
           className={cls}
-          placeholder="e.g. Las Vegas, NV"
-          value={draft.residencies?.text ?? ''}
+          placeholder={placeholder}
+          value={cur?.text ?? ''}
           onChange={(e) => {
             const v = e.target.value;
-            setDraft(d => ({ ...d, residencies: { ...(d.residencies || {}), text: v || undefined, on: !!v.trim() } }));
+            setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), text: v || undefined, on: !!v.trim() } }));
           }}
         />
       );
