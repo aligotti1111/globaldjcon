@@ -1436,7 +1436,7 @@ function OwnerDayEditPopup({
 
   if (typeof document === 'undefined') return null;
   return createPortal(
-    <div className={styles.ownerEditBackdrop} onClick={attemptClose}>
+    <div className={styles.ownerEditBackdrop}>
       <div className={styles.ownerEditBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.ownerEditHeader}>
           <div className={styles.ownerEditDate}>{formatted}</div>
