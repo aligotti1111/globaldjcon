@@ -1,4 +1,4 @@
-\/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
+/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
    CSS Module → class names auto-hashed, descendant element selectors preserved.
 
    Excluded from port (handled elsewhere or not relevant for Session 1):
@@ -1120,7 +1120,7 @@
   align-items: center;
   gap: 8px;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.3rem;
+  font-size: 1.05rem;
   letter-spacing: .06em;
   text-transform: uppercase;
   padding: .5rem .1rem;
@@ -2039,7 +2039,7 @@
   padding: .3rem 1.6rem .3rem .55rem;
   line-height: 1.1;
   cursor: pointer;
-  width: 132px;
+  width: 172px;
   /* Custom chevron so it clearly reads as a dropdown. */
   -webkit-appearance: none;
   appearance: none;
@@ -2061,7 +2061,7 @@
   }
   .aboutStatValueSelect {
     font-size: .9rem;
-    width: 120px;
+    width: 150px;
     padding: .28rem 1.5rem .28rem .5rem;
   }
 }
