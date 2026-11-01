@@ -963,13 +963,13 @@
 .ownerCornerBtnBottomLeft {
   bottom: 4px;
   left: 4px;
-  font-size: .8rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 .ownerCornerBtnBottomRight {
   bottom: 4px;
   right: 4px;
-  font-size: .75rem;
+  font-size: .95rem;
   color: var(--muted);
 }
 .ownerCornerBtnBottomRight:hover {
