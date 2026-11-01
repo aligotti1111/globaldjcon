@@ -91,13 +91,17 @@
 .gdc-dash .card{background:var(--card);border:1px solid var(--line);border-radius:16px}
 .gdc-dash .section.mobile .card{box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 28px rgba(0,245,196,.05)}
 .gdc-dash .section.club .card{box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 28px rgba(245,230,66,.05)}
-.gdc-dash .toprow{position:relative;display:flex;align-items:center;gap:12px;padding:14px 40px 12px 16px;background:#000;border-radius:15px 15px 0 0}
-/* Event/venue column: nudged left off the right edge, with a divider between
-   it and the time. It shrinks and ellipsizes so long event names / venues
-   never run off the card edge (applies to mobile AND club cards). */
-.gdc-dash .toprow .trright{margin-right:16px;padding-left:14px;padding-right:0;border-left:1px solid rgba(255,255,255,.16);flex:1 1 auto;min-width:0;overflow:hidden}
-/* Club cards also carry a flyer, so give the name a little less room there. */
-.gdc-dash .toprow:has(.flyer) .trright{min-width:70px}
+.gdc-dash .toprow{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 16px 12px;background:#000;border-radius:15px 15px 0 0}
+/* Stacked header so long venue names never run off the card edge:
+     line 1 — date
+     line 2 — event type + venue (side by side, full width, OVER the time)
+     line 3 — tags + time */
+.gdc-dash .toprow .dateb{order:1}
+.gdc-dash .toprow .trright{order:2;flex-basis:100%;width:100%;margin:0;padding:0;border:none;flex-direction:row;align-items:baseline;gap:8px;min-width:0;overflow:hidden}
+.gdc-dash .toprow .trright .trevent{flex-shrink:0;white-space:nowrap}
+.gdc-dash .toprow .trright .dvvenue{min-width:0;flex:1 1 auto;margin-top:0}
+.gdc-dash .toprow .trmid{order:3;flex-basis:100%;width:100%;margin-top:4px}
+.gdc-dash .toprow .trchev{order:4;position:absolute;top:14px;right:16px}
 .gdc-dash .toprow .flyer{margin-left:0;flex-shrink:0}
 .gdc-dash .trtime{font-size:.86rem;color:var(--ink);white-space:nowrap;flex-shrink:0}
 .gdc-dash .trevent{font-weight:700;font-size:.95rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
