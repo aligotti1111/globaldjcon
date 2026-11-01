@@ -111,6 +111,9 @@ export interface AboutStats {
   ownEquipment?: { on?: boolean; answer?: 'Yes' | 'No' };
   residencies?: { on?: boolean; text?: string; answer?: 'Yes' | 'No' };
   travels?: { on?: boolean; answer?: 'Yes' | 'No' };
+  // Preferred gear — free text the owner enters.
+  mixer?: { on?: boolean; text?: string };
+  decks?: { on?: boolean; text?: string };
   // Total social following across platforms — a free number the owner enters.
   followers?: { on?: boolean; count?: string };
 }
