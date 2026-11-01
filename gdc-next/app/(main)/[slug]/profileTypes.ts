@@ -114,6 +114,8 @@ export interface AboutStats {
   // Preferred gear — free text the owner enters.
   mixer?: { on?: boolean; text?: string };
   decks?: { on?: boolean; text?: string };
+  // Go-to format — chosen from a fixed list (e.g. Open format).
+  goToFormat?: { on?: boolean; value?: string };
   // Total social following across platforms — a free number the owner enters.
   followers?: { on?: boolean; count?: string };
 }
