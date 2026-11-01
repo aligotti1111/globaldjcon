@@ -1,74 +1,85 @@
 'use client';
 
-// MobilePublicCalendar — Booking tab for mobile DJ profiles with booking enabled.
-// Faithful port of vanilla djp-mob-public.js (calendar parts only — booking
-// form is deferred to a later session).
+// PublicCalendar — Availability tab for club DJ profiles with booking enabled.
+// Faithful port of vanilla djp-cal-public.js (500 lines).
 //
 // Two views:
-//   1. Single-month grid (default) — matches club calendar but with smaller
-//      "Book" badge and event-name display in booked cells.
-//   2. Rolling N-month grid — shows full booking-window worth of months
-//      (mobile DJs can have windows up to 36+ months unlike club's 12).
+//   1. Month grid (default) — single month with prev/next nav, month/year
+//      selectors, and a "Book Now" badge in open cells.
+//   2. Rolling 12-month grid — overview of all months in the booking window.
+//      Cells are smaller, show only colored squares + day number.
 //
-// Key behavioral differences from club calendar (PublicCalendar.tsx):
-//   - Uses mob_booking_days (different field), MobileDayData shape (with
-//     bookings_available capacity tracking)
-//   - "Full" state when remaining capacity hits zero — treated as unavail-ish
-//     (gray, no Book button) but a different cause from explicit unavailability
-//   - No events-this-month list — mobile DJs don't expose their booking roster
-//   - Default booking window 24 months (vs 12 for club)
-//   - Tab is labeled "Booking" not "Availability"
+// User can toggle between the two via the right-aligned toggle button.
 //
-// Booking form opening is DEFERRED to a later session. Clicking an available
-// date currently shows an alert. Same placeholder pattern as Session 4.
+// Booking-flow integration is DEFERRED to Session 5:
+//   - Clicking "Book Now" in an open cell currently shows an alert.
+//     Vanilla calls ib_openForInline() (logged in) or showBookingGate()
+//     (logged out). Both depend on the booking-form work.
+//   - The selected-date highlight (amber) won't fire because nothing is
+//     setting `selectedDate` yet; the prop exists to wire up cleanly later.
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@/components/AuthProvider';
+import styles from './calendar.module.css';
+import MonthEventsList from './MonthEventsList';
+import ManualBookingForm, { type ManualBookingRow } from './ManualBookingForm';
 import { createClient } from '@/lib/supabase/client';
-import styles from './mobileCalendar.module.css';
 import {
+  type BookingDays,
   type BookingSettings,
-  type MobileBookingDays,
-  type MobileDayData,
+  type DayData,
+  cleanLocation,
+  formatTime12,
   windowLabel,
-  packageTiers,
 } from './bookingSettings';
 import { currencySymbol } from '@/lib/constants';
-import MobileBookingForm from './MobileBookingFormView';
-import BookingLoginGate from './BookingLoginGate';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-const MONTH_NAMES_SHORT = [
-  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-  'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
-];
 const DAY_LABEL_LONG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-// Full names for wide (desktop) screens; the abbreviations above stay on mobile.
-// A CSS media query swaps between them (see mobileCalendar.module.css).
+// Full names shown on wide (desktop) screens; the abbreviations above are the
+// mobile fallback. A CSS media query swaps between them (see calendar.module.css).
 const DAY_LABEL_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_LABEL_MINI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+// Turns stored values like "bar" or "opening_and_closing" into
+// "Bar" / "Opening And Closing" for display.
+function capitalizeWords(s: string): string {
+  return s
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
 interface Props {
-  // Profile data the form needs
+  bookingDays: BookingDays;
+  bookingWindowMonths: number;
+  // Used by the owner edit popup when isOwnProfile=true. The popup
+  // mirrors the universal rate panel logic (equipment-aware inputs)
+  // for setting per-day rate overrides, so it needs access to the DJ's
+  // equipment flags, currency, and global rate type.
+  bookingSettings?: BookingSettings;
   djId: string;
-  djName: string;
   djSlug: string;
-  djEventTypes: string | null;     // comma-separated, used to filter event-type select
-  djCustomEventTypes?: unknown;    // DJ-defined event types [{key,label}]
-  djZip: string | null;            // DJ's home zip — used for distance check at submit
-  djTravelDistance: string | null; // 'worldwide' or numeric miles — distance limit
-  // Full booking settings — needed for both the calendar AND the form (packages, deposit, etc.)
-  bookingSettings: BookingSettings;
+  djName: string;
   isLoggedIn: boolean;
-  // When true, the viewer is the profile owner. Calendar cells render
-  // ✓/✗ quick-mark + ✏️ edit controls, and clicking a date opens the
-  // owner day-edit modal instead of the booker form.
+  // True when the logged-in user IS this DJ. Swaps the public booking
+  // pill for owner controls (✓/✗ quick-mark + ✏️ pencil-edit) and
+  // persists changes back to users.booking_settings on save.
   isOwnProfile: boolean;
+  // Currently-selected date (YYYY-MM-DD) — driven by the booking form when
+  // it lives next to this calendar.
+  selectedDate?: string | null;
+  // Called when the user clicks "Book Now" on an open cell. Provider
+  // passes the dateKey.
+  onBookDate?: (dateKey: string) => void;
+  // Called when a logged-out visitor clicks "Book Now". Provider gets
+  // the dateKey so it can open a login gate that returns the user to
+  // this date after auth.
+  onLoggedOutBookAttempt?: (dateKey: string) => void;
   // Owner-only: opens the Embed Calendar modal. When set, an "Embed
   // calendar" button is rendered inline in the nav row.
   onEmbedClick?: () => void;
@@ -78,46 +89,49 @@ interface Props {
   // Bump-counter from parent: each increase forces the calendar into
   // 12-month mode. Used by the Book Now banner button.
   force12mo?: number;
-  // Dates (YYYY-MM-DD) where the CURRENT logged-in viewer already has a
-  // pending request with this DJ. These cells render a non-clickable
-  // "Pending" pill instead of "Book" — only this viewer sees it; everyone
-  // else still sees "Book", and the date stays open for the DJ. Empty for
-  // logged-out viewers and the profile owner.
+  // Dates (YYYY-MM-DD) where the CURRENT logged-in viewer has a pending
+  // booking request with this DJ. Only these dates render a "Pending"
+  // label (instead of "Book") for the booker. Other viewers see "Book"
+  // because their pending set is different. Owners see the day normally.
   pendingDates?: Set<string>;
-  // Called after the booker successfully submits a request, so the parent
-  // can refetch pendingDates and the just-booked date flips to "Pending".
-  onBookingSubmitted?: () => void;
-  // Read-only viewer (a team member managing this account). Availability is
-  // shown, but no date is bookable — taps do nothing, no "Book" pill.
+  // Read-only viewer (a team member managing this account). Shows availability
+  // exactly like a visitor, but no date is bookable — taps do nothing and the
+  // "Book" affordance is suppressed.
   readOnly?: boolean;
   // Owner-only "Owner view / View as public" preview toggle, rendered inline in
-  // the month header row next to Embed Calendar (desktop only).
+  // the month header row next to Embed Calendar (desktop only). Passed as a node
+  // from ProfileView so it can drive that page's preview state.
   ownerToggle?: React.ReactNode;
 }
 
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 // Helpers — pure, stateless
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 
+// Pad a number to 2 digits with leading zero
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
+// Build the YYYY-MM-DD key from a (year, monthIndex, day) trio
 function dateKey(y: number, m: number, d: number): string {
   return `${y}-${pad2(m + 1)}-${pad2(d)}`;
 }
 
+// Latest navigable {year, month} based on today + window
 function calcMaxYM(windowMonths: number): { year: number; month: number } {
   const t = new Date();
-  const totalMonths = t.getFullYear() * 12 + t.getMonth() + (windowMonths || 24);
+  const totalMonths = t.getFullYear() * 12 + t.getMonth() + (windowMonths || 12);
   return { year: Math.floor(totalMonths / 12), month: totalMonths % 12 };
 }
 
+// Earliest navigable {year, month} — the current month (no past nav)
 function calcMinYM(): { year: number; month: number } {
   const t = new Date();
   return { year: t.getFullYear(), month: t.getMonth() };
 }
 
+// Is (y, m) within [min, max] inclusive?
 function isInRange(y: number, m: number, windowMonths: number): boolean {
   const min = calcMinYM();
   const max = calcMaxYM(windowMonths);
@@ -125,91 +139,51 @@ function isInRange(y: number, m: number, windowMonths: number): boolean {
   return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
 }
 
-// One package's price picture for the day-editor preview: its duration tiers,
-// or a "by request" flag when it has no fixed price. Deduped by title across
-// event-type categories so the DJ sees each package once.
-type PreviewPkg = { title: string; byRequest: boolean; tiers: { hours: number; price: number }[] };
-function buildPreviewPackages(mobPackages: Record<string, unknown[]> | undefined | null): PreviewPkg[] {
-  if (!mobPackages) return [];
-  const seen = new Set<string>();
-  const out: PreviewPkg[] = [];
-  for (const cat of Object.keys(mobPackages)) {
-    const list = mobPackages[cat];
-    if (!Array.isArray(list)) continue;
-    for (const pkg of list as Array<{ title?: string; reqAll?: boolean }>) {
-      const title = (pkg?.title || '').trim();
-      if (!title || seen.has(title.toLowerCase())) continue;
-      seen.add(title.toLowerCase());
-      const tiers = packageTiers(pkg as never);
-      out.push({ title, byRequest: !!pkg?.reqAll || tiers.length === 0, tiers });
-    }
-  }
-  return out;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 // Main component
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 
-export default function MobilePublicCalendar({
+export default function PublicCalendar({
+  bookingDays: initialBookingDays,
+  bookingWindowMonths,
+  bookingSettings,
   djId,
   djName,
   djSlug,
-  djEventTypes,
-  djCustomEventTypes,
-  djZip,
-  djTravelDistance,
-  bookingSettings,
   isLoggedIn,
   isOwnProfile,
+  selectedDate = null,
+  onBookDate,
+  onLoggedOutBookAttempt,
   onEmbedClick,
   onShareClick,
   force12mo,
   pendingDates,
-  onBookingSubmitted,
   readOnly = false,
   ownerToggle,
 }: Props) {
-  // Pull values out of bookingSettings — same defaults as before
-  const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
-  const defaultBookingsPerDay = bookingSettings.mob_bookings_per_day || 1;
-
-  // Package price picture + currency for the owner day-editor's "See new prices"
-  // preview. Computed once from the DJ's packages.
-  const previewPackages = useMemo(
-    () => buildPreviewPackages((bookingSettings as { mob_packages?: Record<string, unknown[]> }).mob_packages),
-    [bookingSettings],
-  );
-  const previewCur = currencySymbol((bookingSettings as { rate_currency?: string }).rate_currency);
-
-  // bookingDays is local state so owners can mutate it (quick-mark + edit).
-  // For non-owners this never changes — initialized once from props.
-  const [bookingDays, setBookingDays] = useState<MobileBookingDays>(
-    bookingSettings.mob_booking_days || {}
-  );
-
-  // Auth — needed for the form (booker id + email + name)
-  const { user: currentUser } = useAuth();
-
   const today = useMemo(() => new Date(), []);
-  // Actual approved bookings per date (client-booked OR manually added), so the
-  // calendar colors a day booked from the real ledger — not only the DJ's
-  // manual "mark booked" flag. Manual bookings insert a row but never set that
-  // flag, which is why they weren't showing here. Mirrors PublicCalendar.
+  // For owner mode we maintain a local copy of bookingDays so quick-marks
+  // and edit-modal saves are reflected immediately while the Supabase
+  // write happens in the background. Public visitors get the prop value
+  // straight through (no edits possible).
+  const [bookingDays, setBookingDays] = useState<BookingDays>(initialBookingDays);
+  // Approved-bookings count per date (YYYY-MM-DD → count). Drives the
+  // diagonal partial-fill on club calendars: a day's red fraction is
+  // count / capacity. Only APPROVED bookings count — pending/countered
+  // requests don't occupy a slot. Fetched once on mount.
   const [countByDate, setCountByDate] = useState<Record<string, number>>({});
-  // A short label + card token per booking on each date, so the owner day
-  // modal can list a date's bookings one line each, each linking to its card.
-  const [eventsByDate, setEventsByDate] = useState<Record<string, { label: string; token: string | null }[]>>({});
   useEffect(() => {
     let mounted = true;
     (async () => {
       // Build the per-date approved-booking count from the SAME admin-backed
-      // endpoint that feeds the "Upcoming Events" list. Querying `bookings`
-      // directly from the client hits RLS, which blocks anon/customer viewers
-      // on a public profile from reading another user's rows — so the count
-      // came back empty and manual bookings (approved row, no
-      // booking_days.booked flag) never showed red. Using
-      // /api/dj-upcoming-events keeps the calendar and the events list in sync.
+      // endpoint that feeds the "Upcoming Events" list below the calendar.
+      // Querying `bookings` directly from the client hits RLS, which blocks
+      // anon/customer viewers on a public profile from reading another
+      // user's rows — so the count came back empty and manual bookings
+      // (approved row, no booking_days.booked flag) never showed red. Using
+      // /api/dj-upcoming-events guarantees the calendar and the events list
+      // agree on exactly which dates are booked.
       try {
         const from = new Date().toISOString().slice(0, 10);
         const toDate = new Date();
@@ -221,46 +195,51 @@ export default function MobilePublicCalendar({
         const json = await res.json();
         if (!mounted) return;
         const counts: Record<string, number> = {};
-        const labels: Record<string, { label: string; token: string | null }[]> = {};
-        const fmtT = (t: string | null) => {
-          if (!t) return '';
-          const [hh, mm] = t.split(':');
-          let h = parseInt(hh, 10);
-          if (!Number.isFinite(h)) return '';
-          const ap = h >= 12 ? 'PM' : 'AM';
-          h = h % 12 || 12;
-          return `${h}:${mm ?? '00'} ${ap}`;
-        };
-        const pretty = (s: string | null | undefined) =>
-          (s || '').replace(/[_-]+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
-        for (const ev of (json?.events as Array<{
-          event_date: string | null; venue_name?: string | null;
-          start_time?: string | null; end_time?: string | null;
-          set_type?: string | null; event_type?: string | null;
-          booking_type?: string | null; share_token?: string | null;
-        }>) || []) {
+        for (const ev of (json?.events as Array<{ event_date: string | null }>) || []) {
           if (!ev.event_date) continue;
           counts[ev.event_date] = (counts[ev.event_date] || 0) + 1;
-          const times = [fmtT(ev.start_time || null), fmtT(ev.end_time || null)].filter(Boolean).join('–');
-          const name = pretty(ev.event_type) || ev.venue_name || 'Booking';
-          const label = [name, times].filter(Boolean).join(' · ');
-          (labels[ev.event_date] ||= []).push({ label, token: ev.share_token || null });
         }
         setCountByDate(counts);
-        setEventsByDate(labels);
       } catch {
         // Non-fatal — calendar still renders from the booking_days flags.
       }
     })();
     return () => { mounted = false; };
   }, [djId]);
+  // Effective capacity for a date: per-day override wins, else the DJ's
+  // global club_bookings_per_day, else 1. Clamped to 1–3.
+  const dayCapacity = (key: string): number => {
+    const override = bookingDays[key]?.day_capacity;
+    const global = bookingSettings?.club_bookings_per_day;
+    const cap = override != null ? override : (global != null ? global : 1);
+    return Math.min(3, Math.max(1, cap));
+  };
+  // Owner edit modal — null when closed; the dateKey when open.
+  const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
   const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
+  const [month, setMonth] = useState(today.getMonth()); // 0-11
   // Month-jump dropdown (the neon "MAY 2026" button between the arrows).
   const [pickerOpen, setPickerOpen] = useState(false);
+  // When a date is pre-selected (e.g. a visitor arrives from the embed or
+  // an email "Continue booking" link with ?date=YYYY-MM-DD), jump the
+  // calendar view to that date's month/year so the day is actually
+  // visible — otherwise the view stays on the current month and the
+  // selected day is off-screen. Keyed on selectedDate, so it only fires
+  // when the selection changes, never fighting manual prev/next nav.
+  useEffect(() => {
+    if (!selectedDate) return;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(selectedDate);
+    if (!m) return;
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1; // 0-indexed
+    setYear(y);
+    setMonth(mo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
   // rollingActive can be initialized from a `?view=12mo` URL param so
   // the calendar opens directly in 12-month mode when someone shares
-  // that link. Subsequent toggles also update the URL.
+  // that link. Subsequent user toggles also update the URL so they can
+  // copy the current-view link from the address bar.
   const [rollingActive, setRollingActive] = useState(() => {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('view') === '12mo';
@@ -279,64 +258,48 @@ export default function MobilePublicCalendar({
     setRollingActive(true);
   }, [force12mo]);
   const [rangeMsg, setRangeMsg] = useState<string | null>(null);
-  // Selected date drives the form below the calendar. null = no form shown.
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  // Custom login gate modal — shown when a logged-out visitor tries to
-  // book. Stores the date they tried so we can pre-select it after they
-  // come back from auth.
-  const [loginGateForDate, setLoginGateForDate] = useState<string | null>(null);
-  // Owner day-edit modal — null when closed; the dateKey when open.
-  const [ownerEditKey, setOwnerEditKey] = useState<string | null>(null);
+  // Booked-event popup — clicking a non-private booked cell opens it.
+  const [popupEvent, setPopupEvent] = useState<{
+    date: string;       // dateKey
+    eventName: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+  } | null>(null);
 
-  // ── Auto-open booking flow from ?date= URL param ──────────────────
-  // Embed calendars on third-party sites point at /<slug>?date=YYYY-MM-DD
-  // when a visitor clicks an open date. We pick that up here and either:
-  //   1. Logged in   → auto-select the date so the booking form opens
-  //   2. Logged out  → show the BookingLoginGate modal explaining what
-  //      they're trying to book + offering Log In / Sign Up
-  // Owner viewing their own profile → ignore (they already manage dates
-  // through the day-edit modal).
-  // Only fire on the initial mount (we don't want to keep re-opening
-  // the modal if the user closes it; they'd need a fresh load to
-  // re-trigger).
-  const searchParams = useSearchParams();
+  // Auto-dismiss the range message after 4s, matching vanilla.
   useEffect(() => {
-    if (isOwnProfile) return;
-    const dateParam = searchParams.get('date');
-    if (!dateParam) return;
-    // Validate format YYYY-MM-DD
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
-    // Make sure the date isn't booked / unavailable / past
-    const [y, m, d] = dateParam.split('-').map(Number);
-    const cellDate = new Date(y, m - 1, d);
-    const todayMid = new Date();
-    todayMid.setHours(0, 0, 0, 0);
-    if (cellDate < todayMid) return;
-    const dayData = bookingDays[dateParam];
-    if (dayData?.booked || dayData?.unavailable) return;
+    if (!rangeMsg) return;
+    const t = setTimeout(() => setRangeMsg(null), 4000);
+    return () => clearTimeout(t);
+  }, [rangeMsg]);
 
-    if (isLoggedIn && currentUser) {
-      // Unverified users can't book — leave the form closed (the verify
-      // banner explains what to do). No alert: this is a mount effect.
-      if (!currentUser.email_verified) return;
-      // Jump the visible month to that date so the form opens in context
-      setYear(y);
-      setMonth(m - 1);
-      setSelectedDate(dateParam);
+  // Lock body scroll while popup open (matches vanilla pattern for modals).
+  useEffect(() => {
+    if (popupEvent) {
+      document.body.style.overflow = 'hidden';
     } else {
-      setLoginGateForDate(dateParam);
+      document.body.style.overflow = '';
     }
-    // Run only once on mount — disabled exhaustive-deps because we don't
-    // want the effect re-firing when state changes (e.g. user closes the
-    // modal). They'd need a fresh page load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => { document.body.style.overflow = ''; };
+  }, [popupEvent]);
 
-  // ── Owner: persist booking_days back to users.booking_settings ───
-  // Vanilla mobPubOwnerSaveDays — fetches current booking_settings, merges
-  // the new mob_booking_days, writes it back. Avoids clobbering other
-  // settings the form may have updated since this component mounted.
-  async function persistBookingDays(nextDays: MobileBookingDays) {
+  // ── Owner mode: persist + quick-toggle + save modal ─────────────
+  // When isOwnProfile is true, the cells render owner controls (✓/✗
+  // quick-mark + ✏️ pencil edit) instead of the public Book pill.
+  // Edits update local state immediately; the Supabase write happens
+  // in the background. This mirrors MobilePublicCalendar's pattern.
+
+  // Keep local state in sync if the parent re-renders with new data
+  // (e.g. fresh fetch). We only override when the prop reference
+  // actually changes — owner edits flow through setBookingDays here
+  // and would be clobbered if we mirrored the prop on every render.
+  useEffect(() => {
+    setBookingDays(initialBookingDays);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialBookingDays]);
+
+  async function persistBookingDays(nextDays: BookingDays) {
     const supabase = createClient();
     try {
       const { data: current, error: readErr } = await supabase
@@ -356,11 +319,10 @@ export default function MobilePublicCalendar({
             ? JSON.parse(current.booking_settings)
             : current.booking_settings;
         } catch {
-          // Bad JSON in DB — start fresh
           bs = {};
         }
       }
-      bs.mob_booking_days = nextDays;
+      bs.booking_days = nextDays;
       const { error: writeErr } = await supabase
         .from('users')
         .update({ booking_settings: JSON.stringify(bs) } as unknown as never)
@@ -375,48 +337,43 @@ export default function MobilePublicCalendar({
     }
   }
 
-  // ── Owner: quick-mark a day available <-> unavailable ───────────
-  // Vanilla mobPubQuickMark — toggles unavailable flag. If already booked,
-  // do nothing (use the edit modal to clear bookings).
-  async function quickMark(key: string) {
-    const cur = bookingDays[key] || ({} as MobileDayData);
+  // Quick-toggle a date Available <-> Unavailable. Booked days can't be
+  // toggled from the cell — owner has to open the editor to clear an
+  // event. (Matches MobilePublicCalendar.)
+  function quickToggleUnavail(key: string) {
+    const cur = bookingDays[key] || ({} as DayData);
     const hasRealBooking = (countByDate[key] || 0) > 0;
-    const next: MobileBookingDays = { ...bookingDays };
+    const next: BookingDays = { ...bookingDays };
     if (cur.booked) {
-      // Re-open a date the owner force-closed. Drop only the booked flag; any
-      // real booking row behind it is untouched and keeps the day red on its own.
-      const rest = { ...cur };
+      // Re-open a date the owner had force-closed. Drop just the booked
+      // flag; the real booking row (if any) is untouched and keeps the day
+      // shown as booked on its own.
+      const rest: DayData = { ...cur };
       delete rest.booked;
       if (Object.keys(rest).length > 0) next[key] = rest;
       else delete next[key];
     } else if (hasRealBooking) {
       // The day already has a confirmed booking, so "unavailable" here really
       // means "close this date to NEW bookings" — mark it fully BOOKED (red),
-      // never unavailable (grey). Only the calendar overlay is written; the
+      // never unavailable (grey). This only writes the calendar overlay; the
       // existing booking row is untouched.
       next[key] = { ...cur, booked: true };
     } else if (cur.unavailable) {
-      // Marking available again: drop only the unavailable flag, keep any price
-      // nudge / capacity the day carries. Delete the entry only if nothing's left.
-      const rest = { ...cur };
+      const rest: DayData = { ...cur };
       delete rest.unavailable;
       if (Object.keys(rest).length > 0) next[key] = rest;
       else delete next[key];
     } else {
-      // MERGE the flag on so an existing price_adjust_pct / bookings_available
-      // survives being marked unavailable.
       next[key] = { ...cur, unavailable: true };
     }
     setBookingDays(next);
-    await persistBookingDays(next);
+    persistBookingDays(next);
   }
 
-  // ── Owner: save day-edit modal ──────────────────────────────────
-  async function saveOwnerEdit(
-    key: string,
-    update: MobileDayData | null
-  ) {
-    const next: MobileBookingDays = { ...bookingDays };
+  // Save handler from the day-edit modal. update === null means "reset
+  // to default" (drop the entry entirely).
+  async function saveOwnerEdit(key: string, update: DayData | null) {
+    const next: BookingDays = { ...bookingDays };
     if (update === null) delete next[key];
     else next[key] = update;
     setBookingDays(next);
@@ -424,14 +381,7 @@ export default function MobilePublicCalendar({
     await persistBookingDays(next);
   }
 
-  // Auto-dismiss the range message after 4s, matching club calendar parity.
-  useEffect(() => {
-    if (!rangeMsg) return;
-    const t = setTimeout(() => setRangeMsg(null), 4000);
-    return () => clearTimeout(t);
-  }, [rangeMsg]);
-
-  // ── Navigation ───────────────────────────────────────────────────
+  // ── Navigation handlers ────────────────────────────────────────────
   function showRangeMsg() {
     const who = djName || djSlug || 'This DJ';
     setRangeMsg(
@@ -445,6 +395,8 @@ export default function MobilePublicCalendar({
     if (newM > 11) { newM = 0; newY += 1; }
     if (newM < 0)  { newM = 11; newY -= 1; }
     if (!isInRange(newY, newM, bookingWindowMonths)) {
+      // Only flash the message when going FORWARD past the window —
+      // going past "today" backwards is silent (vanilla parity).
       if (dir > 0) showRangeMsg();
       return;
     }
@@ -452,13 +404,14 @@ export default function MobilePublicCalendar({
     setMonth(newM);
   }
 
+
   function handleBookClick(key: string, e: React.MouseEvent) {
     e.stopPropagation();
     // Read-only viewers (managing team members) can look but not book.
     if (readOnly) return;
     // If the book was triggered from the 12-month rolling view, switch
-    // back to single-month and navigate to the booked day's month so
-    // the booking form renders in context.
+    // back to single-month view and navigate to the booked day's month
+    // so the user can see the booking form in context.
     if (rollingActive) {
       const [yStr, mStr] = key.split('-');
       const y = parseInt(yStr, 10);
@@ -469,32 +422,26 @@ export default function MobilePublicCalendar({
       }
       setRollingActive(false);
     }
-    // DELIBERATELY NOT CHECKING isLoggedIn. That prop is rendered by the
-    // server and is fixed for the life of the page — it says what was true
-    // when the HTML was built. Someone who just created an account inside the
-    // gate is signed in, but isLoggedIn is still false, so testing it here
-    // would put the signup box in front of them a second time and there'd be
-    // no way past it. currentUser comes from the auth context, which updates
-    // the moment a session appears, so it's the one that can tell the truth
-    // about right now.
-    if (!currentUser) {
-      // Logged-out: open the booking gate. It names the DJ and the date, and
-      // creates the account inline — see BookingLoginGate.
-      setLoginGateForDate(key);
+    if (!isLoggedIn) {
+      onLoggedOutBookAttempt?.(key);
       return;
     }
-    // Logged in but email not verified — block booking and point them at
-    // the persistent verify banner (which has a Resend link).
-    if (!currentUser.email_verified) {
-      alert(
-        'Please verify your email to continue. Use the "Resend Email" link in the banner at the top of the page, then click the link we send you.'
-      );
-      return;
-    }
-    setSelectedDate(key);
+    onBookDate?.(key);
   }
 
-  // ── Bounds for prev/next ─────────────────────────────────────────
+  function handleBookedCellClick(d: DayData, key: string) {
+    // Private events don't open the popup (the eventName isn't shown publicly)
+    if (!d.eventName || d.location === 'Private') return;
+    setPopupEvent({
+      date: key,
+      eventName: d.eventName,
+      startTime: d.startTime,
+      endTime: d.endTime,
+      location: d.location,
+    });
+  }
+
+  // ── Bounds for prev/next button enable state ──────────────────────
   const min = calcMinYM();
   const max = calcMaxYM(bookingWindowMonths);
   const cur = year * 12 + month;
@@ -514,12 +461,12 @@ export default function MobilePublicCalendar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today, bookingWindowMonths]);
 
-  // ─────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────
   return (
     <div>
       {rangeMsg && <div className={styles.rangeMsg}>{rangeMsg}</div>}
 
-      {/* TOP NAV ROW */}
+      {/* TOP NAV ROW (always visible — toggle hides month/year selectors itself) */}
       <div className={styles.navRow}>
         {!rollingActive && (
           <div className={styles.monthPickerCluster}>
@@ -589,9 +536,10 @@ export default function MobilePublicCalendar({
           type="button"
           className={`${styles.viewToggle} ${rollingActive ? styles.viewToggleActive : ''}`}
           onClick={() => setRollingActive(v => !v)}
-          style={{ marginLeft: 'auto' }}
         >
-          {rollingActive ? '← Month View' : '12 Months'}
+          {rollingActive
+            ? '← Month View'
+            : `${bookingWindowMonths || 12} Month${(bookingWindowMonths || 12) > 1 ? 's' : ''}`}
         </button>
       </div>
 
@@ -603,14 +551,14 @@ export default function MobilePublicCalendar({
           today={today}
           bookingDays={bookingDays}
           countByDate={countByDate}
-          bookingWindowMonths={bookingWindowMonths}
-          defaultBookingsPerDay={defaultBookingsPerDay}
+          globalCapacity={Math.min(3, Math.max(1, bookingSettings?.club_bookings_per_day ?? 1))}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
+          onBookedCellClick={handleBookedCellClick}
           isOwnProfile={isOwnProfile}
           readOnly={readOnly}
-          onQuickMark={quickMark}
-          onOpenEdit={(key) => setOwnerEditKey(key)}
+          onOwnerQuickToggle={quickToggleUnavail}
+          onOwnerEdit={setOwnerEditKey}
           onEmbedClick={onEmbedClick}
           onShareClick={onShareClick}
           ownerToggle={ownerToggle}
@@ -618,101 +566,58 @@ export default function MobilePublicCalendar({
         />
       )}
 
-      {/* ROLLING VIEW */}
+      {/* UPCOMING EVENTS LIST — only in single-month view. Anyone can see
+          the list; only the profile owner sees the per-event flyer upload
+          controls. */}
+      {!rollingActive && (
+        <MonthEventsList
+          djId={djId}
+          isOwnProfile={isOwnProfile}
+          year={year}
+          month={month}
+          bookingDays={bookingDays}
+          onEditDate={(dateKey) => setOwnerEditKey(dateKey)}
+        />
+      )}
+
+      {/* ROLLING 12-MONTH VIEW */}
       {rollingActive && (
         <RollingMonthsView
           today={today}
           bookingDays={bookingDays}
           countByDate={countByDate}
+          globalCapacity={Math.min(3, Math.max(1, bookingSettings?.club_bookings_per_day ?? 1))}
           bookingWindowMonths={bookingWindowMonths}
-          defaultBookingsPerDay={defaultBookingsPerDay}
           selectedDate={selectedDate}
+          isLoggedIn={isLoggedIn}
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
           readOnly={readOnly}
-          onQuickMark={quickMark}
-          onOpenEdit={(key) => setOwnerEditKey(key)}
+          onOwnerEdit={setOwnerEditKey}
+          onOwnerQuickToggle={quickToggleUnavail}
           pendingDates={pendingDates}
         />
       )}
 
-      {/* LEGEND — only shown in single-month view. In 12-month view the
-          legend is rendered inline at the end of each year inside the grid. */}
-      {!rollingActive && (
-        <div className={styles.legend}>
-          <div className={`${styles.legendItem} ${styles.legendAvail}`}>
-            <span className={styles.legendDot} />Available
-          </div>
-          <div className={`${styles.legendItem} ${styles.legendBooked}`}>
-            <span className={styles.legendDot} />Booked
-          </div>
-          <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
-            <span className={styles.legendDot} />Unavailable
-          </div>
-        </div>
-      )}
-
-      {/* BOOKING FORM — appears below the calendar after a date is selected.
-          We use the date-key as a React key so picking a different date
-          remounts the form (clearing any in-progress input). */}
-      {/* Owner never sees the booker form — they manage dates via the
-          ✓/✗ quick-mark and ✏️ edit pencil instead. */}
-      {!isOwnProfile && selectedDate && currentUser && currentUser.email_verified && (
-        <MobileBookingForm
-          key={selectedDate}
-          dateKey={selectedDate}
-          dj={{
-            id: djId,
-            name: djName,
-            slug: djSlug,
-            event_types: djEventTypes,
-            mob_custom_event_types: djCustomEventTypes,
-            zip: djZip,
-            travel_distance: djTravelDistance,
-          }}
-          bookingSettings={bookingSettings}
-          currentUser={{
-            id: currentUser.id,
-            email: currentUser.email,
-            name: currentUser.name,
-          }}
-          onClose={() => setSelectedDate(null)}
-          onSubmitted={onBookingSubmitted}
+      {/* BOOKED-EVENT POPUP */}
+      {popupEvent && (
+        <BookedEventPopup
+          event={popupEvent}
+          onClose={() => setPopupEvent(null)}
         />
       )}
 
-      {/* Logged-out booking gate modal */}
-      {loginGateForDate && (
-        <BookingLoginGate
-          djName={djName}
-          djSlug={djSlug}
-          dateKey={loginGateForDate}
-          onClose={() => setLoginGateForDate(null)}
-          // The account now gets made inside the gate, so when it finishes we
-          // are already signed in and still on this page. Close it and open
-          // the booking form for the date they picked before signing up —
-          // otherwise they'd land back on the calendar and have to tap the
-          // same date a second time, having just told us which one they want.
-          //
-          // No email_verified check here, unlike handleBookClick: a code was
-          // typed thirty seconds ago on whichever channel they chose, which is
-          // the proof that flag exists to represent.
-          onAuthed={(key) => {
-            setLoginGateForDate(null);
-            setSelectedDate(key);
-          }}
-        />
-      )}
-
-      {/* Owner day-edit modal — opens when ownerEditKey is non-null. */}
-      {ownerEditKey && (
-        <OwnerDayEditModal
+      {/* OWNER DAY-EDIT MODAL — opens when ownerEditKey is non-null.
+          Reuses ClubDayEditModal? No — that lives in update-dj-profile
+          and we don't want to import across feature boundaries. We do
+          a lightweight inline version here that supports the same
+          status + event name fields. */}
+      {isOwnProfile && ownerEditKey && (
+        <OwnerDayEditPopup
           dateKey={ownerEditKey}
+          djId={djId}
           dayData={bookingDays[ownerEditKey] || {}}
-          hasBooking={(countByDate[ownerEditKey] || 0) > 0}
-          bookingLinks={eventsByDate[ownerEditKey] || []}
-          previewPackages={previewPackages}
-          cur={previewCur}
+          bookingSettings={bookingSettings}
           onClose={() => setOwnerEditKey(null)}
           onSave={(update) => saveOwnerEdit(ownerEditKey, update)}
         />
@@ -721,9 +626,9 @@ export default function MobilePublicCalendar({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// SingleMonthView
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
+// SingleMonthView — the default month grid
+// ──────────────────────────────────────────────────────────────────────────
 
 function SingleMonthView({
   year,
@@ -731,14 +636,14 @@ function SingleMonthView({
   today,
   bookingDays,
   countByDate,
-  bookingWindowMonths,
-  defaultBookingsPerDay,
+  globalCapacity,
   selectedDate,
   onBookClick,
+  onBookedCellClick,
   isOwnProfile,
   readOnly = false,
-  onQuickMark,
-  onOpenEdit,
+  onOwnerQuickToggle,
+  onOwnerEdit,
   onEmbedClick,
   onShareClick,
   ownerToggle,
@@ -747,35 +652,35 @@ function SingleMonthView({
   year: number;
   month: number;
   today: Date;
-  bookingDays: MobileBookingDays;
+  bookingDays: BookingDays;
   countByDate: Record<string, number>;
-  bookingWindowMonths: number;
-  defaultBookingsPerDay: number;
+  globalCapacity: number;
   selectedDate: string | null;
   readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
+  onBookedCellClick: (d: DayData, key: string) => void;
+  // Owner-mode controls — when isOwnProfile is true, cells render
+  // ✓/✗ + ✏️ buttons that call these handlers instead of the public
+  // Book pill / booked-event popup.
   isOwnProfile: boolean;
-  onQuickMark: (key: string) => void;
-  onOpenEdit: (key: string) => void;
+  onOwnerQuickToggle: (key: string) => void;
+  onOwnerEdit: (key: string) => void;
   // Owner-only Embed Calendar button — rendered in the month header row.
   onEmbedClick?: () => void;
-  // Share Calendar — visible to all visitors, opens share modal.
+  // Share Calendar button — visible to all visitors, opens share modal.
   onShareClick?: () => void;
   // Owner-only view-mode toggle node, shown next to Embed Calendar (desktop).
   ownerToggle?: React.ReactNode;
-  // Dates the current viewer has a pending request on — render "Pending".
+  // Viewer's own pending-request dates — render "Pending" pill instead
+  // of "Book" on these dates. Empty/undefined for logged-out or owner.
   pendingDates?: Set<string>;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  // The maximum date a visitor can book — today + bookingWindowMonths
-  const maxDate = new Date(
-    today.getFullYear(),
-    today.getMonth() + bookingWindowMonths,
-    today.getDate()
-  );
 
+  // Collect public booked events for the list-below
+  const monthEvents: Array<{ day: number; key: string; data: DayData }> = [];
   const cells: React.ReactNode[] = [];
 
   // Empty pre-cells
@@ -783,188 +688,300 @@ function SingleMonthView({
     cells.push(<div key={`pre-${i}`} className={styles.emptyCell} />);
   }
 
+  // Real day cells
   for (let d = 1; d <= daysInMonth; d++) {
     const key = dateKey(year, month, d);
-    const dayData: MobileDayData = bookingDays[key] || {};
+    const dayData: DayData = bookingDays[key] || {};
     const cellDate = new Date(year, month, d);
     const isPast = cellDate < todayMidnight;
-    const isBeyond = cellDate > maxDate;
-    const isToday =
-      year === today.getFullYear() &&
-      month === today.getMonth() &&
-      d === today.getDate();
-    const isBooked = (countByDate[key] || 0) > 0 || !!dayData.booked;
+    const isToday = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
+    // Capacity-aware booked state. A day's capacity is its per-day
+    // override or the DJ's global setting. count = approved bookings.
+    //   count >= capacity        → fully booked (solid red)
+    //   0 < count < capacity     → partially booked (diagonal fill,
+    //                              still bookable by the public)
+    // dayData.booked is the legacy flag; a day is treated as having at
+    // least 1 booking if either the flag is set or a count exists.
+    const dayCap = Math.min(3, Math.max(1,
+      dayData.day_capacity != null ? dayData.day_capacity : globalCapacity));
+    const rawCount = countByDate[key] || 0;
+    const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
+    // An explicit `booked` flag force-closes the day (fully red), even when a
+    // real booking exists under capacity — this is how the owner "closes a
+    // booked date to new bookings" from the ✕ control.
+    const isForcedBooked = !!dayData.booked;
+    const isFull = isForcedBooked || (bookedCount >= dayCap && bookedCount > 0);
+    const isPartial = !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
+    const isBooked = isFull; // "booked" cell styling = fully booked only
+    const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
     const isUnavail = !!dayData.unavailable;
-    const bookingsLeft =
-      dayData.bookings_available != null
-        ? dayData.bookings_available
-        : defaultBookingsPerDay;
-    const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
-    // A day that's hit its booking capacity is BOOKED for display purposes
-    // (red), not "unavailable" (gray). Unavailable is reserved for days the
-    // owner explicitly blocked off. A full day can only be reopened by raising
-    // the accepted-bookings count for that day (the edit pencil), never by the
-    // quick available/unavailable toggle.
-    const showsAsBooked = isBooked || isFull;
+    const isPrivate = dayData.location === 'Private';
     const isSelected = selectedDate === key;
-    // Today is not bookable — requests must be for a future date.
-    const isAvail = !isPast && !isToday && !isBeyond && !isBooked && !isUnavail && !isFull;
-    const isLastRow =
-      Math.floor((firstDay + d - 1) / 7) ===
-      Math.floor((firstDay + daysInMonth - 1) / 7);
+    const isLastRow = Math.floor((firstDay + d - 1) / 7) === Math.floor((firstDay + daysInMonth - 1) / 7);
     const isLastCol = (firstDay + d - 1) % 7 === 6;
 
-    // Background — selected wins, then booked (incl. capacity-full), then
-    // unavailable, then today, then avail
+    // Cell background class — selected wins, then booked, then unavail,
+    // then today, then open (future), else nothing (past)
     const cellClasses = [styles.cell];
     if (isLastRow && !isLastCol) cellClasses.push(styles.cellNoBottomBorder);
     if (isSelected) cellClasses.push(styles.cellSelected);
-    else if (showsAsBooked) cellClasses.push(styles.cellBooked);
+    else if (isBooked) cellClasses.push(styles.cellBooked);
     else if (isUnavail) cellClasses.push(styles.cellUnavail);
     else if (isToday) cellClasses.push(styles.cellToday);
-    else if (isAvail) cellClasses.push(styles.cellAvail);
+    else if (!isPast) cellClasses.push(styles.cellOpen);
+    // Partially-booked days keep .cellOpen (still bookable) but also get
+    // .cellPartial so hover styling doesn't darken the day number against
+    // the red diagonal fill.
+    if (isPartial) cellClasses.push(styles.cellPartial);
 
-    // Day number color — note isPast/isBeyond muted, vanilla parity
+    // Day number color class — same priority order
     const numClasses = [styles.cellNum];
     if (isSelected) numClasses.push(styles.cellNumSelected);
     else if (isPast) numClasses.push(styles.cellNumPast);
-    else if (isBeyond) numClasses.push(styles.cellNumBeyond);
-    else if (showsAsBooked) numClasses.push(styles.cellNumBooked);
-    else if (isUnavail) numClasses.push(styles.cellNumFull);
+    else if (isBooked) numClasses.push(styles.cellNumBooked);
+    else if (isUnavail) numClasses.push(styles.cellNumUnavail);
     else if (isToday) numClasses.push(styles.cellNumToday);
 
-    // Inner content
+    // What goes inside the cell (below the number)?
+    // PUBLIC inner content first — applies to both visitor and owner
+    // views so owners see the same booked-event names / book pill /
+    // unavailable styling as visitors. Owner controls are an OVERLAY
+    // rendered separately below.
     let inner: React.ReactNode = null;
-    if (isOwnProfile && !isPast) {
-      // Owner gets ✓/✗ quick-mark + ✏️ edit pencil. Shown for all
-      // non-past dates — even booked ones get the pencil so the owner
-      // can edit/clear the booking. Quick-mark only shown when not booked.
-      // Quick ✕/✓ control. Hidden only when the day is genuinely full from
-      // capacity (nothing to close). On a day with a real booking it shows ✕
-      // to fully close the date; on a force-closed day it shows ✓ to re-open;
-      // on a free day it toggles unavailable.
-      const forcedClosed = !!dayData.booked;
-      const realBooking = (countByDate[key] || 0) > 0;
-      const quickIsReopen = forcedClosed || isUnavail;
-      const quickTitle = forcedClosed
-        ? 'Re-open this date'
-        : realBooking
-          ? 'Close this date (mark fully booked)'
-          : isUnavail
-            ? 'Mark available'
-            : 'Mark unavailable';
-      inner = (
-        <div className={styles.ownerControls}>
-          {!isFull && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onQuickMark(key);
-              }}
-              className={`${styles.ownerQuickMark} ${
-                quickIsReopen ? styles.ownerQuickMarkActive : ''
-              }`}
-              title={quickTitle}
+    if (!isPast) {
+      if (isBooked) {
+        // Booked: show event name + time + ticket icon (if public event)
+        const eventName = !isPrivate && dayData.eventName ? dayData.eventName : '';
+        const ticketUrl = !isPrivate && dayData.ticketUrl ? dayData.ticketUrl : '';
+        inner = (
+          <>
+            {eventName && <div className={styles.eventName}>{eventName}</div>}
+            {dayData.startTime && (
+              <div className={styles.eventTime}>{formatTime12(dayData.startTime)}</div>
+            )}
+            {ticketUrl && (
+              <a
+                href={ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={styles.ticketIcon}
+                aria-label="Ticket info"
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+              </a>
+            )}
+          </>
+        );
+      } else if (isUnavail) {
+        inner = null; // no badge for unavail
+      } else if (!isOwnProfile && !readOnly && !isToday) {
+        // Today is not bookable — requests must be for a future date.
+        // Open cell — show "Book Now" badge OR "Pending" if the viewer
+        // already has a pending request on this date. The Pending pill
+        // is non-clickable (no double-booking the same date).
+        // Read-only viewers (managing team members) get no Book badge.
+        const isPendingForViewer = !!pendingDates?.has(key);
+        if (isPendingForViewer) {
+          inner = (
+            <div
+              className={`${styles.bookBadge} ${styles.bookBadgePending}`}
+              role="status"
+              aria-label="Booking pending"
             >
-              {quickIsReopen ? '✓' : '✕'}
-            </button>
-          )}
+              <span className={styles.bookBadgeText}>Pending</span>
+            </div>
+          );
+        } else {
+          inner = (
+            <div
+              className={styles.bookBadge}
+              onClick={(e) => { e.stopPropagation(); onBookClick(key, e); }}
+              role="button"
+            >
+              <span className={styles.bookBadgeText}>Book</span>
+            </div>
+          );
+        }
+      }
+    }
+
+    // Owner control overlay — rendered as absolute-positioned buttons
+    // in the corners so they sit on top of the public cell content
+    // (event name / Book pill) without replacing it. ✕/✓ goes top-right;
+    // ✏️ goes bottom-right.
+    // Quick ✕/✓ control. Hidden only when the day is genuinely full from real
+    // bookings (count has reached capacity) — there's nothing to close. On a
+    // partially-booked day it shows ✕ to fully close the date; on a
+    // force-closed day (owner set `booked`) it shows ✓ to re-open; on a free
+    // day it toggles unavailable as before.
+    const naturallyFull = rawCount > 0 && rawCount >= dayCap;
+    const quickIsReopen = isForcedBooked || isUnavail;
+    const quickTitle = isForcedBooked
+      ? 'Re-open this date'
+      : rawCount > 0
+        ? 'Close this date (mark fully booked)'
+        : isUnavail
+          ? 'Mark available'
+          : 'Mark unavailable';
+    const ownerOverlay = isOwnProfile && !isPast ? (
+      <>
+        {!naturallyFull && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onOpenEdit(key);
+              onOwnerQuickToggle(key);
             }}
-            className={styles.ownerEditPencil}
-            title="Edit day"
+            className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomLeft} ${
+              quickIsReopen ? styles.ownerCornerBtnCheck : styles.ownerCornerBtnX
+            }`}
+            title={quickTitle}
           >
-            ✏️
+            {quickIsReopen ? '✓' : '✕'}
           </button>
-          {/* Owner-only markers: a manual "booked" block the DJ set themselves
-              (no real booking behind it) and a per-date price edit. */}
-          {(() => {
-            const realBooking = (countByDate[key] || 0) > 0;
-            // A real booking the owner also force-closed to new bookings.
-            const bookedAndClosed = realBooking && !!dayData.booked;
-            // A "booked" block the DJ set on a free day (no real booking behind it).
-            const manualBooked = !realBooking && isBooked && dayData.bookings_available == null && !dayData.eventName;
-            const pct = dayData.price_adjust_pct;
-            const priceEdited = pct != null && pct !== 0;
-            if (!manualBooked && !priceEdited && !bookedAndClosed) return null;
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, marginTop: 2, pointerEvents: 'none' }}>
-                {bookedAndClosed && (
-                  <span style={{ fontSize: 8, lineHeight: 1.2, color: '#fff', fontWeight: 700, background: 'rgba(0,0,0,.45)', padding: '1px 4px', borderRadius: 3, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>Booked · closed</span>
-                )}
-                {manualBooked && (
-                  <span style={{ fontSize: 8, lineHeight: 1.2, color: '#fff', fontWeight: 700, background: 'rgba(0,0,0,.45)', padding: '1px 4px', borderRadius: 3, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>Manually booked</span>
-                )}
-                {priceEdited && (
-                  <span style={{ fontSize: 9, lineHeight: 1.15, color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
-                    {pct > 0 ? `+${pct}% increase` : `${pct}% decrease`}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-      );
-    } else if (!isOwnProfile && !readOnly && isAvail) {
-      // Pending takes precedence over Book — if THIS viewer already has a
-      // pending request on this date, show a non-clickable "Pending" pill.
-      // The cell stays available for everyone else. Read-only viewers (team
-      // members) get no Book pill.
-      const isPendingForViewer = !!pendingDates?.has(key);
-      inner = isPendingForViewer ? (
-        <div
-          className={`${styles.bookBadge} ${styles.bookBadgePending}`}
-          role="status"
-          aria-label="Booking pending"
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOwnerEdit(key);
+          }}
+          className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomRight}`}
+          title="Edit day"
         >
-          Pending
-        </div>
-      ) : (
+          ✏️
+        </button>
+      </>
+    ) : null;
+
+    // Owner-only status notes printed inside the cell (owner view, future
+    // dates only): a per-day custom rate, a manually-booked day, a per-day
+    // price change, and a real booking the owner also force-closed to new
+    // bookings. Visitors never see these.
+    const realBooking = rawCount > 0;
+    const hasCustomRate =
+      !!dayData.rateType ||
+      dayData.rate_with_system != null ||
+      dayData.rate_with_decks != null ||
+      dayData.rate_no_equip != null ||
+      dayData.rate_hourly_with_system != null ||
+      dayData.rate_hourly_with_decks != null ||
+      dayData.rate_hourly_no_equip != null;
+    const manuallyBooked = isForcedBooked && !realBooking; // owner booked a free day
+    const bookedAndClosed = isForcedBooked && realBooking; // real booking + owner closed it
+    const ownerNotes =
+      isOwnProfile && !isPast && (hasCustomRate || manuallyBooked || bookedAndClosed) ? (
         <div
-          className={styles.bookBadge}
-          onClick={(e) => { e.stopPropagation(); onBookClick(key, e); }}
-          role="button"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 1,
+            marginTop: 2,
+            pointerEvents: 'none',
+          }}
         >
-          Book
+          {bookedAndClosed && (
+            <span
+              style={{
+                fontSize: 8,
+                lineHeight: 1.2,
+                color: '#fff',
+                fontWeight: 700,
+                background: 'rgba(0,0,0,.45)',
+                padding: '1px 4px',
+                borderRadius: 3,
+                letterSpacing: '.02em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Booked · closed
+            </span>
+          )}
+          {manuallyBooked && (
+            <span
+              style={{
+                fontSize: 8,
+                lineHeight: 1.2,
+                color: '#fff',
+                fontWeight: 700,
+                background: 'rgba(0,0,0,.45)',
+                padding: '1px 4px',
+                borderRadius: 3,
+                letterSpacing: '.02em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Manually booked
+            </span>
+          )}
+          {hasCustomRate && (
+            <span
+              style={{
+                fontSize: 9,
+                lineHeight: 1.15,
+                color: 'var(--neon,#00e0a4)',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Custom rate
+            </span>
+          )}
         </div>
-      );
-    } else if (
-      !isOwnProfile &&
-      isBooked &&
-      dayData.eventName &&
-      dayData.location !== 'Private'
-    ) {
-      // Mobile DJ booked cells show event name (small, red) but NOT time
-      // — matches vanilla djp-mob-public.js line 290.
-      inner = (
-        <div className={styles.bookedEventName}>{dayData.eventName}</div>
-      );
+      ) : null;
+
+    // Collect public booked events for the list-below — FUTURE events only.
+    // (Vanilla shows past events in the list too, but the product decision
+    // here is to hide past events to keep the list focused on what's coming up.)
+    if (!isPast && isBooked && dayData.eventName && !isPrivate) {
+      monthEvents.push({ day: d, key, data: dayData });
     }
 
-    // Whole-cell click target for public visitors: clicking anywhere on an
-    // open available date opens the booking window (not just the Book pill
-    // inside). Pending-for-this-viewer cells stay inert to prevent
-    // double-booking. Past, fully-booked, unavailable cells: no handler.
+    // In owner mode the booked-event popup is suppressed — owner uses
+    // the pencil edit button to manage the day, not the public popup.
+    // For public visitors we now also treat the whole open/available cell
+    // as a click target — clicking anywhere on the date opens the booking
+    // window, not just the small "Book" pill inside. Past, fully-booked,
+    // unavailable, and pending-for-this-viewer cells are still inert at
+    // the cell level (booked cells use the popup handler instead).
     const isPendingForViewerCell = !isOwnProfile && !!pendingDates?.has(key);
-    const cellClickHandler =
-      !isOwnProfile && !readOnly && isAvail && !isPendingForViewerCell
-        ? (e: React.MouseEvent) => onBookClick(key, e)
-        : undefined;
+    const isOpenForBooking = !isOwnProfile && !readOnly && !isPast && !isToday && !isBooked && !isUnavail && !isPendingForViewerCell;
+    let cellClickHandler: ((e?: React.MouseEvent) => void) | undefined;
+    if (!isOwnProfile && isBooked && !isPrivate && dayData.eventName) {
+      cellClickHandler = () => onBookedCellClick(dayData, key);
+    } else if (isOpenForBooking) {
+      cellClickHandler = (e?: React.MouseEvent) => onBookClick(key, e as React.MouseEvent);
+    }
+
+    // Diagonal partial-fill — when a day has some bookings but capacity
+    // remains, fill that fraction of the cell red along a 135° diagonal.
+    const cellStyle: React.CSSProperties | undefined = isPartial
+      ? {
+          background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
+        }
+      : undefined;
+    // Pointer cursor whenever the whole cell is clickable (open or booked
+    // popup) so the affordance is obvious.
+    const mergedCellStyle: React.CSSProperties | undefined = cellClickHandler
+      ? { ...(cellStyle || {}), cursor: 'pointer' }
+      : cellStyle;
 
     cells.push(
       <div
         key={key}
         className={cellClasses.join(' ')}
+        style={mergedCellStyle}
         onClick={cellClickHandler}
-        style={cellClickHandler ? { cursor: 'pointer' } : undefined}
       >
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
+        {ownerNotes}
+        {ownerOverlay}
       </div>
     );
   }
@@ -1012,48 +1029,66 @@ function SingleMonthView({
         ))}
       </div>
 
-      <div className={`${styles.cellsGrid} ${styles.cellsGridCompact}`}>{cells}</div>
+      <div className={`${styles.cellsGrid} ${isOwnProfile ? styles.cellsGridCompact : ''}`}>{cells}</div>
+
+      <div className={styles.legend}>
+        <div className={`${styles.legendItem} ${styles.legendOpen}`}>
+          <span className={styles.legendDot} />Open
+        </div>
+        <div className={`${styles.legendItem} ${styles.legendBooked}`}>
+          <span className={styles.legendDot} />Booked
+        </div>
+        <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
+          <span className={styles.legendDot} />Unavailable
+        </div>
+        {globalCapacity > 1 && (
+          <div className={`${styles.legendItem} ${styles.legendPartial}`}>
+            <span className={styles.legendDot} />
+            Accepting set times around current booking
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// RollingMonthsView — shows N months (full booking window)
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
+// RollingMonthsView — 12-month overview
+// ──────────────────────────────────────────────────────────────────────────
 
 function RollingMonthsView({
   today,
   bookingDays,
   countByDate,
+  globalCapacity,
   bookingWindowMonths,
-  defaultBookingsPerDay,
   selectedDate,
+  isLoggedIn,
   onBookClick,
   isOwnProfile,
   readOnly = false,
-  onQuickMark,
-  onOpenEdit,
+  onOwnerEdit,
+  onOwnerQuickToggle,
   pendingDates,
 }: {
   today: Date;
-  bookingDays: MobileBookingDays;
+  bookingDays: BookingDays;
   countByDate: Record<string, number>;
+  globalCapacity: number;
   bookingWindowMonths: number;
-  defaultBookingsPerDay: number;
   selectedDate: string | null;
+  isLoggedIn: boolean;
   readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
   isOwnProfile: boolean;
-  onQuickMark: (key: string) => void;
-  onOpenEdit: (key: string) => void;
-  // Dates the current viewer has a pending request on — render "Pending".
+  onOwnerEdit: (key: string) => void;
+  onOwnerQuickToggle: (key: string) => void;
   pendingDates?: Set<string>;
 }) {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
-  // Mobile DJ rolling view shows the FULL booking window (vanilla line 648
-  // uses windowMonths directly, not capped at 12 like club). For wide
-  // windows this can be a lot of months — that's intended.
-  const monthsToRender = bookingWindowMonths || 12;
+  // Show min(window, 12) months — the window can be larger but the rolling
+  // grid only renders 12 months at a time (matches vanilla).
+  const monthsToRender = Math.min(bookingWindowMonths || 12, 12);
 
   const months: React.ReactNode[] = [];
   for (let i = 0; i < monthsToRender; i++) {
@@ -1069,73 +1104,85 @@ function RollingMonthsView({
     }
     for (let d = 1; d <= daysInMonth; d++) {
       const key = dateKey(yr, mo, d);
-      const dayData: MobileDayData = bookingDays[key] || {};
+      const dayData: DayData = bookingDays[key] || {};
       const isPast = key < todayKey;
-      const isBooked = (countByDate[key] || 0) > 0 || !!dayData.booked;
+      // Capacity-aware: full = count>=capacity, partial = some but not full.
+      const dayCap = Math.min(3, Math.max(1,
+        dayData.day_capacity != null ? dayData.day_capacity : globalCapacity));
+      const rawCount = countByDate[key] || 0;
+      const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
+      const isForcedBooked = !!dayData.booked;
+      const isFull = isForcedBooked || (bookedCount >= dayCap && bookedCount > 0);
+      const isPartial = !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
+      const isBooked = isFull;
+      const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
       const isUnavail = !!dayData.unavailable;
-      const bookingsLeft =
-        dayData.bookings_available != null
-          ? dayData.bookings_available
-          : defaultBookingsPerDay;
-      const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
       const isToday = key === todayKey;
-      const isAvail = !isPast && !isBooked && !isUnavail && !isFull;
       const isSelected = selectedDate === key;
-      // Pending request by THIS viewer — non-clickable, shows "Pending"
-      // instead of "Book". Cell stays open for everyone else.
-      const isPendingForViewer = !isOwnProfile && isAvail && !!pendingDates?.has(key);
+      const isOpenFuture = !isPast && !isBooked && !isUnavail && !isToday;
 
-      // Owner click → edit modal. Booker click → only if available, opens form.
-      // For owner mode we keep cell click for edit (so tapping anywhere on
-      // the cell still opens edit), but also render compact ✓/✕ + ✏️ buttons
-      // for quick-mark + explicit edit. A viewer's own pending date isn't
-      // clickable — no double-booking the same date.
-      const onCellClick = isOwnProfile
-        ? (!isPast ? (() => onOpenEdit(key)) : undefined)
-        : (!readOnly && isAvail && !isPendingForViewer ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
+      const isPendingForViewer = !!pendingDates?.has(key) && isOpenFuture;
+      // Owner mode: clicking any non-past day opens the edit modal.
+      // Booker mode: clicking an open future day starts a booking,
+      // UNLESS they already have a pending request on that date.
+      const ownerCanEdit = isOwnProfile && !isPast;
+      const onCellClick = ownerCanEdit
+        ? () => onOwnerEdit(key)
+        : (!readOnly && isOpenFuture && !isPendingForViewer ? (e: React.MouseEvent) => onBookClick(key, e) : undefined);
       const isClickable = !!onCellClick;
 
       const cellClasses = [styles.miniCell];
-      if (isSelected) cellClasses.push(styles.miniCellAvail);
+      if (isSelected) cellClasses.push(styles.miniCellSelected);
       else if (isBooked) cellClasses.push(styles.miniCellBooked);
-      else if (isUnavail || isFull) cellClasses.push(styles.miniCellUnavail);
-      else if (isAvail) cellClasses.push(styles.miniCellAvail);
-      else if (isPast) cellClasses.push(styles.miniCellPast);
-      if (isToday) cellClasses.push(styles.miniCellToday);
+      else if (isUnavail) cellClasses.push(styles.miniCellUnavail);
+      else if (isToday) cellClasses.push(styles.miniCellToday);
+      else if (!isPast) cellClasses.push(styles.miniCellOpen);
+      if (isPartial) cellClasses.push(styles.miniCellPartial);
       if (isClickable) cellClasses.push(styles.miniCellPointer);
 
-      const miniManualBooked = isOwnProfile && isBooked && dayData.bookings_available == null && !dayData.eventName;
+      const numClasses = [styles.miniNum];
+      if (isSelected) numClasses.push(styles.miniNumSelected);
+      else if (isPast) numClasses.push(styles.miniNumPast);
+      else if (isBooked) numClasses.push(styles.miniNumBooked);
+      else if (isUnavail) numClasses.push(styles.miniNumUnavail);
+      else if (isToday) numClasses.push(styles.miniNumToday);
+
+      const miniCellStyle: React.CSSProperties | undefined = isPartial
+        ? {
+            background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
+          }
+        : undefined;
+
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
+          style={miniCellStyle}
           onClick={onCellClick}
-          title={miniManualBooked ? 'Manually marked booked' : undefined}
         >
-          {d}
-          {/* Public visitor: show "Book" label on available days so
-              visitors can book directly from the 12-month grid. If this
-              viewer already has a pending request, show "Pending" instead.
-              Read-only viewers (team members) get no Book label. */}
-          {!isOwnProfile && !readOnly && isAvail && !isPast && (
-            <div
-              className={
-                isPendingForViewer
-                  ? `${styles.miniBookLabel} ${styles.miniBookLabelPending}`
-                  : styles.miniBookLabel
-              }
-            >
-              {isPendingForViewer ? 'Pending' : 'Book'}
-            </div>
+          <div className={numClasses.join(' ')}>{d}</div>
+          {/* Public visitor only: BOOK pill on available days; PENDING
+              pill if this viewer already has a pending request on this
+              date. Read-only viewers (team members) get no Book pill. */}
+          {!isOwnProfile && !readOnly && isOpenFuture && (
+            isPendingForViewer ? (
+              <div className={`${styles.miniBookLabel} ${styles.miniBookLabelPending}`}>Pending</div>
+            ) : (
+              <div className={styles.miniBookLabel}>Book</div>
+            )
           )}
-          {isOwnProfile && !isPast && (
+          {/* Owner controls — quick-mark unavailable ✕/✓ (toggles) plus
+              pencil-edit ✏️ to open the day edit modal. Shown only to
+              the profile owner on non-past days. No pencil on booked
+              days (booked days have their own edit flow via cell click). */}
+          {ownerCanEdit && (
             <div className={styles.miniOwnerControls}>
               {!isBooked && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onQuickMark(key);
+                    onOwnerQuickToggle(key);
                   }}
                   className={`${styles.miniOwnerQuickMark} ${
                     isUnavail ? styles.miniOwnerQuickMarkActive : ''
@@ -1145,21 +1192,18 @@ function RollingMonthsView({
                   {isUnavail ? '✓' : '✕'}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenEdit(key);
-                }}
-                className={styles.miniOwnerEditPencil}
-                title="Edit day"
-              >
-                ✏️
-              </button>
-              {dayData.price_adjust_pct != null && dayData.price_adjust_pct !== 0 && (
-                <span style={{ fontSize: 7, lineHeight: 1, color: 'var(--neon,#00e0a4)', fontWeight: 700 }} title="Price edited for this day">
-                  {dayData.price_adjust_pct > 0 ? '+' : ''}{dayData.price_adjust_pct}%
-                </span>
+              {!isBooked && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOwnerEdit(key);
+                  }}
+                  className={styles.miniOwnerEditPencil}
+                  title="Edit day"
+                >
+                  ✏️
+                </button>
               )}
             </div>
           )}
@@ -1180,7 +1224,7 @@ function RollingMonthsView({
     months.push(
       <div key={`m-${i}`} className={styles.monthCard}>
         <div className={styles.monthCardLabel}>
-          {MONTH_NAMES_SHORT[mo]}{' '}
+          {MONTH_NAMES[mo]}{' '}
           <span className={styles.monthCardLabelYear}>{yr}</span>
         </div>
         <div className={styles.miniDayHeader}>
@@ -1200,8 +1244,8 @@ function RollingMonthsView({
     if (isLastOfYear || isLastOfAll) {
       months.push(
         <div key={`legend-${yr}-${mo}`} className={styles.yearLegend}>
-          <div className={`${styles.legendItem} ${styles.legendAvail}`}>
-            <span className={styles.legendDot} />Available
+          <div className={`${styles.legendItem} ${styles.legendOpen}`}>
+            <span className={styles.legendDot} />Open
           </div>
           <div className={`${styles.legendItem} ${styles.legendBooked}`}>
             <span className={styles.legendDot} />Booked
@@ -1209,118 +1253,307 @@ function RollingMonthsView({
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
             <span className={styles.legendDot} />Unavailable
           </div>
+          {globalCapacity > 1 && (
+            <div className={`${styles.legendItem} ${styles.legendPartial}`}>
+              <span className={styles.legendDot} />
+              Accepting set times around current booking
+            </div>
+          )}
         </div>
       );
     }
   }
 
-  return <div className={styles.monthsGrid}>{months}</div>;
+  // Suppress isLoggedIn unused-warning — kept for future Session 5 wiring.
+  void isLoggedIn;
+
+  return (
+    <div>
+      <div className={styles.monthsGrid}>{months}</div>
+      <div className={styles.windowBanner}>
+        📅 This DJ is accepting bookings up to{' '}
+        <strong>{windowLabel(bookingWindowMonths || 12)}</strong> in advance.
+        Message them for dates beyond this.
+      </div>
+    </div>
+  );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// OwnerDayEditModal — opens when the profile owner clicks the ✏️ pencil
-// on a calendar cell. Sets the day's price nudge, or marks it "booked" (closed
-// to new bookings). Available/Unavailable are the cell's own ✕/✓ toggle.
-// ─────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
+// BookedEventPopup — modal shown when clicking a public booked cell
+// ──────────────────────────────────────────────────────────────────────────
 
-function OwnerDayEditModal({
+function BookedEventPopup({
+  event,
+  onClose,
+}: {
+  event: {
+    date: string;
+    eventName: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+  };
+  onClose: () => void;
+}) {
+  // ESC key closes
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const dateLabel = new Date(event.date + 'T12:00:00').toLocaleDateString(
+    'en-US',
+    { weekday: 'long', month: 'long', day: 'numeric' }
+  );
+  const timeStr = event.startTime
+    ? formatTime12(event.startTime) +
+      (event.endTime ? ' – ' + formatTime12(event.endTime) : '')
+    : '';
+  const cleanLoc = cleanLocation(event.location);
+
+  return (
+    <div
+      className={styles.bookedPopupBackdrop}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className={styles.bookedPopupInner}>
+        <button
+          type="button"
+          className={styles.bookedPopupClose}
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+        <div className={styles.bookedPopupDate}>{dateLabel}</div>
+        <div className={styles.bookedPopupName}>{event.eventName}</div>
+        {timeStr && <div className={styles.bookedPopupTime}>{timeStr}</div>}
+        {cleanLoc && <div className={styles.bookedPopupLoc}>{cleanLoc}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// OwnerDayEditPopup — owner-mode day editor modal (status-only first cut).
+// Mirror of ClubDayEditModal in update-dj-profile/, but lives here so the
+// public profile doesn't need to import across feature boundaries.
+//
+// Future: per-day rate overrides + address autocomplete + time pickers
+// (deferred to follow-up session — same as the update-dj-profile editor).
+// ──────────────────────────────────────────────────────────────────────────
+
+function OwnerDayEditPopup({
   dateKey,
+  djId,
   dayData,
-  hasBooking = false,
-  bookingLinks = [],
-  previewPackages,
-  cur,
+  bookingSettings,
   onClose,
   onSave,
 }: {
   dateKey: string;
-  dayData: MobileDayData;
-  // True when this date has a real booking on it (from the calendar's booking
-  // counts), independent of the owner's manual "booked" flag.
-  hasBooking?: boolean;
-  // One entry per booking on this date: a short label (venue · time) and the
-  // booking card's share token (null for bookings that have no card).
-  bookingLinks?: { label: string; token: string | null }[];
-  previewPackages: PreviewPkg[];
-  cur: string;
+  djId: string;
+  dayData: DayData;
+  bookingSettings?: BookingSettings;
   onClose: () => void;
-  // Pass null to delete this day's override (default capacity), otherwise
-  // the new MobileDayData to write.
-  onSave: (update: MobileDayData | null) => void;
+  onSave: (update: DayData | null) => void;
 }) {
-  // Initial status derived from current dayData
-  // OPEN (optional price nudge) or BOOKED (closed to new bookings, red).
-  // Available/Unavailable are the ✕/✓ toggle on the calendar cell, not here.
-  const [booked, setBooked] = useState<boolean>(!!dayData.booked);
+  const [status, setStatus] = useState<'available' | 'unavailable' | 'booked'>(
+    dayData.booked ? 'booked' : dayData.unavailable ? 'unavailable' : 'available'
+  );
+  const [eventName, setEventName] = useState<string>(dayData.eventName || '');
 
-  // Signed per-date price nudge (0 = normal price), clamped like the input.
-  const [adjustPct, setAdjustPct] = useState<number>(dayData.price_adjust_pct ?? 0);
-  const clampPct = (n: number) => Math.max(-100, Math.min(500, n));
-
-  // Unsaved-changes guard: set true whenever the DJ edits this day (the price
-  // nudge or the mark-booked toggle). Warns before closing the modal or leaving
-  // the page without saving. A successful Save closes/unmounts the modal.
+  // Unsaved-changes guard: set true whenever the DJ edits this day (status
+  // toggle, rate type, or a rate value). Warns before closing the modal or
+  // leaving the page without saving. Reset by a successful save (handleSave).
   const [dirty, setDirty] = useState(false);
-  // Styled "leave without saving?" dialog (instead of the native confirm()).
+  // Styled "leave without saving?" dialog shown when the DJ tries to close with
+  // unsaved edits (instead of the unstyled native confirm()).
   const [leaveConfirm, setLeaveConfirm] = useState(false);
+  // Warn on tab close / navigation while there are unsaved edits (native; the
+  // browser owns this prompt and it can't be styled).
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
+  // Close with a styled confirm if there are unsaved edits; used by ✕ / Cancel.
   const attemptClose = () => {
     if (dirty) { setLeaveConfirm(true); return; }
     onClose();
   };
-  // "See new prices" box is OPEN by default so the DJ sees the effect right away.
-  const [showPrices, setShowPrices] = useState(true);
-  // The % control only makes sense when at least one package has a FIXED price.
-  // No packages at all (pure-quote DJ) or all "by request" → nothing to adjust.
-  const pkgs = previewPackages || [];
-  const canAdjust = pkgs.some((p) => !p.byRequest);
-  // A day that hit its booking CAPACITY (real approvals filled it) is already
-  // closed to new bookings on its own, so the manual "mark booked" toggle would
-  // be redundant/confusing — hide it and just say the day is full.
-  const naturallyFull = dayData.bookings_available != null && dayData.bookings_available <= 0;
-  // A date that already has a real booking on it (an approved event) is booked
-  // for real — the manual "mark booked" toggle is meaningless there, so hide it
-  // and just show a status line instead.
-  const hasRealBooking = !!dayData.eventName || hasBooking;
 
-  // Format the date label e.g. "Friday, April 24, 2026"
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  // All approved bookings for this date (up to 3 — the hard cap). Each
+  // can be manual (editable) or request-based (read-only). Rendered as
+  // an accordion: one expanded at a time. Replaces the older one-manual-
+  // one-request model now that a day can hold multiple bookings.
+  const [dayBookings, setDayBookings] = useState<ManualBookingRow[]>([]);
+  const [djCountry, setDjCountry] = useState<string>('United States');
+  // All future bookings — needed by the manual form's daily-conflict check.
+  const [allBookings, setAllBookings] = useState<Array<{ id: string; event_date: string | null; status: string | null }>>([]);
+  const [bookingDetailsLoading, setBookingDetailsLoading] = useState(true);
+  // Which accordion row is expanded (index into dayBookings); 0 by default.
+  const [expandedIdx, setExpandedIdx] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supabase = createClient();
+      // All approved bookings for this date — manual and request-based.
+      const dayBookingsPromise = supabase
+        .from('bookings')
+        .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at')
+        .eq('dj_id', djId)
+        .eq('event_date', dateKey)
+        .eq('status', 'approved')
+        .order('start_time', { ascending: true });
+      // Fetch profile country for address-search default.
+      const profilePromise = supabase
+        .from('users')
+        .select('country')
+        .eq('id', djId)
+        .maybeSingle<{ country: string | null }>();
+      // Fetch future bookings for the manual form's daily-conflict check.
+      const today = new Date().toISOString().slice(0, 10);
+      const allBookingsPromise = supabase
+        .from('bookings')
+        .select('id, event_date, status')
+        .eq('dj_id', djId)
+        .in('status', ['approved', 'pending', 'counter'])
+        .gte('event_date', today);
+      const [dayRes, profileRes, allRes] = await Promise.all([
+        dayBookingsPromise, profilePromise, allBookingsPromise,
+      ]);
+      if (!mounted) return;
+      const rows = (dayRes.data as ManualBookingRow[]) || [];
+      setDayBookings(rows);
+      // If the day has bookings, it IS booked — make sure the popup shows
+      // the booked panel even if the calendar flag wasn't set.
+      if (rows.length > 0) setStatus('booked');
+      if (profileRes.data?.country) setDjCountry(profileRes.data.country);
+      setAllBookings((allRes.data as Array<{ id: string; event_date: string | null; status: string | null }>) || []);
+      setBookingDetailsLoading(false);
+    })();
+    return () => { mounted = false; };
+  }, [djId, dateKey]);
+
+  // ── Per-day rate override state ──────────────────────────────────
+  // Mirror of ClubDayEditModal in update-dj-profile/. Initialised from
+  // the existing day data; falls back to the global rate type so the
+  // editor opens to the same context the DJ uses universally.
+  const initialRateType: 'flat' | 'hourly' | 'offers' =
+    (dayData.rateType as 'flat' | 'hourly' | 'offers' | undefined)
+    || (bookingSettings?.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined)
+    || 'flat';
+  const [rateType, setRateType] = useState<'flat' | 'hourly' | 'offers'>(initialRateType);
+  const initStr = (v: number | string | undefined): string =>
+    v != null && v !== '' ? String(v) : '';
+  // Pre-fill rule — same as update-dj-profile/ClubOwnerCalendar. Day
+  // override wins; falls back to universal so the modal opens with
+  // the DJ's default rates as a starting point. handleSave only
+  // persists fields that DIFFER from universal.
+  const initRate = (
+    dayVal: number | string | undefined,
+    universalVal: number | string | undefined,
+  ): string => initStr(dayVal != null && dayVal !== '' ? dayVal : universalVal);
+  const [rateWithSystem, setRateWithSystem] = useState(initRate(dayData.rate_with_system, bookingSettings?.rate_with_system));
+  const [rateWithDecks, setRateWithDecks] = useState(initRate(dayData.rate_with_decks, bookingSettings?.rate_with_decks));
+  const [rateNoEquip, setRateNoEquip] = useState(initRate(dayData.rate_no_equip, bookingSettings?.rate_no_equip));
+  const [rateHourlyWithSystem, setRateHourlyWithSystem] = useState(initRate(dayData.rate_hourly_with_system, bookingSettings?.rate_hourly_with_system));
+  const [rateHourlyWithDecks, setRateHourlyWithDecks] = useState(initRate(dayData.rate_hourly_with_decks, bookingSettings?.rate_hourly_with_decks));
+  const [rateHourlyNoEquip, setRateHourlyNoEquip] = useState(initRate(dayData.rate_hourly_no_equip, bookingSettings?.rate_hourly_no_equip));
+
+  const equipFull = !!bookingSettings?.equip_full;
+  const equipDecks = !!bookingSettings?.equip_decks;
+  const equipNone = !!bookingSettings?.equip_none;
+  const sym = currencySymbol(bookingSettings?.rate_currency || 'USD');
+
+  // Form-expansion state for the Booked panel.
+  //   - Existing booking on file → form open by default (edit mode)
+  //   - No existing booking → form closed; user clicks "Add Booking Details"
+  // We initialize once when bookingDetailsLoading flips false so re-renders
+  // True once the DJ clicks "Manually add booking" — shows the manual
+  // booking form for a new booking on this date.
+  const [addingBooking, setAddingBooking] = useState(false);
+  // Tab within the booked-day popup: 'bookings' (accordion list)
+  // or 'rates' (per-day rate override).
+  const [popupTab, setPopupTab] = useState<'bookings' | 'rates'>('bookings');
+
+  // Format dateKey "2026-05-14" → "Thursday, May 14, 2026"
+  const formatted = useMemo(() => {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    if (!y || !m || !d) return dateKey;
+    const dt = new Date(y, m - 1, d, 12, 0, 0);
+    return dt.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    });
+  }, [dateKey]);
+
+  // Lock body scroll
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = orig; };
+  }, []);
 
   function handleSave() {
-    // MERGE from the existing record — never clobber fields other writers set
-    // (approval capacity in bookings_available, an event name written when a
-    // request was approved, an unavailable flag from the ✕ toggle). This modal
-    // only OWNS `booked` and `price_adjust_pct`.
-    const next: MobileDayData = { ...dayData };
-    if (booked) {
-      // Close to new bookings + red. Existing bookings and pending requests are
-      // untouched — the DJ still confirms those from Booking Requests.
-      next.booked = true;
-      delete next.unavailable; // booked supersedes an unavailable flag
-    } else {
-      delete next.booked;
-      if (adjustPct !== 0) next.price_adjust_pct = clampPct(adjustPct);
-      else delete next.price_adjust_pct;
+    if (status === 'available') {
+      // Build a partial DayData carrying only fields that DIFFER from
+      // universal rates. Mirror of update-dj-profile/ClubOwnerCalendar.
+      const tFlat = (s: string) => s.trim() === '' ? undefined : s.trim();
+      const norm = (v: string | number | undefined): number | null => {
+        if (v == null || v === '') return null;
+        const n = typeof v === 'number' ? v : Number(v);
+        return isNaN(n) ? null : n;
+      };
+      const diffs = (input: string, universal: number | string | undefined): string | undefined => {
+        const inputNum = norm(input);
+        const univNum = norm(universal);
+        if (inputNum === univNum) return undefined;
+        return tFlat(input);
+      };
+      const flatSys = diffs(rateWithSystem, bookingSettings?.rate_with_system);
+      const flatDecks = diffs(rateWithDecks, bookingSettings?.rate_with_decks);
+      const flatNone = diffs(rateNoEquip, bookingSettings?.rate_no_equip);
+      const hrSys = diffs(rateHourlyWithSystem, bookingSettings?.rate_hourly_with_system);
+      const hrDecks = diffs(rateHourlyWithDecks, bookingSettings?.rate_hourly_with_decks);
+      const hrNone = diffs(rateHourlyNoEquip, bookingSettings?.rate_hourly_no_equip);
+      const universalRateType = (bookingSettings?.global_rate_type as 'flat' | 'hourly' | 'offers' | undefined) || 'flat';
+      const rateTypeChanged = rateType !== universalRateType;
+      const anyOverride = flatSys || flatDecks || flatNone || hrSys || hrDecks || hrNone || rateTypeChanged;
+      if (!anyOverride) {
+        onSave(null);
+        return;
+      }
+      const next: DayData = {};
+      if (rateTypeChanged) next.rateType = rateType;
+      if (flatSys) next.rate_with_system = flatSys;
+      if (flatDecks) next.rate_with_decks = flatDecks;
+      if (flatNone) next.rate_no_equip = flatNone;
+      if (hrSys) next.rate_hourly_with_system = hrSys;
+      if (hrDecks) next.rate_hourly_with_decks = hrDecks;
+      if (hrNone) next.rate_hourly_no_equip = hrNone;
+      onSave(next);
+      return;
     }
-    onSave(Object.keys(next).length > 0 ? next : null);
+    if (status === 'unavailable') {
+      onSave({ unavailable: true });
+      return;
+    }
+    onSave({
+      booked: true,
+      eventName: eventName.trim() || undefined,
+    });
   }
 
-  // Render through a portal to <body> so the modal escapes the profile page's
-  // stacking contexts (the hero banner was painting over it otherwise).
   if (typeof document === 'undefined') return null;
   return createPortal(
-    <div className={styles.ownerModalBackdrop}>
+    <div className={styles.ownerEditBackdrop}>
       {/* Styled unsaved-changes confirm (replaces the native confirm dialog). */}
       {leaveConfirm && (
         <div
@@ -1337,231 +1570,358 @@ function OwnerDayEditModal({
           </div>
         </div>
       )}
-      <div
-        className={styles.ownerModalInner}
-        onClick={(e) => e.stopPropagation()}
-        style={{ background: '#000', border: '1px solid rgba(255,255,255,.16)' }}
-      >
-        <div className={styles.ownerModalHeader}>
-          <div className={styles.ownerModalDate}>{dateLabel}</div>
-          <button
-            type="button"
-            onClick={attemptClose}
-            className={styles.ownerModalClose}
-            aria-label="Close"
-          >
-            ✕
-          </button>
+      <div className={styles.ownerEditBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.ownerEditHeader}>
+          <div className={styles.ownerEditDate}>{formatted}</div>
+          <button type="button" onClick={attemptClose} className={styles.ownerEditClose}>✕</button>
         </div>
 
-        {!booked && !hasRealBooking && canAdjust && (
-          <div className={styles.ownerModalField}>
-            <label className={styles.ownerModalLabel}>
-              Charge more or less for a booking on this date.
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-              <button
-                type="button"
-                onClick={() => { setDirty(true); setAdjustPct((v) => clampPct(v - 5)); }}
-                aria-label="Lower the price for this day"
-                style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-              >−</button>
-              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  min={-100}
-                  max={500}
-                  step={5}
-                  value={adjustPct}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value, 10);
-                    setDirty(true);
-                    setAdjustPct(Number.isFinite(n) ? clampPct(n) : 0);
-                  }}
-                  className={styles.ownerModalNumberInput}
-                  style={{ width: 90, textAlign: 'center', paddingRight: '1.4rem' }}
-                />
-                <span style={{ position: 'absolute', right: '.6rem', color: 'var(--muted)', fontSize: '.85rem', pointerEvents: 'none' }}>%</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => { setDirty(true); setAdjustPct((v) => clampPct(v + 5)); }}
-                aria-label="Raise the price for this day"
-                style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--deep)', color: 'var(--white)', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-              >+</button>
-            </div>
-            {adjustPct !== 0 && (
-              <span className={styles.ownerModalHint}>
-                {`${adjustPct > 0 ? '+' : ''}${adjustPct}% — bookings on this date are quoted ${adjustPct > 0 ? 'higher' : 'lower'} than normal.`}
-              </span>
-            )}
-
-            {pkgs.some((p) => !p.byRequest) && (
-              <div style={{ marginTop: '.6rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, overflow: 'hidden' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowPrices((s) => !s)}
-                  aria-expanded={showPrices}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.5rem .7rem', background: 'rgba(255,255,255,.04)', border: 'none', color: '#c9c9d4', fontSize: '.72rem', letterSpacing: '.04em', cursor: 'pointer' }}
-                >
-                  <span>See new prices</span>
-                  <span style={{ color: 'var(--muted)', fontSize: '.7rem' }}>{showPrices ? '▴' : '▾'}</span>
-                </button>
-                {showPrices && (
-                  <div style={{ padding: '.35rem .7rem .55rem' }}>
-                    <div style={{ fontSize: '.64rem', color: 'var(--muted)', padding: '.2rem 0 .3rem', lineHeight: 1.4 }}>
-                      Base package prices.
-                    </div>
-                    {pkgs.map((p) => (
-                      p.byRequest ? (
-                        <div key={p.title} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                          <span style={{ color: '#e6e6ee' }}>{p.title}</span>
-                          <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>By request</span>
-                        </div>
-                      ) : (
-                        p.tiers.map((t, ti) => (
-                          <div key={`${p.title}-${t.hours}-${ti}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', padding: '.3rem 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                            <span style={{ color: '#e6e6ee' }}>{p.title} · {t.hours}hr</span>
-                            <span>
-                              <span style={{ color: 'var(--muted)', textDecoration: adjustPct !== 0 ? 'line-through' : 'none' }}>{cur}{t.price.toLocaleString()}</span>
-                              {adjustPct !== 0 && (
-                                <span style={{ color: 'var(--neon,#00e0a4)' }}> {cur}{Number((t.price * (1 + adjustPct / 100)).toFixed(2)).toLocaleString()}</span>
-                              )}
-                            </span>
-                          </div>
-                        ))
-                      )
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+        {/* Booked-day tab bar — pinned at the top, always visible once
+            the day has a booking. Switches between the bookings panel
+            and the per-day rate override. Rates stay relevant even at
+            max capacity (a cancellation could free a slot for a new
+            booking at the updated rate). */}
+        {!bookingDetailsLoading && status === 'booked' && dayBookings.length > 0 && (
+          <div className={styles.dayTabBar}>
+            <button
+              type="button"
+              className={`${styles.dayTab} ${popupTab === 'bookings' ? styles.dayTabActive : ''}`}
+              onClick={() => setPopupTab('bookings')}
+            >
+              Bookings
+            </button>
+            <button
+              type="button"
+              className={`${styles.dayTab} ${popupTab === 'rates' ? styles.dayTabActive : ''}`}
+              onClick={() => setPopupTab('rates')}
+            >
+              Update Rates
+            </button>
           </div>
         )}
 
-        {!booked && !hasRealBooking && !canAdjust && (
-          <div className={styles.ownerModalField}>
-            <span className={styles.ownerModalHint}>
-              {pkgs.length === 0
-                ? 'You don’t have fixed-price packages, so bookings are quote-only — there’s no set price to raise or lower for this date.'
-                : 'Your packages are all “by request”, so there’s no set price to raise or lower for this date — clients still send a request and you quote them.'}
-            </span>
+        {/* Mark-booked toggle — only when the day has NO bookings. Once a
+            booking exists, the day is committed. Available/Unavailable are set
+            from the calendar cell's own ✕/✓ toggle, so this modal just carries
+            the booked toggle, styled to match the mobile-DJ day editor. */}
+        {!bookingDetailsLoading && dayBookings.length === 0 && (
+          <div className={styles.ownerEditStatusRow}>
+            <button
+              type="button"
+              onClick={() => { setDirty(true); setStatus(status === 'booked' ? 'available' : 'booked'); }}
+              aria-pressed={status === 'booked'}
+              style={{
+                width: '100%',
+                padding: '.7rem',
+                borderRadius: 8,
+                border: `1px solid ${status === 'booked' ? 'rgba(0,224,164,.55)' : 'rgba(255,95,95,.5)'}`,
+                background: status === 'booked' ? 'rgba(0,224,164,.12)' : 'rgba(255,95,95,.06)',
+                color: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f',
+                fontWeight: 600,
+                fontSize: '.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '.45rem',
+              }}
+            >
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f', display: 'inline-block' }} />
+              {status === 'booked' ? 'Make this day available for booking' : 'Mark this day as booked'}
+            </button>
           </div>
         )}
 
-        {/* A day already at capacity is full on its own — no manual toggle,
-            just a status line. */}
-        {naturallyFull && !hasRealBooking && (
-          <div className={styles.ownerModalField}>
-            <span className={styles.ownerModalHint}>
-              This date has reached its booking capacity — it’s already full and closed to new requests, so there’s nothing to mark here.
-            </span>
-          </div>
-        )}
-
-        {/* Already has a real booking on it — no manual toggle, just a status
-            line. The booking itself is managed from Booking Requests. */}
-        {hasRealBooking && (() => {
-          const items = bookingLinks.length > 0
-            ? bookingLinks
-            : (dayData.eventName ? [{ label: dayData.eventName, token: null }] : []);
-          return (
-            <div className={styles.ownerModalField}>
-              <span className={styles.ownerModalHint}>
-                This date is booked. Manage {items.length > 1 ? 'these bookings' : 'this booking'} from your Booking Requests.
-              </span>
-              {items.map((it, i) => {
-                const rowStyle: React.CSSProperties = {
-                  display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
-                  padding: '.5rem .6rem', borderRadius: 7,
-                  border: '1px solid var(--border)', background: 'transparent',
-                  fontSize: '.8rem', color: 'var(--white)', fontWeight: 600,
-                  textDecoration: 'none',
-                };
-                const dot = <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f5f', flex: '0 0 auto' }} />;
-                const text = (
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{it.label}</span>
-                );
-                // Link to the booking card in a new window when we have a token;
-                // otherwise just show the label.
-                return it.token ? (
-                  <a
-                    key={i}
-                    href={`/card/${it.token}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ ...rowStyle, cursor: 'pointer' }}
+        {/* ── Per-day rate override ─────────────────────────────────
+            Shown for an Available day, OR inside the booked-day popup's
+            "Rates" tab. Changing the override edits only this date's
+            calendar config — it never touches existing booking rows, so
+            confirmed/pending bookings keep the rate they were booked at. */}
+        {((status === 'available') || (status === 'booked' && popupTab === 'rates'))
+          && bookingSettings && (
+          <div className={styles.ownerEditBookedFields}>
+            <div className={styles.ownerEditFieldGroup}>
+              <label className={styles.ownerEditFieldLabel} style={{ color: '#ff5a5a' }}>
+                Rate Override (for this day only)
+              </label>
+              <p style={{
+                fontSize: '.72rem',
+                color: 'var(--muted)',
+                lineHeight: 1.5,
+                margin: '-.3rem 0 .6rem',
+              }}>
+                Changing the rate will not alter previously approved bookings
+                for this day.
+              </p>
+              {/* Rate type tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '.4rem',
+                marginBottom: '.6rem',
+                flexWrap: 'wrap',
+              }}>
+                {(['flat', 'hourly', 'offers'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => { setDirty(true); setRateType(t); }}
+                    style={{
+                      padding: '.35rem .8rem',
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: '.65rem',
+                      letterSpacing: '.08em',
+                      textTransform: 'uppercase',
+                      borderRadius: 4,
+                      border: '1px solid ' + (rateType === t ? 'var(--neon)' : 'var(--border)'),
+                      background: rateType === t ? 'rgba(0,245,196,0.1)' : 'transparent',
+                      color: rateType === t ? 'var(--neon)' : 'var(--muted)',
+                      cursor: 'pointer',
+                    }}
                   >
-                    {dot}
-                    {text}
-                    <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.72rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', flex: '0 0 auto' }}>View</span>
-                  </a>
-                ) : (
-                  <div key={i} style={rowStyle}>
-                    {dot}
-                    {text}
+                    {t === 'flat' ? 'Flat' : t === 'hourly' ? 'Hourly' : 'Open Offers'}
+                  </button>
+                ))}
+              </div>
+
+              {rateType !== 'offers' && (() => {
+                const isHourly = rateType === 'hourly';
+                const suffix = isHourly ? ' (per hour)' : '';
+                const sysVal = isHourly ? rateHourlyWithSystem : rateWithSystem;
+                const sysSetRaw = isHourly ? setRateHourlyWithSystem : setRateWithSystem;
+                const sysSet = (v: string) => { setDirty(true); sysSetRaw(v); };
+                const decksVal = isHourly ? rateHourlyWithDecks : rateWithDecks;
+                const decksSetRaw = isHourly ? setRateHourlyWithDecks : setRateWithDecks;
+                const decksSet = (v: string) => { setDirty(true); decksSetRaw(v); };
+                const noneVal = isHourly ? rateHourlyNoEquip : rateNoEquip;
+                const noneSetRaw = isHourly ? setRateHourlyNoEquip : setRateNoEquip;
+                const noneSet = (v: string) => { setDirty(true); noneSetRaw(v); };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    {equipFull && (
+                      <>
+                        <PCDayRateInput label={`Sound System & Decks/Controller${suffix}`} symbol={sym} value={sysVal} onChange={sysSet} />
+                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} />
+                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                      </>
+                    )}
+                    {equipDecks && (
+                      <>
+                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} />
+                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                      </>
+                    )}
+                    {equipNone && (
+                      <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                    )}
                   </div>
                 );
-              })}
+              })()}
+              {rateType === 'offers' && (
+                <p style={{ margin: 0, color: 'var(--white,#fff)', fontSize: '.8rem', lineHeight: 1.5 }}>
+                  This day will accept open offers from host — no rate shown
+                  publicly. Bookers submit what they want to pay.
+                </p>
+              )}
             </div>
-          );
-        })()}
-
-        {/* Booked = close the date to NEW bookings. Single toggle, no fields.
-            Hidden once the day fills naturally or already has a real booking. */}
-        {!naturallyFull && !hasRealBooking && (
-        <div className={styles.ownerModalField}>
-          <button
-            type="button"
-            onClick={() => { setDirty(true); setBooked((b) => !b); }}
-            aria-pressed={booked}
-            style={{
-              width: '100%',
-              padding: '.7rem',
-              borderRadius: 8,
-              // Booked → the button OPENS the day (green, make-available). Not
-              // booked → the button CLOSES it (red, mark-as-booked).
-              border: `1px solid ${booked ? 'rgba(0,224,164,.55)' : 'rgba(255,95,95,.5)'}`,
-              background: booked ? 'rgba(0,224,164,.12)' : 'rgba(255,95,95,.06)',
-              color: booked ? 'var(--neon,#00e0a4)' : '#ff5f5f',
-              fontWeight: 600,
-              fontSize: '.85rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '.45rem',
-            }}
-          >
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: booked ? 'var(--neon,#00e0a4)' : '#ff5f5f', display: 'inline-block' }} />
-            {booked ? 'Make this day available for booking' : 'Mark this day as booked'}
-          </button>
-          <span className={styles.ownerModalHint}>
-            {booked
-              ? 'This date is currently BOOKED — closed to new requests and shown red. Tap the button above to reopen it, then Save changes.'
-              : 'Closes this date to new booking requests and marks it red.'}
-          </span>
-        </div>
+          </div>
         )}
 
-        <div className={styles.ownerModalBtns}>
-          <button
-            type="button"
-            onClick={attemptClose}
-            className={styles.ownerModalCancel}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className={styles.ownerModalSave}
-          >
-            Save changes
-          </button>
-        </div>
+        {status === 'booked' && popupTab === 'bookings' && (
+          <div className={styles.ownerEditBookedFields}>
+            {bookingDetailsLoading ? (
+              <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
+            ) : (
+              <>
+                {/* Per-day capacity selector is intentionally hidden on the
+                    individual day card — it lives in the Booking area of
+                    update-dj-profile for club/bar DJs. dayCapOverride state
+                    is still tracked/saved; only the UI is hidden here. */}
+
+                <div className={styles.bkListHeading}>Bookings</div>
+
+                {/* Accordion — every booking on this day, numbered 1/2/3.
+                    Each row shows a compact header (time · venue); click
+                    to expand. One open at a time. Request bookings expand
+                    read-only; manual bookings expand into the form. */}
+                {dayBookings.map((bk, idx) => {
+                  const isOpen = expandedIdx === idx;
+                  const hdrTime = bk.start_time
+                    ? formatTime12(bk.start_time)
+                      + (bk.end_time ? ` – ${formatTime12(bk.end_time)}` : '')
+                    : 'Time TBD';
+                  return (
+                    <div key={bk.id} className={styles.bkAccItem}>
+                      <span className={styles.bkAccNumber}>{idx + 1}</span>
+                      <button
+                        type="button"
+                        className={`${styles.bkAccHeader} ${isOpen ? styles.bkAccHeaderOpen : ''}`}
+                        onClick={() => setExpandedIdx(isOpen ? -1 : idx)}
+                      >
+                        <span className={styles.bkAccHeaderText}>
+                          {hdrTime}{!isOpen && bk.venue_name ? ` · ${bk.venue_name}` : ''}
+                        </span>
+                        <span className={styles.bkAccChevron}>{isOpen ? '▾' : '▸'}</span>
+                      </button>
+                      {isOpen && (
+                        bk.is_manual ? (
+                          <div className={styles.bkAccBody}>
+                            <div className={styles.requestBookingTag}>Booking Added Manually</div>
+                            <ManualBookingForm
+                              userId={djId}
+                              djType="club"
+                              djCountry={djCountry}
+                              djName=""
+                              bookingsPerDay={1}
+                              existingBookings={allBookings}
+                              existing={bk}
+                              prefillDate={dateKey}
+                              lockDate={true}
+                              onCancel={onClose}
+                              onSaved={(_row, mode) => {
+                                onSave({ ...dayData, booked: true });
+                                if (mode === 'added' || mode === 'updated') onClose();
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className={styles.requestBookingInfo}>
+                            <div className={styles.requestBookingTag}>This booking was made through a request and can&rsquo;t be edited here.</div>
+                            <dl className={styles.requestBookingDl}>
+                              {bk.venue_name && (
+                                <div><dt>Venue</dt><dd>{bk.venue_name}</dd></div>
+                              )}
+                              {bk.venue_address && (
+                                <div><dt>Address</dt><dd>{bk.venue_address}</dd></div>
+                              )}
+                              {bk.venue_type && (
+                                <div><dt>Venue Type</dt><dd>{capitalizeWords(bk.venue_type)}</dd></div>
+                              )}
+                              {bk.set_type && (
+                                <div><dt>Set Type</dt><dd>{capitalizeWords(bk.set_type)}</dd></div>
+                              )}
+                            </dl>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Manual add — the form opens BELOW the existing
+                    bookings rather than replacing them. */}
+                {addingBooking ? (
+                  <div className={styles.bkAddFormWrap}>
+                    <div className={styles.bkAddHero}>
+                      <span className={styles.bkAddHeroNum}>{dayBookings.length + 1}</span>
+                      Add Booking Manually
+                    </div>
+                    <div className={styles.bkAddFormBody}>
+                      <ManualBookingForm
+                        userId={djId}
+                        djType="club"
+                        djCountry={djCountry}
+                        djName=""
+                        bookingsPerDay={1}
+                        existingBookings={allBookings}
+                        existing={null}
+                        prefillDate={dateKey}
+                        lockDate={true}
+                        onCancel={() => setAddingBooking(false)}
+                        onSaved={(_row, mode) => {
+                          onSave({ ...dayData, booked: true });
+                          if (mode === 'added' || mode === 'updated') onClose();
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  dayBookings.length < 3 && (
+                    <button
+                      type="button"
+                      className={styles.add2ndLink}
+                      onClick={() => {
+                        setExpandedIdx(-1);
+                        setAddingBooking(true);
+                      }}
+                    >
+                      Manually Add Booking
+                    </button>
+                  )
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Outer modal's Save/Cancel row. Hidden when a booking form is
+            open (the form provides its own buttons). */}
+        {!(status === 'booked' && addingBooking) && (
+          <div className={styles.ownerEditActions}>
+            <button type="button" onClick={attemptClose} className={styles.ownerEditCancelBtn}>
+              Cancel
+            </button>
+            <button type="button" onClick={handleSave} className={styles.ownerEditSaveBtn}>
+              Save
+            </button>
+          </div>
+        )}
       </div>
     </div>,
     document.body,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PCDayRateInput — currency-prefixed number input for the owner's per-day
+// rate override panel. Mirror of update-dj-profile/ClubOwnerCalendar's
+// DayRateInput; lives here so PublicCalendar doesn't import across
+// feature boundaries.
+// ─────────────────────────────────────────────────────────────────────────
+function PCDayRateInput({
+  label, symbol, value, onChange,
+}: {
+  label: string;
+  symbol: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          fontFamily: "'Space Mono', monospace",
+          fontSize: '.65rem',
+          letterSpacing: '.06em',
+          textTransform: 'uppercase',
+          color: 'var(--muted)',
+          marginBottom: '.25rem',
+        }}
+      >
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <span style={{
+          position: 'absolute',
+          left: 10,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--muted)',
+          pointerEvents: 'none',
+          fontSize: '.9rem',
+        }}>{symbol}</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          placeholder="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={styles.ownerEditInput}
+          style={{ paddingLeft: 28 }}
+        />
+      </div>
+    </div>
   );
 }
