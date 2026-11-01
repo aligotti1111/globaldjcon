@@ -1227,6 +1227,8 @@ function OwnerDayEditModal({
   // nudge or the mark-booked toggle). Warns before closing the modal or leaving
   // the page without saving. A successful Save closes/unmounts the modal.
   const [dirty, setDirty] = useState(false);
+  // Styled "leave without saving?" dialog (instead of the native confirm()).
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
@@ -1234,7 +1236,7 @@ function OwnerDayEditModal({
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
   const attemptClose = () => {
-    if (dirty && !window.confirm('You have unsaved changes to this day. Leave without saving?')) return;
+    if (dirty) { setLeaveConfirm(true); return; }
     onClose();
   };
   // "See new prices" box is OPEN by default so the DJ sees the effect right away.
@@ -1285,6 +1287,22 @@ function OwnerDayEditModal({
   if (typeof document === 'undefined') return null;
   return createPortal(
     <div className={styles.ownerModalBackdrop}>
+      {/* Styled unsaved-changes confirm (replaces the native confirm dialog). */}
+      {leaveConfirm && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirm(false); }}
+        >
+          <div style={{ width: '100%', maxWidth: 360, background: '#0c0c12', border: '1px solid rgba(255,255,255,.14)', borderRadius: 14, padding: '1.4rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.14em', textTransform: 'uppercase', color: '#ff8f8f', marginBottom: '.5rem' }}>Unsaved changes</div>
+            <p style={{ margin: '0 0 1.2rem', color: 'var(--white,#fff)', fontSize: '.9rem', lineHeight: 1.5 }}>You have changes to this day that haven&rsquo;t been saved. Leave without saving?</p>
+            <div style={{ display: 'flex', gap: '.6rem' }}>
+              <button type="button" onClick={() => setLeaveConfirm(false)} style={{ flex: 1, height: 40, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 600, fontSize: '.8rem', cursor: 'pointer' }}>Keep editing</button>
+              <button type="button" onClick={() => { setLeaveConfirm(false); onClose(); }} style={{ flex: 1, height: 40, borderRadius: 8, border: '1px solid rgba(255,95,95,.5)', background: 'rgba(255,95,95,.12)', color: '#ff5f5f', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div
         className={styles.ownerModalInner}
         onClick={(e) => e.stopPropagation()}
