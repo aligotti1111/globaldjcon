@@ -15,11 +15,9 @@
 // materializes it into ordered boxes (ensuring the defaults exist), and writes
 // the flattened result back through onChange on every edit.
 
-import { useState, useEffect, useRef, type ChangeEvent, type DragEvent } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useState, useEffect, useRef, type DragEvent } from 'react';
 import {
   ensureDefaultBoxes, flattenBoxes, groupRiderBoxes, newRiderId,
-  sectionAllowsAttachment, RIDER_ATTACHMENT_MAX_BYTES,
   normalizeListStyle, normalizeFontSize, normalizeFontFamily,
   riderFontFamilyCss, riderFontSizePx, riderListPrefix,
   type RiderListStyle, type RiderFontSize, type RiderFontFamily,
@@ -62,9 +60,6 @@ export default function RiderEditor({
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
-  // Per-box attachment upload state, keyed by box id.
-  const [attachBusy, setAttachBusy] = useState<Record<string, boolean>>({});
-  const [attachMsg, setAttachMsg] = useState<Record<string, string | null>>({});
 
   function commit(next: RiderBox[]) {
     onChange(flattenBoxes(next));
@@ -121,41 +116,6 @@ export default function RiderEditor({
     const [b] = next.splice(from, 1);
     next.splice(to, 0, b);
     commit(next);
-  }
-
-  // ── One attachment (image or PDF, ≤5MB) on the Technical / Visuals boxes ──
-  async function onPickAttachment(box: RiderBox, e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    const isImg = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!isImg && !isPdf) { setAttachMsg((m) => ({ ...m, [box.id]: 'Attachment must be an image or PDF.' })); return; }
-    if (file.size > RIDER_ATTACHMENT_MAX_BYTES) { setAttachMsg((m) => ({ ...m, [box.id]: 'File is too large (max 5MB).' })); return; }
-    setAttachMsg((m) => ({ ...m, [box.id]: null }));
-    setAttachBusy((s) => ({ ...s, [box.id]: true }));
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('not signed in');
-      const ext = (file.name.split('.').pop() || (isPdf ? 'pdf' : 'bin')).toLowerCase();
-      const path = `${user.id}/rider_attachment_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type || (isPdf ? 'application/pdf' : undefined) });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${data.publicUrl}?t=${Date.now()}`;
-      patchBox(box.id, { attachmentUrl: url, attachmentName: file.name });
-    } catch {
-      setAttachMsg((m) => ({ ...m, [box.id]: 'Upload failed — try again.' }));
-    } finally {
-      setAttachBusy((s) => ({ ...s, [box.id]: false }));
-    }
-  }
-  function removeAttachment(box: RiderBox) {
-    setAttachMsg((m) => ({ ...m, [box.id]: null }));
-    patchBox(box.id, { attachmentUrl: undefined, attachmentName: undefined });
   }
 
   // ── Native HTML5 drag-and-drop for box reordering ──
@@ -382,64 +342,6 @@ export default function RiderEditor({
               );
             })()}
 
-            {/* Attachment — Technical + Visuals boxes only. One image or PDF,
-                ≤5MB, that travels with the rider (attached to the host email
-                and linked on the host page every time it's sent). */}
-            {sectionAllowsAttachment(box.section) && (
-              <div style={{ marginTop: '.85rem', paddingTop: '.75rem', borderTop: BORDER }}>
-                {box.attachmentUrl ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-                    <span aria-hidden style={{ color: NEON, fontSize: '1rem', flexShrink: 0 }}>📎</span>
-                    <a
-                      href={box.attachmentUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: '#fff', fontSize: '.84rem', wordBreak: 'break-all', textDecoration: 'underline' }}
-                    >
-                      {box.attachmentName || 'Attachment'}
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(box)}
-                      aria-label="Remove attachment"
-                      style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem', textDecoration: 'underline', padding: 0 }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <label
-                      title="Attach a file (image or PDF)"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.3rem',
-                        background: NEON, border: `1px solid ${NEON}`, borderRadius: 8,
-                        color: '#04120d', padding: '.35rem .55rem', fontSize: '.75rem', fontWeight: 800,
-                        cursor: attachBusy[box.id] ? 'default' : 'pointer', opacity: attachBusy[box.id] ? 0.6 : 1,
-                        boxSizing: 'border-box', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        hidden
-                        disabled={!!attachBusy[box.id]}
-                        onChange={(e) => onPickAttachment(box, e)}
-                      />
-                      {attachBusy[box.id] ? '…' : '📎 Attach'}
-                    </label>
-                  </div>
-                )}
-                <div style={{ color: MUTED, fontSize: '.72rem', marginTop: '.4rem' }}>
-                  One file, max 5MB. Sent with the rider every time. For larger
-                  files, add a link through a hosted provider (Google Drive,
-                  Dropbox, etc.) in the text field above.
-                </div>
-                {attachMsg[box.id] && (
-                  <div style={{ color: '#ff9a9a', fontSize: '.76rem', marginTop: '.35rem' }}>{attachMsg[box.id]}</div>
-                )}
-              </div>
-            )}
           </div>
         );
       })}
