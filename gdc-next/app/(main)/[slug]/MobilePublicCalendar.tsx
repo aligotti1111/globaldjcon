@@ -381,8 +381,15 @@ export default function MobilePublicCalendar({
   async function quickMark(key: string) {
     const cur = bookingDays[key];
     if (cur && cur.booked) return;
+    const hasRealBooking = (countByDate[key] || 0) > 0;
     const next: MobileBookingDays = { ...bookingDays };
-    if (cur && cur.unavailable) {
+    if (hasRealBooking) {
+      // The day already has a confirmed booking, so "unavailable" here really
+      // means "close this date to NEW bookings" — mark it fully BOOKED (red),
+      // never unavailable (grey). Only the calendar overlay is written; the
+      // existing booking row is untouched.
+      next[key] = { ...cur, booked: true };
+    } else if (cur && cur.unavailable) {
       // Marking available again: drop only the unavailable flag, keep any price
       // nudge / capacity the day carries. Delete the entry only if nothing's left.
       const rest = { ...cur };
