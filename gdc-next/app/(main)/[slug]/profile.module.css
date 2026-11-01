@@ -1,4 +1,4 @@
-/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
+\/* DJ Profile page styles — faithful port of vanilla dj-profile.css.
    CSS Module → class names auto-hashed, descendant element selectors preserved.
 
    Excluded from port (handled elsewhere or not relevant for Session 1):
@@ -1866,6 +1866,8 @@
 }
 @media (max-width: 900px) {
   .aboutGrid { grid-template-columns: 1fr; }
+  /* On mobile, Quick Facts stack ABOVE the About card. */
+  .aboutGrid .aboutStatsWrap { order: -1; }
 }
 .aboutStatsHeading {
   display: inline-block;
