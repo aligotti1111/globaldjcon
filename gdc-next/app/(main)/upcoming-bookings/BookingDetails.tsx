@@ -1381,7 +1381,7 @@ export default function BookingDetails({
       {/* DJ Rider — club/bar only. Takes the slot mobile uses for Planner &
           Playlist. The DJ customizes this booking's rider here and deploys it
           to the host. */}
-      {bt === 'club' && (
+      {bt === 'club' && savedRiders.length > 0 && (
         <div style={{ margin: '0 0 1rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
           {savedRiders.map((r) => (
             <button
@@ -1394,13 +1394,6 @@ export default function BookingDetails({
               Send &ldquo;{r.name}&rdquo;
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => setRiderChooserOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,.28)', borderRadius: 8, color: '#fff', padding: '.55rem .9rem', fontWeight: 600, fontSize: '.85rem', cursor: 'pointer' }}
-          >
-            Rider portal
-          </button>
         </div>
       )}
       {riderChooserOpen && (
