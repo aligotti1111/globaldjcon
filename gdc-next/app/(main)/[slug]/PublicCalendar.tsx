@@ -877,12 +877,15 @@ function SingleMonthView({
       isOwnProfile && !isPast && (hasCustomRate || manuallyBooked || bookedAndClosed) ? (
         <div
           style={{
+            position: 'absolute',
+            top: 3,
+            left: 3,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
             gap: 1,
-            marginTop: 2,
             pointerEvents: 'none',
+            zIndex: 2,
           }}
         >
           {bookedAndClosed && (
