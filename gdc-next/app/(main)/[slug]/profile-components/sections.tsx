@@ -185,6 +185,7 @@ export function AboutStatsRow({
     if (stats.residencies?.on && stats.residencies.text) cards.push({ key: 'residencies', label: 'Current residence', value: stats.residencies.text });
     if (stats.mixer?.on && stats.mixer.text) cards.push({ key: 'mixer', label: 'Preferred mixer / controller', value: stats.mixer.text });
     if (stats.decks?.on && stats.decks.text) cards.push({ key: 'decks', label: 'Preferred decks', value: stats.decks.text });
+    if (stats.goToFormat?.on && stats.goToFormat.value) cards.push({ key: 'goToFormat', label: 'Go-to format', value: stats.goToFormat.value });
     if (stats.travels?.on) cards.push({ key: 'travels', label: 'Travels for bookings', value: stats.travels.answer || 'Yes' });
     if (stats.followers?.on && stats.followers.count) cards.push({ key: 'followers', label: 'Total Followers', value: fmtFollowers(stats.followers.count) });
   } else {
@@ -205,10 +206,11 @@ export function AboutStatsRow({
   for (let y = currentYear; y >= 1970; y--) years.push(y);
   const eventTiers = ['50+', '100+', '200+', '500+', '1000+'];
   const depositPcts = Array.from({ length: 99 }, (_, i) => `${i + 1}%`);
+  const formats = ['Open format', 'Hip-Hop / R&B', 'House', 'EDM', 'Top 40 / Pop', 'Latin / Reggaeton', 'Techno', 'Afrobeats', 'Disco / Funk', 'Country'];
 
   // The editable facts, in display order. Labels match the public cards so the
   // owner sees exactly what a visitor sees as they fill each one in.
-  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text' }[] = isClub
+  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text' | 'format' }[] = isClub
     ? [
         { key: 'established', label: establishedLabel, control: 'year' },
         { key: 'events', label: eventsLabel, control: 'tier' },
@@ -216,6 +218,7 @@ export function AboutStatsRow({
         { key: 'residencies', label: 'Current residence', control: 'text' },
         { key: 'mixer', label: 'Preferred mixer or controller', control: 'text' },
         { key: 'decks', label: 'Preferred decks', control: 'text' },
+        { key: 'goToFormat', label: 'Go-to format', control: 'format' },
         { key: 'travels', label: 'Travels for bookings', control: 'yesno' },
       ]
     : [
@@ -237,8 +240,22 @@ export function AboutStatsRow({
 
   // Renders the inline editor control that sits in place of a card's value, so
   // the owner edits the exact public box. `big` styles it like the teal value.
-  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text', big?: boolean) {
+  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text' | 'format', big?: boolean) {
     const cls = big ? styles.aboutStatValueSelect : styles.aboutStatsSelect;
+    if (control === 'format') {
+      // Fixed-list dropdown (Go-to format). Picking a value activates the fact;
+      // choosing the blank option hides it.
+      return (
+        <select
+          className={cls}
+          value={draft.goToFormat?.value ?? ''}
+          onChange={(e) => setDraft(d => ({ ...d, goToFormat: { ...(d.goToFormat || {}), value: e.target.value || undefined, on: !!e.target.value } }))}
+        >
+          <option value="">Format…</option>
+          {formats.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+      );
+    }
     if (control === 'text') {
       // Free text entry (Current residence, preferred gear). Typing a value
       // activates the fact; clearing it hides the fact.
