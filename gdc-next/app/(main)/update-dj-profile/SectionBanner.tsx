@@ -74,12 +74,20 @@ export default function SectionBanner({
 }) {
   return (
     <div
+      className="gdc-sec-banner"
       style={{
         position: 'relative', display: 'flex', alignItems: 'center', gap: 16,
         padding: '20px 26px', borderBottom: '1px solid rgba(255,255,255,.14)',
         background: 'linear-gradient(180deg,rgba(34,227,173,.10),rgba(34,227,173,.02))',
       }}
     >
+      {/* On phones the right-side meters stack UNDER the title (they're
+          flex-shrink:0 with nowrap labels, so inline they crush the heading). */}
+      <style>{`@media (max-width:640px){
+        .gdc-sec-banner{flex-wrap:wrap}
+        .gdc-sec-banner-right{margin-left:0 !important;width:100%;align-self:flex-start !important;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);gap:6px}
+        .gdc-sec-banner-right > div{justify-content:space-between !important;white-space:normal !important}
+      }`}</style>
       <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: GRAD }} />
       <span
         style={{
@@ -104,7 +112,7 @@ export default function SectionBanner({
           a caller can anchor one thing to the top-right and another to the
           bottom-right (e.g. the completed counter up top, "Pending" below). */}
       {right && (
-        <span style={{ marginLeft: 16, alignSelf: 'stretch', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flexShrink: 0 }}>
+        <span className="gdc-sec-banner-right" style={{ marginLeft: 16, alignSelf: 'stretch', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flexShrink: 0 }}>
           {right}
         </span>
       )}
