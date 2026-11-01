@@ -386,8 +386,9 @@
      cell's content from widening its column and pushing the grid past 100%
      (the recurring "calendar gets shifted/clipped" bug). */
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  /* Embed-style: individual rounded cells with small gaps */
-  gap: 4px;
+  /* Continuous grid: cells sit flush against each other, no gaps — matches
+     the mobile-DJ booking calendar. */
+  gap: 0;
   width: 100%;
   box-sizing: border-box;
   /* Equal-height rows at EVERY width. A cell with owner controls, a
@@ -420,8 +421,10 @@
 /* Real day cell — base styles, modifiers below */
 .cell {
   position: relative;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  /* Flush cells: no rounded corners, no gaps, brighter edge-to-edge border —
+     matches the mobile-DJ booking calendar. */
+  border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: 0;
   min-height: 70px;
   padding: .4rem .15rem .3rem;
   display: flex;
