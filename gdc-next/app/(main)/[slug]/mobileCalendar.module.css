@@ -784,6 +784,7 @@
   line-height: 1;
   pointer-events: auto;
   z-index: 5;
+  font-family: 'Space Mono', monospace;
 }
 .ownerQuickMark {
   left: 4px;
