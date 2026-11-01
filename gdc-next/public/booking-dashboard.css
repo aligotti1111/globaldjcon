@@ -91,23 +91,26 @@
 .gdc-dash .card{background:var(--card);border:1px solid var(--line);border-radius:16px}
 .gdc-dash .section.mobile .card{box-shadow:0 0 0 1px rgba(0,245,196,.12),0 0 28px rgba(0,245,196,.05)}
 .gdc-dash .section.club .card{box-shadow:0 0 0 1px rgba(245,230,66,.12),0 0 28px rgba(245,230,66,.05)}
-.gdc-dash .toprow{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 40px 12px 16px;background:#000;border-radius:15px 15px 0 0}
-/* Stacked header so long venue names never run off the card edge:
-     line 1 — event type + venue (side by side, full width, OVER the time)
-     line 2 — date + time (same line); chevron sits inline at the far right
+.gdc-dash .toprow{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 40px 12px 16px;background:#000;border-radius:15px 15px 0 0}
+/* Clean, minimal collapsed header (less is more):
+     line 1 — event type only, big, OVER the time (venue hidden until expanded)
+     line 2 — date + time (same line, enlarged); chevron inline at the far right
    The share (⋯) button is pinned top-right on its own, so the chevron is kept
    inline here (not absolute) to avoid overlapping it. */
-.gdc-dash .toprow .trright{order:1;flex-basis:100%;width:100%;margin:0 0 6px;padding:0;border:none;flex-direction:row;align-items:baseline;gap:10px;min-width:0;overflow:hidden}
-.gdc-dash .toprow .trright .trevent{flex-shrink:0;white-space:nowrap}
-/* vertical divider between the event type and the venue */
-.gdc-dash .toprow .trright .dvvenue{min-width:0;flex:1 1 auto;margin-top:0;padding-left:10px;border-left:1px solid rgba(255,255,255,.22)}
+.gdc-dash .toprow .trright{order:1;flex-basis:100%;width:100%;margin:0 0 4px;padding:0;border:none;flex-direction:row;align-items:baseline;gap:10px;min-width:0;overflow:hidden}
+.gdc-dash .toprow .trright .trevent{flex-shrink:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Venue name is dropped from the collapsed card — it shows in the expanded view. */
+.gdc-dash .toprow .trright .dvvenue{display:none}
 .gdc-dash .toprow .dateb{order:2}
 .gdc-dash .toprow .trmid{order:3;flex-basis:auto;width:auto}
-.gdc-dash .toprow .trchev{order:4;position:static;margin-left:auto;align-self:center}
-.gdc-dash .toprow .flyer{margin-left:0;flex-shrink:0}
+/* club flyer thumbnail sits on the date/time line (wraps below it on tight
+   widths), with the chevron at the far right. */
+.gdc-dash .toprow .flyer{order:4;flex-shrink:0;align-self:center;margin-left:auto;width:40px;height:40px}
+.gdc-dash .toprow .trchev{order:5;position:static;margin-left:6px;align-self:center}
 .gdc-dash .trtime{font-size:.86rem;color:var(--ink);white-space:nowrap;flex-shrink:0}
-/* Match the desktop event-type styling: Oswald, uppercase. */
-.gdc-dash .trevent{font-family:'Oswald',sans-serif;font-weight:600;font-size:1.05rem;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gdc-dash .toprow .trtime{font-size:1.1rem}
+/* Match the desktop event-type styling (Oswald, uppercase), bigger. */
+.gdc-dash .trevent{font-family:'Oswald',sans-serif;font-weight:700;font-size:1.5rem;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gdc-dash .trchev{color:var(--muted);display:inline-flex;flex-shrink:0}
 .gdc-dash .trchev svg{width:18px;height:18px}
 .gdc-dash .flyer{margin-left:auto;flex-shrink:0;width:46px;height:46px;border:1.5px dashed rgba(255,255,255,.22);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--faint)}
