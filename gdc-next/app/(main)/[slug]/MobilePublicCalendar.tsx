@@ -379,17 +379,23 @@ export default function MobilePublicCalendar({
   // Vanilla mobPubQuickMark — toggles unavailable flag. If already booked,
   // do nothing (use the edit modal to clear bookings).
   async function quickMark(key: string) {
-    const cur = bookingDays[key];
-    if (cur && cur.booked) return;
+    const cur = bookingDays[key] || ({} as MobileDayData);
     const hasRealBooking = (countByDate[key] || 0) > 0;
     const next: MobileBookingDays = { ...bookingDays };
-    if (hasRealBooking) {
+    if (cur.booked) {
+      // Re-open a date the owner force-closed. Drop only the booked flag; any
+      // real booking row behind it is untouched and keeps the day red on its own.
+      const rest = { ...cur };
+      delete rest.booked;
+      if (Object.keys(rest).length > 0) next[key] = rest;
+      else delete next[key];
+    } else if (hasRealBooking) {
       // The day already has a confirmed booking, so "unavailable" here really
       // means "close this date to NEW bookings" — mark it fully BOOKED (red),
       // never unavailable (grey). Only the calendar overlay is written; the
       // existing booking row is untouched.
       next[key] = { ...cur, booked: true };
-    } else if (cur && cur.unavailable) {
+    } else if (cur.unavailable) {
       // Marking available again: drop only the unavailable flag, keep any price
       // nudge / capacity the day carries. Delete the entry only if nothing's left.
       const rest = { ...cur };
@@ -833,9 +839,23 @@ function SingleMonthView({
       // Owner gets ✓/✗ quick-mark + ✏️ edit pencil. Shown for all
       // non-past dates — even booked ones get the pencil so the owner
       // can edit/clear the booking. Quick-mark only shown when not booked.
+      // Quick ✕/✓ control. Hidden only when the day is genuinely full from
+      // capacity (nothing to close). On a day with a real booking it shows ✕
+      // to fully close the date; on a force-closed day it shows ✓ to re-open;
+      // on a free day it toggles unavailable.
+      const forcedClosed = !!dayData.booked;
+      const realBooking = (countByDate[key] || 0) > 0;
+      const quickIsReopen = forcedClosed || isUnavail;
+      const quickTitle = forcedClosed
+        ? 'Re-open this date'
+        : realBooking
+          ? 'Close this date (mark fully booked)'
+          : isUnavail
+            ? 'Mark available'
+            : 'Mark unavailable';
       inner = (
         <div className={styles.ownerControls}>
-          {!showsAsBooked && (
+          {!isFull && (
             <button
               type="button"
               onClick={(e) => {
@@ -843,11 +863,11 @@ function SingleMonthView({
                 onQuickMark(key);
               }}
               className={`${styles.ownerQuickMark} ${
-                isUnavail ? styles.ownerQuickMarkActive : ''
+                quickIsReopen ? styles.ownerQuickMarkActive : ''
               }`}
-              title={isUnavail ? 'Mark available' : 'Mark unavailable'}
+              title={quickTitle}
             >
-              {isUnavail ? '✓' : '✕'}
+              {quickIsReopen ? '✓' : '✕'}
             </button>
           )}
           <button
