@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from '../profile.module.css';
 import { createClient } from '@/lib/supabase/client';
@@ -149,7 +149,8 @@ export function AboutStatsRow({
   djType?: 'club' | 'mobile' | string | null;
 }) {
   const isClub = djType === 'club';
-  const eventsLabel = isClub ? 'Sets played' : 'Total events';
+  const eventsLabel = isClub ? 'Events played' : 'Total events';
+  const establishedLabel = isClub ? 'Year established' : 'Established';
   // A follower count the owner typed → grouped with thousands separators for the
   // public card (e.g. "12000" → "12,000"). Non-numeric input shows as-is.
   const fmtFollowers = (raw: string): string => {
@@ -158,53 +159,40 @@ export function AboutStatsRow({
     return Number(digits).toLocaleString('en-US');
   };
   const [draft, setDraft] = useState<AboutStats>(stats);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  // Autosave — just like the About bio. Answering a fact (or ticking it) saves;
+  // clearing/unchecking a fact removes it. No Save button, no redirect.
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    setSaved(false);
+    const t = setTimeout(() => {
+      saveProfile(userId, { about_stats: JSON.stringify(draft) })
+        .then(() => { setSaved(true); setError(null); })
+        .catch((err) => setError(err instanceof Error ? err.message : 'Save failed.'));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [draft, userId]);
 
   // Build the list of cards to show to visitors (activated + has a value).
   type Card = { key: string; label: string; value: string };
   const cards: Card[] = [];
-  if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: 'Established', value: String(stats.established.year) });
+  if (stats.established?.on && stats.established.year) cards.push({ key: 'established', label: establishedLabel, value: String(stats.established.year) });
   if (stats.events?.on && stats.events.tier) cards.push({ key: 'events', label: eventsLabel, value: stats.events.tier });
-  if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: stats.insured.answer || 'Yes' });
   if (isClub) {
-    if (stats.ownEquipment?.on) cards.push({ key: 'ownEquipment', label: 'Brings own equipment', value: stats.ownEquipment.answer || 'Yes' });
-    if (stats.residencies?.on) cards.push({ key: 'residencies', label: 'Open to residencies', value: stats.residencies.answer || 'Yes' });
+    if (stats.residencies?.on && stats.residencies.text) cards.push({ key: 'residencies', label: 'Current residence', value: stats.residencies.text });
     if (stats.travels?.on) cards.push({ key: 'travels', label: 'Travels for bookings', value: stats.travels.answer || 'Yes' });
     if (stats.followers?.on && stats.followers.count) cards.push({ key: 'followers', label: 'Total Followers', value: fmtFollowers(stats.followers.count) });
   } else {
+    if (stats.insured?.on) cards.push({ key: 'insured', label: 'Insured', value: stats.insured.answer || 'Yes' });
     if (stats.depositRequired?.on) cards.push({ key: 'depositRequired', label: 'Deposit required', value: stats.depositRequired.answer || 'Yes' });
     if (stats.deposit?.on && stats.deposit.value) cards.push({ key: 'deposit', label: 'Deposit %', value: /%\s*$/.test(stats.deposit.value.trim()) ? stats.deposit.value.trim() : `${stats.deposit.value.trim().replace(/[^0-9.]/g, '')}%` });
     if (stats.destination?.on) cards.push({ key: 'destination', label: 'Destination weddings', value: stats.destination.answer || 'Yes' });
+    if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: stats.backup.answer || 'Yes' });
   }
-  if (stats.backup?.on) cards.push({ key: 'backup', label: 'Backup equipment', value: stats.backup.answer || 'Yes' });
 
-  async function save() {
-    // Any fact that's turned on must have an answer before saving.
-    const missing = STAT_FIELDS.filter(f => {
-      if (!draft[f.key]?.on) return false;
-      if (f.control === 'year') return !draft.established?.year;
-      if (f.control === 'tier') return !draft.events?.tier;
-      if (f.control === 'pct') return !draft.deposit?.value;
-      if (f.control === 'count') return !draft.followers?.count;
-      return !(draft[f.key] as { answer?: string } | undefined)?.answer;
-    });
-    if (missing.length) {
-      setError(`Please answer (or turn off): ${missing.map(f => f.label).join(', ')}.`);
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await saveProfile(userId, { about_stats: JSON.stringify(draft) });
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', 'about');
-      window.location.href = url.toString();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed.');
-      setBusy(false);
-    }
-  }
 
   function toggle(key: keyof AboutStats) {
     setDraft(d => ({ ...d, [key]: { ...(d[key] || {}), on: !(d[key]?.on) } }));
@@ -218,16 +206,13 @@ export function AboutStatsRow({
 
   // The editable facts, in display order. Labels match the public cards so the
   // owner sees exactly what a visitor sees as they fill each one in.
-  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' }[] = isClub
+  const STAT_FIELDS: { key: keyof AboutStats; label: string; control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text' }[] = isClub
     ? [
-        { key: 'established', label: 'Established', control: 'year' },
+        { key: 'established', label: establishedLabel, control: 'year' },
         { key: 'events', label: eventsLabel, control: 'tier' },
         { key: 'followers', label: 'Total Followers', control: 'count' },
-        { key: 'insured', label: 'Insured', control: 'yesno' },
-        { key: 'ownEquipment', label: 'Brings own equipment', control: 'yesno' },
-        { key: 'residencies', label: 'Open to residencies', control: 'yesno' },
+        { key: 'residencies', label: 'Current residence', control: 'text' },
         { key: 'travels', label: 'Travels for bookings', control: 'yesno' },
-        { key: 'backup', label: 'Backup equipment', control: 'yesno' },
       ]
     : [
         { key: 'established', label: 'Established', control: 'year' },
@@ -248,8 +233,24 @@ export function AboutStatsRow({
 
   // Renders the inline editor control that sits in place of a card's value, so
   // the owner edits the exact public box. `big` styles it like the teal value.
-  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno' | 'count', big?: boolean) {
+  function renderStatControl(key: keyof AboutStats, control: 'year' | 'tier' | 'pct' | 'yesno' | 'count' | 'text', big?: boolean) {
     const cls = big ? styles.aboutStatValueSelect : styles.aboutStatsSelect;
+    if (control === 'text') {
+      // Free text entry (Current residence). Typing a value activates the fact;
+      // clearing it hides the fact.
+      return (
+        <input
+          type="text"
+          className={cls}
+          placeholder="e.g. Las Vegas, NV"
+          value={draft.residencies?.text ?? ''}
+          onChange={(e) => {
+            const v = e.target.value;
+            setDraft(d => ({ ...d, residencies: { ...(d.residencies || {}), text: v || undefined, on: !!v.trim() } }));
+          }}
+        />
+      );
+    }
     if (control === 'count') {
       // Free number entry (Total Followers). Digits only; stored as the raw
       // string and grouped with separators on the public card.
@@ -343,10 +344,9 @@ export function AboutStatsRow({
               );
             })}
           </div>
-          {error && <div className={styles.testimonialAddError}>{error}</div>}
-          <div className={styles.aboutStatsActions}>
-            <button type="button" className={styles.testimonialAddSave} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
-          </div>
+          {error
+            ? <div className={styles.testimonialAddError}>{error}</div>
+            : saved && <div className={styles.aboutStatsHint} style={{ marginTop: 8 }}>Saved ✓</div>}
         </div>
       </div>
     );
