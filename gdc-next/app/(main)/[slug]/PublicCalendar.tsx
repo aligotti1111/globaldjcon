@@ -1253,6 +1253,24 @@ function OwnerDayEditPopup({
   );
   const [eventName, setEventName] = useState<string>(dayData.eventName || '');
 
+  // Unsaved-changes guard: set true whenever the DJ edits this day (status
+  // toggle, rate type, or a rate value). Warns before closing the modal or
+  // leaving the page without saving. Reset by a successful save (handleSave).
+  const [dirty, setDirty] = useState(false);
+  // Warn on tab close / navigation while there are unsaved edits.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  // Close with a confirm if there are unsaved edits; used by the ✕, Cancel,
+  // and backdrop click.
+  const attemptClose = () => {
+    if (dirty && !window.confirm('You have unsaved changes to this day. Leave without saving?')) return;
+    onClose();
+  };
+
   // All approved bookings for this date (up to 3 — the hard cap). Each
   // can be manual (editable) or request-based (read-only). Rendered as
   // an accordion: one expanded at a time. Replaces the older one-manual-
@@ -1418,11 +1436,11 @@ function OwnerDayEditPopup({
 
   if (typeof document === 'undefined') return null;
   return createPortal(
-    <div className={styles.ownerEditBackdrop} onClick={onClose}>
+    <div className={styles.ownerEditBackdrop} onClick={attemptClose}>
       <div className={styles.ownerEditBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.ownerEditHeader}>
           <div className={styles.ownerEditDate}>{formatted}</div>
-          <button type="button" onClick={onClose} className={styles.ownerEditClose}>✕</button>
+          <button type="button" onClick={attemptClose} className={styles.ownerEditClose}>✕</button>
         </div>
 
         {/* Booked-day tab bar — pinned at the top, always visible once
@@ -1457,7 +1475,7 @@ function OwnerDayEditPopup({
           <div className={styles.ownerEditStatusRow}>
             <button
               type="button"
-              onClick={() => setStatus(status === 'booked' ? 'available' : 'booked')}
+              onClick={() => { setDirty(true); setStatus(status === 'booked' ? 'available' : 'booked'); }}
               aria-pressed={status === 'booked'}
               style={{
                 width: '100%',
@@ -1513,7 +1531,7 @@ function OwnerDayEditPopup({
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setRateType(t)}
+                    onClick={() => { setDirty(true); setRateType(t); }}
                     style={{
                       padding: '.35rem .8rem',
                       fontFamily: "'Space Mono', monospace",
@@ -1536,11 +1554,14 @@ function OwnerDayEditPopup({
                 const isHourly = rateType === 'hourly';
                 const suffix = isHourly ? ' (per hour)' : '';
                 const sysVal = isHourly ? rateHourlyWithSystem : rateWithSystem;
-                const sysSet = isHourly ? setRateHourlyWithSystem : setRateWithSystem;
+                const sysSetRaw = isHourly ? setRateHourlyWithSystem : setRateWithSystem;
+                const sysSet = (v: string) => { setDirty(true); sysSetRaw(v); };
                 const decksVal = isHourly ? rateHourlyWithDecks : rateWithDecks;
-                const decksSet = isHourly ? setRateHourlyWithDecks : setRateWithDecks;
+                const decksSetRaw = isHourly ? setRateHourlyWithDecks : setRateWithDecks;
+                const decksSet = (v: string) => { setDirty(true); decksSetRaw(v); };
                 const noneVal = isHourly ? rateHourlyNoEquip : rateNoEquip;
-                const noneSet = isHourly ? setRateHourlyNoEquip : setRateNoEquip;
+                const noneSetRaw = isHourly ? setRateHourlyNoEquip : setRateNoEquip;
+                const noneSet = (v: string) => { setDirty(true); noneSetRaw(v); };
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     {equipFull && (
@@ -1703,7 +1724,7 @@ function OwnerDayEditPopup({
             open (the form provides its own buttons). */}
         {!(status === 'booked' && addingBooking) && (
           <div className={styles.ownerEditActions}>
-            <button type="button" onClick={onClose} className={styles.ownerEditCancelBtn}>
+            <button type="button" onClick={attemptClose} className={styles.ownerEditCancelBtn}>
               Cancel
             </button>
             <button type="button" onClick={handleSave} className={styles.ownerEditSaveBtn}>
