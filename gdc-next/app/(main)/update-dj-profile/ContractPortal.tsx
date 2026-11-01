@@ -808,7 +808,7 @@ export default function ContractPortal({
       {/* ── Create a new contract ── */}
       {/* Scoped rule so the four create tiles stay on ONE row on desktop and fall
           back to a 2×2 grid on phones (inline styles can't do media queries). */}
-      <style>{`.gdc-create-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}@media (max-width:640px){.gdc-create-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}`}</style>
+      <style>{`.gdc-create-tiles{display:flex;flex-wrap:wrap;justify-content:center;gap:.6rem}.gdc-create-tiles>div{flex:1 1 200px;max-width:300px}@media (max-width:640px){.gdc-create-tiles>div{flex:1 1 140px}}`}</style>
       <div style={sectionLabel}>Create a contract</div>
       <div className="gdc-create-tiles">
         <div style={{ ...cardBase, minHeight: 96, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', cursor: 'pointer' }} onClick={openPaste}>
