@@ -385,6 +385,7 @@ export default function BookingDetails({
       onClick={() => openSection(sec)}
       title="Edit these details"
       aria-label="Edit these details"
+      className={styles.editPencilBtn}
       style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, background: 'transparent', border: '1px solid rgba(255,255,255,.16)', borderRadius: 7, color: 'var(--muted,#8a8aa0)', cursor: 'pointer', flexShrink: 0 }}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
