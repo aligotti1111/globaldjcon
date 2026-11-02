@@ -1556,6 +1556,8 @@ function OwnerDayEditModal({
             type="button"
             onClick={handleSave}
             className={styles.ownerModalSave}
+            disabled={!dirty}
+            style={!dirty ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
           >
             Save changes
           </button>
