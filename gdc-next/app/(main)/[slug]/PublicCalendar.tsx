@@ -18,7 +18,7 @@
 //   - The selected-date highlight (amber) won't fire because nothing is
 //     setting `selectedDate` yet; the prop exists to wire up cleanly later.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './calendar.module.css';
 import MonthEventsList from './MonthEventsList';
@@ -168,6 +168,25 @@ export default function PublicCalendar({
   // write happens in the background. Public visitors get the prop value
   // straight through (no edits possible).
   const [bookingDays, setBookingDays] = useState<BookingDays>(initialBookingDays);
+  // Always-current mirror of bookingDays. Quick-toggling several 12-month cells
+  // in a row fires handlers faster than React re-renders, so reading from the
+  // `bookingDays` closure would compute each new blob from a stale snapshot and
+  // drop the previous toggle. The ref is updated synchronously on every edit so
+  // each toggle builds on the latest state.
+  const bookingDaysRef = useRef<BookingDays>(initialBookingDays);
+  // Serializes calendar writes. persistBookingDays does a server-side
+  // read-modify-write of the whole booking_settings blob, so two overlapping
+  // saves can clobber each other. Chaining them guarantees each write sees the
+  // prior one.
+  const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  function applyBookingDays(next: BookingDays) {
+    bookingDaysRef.current = next;
+    setBookingDays(next);
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => {})
+      .then(() => persistBookingDays(next));
+    return persistQueueRef.current;
+  }
   // Approved-bookings count per date (YYYY-MM-DD → count). Drives the
   // diagonal partial-fill on club calendars: a day's red fraction is
   // count / capacity. Only APPROVED bookings count — pending/countered
@@ -295,6 +314,7 @@ export default function PublicCalendar({
   // actually changes — owner edits flow through setBookingDays here
   // and would be clobbered if we mirrored the prop on every render.
   useEffect(() => {
+    bookingDaysRef.current = initialBookingDays;
     setBookingDays(initialBookingDays);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialBookingDays]);
@@ -341,9 +361,10 @@ export default function PublicCalendar({
   // toggled from the cell — owner has to open the editor to clear an
   // event. (Matches MobilePublicCalendar.)
   function quickToggleUnavail(key: string) {
-    const cur = bookingDays[key] || ({} as DayData);
+    const curDays = bookingDaysRef.current;
+    const cur = curDays[key] || ({} as DayData);
     const hasRealBooking = (countByDate[key] || 0) > 0;
-    const next: BookingDays = { ...bookingDays };
+    const next: BookingDays = { ...curDays };
     if (cur.booked) {
       // Re-open a date the owner had force-closed. Drop just the booked
       // flag; the real booking row (if any) is untouched and keeps the day
@@ -366,19 +387,17 @@ export default function PublicCalendar({
     } else {
       next[key] = { ...cur, unavailable: true };
     }
-    setBookingDays(next);
-    persistBookingDays(next);
+    applyBookingDays(next);
   }
 
   // Save handler from the day-edit modal. update === null means "reset
   // to default" (drop the entry entirely).
   async function saveOwnerEdit(key: string, update: DayData | null) {
-    const next: BookingDays = { ...bookingDays };
+    const next: BookingDays = { ...bookingDaysRef.current };
     if (update === null) delete next[key];
     else next[key] = update;
-    setBookingDays(next);
     setOwnerEditKey(null);
-    await persistBookingDays(next);
+    await applyBookingDays(next);
   }
 
   // ── Navigation handlers ────────────────────────────────────────────
