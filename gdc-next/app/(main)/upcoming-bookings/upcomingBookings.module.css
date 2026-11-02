@@ -1899,7 +1899,8 @@ select.input {
      add no specificity). */
   .rowWrapExpanded .row,
   .rowWrapExpanded .row:hover {
-    background: transparent;
+    /* Keep the grey header shade when the card is expanded too. */
+    background: #121219;
   }
   /* The column headers are the one thing that cannot survive the trip. They
      label tracks, and there are no tracks down here. */
@@ -2109,21 +2110,22 @@ select.input {
     justify-self: end;
     z-index: 6;
   }
-  /* The "M" manual tag sits in the event-type band (top-left), opposite the ⋯. */
+  /* The "M" manual tag and the overlap ⚠ sit in the top-right of the event band,
+     just left of the ⋯ menu (M closest to the corner), not centered under the
+     event name. */
+  .row { position: relative; }
   .rowActionsCell .manualPill,
   .rowActionsCell .cancelledInline {
     grid-area: event;
-    align-self: start;
-    justify-self: start;
-    z-index: 6;
-  }
-  /* The overlap ⚠ goes in the top-right corner (just left of the ⋯), not
-     centered under the event name. */
-  .row { position: relative; }
-  .rowContext .overlapPill {
     position: absolute;
     top: 9px;
     right: 42px;
+    z-index: 6;
+  }
+  .rowContext .overlapPill {
+    position: absolute;
+    top: 9px;
+    right: 74px;
     margin: 0;
     z-index: 6;
   }
