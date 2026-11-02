@@ -1120,7 +1120,7 @@ export default function BookingRow({
               </span>
             )}
           </div>
-          {overlaps && (
+          {overlaps && !archive && (
             <span
               className={styles.overlapPill}
               title="This booking's time overlaps another booking on the same day"
