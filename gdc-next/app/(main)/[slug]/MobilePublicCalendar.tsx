@@ -980,25 +980,11 @@ function SingleMonthView({
 
   return (
     <div>
-      {(onEmbedClick || ownerToggle) && (
+      {ownerToggle && (
         <div className={styles.monthHeaderRow}>
           <div className={styles.monthHeaderActions}>
             {/* Owner view / public preview toggle — desktop only. */}
-            {ownerToggle && <span className={styles.ownerToggleWrap}>{ownerToggle}</span>}
-            {onEmbedClick && (
-              <button
-                type="button"
-                className={styles.embedInlineBtn}
-                onClick={onEmbedClick}
-                title="Embed Calendar"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <polyline points="16 18 22 12 16 6" />
-                  <polyline points="8 6 2 12 8 18" />
-                </svg>
-                Embed Calendar
-              </button>
-            )}
+            <span className={styles.ownerToggleWrap}>{ownerToggle}</span>
           </div>
         </div>
       )}
@@ -1013,6 +999,24 @@ function SingleMonthView({
       </div>
 
       <div className={`${styles.cellsGrid} ${styles.cellsGridCompact}`}>{cells}</div>
+
+      {/* Embed Calendar — owner-only, below the grid, bottom-right. */}
+      {onEmbedClick && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.6rem' }}>
+          <button
+            type="button"
+            className={styles.embedInlineBtn}
+            onClick={onEmbedClick}
+            title="Embed Calendar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            Embed Calendar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
