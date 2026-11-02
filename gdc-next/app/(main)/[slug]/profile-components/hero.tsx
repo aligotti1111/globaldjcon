@@ -362,17 +362,18 @@ export function SocialAddButton({
             where the glyph is larger and the badge must tuck closer). */}
         <span className={styles.socialAddBadge} style={{
           position: 'absolute',
-          top: -10,
-          right: -10,
+          top: -3,
+          right: -3,
           width: 14,
           height: 14,
-          background: 'transparent',
-          color: '#fff',
+          borderRadius: '50%',
+          background: '#fff',
+          color: '#08080d',
           fontSize: '0.6rem',
           fontWeight: 800,
           lineHeight: 1,
           textAlign: 'center',
-          border: 'none',
+          border: '1.5px solid #08080d',
           boxSizing: 'border-box',
           pointerEvents: 'none',
           display: 'flex',
@@ -380,9 +381,8 @@ export function SocialAddButton({
           justifyContent: 'center',
         }}>
           {/* Always a "+" — the badge means "manage this link" whether the icon
-              is empty (add) or already set (edit the existing link). White glyph,
-              no circle. */}
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" aria-hidden="true" style={{ display: 'block' }}>
+              is empty (add) or already set (edit the existing link). */}
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#08080d" strokeWidth="4" strokeLinecap="round" aria-hidden="true" style={{ display: 'block' }}>
             <path d="M12 5v14" />
             <path d="M5 12h14" />
           </svg>
