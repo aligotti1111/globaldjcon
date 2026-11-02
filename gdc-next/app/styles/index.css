@@ -470,13 +470,14 @@
 .mobile-menu-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0;}
 @media(max-width:600px){
   .hamburger-btn{display:flex !important;align-items:center;justify-content:center;position:static !important;transform:none !important;}
-  .header-inner{display:grid !important;grid-template-columns:minmax(36px,1fr) auto minmax(36px,1fr) !important;align-items:center !important;padding:.75rem 1rem !important;gap:.5rem !important;flex-direction:unset !important;}
+  /* Columns: fixed hamburger | flexible middle (logo centered in it) | auto
+     icons at the far right. The flexible middle column's slack sits on both
+     sides of the centered logo, so the booking/bell icons are pushed to the
+     right edge with a clear gap from the logo — logo stays full size. */
+  .header-inner{display:grid !important;grid-template-columns:40px 1fr auto !important;align-items:center !important;padding:.75rem 1rem !important;gap:.5rem !important;flex-direction:unset !important;}
   .eyebrow{display:none !important;}
   .header-inner>*:first-child{justify-self:start;}
-  /* Horizontal padding on the logo keeps a guaranteed gap on BOTH sides of the
-     logo text — the centered logo stays dead-center and full size, while the
-     hamburger (left) and the booking/bell icons (right) are pushed away from it. */
-  .logo{text-align:center !important;font-size:1.5rem !important;padding:0 1rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .logo{text-align:center !important;justify-self:center !important;font-size:1.5rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .header-inner>div:last-child{display:flex !important;gap:.7rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;justify-self:end;}
   /* Slightly smaller header icons on mobile, with more breathing room between
      them (gap above). Overrides the 25px width/height attributes on the SVGs. */
