@@ -465,6 +465,7 @@ export default function ManualBookingForm({
       </div>
 
       <div className={styles.modalBody}>
+        <SectionPill label="Event Details" first />
         {/* Date + Start + End on one row. Date is hidden when the caller
             locked it (e.g. day-edit popup where the date is already shown in
             the outer modal header) — in that case Start/End sit on a
@@ -544,6 +545,7 @@ export default function ManualBookingForm({
           <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
         )}
 
+        <SectionPill label="Venue Details" />
         {/* Venue name + Rate on one line. Venue name takes the remaining
             width; the rate box is narrow (~5 chars). */}
         <div className={styles.venueRateRow}>
@@ -723,7 +725,8 @@ export default function ManualBookingForm({
             "sent" banner (already sent) or the send-to-host toggle. */}
         <div className={styles.hostInviteBlock}>
           <div className={styles.hostDetailsTitle}>
-            Host Details <span className={styles.optional}>(optional)</span>
+            <SectionPill label="Host Details" first />
+            <span className={styles.optional}>(optional)</span>
           </div>
           <div className={styles.hostHelper}>
             Email and Full Name needed to send booking details, contract, or request deposit.
@@ -797,6 +800,17 @@ function formatSentDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+// SectionPill — a small neon-gradient chip that labels a group of fields,
+// mirroring the dashboard "Add Manual Booking" modal (EVENT DETAILS / VENUE
+// DETAILS / HOST DETAILS).
+function SectionPill({ label, first = false }: { label: string; first?: boolean }) {
+  return (
+    <div className={first ? styles.sectionPillFirst : styles.sectionPill}>
+      <span className={styles.sectionPillChip}>{label}</span>
+    </div>
+  );
 }
 
 // FieldCheck — wraps a control and shows a green ✓ at its right edge once
