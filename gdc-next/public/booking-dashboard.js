@@ -342,12 +342,13 @@ function cellHTML(m,mi,key){
   const hasMenu=((s.actions&&s.actions.length)||s.info||s.hint)&&!locked;
   const badge=cls==='done'?`<span class="badge">${CHECK}</span>`:'';
   const chev=hasMenu?`<span class="chev">${CHEV}</span>`:'';
+  const isPending=/^pending$/i.test(s.cap||'');
   const iconOrDash=locked?`<span class="dash">—</span>`:`<span class="ring">${svg(stg.icon)}${badge}</span>`;
   const inner=`<span class="top">${iconOrDash}${chev}</span><span class="cap" style="color:${capColor(cls,s.cap)}">${s.cap||''}</span>`;
   const btn=hasMenu
     ? `<button class="stbtn ${isOpen?'open':''}" onclick="toggleMenu(${mi},'${key}',event)" title="${headFor(key,m.type)}">${inner}</button>`
     : `<button class="stbtn" disabled title="${headFor(key,m.type)}">${inner}</button>`;
-  return `<div class="st ${cls}"><span class="lab">${shortLabel(key,m.type)}</span>${btn}${isOpen?menuHTML(m,mi,key):''}</div>`;
+  return `<div class="st ${cls}${isPending?' pending':''}"><span class="lab">${shortLabel(key,m.type)}</span>${btn}${isOpen?menuHTML(m,mi,key):''}</div>`;
 }
 function menuHTML(m,mi,key){
   const stg=m.stages[key], s=stg.S[stg.state];
