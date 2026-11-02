@@ -761,9 +761,9 @@ export default function ClubBookingTab({
                     onChange={(e) => { setLastChangedField('settings'); patch({ club_bookings_per_day: Number(e.target.value) }); }}
                     className={styles.settingSelect}
                   >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -779,7 +779,7 @@ export default function ClubBookingTab({
                     onChange={(e) => setBookingWindow(parseInt(e.target.value, 10))}
                     className={styles.settingSelect}
                   >
-                    {[3, 6, 9, 12, 18, 24, 36].map((m) => (
+                    {[3, 6, 9, 12, 18, 24, 36, 48].map((m) => (
                       <option key={m} value={m}>{m} months</option>
                     ))}
                   </select>
