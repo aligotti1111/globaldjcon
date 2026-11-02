@@ -1599,7 +1599,7 @@ function OwnerDayEditPopup({
           </div>
         </div>
       )}
-      <div className={styles.ownerEditBox} onClick={(e) => e.stopPropagation()}>
+      <div className={`${styles.ownerEditBox} ${addingBooking ? styles.ownerEditBoxWide : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.ownerEditHeader}>
           <div className={styles.ownerEditDate}>{formatted}</div>
           <button type="button" onClick={attemptClose} className={styles.ownerEditClose}>✕</button>
