@@ -477,7 +477,10 @@
      logo text — the centered logo stays dead-center and full size, while the
      hamburger (left) and the booking/bell icons (right) are pushed away from it. */
   .logo{text-align:center !important;font-size:1.5rem !important;padding:0 1rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .header-inner>div:last-child{display:flex !important;gap:.35rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;justify-self:end;}
+  .header-inner>div:last-child{display:flex !important;gap:.7rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;justify-self:end;}
+  /* Slightly smaller header icons on mobile, with more breathing room between
+     them (gap above). Overrides the 25px width/height attributes on the SVGs. */
+  .header-inner>div:last-child svg{width:21px !important;height:21px !important;}
   .header-inner>div:last-child .btn{display:none !important;}
   /* Sign In button: hardcoded visible on mobile whenever body is marked logged-out by auth.js.
      Uses body.is-logged-out to beat any inline display:none set by the page's own JS. */
