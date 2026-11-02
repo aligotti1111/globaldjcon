@@ -1044,7 +1044,7 @@ export default function BookingDetails({
     );
   })();
   const eventHeaderBlock = djType === 'mobile' ? (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
+    <div className={styles.detailHeaderGrid} style={{ gap: '13px 22px', marginTop: 20, marginBottom: 6 }}>
       <div>
         <div className={styles.detailLabel}>Event Type{badgeFor('event_type')}</div>
         <div className={styles.detailValue}>{eventTypeHeaderValue}</div>
@@ -1072,7 +1072,7 @@ export default function BookingDetails({
   // Club/bar "Details" card header — Event Date + Set Time (venue name now lives
   // in its own Venue card). Renders inside the EVENT card.
   const venueHeaderBlock = djType === 'club' ? (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
+    <div className={styles.detailHeaderGrid} style={{ gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
       {booking.event_date && (
         <div>
           <div className={styles.detailLabel}>Event Date{badgeFor('event_date')}</div>
