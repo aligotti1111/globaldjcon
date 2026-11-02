@@ -2098,12 +2098,12 @@ select.input {
      become grid items: ⋯ in the top of the far-right column, the "M" pill on
      its own in the column just LEFT of the arrow, pinned to the bottom. */
   .rowActionsCell { display: contents; }
+  /* The ⋯ menu sits in the event-type band at the top of the card (top-right),
+     not down on the date/time line next to the chevron. */
   .rowActionsCell .shareCorner {
-    grid-area: chev;
+    grid-area: event;
     align-self: start;
-    justify-self: center;
-    /* Pull the ⋯ up toward the card's top edge (clears the row's top padding). */
-    margin-top: -10px;
+    justify-self: end;
     z-index: 6;
   }
   .rowActionsCell .manualPill,
