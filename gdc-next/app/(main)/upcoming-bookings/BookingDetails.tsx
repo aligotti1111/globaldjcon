@@ -17,7 +17,6 @@ import { RailMark } from '../update-dj-profile/BrandMarks';
 import NotesFeed from '@/components/NotesFeed';
 import ContractSendModal from './ContractSendModal';
 import RiderSendModal from './RiderSendModal';
-import type { NamedRider } from '@/lib/rider';
 import ContractPortal from '../update-dj-profile/ContractPortal';
 import FlyerSlot from './FlyerSlot';
 import OvertimeSection from './OvertimeSection';
@@ -145,28 +144,6 @@ export default function BookingDetails({
     } catch (e) {
       setMsgErr(e instanceof Error ? e.message : 'Could not send.'); setMsgBusy(false);
     }
-  }
-  // The DJ's saved NAMED riders → one quick-send button each for this booking.
-  const [savedRiders, setSavedRiders] = useState<NamedRider[]>([]);
-  useEffect(() => {
-    if (booking.booking_type !== 'club' || archive) return;
-    let alive = true;
-    (async () => {
-      try {
-        const r = await fetch('/api/rider/library');
-        const d = (await r.json().catch(() => ({}))) as { ok?: boolean; riders?: NamedRider[] };
-        if (alive && d.ok && Array.isArray(d.riders)) setSavedRiders(d.riders);
-      } catch { /* no saved riders — the Rider portal still opens */ }
-    })();
-    return () => { alive = false; };
-  }, [booking.booking_type, archive]);
-  async function sendNamedRider(r: NamedRider) {
-    try {
-      await fetch('/api/rider/request', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, items: r.items, mode: r.mode, pdfUrl: r.pdfUrl, name: r.name }),
-      });
-    } catch { /* best-effort quick send */ }
   }
   // Run the pipeline's request once, then clear it. Clearing FIRST matters:
   // otherwise the flag is still set on the next render and the portal reopens
@@ -1378,24 +1355,6 @@ export default function BookingDetails({
           30-question panel out of the card keeps it short and money-first.
           To bring it back, re-mount <PlannerPanel bookingId={booking.id} />
           here, gated on `plannerStatus`. */}
-      {/* DJ Rider — club/bar only. Takes the slot mobile uses for Planner &
-          Playlist. The DJ customizes this booking's rider here and deploys it
-          to the host. */}
-      {bt === 'club' && savedRiders.length > 0 && (
-        <div style={{ margin: '0 0 1rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
-          {savedRiders.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => sendNamedRider(r)}
-              title={`Send your "${r.name}" rider to this host`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', borderRadius: 8, color: 'var(--neon,#00e0a4)', padding: '.55rem .9rem', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer' }}
-            >
-              Send &ldquo;{r.name}&rdquo;
-            </button>
-          ))}
-        </div>
-      )}
       {riderChooserOpen && (
         <RiderSendModal bookingId={booking.id} onClose={() => setRiderChooserOpen(false)} />
       )}
