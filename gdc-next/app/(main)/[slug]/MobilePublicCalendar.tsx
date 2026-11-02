@@ -22,7 +22,7 @@
 // Booking form opening is DEFERRED to a later session. Clicking an available
 // date currently shows an alert. Same placeholder pattern as Session 4.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
@@ -187,6 +187,23 @@ export default function MobilePublicCalendar({
   const [bookingDays, setBookingDays] = useState<MobileBookingDays>(
     bookingSettings.mob_booking_days || {}
   );
+  // Always-current mirror of bookingDays — quick-marking several cells in a row
+  // fires faster than React re-renders, so reading the `bookingDays` closure
+  // would build each new blob from a stale snapshot and drop the prior toggle.
+  const bookingDaysRef = useRef<MobileBookingDays>(
+    bookingSettings.mob_booking_days || {}
+  );
+  // Serializes writes: persistBookingDays does a server read-modify-write of the
+  // whole booking_settings blob, so overlapping saves can clobber each other.
+  const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  function applyBookingDays(next: MobileBookingDays) {
+    bookingDaysRef.current = next;
+    setBookingDays(next);
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => {})
+      .then(() => persistBookingDays(next));
+    return persistQueueRef.current;
+  }
 
   // Auth — needed for the form (booker id + email + name)
   const { user: currentUser } = useAuth();
@@ -379,9 +396,10 @@ export default function MobilePublicCalendar({
   // Vanilla mobPubQuickMark — toggles unavailable flag. If already booked,
   // do nothing (use the edit modal to clear bookings).
   async function quickMark(key: string) {
-    const cur = bookingDays[key] || ({} as MobileDayData);
+    const curDays = bookingDaysRef.current;
+    const cur = curDays[key] || ({} as MobileDayData);
     const hasRealBooking = (countByDate[key] || 0) > 0;
-    const next: MobileBookingDays = { ...bookingDays };
+    const next: MobileBookingDays = { ...curDays };
     if (cur.booked) {
       // Re-open a date the owner force-closed. Drop only the booked flag; any
       // real booking row behind it is untouched and keeps the day red on its own.
@@ -407,8 +425,7 @@ export default function MobilePublicCalendar({
       // survives being marked unavailable.
       next[key] = { ...cur, unavailable: true };
     }
-    setBookingDays(next);
-    await persistBookingDays(next);
+    await applyBookingDays(next);
   }
 
   // ── Owner: save day-edit modal ──────────────────────────────────
@@ -416,12 +433,11 @@ export default function MobilePublicCalendar({
     key: string,
     update: MobileDayData | null
   ) {
-    const next: MobileBookingDays = { ...bookingDays };
+    const next: MobileBookingDays = { ...bookingDaysRef.current };
     if (update === null) delete next[key];
     else next[key] = update;
-    setBookingDays(next);
     setOwnerEditKey(null);
-    await persistBookingDays(next);
+    await applyBookingDays(next);
   }
 
   // Auto-dismiss the range message after 4s, matching club calendar parity.
