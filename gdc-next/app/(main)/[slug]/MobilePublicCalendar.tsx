@@ -888,17 +888,13 @@ function SingleMonthView({
             // A real booking the owner also force-closed to new bookings.
             const bookedAndClosed = realBooking && !!dayData.booked;
             // A "booked" block the DJ set on a free day (no real booking behind it).
-            const manualBooked = !realBooking && isBooked && dayData.bookings_available == null && !dayData.eventName;
             const pct = dayData.price_adjust_pct;
             const priceEdited = pct != null && pct !== 0;
-            if (!manualBooked && !priceEdited && !bookedAndClosed) return null;
+            if (!priceEdited && !bookedAndClosed) return null;
             return (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, marginTop: 2, pointerEvents: 'none' }}>
                 {bookedAndClosed && (
                   <span style={{ fontSize: 8, lineHeight: 1.2, color: '#fff', fontWeight: 700, background: 'rgba(0,0,0,.45)', padding: '1px 4px', borderRadius: 3, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>Booked · closed</span>
-                )}
-                {manualBooked && (
-                  <span style={{ fontSize: 8, lineHeight: 1.2, color: '#fff', fontWeight: 700, background: 'rgba(0,0,0,.45)', padding: '1px 4px', borderRadius: 3, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>Manually booked</span>
                 )}
                 {priceEdited && (
                   <span style={{ fontSize: 9, lineHeight: 1.15, color: 'var(--neon,#00e0a4)', fontWeight: 700 }}>
