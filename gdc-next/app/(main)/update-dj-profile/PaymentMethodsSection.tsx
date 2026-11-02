@@ -1127,7 +1127,12 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
             LEFT: a vertical list of the rails (brand mark + name + a green
             check on live rails; the open rail's row is highlighted).
             RIGHT: the setup panel for whichever rail is open. */}
+        {/* On phones the two columns stack: the rail list full-width on top, the
+            open rail's setup panel full-width below (the 200px + 1fr grid
+            otherwise crushes the panel into a sliver). */}
+        <style>{`@media (max-width:640px){.gdc-pay-grid{grid-template-columns:1fr !important}}`}</style>
         <div
+          className="gdc-pay-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '200px 1fr',
