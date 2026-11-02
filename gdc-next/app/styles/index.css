@@ -470,7 +470,7 @@
 .mobile-menu-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0;}
 @media(max-width:600px){
   .hamburger-btn{display:flex !important;align-items:center;justify-content:center;position:static !important;transform:none !important;}
-  .header-inner{display:grid !important;grid-template-columns:minmax(44px,1fr) auto minmax(44px,2.2fr) !important;align-items:center !important;padding:.75rem 1rem !important;gap:1.1rem !important;flex-direction:unset !important;}
+  .header-inner{display:grid !important;grid-template-columns:minmax(44px,1fr) auto minmax(44px,1fr) !important;align-items:center !important;padding:.75rem 1rem !important;gap:1.5rem !important;flex-direction:unset !important;}
   .eyebrow{display:none !important;}
   .header-inner>*:first-child{justify-self:start;}
   .logo{text-align:center !important;font-size:1.5rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
