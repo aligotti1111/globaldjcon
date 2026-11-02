@@ -1851,14 +1851,16 @@ select.input {
        below. */
     /* Event type gets its OWN centered band on top (with a divider under it),
        matching the public sample card; date + time sit on the line below. */
-    grid-template-columns: 64px auto minmax(0, 1fr) 26px 22px;
+    grid-template-columns: 64px auto minmax(0, 1fr) 22px;
     grid-template-rows: auto 58px auto auto;
     grid-template-areas:
-      "event event   event  event event"
-      "date  toggle  .      mcol  chev"
-      "stat  stat    stat   stat  stat"
-      "val   val     val    val   val";
+      "event event   event  event"
+      "date  toggle  .      chev"
+      "stat  stat    stat   stat"
+      "val   val     val    val";
     column-gap: .5rem;
+    /* Lift the card header (event + date/time) off pure black with a faint grey. */
+    background: #121219;
     /* row-gap 0: the bands manage their OWN vertical spacing (icon band has
        margin-top, price band butts flush against it). A uniform grid row-gap
        used to drop .4rem BELOW the price band too — which, together with the
@@ -1995,21 +1997,22 @@ select.input {
      ONLY, so mobile-DJ rows keep their 4-area grid with no empty gap. */
   .flyerInline { display: none; }
   .monthListClub .row {
-    /* Club: venue band centered on top (divider under it), then the flyer
-       thumbnail sits beside the time on the line below. */
-    grid-template-columns: 64px auto 44px minmax(0, 1fr) 26px 22px;
+    /* Club: venue band centered on top (divider under it). On the line below the
+       date + time sit left, and the flyer thumbnail is pushed to the right next
+       to the chevron. */
+    grid-template-columns: 64px auto minmax(0, 1fr) 44px 22px;
     grid-template-rows: auto 58px auto auto;
     grid-template-areas:
-      "event  event   event  event  event  event"
-      "date   toggle  flyer  .      mcol   chev"
-      "stat   stat    stat   stat   stat   stat"
-      "val    val     val    val    val    val";
+      "event  event   event  event  event"
+      "date   toggle  .      flyer  chev"
+      "stat   stat    stat   stat   stat"
+      "val    val     val    val    val";
   }
   .monthListClub .flyerInline {
     display: block;
     grid-area: flyer;
     align-self: center;
-    justify-self: start;
+    justify-self: end;
   }
   .monthListClub .flyerBoxRow { width: 44px; height: 44px; }
   .rowToggle {
@@ -2106,12 +2109,13 @@ select.input {
     justify-self: end;
     z-index: 6;
   }
+  /* The "M" manual tag sits in the event-type band (top-left), opposite the ⋯. */
   .rowActionsCell .manualPill,
   .rowActionsCell .cancelledInline {
-    grid-area: mcol;
-    /* On the same line as the arrow (both vertically centered). */
-    align-self: center;
-    justify-self: center;
+    grid-area: event;
+    align-self: start;
+    justify-self: start;
+    z-index: 6;
   }
   .row .rowActionsCell .manualPill,
   .row:hover .rowActionsCell .manualPill { display: inline-block; }
