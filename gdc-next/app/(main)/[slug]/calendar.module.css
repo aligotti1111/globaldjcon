@@ -1548,3 +1548,11 @@
   border-color: var(--neon);
   background: rgba(0,245,196,0.1);
 }
+
+/* Owner-only in-cell note labels (Manually booked / Booked · closed /
+   price adjust) — shown on desktop only; hidden on mobile screens per owner
+   request (the cell color already signals the day's state). */
+@media (max-width: 600px) {
+  .manualBookedNote,
+  .ownerCellNotes { display: none !important; }
+}
