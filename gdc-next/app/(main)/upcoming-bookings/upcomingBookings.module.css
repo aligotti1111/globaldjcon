@@ -2117,6 +2117,16 @@ select.input {
     justify-self: start;
     z-index: 6;
   }
+  /* The overlap ⚠ goes in the top-right corner (just left of the ⋯), not
+     centered under the event name. */
+  .row { position: relative; }
+  .rowContext .overlapPill {
+    position: absolute;
+    top: 9px;
+    right: 42px;
+    margin: 0;
+    z-index: 6;
+  }
   .row .rowActionsCell .manualPill,
   .row:hover .rowActionsCell .manualPill { display: inline-block; }
   /* Space is tight on the top line: show just "M" for a manual booking. */
