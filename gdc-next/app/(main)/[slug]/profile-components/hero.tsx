@@ -362,8 +362,8 @@ export function SocialAddButton({
             where the glyph is larger and the badge must tuck closer). */}
         <span className={styles.socialAddBadge} style={{
           position: 'absolute',
-          top: -4,
-          right: -4,
+          top: -10,
+          right: -10,
           width: 14,
           height: 14,
           background: 'transparent',
