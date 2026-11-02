@@ -32,6 +32,8 @@
 .gdc-dash .ring svg{width:20px;height:20px}
 .gdc-dash .dvvenue{display:block;font-family:inherit;font-size:.82rem;font-weight:500;letter-spacing:0;color:#9b9baa;text-transform:none;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gdc-dash .st.waiting .ring{border-color:rgba(255,255,255,.16);color:#b9b9c6}
+/* Pending (awaiting signature/payment) — gold ring to match the gold caption. */
+.gdc-dash .st.pending .ring{border-color:var(--gold);color:var(--gold)}
 .gdc-dash .st.done .ring{border-color:var(--neon);background:rgba(0,245,196,.14);color:var(--neon)}
 .gdc-dash .st.skipped .ring{border-color:rgba(255,255,255,.28);color:#f2f2f7}
 .gdc-dash .st.muted .ring{border-color:#2f2f3d;color:#5a5a72}
