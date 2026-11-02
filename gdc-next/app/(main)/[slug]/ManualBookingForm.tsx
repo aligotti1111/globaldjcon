@@ -134,6 +134,9 @@ export default function ManualBookingForm({
   const [setType, setSetType] = useState<string>(existing?.set_type || '');
   const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
+  const [hostName, setHostName] = useState<string>(
+    (existing as { requester_name?: string | null } | null)?.requester_name || '',
+  );
   const [sendInvite, setSendInvite] = useState<boolean>(false);
   // Optional flat rate the DJ charged/will charge for this gig. Stored as
   // offer_amount + currency so it flows through the same fields used by
@@ -364,10 +367,11 @@ export default function ManualBookingForm({
         set_type: djType === 'club' ? (setType || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
         host_email: trimmedEmail || null,
+        requester_name: hostName.trim() || null,
         offer_amount: rateNum,
         currency: rateNum != null ? rateCurrency : null,
       };
-      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, link_url, link_label, offer_amount, currency';
+      const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, requester_name, link_url, link_label, offer_amount, currency';
       const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
 
       if (isEdit) {
@@ -731,19 +735,32 @@ export default function ManualBookingForm({
           <div className={styles.hostHelper}>
             Email and Full Name needed to send booking details, contract, or request deposit.
           </div>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
-            <FieldCheck valid={hostEmailValid}>
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Host Full Name</span>
               <input
-                type="email"
-                value={hostEmail}
-                onChange={(e) => setHostEmail(e.target.value)}
-                placeholder="host@example.com"
-                className={`${styles.input} ${styles.hasCheck}`}
+                type="text"
+                value={hostName}
+                onChange={(e) => setHostName(e.target.value)}
+                placeholder="e.g. Jordan Smith"
+                className={styles.input}
                 autoComplete="off"
               />
-            </FieldCheck>
-          </label>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Host Email {hostEmailAlreadySent && <span className={styles.optional}>(sent)</span>}</span>
+              <FieldCheck valid={hostEmailValid}>
+                <input
+                  type="email"
+                  value={hostEmail}
+                  onChange={(e) => setHostEmail(e.target.value)}
+                  placeholder="host@example.com"
+                  className={`${styles.input} ${styles.hasCheck}`}
+                  autoComplete="off"
+                />
+              </FieldCheck>
+            </label>
+          </div>
           {hostEmailAlreadySent ? (
             <div className={styles.sentBanner}>
               <div className={styles.sentBannerText}>
