@@ -137,7 +137,6 @@ export default function ManualBookingForm({
   const [hostName, setHostName] = useState<string>(
     (existing as { requester_name?: string | null } | null)?.requester_name || '',
   );
-  const [sendInvite, setSendInvite] = useState<boolean>(false);
   // Optional flat rate the DJ charged/will charge for this gig. Stored as
   // offer_amount + currency so it flows through the same fields used by
   // the normal booking flow. Display-only on the booking record — purely
@@ -372,7 +371,7 @@ export default function ManualBookingForm({
         currency: rateNum != null ? rateCurrency : null,
       };
       const selectCols = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at, requester_name, link_url, link_label, offer_amount, currency';
-      const shouldSend = sendInvite && !!trimmedEmail && trimmedEmail.includes('@') && !hostEmailAlreadySent;
+      const shouldSend = hostEmailValid && !hostEmailAlreadySent;
 
       if (isEdit) {
         const { data, error: e } = await supabase
@@ -776,20 +775,9 @@ export default function ManualBookingForm({
               </button>
             </div>
           ) : (
-            <label className={styles.inviteCheckRow}>
-              <input
-                type="checkbox"
-                checked={sendInvite}
-                onChange={(e) => setSendInvite(e.target.checked)}
-                disabled={!hostEmail.trim() || !hostEmail.includes('@')}
-              />
-              <span>
-                Send booking details to host
-                {(!hostEmail.trim() || !hostEmail.includes('@')) && (
-                  <span className={styles.checkHint}> · enter a valid email first</span>
-                )}
-              </span>
-            </label>
+            <div className={styles.hostHelper}>
+              Enter a valid email to send the host the booking details, contract, payment request etc.
+            </div>
           )}
         </div>
 
