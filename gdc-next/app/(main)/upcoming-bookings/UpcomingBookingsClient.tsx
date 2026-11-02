@@ -865,7 +865,7 @@ export default function UpcomingBookingsClient({
             <button
               type="button"
               onClick={() => setShowStory(true)}
-              style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, letterSpacing: '.03em' }}
+              style={{ order: 1, marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--neon,#00e0a4)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, padding: 0, letterSpacing: '.03em' }}
             >
               📅 Generate graphic of schedule
             </button>
