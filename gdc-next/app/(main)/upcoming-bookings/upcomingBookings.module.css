@@ -1603,6 +1603,15 @@ select.input {
   border-color: rgba(255, 255, 255, .16);
 }
 /* Gradient chip header stamped on each section. */
+/* Header grid inside Details/Event/Venue cards (Event Date · Set Time, etc.).
+   Two-up on desktop; each field on its own full-width line on mobile. */
+.detailHeaderGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+@media (max-width: 600px) {
+  .detailHeaderGrid { grid-template-columns: 1fr; }
+}
 .detailChip {
   display: inline-flex;
   align-items: center;
