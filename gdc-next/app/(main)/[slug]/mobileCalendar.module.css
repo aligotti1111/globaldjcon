@@ -788,7 +788,7 @@
 }
 .ownerQuickMark {
   left: 4px;
-  font-size: 1.35rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: rgba(255, 255, 255, .55);
   padding: 0 3px;
@@ -814,7 +814,7 @@
 }
 .ownerEditPencil {
   right: 4px;
-  font-size: .75rem;
+  font-size: .6rem;
   color: var(--muted);
 }
 .ownerEditPencil:hover {
