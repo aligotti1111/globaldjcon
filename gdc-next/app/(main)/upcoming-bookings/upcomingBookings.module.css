@@ -581,6 +581,8 @@
   white-space: nowrap;
   display: flex;
   align-items: center;
+  /* Breathing room between the time and the venue/event name. */
+  padding-left: .85rem;
 }
 /* Event type is no longer a separate face at a separate size — it IS the
    event cell. Bebas at 14px made "SWEET 16 / QUINCEAÑERA" a movie title
