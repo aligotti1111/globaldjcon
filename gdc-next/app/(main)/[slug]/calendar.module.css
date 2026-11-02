@@ -715,28 +715,28 @@
 /* The .cal-months-grid name from vanilla — we keep its structure */
 .monthsGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
   margin-bottom: 1rem;
 }
 @media (max-width: 900px) {
   .monthsGrid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   }
 }
 .monthCard {
   background: rgba(255, 255, 255, .02);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: .6rem;
+  padding: .85rem;
 }
 .monthCardLabel {
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
+  font-size: .72rem;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--white);
-  margin-bottom: .4rem;
+  margin-bottom: .55rem;
 }
 .monthCardLabelYear {
   color: var(--neon);
@@ -841,7 +841,7 @@
 }
 .miniNum {
   font-family: 'Space Mono', monospace;
-  font-size: .6rem;
+  font-size: .72rem;
   color: var(--white);
 }
 .miniNumPast { color: var(--muted); }
@@ -1453,8 +1453,8 @@
 .miniOwnerQuickMark,
 .miniOwnerEditPencil {
   position: absolute;
-  background: var(--deep);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   color: var(--white);
   font-size: .5rem;
   width: 14px;
@@ -1466,7 +1466,7 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: border-color .12s, background .12s;
+  transition: color .12s, transform .12s;
   pointer-events: auto;
 }
 .miniOwnerQuickMark {
@@ -1479,12 +1479,11 @@
 }
 .miniOwnerQuickMark:hover,
 .miniOwnerEditPencil:hover {
-  border-color: var(--neon);
+  color: var(--neon);
+  transform: scale(1.15);
 }
 .miniOwnerQuickMarkActive {
-  background: var(--neon);
-  border-color: var(--neon);
-  color: #050507;
+  color: var(--neon);
 }
 @media (max-width: 700px) {
   .miniOwnerQuickMark,
