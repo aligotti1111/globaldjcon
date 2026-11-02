@@ -1041,27 +1041,28 @@ function SingleMonthView({
 
       <div className={`${styles.cellsGrid} ${isOwnProfile ? styles.cellsGridCompact : ''}`}>{cells}</div>
 
-      <div className={styles.legend}>
-        <div className={`${styles.legendItem} ${styles.legendOpen}`}>
-          <span className={styles.legendDot} />Open
-        </div>
-        <div className={`${styles.legendItem} ${styles.legendBooked}`}>
-          <span className={styles.legendDot} />Booked
-        </div>
-        <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
-          <span className={styles.legendDot} />Unavailable
-        </div>
-        {globalCapacity > 1 && (
-          <div className={`${styles.legendItem} ${styles.legendPartial}`}>
-            <span className={styles.legendDot} />
-            Accepting set times around current booking
+      {/* Legend (symbol meanings) on the left; owner-only Embed Calendar
+          button on the right — same row on desktop, wraps on mobile. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div className={styles.legend} style={{ margin: 0 }}>
+          <div className={`${styles.legendItem} ${styles.legendOpen}`}>
+            <span className={styles.legendDot} />Open
           </div>
-        )}
-      </div>
+          <div className={`${styles.legendItem} ${styles.legendBooked}`}>
+            <span className={styles.legendDot} />Booked
+          </div>
+          <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
+            <span className={styles.legendDot} />Unavailable
+          </div>
+          {globalCapacity > 1 && (
+            <div className={`${styles.legendItem} ${styles.legendPartial}`}>
+              <span className={styles.legendDot} />
+              Accepting set times around current booking
+            </div>
+          )}
+        </div>
 
-      {/* Embed Calendar — owner-only, below the grid, bottom-right. */}
-      {onEmbedClick && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '.75rem' }}>
+        {onEmbedClick && (
           <button
             type="button"
             className={styles.embedInlineBtn}
@@ -1074,8 +1075,8 @@ function SingleMonthView({
             </svg>
             Embed Calendar
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
