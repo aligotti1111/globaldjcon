@@ -1214,11 +1214,11 @@ function RollingMonthsView({
       );
     }
 
-    // Year divider — before each January (skip the first month so we don't
-    // render a divider above the very first card if it happens to be Jan).
-    if (i > 0 && mo === 0) {
+    // Year divider — above the very first month (shows the current year), and
+    // again before each January as the window rolls into a new year.
+    if (i === 0 || mo === 0) {
       months.push(
-        <div key={`yr-${yr}`} className={styles.yearDivider}>
+        <div key={`yr-${yr}-${i}`} className={styles.yearDivider}>
           <span className={styles.yearDividerLabel}>{yr}</span>
         </div>
       );
@@ -1656,7 +1656,7 @@ function OwnerDayEditPopup({
 
               {rateType !== 'offers' && (() => {
                 const isHourly = rateType === 'hourly';
-                const suffix = isHourly ? ' (per hour)' : '';
+                const suffix = '';
                 const sysVal = isHourly ? rateHourlyWithSystem : rateWithSystem;
                 const sysSetRaw = isHourly ? setRateHourlyWithSystem : setRateWithSystem;
                 const sysSet = (v: string) => { setDirty(true); sysSetRaw(v); };
@@ -1670,19 +1670,19 @@ function OwnerDayEditPopup({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     {equipFull && (
                       <>
-                        <PCDayRateInput label={`Sound System & Decks/Controller${suffix}`} symbol={sym} value={sysVal} onChange={sysSet} />
-                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} />
-                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                        <PCDayRateInput label={`Sound System & Decks/Controller${suffix}`} symbol={sym} value={sysVal} onChange={sysSet} hourly={isHourly} />
+                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} hourly={isHourly} />
+                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} hourly={isHourly} />
                       </>
                     )}
                     {equipDecks && (
                       <>
-                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} />
-                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                        <PCDayRateInput label={`Decks/Controller only${suffix}`} symbol={sym} value={decksVal} onChange={decksSet} hourly={isHourly} />
+                        <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} hourly={isHourly} />
                       </>
                     )}
                     {equipNone && (
-                      <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} />
+                      <PCDayRateInput label={`Venue provides all equipment${suffix}`} symbol={sym} value={noneVal} onChange={noneSet} hourly={isHourly} />
                     )}
                   </div>
                 );
@@ -1881,12 +1881,13 @@ function OwnerDayEditPopup({
 // feature boundaries.
 // ─────────────────────────────────────────────────────────────────────────
 function PCDayRateInput({
-  label, symbol, value, onChange,
+  label, symbol, value, onChange, hourly = false,
 }: {
   label: string;
   symbol: string;
   value: string;
   onChange: (v: string) => void;
+  hourly?: boolean;
 }) {
   return (
     <div>
@@ -1903,27 +1904,30 @@ function PCDayRateInput({
       >
         {label}
       </label>
-      <div style={{ position: 'relative' }}>
-        <span style={{
-          position: 'absolute',
-          left: 10,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          color: 'var(--muted)',
-          pointerEvents: 'none',
-          fontSize: '.9rem',
-        }}>{symbol}</span>
-        <input
-          type="number"
-          inputMode="decimal"
-          min={0}
-          step="0.01"
-          placeholder="0"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={styles.ownerEditInput}
-          style={{ paddingLeft: 28 }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <div style={{ position: 'relative', width: 140, flexShrink: 0 }}>
+          <span style={{
+            position: 'absolute',
+            left: 10,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: 'var(--muted)',
+            pointerEvents: 'none',
+            fontSize: '.9rem',
+          }}>{symbol}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="0.01"
+            placeholder="0"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={styles.ownerEditInput}
+            style={{ paddingLeft: 28, width: '100%', boxSizing: 'border-box' }}
+          />
+        </div>
+        {hourly && <span style={{ color: 'var(--muted)', fontSize: '.82rem', whiteSpace: 'nowrap' }}>/ hour</span>}
       </div>
     </div>
   );
