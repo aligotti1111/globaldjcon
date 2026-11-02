@@ -1863,7 +1863,13 @@ function OwnerDayEditPopup({
             <button type="button" onClick={attemptClose} className={styles.ownerEditCancelBtn}>
               Cancel
             </button>
-            <button type="button" onClick={handleSave} className={styles.ownerEditSaveBtn}>
+            <button
+              type="button"
+              onClick={handleSave}
+              className={styles.ownerEditSaveBtn}
+              disabled={!dirty}
+              style={!dirty ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+            >
               Save
             </button>
           </div>
