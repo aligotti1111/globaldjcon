@@ -895,6 +895,7 @@ function SingleMonthView({
     const ownerNotes =
       isOwnProfile && !isPast && (hasCustomRate || manuallyBooked || bookedAndClosed) ? (
         <div
+          className={styles.ownerCellNotes}
           style={{
             position: 'absolute',
             top: 3,
@@ -926,6 +927,7 @@ function SingleMonthView({
           )}
           {manuallyBooked && (
             <span
+              className={styles.manualBookedNote}
               style={{
                 fontSize: 8,
                 lineHeight: 1.2,
