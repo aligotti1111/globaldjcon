@@ -1603,38 +1603,6 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {/* Mark-booked toggle — only when the day has NO bookings. Once a
-            booking exists, the day is committed. Available/Unavailable are set
-            from the calendar cell's own ✕/✓ toggle, so this modal just carries
-            the booked toggle, styled to match the mobile-DJ day editor. */}
-        {!bookingDetailsLoading && dayBookings.length === 0 && (
-          <div className={styles.ownerEditStatusRow}>
-            <button
-              type="button"
-              onClick={() => { setDirty(true); setStatus(status === 'booked' ? 'available' : 'booked'); }}
-              aria-pressed={status === 'booked'}
-              style={{
-                width: '100%',
-                padding: '.7rem',
-                borderRadius: 8,
-                border: `1px solid ${status === 'booked' ? 'rgba(0,224,164,.55)' : 'rgba(255,95,95,.5)'}`,
-                background: status === 'booked' ? 'rgba(0,224,164,.12)' : 'rgba(255,95,95,.06)',
-                color: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f',
-                fontWeight: 600,
-                fontSize: '.85rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '.45rem',
-              }}
-            >
-              <span style={{ width: 9, height: 9, borderRadius: '50%', background: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f', display: 'inline-block' }} />
-              {status === 'booked' ? 'Make this day available for booking' : 'Mark this day as booked'}
-            </button>
-          </div>
-        )}
-
         {/* ── Per-day rate override ─────────────────────────────────
             Shown for an Available day, OR inside the booked-day popup's
             "Rates" tab. Changing the override edits only this date's
@@ -1726,6 +1694,38 @@ function OwnerDayEditPopup({
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Mark-booked toggle — placed UNDER the rate options. Only when the day
+            has NO bookings. Once a booking exists, the day is committed.
+            Available/Unavailable are set from the calendar cell's own ✕/✓ toggle,
+            so this modal just carries the booked toggle. */}
+        {!bookingDetailsLoading && dayBookings.length === 0 && (
+          <div className={styles.ownerEditStatusRow}>
+            <button
+              type="button"
+              onClick={() => { setDirty(true); setStatus(status === 'booked' ? 'available' : 'booked'); }}
+              aria-pressed={status === 'booked'}
+              style={{
+                width: '100%',
+                padding: '.7rem',
+                borderRadius: 8,
+                border: `1px solid ${status === 'booked' ? 'rgba(0,224,164,.55)' : 'rgba(255,95,95,.5)'}`,
+                background: status === 'booked' ? 'rgba(0,224,164,.12)' : 'rgba(255,95,95,.06)',
+                color: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f',
+                fontWeight: 600,
+                fontSize: '.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '.45rem',
+              }}
+            >
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: status === 'booked' ? 'var(--neon,#00e0a4)' : '#ff5f5f', display: 'inline-block' }} />
+              {status === 'booked' ? 'Make this day available for booking' : 'Mark this day as booked'}
+            </button>
           </div>
         )}
 
