@@ -113,11 +113,33 @@
 }
 
 .fieldLabel {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  font-family: inherit;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  text-transform: none;
   color: var(--white);
+}
+
+/* Gradient section chips — mirrors the dashboard "Add Manual Booking" modal,
+   which groups fields under small neon-gradient pills (EVENT DETAILS / VENUE
+   DETAILS / HOST DETAILS). */
+.sectionPill {
+  margin: .55rem 0 .1rem;
+}
+.sectionPillFirst {
+  margin: 0 0 .1rem;
+}
+.sectionPillChip {
+  display: inline-block;
+  background: linear-gradient(100deg, #22e3ad, #31d0ff);
+  color: #04241b;
+  font-weight: 800;
+  font-size: .6rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  padding: .13rem .55rem;
+  border-radius: 5px;
 }
 .optional {
   font-weight: 400;
@@ -128,8 +150,8 @@
 /* Duration line shown under the start/end time row. */
 .durationHint {
   margin: -.35rem 0 .25rem;
-  font-size: .78rem;
-  color: var(--neon);
+  font-size: .68rem;
+  color: #ffd24a;
   font-family: 'DM Sans', sans-serif;
 }
 /* Explanatory note under the rate field. */
@@ -154,7 +176,6 @@
   width: 100%;
   height: 36px;
   box-sizing: border-box;
-  transition: border-color .15s, box-shadow .15s;
 }
 /* Native <select> renders taller than <input> for the same padding; the
    explicit height + border-box normalizes them. */
@@ -162,11 +183,9 @@ select.input {
   padding-top: 0;
   padding-bottom: 0;
 }
-.input:hover { border-color: rgba(255, 255, 255, .2); }
 .input:focus {
   outline: none;
   border-color: var(--neon);
-  box-shadow: 0 0 0 3px rgba(0, 245, 196, .12);
 }
 
 /* ── Field validity checkmark ──────────────────────────────────────
@@ -210,12 +229,10 @@ select.input {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  transition: border-color .15s, box-shadow .15s;
 }
 .dateWrap:hover { border-color: rgba(255, 255, 255, .25); }
 .dateWrap:focus-within {
   border-color: var(--neon);
-  box-shadow: 0 0 0 3px rgba(0, 245, 196, .12);
 }
 .dateInput {
   background: transparent;
@@ -321,12 +338,10 @@ select.input {
   color: var(--white);
   font-family: inherit;
   font-size: .9rem;
-  transition: border-color .15s, box-shadow .15s;
 }
 .rateInput:focus {
   outline: none;
   border-color: var(--neon);
-  box-shadow: 0 0 0 3px rgba(0, 245, 196, .12);
 }
 /* Remove the number-input up/down spinner. */
 .rateInput::-webkit-outer-spin-button,
@@ -354,31 +369,28 @@ select.input {
 .rateCurrencySelect:focus { outline: none; border-color: var(--neon); }
 
 /* ── Host details section ─────────────────────────────────────────────── */
+/* Host details — a divider-led section (top border), matching the dashboard
+   "Add Manual Booking" modal, rather than a boxed/filled card. */
 .hostInviteBlock {
-  margin-top: .35rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, .015);
+  margin-top: .5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: .75rem;
+  gap: .65rem;
 }
-/* "HOST DETAILS (optional)" heading for the block. */
+/* Heading row: gradient "HOST DETAILS" chip + muted "(optional)". */
 .hostDetailsTitle {
-  font-family: 'Space Mono', monospace;
-  font-size: .58rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--white);
-  opacity: .7;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
 }
 /* Muted helper line under the heading. */
 .hostHelper {
   color: var(--muted);
   font-size: .72rem;
   line-height: 1.4;
-  margin-top: -.4rem;
+  margin-top: -.25rem;
 }
 .inviteCheckRow {
   display: flex;
@@ -477,12 +489,8 @@ select.input {
   padding: .65rem 1.1rem;
   cursor: pointer;
   font-weight: 700;
-  box-shadow: 0 4px 14px -4px rgba(0, 245, 196, .5);
-  transition: background .15s, box-shadow .15s, transform .1s;
 }
 .saveBtn:hover:not(:disabled) {
   background: #00d4a9;
-  box-shadow: 0 6px 18px -4px rgba(0, 245, 196, .6);
 }
-.saveBtn:active:not(:disabled) { transform: translateY(1px); }
 .saveBtn:disabled { opacity: .6; cursor: wait; }
