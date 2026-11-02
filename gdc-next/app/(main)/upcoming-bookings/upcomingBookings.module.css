@@ -1603,6 +1603,11 @@ select.input {
   border-color: rgba(255, 255, 255, .16);
 }
 /* Gradient chip header stamped on each section. */
+/* Section edit pencil (Details / Venue / Host) — smaller on mobile. */
+@media (max-width: 600px) {
+  .editPencilBtn { width: 22px !important; height: 22px !important; border-radius: 6px !important; }
+  .editPencilBtn svg { width: 11px !important; height: 11px !important; }
+}
 /* Header grid inside Details/Event/Venue cards (Event Date · Set Time, etc.).
    Two-up on desktop; each field on its own full-width line on mobile. */
 .detailHeaderGrid {
