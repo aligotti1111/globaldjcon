@@ -1009,6 +1009,11 @@
   max-height: 90vh;
   overflow-y: auto;
 }
+/* Wider while the Add-Booking-Manually form is open, matching the dashboard
+   modal's two-column width. */
+.ownerEditBoxWide {
+  max-width: 600px;
+}
 .ownerEditHeader {
   display: flex;
   align-items: center;
