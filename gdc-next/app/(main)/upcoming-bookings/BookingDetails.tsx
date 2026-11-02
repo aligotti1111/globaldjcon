@@ -647,11 +647,14 @@ export default function BookingDetails({
     ...(djType === 'club'
       ? [
           [
+            { label: 'Venue Name', value: booking.venue_name },
             { label: 'Venue Type', value: booking.venue_type ? (
                 booking.venue_type_desc ? (
                   <span>{capitalize(booking.venue_type)}<span style={{ display: 'block', fontSize: '.85em', color: 'var(--muted,#8a8aa0)', marginTop: 2, fontWeight: 400 }}>{booking.venue_type_desc}</span></span>
                 ) : capitalize(booking.venue_type)
               ) : null },
+          ],
+          [
             {
               label: 'Venue Address',
               value: booking.venue_address ? (
@@ -816,16 +819,22 @@ export default function BookingDetails({
   type SectionKey = 'EVENT' | 'VENUE' | 'HOST' | 'PRICING';
   const sectionForRow = (row: DetailRow): SectionKey => {
     const s = row.map((c) => c.label).join('|');
-    if (/Venue|Room|Equipment|Set Type|Set Time/.test(s)) return 'VENUE';
     if (/Booked By|Contact Phone|Email|Host name/.test(s)) return 'HOST';
     if (/Agreed Rate|Reception|Price|Ceremony|Cocktail Hour|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
+    // Club/bar: the actual venue (name/type/address) gets its own card next to
+    // Host; set type + equipment stay in the full-width "Details" card up top.
+    if (djType === 'club') {
+      if (/Venue|Room/.test(s)) return 'VENUE';
+      return 'EVENT';
+    }
+    if (/Venue|Room|Equipment|Set Type|Set Time/.test(s)) return 'VENUE';
     return 'EVENT';
   };
   const sectionOrder: Array<{ key: SectionKey; title: string }> = [
-    { key: 'EVENT', title: 'Event' },
-    // Club/bar bookings have no separate Event card, so this card carries the
-    // date + set time as well — label it "Details" there instead of "Venue".
-    { key: 'VENUE', title: djType === 'club' ? 'Details' : 'Venue' },
+    // Club/bar: the EVENT card carries the date/set time header + set type +
+    // equipment, labelled "Details"; VENUE is its own card (name/type/address).
+    { key: 'EVENT', title: djType === 'club' ? 'Details' : 'Event' },
+    { key: 'VENUE', title: 'Venue' },
     { key: 'HOST', title: 'Host' },
     { key: 'PRICING', title: 'Pricing' },
   ];
@@ -837,7 +846,7 @@ export default function BookingDetails({
     // an empty one means a legacy row — surface it (with an "Add venue" prompt)
     // rather than silently hiding the section.
     .filter((g) => g.rows.length > 0
-      || (g.key === 'EVENT' && djType === 'mobile')
+      || (g.key === 'EVENT' && (djType === 'mobile' || djType === 'club'))
       || (g.key === 'VENUE' && djType === 'mobile'));
 
   // Pricing renders as a receipt: label left, amount right, the total emphasised,
@@ -1060,6 +1069,8 @@ export default function BookingDetails({
   const setTimeStr = booking.start_time
     ? formatTime12(booking.start_time) + (booking.end_time ? ' – ' + formatTime12(booking.end_time) : '')
     : null;
+  // Club/bar "Details" card header — Event Date + Set Time (venue name now lives
+  // in its own Venue card). Renders inside the EVENT card.
   const venueHeaderBlock = djType === 'club' ? (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '13px 22px', marginTop: 10, marginBottom: 4 }}>
       {booking.event_date && (
@@ -1072,12 +1083,6 @@ export default function BookingDetails({
         <div>
           <div className={styles.detailLabel}>Set Time{badgeFor('start_time')}</div>
           <div className={styles.detailValue}>{setTimeStr}</div>
-        </div>
-      )}
-      {booking.venue_name && (
-        <div>
-          <div className={styles.detailLabel}>Venue Name{badgeFor('venue_name')}</div>
-          <div className={styles.detailValue}>{booking.venue_name}</div>
         </div>
       )}
     </div>
@@ -1215,8 +1220,7 @@ export default function BookingDetails({
                   booking exists, so no edit pencil on the Pricing section. */}
               {g.key !== 'PRICING' && sectionPencil(g.key as EditSection)}
             </div>
-            {g.key === 'EVENT' && eventHeaderBlock}
-            {g.key === 'VENUE' && venueHeaderBlock}
+            {g.key === 'EVENT' && (eventHeaderBlock || venueHeaderBlock)}
             {g.key === 'VENUE' && g.rows.length === 0 && (
               <div style={{ marginTop: 10, fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
                 No venue on file{canEdit ? ' — use the pencil above to add one.' : '.'}
@@ -1236,17 +1240,17 @@ export default function BookingDetails({
                 ))}
               </div>
             ))}
-            {g.key === 'EVENT' && scheduleBlock}
+            {g.key === 'EVENT' && djType === 'mobile' && scheduleBlock}
             {/* Booking reference — sits on the line above Overtime, so the DJ and
-                host can quote the same booking by a short id. */}
-            {g.key === 'EVENT' && (
+                host can quote the same booking by a short id. (mobile Event card) */}
+            {g.key === 'EVENT' && djType === 'mobile' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
                 <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', color: '#6f6f80', textTransform: 'uppercase' }}>
                   Reference: {refCode}
                 </span>
               </div>
             )}
-            {g.key === 'EVENT' && overtimeControl && (
+            {g.key === 'EVENT' && djType === 'mobile' && overtimeControl && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
                 <span className={styles.detailLabel}>Overtime</span>
                 {overtimeControl}
