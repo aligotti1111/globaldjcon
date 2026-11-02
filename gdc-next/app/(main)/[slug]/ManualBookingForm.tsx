@@ -548,59 +548,96 @@ export default function ManualBookingForm({
           <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
         )}
 
-        <SectionPill label="Venue Details" />
-        {/* Venue name + Rate on one line. Venue name takes the remaining
-            width; the rate box is narrow (~5 chars). */}
-        <div className={styles.venueRateRow}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
-            </span>
-            <FieldCheck valid={venueNameValid}>
-              <input
-                type="text"
-                value={venueName}
-                onChange={(e) => setVenueName(e.target.value)}
-                placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
-                className={`${styles.input} ${styles.hasCheck}`}
-              />
-            </FieldCheck>
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Rate <span className={styles.optional}>(optional)</span>
-            </span>
-            <div className={styles.rateRow}>
-              <div className={styles.rateInputWrap}>
-                <span className={styles.rateSymbol}>
-                  {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
-                  placeholder="0"
-                  className={styles.rateInput}
-                />
-              </div>
-              <select
-                value={rateCurrency}
-                onChange={(e) => setRateCurrency(e.target.value)}
-                className={styles.rateCurrencySelect}
-                aria-label="Currency"
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="CAD">CAD</option>
-                <option value="AUD">AUD</option>
+        {/* Equipment / Set Type (club) or Event Type (mobile) — grouped under
+            Event Details alongside the times. */}
+        {djType === 'club' ? (
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Venue Type <span className={styles.optional}>(optional)</span>
+              </span>
+              <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {CLUB_VENUE_TYPES.map((v) => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
               </select>
-            </div>
-            <span className={styles.rateNote}>The rate is not shown publicly.</span>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Set Type <span className={styles.optional}>(optional)</span>
+              </span>
+              <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {CLUB_SET_TYPES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Event Type</span>
+            <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
+              {MOBILE_EVENT_TYPES.map((v) => (
+                <option key={v.value} value={v.value}>{v.label}</option>
+              ))}
+            </select>
           </label>
-        </div>
+        )}
+
+        {/* Rate — also under Event Details, for the DJ's own bookkeeping. */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Rate <span className={styles.optional}>(optional)</span>
+          </span>
+          <div className={styles.rateRow}>
+            <div className={styles.rateInputWrap}>
+              <span className={styles.rateSymbol}>
+                {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                placeholder="0"
+                className={styles.rateInput}
+              />
+            </div>
+            <select
+              value={rateCurrency}
+              onChange={(e) => setRateCurrency(e.target.value)}
+              className={styles.rateCurrencySelect}
+              aria-label="Currency"
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="CAD">CAD</option>
+              <option value="AUD">AUD</option>
+            </select>
+          </div>
+          <span className={styles.rateNote}>The rate is not shown publicly.</span>
+        </label>
+
+        <SectionPill label="Venue Details" />
+        {/* Venue name (full width) */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+          </span>
+          <FieldCheck valid={venueNameValid}>
+            <input
+              type="text"
+              value={venueName}
+              onChange={(e) => setVenueName(e.target.value)}
+              placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+              className={`${styles.input} ${styles.hasCheck}`}
+            />
+          </FieldCheck>
+        </label>
 
         {/* Venue location (address + country) */}
         <div className={styles.field}>
@@ -685,43 +722,6 @@ export default function ManualBookingForm({
           </div>
         </div>
 
-        {/* Type-specific fields — two-column row for club (Venue Type / Set
-            Type), single field for mobile (Event Type). */}
-        {djType === 'club' ? (
-          <div className={styles.fieldRow}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                Venue Type <span className={styles.optional}>(optional)</span>
-              </span>
-              <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
-                <option value="">Select…</option>
-                {CLUB_VENUE_TYPES.map((v) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                Set Type <span className={styles.optional}>(optional)</span>
-              </span>
-              <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
-                <option value="">Select…</option>
-                {CLUB_SET_TYPES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ) : (
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Event Type</span>
-            <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
-              {MOBILE_EVENT_TYPES.map((v) => (
-                <option key={v.value} value={v.value}>{v.label}</option>
-              ))}
-            </select>
-          </label>
-        )}
 
         {/* Host details section — a called-out block, mirroring the modal.
             Header + helper line, the Host Email field, then either the
