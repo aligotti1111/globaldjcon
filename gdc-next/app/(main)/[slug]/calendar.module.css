@@ -1012,7 +1012,7 @@
 /* Wider while the Add-Booking-Manually form is open, matching the dashboard
    modal's two-column width. */
 .ownerEditBoxWide {
-  max-width: 600px;
+  max-width: 680px;
 }
 .ownerEditHeader {
   display: flex;
