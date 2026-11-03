@@ -1561,3 +1561,12 @@
   .manualBookedNote,
   .ownerCellNotes { display: none !important; }
 }
+
+/* Mobile: the day-edit / Add-Booking modal was heavily padded (1.5rem backdrop
+   + 1.75rem box), squishing the form into the middle with big side gutters.
+   Slim both down and let the box fill the width so fields use the screen. */
+@media (max-width: 600px) {
+  .ownerEditBackdrop { padding: .5rem; }
+  .ownerEditBox { padding: 1rem; max-width: none; }
+  .ownerEditBoxWide { max-width: none; }
+}
