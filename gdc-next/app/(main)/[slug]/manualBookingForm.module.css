@@ -297,10 +297,10 @@ select.input {
   font-size: .75rem;
   font-weight: 700;
   letter-spacing: .08em;
-  padding: 0 .55rem;
+  padding: 0 .4rem;
   border-radius: 6px;
   cursor: pointer;
-  min-width: 88px;
+  min-width: 60px;
   flex-shrink: 0;
 }
 .countrySelect:focus { outline: none; border-color: var(--neon); }
