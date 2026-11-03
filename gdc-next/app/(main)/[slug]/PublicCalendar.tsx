@@ -1882,9 +1882,9 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {/* Outer modal's Save/Cancel row. Hidden when a booking form is
-            open (the form provides its own buttons). */}
-        {!(status === 'booked' && addingBooking) && (
+        {/* Outer modal's Save/Cancel row. Hidden whenever a booking form is
+            open (the form provides its own Cancel / Add Booking buttons). */}
+        {!addingBooking && (
           <div className={styles.ownerEditActions}>
             <button type="button" onClick={attemptClose} className={styles.ownerEditCancelBtn}>
               Cancel
