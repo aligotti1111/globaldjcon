@@ -572,7 +572,7 @@ export default function ManualBookingForm({
           {djType === 'club' ? (
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
-                Set Type <span className={styles.optional}>(optional)</span>
+                Set Type <span className={styles.optional}>(opt.)</span>
               </span>
               <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
