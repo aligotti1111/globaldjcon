@@ -85,6 +85,14 @@ export default async function SubscribePage() {
           if (recurring === 'year') currentInterval = 'yearly';
           else if (recurring === 'month') currentInterval = 'monthly';
           cancelScheduled = !!sub.cancel_at_period_end;
+          // Prefer Stripe's live current_period_end over the stored
+          // sub_period_end: the DB value only advances when the renewal webhook
+          // fires, so a missed/lagged webhook would otherwise show a past
+          // "Renews" date. The live subscription is the source of truth.
+          const livePeriodEnd = sub.items?.data?.[0]?.current_period_end;
+          if (typeof livePeriodEnd === 'number' && Number.isFinite(livePeriodEnd)) {
+            accessUntil = new Date(livePeriodEnd * 1000).toISOString();
+          }
         } catch {
           currentInterval = null;
         }
