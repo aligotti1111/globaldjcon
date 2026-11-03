@@ -470,18 +470,18 @@
 .mobile-menu-divider{border:none;border-top:1px solid var(--border);margin:.25rem 0;}
 @media(max-width:600px){
   .hamburger-btn{display:flex !important;align-items:center;justify-content:center;position:static !important;transform:none !important;}
-  /* Columns: fixed hamburger | flexible middle (logo centered in it) | auto
-     icons at the far right. The flexible middle column's slack sits on both
-     sides of the centered logo, so the booking/bell icons are pushed to the
-     right edge with a clear gap from the logo — logo stays full size. */
-  .header-inner{display:grid !important;grid-template-columns:40px 1fr auto !important;align-items:center !important;padding:.75rem 1rem !important;gap:.5rem !important;flex-direction:unset !important;}
+  /* Equal side columns keep the logo dead-centered across the whole header.
+     Icons are slightly smaller with more spacing (below) to ease crowding. */
+  .header-inner{display:grid !important;grid-template-columns:minmax(40px,1fr) auto minmax(40px,1fr) !important;align-items:center !important;padding:.75rem 1rem !important;gap:.5rem !important;flex-direction:unset !important;}
   .eyebrow{display:none !important;}
   .header-inner>*:first-child{justify-self:start;}
-  .logo{text-align:center !important;justify-self:center !important;font-size:1.5rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .logo{text-align:center !important;font-size:1.5rem !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .header-inner>div:last-child{display:flex !important;gap:.7rem;align-items:center;flex-wrap:nowrap;justify-content:flex-end;justify-self:end;}
   /* Slightly smaller header icons on mobile, with more breathing room between
      them (gap above). Overrides the 25px width/height attributes on the SVGs. */
   .header-inner>div:last-child svg{width:21px !important;height:21px !important;}
+  /* Push the booking (open-book) icon to the right, away from the logo. */
+  .inbox-nav-btn--book{transform:translateX(1.75rem) !important;}
   .header-inner>div:last-child .btn{display:none !important;}
   /* Sign In button: hardcoded visible on mobile whenever body is marked logged-out by auth.js.
      Uses body.is-logged-out to beat any inline display:none set by the page's own JS. */
