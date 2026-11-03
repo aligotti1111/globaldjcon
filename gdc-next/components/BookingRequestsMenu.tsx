@@ -161,9 +161,10 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
       ].sort(byAt);
       setRespondItems(respond);
       setAwaitingItems(awaiting);
-      // Land on Respond when something needs you; otherwise open on Awaiting so
-      // the panel shows what you're waiting on instead of "nothing here".
-      setTab(respond.length > 0 ? 'respond' : 'awaiting');
+      // Land on Respond when something needs you. Only fall to Awaiting when
+      // Respond is empty but there IS something awaiting; if both are empty,
+      // default to Respond (the "request required" tab).
+      setTab(respond.length === 0 && awaiting.length > 0 ? 'awaiting' : 'respond');
     } catch { /* non-fatal */ }
   }
 
