@@ -154,7 +154,17 @@ export async function GET(req: NextRequest) {
     }));
     return NextResponse.json({ invoices });
   } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: `Could not load invoices: ${detail}` }, { status: 500 });
+    // If Stripe can't find the customer (e.g. a stored test-mode customer id
+    // read with live keys, or a deleted customer), there simply are no invoices
+    // to show — return an empty list instead of a scary error banner. Never
+    // surface the raw Stripe message to the client (it can leak customer ids and
+    // test/live-mode details); log it server-side only.
+    const code = (e as { code?: string } | null)?.code;
+    const statusCode = (e as { statusCode?: number } | null)?.statusCode;
+    if (code === 'resource_missing' || statusCode === 404) {
+      return NextResponse.json({ invoices: [] });
+    }
+    console.error('[stripe/invoices] list failed', e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: 'Could not load invoices right now. Please try again shortly.' }, { status: 500 });
   }
 }
