@@ -1317,9 +1317,26 @@ export default function AddManualBookingModal({
             </div>
           )}
 
-          {/* Club: Set Type + Rate on one row, under Event Details. */}
+          {/* Club: Equipment + Set Type + Rate on one row, under Event Details.
+              Equipment comes first, Set Type is narrower. */}
           {djType === 'club' && (
-            <div className={styles.fieldRow}>
+            <div className={styles.fieldRow} style={{ gridTemplateColumns: '1fr 0.75fr 1fr' }}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Equipment <span className={styles.optional}>(opt.)</span>
+                </span>
+                <select
+                  value={equipment}
+                  onChange={(e) => setEquipment(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select…</option>
+                  {Object.entries(CLUB_EQUIPMENT_LABELS).map(([val, lbl]) => (
+                    <option key={val} value={val}>{lbl}</option>
+                  ))}
+                </select>
+              </label>
               <label className={styles.field}>
                 <span className={styles.fieldLabel}>
                   Set Type <span className={styles.optional}>(optional)</span>
@@ -1454,24 +1471,6 @@ export default function AddManualBookingModal({
               </select>
             </div>
           </div>
-          {djType === 'club' && (
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                Equipment <span className={styles.optional}>(opt.)</span>
-              </span>
-              <select
-                value={equipment}
-                onChange={(e) => setEquipment(e.target.value)}
-                className={styles.input}
-                style={{ width: '100%' }}
-              >
-                <option value="">Select…</option>
-                {Object.entries(CLUB_EQUIPMENT_LABELS).map(([val, lbl]) => (
-                  <option key={val} value={val}>{lbl}</option>
-                ))}
-              </select>
-            </label>
-          )}
           </div>
 
           {/* Package + Rate — after Event Type. Both stay visible but
