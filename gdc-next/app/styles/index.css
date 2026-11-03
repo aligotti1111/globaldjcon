@@ -481,7 +481,7 @@
      them (gap above). Overrides the 25px width/height attributes on the SVGs. */
   .header-inner>div:last-child svg{width:21px !important;height:21px !important;}
   /* Push the booking (open-book) icon to the right, away from the logo. */
-  .inbox-nav-btn--book{transform:translateX(1.4rem) !important;}
+  .inbox-nav-btn--book{transform:translateX(1.15rem) !important;}
   /* Small right nudge for the bell, into the header's right padding. */
   .header-inner>div:last-child .inbox-nav-btn:not(.inbox-nav-btn--book){transform:translateX(.4rem) !important;}
   .header-inner>div:last-child .btn{display:none !important;}
