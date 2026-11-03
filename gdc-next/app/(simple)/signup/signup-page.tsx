@@ -139,18 +139,40 @@ function TypeBadge({
   );
 }
 
+// Only allow relative, same-origin paths — a crafted ?redirect=https://evil.com
+// would otherwise send the user off-site after signup (open-redirect). Mirrors
+// the login page's sanitiser.
+function sanitizeRedirect(raw: string | null): string {
+  if (!raw) return '/';
+  if (!raw.startsWith('/')) return '/';
+  if (raw.startsWith('//')) return '/';
+  if (raw.startsWith('/\\')) return '/';
+  try {
+    const u = new URL(raw, 'https://gdc.local');
+    if (u.origin !== 'https://gdc.local') return '/';
+    return u.pathname + u.search + u.hash;
+  } catch {
+    return '/';
+  }
+}
+
 export default function SignupPage() {
   const [screen, setScreen] = useState<Screen>('type-select');
   const [success, setSuccess] = useState<SuccessInfo | null>(null);
   // URL-param state (read once on mount; SSR-safe because we're in 'use client').
   const [prefillEmail, setPrefillEmail] = useState<string>('');
   const [lockedEmail, setLockedEmail] = useState<boolean>(false);
+  // Where to return the visitor if they close/leave without finishing — the
+  // page that sent them here (e.g. a DJ profile), not the homepage. Only
+  // same-origin relative paths are honored (see sanitizeRedirect).
+  const [redirectDest, setRedirectDest] = useState<string>('/');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const email = params.get('email') || '';
     const claimBookingId = params.get('claim_booking') || '';
+    setRedirectDest(sanitizeRedirect(params.get('redirect') || params.get('return')));
     if (email) setPrefillEmail(email);
     // If we have a claim_booking, this is the host-invite flow:
     //   - Auto-route to the host form (skip the type chooser).
@@ -184,7 +206,9 @@ export default function SignupPage() {
     <div className={styles.body}>
       <div className={styles.container}>
         <div className={styles.closeRow}>
-          <Link href="/" className={styles.closeX} aria-label="Close and return home">✕</Link>
+          {/* Closing returns the visitor to where they came from (e.g. the DJ
+              profile that sent them here), not the homepage. */}
+          <Link href={redirectDest !== '/' ? redirectDest : '/'} className={styles.closeX} aria-label="Close">✕</Link>
         </div>
         <div className={styles.logo}>
           <Link href="/">
@@ -195,7 +219,10 @@ export default function SignupPage() {
 
         {screen !== 'success' && (
           <div className={styles.tabs}>
-            <Link href="/login" className={styles.tab}>Login</Link>
+            <Link
+              href={redirectDest !== '/' ? `/login?redirect=${encodeURIComponent(redirectDest)}` : '/login'}
+              className={styles.tab}
+            >Login</Link>
             <button className={`${styles.tab} ${styles.active}`} type="button">Sign Up</button>
           </div>
         )}
@@ -229,7 +256,7 @@ export default function SignupPage() {
         {screen !== 'success' && (
           <>
             <div className={styles.divider}>
-              Already have an account? <Link href="/login">Log in</Link>
+              Already have an account? <Link href={redirectDest !== '/' ? `/login?redirect=${encodeURIComponent(redirectDest)}` : '/login'}>Log in</Link>
             </div>
             <div className={styles.contactLink}>
               <Link href="/contact">Contact Us</Link>
