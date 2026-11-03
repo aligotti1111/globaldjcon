@@ -15,7 +15,7 @@ import {
 } from '../[slug]/mobileBookingForm';
 import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
-import { currencySymbol, CLUB_EQUIPMENT_LABELS, CLUB_SET_TYPE_LABELS } from '@/lib/constants';
+import { currencySymbol, CLUB_EQUIPMENT_LABELS, CLUB_SET_TYPE_LABELS, CLUB_VENUE_TYPE_LABELS } from '@/lib/constants';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
 import { COUNTRY_FLAGS, MOBILE_EVENT_TYPES, TIME_OPTIONS, NEON, formatSentDate } from './shared';
@@ -1410,9 +1410,9 @@ export default function AddManualBookingModal({
           )}
 
           {sectionPill('Venue Details')}
-          {/* Venue name — full width on its own row. */}
+          {/* Venue name + Venue Type (club) on one row. */}
           <div className={styles.venueRateRow}>
-            <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+            <label className={styles.field} style={{ flex: 2, minWidth: 0 }}>
               <span className={styles.fieldLabel}>
                 Venue Name
               </span>
@@ -1425,6 +1425,24 @@ export default function AddManualBookingModal({
                 style={{ width: '100%', ...errRing(error === 'Venue name is required.' && !venueName.trim()) }}
               />
             </label>
+            {djType === 'club' && (
+              <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+                <span className={styles.fieldLabel}>
+                  Venue Type <span className={styles.optional}>(opt.)</span>
+                </span>
+                <select
+                  value={venueType}
+                  onChange={(e) => setVenueType(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select…</option>
+                  {Object.entries(CLUB_VENUE_TYPE_LABELS).map(([val, lbl]) => (
+                    <option key={val} value={val}>{lbl}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <div className={styles.fieldRow} style={{ gridTemplateColumns: '1fr' }}>
