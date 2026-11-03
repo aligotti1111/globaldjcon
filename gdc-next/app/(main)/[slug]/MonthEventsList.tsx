@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { TIME_OPTIONS } from '../upcoming-bookings/shared';
 import styles from './monthEventsList.module.css';
 
 interface EventRow {
@@ -256,6 +257,53 @@ function EventListItem({
   // URL + custom button label to any club/bar booking (manual or approved).
   const [linkModalOpen, setLinkModalOpen] = useState(false);
 
+  // Inline-edit state for owner rows. Lets the owner fill venue name, start
+  // time and address directly on the row (no modal) by clicking the
+  // placeholder. `savedId` is the bookings row these edits write to: for a
+  // real/owner row it's event.id; for a calendar-only "private" stub it
+  // starts null and is filled in the moment the first inline edit creates
+  // the row, so later edits update that same row instead of re-inserting.
+  const [savedId, setSavedId] = useState<string | null>(
+    event.is_private ? null : event.id,
+  );
+  const [venueName, setVenueName] = useState(event.venue_name || '');
+  const [startTime, setStartTime] = useState(event.start_time || '');
+  const [venueAddress, setVenueAddress] = useState(event.venue_address || '');
+
+  // Persist a single inline field to the bookings row. Creates the row first
+  // (mirroring handleFlyerForPrivate) when none exists yet, then updates the
+  // field. Throws on failure so the inline control can surface the error.
+  async function persistField(
+    field: 'venue_name' | 'start_time' | 'venue_address',
+    value: string,
+  ) {
+    const supabase = createClient();
+    let id = savedId;
+    if (!id) {
+      const { data: inserted, error: insertErr } = await supabase
+        .from('bookings')
+        .insert({
+          dj_id: djId,
+          requester_id: djId,
+          booking_type: 'club',
+          event_date: event.event_date,
+          is_manual: true,
+          status: 'approved',
+        } as unknown as never)
+        .select('id')
+        .single<{ id: string }>();
+      if (insertErr || !inserted) throw insertErr || new Error('Insert failed');
+      id = inserted.id;
+      setSavedId(id);
+    }
+    const { error: updErr } = await supabase
+      .from('bookings')
+      .update({ [field]: value || null } as unknown as never)
+      .eq('id', id)
+      .eq('dj_id', djId);
+    if (updErr) throw updErr;
+  }
+
   const { day, dow, mo } = parseDateParts(event.event_date);
 
   // Private events (calendar mark without a real booking row).
@@ -296,24 +344,31 @@ function EventListItem({
       setUploadErr(null);
       try {
         const supabase = createClient();
-        // 1. Create the stub booking row.
-        const { data: inserted, error: insertErr } = await supabase
-          .from('bookings')
-          .insert({
-            dj_id: djId,
-            requester_id: djId,
-            booking_type: 'club',
-            event_date: dateKey,
-            is_manual: true,
-            status: 'approved',
-          } as unknown as never)
-          .select('id')
-          .single<{ id: string }>();
-        if (insertErr || !inserted) throw insertErr || new Error('Insert failed');
+        // 1. Create the stub booking row — unless an inline edit already
+        //    created one for this date, in which case reuse that id so we
+        //    don't end up with two rows for the same night.
+        let bookingId = savedId;
+        if (!bookingId) {
+          const { data: inserted, error: insertErr } = await supabase
+            .from('bookings')
+            .insert({
+              dj_id: djId,
+              requester_id: djId,
+              booking_type: 'club',
+              event_date: dateKey,
+              is_manual: true,
+              status: 'approved',
+            } as unknown as never)
+            .select('id')
+            .single<{ id: string }>();
+          if (insertErr || !inserted) throw insertErr || new Error('Insert failed');
+          bookingId = inserted.id;
+          setSavedId(bookingId);
+        }
 
-        // 2. Upload the flyer keyed to the new booking id.
+        // 2. Upload the flyer keyed to the booking id.
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        const path = `${djId}/flyers/${inserted.id}.${ext}`;
+        const path = `${djId}/flyers/${bookingId}.${ext}`;
         const { error: uploadErrInner } = await supabase.storage
           .from('avatars')
           .upload(path, file, { upsert: true, contentType: file.type });
@@ -325,7 +380,7 @@ function EventListItem({
         const { error: updErr } = await supabase
           .from('bookings')
           .update({ flyer_url: publicUrl } as unknown as never)
-          .eq('id', inserted.id)
+          .eq('id', bookingId)
           .eq('dj_id', djId);
         if (updErr) throw updErr;
 
@@ -364,11 +419,29 @@ function EventListItem({
           onChange={handleFlyerForPrivate}
         />
         <div className={styles.middle}>
-          <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
+          <div className={styles.venue}>
+            <InlineEditField
+              kind="text"
+              value={venueName}
+              placeholder="Add venue name"
+              onSave={async (v) => { await persistField('venue_name', v); setVenueName(v); }}
+            />
+          </div>
           <div className={styles.meta}>
-            <span className={styles.placeholderField}>Add time</span>
+            <InlineEditField
+              kind="time"
+              value={startTime}
+              placeholder="Add time"
+              renderValue={(v) => formatTime12(v)}
+              onSave={async (v) => { await persistField('start_time', v); setStartTime(v); }}
+            />
             {' · '}
-            <span className={styles.placeholderField}>Add address</span>
+            <InlineEditField
+              kind="text"
+              value={venueAddress}
+              placeholder="Add address"
+              onSave={async (v) => { await persistField('venue_address', v); setVenueAddress(v); }}
+            />
           </div>
           {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
         </div>
@@ -547,21 +620,43 @@ function EventListItem({
           address on its own line. Owner sees "Add X" placeholders for
           missing fields; public viewers see only what's filled in. */}
       <div className={styles.middle}>
-        {hasVenue ? (
+        {isOwnProfile ? (
+          <div className={styles.venue}>
+            <InlineEditField
+              kind="text"
+              value={venueName}
+              placeholder="Add venue name"
+              onSave={async (v) => { await persistField('venue_name', v); setVenueName(v); }}
+            />
+          </div>
+        ) : hasVenue ? (
           <div className={styles.venue}>{venueLine}</div>
-        ) : isOwnProfile ? (
-          <div className={`${styles.venue} ${styles.placeholderField}`}>Add venue name</div>
         ) : flyerOnly ? (
           <div className={`${styles.venue} ${styles.flyerHint}`}>See flyer for more info</div>
         ) : null}
-        {hasTime ? (
-          <div className={styles.meta}>{timeRange}</div>
-        ) : isOwnProfile ? (
+        {isOwnProfile ? (
           <div className={styles.meta}>
-            <span className={styles.placeholderField}>Add time</span>
+            <InlineEditField
+              kind="time"
+              value={startTime}
+              placeholder="Add time"
+              renderValue={(v) => formatTime12(v)}
+              onSave={async (v) => { await persistField('start_time', v); setStartTime(v); }}
+            />
           </div>
+        ) : hasTime ? (
+          <div className={styles.meta}>{timeRange}</div>
         ) : null}
-        {hasAddress ? (
+        {isOwnProfile ? (
+          <div className={styles.meta}>
+            <InlineEditField
+              kind="text"
+              value={venueAddress}
+              placeholder="Add address"
+              onSave={async (v) => { await persistField('venue_address', v); setVenueAddress(v); }}
+            />
+          </div>
+        ) : hasAddress ? (
           <div className={styles.meta}>
             {mapUrl ? (
               <a href={mapUrl} target="_blank" rel="noreferrer" className={styles.metaLink}>
@@ -570,10 +665,6 @@ function EventListItem({
             ) : (
               <span>{event.venue_address}</span>
             )}
-          </div>
-        ) : isOwnProfile ? (
-          <div className={styles.meta}>
-            <span className={styles.placeholderField}>Add address</span>
           </div>
         ) : null}
         {uploadErr && <div className={styles.errMsg}>{uploadErr}</div>}
@@ -635,6 +726,123 @@ function EventListItem({
         />
       )}
     </div>
+  );
+}
+
+// ── Inline edit field ─────────────────────────────────────────────────
+// Click-to-edit control used on owner rows for venue name, start time and
+// address. Shows the saved value (or an italic "Add X" placeholder) as a
+// text trigger; clicking swaps it for a compact text input or a time
+// <select> right in the row. Enter or blur saves, Escape cancels, and a
+// brief saving state blocks re-entry. `onSave` persists the value and must
+// resolve before the field exits edit mode; it throws to surface an error.
+function InlineEditField({
+  kind, value, placeholder, onSave, renderValue,
+}: {
+  kind: 'text' | 'time';
+  value: string;
+  placeholder: string;
+  onSave: (v: string) => Promise<void>;
+  renderValue?: (v: string) => string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // Guards against a save firing twice when Enter (which blurs the field)
+  // is immediately followed by the blur handler.
+  const closedRef = useRef(false);
+
+  function open() {
+    closedRef.current = false;
+    setDraft(value);
+    setErr(null);
+    setEditing(true);
+  }
+
+  function cancel() {
+    closedRef.current = true;
+    setDraft(value);
+    setErr(null);
+    setEditing(false);
+  }
+
+  async function commit(next?: string) {
+    if (closedRef.current || saving) return;
+    const raw = next !== undefined ? next : draft;
+    const trimmed = kind === 'text' ? raw.trim() : raw;
+    if (trimmed === value) { closedRef.current = true; setEditing(false); return; }
+    closedRef.current = true;
+    setSaving(true);
+    setErr(null);
+    try {
+      await onSave(trimmed);
+      setEditing(false);
+    } catch (e) {
+      // Reopen so the owner can retry.
+      closedRef.current = false;
+      setErr(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    const has = !!value && value.trim() !== '';
+    return (
+      <button
+        type="button"
+        className={`${styles.inlineEditTrigger} ${has ? '' : styles.placeholderField}`}
+        onClick={open}
+        title={has ? 'Click to edit' : placeholder}
+      >
+        {has ? (renderValue ? renderValue(value) : value) : placeholder}
+      </button>
+    );
+  }
+
+  if (kind === 'time') {
+    return (
+      <span className={styles.inlineEditWrap}>
+        <select
+          className={styles.inlineSelect}
+          value={draft}
+          autoFocus
+          disabled={saving}
+          onChange={(e) => { setDraft(e.target.value); commit(e.target.value); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') cancel(); }}
+          onBlur={() => commit()}
+        >
+          <option value="">Select time…</option>
+          {TIME_OPTIONS.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+        {saving && <span className={styles.inlineSaving}>Saving…</span>}
+        {err && <span className={styles.inlineErr}>{err}</span>}
+      </span>
+    );
+  }
+
+  return (
+    <span className={styles.inlineEditWrap}>
+      <input
+        type="text"
+        className={styles.inlineInput}
+        value={draft}
+        placeholder={placeholder}
+        autoFocus
+        disabled={saving}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+          else if (e.key === 'Escape') { cancel(); }
+        }}
+        onBlur={() => commit()}
+      />
+      {saving && <span className={styles.inlineSaving}>Saving…</span>}
+      {err && <span className={styles.inlineErr}>{err}</span>}
+    </span>
   );
 }
 
