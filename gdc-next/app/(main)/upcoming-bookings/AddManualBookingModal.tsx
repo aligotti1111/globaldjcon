@@ -1317,24 +1317,25 @@ export default function AddManualBookingModal({
             </div>
           )}
 
-          {sectionPill('Venue Details')}
-          {/* Venue name + Rate on one line. Venue name takes the
-              remaining width; the rate box is narrow (~5 chars). */}
-          <div className={styles.venueRateRow}>
-            <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
-              <span className={styles.fieldLabel}>
-                Venue Name
-              </span>
-              <input
-                type="text"
-                value={venueName}
-                onChange={(e) => setVenueName(e.target.value)}
-                placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
-                className={styles.input}
-                style={{ width: '100%', ...errRing(error === 'Venue name is required.' && !venueName.trim()) }}
-              />
-            </label>
-            {djType === 'club' && (
+          {/* Club: Set Type + Rate on one row, under Event Details. */}
+          {djType === 'club' && (
+            <div className={styles.fieldRow}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Set Type <span className={styles.optional}>(optional)</span>
+                </span>
+                <select
+                  value={setType}
+                  onChange={(e) => setSetType(e.target.value)}
+                  className={styles.input}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select…</option>
+                  {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
+                    <option key={val} value={val}>{lbl}</option>
+                  ))}
+                </select>
+              </label>
               <label className={styles.field}>
                 <span className={styles.fieldLabel}>
                   Rate <span className={styles.optional}>(optional)</span>
@@ -1358,9 +1359,28 @@ export default function AddManualBookingModal({
                 </div>
                 {rate.trim() !== '' && taxDepositBlock}
               </label>
-            )}
+            </div>
+          )}
+
+          {sectionPill('Venue Details')}
+          {/* Venue name — full width on its own row. */}
+          <div className={styles.venueRateRow}>
+            <label className={styles.field} style={{ flex: 1, minWidth: 0 }}>
+              <span className={styles.fieldLabel}>
+                Venue Name
+              </span>
+              <input
+                type="text"
+                value={venueName}
+                onChange={(e) => setVenueName(e.target.value)}
+                placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+                className={styles.input}
+                style={{ width: '100%', ...errRing(error === 'Venue name is required.' && !venueName.trim()) }}
+              />
+            </label>
           </div>
 
+          <div className={styles.fieldRow} style={{ gridTemplateColumns: djType === 'club' ? '2fr 1fr' : '1fr' }}>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Venue Location</span>
             <div className={styles.addrRow}>
@@ -1434,46 +1454,25 @@ export default function AddManualBookingModal({
               </select>
             </div>
           </div>
-
-          {/* Club: Equipment + Set Type, both dropdowns on one line. Same
-              options the public club booking form uses, so a manually-added
-              gig carries the same fields as a client-booked one. */}
           {djType === 'club' && (
-            <div className={styles.venueRateRow}>
-              <label className={styles.field} style={{ flex: 1.7, minWidth: 0 }}>
-                <span className={styles.fieldLabel}>
-                  Equipment <span className={styles.optional}>(optional)</span>
-                </span>
-                <select
-                  value={equipment}
-                  onChange={(e) => setEquipment(e.target.value)}
-                  className={styles.input}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">Select…</option>
-                  {Object.entries(CLUB_EQUIPMENT_LABELS).map(([val, lbl]) => (
-                    <option key={val} value={val}>{lbl}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.field} style={{ flex: 1, minWidth: 0, maxWidth: '38%' }}>
-                <span className={styles.fieldLabel}>
-                  Set Type <span className={styles.optional}>(optional)</span>
-                </span>
-                <select
-                  value={setType}
-                  onChange={(e) => setSetType(e.target.value)}
-                  className={styles.input}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">Select…</option>
-                  {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
-                    <option key={val} value={val}>{lbl}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Equipment <span className={styles.optional}>(opt.)</span>
+              </span>
+              <select
+                value={equipment}
+                onChange={(e) => setEquipment(e.target.value)}
+                className={styles.input}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select…</option>
+                {Object.entries(CLUB_EQUIPMENT_LABELS).map(([val, lbl]) => (
+                  <option key={val} value={val}>{lbl}</option>
+                ))}
+              </select>
+            </label>
           )}
+          </div>
 
           {/* Package + Rate — after Event Type. Both stay visible but
               disabled (unclickable) until an event type is selected. The
