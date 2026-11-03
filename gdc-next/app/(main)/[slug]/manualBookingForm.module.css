@@ -216,6 +216,12 @@ select.input {
   color: var(--muted);
   opacity: 1;
 }
+/* Empty <select>s show their "Select…" option text in the same muted grey as
+   the input placeholders. Once a real value is chosen, the text returns to the
+   normal color. */
+.input:has(> option[value=""]:checked) {
+  color: var(--muted);
+}
 /* Let grid cells shrink below their content's intrinsic width so multi-column
    field rows (e.g. Equipment / Set Type / Rate) stay on one line instead of
    overflowing or pushing a field onto a new row. */
