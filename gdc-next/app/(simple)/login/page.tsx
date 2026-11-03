@@ -330,7 +330,9 @@ function LoginForm() {
     <div className={styles.body}>
       <div className={styles.container}>
         <div className={styles.closeRow}>
-          <Link href="/" className={styles.closeX} aria-label="Close and return home">✕</Link>
+          {/* Closing returns the visitor to wherever they came from (the DJ
+              profile that sent them here), not the homepage. */}
+          <Link href={destination !== '/' ? destination : '/'} className={styles.closeX} aria-label="Close">✕</Link>
         </div>
         <div className={styles.logo}>
           <Link href="/">
@@ -343,7 +345,10 @@ function LoginForm() {
           <button className={`${styles.tab} ${styles.active}`} type="button">
             Login
           </button>
-          <Link href="/signup" className={styles.tab}>
+          <Link
+            href={destination !== '/' ? `/signup?redirect=${encodeURIComponent(destination)}` : '/signup'}
+            className={styles.tab}
+          >
             Sign Up
           </Link>
         </div>
