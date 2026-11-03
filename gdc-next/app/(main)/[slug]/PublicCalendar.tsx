@@ -1888,10 +1888,11 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {/* Outer modal's Save/Cancel row. Hidden whenever a manual booking form
-            is open — adding a new one, or editing an existing manual booking —
-            since that form provides its own Cancel / Save Changes buttons. */}
-        {!(addingBooking || (expandedIdx >= 0 && dayBookings[expandedIdx]?.is_manual)) && (
+        {/* Outer modal's Save/Cancel row. Hidden only on the Bookings tab when a
+            manual booking form is open — adding a new one, or editing an
+            existing manual booking — since that form provides its own Cancel /
+            Save Changes buttons. The Update Rates tab still needs this Save. */}
+        {!(addingBooking || (popupTab === 'bookings' && expandedIdx >= 0 && dayBookings[expandedIdx]?.is_manual)) && (
           <div className={styles.ownerEditActions}>
             <button type="button" onClick={attemptClose} className={styles.ownerEditCancelBtn}>
               Cancel
