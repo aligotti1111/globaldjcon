@@ -886,17 +886,20 @@ function SingleMonthView({
               {quickIsReopen ? '✓' : '✕'}
             </button>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenEdit(key);
-            }}
-            className={styles.ownerEditPencil}
-            title="Edit day"
-          >
-            ✏️
-          </button>
+          {/* Pencil hidden once the day is marked unavailable. */}
+          {!isUnavail && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenEdit(key);
+              }}
+              className={styles.ownerEditPencil}
+              title="Edit day"
+            >
+              ✏️
+            </button>
+          )}
           {/* Owner-only markers: a manual "booked" block the DJ set themselves
               (no real booking behind it) and a per-date price edit. */}
           {(() => {
@@ -1161,17 +1164,19 @@ function RollingMonthsView({
                   {isUnavail ? '✓' : '✕'}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenEdit(key);
-                }}
-                className={styles.miniOwnerEditPencil}
-                title="Edit day"
-              >
-                ✏️
-              </button>
+              {!isUnavail && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenEdit(key);
+                  }}
+                  className={styles.miniOwnerEditPencil}
+                  title="Edit day"
+                >
+                  ✏️
+                </button>
+              )}
               {dayData.price_adjust_pct != null && dayData.price_adjust_pct !== 0 && (
                 <span style={{ fontSize: 7, lineHeight: 1, color: 'var(--neon,#00e0a4)', fontWeight: 700 }} title="Price edited for this day">
                   {dayData.price_adjust_pct > 0 ? '+' : ''}{dayData.price_adjust_pct}%
