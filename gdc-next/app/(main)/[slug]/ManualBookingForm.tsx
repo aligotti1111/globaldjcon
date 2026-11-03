@@ -102,6 +102,28 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
   return out;
 })();
 
+// End-time options that flow PAST MIDNIGHT, matching the mobile DJ booking
+// form: slots before 6 AM are moved to the bottom of the list and labelled
+// "(next day)" (or the actual next date when known), so a set running into the
+// early morning reads correctly. The duration calc already treats an end
+// at/before the start as overnight, so the stored value needs no change.
+function buildEndTimeOptions(dateKey?: string | null): Array<{ value: string; label: string }> {
+  let nextLabel = 'next day';
+  if (dateKey && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + 1);
+    nextLabel = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  const day: Array<{ value: string; label: string }> = [];
+  const next: Array<{ value: string; label: string }> = [];
+  for (const o of TIME_OPTIONS) {
+    const h = Number(o.value.split(':')[0]);
+    if (h < 6) next.push({ value: o.value, label: `${o.label} (${nextLabel})` });
+    else day.push(o);
+  }
+  return [...day, ...next];
+}
+
 export default function ManualBookingForm({
   userId, djType, djCountry, djName, bookingsPerDay, existingBookings,
   existing, prefillDate, lockDate, onSaved, onCancel,
@@ -115,6 +137,9 @@ export default function ManualBookingForm({
   const [eventDate, setEventDate] = useState(existing?.event_date || prefillDate || '');
   const [startTime, setStartTime] = useState(trimTime(existing?.start_time || null));
   const [endTime, setEndTime] = useState(trimTime(existing?.end_time || null));
+  // End-time list runs past midnight (early-AM slots sort to the bottom and
+  // read as "(next day)"), matching the mobile DJ booking form.
+  const endTimeOptions = buildEndTimeOptions(existing?.event_date || prefillDate || null);
   const [venueName, setVenueName] = useState(existing?.venue_name || '');
   const [venueAddress, setVenueAddress] = useState(existing?.venue_address || '');
   const [country, setCountry] = useState<string>(djCountry || 'United States');
@@ -501,7 +526,7 @@ export default function ManualBookingForm({
               </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
-                {TIME_OPTIONS.map((t) => (
+                {endTimeOptions.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
@@ -524,7 +549,7 @@ export default function ManualBookingForm({
               </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input}>
                 <option value="">Select…</option>
-                {TIME_OPTIONS.map((t) => (
+                {endTimeOptions.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
