@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { searchAddresses } from './mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
+import { CLUB_EQUIPMENT_LABELS } from '@/lib/constants';
 import styles from './manualBookingForm.module.css';
 
 export interface ManualBookingRow {
@@ -131,6 +132,9 @@ export default function ManualBookingForm({
   const [venueAddress, setVenueAddress] = useState(existing?.venue_address || '');
   const [country, setCountry] = useState<string>(djCountry || 'United States');
   const [venueType, setVenueType] = useState<string>(existing?.venue_type || '');
+  const [equipment, setEquipment] = useState<string>(
+    (existing as { equipment?: string | null } | null)?.equipment || '',
+  );
   const [setType, setSetType] = useState<string>(existing?.set_type || '');
   const [eventType, setEventType] = useState<string>(existing?.event_type || 'wedding');
   const [hostEmail, setHostEmail] = useState<string>(existing?.host_email || '');
@@ -364,6 +368,7 @@ export default function ManualBookingForm({
         venue_lon: coords?.lon ?? null,
         venue_type: djType === 'club' ? (venueType || null) : null,
         set_type: djType === 'club' ? (setType || null) : null,
+        equipment: djType === 'club' ? (equipment || null) : null,
         event_type: djType === 'mobile' ? eventType : null,
         host_email: trimmedEmail || null,
         requester_name: hostName.trim() || null,
@@ -544,9 +549,26 @@ export default function ManualBookingForm({
           <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
         )}
 
-        {/* Set Type (club) or Event Type (mobile) + Rate on one row. Venue Type
+        {/* Equipment (club) + Set Type (club) or Event Type (mobile) + Rate on
+            one row. Equipment comes first, Set Type is narrower. Venue Type
             lives with Venue Name below. */}
-        <div className={styles.fieldRow}>
+        <div
+          className={styles.fieldRow}
+          style={djType === 'club' ? { gridTemplateColumns: '1fr 0.75fr 1fr' } : undefined}
+        >
+          {djType === 'club' && (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Equipment <span className={styles.optional}>(opt.)</span>
+              </span>
+              <select value={equipment} onChange={(e) => setEquipment(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {Object.entries(CLUB_EQUIPMENT_LABELS).map(([val, lbl]) => (
+                  <option key={val} value={val}>{lbl}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {djType === 'club' ? (
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
