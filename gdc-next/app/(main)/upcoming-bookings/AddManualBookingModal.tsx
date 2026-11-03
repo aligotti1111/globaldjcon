@@ -561,6 +561,36 @@ export default function AddManualBookingModal({
   // OS window.confirm() for the daily-cap / overbook prompts.
   const { confirm: askConfirm, confirmDialog } = useConfirm();
 
+  // Unsaved-changes guard: snapshot the editable fields once on mount, then
+  // require a confirm before closing (X / Cancel) if anything changed. The
+  // backdrop no longer closes the modal — only X or Cancel do.
+  const dirtySnapshot = () => JSON.stringify([
+    eventDate, startTime, endTime, venueName, venueAddress, country,
+    venueType, setType, equipment, eventType, eventSubType, birthdayAge,
+    surprise, selectedPkgIdx, editedDetails, showCocktail, cocktailStart,
+    showCeremony, ceremonyStart, showOvertime, overtimeRate, hostEmail,
+    hostName, rate, applyTax, taxPctStr, applyDeposit, depositPctStr,
+  ]);
+  const initialSnapshotRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (initialSnapshotRef.current === null) initialSnapshotRef.current = dirtySnapshot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const handleCloseRequest = async () => {
+    if (saving) return;
+    const dirty = initialSnapshotRef.current !== null && dirtySnapshot() !== initialSnapshotRef.current;
+    if (dirty) {
+      const ok = await askConfirm({
+        title: 'Discard changes?',
+        message: 'You have unsaved changes to this booking. Close without saving?',
+        confirmLabel: 'Discard',
+        variant: 'danger',
+      });
+      if (!ok) return;
+    }
+    onClose();
+  };
+
   const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display: string; lat: number | null; lon: number | null }>>([]);
   const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
   const addrTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1102,11 +1132,11 @@ export default function AddManualBookingModal({
   return (
     <>
     {confirmDialog}
-    <div className={styles.modalBackdrop} onClick={onClose}>
+    <div className={styles.modalBackdrop}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{isEdit ? 'Edit Manual Booking' : 'Add Booking Manually'}</h2>
-          <button type="button" onClick={onClose} className={styles.modalClose} aria-label="Close">✕</button>
+          <button type="button" onClick={handleCloseRequest} className={styles.modalClose} aria-label="Close">✕</button>
         </div>
 
         <div className={styles.modalBody}>
@@ -1183,7 +1213,7 @@ export default function AddManualBookingModal({
           )}
           {/* Date + Start Time + End Time on a single row. Clicking
               anywhere on the date field opens the native picker. */}
-          <div className={styles.fieldRow3}>
+          <div className={styles.fieldRow3} style={{ gridTemplateColumns: '1.3fr 0.9fr 1fr' }}>
             <div className={styles.field}>
               <span className={styles.fieldLabel}>Date</span>
               <div
@@ -1810,7 +1840,7 @@ export default function AddManualBookingModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <button type="button" onClick={onClose} className={styles.cancelBtn} disabled={saving}>Cancel</button>
+          <button type="button" onClick={handleCloseRequest} className={styles.cancelBtn} disabled={saving}>Cancel</button>
           <button
             type="button"
             onClick={handleSave}
