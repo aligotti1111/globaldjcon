@@ -131,6 +131,11 @@ const LANDING_CSS = String.raw`
 @media(max-width:640px){
 .gdc-landing .cmp{grid-template-columns:1fr}
 .gdc-landing .cmp > .mobile{border-right:0}
+/* On the homepage sample booking cards, no fields sit across from each other
+   on mobile EXCEPT the Start/End time pair (.two) — stack the address+country
+   rows so each field gets its own line. */
+.gdc-landing .hp .addr{grid-template-columns:1fr}
+.gdc-landing .hp .addr2{grid-template-columns:1fr}
 }
 .gdc-landing /* host preview mini-cards under each flow */
   .cmp .prevcell{padding:22px;border-top:1px solid var(--line);align-self:start}
