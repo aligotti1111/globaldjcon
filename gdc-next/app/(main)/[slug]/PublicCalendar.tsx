@@ -1442,7 +1442,10 @@ function OwnerDayEditPopup({
         .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, set_type, event_type, booking_type, is_manual, host_email, host_email_sent_at')
         .eq('dj_id', djId)
         .eq('event_date', dateKey)
-        .eq('status', 'approved')
+        // Match the Upcoming Events list: approved bookings OR any manual
+        // booking (manual rows may carry a non-'approved' status but still
+        // belong to this day and must appear in the editor).
+        .or('status.eq.approved,is_manual.eq.true')
         .order('start_time', { ascending: true });
       // Fetch profile country for address-search default.
       const profilePromise = supabase
