@@ -119,6 +119,9 @@
   letter-spacing: .01em;
   text-transform: none;
   color: var(--white);
+  /* Keep each label on one line so a field's input doesn't drop lower than
+     its neighbors when a label would otherwise wrap in a narrow column. */
+  white-space: nowrap;
 }
 
 /* Gradient section chips — mirrors the dashboard "Add Manual Booking" modal,
