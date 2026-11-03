@@ -178,11 +178,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
   }
 
   function onIconClick() {
-    if (!isDesktop) {
-      try { window.dispatchEvent(new CustomEvent('gdc:mark-bookings-seen')); } catch { /* ignore */ }
-      router.push(MORE_HREF);
-      return;
-    }
+    // Same behavior on all screens: toggle the preview panel in place.
     if (open) setOpen(false);
     else openPanel();
   }
@@ -226,7 +222,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
         <div
           role="menu"
           style={{
-            position: 'fixed', top: pos.top, right: pos.right, width: 320,
+            position: 'fixed', top: pos.top, right: pos.right, width: 'min(320px, calc(100vw - 16px))',
             background: '#0d0d14', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12,
             boxShadow: '0 14px 44px rgba(0,0,0,.6)', zIndex: 100000, overflow: 'hidden',
           }}
