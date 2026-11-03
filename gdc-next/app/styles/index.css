@@ -482,6 +482,8 @@
   .header-inner>div:last-child svg{width:21px !important;height:21px !important;}
   /* Push the booking (open-book) icon to the right, away from the logo. */
   .inbox-nav-btn--book{transform:translateX(1.4rem) !important;}
+  /* Small right nudge for the bell, into the header's right padding. */
+  .header-inner>div:last-child .inbox-nav-btn:not(.inbox-nav-btn--book){transform:translateX(.4rem) !important;}
   .header-inner>div:last-child .btn{display:none !important;}
   /* Sign In button: hardcoded visible on mobile whenever body is marked logged-out by auth.js.
      Uses body.is-logged-out to beat any inline display:none set by the page's own JS. */
