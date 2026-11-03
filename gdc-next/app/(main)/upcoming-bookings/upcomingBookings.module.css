@@ -892,6 +892,13 @@ select.input {
   outline: none;
   border-color: var(--neon);
 }
+/* All placeholders (and empty-select text) use the same muted grey as the
+   date/time "Select…" fields, for a consistent look across every field. */
+.input::placeholder,
+.rateInput::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
 .optional {
   font-weight: 400;
   color: var(--muted);
@@ -1603,6 +1610,11 @@ select.input {
   border-color: rgba(255, 255, 255, .16);
 }
 /* Gradient chip header stamped on each section. */
+/* Section edit pencil (Details / Venue / Host) — smaller on mobile. */
+@media (max-width: 600px) {
+  .editPencilBtn { width: 22px !important; height: 22px !important; border-radius: 6px !important; }
+  .editPencilBtn svg { width: 11px !important; height: 11px !important; }
+}
 /* Header grid inside Details/Event/Venue cards (Event Date · Set Time, etc.).
    Two-up on desktop; each field on its own full-width line on mobile. */
 .detailHeaderGrid {
