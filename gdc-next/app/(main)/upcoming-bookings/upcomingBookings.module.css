@@ -905,6 +905,25 @@ select.input {
 .fieldRow > * {
   min-width: 0;
 }
+/* Equipment / Set Type / Rate: three columns on desktop, but on a phone that
+   is far too cramped (labels wrap, selects truncate). On mobile the Equipment
+   field takes its own full-width row and Set Type + Rate share the row below. */
+.equipRow {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr 1fr;
+  gap: .75rem;
+}
+.equipRow > * {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .equipRow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .equipRow > :first-child {
+    grid-column: 1 / -1;
+  }
+}
 .optional {
   font-weight: 400;
   color: var(--muted);
