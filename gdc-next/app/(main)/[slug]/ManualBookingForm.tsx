@@ -554,7 +554,7 @@ export default function ManualBookingForm({
             lives with Venue Name below. */}
         <div
           className={styles.fieldRow}
-          style={djType === 'club' ? { gridTemplateColumns: '1fr 0.75fr 1fr' } : undefined}
+          style={djType === 'club' ? { gridTemplateColumns: '1.3fr 0.9fr 1fr' } : undefined}
         >
           {djType === 'club' && (
             <label className={styles.field}>
