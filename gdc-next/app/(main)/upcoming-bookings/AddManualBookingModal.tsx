@@ -18,7 +18,7 @@ import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 import { currencySymbol, CLUB_EQUIPMENT_LABELS, CLUB_SET_TYPE_LABELS, CLUB_VENUE_TYPE_LABELS } from '@/lib/constants';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking } from './page';
-import { COUNTRY_FLAGS, MOBILE_EVENT_TYPES, TIME_OPTIONS, NEON, formatSentDate } from './shared';
+import { MOBILE_EVENT_TYPES, TIME_OPTIONS, NEON, formatSentDate } from './shared';
 
 export default function AddManualBookingModal({
   userId, djType, djCountry, djName, bookingsPerDay, mobPackages, existingBookings,
@@ -1513,7 +1513,7 @@ export default function AddManualBookingModal({
               >
                 {COUNTRIES.filter((c) => c !== 'Other').map((c) => (
                   <option key={c} value={c}>
-                    {COUNTRY_FLAGS[c] || '🌍'} {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
+                    {(COUNTRY_CODES_ADDR[c] || '??').toUpperCase()}
                   </option>
                 ))}
               </select>
