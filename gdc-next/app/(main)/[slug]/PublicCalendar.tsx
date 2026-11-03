@@ -1761,7 +1761,7 @@ function OwnerDayEditPopup({
           </div>
         )}
 
-        {status === 'booked' && popupTab === 'bookings' && (
+        {popupTab === 'bookings' && (status === 'booked' || dayBookings.length === 0) && (
           <div className={styles.ownerEditBookedFields}>
             {bookingDetailsLoading ? (
               <div className={styles.ownerEditComingSoon}>Loading booking details…</div>
