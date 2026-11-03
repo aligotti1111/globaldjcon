@@ -552,10 +552,7 @@ export default function ManualBookingForm({
         {/* Equipment (club) + Set Type (club) or Event Type (mobile) + Rate on
             one row. Equipment comes first, Set Type is narrower. Venue Type
             lives with Venue Name below. */}
-        <div
-          className={styles.fieldRow}
-          style={djType === 'club' ? { gridTemplateColumns: '1.3fr 0.9fr 1fr' } : undefined}
-        >
+        <div className={djType === 'club' ? styles.equipRow : styles.fieldRow}>
           {djType === 'club' && (
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
