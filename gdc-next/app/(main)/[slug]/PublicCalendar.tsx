@@ -863,17 +863,20 @@ function SingleMonthView({
             {quickIsReopen ? '✓' : '✕'}
           </button>
         )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOwnerEdit(key);
-          }}
-          className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomRight}`}
-          title="Edit day"
-        >
-          ✏️
-        </button>
+        {/* Pencil hidden once the day is marked unavailable. */}
+        {!isUnavail && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOwnerEdit(key);
+            }}
+            className={`${styles.ownerCornerBtn} ${styles.ownerCornerBtnBottomRight}`}
+            title="Edit day"
+          >
+            ✏️
+          </button>
+        )}
       </>
     ) : null;
 
@@ -1221,7 +1224,7 @@ function RollingMonthsView({
                   {isUnavail ? '✓' : '✕'}
                 </button>
               )}
-              {!isBooked && (
+              {!isBooked && !isUnavail && (
                 <button
                   type="button"
                   onClick={(e) => {
