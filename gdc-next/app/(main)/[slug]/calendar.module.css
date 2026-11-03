@@ -1011,8 +1011,9 @@
 }
 /* Wider while the Add-Booking-Manually form is open, matching the dashboard
    modal's two-column width. */
+/* Match the dashboard "Add Booking Manually" modal width (.modal, 500px). */
 .ownerEditBoxWide {
-  max-width: 680px;
+  max-width: 500px;
 }
 .ownerEditHeader {
   display: flex;
