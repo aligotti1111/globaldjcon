@@ -592,52 +592,24 @@ export default function ManualBookingForm({
         </div>
 
         <SectionPill label="Venue Details" />
-        {/* Venue name (wider) + Venue Type (club, narrower) on one row; mobile
-            shows name only. */}
-        {djType === 'club' ? (
-          <div className={styles.fieldRow} style={{ gridTemplateColumns: '1.7fr 1fr' }}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Venue Name</span>
-              <FieldCheck valid={venueNameValid}>
-                <input
-                  type="text"
-                  value={venueName}
-                  onChange={(e) => setVenueName(e.target.value)}
-                  placeholder="e.g. Black Velvet Lounge"
-                  className={`${styles.input} ${styles.hasCheck}`}
-                />
-              </FieldCheck>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                Venue Type <span className={styles.optional}>(optional)</span>
-              </span>
-              <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
-                <option value="">Select…</option>
-                {CLUB_VENUE_TYPES.map((v) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ) : (
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Venue Name <span className={styles.optional}>(optional)</span>
-            </span>
-            <FieldCheck valid={venueNameValid}>
-              <input
-                type="text"
-                value={venueName}
-                onChange={(e) => setVenueName(e.target.value)}
-                placeholder="e.g. Riverside Park Pavilion"
-                className={`${styles.input} ${styles.hasCheck}`}
-              />
-            </FieldCheck>
-          </label>
-        )}
+        {/* Venue name — full width. */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Venue Name {djType === 'mobile' && <span className={styles.optional}>(optional)</span>}
+          </span>
+          <FieldCheck valid={venueNameValid}>
+            <input
+              type="text"
+              value={venueName}
+              onChange={(e) => setVenueName(e.target.value)}
+              placeholder={djType === 'club' ? 'e.g. Black Velvet Lounge' : 'e.g. Riverside Park Pavilion'}
+              className={`${styles.input} ${styles.hasCheck}`}
+            />
+          </FieldCheck>
+        </label>
 
-        {/* Venue location (address + country) */}
+        {/* Venue Address + Venue Type (club) on one line. */}
+        <div className={styles.fieldRow} style={{ gridTemplateColumns: djType === 'club' ? '2fr 1fr' : '1fr' }}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Venue Address</span>
           <div className={styles.addrRow}>
@@ -718,6 +690,20 @@ export default function ManualBookingForm({
               })}
             </select>
           </div>
+        </div>
+          {djType === 'club' && (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Venue Type <span className={styles.optional}>(opt.)</span>
+              </span>
+              <select value={venueType} onChange={(e) => setVenueType(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {CLUB_VENUE_TYPES.map((v) => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
 
