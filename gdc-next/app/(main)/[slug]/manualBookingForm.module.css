@@ -187,6 +187,13 @@ select.input {
   outline: none;
   border-color: var(--neon);
 }
+/* All placeholders use the same muted grey as the date/time "Select…"
+   fields, for a consistent look across every field. */
+.input::placeholder,
+.rateInput::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
 
 /* ── Field validity checkmark ──────────────────────────────────────
    Green ✓ at the right edge of a field once its value is valid.
