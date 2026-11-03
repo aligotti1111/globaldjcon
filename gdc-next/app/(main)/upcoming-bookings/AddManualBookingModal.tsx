@@ -1320,7 +1320,7 @@ export default function AddManualBookingModal({
           {/* Club: Equipment + Set Type + Rate on one row, under Event Details.
               Equipment comes first, Set Type is narrower. */}
           {djType === 'club' && (
-            <div className={styles.fieldRow} style={{ gridTemplateColumns: '1fr 0.75fr 1fr' }}>
+            <div className={styles.fieldRow} style={{ gridTemplateColumns: '1.5fr 0.7fr 1fr' }}>
               <label className={styles.field}>
                 <span className={styles.fieldLabel}>
                   Equipment <span className={styles.optional}>(opt.)</span>
@@ -1397,9 +1397,9 @@ export default function AddManualBookingModal({
             </label>
           </div>
 
-          <div className={styles.fieldRow} style={{ gridTemplateColumns: djType === 'club' ? '2fr 1fr' : '1fr' }}>
+          <div className={styles.fieldRow} style={{ gridTemplateColumns: '1fr' }}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Venue Location</span>
+            <span className={styles.fieldLabel}>Venue Address</span>
             <div className={styles.addrRow}>
               <div className={styles.addrWrap}>
                 <input
