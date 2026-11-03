@@ -102,19 +102,6 @@ const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
   return out;
 })();
 
-// Convert a 2-letter ISO country code to its flag emoji. A flag emoji is
-// just the country's two letters expressed as Unicode regional-indicator
-// symbols, so no lookup table is needed.
-function flagEmoji(code: string): string {
-  const cc = (code || '').trim().toUpperCase();
-  if (cc.length !== 2 || !/^[A-Z]{2}$/.test(cc)) return '';
-  const base = 0x1f1e6; // regional indicator 'A'
-  return String.fromCodePoint(
-    base + (cc.charCodeAt(0) - 65),
-    base + (cc.charCodeAt(1) - 65),
-  );
-}
-
 export default function ManualBookingForm({
   userId, djType, djCountry, djName, bookingsPerDay, existingBookings,
   existing, prefillDate, lockDate, onSaved, onCancel,
@@ -700,10 +687,9 @@ export default function ManualBookingForm({
             >
               {COUNTRIES.filter((c) => c !== 'Other').map((c) => {
                 const code = (COUNTRY_CODES_ADDR[c] || '').toUpperCase();
-                const flag = flagEmoji(code);
                 return (
                   <option key={c} value={c}>
-                    {flag ? `${flag} ` : ''}{code || '??'}
+                    {code || '??'}
                   </option>
                 );
               })}
