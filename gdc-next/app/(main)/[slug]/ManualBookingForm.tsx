@@ -496,14 +496,12 @@ export default function ManualBookingForm({
             </div>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Set Start Time</span>
-              <FieldCheck valid={startTimeValid}>
-                <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${styles.input} ${styles.hasCheckSelect}`}>
-                  <option value="">Select…</option>
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </FieldCheck>
+              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
@@ -521,14 +519,12 @@ export default function ManualBookingForm({
           <div className={styles.fieldRow}>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Set Start Time</span>
-              <FieldCheck valid={startTimeValid}>
-                <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${styles.input} ${styles.hasCheckSelect}`}>
-                  <option value="">Select…</option>
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </FieldCheck>
+              <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
@@ -596,9 +592,10 @@ export default function ManualBookingForm({
         </div>
 
         <SectionPill label="Venue Details" />
-        {/* Venue name + Venue Type (club) on one row; mobile shows name only. */}
+        {/* Venue name (wider) + Venue Type (club, narrower) on one row; mobile
+            shows name only. */}
         {djType === 'club' ? (
-          <div className={styles.fieldRow}>
+          <div className={styles.fieldRow} style={{ gridTemplateColumns: '1.7fr 1fr' }}>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Venue Name</span>
               <FieldCheck valid={venueNameValid}>
@@ -642,7 +639,7 @@ export default function ManualBookingForm({
 
         {/* Venue location (address + country) */}
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Venue Location</span>
+          <span className={styles.fieldLabel}>Venue Address</span>
           <div className={styles.addrRow}>
             <div className={styles.addrWrap}>
               <input
