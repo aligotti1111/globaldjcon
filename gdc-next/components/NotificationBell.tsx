@@ -242,8 +242,15 @@ export default function NotificationBell({
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    // Close on scroll — the panel is position:fixed and would otherwise hang
+    // in place while the page (and its anchor icon) scrolls away.
+    const onScroll = () => setOpen(false);
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onScroll);
+    };
   }, [open]);
 
   const shown = items.slice(0, 6);
