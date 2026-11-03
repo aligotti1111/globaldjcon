@@ -548,41 +548,39 @@ export default function ManualBookingForm({
           <div className={styles.durationHint}>Duration: {setDurationLabel}</div>
         )}
 
-        {/* Set Type (club) or Event Type (mobile) — under Event Details
-            alongside the times. Venue Type lives with Venue Name below. */}
-        {djType === 'club' ? (
+        {/* Set Type (club) or Event Type (mobile) + Rate on one row. Venue Type
+            lives with Venue Name below. */}
+        <div className={styles.fieldRow}>
+          {djType === 'club' ? (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Set Type <span className={styles.optional}>(optional)</span>
+              </span>
+              <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
+                <option value="">Select…</option>
+                {CLUB_SET_TYPES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Event Type</span>
+              <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
+                {MOBILE_EVENT_TYPES.map((v) => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {/* Rate — USD only, for the DJ's own bookkeeping. */}
           <label className={styles.field}>
             <span className={styles.fieldLabel}>
-              Set Type <span className={styles.optional}>(optional)</span>
+              Rate <span className={styles.optional}>(optional)</span>
             </span>
-            <select value={setType} onChange={(e) => setSetType(e.target.value)} className={styles.input}>
-              <option value="">Select…</option>
-              {CLUB_SET_TYPES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Event Type</span>
-            <select value={eventType} onChange={(e) => setEventType(e.target.value)} className={styles.input}>
-              {MOBILE_EVENT_TYPES.map((v) => (
-                <option key={v.value} value={v.value}>{v.label}</option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        {/* Rate — also under Event Details, for the DJ's own bookkeeping. */}
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Rate <span className={styles.optional}>(optional)</span>
-          </span>
-          <div className={styles.rateRow}>
             <div className={styles.rateInputWrap}>
-              <span className={styles.rateSymbol}>
-                {rateCurrency === 'USD' ? '$' : rateCurrency === 'EUR' ? '€' : rateCurrency === 'GBP' ? '£' : rateCurrency === 'CAD' ? '$' : rateCurrency === 'AUD' ? '$' : rateCurrency}
-              </span>
+              <span className={styles.rateSymbol}>$</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -593,21 +591,9 @@ export default function ManualBookingForm({
                 className={styles.rateInput}
               />
             </div>
-            <select
-              value={rateCurrency}
-              onChange={(e) => setRateCurrency(e.target.value)}
-              className={styles.rateCurrencySelect}
-              aria-label="Currency"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="CAD">CAD</option>
-              <option value="AUD">AUD</option>
-            </select>
-          </div>
-          <span className={styles.rateNote}>The rate is not shown publicly.</span>
-        </label>
+            <span className={styles.rateNote}>The rate is not shown publicly.</span>
+          </label>
+        </div>
 
         <SectionPill label="Venue Details" />
         {/* Venue name + Venue Type (club) on one row; mobile shows name only. */}
