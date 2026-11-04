@@ -73,6 +73,10 @@ export default function PaymentCodeSearch() {
   const [notice, setNotice] = useState<string | null>(null);
   const [active, setActive] = useState(false); // a filter is currently applied
   const [iconHost, setIconHost] = useState<HTMLElement | null>(null);
+  // On the Upcoming dashboard the expanded search drops to its own row UNDER
+  // the sort box; we align its input with the sort dropdown by matching the
+  // "Sort:" label width.
+  const [sortLabelW, setSortLabelW] = useState<number | null>(null);
   const pathname = usePathname();
   const iconHostRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -127,6 +131,12 @@ export default function PaymentCodeSearch() {
         anchor.appendChild(icon);
         iconHostRef.current = icon;
         setIconHost(icon);
+        // Capture the sort label width so the dropped-down search input lines up
+        // under the sort dropdown box (upcoming only).
+        if (pathname !== PAST) {
+          const lbl = anchor.querySelector('[class*="sortLabel"]') as HTMLElement | null;
+          setSortLabelW(lbl ? lbl.offsetWidth : null);
+        }
         return;
       }
       tries += 1;
@@ -194,7 +204,7 @@ export default function PaymentCodeSearch() {
   if (!SEARCH_PATHS.includes(pathname) || !iconHost) return null;
 
   const inputStyle: React.CSSProperties = {
-    width: 210, minWidth: 0, background: '#16161f', color: '#fff',
+    flex: '1 1 160px', minWidth: 0, maxWidth: 360, background: '#16161f', color: '#fff',
     border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, padding: '7px 11px',
     fontSize: '.82rem', outline: 'none', letterSpacing: '.02em',
   };
@@ -204,9 +214,12 @@ export default function PaymentCodeSearch() {
     fontSize: '.8rem', cursor: 'pointer',
   };
 
-  const iconUI = expanded ? (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-      <MagnifierBtn onClick={collapse} title="Close search" />
+  const isPast = pathname === PAST;
+  const sortBar = (iconHost.parentElement as HTMLElement | null) || null;
+
+  // The search field itself — shared by both layouts.
+  const field = (
+    <>
       <input
         ref={inputRef}
         value={code}
@@ -221,10 +234,46 @@ export default function PaymentCodeSearch() {
       <span style={{ color: 'rgba(255,255,255,.6)', fontSize: '.76rem', minHeight: 14 }}>
         {loading ? 'Searching…' : (notice || '')}
       </span>
-    </span>
-  ) : (
-    <MagnifierBtn onClick={() => setExpanded(true)} title="Search bookings" />
+    </>
   );
 
-  return createPortal(iconUI, iconHost);
+  // Past Bookings: no sort box to drop under, so expand inline (original behavior).
+  if (isPast) {
+    const iconUI = expanded ? (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+        <MagnifierBtn onClick={collapse} title="Close search" />
+        {field}
+      </span>
+    ) : (
+      <MagnifierBtn onClick={() => setExpanded(true)} title="Search bookings" />
+    );
+    return createPortal(iconUI, iconHost);
+  }
+
+  // Upcoming dashboard: the magnifier stays inline on the sort line; the input
+  // only drops to its own row UNDER the sort box once clicked.
+  const toggle = (
+    <MagnifierBtn
+      onClick={() => (expanded ? collapse() : setExpanded(true))}
+      title={expanded ? 'Close search' : 'Search bookings'}
+    />
+  );
+  const dropRow = expanded && sortBar ? createPortal(
+    <div style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+      <span style={{
+        fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.1em',
+        textTransform: 'uppercase', color: 'var(--muted)', flexShrink: 0,
+        minWidth: sortLabelW != null ? sortLabelW : undefined,
+      }}>Search</span>
+      {field}
+    </div>,
+    sortBar,
+  ) : null;
+
+  return (
+    <>
+      {createPortal(toggle, iconHost)}
+      {dropRow}
+    </>
+  );
 }
