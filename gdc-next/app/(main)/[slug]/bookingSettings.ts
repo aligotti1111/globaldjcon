@@ -74,6 +74,7 @@ export interface BookingSettings {
   equip_decks?: boolean;         // "I provide Decks/Controller only"
   equip_decks_detail?: string;   // free text describing the decks
   equip_none?: boolean;          // "I require all equipment from venue"
+  equip_none_detail?: string;    // free text — specific equipment the DJ needs the venue to provide
 
   // Rate config — global default for every available date unless overridden
   // per-day in booking_days[key].rate*. Vanilla supports 3 rate types and
