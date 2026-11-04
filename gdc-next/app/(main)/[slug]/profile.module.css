@@ -3312,6 +3312,17 @@ a.affiliateImgTop:hover { opacity: .9; }
   overflow: hidden;
 }
 .pressCard:hover .pressCardTitle { color: var(--neon, #22e3ad); }
+/* Mobile: the 2-up cards are narrow, so shrink the headline and allow more
+   lines before truncating — readers get most/all of the title. */
+@media (max-width: 600px) {
+  .pressCardTitle {
+    font-size: .82rem;
+    line-height: 1.25;
+    -webkit-line-clamp: 3;
+  }
+  .pressCardBand { min-height: 104px; }
+  .pressCardPub { font-size: .56rem; }
+}
 /* Owner edit/delete row sits under the band — give it breathing room so the
    buttons aren't jammed against the card edges. */
 .pressCard .entryCardActions {
