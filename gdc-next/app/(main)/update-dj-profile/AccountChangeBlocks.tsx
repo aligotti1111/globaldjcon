@@ -348,6 +348,21 @@ export function SlugChangeGate({
   const [status, setStatus] = useState<GateStatus>('idle');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = currentUrl; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  }
 
   const changed = (draft || '').trim() !== (currentSlug || '').trim();
   const canSave = changed && status === 'available' && !saving;
@@ -451,8 +466,12 @@ export function SlugChangeGate({
   // ── Locked: read-only URL + password to unlock ──
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-        <input type="text" value={currentUrl} readOnly className={styles.input} style={{ flex: 1, opacity: 0.7 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+        {/* Shorter on desktop (capped width), full-width on narrow screens. */}
+        <input type="text" value={currentUrl} readOnly className={styles.input} style={{ flex: '1 1 220px', maxWidth: 380, opacity: 0.7 }} />
+        <button type="button" onClick={copyUrl} style={btn(copied ? 'primary' : 'ghost')}>
+          {copied ? '✓ Copied' : 'Copy Link'}
+        </button>
         {!open && (
           <button type="button" onClick={() => { setOpen(true); setErr(null); }} style={btn('ghost')}>
             🔒 Change
