@@ -3222,11 +3222,32 @@ a.affiliateImgTop:hover { opacity: .9; }
 /* In the editor, keep the preview full-width (the affiliate rule caps it at
    110px for square logos — too small for an article card). */
 .affiliateCardEditing .pressImgTop { max-width: none !important; }
+.pressScrapeRow {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+  margin: .4rem 0 .1rem;
+}
+.pressScrapeBtn {
+  flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #06231b;
+  background: var(--neon, #22e3ad);
+  border: none;
+  border-radius: 7px;
+  padding: .4rem .7rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.pressScrapeBtn:disabled { opacity: .5; cursor: default; }
 .pressScrapeHint {
   font-family: 'Space Mono', monospace;
   font-size: .6rem;
-  color: var(--neon, #22e3ad);
-  margin: .3rem 0 .1rem;
+  color: rgba(255, 255, 255, .5);
   letter-spacing: .02em;
 }
 
