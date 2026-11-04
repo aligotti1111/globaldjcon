@@ -3266,20 +3266,26 @@ a.affiliateImgTop:hover { opacity: .9; }
    band with the publication (small, uppercase) over the bold headline. */
 .pressCard {
   position: relative;
+  align-self: start; /* don't let the grid stretch (and clip) the card */
   display: flex;
   flex-direction: column;
   background: var(--black, #000);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
 }
 .pressCard:hover { border-color: rgba(34, 227, 173, .5); }
 .pressCardLink { display: block; text-decoration: none; color: inherit; }
-.pressCard .pressImgTop { border-radius: 0 !important; }
+/* Round the pieces directly instead of clipping the card with overflow:hidden,
+   so a long headline is never cut off at the bottom border. */
+.pressCard .pressImgTop {
+  border-radius: 11px 11px 0 0 !important;
+  overflow: hidden;
+}
 .pressCardBand {
   padding: .85rem 1rem 1rem;
   background: #141414;
   border-top: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 0 0 11px 11px;
 }
 .pressCardPub {
   font-family: 'Space Mono', monospace;
@@ -3297,6 +3303,12 @@ a.affiliateImgTop:hover { opacity: .9; }
   color: var(--white, #fff);
 }
 .pressCard:hover .pressCardTitle { color: var(--neon, #22e3ad); }
+/* Owner edit/delete row sits under the band — give it breathing room so the
+   buttons aren't jammed against the card edges. */
+.pressCard .entryCardActions {
+  margin-top: 0;
+  padding: .7rem 1rem .85rem;
+}
 
 /* Staff inline editor — the member card becomes its editor. It spans two grid
    columns and holds a comfortable minimum width so the fields never get
