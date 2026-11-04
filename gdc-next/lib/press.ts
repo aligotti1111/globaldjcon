@@ -18,6 +18,22 @@ export interface PressItem {
   addedAt?: number;         // epoch ms, for stable newest-first ordering
 }
 
+// Decode the HTML entities that scraped titles often carry (e.g. &#039; → ').
+// Applied at parse time so items saved before the server-side fix still render
+// cleanly without re-saving.
+function decodeEntities(s: string): string {
+  if (!s.includes('&')) return s;
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&rsquo;/g, '’').replace(/&lsquo;/g, '‘')
+    .replace(/&ldquo;/g, '“').replace(/&rdquo;/g, '”')
+    .replace(/&ndash;/g, '–').replace(/&mdash;/g, '—');
+}
+
 function coerceArray(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw;
   if (typeof raw === 'string') {
@@ -38,12 +54,12 @@ export function parsePress(raw: unknown): PressItem[] {
       const o = r as Record<string, unknown>;
       const url = normalizeUrl(o.url);
       if (!url) return null; // an item with no valid link is meaningless
-      const title = typeof o.title === 'string' ? o.title : '';
+      const title = typeof o.title === 'string' ? decodeEntities(o.title) : '';
       return {
         id: typeof o.id === 'string' && o.id ? o.id : newPressId(),
         url,
         title,
-        publication: typeof o.publication === 'string' ? o.publication : '',
+        publication: typeof o.publication === 'string' ? decodeEntities(o.publication) : '',
         image: typeof o.image === 'string' ? o.image : null,
         addedAt: typeof o.addedAt === 'number' && Number.isFinite(o.addedAt) ? o.addedAt : undefined,
       };
