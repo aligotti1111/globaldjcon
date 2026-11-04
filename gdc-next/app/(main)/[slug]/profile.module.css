@@ -3250,6 +3250,17 @@ a.affiliateImgTop:hover { opacity: .9; }
   color: rgba(255, 255, 255, .5);
   letter-spacing: .02em;
 }
+.pressPubReadonly {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  margin-top: .45rem;
+}
+.pressPubValue {
+  font-family: 'Space Mono', monospace;
+  font-size: .85rem;
+  color: var(--white, #fff);
+}
 
 /* Staff inline editor — the member card becomes its editor. It spans two grid
    columns and holds a comfortable minimum width so the fields never get
