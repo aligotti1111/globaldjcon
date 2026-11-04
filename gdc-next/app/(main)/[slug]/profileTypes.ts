@@ -54,6 +54,9 @@ export interface DjProfileData {
   // parse with parseStaff() / parseAffiliates() from staff.ts.
   staff?: unknown[] | null;
   affiliates?: unknown[] | null;
+  // Press / media mentions (club-or-bar DJs, subscription-only). jsonb array —
+  // parse with parsePress() from lib/press.ts.
+  press?: unknown[] | null;
   booking_settings: string | null;  // JSON-stringified — see bookingSettings.ts
   mix_url_1: string | null;
   mix_url_2: string | null;
@@ -120,4 +123,4 @@ export interface AboutStats {
   followers?: { on?: boolean; count?: string };
 }
 
-export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq' | 'staff' | 'affiliates';
+export type TabKey = 'booking' | 'about' | 'mixes' | 'images' | 'video' | 'testimonials' | 'faq' | 'staff' | 'affiliates' | 'press';
