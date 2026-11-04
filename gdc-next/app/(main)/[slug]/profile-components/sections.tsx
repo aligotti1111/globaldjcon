@@ -11,6 +11,7 @@ import {
   STAFF_MAX, AFFILIATES_MAX, newEntryId, initialsOf, normalizeUrl, safeHexColor, isLightHex,
   type StaffMember, type Affiliate,
 } from '@/lib/staff';
+import { PRESS_MAX, newPressId, hostLabel, type PressItem } from '@/lib/press';
 import AvatarCrop from '../../update-dj-profile/AvatarCrop';
 import { useConfirm } from '@/components/ConfirmModal';
 
@@ -688,7 +689,7 @@ export function FaqAddForm({
 async function uploadEntryImage(
   userId: string,
   file: File | null,
-  prefix: 'staff' | 'affiliate',
+  prefix: 'staff' | 'affiliate' | 'press',
 ): Promise<string | null> {
   if (!file) return null;
   const valErr = await validateImageFile(file);
@@ -1179,6 +1180,217 @@ export function AffiliatesSection({ userId, affiliates, isOwnProfile }: { userId
           handles adding more once at least one affiliate exists. */}
       {isOwnProfile && !mode && affiliates.length === 0 && (
         <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add affiliate</button>
+      )}
+      {error && !mode && <div className={styles.testimonialAddError} style={{ marginTop: '.5rem' }}>{error}</div>}
+
+      {confirmDialog}
+    </>
+  );
+}
+
+// ── PressSection ───────────────────────────────────────────────────────────
+// Club/bar DJs on a paid plan: articles the venue/DJ was mentioned in. The DJ
+// pastes a link; we auto-pull the headline, publication name and preview image
+// from the page's OpenGraph tags (/api/dj/press-preview), the way Google and
+// social cards do. They can swap the scraped image for an upload, or upload one
+// when a site has no preview image. Stored as a jsonb array on users.press.
+export function PressSection({ userId, press, isOwnProfile }: { userId: string; press: PressItem[]; isOwnProfile: boolean }) {
+  const { confirm, confirmDialog } = useConfirm();
+  const [mode, setMode] = useState<null | 'new' | string>(null);
+  const [entryId, setEntryId] = useState('');
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [publication, setPublication] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [scraping, setScraping] = useState(false);
+  const [scrapedFor, setScrapedFor] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function pick(f: File | null) {
+    setFile(f);
+    setPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : null; });
+  }
+  function openNew() {
+    if (press.length >= PRESS_MAX) { setError(`You can add up to ${PRESS_MAX} articles.`); return; }
+    setEntryId(newPressId()); setUrl(''); setTitle(''); setPublication(''); setImage(null); pick(null); setScrapedFor(null); setError(null); setMode('new');
+  }
+  function openEdit(p: PressItem) {
+    setEntryId(p.id); setUrl(p.url); setTitle(p.title); setPublication(p.publication || ''); setImage(p.image || null); pick(null); setScrapedFor(p.url); setError(null); setMode(p.id);
+  }
+  function close() { setMode(null); pick(null); setError(null); }
+
+  // Pull the link's OpenGraph preview (title / publication / image). Fills any
+  // field the DJ hasn't typed into; an uploaded image always wins. Runs on blur
+  // of the URL field and once more on Save if the link changed.
+  async function runScrape(forUrl: string): Promise<{ title: string; publication: string; image: string | null } | null> {
+    const clean = normalizeUrl(forUrl);
+    if (!clean || clean === scrapedFor) return null;
+    setScraping(true); setError(null);
+    try {
+      const res = await fetch('/api/dj/press-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: clean }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { title?: string; publication?: string; image?: string | null; error?: string };
+      if (!res.ok) { setError(data.error || 'Could not read that link.'); return null; }
+      setScrapedFor(clean);
+      if (data.title && !title.trim()) setTitle(data.title);
+      if (data.publication && !publication.trim()) setPublication(data.publication);
+      if (data.image && !file && !image) setImage(data.image);
+      return { title: data.title || '', publication: data.publication || '', image: data.image || null };
+    } catch {
+      setError('Could not read that link.');
+      return null;
+    } finally {
+      setScraping(false);
+    }
+  }
+
+  async function persist(next: PressItem[]) {
+    await saveProfile(userId, { press: next });
+    const u = new URL(window.location.href);
+    u.searchParams.set('tab', 'press');
+    window.location.href = u.toString();
+  }
+
+  async function remove(p: PressItem) {
+    const ok = await confirm({
+      title: 'Remove this article?',
+      message: `This press mention will be removed from your Press tab. You can add it back any time.`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setBusy(true);
+    try { await persist(press.filter((x) => x.id !== p.id)); }
+    catch (err) { setBusy(false); setError(err instanceof Error ? err.message : 'Could not remove.'); }
+  }
+
+  async function save() {
+    const clean = normalizeUrl(url);
+    if (!clean) { setError('Paste a valid article link.'); return; }
+    setBusy(true); setError(null);
+    try {
+      let scraped: { title: string; publication: string; image: string | null } | null = null;
+      if (clean !== scrapedFor) scraped = await runScrape(clean);
+      const uploaded = file ? await uploadEntryImage(userId, file, 'press') : image;
+      const finalImage = uploaded || scraped?.image || null;
+      const finalTitle = (title.trim() || scraped?.title || hostLabel(clean) || 'Article').slice(0, 200);
+      const finalPub = (publication.trim() || scraped?.publication || hostLabel(clean)).slice(0, 80);
+      const existing = press.find((p) => p.id === entryId);
+      const entry: PressItem = {
+        id: entryId,
+        url: clean,
+        title: finalTitle,
+        publication: finalPub,
+        image: finalImage,
+        addedAt: existing?.addedAt ?? Date.now(),
+      };
+      const next = mode === 'new' ? [entry, ...press] : press.map((p) => (p.id === entryId ? entry : p));
+      await persist(next);
+    } catch (err) {
+      setBusy(false);
+      setError(err instanceof Error ? err.message : 'Save failed.');
+    }
+  }
+
+  const shownPreview = preview || image;
+
+  const editorCard = (
+    <div className={`${styles.affiliateCard} ${styles.affiliateCardEditing}`}>
+      <div className={styles.testimonialAddFormLabel}>Article link</div>
+      <input
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        onBlur={() => { if (url.trim()) runScrape(url); }}
+        placeholder="Paste the article URL…"
+        className={styles.testimonialAddInput}
+        disabled={busy}
+        inputMode="url"
+        autoFocus
+      />
+      <div className={styles.pressScrapeHint}>
+        {scraping ? 'Fetching preview…' : 'We’ll pull the headline, source and image automatically.'}
+      </div>
+
+      <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={`${styles.affiliateImgTop} ${styles.pressImgTop}`} style={{ cursor: 'pointer', padding: 0, margin: '.4rem 0 .85rem' }} aria-label="Preview image">
+        {shownPreview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={shownPreview} alt="" />
+        ) : (
+          <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.78rem', textTransform: 'uppercase', textAlign: 'center', padding: '0 .5rem' }}>
+            <span>{publication || 'No image found'}</span>
+            <small style={{ fontSize: '.62rem', opacity: .8 }}>tap to upload</small>
+          </span>
+        )}
+      </button>
+      {shownPreview && <button type="button" onClick={() => { pick(null); setImage(null); }} disabled={busy} className={styles.entryPhotoClear} style={{ marginBottom: '.6rem' }}>Remove image</button>}
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pick(e.target.files?.[0] || null)} />
+
+      <div className={styles.testimonialAddFormLabel}>Headline</div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article headline" className={styles.testimonialAddInput} disabled={busy} />
+      <div className={styles.testimonialAddFormLabel}>Publication <span style={{ opacity: .6 }}>(optional)</span></div>
+      <input value={publication} onChange={(e) => setPublication(e.target.value)} placeholder="e.g. Rolling Stone" className={styles.testimonialAddInput} disabled={busy} />
+
+      {error && <div className={styles.testimonialAddError}>{error}</div>}
+      <div className={styles.testimonialAddActions}>
+        <button type="button" onClick={close} disabled={busy} className={styles.testimonialAddCancel}>Cancel</button>
+        <button type="button" onClick={save} disabled={busy || scraping} className={styles.testimonialAddSave}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {(press.length > 0 || mode === 'new') && (
+        <div className={styles.affiliateList}>
+          {press.map((p) => {
+            if (mode === p.id) return <div key={p.id} style={{ display: 'contents' }}>{editorCard}</div>;
+            const pub = p.publication || hostLabel(p.url);
+            return (
+              <div key={p.id} className={styles.affiliateCard}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer nofollow" className={`${styles.affiliateImgTop} ${styles.pressImgTop}`} aria-label={p.title}>
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumbUrl(p.image, 800)} alt={p.title} />
+                  ) : (
+                    <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase', textAlign: 'center', padding: '0 .5rem' }}>{pub || 'Article'}</span>
+                  )}
+                </a>
+                <div className={styles.affiliateBody}>
+                  <a href={p.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateNameLink} style={{ fontSize: '1.15rem', lineHeight: 1.25 }}>
+                    {p.title}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 6, verticalAlign: 'middle', opacity: .8 }}><path d="M7 17 17 7M8 7h9v9"/></svg>
+                  </a>
+                  {pub && <div className={styles.affiliateType}>{pub}</div>}
+                </div>
+                {isOwnProfile && (
+                  <div className={styles.entryCardActions}>
+                    <button type="button" onClick={() => openEdit(p)} className={styles.entryEditBtn} title="Edit" aria-label="Edit article">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    </button>
+                    <button type="button" onClick={() => remove(p)} className={styles.entryDeleteBtn} title="Remove" aria-label="Remove article">✕</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {isOwnProfile && !mode && press.length > 0 && press.length < PRESS_MAX && (
+            <button type="button" onClick={openNew} className={styles.staffAddTile} aria-label="Add article">
+              <span aria-hidden="true">+</span>
+            </button>
+          )}
+          {mode === 'new' && editorCard}
+        </div>
+      )}
+
+      {isOwnProfile && !mode && press.length === 0 && (
+        <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add article</button>
       )}
       {error && !mode && <div className={styles.testimonialAddError} style={{ marginTop: '.5rem' }}>{error}</div>}
 
