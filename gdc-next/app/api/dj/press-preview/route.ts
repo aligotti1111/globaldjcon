@@ -70,10 +70,20 @@ function pickMeta(html: string, keys: string[]): string | null {
 
 function decodeEntities(s: string): string {
   return s
-    .replace(/&amp;/g, '&').replace(/&#38;/g, '&')
+    // Numeric entities first — &#039; (apostrophe), &#8217; (curly), etc.
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#34;/g, '"')
-    .replace(/&#39;/g, "'").replace(/&apos;/g, "'");
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#8217;|&rsquo;/g, '’')
+    .replace(/&#8216;|&lsquo;/g, '‘')
+    .replace(/&#8220;|&ldquo;/g, '“')
+    .replace(/&#8221;|&rdquo;/g, '”')
+    .replace(/&#8211;|&ndash;/g, '–')
+    .replace(/&#8212;|&mdash;/g, '—');
 }
 
 interface Preview { title: string; publication: string; image: string | null }
@@ -107,8 +117,8 @@ async function fetchViaMicrolink(url: string): Promise<Preview | null> {
       try { const p = new URL(image).protocol; if (p !== 'http:' && p !== 'https:') image = null; } catch { image = null; }
     }
     return {
-      title: (d.title || '').slice(0, 200),
-      publication: (d.publisher || '').slice(0, 80),
+      title: decodeEntities(d.title || '').slice(0, 200),
+      publication: decodeEntities(d.publisher || '').slice(0, 80),
       image,
     };
   } catch {
