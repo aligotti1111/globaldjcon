@@ -478,11 +478,11 @@ export function EditTabsModal({
     mixes: { label: 'Mixes' },
     images: { label: 'Photos' },
     video: { label: 'Video' },
-    testimonials: { label: 'Testimonials', hint: 'Off by default for new mobile DJs' },
-    faq: { label: 'FAQ', hint: 'Off by default — turn on to answer common questions' },
-    staff: { label: 'Staff', hint: 'Off by default — show your team members' },
-    affiliates: { label: 'Affiliates', hint: 'Off by default — companies you recommend' },
-    press: { label: 'Press', hint: 'Off by default — articles you’re mentioned in' },
+    testimonials: { label: 'Testimonials' },
+    faq: { label: 'FAQ' },
+    staff: { label: 'Staff' },
+    affiliates: { label: 'Affiliates' },
+    press: { label: 'Press' },
   };
   const AVAILABLE: TabRowKey[] = isMobileDJ
     ? ['about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates']
