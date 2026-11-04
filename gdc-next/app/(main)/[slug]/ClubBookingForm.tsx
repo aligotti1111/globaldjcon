@@ -677,6 +677,9 @@ export default function ClubBookingForm({
             startTime,
             endTime,
             equipment,
+            // When the host chose "venue provides all", carry the DJ's required
+            // equipment note so the booker copy shows what they must supply.
+            equipNoneDetail: equipment === 'venue_provides' ? (bookingSettings.equip_none_detail || '').trim() : '',
             offerAmount: created.offer_amount,
             quotedRate: created.quoted_rate,
             originalRate: created.original_rate,
@@ -1211,14 +1214,21 @@ export default function ClubBookingForm({
           )}
 
           {equipment === 'venue_provides' && (
-            <input
-              type="text"
-              placeholder="Describe provided equipment (optional)"
-              value={venueEquipDetail}
-              onChange={(e) => setVenueEquipDetail(e.target.value)}
-              className={styles.input}
-              style={{ marginTop: '.5rem' }}
-            />
+            <>
+              {bookingSettings.equip_none_detail?.trim() && (
+                <div className={styles.equipWarning} style={{ background: 'rgba(0,224,164,.08)', borderColor: 'rgba(0,224,164,.35)', color: 'var(--white,#fff)', marginTop: '.5rem' }}>
+                  <strong>{dj.name || 'This DJ'} needs the venue to provide:</strong> {bookingSettings.equip_none_detail.trim()}
+                </div>
+              )}
+              <input
+                type="text"
+                placeholder="Describe provided equipment (optional)"
+                value={venueEquipDetail}
+                onChange={(e) => setVenueEquipDetail(e.target.value)}
+                className={styles.input}
+                style={{ marginTop: '.5rem' }}
+              />
+            </>
           )}
         </FormSection>
 
