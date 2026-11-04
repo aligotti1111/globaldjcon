@@ -3309,6 +3309,13 @@ a.affiliateImgTop:hover { opacity: .9; }
   margin-top: 0;
   padding: .7rem 1rem .85rem;
 }
+/* The card being edited is dimmed; the editor opens as a full-width block
+   below the grid (so its taller form never distorts the card rows). */
+.pressCardDimmed { opacity: .45; }
+.pressEditorWrap {
+  max-width: 460px;
+  margin-top: 1.1rem;
+}
 
 /* Staff inline editor — the member card becomes its editor. It spans two grid
    columns and holds a comfortable minimum width so the fields never get
