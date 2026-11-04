@@ -25,11 +25,19 @@ export default function CalendarSyncButton({ className }: { className?: string }
 
   return (
     <>
+      {/* Mobile: shrink the pill (smaller padding, font + icon) so it fits on
+          the same line as the month heading. */}
+      <style>{`
+        @media (max-width: 600px) {
+          .gdc-calsync-btn { padding: 6px 9px !important; font-size: .62rem !important; gap: 5px !important; }
+          .gdc-calsync-btn svg { width: 13px !important; height: 13px !important; }
+        }
+      `}</style>
       {/* Ghost-outline button — a neutral bordered pill with a neon calendar
           icon and white label. Opens the sync popup. */}
       <button
         type="button"
-        className={className}
+        className={`gdc-calsync-btn${className ? ' ' + className : ''}`}
         onClick={() => setOpen(true)}
         style={{
           background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.18))',
