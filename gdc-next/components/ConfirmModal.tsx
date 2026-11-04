@@ -13,6 +13,7 @@
 // to render once at the top level of the component.
 
 import { useState, useCallback, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './confirmModal.module.css';
 
 // Optional free-text field rendered inside the confirm box (e.g. a decline
@@ -98,7 +99,9 @@ function ConfirmModal({
   const [reason, setReason] = useState('');
   // Backdrop click cancels (matches CounterModal / ComposeMessageModal).
   // Clicking the box itself is stopped from bubbling to backdrop.
-  return (
+  // Portal to <body> so the fixed overlay escapes any ancestor stacking context
+  // (e.g. the profile hero banner), which otherwise clips the dialog.
+  const overlay = (
     <div className={styles.modalBackdrop} onClick={onCancel}>
       <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.title}>{title}</div>
@@ -144,4 +147,5 @@ function ConfirmModal({
       </div>
     </div>
   );
+  return typeof document !== 'undefined' ? createPortal(overlay, document.body) : overlay;
 }
