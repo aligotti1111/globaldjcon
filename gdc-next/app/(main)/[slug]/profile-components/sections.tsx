@@ -1226,9 +1226,9 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
   // Pull the link's OpenGraph preview (title / publication / image). Fills any
   // field the DJ hasn't typed into; an uploaded image always wins. Runs on blur
   // of the URL field and once more on Save if the link changed.
-  async function runScrape(forUrl: string): Promise<{ title: string; publication: string; image: string | null } | null> {
+  async function runScrape(forUrl: string, force = false): Promise<{ title: string; publication: string; image: string | null } | null> {
     const clean = normalizeUrl(forUrl);
-    if (!clean || clean === scrapedFor) return null;
+    if (!clean || (!force && clean === scrapedFor)) return null;
     setScraping(true); setError(null);
     try {
       const res = await fetch('/api/dj/press-preview', {
@@ -1239,9 +1239,11 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
       const data = (await res.json().catch(() => ({}))) as { title?: string; publication?: string; image?: string | null; error?: string };
       if (!res.ok) { setError(data.error || 'Could not read that link.'); return null; }
       setScrapedFor(clean);
-      if (data.title && !title.trim()) setTitle(data.title);
-      if (data.publication && !publication.trim()) setPublication(data.publication);
-      if (data.image && !file && !image) setImage(data.image);
+      // On an explicit regenerate (force) we overwrite; otherwise only fill
+      // fields the DJ hasn't typed into, and never replace an uploaded image.
+      if (data.title && (force || !title.trim())) setTitle(data.title);
+      if (data.publication && (force || !publication.trim())) setPublication(data.publication);
+      if (data.image && !file && (force || !image)) setImage(data.image);
       return { title: data.title || '', publication: data.publication || '', image: data.image || null };
     } catch {
       setError('Could not read that link.');
@@ -1314,8 +1316,23 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
         inputMode="url"
         autoFocus
       />
-      <div className={styles.pressScrapeHint}>
-        {scraping ? 'Fetching preview…' : 'We’ll pull the headline, source and image automatically.'}
+      <div className={styles.pressScrapeRow}>
+        <button
+          type="button"
+          onClick={() => {
+            // Explicit regenerate: clear the auto-filled fields (but keep an
+            // uploaded image) so the fresh scrape repopulates them.
+            if (!file) setImage(null);
+            runScrape(url, true);
+          }}
+          disabled={busy || scraping || !url.trim()}
+          className={styles.pressScrapeBtn}
+        >
+          {scraping ? 'Fetching…' : 'Generate preview'}
+        </button>
+        <span className={styles.pressScrapeHint}>
+          {scraping ? 'Reading the article…' : 'Headline, source and image pull in automatically.'}
+        </span>
       </div>
 
       <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={`${styles.affiliateImgTop} ${styles.pressImgTop}`} style={{ cursor: 'pointer', padding: 0, margin: '.4rem 0 .85rem' }} aria-label="Preview image">
