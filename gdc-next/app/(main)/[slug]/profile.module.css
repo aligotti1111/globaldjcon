@@ -3286,6 +3286,10 @@ a.affiliateImgTop:hover { opacity: .9; }
   background: #141414;
   border-top: 1px solid rgba(255, 255, 255, .08);
   border-radius: 0 0 11px 11px;
+  /* Fixed height so every card's info band matches, regardless of how long the
+     headline is — keeps the whole grid uniform. */
+  min-height: 92px;
+  box-sizing: border-box;
 }
 .pressCardPub {
   font-family: 'Space Mono', monospace;
@@ -3301,6 +3305,11 @@ a.affiliateImgTop:hover { opacity: .9; }
   font-weight: 700;
   line-height: 1.3;
   color: var(--white, #fff);
+  /* Clamp to two lines so a long headline doesn't make one card taller. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .pressCard:hover .pressCardTitle { color: var(--neon, #22e3ad); }
 /* Owner edit/delete row sits under the band — give it breathing room so the
