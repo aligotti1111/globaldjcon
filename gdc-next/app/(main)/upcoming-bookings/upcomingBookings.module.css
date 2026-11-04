@@ -2054,6 +2054,10 @@ select.input {
     justify-content: flex-start;
     min-width: 0;
   }
+  /* Bigger date + time on the closed mobile card for readability. */
+  .dayNum { font-size: 33px; }
+  .dow,
+  .mo { font-size: 12px; }
   /* Flyer: hidden by default on mobile. Only club/bar rows render a FlyerSlot,
      so it's re-enabled below as a small thumb on the RIGHT of the top line,
      next to the venue name. The extra grid column is added on .monthListClub
@@ -2084,7 +2088,7 @@ select.input {
   }
   .rowTime {
     justify-self: start;
-    font-size: 12px;
+    font-size: 15px;
   }
   .rowContext {
     grid-area: event;
