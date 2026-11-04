@@ -305,6 +305,7 @@ export function buildBookingRequestConfirmationBody(opts: {
   setType: string | undefined;
   venueType: string | undefined;
   equipment: string | undefined;
+  equipNoneDetail?: string | undefined;
   offerAmount: number | string | undefined;
   quotedRate: number | string | undefined;
   confCurrency: string;
@@ -326,7 +327,7 @@ export function buildBookingRequestConfirmationBody(opts: {
     eventDate, startTime, endTime, venueName, venueAddress,
     isWedding, cocktailNeeded, cocktailStart, cocktailSameRoom,
     ceremonyNeeded, ceremonyStart, ceremonySameRoom, setupHours,
-    setType, venueType, equipment,
+    setType, venueType, equipment, equipNoneDetail,
     offerAmount, quotedRate, confCurrency, confTotalHours, confHourlyRate,
     confDiscAmt, confOrigRate, confDiscLabel,
     cocktailPrice, ceremonyPrice, taxPct, taxAmount, totalWithTax, depositPct, depositAmount,
@@ -344,11 +345,16 @@ export function buildBookingRequestConfirmationBody(opts: {
     confDiscAmt > 0 && confOrigRate != null
       ? `was ${currencySymbol(confCurrency)}${confOrigRate.toLocaleString()} — ${escHtml(confDiscLabel)}, save ${currencySymbol(confCurrency)}${confDiscAmt.toLocaleString()}`
       : undefined;
-  const confEquipmentLabel = ({
+  const confEquipmentBase = ({
     sound_system: 'DJ provides system + decks',
     decks_only: 'DJ provides decks',
     venue_provides: 'Venue provides all',
   } as Record<string, string>)[equipment || ''] || '';
+  // When the venue provides everything AND the DJ listed specific gear they
+  // need, append it so the booker sees exactly what to supply.
+  const confEquipmentLabel = (equipment === 'venue_provides' && equipNoneDetail && equipNoneDetail.trim())
+    ? `${confEquipmentBase} — DJ needs: ${equipNoneDetail.trim()}`
+    : confEquipmentBase;
   // Mobile bookings render the identical card the DJ receives, via the
   // shared helper. Club bookings keep the existing bookingInfoBox layout.
   const confCard = isMobileBooking
@@ -590,10 +596,11 @@ export function buildBookingApprovedBody(opts: {
   overtimeRate: number | undefined;
   currency: string;
   eventDate: string | undefined;
+  equipNeedsText?: string | undefined;
   billBox: string;
   progressBox: string;
 }): string {
-  const { recipientName, otherPartyName, recipientRole, eventType, eventDetails, setType, venueType, venueName, venueAddress, startTime, endTime, packageTitle, agreedPrice, overtimeRate, currency, eventDate, billBox, progressBox } = opts;
+  const { recipientName, otherPartyName, recipientRole, eventType, eventDetails, setType, venueType, venueName, venueAddress, startTime, endTime, packageTitle, agreedPrice, overtimeRate, currency, eventDate, equipNeedsText, billBox, progressBox } = opts;
   const sym = currencySymbol(currency);
   const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
   // ── Add to Calendar ── A one-tap Google Calendar link so this single
@@ -625,6 +632,7 @@ export function buildBookingApprovedBody(opts: {
           venueTypeText: venueTypeLabel(venueType),
           venueName,
           venueAddress,
+          equipmentText: equipNeedsText ? `Venue provides all — DJ needs: ${equipNeedsText}` : undefined,
           rateLabel: 'Agreed Price',
           rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : '',
         })}
