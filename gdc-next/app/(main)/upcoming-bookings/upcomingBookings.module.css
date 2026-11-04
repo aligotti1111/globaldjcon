@@ -1787,6 +1787,17 @@ select.input {
 .packageBlockLabel {
   color: var(--neon, #22e3ad);
 }
+/* Injected package-details HTML (bulleted list) — keep bullets inside the card
+   rather than hanging on the left border. */
+.packageDetailsHtml ul,
+.packageDetailsHtml ol {
+  margin: 0;
+  padding-left: 1.25em;
+  list-style-position: outside;
+}
+.packageDetailsHtml li {
+  margin: 0;
+}
 .packageName {
   margin-top: .35rem;
   font-family: 'Bebas Neue', sans-serif;
