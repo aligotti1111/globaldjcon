@@ -440,6 +440,7 @@ export function EditTabsModal({
   initial,
   initialOrder,
   isMobileDJ,
+  showPress = false,
   onClose,
 }: {
   userId: string;
@@ -452,10 +453,13 @@ export function EditTabsModal({
     faq: boolean;
     staff: boolean;
     affiliates: boolean;
+    press: boolean;
   };
   // The owner's current tab order (keys), from users.tab_order.
   initialOrder?: string[];
   isMobileDJ: boolean;
+  // Club/bar DJs on a paid plan can toggle the Press tab (subscription-only).
+  showPress?: boolean;
   onClose: () => void;
 }) {
   type TabRowKey = keyof typeof initial;
@@ -478,10 +482,11 @@ export function EditTabsModal({
     faq: { label: 'FAQ', hint: 'Off by default — turn on to answer common questions' },
     staff: { label: 'Staff', hint: 'Off by default — show your team members' },
     affiliates: { label: 'Affiliates', hint: 'Off by default — companies you recommend' },
+    press: { label: 'Press', hint: 'Off by default — articles you’re mentioned in' },
   };
   const AVAILABLE: TabRowKey[] = isMobileDJ
     ? ['about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates']
-    : ['about', 'mixes', 'images', 'video'];
+    : (['about', 'mixes', 'images', 'video', ...(showPress ? ['press' as const] : [])] as TabRowKey[]);
 
   // Working order: start from the saved order (filtered to what's available),
   // then append any available key the saved order didn't include.
