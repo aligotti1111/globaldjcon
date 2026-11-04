@@ -110,22 +110,19 @@ export default function ClubBookingTab({
     equip_none: !!bookingSettings.equip_none,
     equip_full_detail: bookingSettings.equip_full_detail || '',
     equip_decks_detail: bookingSettings.equip_decks_detail || '',
-    equip_none_detail: bookingSettings.equip_none_detail || '',
   }));
   const equipFull = equipDraft.equip_full;
   const equipFullDetail = equipDraft.equip_full_detail;
   const equipDecks = equipDraft.equip_decks;
   const equipDecksDetail = equipDraft.equip_decks_detail;
   const equipNone = equipDraft.equip_none;
-  const equipNoneDetail = equipDraft.equip_none_detail;
   const hasEquipSelected = equipFull || equipDecks || equipNone;
   const equipDirty =
     equipDraft.equip_full !== !!bookingSettings.equip_full ||
     equipDraft.equip_decks !== !!bookingSettings.equip_decks ||
     equipDraft.equip_none !== !!bookingSettings.equip_none ||
     equipDraft.equip_full_detail !== (bookingSettings.equip_full_detail || '') ||
-    equipDraft.equip_decks_detail !== (bookingSettings.equip_decks_detail || '') ||
-    equipDraft.equip_none_detail !== (bookingSettings.equip_none_detail || '');
+    equipDraft.equip_decks_detail !== (bookingSettings.equip_decks_detail || '');
 
   // Mutually-exclusive selection — pick one, clear the others (draft only).
   function selectEquip(which: 'full' | 'decks' | 'none') {
@@ -137,7 +134,6 @@ export default function ClubBookingTab({
       equip_none: which === 'none',
       equip_full_detail: which === 'full' ? d.equip_full_detail : '',
       equip_decks_detail: which === 'decks' ? d.equip_decks_detail : '',
-      equip_none_detail: which === 'none' ? d.equip_none_detail : '',
     }));
   }
   function setEquipFullDetail(v: string) {
@@ -147,10 +143,6 @@ export default function ClubBookingTab({
   function setEquipDecksDetail(v: string) {
     setLastChangedField('equipment');
     setEquipDraft((d) => ({ ...d, equip_decks_detail: v }));
-  }
-  function setEquipNoneDetail(v: string) {
-    setLastChangedField('equipment');
-    setEquipDraft((d) => ({ ...d, equip_none_detail: v }));
   }
 
   // ── Rates section (MANUAL save) ────────────────────────────────────
@@ -240,7 +232,6 @@ export default function ClubBookingTab({
       equip_none: equipDraft.equip_none,
       equip_full_detail: equipDraft.equip_full_detail,
       equip_decks_detail: equipDraft.equip_decks_detail,
-      equip_none_detail: equipDraft.equip_none_detail,
       global_rate_type: ratesDraft.global_rate_type,
       allow_offers: ratesDraft.global_rate_type === 'offers',
       rate_currency: ratesDraft.rate_currency,
@@ -493,7 +484,7 @@ export default function ClubBookingTab({
                     />
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
-                        I can provide Sound System &amp; Decks/Controller
+                        I provide Sound System &amp; Decks/Controller
                       </div>
                       {equipFull && (
                         <input
@@ -516,7 +507,7 @@ export default function ClubBookingTab({
                     />
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
-                        I can provide Decks/Controller only
+                        I provide Decks/Controller only
                       </div>
                       {equipDecks && (
                         <input
@@ -541,15 +532,6 @@ export default function ClubBookingTab({
                       <div className={styles.equipOptionTitle}>
                         I require all equipment provided by venue
                       </div>
-                      {equipNone && (
-                        <input
-                          type="text"
-                          value={equipNoneDetail}
-                          onChange={(e) => setEquipNoneDetail(e.target.value)}
-                          placeholder="Specific equipment you need the venue to provide (e.g. 2× CDJ-3000, DJM-900, 2 monitors)"
-                          className={styles.equipDetailInput}
-                        />
-                      )}
                     </div>
                   </label>
                 </div>
@@ -597,7 +579,6 @@ export default function ClubBookingTab({
                             }`}
                           >
                             {t === 'flat' ? 'Flat Rate' : t === 'hourly' ? 'Hourly' : 'Offers'}
-                            {ratesDraft.global_rate_type === t && <span aria-hidden="true" style={{ marginLeft: 6 }}>✓</span>}
                           </button>
                         ))}
                       </div>
