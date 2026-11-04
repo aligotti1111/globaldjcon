@@ -223,9 +223,10 @@
      from another (Event Type / Event Date, Venue Name / Room Details, etc.). */
   .gdc-dash .dgrid2,.gdc-dash .dgrid3,.gdc-dash .drow2{grid-template-columns:1fr}
   /* Wedding schedule: the room note (e.g. "separate room" / "same room as
-     reception") drops onto its own line under the time rather than beside it. */
-  .gdc-dash .schrow{flex-wrap:wrap}
-  .gdc-dash .schn{flex-basis:100%;margin-top:2px}
+     reception") drops onto its own line, sitting flush under the time (indented
+     to the time column) with minimal extra space above it. */
+  .gdc-dash .schrow{flex-wrap:wrap;row-gap:0}
+  .gdc-dash .schn{flex-basis:100%;margin-left:120px;margin-top:1px;line-height:1.2}
 }
 
 
