@@ -3208,6 +3208,28 @@ a.affiliateImgTop:hover { opacity: .9; }
 .affiliateCardEditingLight .testimonialAddCancel { border-color: rgba(0, 0, 0, .35); color: rgba(0, 0, 0, .7); }
 .affiliateCardEditingLight .entryPhotoPick { border-color: rgba(0, 0, 0, .22); background: rgba(0, 0, 0, .05); }
 
+/* Press tab — reuses the affiliate card shell, but the preview image is a
+   landscape (16/9) article thumbnail like a social/Google news card, not a
+   square logo. The headline links out; the publication sits under it. */
+.pressImgTop {
+  aspect-ratio: 16 / 9 !important;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pressImgTop img { width: 100%; height: 100%; object-fit: cover; }
+/* In the editor, keep the preview full-width (the affiliate rule caps it at
+   110px for square logos — too small for an article card). */
+.affiliateCardEditing .pressImgTop { max-width: none !important; }
+.pressScrapeHint {
+  font-family: 'Space Mono', monospace;
+  font-size: .6rem;
+  color: var(--neon, #22e3ad);
+  margin: .3rem 0 .1rem;
+  letter-spacing: .02em;
+}
+
 /* Staff inline editor — the member card becomes its editor. It spans two grid
    columns and holds a comfortable minimum width so the fields never get
    crushed into a single narrow track; it sits to the right of the first card
