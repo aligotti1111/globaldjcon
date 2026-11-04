@@ -479,10 +479,10 @@ export function EditTabsModal({
     images: { label: 'Photos' },
     video: { label: 'Video' },
     testimonials: { label: 'Testimonials' },
-    faq: { label: 'FAQ' },
-    staff: { label: 'Staff' },
-    affiliates: { label: 'Affiliates' },
-    press: { label: 'Press' },
+    faq: { label: 'FAQ', hint: 'Turn on to answer common questions' },
+    staff: { label: 'Staff', hint: 'Show your team members' },
+    affiliates: { label: 'Affiliates', hint: 'Companies you recommend' },
+    press: { label: 'Press', hint: 'Articles you’re mentioned in' },
   };
   const AVAILABLE: TabRowKey[] = isMobileDJ
     ? ['about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates']
