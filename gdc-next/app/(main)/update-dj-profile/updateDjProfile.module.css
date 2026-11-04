@@ -2160,6 +2160,9 @@
   outline: none;
   border-color: var(--neon);
 }
+.equipDetailInput::placeholder {
+  color: #5a5a6e;
+}
 
 /* ── Club booking tab — Rates section ──────────────────────────── */
 .rateTypeRow {
