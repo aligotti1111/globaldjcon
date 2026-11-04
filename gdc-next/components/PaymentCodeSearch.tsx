@@ -250,13 +250,23 @@ export default function PaymentCodeSearch() {
     return createPortal(iconUI, iconHost);
   }
 
-  // Upcoming dashboard: the magnifier stays inline on the sort line; the input
-  // only drops to its own row UNDER the sort box once clicked.
-  const toggle = (
-    <MagnifierBtn
-      onClick={() => (expanded ? collapse() : setExpanded(true))}
-      title={expanded ? 'Close search' : 'Search bookings'}
-    />
+  // Upcoming dashboard: the magnifier shows on the sort line only while the
+  // search is CLOSED; once opened it's hidden and the input drops to its own
+  // row UNDER the sort box, with an × to close.
+  const closeBtn = (
+    <button
+      type="button"
+      onClick={collapse}
+      title="Close search"
+      aria-label="Close search"
+      style={{
+        flexShrink: 0, background: 'transparent', color: 'rgba(255,255,255,.6)',
+        border: '1px solid rgba(255,255,255,.16)', borderRadius: 8, width: 30, height: 30,
+        fontSize: '1rem', lineHeight: 1, cursor: 'pointer',
+      }}
+    >
+      ×
+    </button>
   );
   const dropRow = expanded && sortBar ? createPortal(
     <div style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
@@ -266,13 +276,17 @@ export default function PaymentCodeSearch() {
         minWidth: sortLabelW != null ? sortLabelW : undefined,
       }}>Search</span>
       {field}
+      {closeBtn}
     </div>,
     sortBar,
   ) : null;
 
   return (
     <>
-      {createPortal(toggle, iconHost)}
+      {!expanded && createPortal(
+        <MagnifierBtn onClick={() => setExpanded(true)} title="Search bookings" />,
+        iconHost,
+      )}
       {dropRow}
     </>
   );
