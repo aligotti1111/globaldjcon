@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { loadBookingParties, recipientForParty } from '@/lib/emails/recipients';
+import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
 import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
 // Shared email identity/links + the render + formatting helpers, now extracted
 // into lib/emails/* so this route holds orchestration + the per-type branches.
@@ -511,6 +512,7 @@ export async function POST(req: Request) {
         isWedding, cocktailNeeded, cocktailStart, cocktailSameRoom,
         ceremonyNeeded, ceremonyStart, ceremonySameRoom, setupHours,
         setType, venueType, equipment,
+        equipNoneDetail: body.equipNoneDetail as string | undefined,
         offerAmount, quotedRate, confCurrency, confTotalHours, confHourlyRate,
         confDiscAmt, confOrigRate, confDiscLabel,
         cocktailPrice: body.cocktailPrice,
@@ -1326,6 +1328,31 @@ export async function POST(req: Request) {
     );
     const progressBox = await bookingProgressBox(body.bookingId as string | undefined);
 
+    // Equipment note — when this booking has the venue providing all gear AND
+    // the DJ listed specific equipment they need, surface it on the confirmation
+    // so the venue/host is reminded of exactly what to supply.
+    let baEquipNeeds = '';
+    try {
+      if (body.bookingId) {
+        const adminC = createAdminClient();
+        const { data: bRow } = await adminC
+          .from('bookings')
+          .select('equipment, dj_id')
+          .eq('id', body.bookingId as string)
+          .maybeSingle();
+        const br = bRow as { equipment?: string | null; dj_id?: string | null } | null;
+        if (br?.equipment === 'venue_provides' && br.dj_id) {
+          const { data: djRow } = await adminC
+            .from('users')
+            .select('booking_settings')
+            .eq('id', br.dj_id)
+            .maybeSingle();
+          const bs = parseBookingSettings((djRow as { booking_settings?: unknown } | null)?.booking_settings);
+          if (bs?.equip_none_detail && bs.equip_none_detail.trim()) baEquipNeeds = bs.equip_none_detail.trim();
+        }
+      }
+    } catch { /* non-fatal — confirmation still sends without the note */ }
+
     emailPayload = {
       from: FROM,
       replyTo: REPLY_TO,
@@ -1338,6 +1365,7 @@ export async function POST(req: Request) {
         setType, venueType, venueName, venueAddress,
         startTime, endTime, packageTitle,
         agreedPrice, overtimeRate, currency, eventDate,
+        equipNeedsText: baEquipNeeds || undefined,
         billBox, progressBox,
       })),
     };
