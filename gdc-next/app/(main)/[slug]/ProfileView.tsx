@@ -159,7 +159,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // inline) lands back on the same tab. Validates against TabKey list.
   const tabFromUrl = (() => {
     const t = searchParams.get('tab') || '';
-    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates'];
+    const valid: TabKey[] = ['booking', 'about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates', 'press'];
     return (valid as string[]).includes(t) ? (t as TabKey) : null;
   })();
   const [activeTab, setActiveTab] = useState<TabKey>(
