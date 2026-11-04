@@ -1253,7 +1253,7 @@ export default function BookingDetails({
               </div>
             )}
             {g.key === 'EVENT' && djType === 'mobile' && overtimeControl && (
-              <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
                 <span className={styles.detailLabel} style={{ whiteSpace: 'nowrap' }}>Overtime</span>
                 {overtimeControl}
               </div>
