@@ -244,7 +244,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
         disabled={!canManage}
         style={linkStyle}
       >
-        Request Balance / Send Receipt
+        Send invoice / receipt
       </button>
     </span>
   ) : (
