@@ -911,8 +911,8 @@ export default function UpcomingBookingsClient({
         <div className={`${styles.monthList} ${djType === 'club' ? styles.monthListClub : ''}`}>
           {pagedGrouped.map(([monthKey, items], mi) => (
             <section key={monthKey} className={styles.month}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', flexWrap: 'wrap' }}>
-                <h2 className={styles.monthLabel}>{monthLabel(monthKey)}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', flexWrap: 'nowrap' }}>
+                <h2 className={styles.monthLabel} style={{ minWidth: 0 }}>{monthLabel(monthKey)}</h2>
                 {mi === 0 && <CalendarSyncButton />}
               </div>
               <div className={styles.monthItems}>
