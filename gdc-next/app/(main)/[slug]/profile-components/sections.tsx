@@ -1293,7 +1293,9 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
         image: finalImage,
         addedAt: existing?.addedAt ?? Date.now(),
       };
-      const next = mode === 'new' ? [entry, ...press] : press.map((p) => (p.id === entryId ? entry : p));
+      // Append new articles to the END so they fill the next open slot to the
+      // right, instead of shoving the whole grid down a row.
+      const next = mode === 'new' ? [...press, entry] : press.map((p) => (p.id === entryId ? entry : p));
       await persist(next);
     } catch (err) {
       setBusy(false);
