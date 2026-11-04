@@ -76,6 +76,46 @@ function decodeEntities(s: string): string {
     .replace(/&#39;/g, "'").replace(/&apos;/g, "'");
 }
 
+interface Preview { title: string; publication: string; image: string | null }
+
+// Primary: a hosted preview service that actually RENDERS the page (headless
+// browser), so it reads OpenGraph tags on JS-heavy / bot-blocking news sites
+// that a raw server fetch can't see. Microlink has a free tier; set
+// MICROLINK_API_KEY in env to lift the rate limit. Returns null on any failure
+// so the caller can fall back to the raw-HTML parse.
+async function fetchViaMicrolink(url: string): Promise<Preview | null> {
+  try {
+    const endpoint = `https://api.microlink.io/?url=${encodeURIComponent(url)}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 9000);
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (process.env.MICROLINK_API_KEY) headers['x-api-key'] = process.env.MICROLINK_API_KEY;
+    let res: Response;
+    try {
+      res = await fetch(endpoint, { signal: controller.signal, headers });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) return null;
+    const json = (await res.json().catch(() => null)) as
+      | { status?: string; data?: { title?: string; publisher?: string; image?: { url?: string }; logo?: { url?: string } } }
+      | null;
+    if (!json || json.status !== 'success' || !json.data) return null;
+    const d = json.data;
+    let image = d.image?.url || null;
+    if (image) {
+      try { const p = new URL(image).protocol; if (p !== 'http:' && p !== 'https:') image = null; } catch { image = null; }
+    }
+    return {
+      title: (d.title || '').slice(0, 200),
+      publication: (d.publisher || '').slice(0, 80),
+      image,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -112,65 +152,76 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'That link can’t be reached.' }, { status: 400 });
     }
 
-    // Fetch the page HTML, capped by time and size.
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    let html = '';
-    try {
-      const res = await fetch(url, {
-        signal: controller.signal,
-        redirect: 'follow',
-        headers: {
-          // Some sites serve a bare shell without a UA; identify as a bot
-          // politely (never the user's email — see global rules).
-          'User-Agent': 'Mozilla/5.0 (compatible; GlobalDJConnectBot/1.0; +https://globaldjconnect.com)',
-          Accept: 'text/html,application/xhtml+xml',
-        },
-      });
-      const ct = res.headers.get('content-type') || '';
-      if (!res.ok || !ct.includes('text/html') || !res.body) {
-        // Not fetchable/HTML — return empty so the DJ uploads their own image.
-        return NextResponse.json({ title: '', publication: '', image: null });
+    // ── Attempt 1: raw-HTML parse (fast, free). Works for sites that serve
+    // OpenGraph tags in the initial HTML. Uses a real browser UA so fewer sites
+    // 403 us. Never throws / early-returns — on any miss we fall through to the
+    // rendering service below.
+    const direct = await (async (): Promise<Preview> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      let html = '';
+      try {
+        const res = await fetch(url, {
+          signal: controller.signal,
+          redirect: 'follow',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+        });
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('text/html') || !res.body) return { title: '', publication: '', image: null };
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let bytes = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          html += decoder.decode(value, { stream: true });
+          if (bytes >= MAX_BYTES || /<\/head>/i.test(html)) { try { await reader.cancel(); } catch { /* ignore */ } break; }
+        }
+      } catch {
+        return { title: '', publication: '', image: null };
+      } finally {
+        clearTimeout(timer);
       }
-      // Read up to MAX_BYTES, then stop — we only need <head>.
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let bytes = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-        html += decoder.decode(value, { stream: true });
-        if (bytes >= MAX_BYTES || /<\/head>/i.test(html)) { try { await reader.cancel(); } catch { /* ignore */ } break; }
-      }
-    } catch {
-      return NextResponse.json({ title: '', publication: '', image: null });
-    } finally {
-      clearTimeout(timer);
-    }
 
-    const titleTag = (() => {
-      const m = /<title[^>]*>([^<]*)<\/title>/i.exec(html);
-      return m ? decodeEntities(m[1].trim()) : '';
+      const titleTag = (() => {
+        const m = /<title[^>]*>([^<]*)<\/title>/i.exec(html);
+        return m ? decodeEntities(m[1].trim()) : '';
+      })();
+      let image = pickMeta(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']);
+      if (image) {
+        try { image = new URL(image, parsed.origin).href; } catch { image = null; }
+        if (image) { try { const p = new URL(image).protocol; if (p !== 'http:' && p !== 'https:') image = null; } catch { image = null; } }
+      }
+      return {
+        title: pickMeta(html, ['og:title', 'twitter:title']) || titleTag || '',
+        publication: pickMeta(html, ['og:site_name', 'application-name']) || '',
+        image: image || null,
+      };
     })();
 
-    let image = pickMeta(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']);
-    // Resolve a relative og:image against the page origin.
-    if (image) {
-      try { image = new URL(image, parsed.origin).href; } catch { image = null; }
-      if (image) {
-        const proto = new URL(image).protocol;
-        if (proto !== 'http:' && proto !== 'https:') image = null;
+    // ── Attempt 2: a rendering preview service (Microlink) fills whatever the
+    // raw parse missed — the common case for JS-rendered or bot-blocking news
+    // sites (e.g. edm.com), where the initial HTML has no usable OG tags.
+    let title = direct.title;
+    let publication = direct.publication;
+    let image = direct.image;
+    if (!image || !title) {
+      const ml = await fetchViaMicrolink(url);
+      if (ml) {
+        if (!title && ml.title) title = ml.title;
+        if (!publication && ml.publication) publication = ml.publication;
+        if (!image && ml.image) image = ml.image;
       }
     }
-
-    const title = pickMeta(html, ['og:title', 'twitter:title']) || titleTag || '';
-    const publication =
-      pickMeta(html, ['og:site_name', 'application-name']) || parsed.hostname.replace(/^www\./, '');
 
     return NextResponse.json({
       title: title.slice(0, 200),
-      publication: publication.slice(0, 80),
+      publication: (publication || parsed.hostname.replace(/^www\./, '')).slice(0, 80),
       image: image || null,
     });
   } catch {
