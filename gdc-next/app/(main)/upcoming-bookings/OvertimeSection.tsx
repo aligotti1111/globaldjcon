@@ -235,7 +235,9 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   // popup; once sent it's a "Manage" dropdown of quick actions. ──
   const trigger = !hasSaved ? (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-      {rateLabel && <span>{rateLabel}</span>}
+      {rateLabel && (
+        <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontWeight: 700, fontSize: '.82rem', color: '#f0f0f8', whiteSpace: 'nowrap' }}>{rateLabel}</span>
+      )}
       <button
         type="button"
         onClick={() => { if (canManage) { setErr(null); setMsg(null); setOpen(true); } }}
