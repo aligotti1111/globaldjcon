@@ -234,7 +234,10 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
   // invoice exists it's a "Send invoice / receipt" link that opens the entry
   // popup; once sent it's a "Manage" dropdown of quick actions. ──
   const trigger = !hasSaved ? (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+    // display:contents so the rate + link become direct children of the parent
+    // Overtime row — they then flow/wrap as peers with the "Overtime" label
+    // (Overtime · $X/hr · Send invoice / receipt), matching the homepage mockup.
+    <span style={{ display: 'contents' }}>
       {rateLabel && (
         <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontWeight: 700, fontSize: '.82rem', color: '#f0f0f8', whiteSpace: 'nowrap' }}>{rateLabel}</span>
       )}
@@ -309,7 +312,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
 
   if (!open) {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+      <span style={{ display: 'contents' }}>
         {trigger}
         {err && <span style={{ color: '#ff7676', fontSize: '.74rem', fontWeight: 600 }}>{err}</span>}
         {msg && <span style={{ color: NEON, fontSize: '.74rem', fontWeight: 600 }}>{msg}</span>}
