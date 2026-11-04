@@ -1309,6 +1309,14 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
       <input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
+        onPaste={(e) => {
+          // Auto-fetch the moment a link is pasted. Build the resulting value
+          // (selection replaced by the paste) and scrape it right away.
+          const el = e.currentTarget;
+          const pasted = e.clipboardData.getData('text');
+          const next = el.value.slice(0, el.selectionStart ?? 0) + pasted + el.value.slice(el.selectionEnd ?? 0);
+          if (pasted.trim()) { setUrl(next); runScrape(next, true); e.preventDefault(); }
+        }}
         onBlur={() => { if (url.trim()) runScrape(url); }}
         placeholder="Paste the article URL…"
         className={styles.testimonialAddInput}
@@ -1370,13 +1378,12 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
 
   return (
     <>
-      {(press.length > 0 || mode === 'new') && (
+      {press.length > 0 && (
         <div className={styles.affiliateList}>
           {press.map((p) => {
-            if (mode === p.id) return <div key={p.id} style={{ display: 'contents' }}>{editorCard}</div>;
             const pub = p.publication || hostLabel(p.url);
             return (
-              <div key={p.id} className={styles.pressCard}>
+              <div key={p.id} className={`${styles.pressCard} ${mode === p.id ? styles.pressCardDimmed : ''}`}>
                 <a href={p.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.pressCardLink} aria-label={p.title}>
                   <div className={`${styles.affiliateImgTop} ${styles.pressImgTop}`}>
                     {p.image ? (
@@ -1409,13 +1416,17 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
               <span aria-hidden="true">+</span>
             </button>
           )}
-          {mode === 'new' && editorCard}
         </div>
       )}
 
       {isOwnProfile && !mode && press.length === 0 && (
         <button type="button" onClick={openNew} className={styles.testimonialAddBtn}>+ Add article</button>
       )}
+
+      {/* Editor renders full-width BELOW the card grid (not as a grid item) so its
+          taller form never distorts the card row heights. */}
+      {mode && <div className={styles.pressEditorWrap}>{editorCard}</div>}
+
       {error && !mode && <div className={styles.testimonialAddError} style={{ marginTop: '.5rem' }}>{error}</div>}
 
       {confirmDialog}
