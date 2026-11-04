@@ -218,7 +218,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
 
   const linkStyle: React.CSSProperties = {
     background: 'none', border: 'none', padding: 0, color: NEON, fontWeight: 700,
-    fontSize: '.8rem', textDecoration: 'underline', textUnderlineOffset: 2,
+    fontSize: '.76rem', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap',
     cursor: canManage ? 'pointer' : 'default', opacity: canManage ? 1 : 0.5,
   };
 
@@ -239,7 +239,7 @@ export default function OvertimeSection({ bookingId, currency, taxPct, defaultRa
     // (Overtime · $X/hr · Send invoice / receipt), matching the homepage mockup.
     <span style={{ display: 'contents' }}>
       {rateLabel && (
-        <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontWeight: 700, fontSize: '.82rem', color: '#f0f0f8', whiteSpace: 'nowrap' }}>{rateLabel}</span>
+        <span style={{ fontFamily: "'Space Mono', ui-monospace, monospace", fontWeight: 700, fontSize: '.76rem', color: '#f0f0f8', whiteSpace: 'nowrap' }}>{rateLabel}</span>
       )}
       <button
         type="button"
