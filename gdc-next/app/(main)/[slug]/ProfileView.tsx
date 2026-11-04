@@ -33,6 +33,7 @@ import { ClaimAlertIcon } from './icons';
 import type { DjProfileData, Testimonial, Faq, AboutStats, TabKey } from './profileTypes';
 import { sanitizeBioHtml } from '@/lib/sanitizeBio';
 import { parseStaff, parseAffiliates, type StaffMember, type Affiliate } from '@/lib/staff';
+import { parsePress, type PressItem } from '@/lib/press';
 export type { DjProfileData };
 // Extracted sub-components (banner pills, hero actions, owner editors, modals).
 import {
@@ -40,7 +41,7 @@ import {
   VideoMetaEditor, ExpandableDesc, PhotoManagerModal, AddPhotosModal, CreateAlbumModal, EmbedCalendarModal,
   BannerEditModal, EditTabsModal, TestimonialAddForm, FaqAddForm, FaqAccordion,
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
-  StaffSection, AffiliatesSection,
+  StaffSection, AffiliatesSection, PressSection,
 } from './ProfileComponents';
 import { validateImageFile } from './profilePhotoUtils';
 import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
@@ -667,6 +668,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // defensively — a malformed row yields an empty list rather than crashing.
   const staffList: StaffMember[] = isMobileDJ ? parseStaff(data.staff) : [];
   const affiliatesList: Affiliate[] = isMobileDJ ? parseAffiliates(data.affiliates) : [];
+  // Press / media mentions — club-or-bar DJs only, and a subscription-only
+  // feature. Parsed whenever the owner is on a club/bar profile; the pro gate is
+  // applied on the show flag below so a lapsed sub hides the tab but keeps data.
+  const pressList: PressItem[] = isClubDJ ? parsePress(data.press) : [];
 
   // ── Tab visibility ──────────────────────────────────────────────────
   // Stored as JSONB on users.tab_visibility. Format:
@@ -685,6 +690,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     faq: boolean;
     staff: boolean;
     affiliates: boolean;
+    press: boolean;
   } = (() => {
     const defaults = {
       about: true,
@@ -698,6 +704,8 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       // Staff + Affiliates tabs: mobile DJs only, default OFF (owner turns on).
       staff: false,
       affiliates: false,
+      // Press tab: club/bar DJs only, subscription-gated, default OFF.
+      press: false,
     };
     const raw = data.tab_visibility;
     if (!raw) return defaults;
@@ -728,6 +736,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     isMobileDJ && tabVisibility.staff && (canEdit || staffList.length > 0);
   const showAffiliatesTab =
     isMobileDJ && tabVisibility.affiliates && (canEdit || affiliatesList.length > 0);
+  // Press: club/bar DJs only AND the owner must be on a paid plan (ownerIsPro).
+  // Owner sees it whenever enabled (even empty) to add articles; visitors only
+  // when ≥1 exists. If the sub lapses the tab disappears but the rows persist.
+  const showPressTab =
+    isClubDJ && ownerIsPro && tabVisibility.press && (canEdit || pressList.length > 0);
 
   // ── Tab order ───────────────────────────────────────────────────────
   // The owner can drag tabs into any order in the Edit Tabs modal; that order
@@ -736,7 +749,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // order (e.g. a newer tab) fall in at the end in their default order, so an
   // old saved order never hides a tab.
   const DEFAULT_TAB_ORDER: Array<Exclude<TabKey, 'booking'>> = [
-    'about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates',
+    'about', 'mixes', 'images', 'video', 'testimonials', 'faq', 'staff', 'affiliates', 'press',
   ];
   const tabOrder: Array<Exclude<TabKey, 'booking'>> = (() => {
     const raw = data.tab_order;
@@ -768,6 +781,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     faq: { label: 'FAQ', show: showFaqTab },
     staff: { label: 'Staff', show: showStaffTab },
     affiliates: { label: 'Affiliates', show: showAffiliatesTab },
+    press: { label: 'Press', show: showPressTab },
   };
 
   // Avatar URL with object-position support
@@ -1978,6 +1992,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               <AffiliatesSection userId={data.id} affiliates={affiliatesList} isOwnProfile={canEdit} />
             </div>
           )}
+
+          {/* Press tab — club/bar DJs on a paid plan. Articles the venue/DJ was
+              mentioned in: paste a link, we auto-pull the headline, publication
+              and preview image (OpenGraph); the DJ can swap the image or upload
+              one when a site has none. Visitors see a read-only card grid. */}
+          {showPressTab && (
+            <div className={paneClass('press')}>
+              {canEdit && pressList.length === 0 && (
+                <div className={styles.testimonialOwnerNote}>
+                  Visitors won&apos;t see the Press tab on your profile until at
+                  least one article is added.
+                </div>
+              )}
+              <PressSection userId={data.id} press={pressList} isOwnProfile={canEdit} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -2075,6 +2105,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           initial={tabVisibility}
           initialOrder={tabOrder}
           isMobileDJ={isMobileDJ}
+          showPress={isClubDJ && ownerIsPro}
           onClose={() => setTabsModalOpen(false)}
         />
       )}
