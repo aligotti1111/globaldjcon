@@ -39,9 +39,9 @@ export default function VenueDistance({
   // Within the travel limit → yellow (matches the mobile-DJ distance); beyond → red.
   const color = miles < 15 ? 'var(--amber,#f5e642)' : '#ff6b6b';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: '.78rem', fontFamily: "'Space Mono', ui-monospace, monospace" }}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-      <span style={{ color }}>{miles.toFixed(1)} mi to venue from your zipcode</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: '.66rem', fontFamily: "'Space Mono', ui-monospace, monospace" }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span style={{ color, whiteSpace: 'nowrap' }}>{miles.toFixed(1)} mi to venue from your zipcode</span>
     </div>
   );
 }
