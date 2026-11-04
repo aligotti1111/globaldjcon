@@ -1351,8 +1351,14 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
 
       <div className={styles.testimonialAddFormLabel}>Headline</div>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article headline" className={styles.testimonialAddInput} disabled={busy} />
-      <div className={styles.testimonialAddFormLabel}>Publication <span style={{ opacity: .6 }}>(optional)</span></div>
-      <input value={publication} onChange={(e) => setPublication(e.target.value)} placeholder="e.g. Rolling Stone" className={styles.testimonialAddInput} disabled={busy} />
+      {/* Publication is read-only — it comes from the article's own metadata when
+          the preview is generated, so there's nothing for the DJ to type. */}
+      {publication && (
+        <div className={styles.pressPubReadonly}>
+          <span className={styles.testimonialAddFormLabel} style={{ margin: 0 }}>Publication</span>
+          <span className={styles.pressPubValue}>{publication}</span>
+        </div>
+      )}
 
       {error && <div className={styles.testimonialAddError}>{error}</div>}
       <div className={styles.testimonialAddActions}>
