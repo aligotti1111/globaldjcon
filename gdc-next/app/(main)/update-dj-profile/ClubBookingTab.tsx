@@ -596,6 +596,7 @@ export default function ClubBookingTab({
                               ratesDraft.global_rate_type === t ? styles.rateTypePillActive : ''
                             }`}
                           >
+                            {ratesDraft.global_rate_type === t && <span aria-hidden="true" style={{ marginRight: 6 }}>✓</span>}
                             {t === 'flat' ? 'Flat Rate' : t === 'hourly' ? 'Hourly' : 'Offers'}
                           </button>
                         ))}
