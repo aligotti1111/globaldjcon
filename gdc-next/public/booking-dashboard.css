@@ -219,6 +219,13 @@
   .gdc-dash .mobwrap{display:block}
   .gdc-dash h1{font-size:2.2rem}
   .gdc-dash .toprow .flyer{width:66px;height:66px}
+  /* On mobile each detail field gets its own line instead of sitting across
+     from another (Event Type / Event Date, Venue Name / Room Details, etc.). */
+  .gdc-dash .dgrid2,.gdc-dash .dgrid3,.gdc-dash .drow2{grid-template-columns:1fr}
+  /* Wedding schedule: the room note (e.g. "separate room" / "same room as
+     reception") drops onto its own line under the time rather than beside it. */
+  .gdc-dash .schrow{flex-wrap:wrap}
+  .gdc-dash .schn{flex-basis:100%;margin-top:2px}
 }
 
 
