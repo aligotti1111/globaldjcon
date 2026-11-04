@@ -1242,7 +1242,7 @@ export default function AddManualBookingModal({
               </div>
             </div>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : 'Set Start Time'}</span>
+              <span className={styles.fieldLabel}>{isWedding ? 'Reception Start' : djType === 'club' ? 'Set Start Time' : 'Event Start Time'}</span>
               <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className={styles.input} style={{ ...(errRing(error === 'Pick a start time.' && !startTime) || {}), color: startTime ? undefined : 'var(--muted)' }}>
                 <option value="">Select…</option>
                 {TIME_OPTIONS.map((t) => (
@@ -1252,7 +1252,7 @@ export default function AddManualBookingModal({
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
-                {isWedding ? 'Reception End' : <>Set End Time {djType === 'club' && <span className={styles.optional}>(optional)</span>}</>}
+                {isWedding ? 'Reception End' : djType === 'club' ? <>Set End Time <span className={styles.optional}>(optional)</span></> : 'Event End Time'}
               </span>
               <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className={styles.input} style={{ ...(errRing(error === 'Pick an end time.' && !endTime) || {}), color: endTime ? undefined : 'var(--muted)' }}>
                 <option value="">Select…</option>
