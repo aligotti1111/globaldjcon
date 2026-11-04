@@ -1152,6 +1152,7 @@ export default function BookingDetails({
       )}
       {hasPackageDetails && (
         <div
+          className={styles.packageDetailsHtml}
           style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--muted,#8a8aa0)', marginTop: booking.package_title ? 6 : 12 }}
           dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
         />
