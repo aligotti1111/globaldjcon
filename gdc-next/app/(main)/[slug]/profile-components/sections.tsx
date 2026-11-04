@@ -1376,22 +1376,23 @@ export function PressSection({ userId, press, isOwnProfile }: { userId: string; 
             if (mode === p.id) return <div key={p.id} style={{ display: 'contents' }}>{editorCard}</div>;
             const pub = p.publication || hostLabel(p.url);
             return (
-              <div key={p.id} className={styles.affiliateCard}>
-                <a href={p.url} target="_blank" rel="noopener noreferrer nofollow" className={`${styles.affiliateImgTop} ${styles.pressImgTop}`} aria-label={p.title}>
-                  {p.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumbUrl(p.image, 800)} alt={p.title} />
-                  ) : (
-                    <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase', textAlign: 'center', padding: '0 .5rem' }}>{pub || 'Article'}</span>
-                  )}
+              <div key={p.id} className={styles.pressCard}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.pressCardLink} aria-label={p.title}>
+                  <div className={`${styles.affiliateImgTop} ${styles.pressImgTop}`}>
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumbUrl(p.image, 800)} alt={p.title} />
+                    ) : (
+                      <span className={styles.affiliateImgFallback} style={{ fontFamily: "'Space Mono', monospace", fontSize: '.8rem', textTransform: 'uppercase', textAlign: 'center', padding: '0 .5rem' }}>{pub || 'Article'}</span>
+                    )}
+                  </div>
+                  {/* Dark info band under the image — publication (small, caps)
+                      over the headline (bold), like a native link-preview card. */}
+                  <div className={styles.pressCardBand}>
+                    {pub && <div className={styles.pressCardPub}>{pub}</div>}
+                    <div className={styles.pressCardTitle}>{p.title}</div>
+                  </div>
                 </a>
-                <div className={styles.affiliateBody}>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer nofollow" className={styles.affiliateNameLink} style={{ fontSize: '1.15rem', lineHeight: 1.25 }}>
-                    {p.title}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 6, verticalAlign: 'middle', opacity: .8 }}><path d="M7 17 17 7M8 7h9v9"/></svg>
-                  </a>
-                  {pub && <div className={styles.affiliateType}>{pub}</div>}
-                </div>
                 {isOwnProfile && (
                   <div className={styles.entryCardActions}>
                     <button type="button" onClick={() => openEdit(p)} className={styles.entryEditBtn} title="Edit" aria-label="Edit article">
