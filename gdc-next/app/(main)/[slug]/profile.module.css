@@ -3262,6 +3262,42 @@ a.affiliateImgTop:hover { opacity: .9; }
   color: var(--white, #fff);
 }
 
+/* Public press card — a native-style link preview: image on top, then a dark
+   band with the publication (small, uppercase) over the bold headline. */
+.pressCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--black, #000);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.pressCard:hover { border-color: rgba(34, 227, 173, .5); }
+.pressCardLink { display: block; text-decoration: none; color: inherit; }
+.pressCard .pressImgTop { border-radius: 0 !important; }
+.pressCardBand {
+  padding: .85rem 1rem 1rem;
+  background: #141414;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+.pressCardPub {
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .5);
+  margin-bottom: .3rem;
+}
+.pressCardTitle {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--white, #fff);
+}
+.pressCard:hover .pressCardTitle { color: var(--neon, #22e3ad); }
+
 /* Staff inline editor — the member card becomes its editor. It spans two grid
    columns and holds a comfortable minimum width so the fields never get
    crushed into a single narrow track; it sits to the right of the first card
