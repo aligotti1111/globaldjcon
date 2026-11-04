@@ -1778,6 +1778,7 @@ select.input {
    panel so it reads as a distinct thing, not just another notes paragraph. */
 .packageBlock {
   margin-top: 1rem;
+  margin-bottom: 12px;
   padding: .8rem .95rem .9rem;
   border-radius: 12px;
   background: rgba(34, 227, 173, .07);
