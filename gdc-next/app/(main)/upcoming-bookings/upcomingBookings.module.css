@@ -1944,6 +1944,13 @@ select.input {
     border-radius: 12px;
     margin-bottom: 12px;
   }
+  /* Give the expanded detail cards more width on mobile — the old 1.5rem/1.25rem
+     side padding left a big empty margin around every box. Tighten it so the
+     EVENT/VENUE/HOST/PACKAGE/PRICING cards fill the card width. */
+  .detailsPanel {
+    padding-left: .6rem;
+    padding-right: .6rem;
+  }
   /* On mobile the expanded row must NOT take the desktop #16161f "open header"
      surface. If it does, the card's whole top (date line + the gaps around the
      icon/price bands) lightens, so an OPEN card reads a different shade than a
