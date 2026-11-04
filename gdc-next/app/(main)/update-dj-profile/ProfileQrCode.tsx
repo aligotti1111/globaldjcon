@@ -103,15 +103,12 @@ export default function ProfileQrCode({
   locked?: boolean;
 }) {
   const [style, setStyle] = useState<QrStyle>('classic');
-  const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const clean = (slug || '').trim();
   const pid = (profileId || '').trim();
   // What the QR encodes: permanent ID when we have it, else the slug.
   const encodeTarget = pid || clean;
-  // What "Copy Link" shares: the pretty slug URL (falls back to the ID link).
-  const url = clean ? `${PROFILE_BASE}/${clean}` : pid ? `${PROFILE_BASE}/${pid}` : '';
 
   useEffect(() => {
     if (!clean) return;
@@ -132,24 +129,6 @@ export default function ProfileQrCode({
     link.href = canvas.toDataURL('image/png');
     link.click();
   }, [clean]);
-
-  const copyLink = useCallback(async () => {
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = url;
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch { /* give up silently */ }
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  }, [url]);
 
   const box: React.CSSProperties = {
     marginTop: '.85rem',
@@ -277,9 +256,7 @@ export default function ProfileQrCode({
             </p>
             <div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}>
               <button type="button" onClick={download} style={act(true)}>Download PNG</button>
-              <button type="button" onClick={copyLink} style={act(false, copied)}>
-                {copied ? '✓ Copied' : 'Copy Link'}
-              </button>
+              {/* Copy Link moved up next to the profile URL field (SlugChangeGate). */}
             </div>
             {pid && (
               <p style={{ margin: '.6rem 0 0', fontSize: '.62rem', color: 'var(--muted)', lineHeight: 1.35, opacity: 0.85 }}>
