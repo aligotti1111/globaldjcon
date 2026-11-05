@@ -714,8 +714,11 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   color: #ffffff;
-  display: block;
-  margin-bottom: .35rem;
+  display: inline-block;
+  margin-bottom: .45rem;
+  /* Neon accent band on the left edge of each field title. */
+  border-left: 3px solid var(--neon, #00e0a4);
+  padding: .1rem 0 .1rem .5rem;
 }
 .pkgFieldRequired {
   color: #ff5f5f;
