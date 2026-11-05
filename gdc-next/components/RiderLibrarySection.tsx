@@ -242,7 +242,7 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
   // A build option — its own bordered bubble with a radio dot, one line. When
   // open, the editor expands inside the bubble; the other bubble stays put.
   const BuildOption = ({ title, hint, open, onClick, children }: { title: string; hint: string; open: boolean; onClick: () => void; children?: React.ReactNode }) => (
-    <div style={{ borderRadius: 12, overflow: 'hidden', border: open ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)', background: open ? 'rgba(0,224,164,.06)' : 'transparent' }}>
+    <div style={{ borderRadius: 12, overflow: 'hidden', border: open ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)', background: 'transparent' }}>
       <button
         type="button"
         onClick={onClick}
