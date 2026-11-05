@@ -364,6 +364,34 @@ export default function PackageEditor({
           );
         })()}
 
+        {/* Req-all toggle — sits directly under the last hour pricing row. */}
+        <div className={styles.reqAllRow} style={{ marginTop: '.6rem' }}>
+          <label className={styles.reqAllToggle}>
+            <input
+              type="checkbox"
+              checked={reqAll}
+              onChange={(e) => updateField('reqAll', e.target.checked)}
+            />
+            <span className={styles.reqAllLabel}>
+              REQUIRE EVENT HOST TO <span className={styles.reqAllHighlight}>REQUEST PRICE</span>
+            </span>
+          </label>
+          <span
+            className={styles.reqAllInfo}
+            tabIndex={0}
+            role="button"
+            aria-label="What does requiring a price request do?"
+          >
+            ?
+            <span className={styles.reqAllTip} role="tooltip">
+              When selected, price fields are deactivated. The host selects the
+              package they&apos;re interested in and sends you a booking request —
+              you then reply with your own custom quote. The package title,
+              details, and photos still show normally.
+            </span>
+          </span>
+        </div>
+
         {/* Overtime */}
         <div className={styles.priceRow} style={{ marginTop: '1.2rem', paddingTop: '1.1rem', borderTop: '1px solid var(--border)' }}>
           <span
@@ -471,7 +499,7 @@ export default function PackageEditor({
               onClick={() => setShowOutsideNote((v) => !v)}
               style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.62rem', fontFamily: "'Space Mono', monospace" }}
             >
-              <span>Pricing for hours outside of your listed options?</span>
+              <span>How is pricing calculated if an event is outside of the listed options?</span>
               <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
             </button>
             {showOutsideNote && (
@@ -483,34 +511,6 @@ export default function PackageEditor({
             )}
           </div>
         )}
-
-        {/* Req-all toggle — bottom of the price box. */}
-        <div className={styles.reqAllRow}>
-          <label className={styles.reqAllToggle}>
-            <input
-              type="checkbox"
-              checked={reqAll}
-              onChange={(e) => updateField('reqAll', e.target.checked)}
-            />
-            <span className={styles.reqAllLabel}>
-              REQUIRE EVENT HOST TO <span className={styles.reqAllHighlight}>REQUEST PRICE</span>
-            </span>
-          </label>
-          <span
-            className={styles.reqAllInfo}
-            tabIndex={0}
-            role="button"
-            aria-label="What does requiring a price request do?"
-          >
-            ?
-            <span className={styles.reqAllTip} role="tooltip">
-              When selected, price fields are deactivated. The host selects the
-              package they&apos;re interested in and sends you a booking request —
-              you then reply with your own custom quote. The package title,
-              details, and photos still show normally.
-            </span>
-          </span>
-        </div>
       </div>
 
       <div className={styles.pkgDivider} />
