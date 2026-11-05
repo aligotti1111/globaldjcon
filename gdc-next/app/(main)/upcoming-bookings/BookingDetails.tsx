@@ -1237,7 +1237,11 @@ export default function BookingDetails({
                 {row.map((cell) => (
                   <div key={cell.label} className={styles.detailRow}>
                     <div className={styles.detailLabel}>{cell.label}{LABEL_COL[cell.label] ? badgeFor(LABEL_COL[cell.label]) : null}</div>
-                    <div className={styles.detailValue}>{cell.value}</div>
+                    <div className={styles.detailValue}>
+                      {cell.label === 'Contact Phone' && cell.value
+                        ? <a href={`tel:${String(cell.value).replace(/[^\d+]/g, '')}`} style={{ color: 'var(--neon,#00e0a4)', textDecoration: 'none' }}>{cell.value}</a>
+                        : cell.value}
+                    </div>
                   </div>
                 ))}
               </div>
