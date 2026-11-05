@@ -640,7 +640,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing #financesample .finsample{max-width:1040px;margin:8px auto 0}
 .gdc-landing #financesample .finsample img{display:block;width:100%;height:auto}
 /* Subtle role tag over each image: Host on the phone, DJ on the laptop. */
-.gdc-landing .brgrid .brtag{position:absolute;left:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
+.gdc-landing .brgrid .brtag{position:absolute;right:12px;bottom:12px;font-family:var(--mono);font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:5px;line-height:1}
 @media(max-width:760px){.gdc-landing .brgrid{gap:16px}.gdc-landing .brgrid .brarrow{width:100%}.gdc-landing .brgrid .brarrow svg{transform:none}.gdc-landing .brgrid figure{width:100%;padding:12px 12px 16px}.gdc-landing .brgrid .brimgwrap{width:100%;height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}.gdc-landing .brgrid img{height:auto;width:auto;max-width:100%;max-height:100%}}`;
 
 const LANDING_BODY = String.raw`
