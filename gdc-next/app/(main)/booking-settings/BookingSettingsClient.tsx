@@ -295,7 +295,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   const mobileTabs: { id: SecTab; label: string }[] = (isMobile
     ? [
         { id: 'settings', label: 'Settings' },
-        { id: 'packages', label: 'Packages' },
+        { id: 'packages', label: 'Packages & Prices' },
         ...(hasBookingAccess ? [{ id: 'contracts', label: 'Contracts' }] : []),
         { id: 'payments', label: 'Payments Accepted' },
         ...(hasBookingAccess ? [{ id: 'receipts', label: 'Receipts' }] : []),
