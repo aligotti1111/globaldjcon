@@ -84,8 +84,19 @@ export default function MobilePackagesEditor({
     }
     return m;
   }, [mobPackages, specialtyTypes, selectedEventTypes]);
+  // Give every untitled package the real text "Package N" in its title field
+  // (not just a placeholder), so the box shows it and the DJ can rename it.
+  const withPkgTitles = (m: MobPackagesIndependent): MobPackagesIndependent => {
+    const fill = <T extends { title?: string }>(list: T[]): T[] =>
+      list.map((p, i) => (String(p.title ?? '').trim() === '' ? { ...p, title: `Package ${i + 1}` } : p));
+    return {
+      ...m,
+      general: fill(m.general),
+      overrides: Object.fromEntries(Object.entries(m.overrides).map(([t, l]) => [t, fill(l)])),
+    };
+  };
   // Always land on at least one General package ready to fill.
-  const startMob = initial.general.length === 0 ? addPkg(initial, 'general') : initial;
+  const startMob = withPkgTitles(initial.general.length === 0 ? addPkg(initial, 'general') : initial);
 
   const [mob, setMob] = useState<MobPackagesIndependent>(startMob);
   const [selCat, setSelCat] = useState<string>('general');
@@ -219,7 +230,7 @@ export default function MobilePackagesEditor({
   }
 
   function addPackageTo(cat: string) {
-    const n = addPkg(mob, cat);
+    const n = withPkgTitles(addPkg(mob, cat));
     setMob(n); setErr(null);
     const list = listFor(n, cat);
     setSelCat(cat); setSelIdx(list.length - 1);
@@ -336,7 +347,10 @@ export default function MobilePackagesEditor({
       return;
     }
     setErr(null); setShowInvalid(false); setInvalidList([]);
-    if (Object.keys(live.overrides).length !== Object.keys(mob.overrides).length) setMob(live);
+    // Commit the backfilled titles (and any pruned overrides) back into the live
+    // editor state so what's on screen matches what we just saved — otherwise the
+    // in-memory copy still has blank titles and the row stays "Unsaved" forever.
+    setMob(live);
     const ser = serializeIndependent(live);
     onSave(ser); setSavedSnapshot(JSON.stringify(ser));
   }
@@ -578,7 +592,7 @@ export default function MobilePackagesEditor({
           )}
           <span style={{ flex: 1 }} />
           <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
-          <button type="button" className={styles.pkgSaveBtn} onClick={save} disabled={!dirty} style={{ opacity: dirty ? 1 : 0.5, cursor: dirty ? 'pointer' : 'not-allowed' }}>{dirty ? 'Save Packages' : 'All Changes Saved'}</button>
+          <button type="button" className={styles.pkgSaveBtn} onClick={save} style={{ opacity: dirty ? 1 : 0.6, cursor: 'pointer' }}>{dirty ? 'Save Packages' : 'All Changes Saved'}</button>
         </div>
       </div>
     </div>
