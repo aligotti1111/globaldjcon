@@ -231,7 +231,7 @@ export default function PackageEditor({
         </label>
         <input
           type="text"
-          placeholder="e.g. Essentials, Gold, Premium"
+          placeholder={`Package ${idx + 1}`}
           value={pkg.title || ''}
           onChange={(e) => updateField('title', e.target.value)}
           className={`${styles.pkgInput} ${errSet.has('title') ? styles.pkgFieldError : ''}`}
