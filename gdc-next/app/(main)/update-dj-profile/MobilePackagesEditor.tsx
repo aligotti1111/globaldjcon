@@ -284,7 +284,9 @@ export default function MobilePackagesEditor({
   // the sidebar clears itself the moment that package is filled in.
   function pkgInvalid(cat: string, i: number): boolean {
     const p = (listFor(mob, cat)[i] || {}) as { title?: string; details?: string };
-    return textEmpty(p.title) || textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>);
+    // Title isn't required — a blank one saves as "Package N" — so only details
+    // and pricing can mark a package incomplete.
+    return textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>);
   }
   // Is this a custom (pulled-out) event type that still has an incomplete package?
   function catIncomplete(cat: string): boolean {
@@ -295,10 +297,17 @@ export default function MobilePackagesEditor({
     // Drop orphaned overrides — event types that are no longer offered. They
     // aren't shown in the sidebar, so validating them would surface a "needs a
     // price" error the DJ can't reach or fix. Pruning them cleans stored data.
+    // If the DJ never named a package, save it as "Package N" (real stored text,
+    // not just a placeholder) so a title is never blank.
+    const fillTitles = <T extends { title?: string }>(list: T[]): T[] =>
+      list.map((p, i) => (textEmpty(p.title) ? { ...p, title: `Package ${i + 1}` } : p));
     const live: MobPackagesIndependent = {
       ...mob,
+      general: fillTitles(mob.general),
       overrides: Object.fromEntries(
-        Object.entries(mob.overrides).filter(([t]) => selectedEventTypes.includes(t)),
+        Object.entries(mob.overrides)
+          .filter(([t]) => selectedEventTypes.includes(t))
+          .map(([t, list]) => [t, fillTitles(list)]),
       ),
     };
     // Every package in every offered category is self-contained — each needs its
@@ -312,7 +321,6 @@ export default function MobilePackagesEditor({
       for (let i = 0; i < list.length; i++) {
         const p = (list[i] || {}) as { title?: string; details?: string };
         const missing: string[] = []; const labels: string[] = [];
-        if (textEmpty(p.title)) { missing.push('title'); labels.push('a title'); }
         if (textEmpty(p.details)) { missing.push('details'); labels.push('a description'); }
         if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('a price in every box'); }
         if (missing.length) invalids.push({ cat, i, labels, missing });
@@ -559,7 +567,6 @@ export default function MobilePackagesEditor({
             // the first invalid one — so the red boxes follow the DJ around.
             const p = currentPkg as unknown as Record<string, unknown>;
             const m: string[] = [];
-            if (textEmpty(p.title)) m.push('title');
             if (textEmpty(p.details)) m.push('details');
             if (priceMissing(p)) m.push('priceTiers');
             return m.length ? m : undefined;
