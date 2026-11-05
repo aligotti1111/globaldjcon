@@ -161,9 +161,18 @@
 }
 .checkboxGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0,1fr) lets each column shrink below its content width, so long
+     labels (e.g. "CORPORATE EVENTS") wrap inside the cell instead of pushing
+     the whole grid off the right edge on narrow phones. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: .35rem;
   margin-top: .4rem;
+}
+/* One column on small phones — two columns of long event names don't fit. */
+@media (max-width: 560px) {
+  .checkboxGrid {
+    grid-template-columns: 1fr;
+  }
 }
 /* Subtle subheading above each mobile party-type group (General / Specialty).
    Quiet by design — small, muted, uppercase Space Mono. */
