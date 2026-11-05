@@ -166,8 +166,11 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
     return true;
   }
   // Toggle a NEW-rider build option open/closed in place — nothing else closes.
+  // NOTE: the "already open for this mode" test must require an editor to be
+  // open (editing != null). `editing?.id == null` alone is also true when
+  // NOTHING is open, which made a reopen click close it again.
   async function toggleNew(m: RiderMode) {
-    if (editing?.id == null && mode === m) { if (await guardSwitch()) setEditing(null); return; }
+    if (editing != null && editing.id == null && mode === m) { if (await guardSwitch()) setEditing(null); return; }
     if (!(await guardSwitch())) return;
     openNew(m);
   }
