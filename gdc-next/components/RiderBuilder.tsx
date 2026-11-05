@@ -17,6 +17,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import RiderEditor from '@/components/RiderEditor';
 import RiderView from '@/app/rider/[id]/RiderView';
+import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
 import type { RiderItem, RiderMode } from '@/lib/rider';
 
@@ -68,6 +69,20 @@ export default function RiderBuilder({
   const [msg, setMsg] = useState<string | null>(null);
   const [pickedName, setPickedName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const { confirm, confirmDialog } = useConfirm();
+
+  // Remove the uploaded PDF (confirm first) — reverts to the Browse prompt.
+  async function removePdf() {
+    const ok = await confirm({
+      title: 'Remove this PDF?',
+      message: 'This clears the uploaded rider and goes back to the upload screen.',
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setPickedName(null);
+    onPdfUrlChange(null);
+  }
 
   // The DJ's own brand logo + name, shown as branding at the top and in the
   // host-preview. Fetched here so the parent doesn't have to thread it through.
@@ -199,51 +214,53 @@ export default function RiderBuilder({
   ) : null;
 
   // The PDF-upload body (used inside the Upload Rider box).
+  //   · No PDF yet → the dashed upload prompt + Browse.
+  //   · PDF uploaded → drop the whole prompt box; just show the PDF preview with
+  //     a Remove button pinned to its top-right. Remove reverts to the prompt.
   const uploadBody = (
     <div>
-      <div
-        style={{
-          border: '1px dashed rgba(255,255,255,.28)', borderRadius: 12,
-          padding: '1.4rem 1.2rem', textAlign: 'center',
-        }}
-      >
-        <div style={{ color: MUTED, fontSize: '.86rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
-          Upload your rider as a PDF. This exact file is attached to the host&rsquo;s email.
-        </div>
-        <label
+      {!pdfUrl ? (
+        <div
           style={{
-            display: 'inline-block', background: NEON, color: '#06231b', borderRadius: 8,
-            padding: '.6rem 1.3rem', fontSize: '.88rem', fontWeight: 700,
-            cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+            border: '1px dashed rgba(255,255,255,.28)', borderRadius: 12,
+            padding: '1.4rem 1.2rem', textAlign: 'center',
           }}
         >
-          <input ref={fileRef} type="file" accept="application/pdf" hidden disabled={busy} onChange={onPickPdf} />
-          {busy ? 'Uploading…' : pdfUrl ? 'Browse — replace PDF' : 'Browse for PDF'}
-        </label>
-        <div style={{ marginTop: '.8rem', fontSize: '.82rem', color: shownName ? '#fff' : MUTED }}>
-          {shownName ? (
-            <span><span style={{ color: NEON, fontWeight: 700 }}>Current file:</span> {shownName}</span>
-          ) : (
-            'No file chosen yet.'
-          )}
+          <div style={{ color: MUTED, fontSize: '.86rem', lineHeight: 1.55, margin: '0 0 .9rem' }}>
+            Upload your rider as a PDF. This exact file is attached to the host&rsquo;s email.
+          </div>
+          <label
+            style={{
+              display: 'inline-block', background: NEON, color: '#06231b', borderRadius: 8,
+              padding: '.6rem 1.3rem', fontSize: '.88rem', fontWeight: 700,
+              cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+            }}
+          >
+            <input ref={fileRef} type="file" accept="application/pdf" hidden disabled={busy} onChange={onPickPdf} />
+            {busy ? 'Uploading…' : 'Browse for PDF'}
+          </label>
         </div>
-        {pdfUrl && (
+      ) : (
+        <div style={{ position: 'relative' }}>
           <button
             type="button"
             disabled={busy}
-            onClick={() => { setPickedName(null); onPdfUrlChange(null); }}
-            style={{ marginTop: '.5rem', background: 'transparent', border: 'none', color: MUTED, textDecoration: 'underline', cursor: 'pointer', fontSize: '.8rem' }}
+            onClick={removePdf}
+            style={{
+              position: 'absolute', top: 10, right: 10, zIndex: 2,
+              background: 'rgba(13,13,20,.88)', border: '1px solid rgba(255,255,255,.25)',
+              color: '#fff', borderRadius: 8, padding: '.35rem .8rem', fontSize: '.78rem',
+              fontWeight: 700, cursor: busy ? 'default' : 'pointer',
+            }}
           >
             Remove
           </button>
-        )}
-      </div>
-      {pdfUrl && (
-        <iframe
-          title="Rider PDF preview"
-          src={pdfUrl}
-          style={{ width: '100%', height: 620, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, marginTop: '.9rem', background: '#fff' }}
-        />
+          <iframe
+            title="Rider PDF preview"
+            src={pdfUrl}
+            style={{ width: '100%', height: 620, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, background: '#fff' }}
+          />
+        </div>
       )}
       {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
     </div>
@@ -318,6 +335,7 @@ export default function RiderBuilder({
 
   return (
     <div>
+      {confirmDialog}
       {hideChooser ? (
         // The parent owns the chooser: render the name field + the active
         // mode's body directly, no boxes.
