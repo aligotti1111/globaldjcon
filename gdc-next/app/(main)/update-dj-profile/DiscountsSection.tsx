@@ -318,6 +318,9 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
   const [error, setError] = useState('');
   // Which code row is expanded to show its usage.
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
+  // On mobile the per-row actions collapse behind a ⋮ menu; this tracks which
+  // row's menu is open (null = none).
+  const [menuOpenIdx, setMenuOpenIdx] = useState<number | null>(null);
   // Redemptions grouped by uppercased code, pulled from the DJ's bookings.
   const [usageByCode, setUsageByCode] = useState<Record<string, Redemption[]>>({});
   // Bookings that used the automatic sale (a discount was applied but no code).
@@ -1208,34 +1211,53 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
                     );
                   })()}
                 </div>
-                <div style={{ display: 'flex', gap: '.5rem', flex: '0 0 300px', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c }); setError(''); }} style={btnOutline}>Edit</button>
-                  {expired ? (
-                    // Renew: reopen the editor with the stale expiry cleared and the
-                    // code re-enabled, so the DJ picks a fresh date (or leaves it
-                    // "Never") instead of ending up "active but expired".
-                    <button type="button" onClick={() => { setEditIndex(i); setEditBuf({ ...c, active: true, expires: null }); setError(''); }} style={btnOutline}>Renew</button>
-                  ) : off ? (
-                    <button type="button" onClick={() => setActive(i, true)} style={btnOutline}>Reactivate</button>
-                  ) : (
-                    <button type="button" onClick={() => setActive(i, false)} style={btnOutline}>Deactivate</button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: 'Delete this promo code?',
-                        message: `${(c.code || '').toUpperCase()} will be removed for good. This can't be undone.`,
-                        confirmLabel: 'Delete',
-                        variant: 'danger',
-                      });
-                      if (ok) removeCode(i);
-                    }}
-                    style={btnDanger}
-                  >
-                    Delete
-                  </button>
-                </div>
+                {(() => {
+                  const onEdit = () => { setEditIndex(i); setEditBuf({ ...c }); setError(''); };
+                  const onRenew = () => { setEditIndex(i); setEditBuf({ ...c, active: true, expires: null }); setError(''); };
+                  const onDelete = async () => {
+                    const ok = await confirm({
+                      title: 'Delete this promo code?',
+                      message: `${(c.code || '').toUpperCase()} will be removed for good. This can't be undone.`,
+                      confirmLabel: 'Delete',
+                      variant: 'danger',
+                    });
+                    if (ok) removeCode(i);
+                  };
+                  // The middle action depends on the code's state.
+                  const midLabel = expired ? 'Renew' : off ? 'Reactivate' : 'Deactivate';
+                  const onMid = expired ? onRenew : off ? () => setActive(i, true) : () => setActive(i, false);
+
+                  if (isNarrow) {
+                    // Mobile: one ⋮ button that reveals the actions in a popover.
+                    const open = menuOpenIdx === i;
+                    const menuItem: React.CSSProperties = { display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '.6rem .85rem', fontSize: '.82rem', cursor: 'pointer', color: 'var(--white,#fff)' };
+                    return (
+                      <div style={{ position: 'relative', flex: '0 0 auto' }}>
+                        <button type="button" aria-label="Actions" aria-haspopup="true" aria-expanded={open} onClick={() => setMenuOpenIdx(open ? null : i)} style={{ background: 'transparent', border: '1px solid var(--border, rgba(255,255,255,.25))', borderRadius: 6, color: 'var(--white,#fff)', padding: '.35rem .6rem', fontSize: '1.1rem', lineHeight: 1, cursor: 'pointer' }}>⋮</button>
+                        {open && (
+                          <>
+                            {/* Tap-away backdrop. */}
+                            <div onClick={() => setMenuOpenIdx(null)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 41, minWidth: 150, background: 'var(--card,#15151f)', border: '1px solid var(--border, rgba(255,255,255,.18))', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.45)', overflow: 'hidden' }}>
+                              <button type="button" onClick={() => { setMenuOpenIdx(null); onEdit(); }} style={menuItem}>Edit</button>
+                              <button type="button" onClick={() => { setMenuOpenIdx(null); onMid(); }} style={menuItem}>{midLabel}</button>
+                              <button type="button" onClick={() => { setMenuOpenIdx(null); onDelete(); }} style={{ ...menuItem, color: '#ff6b6b', borderTop: '1px solid var(--border, rgba(255,255,255,.12))' }}>Delete</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Desktop: the buttons laid out inline as before.
+                  return (
+                    <div style={{ display: 'flex', gap: '.5rem', flex: '0 0 300px', justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={onEdit} style={btnOutline}>Edit</button>
+                      <button type="button" onClick={onMid} style={btnOutline}>{midLabel}</button>
+                      <button type="button" onClick={onDelete} style={btnDanger}>Delete</button>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Unfolded usage — who booked with this code and when. */}
