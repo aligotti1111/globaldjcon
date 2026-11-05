@@ -441,6 +441,17 @@
   outline: none;
 }
 
+/* Hide the native number-input stepper arrows on fields that use .noSpin. */
+.noSpin::-webkit-outer-spin-button,
+.noSpin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.noSpin {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .bodyHint {
   font-size: .8rem;
   color: var(--muted);
