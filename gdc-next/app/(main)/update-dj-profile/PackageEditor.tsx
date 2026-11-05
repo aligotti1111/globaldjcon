@@ -314,9 +314,9 @@ export default function PackageEditor({
                       <button
                         type="button"
                         onClick={() => commit([{ hours: minH - 1, price: '' }, ...tiers])}
-                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginBottom: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginBottom: '.35rem', marginLeft: '8.5rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
                       >
-                        + {minH - 1} hour option
+                        + {minH - 1} hour pricing
                       </button>
                     )}
                     {tiers.map((t, i) => (
@@ -352,9 +352,9 @@ export default function PackageEditor({
                       <button
                         type="button"
                         onClick={() => commit([...tiers, { hours: maxH + 1, price: '' }])}
-                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.35rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.35rem', marginLeft: '8.5rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
                       >
-                        + {maxH + 1} hour option
+                        + {maxH + 1} hour pricing
                       </button>
                     )}
                   </>
@@ -365,9 +365,9 @@ export default function PackageEditor({
         })()}
 
         {/* Overtime */}
-        <div className={styles.priceRow}>
+        <div className={styles.priceRow} style={{ marginTop: '1.1rem' }}>
           <span className={styles.priceRowLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
-            Hourly Overtime:
+            Overtime Rate:
           </span>
           <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
           <input
