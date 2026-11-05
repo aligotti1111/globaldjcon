@@ -79,29 +79,36 @@ export default function RiderView({
   return (
     <div style={{ minHeight: '100vh', background: '#0d0d14', color: '#fff', padding: '2rem 1rem' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        {logoUrl && (
-          <div style={{ textAlign: 'center', marginBottom: '.9rem' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoUrl} alt={`${djName} logo`} style={{ maxHeight: 56, maxWidth: 170, objectFit: 'contain' }} />
-          </div>
-        )}
+        {/* An UPLOADED rider is the DJ's own PDF, sent "exactly as-is" — so it
+            gets NO branded header (logo / name / "DJ Rider" / event info). The
+            header is only for the custom builder, where we generate the page. */}
+        {!isUpload && (
+          <>
+            {logoUrl && (
+              <div style={{ textAlign: 'center', marginBottom: '.9rem' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt={`${djName} logo`} style={{ maxHeight: 56, maxWidth: 170, objectFit: 'contain' }} />
+              </div>
+            )}
 
-        <div style={{ textAlign: 'center', marginBottom: '.15rem', fontWeight: 800, fontSize: '1.6rem' }}>
-          {djName}
-        </div>
-        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.72)', fontSize: '.95rem', marginBottom: '.3rem' }}>
-          DJ Rider
-        </div>
-        {riderName && (
-          <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600, marginBottom: '.3rem' }}>
-            {riderName}
-          </div>
-        )}
-        {(eventType || when || venueName) && (
-          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.55)', fontSize: '.85rem', marginBottom: '1.6rem', lineHeight: 1.6 }}>
-            {[when, [fmtTime(startTime), fmtTime(endTime)].filter(Boolean).join(' – ')].filter(Boolean).join(' · ')}
-            {venueName && <div>{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</div>}
-          </div>
+            <div style={{ textAlign: 'center', marginBottom: '.15rem', fontWeight: 800, fontSize: '1.6rem' }}>
+              {djName}
+            </div>
+            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.72)', fontSize: '.95rem', marginBottom: '.3rem' }}>
+              DJ Rider
+            </div>
+            {riderName && (
+              <div style={{ textAlign: 'center', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 600, marginBottom: '.3rem' }}>
+                {riderName}
+              </div>
+            )}
+            {(eventType || when || venueName) && (
+              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.55)', fontSize: '.85rem', marginBottom: '1.6rem', lineHeight: 1.6 }}>
+                {[when, [fmtTime(startTime), fmtTime(endTime)].filter(Boolean).join(' – ')].filter(Boolean).join(' · ')}
+                {venueName && <div>{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</div>}
+              </div>
+            )}
+          </>
         )}
 
         {isUpload ? (
