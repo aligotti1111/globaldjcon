@@ -242,7 +242,7 @@ export default function RiderBuilder({
         </div>
       ) : (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.9rem', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '.9rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.9rem', padding: '.2rem 0' }}>
             <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '.6rem' }}>
               <span aria-hidden style={{ fontSize: '1.1rem', flexShrink: 0 }}>📄</span>
               <div style={{ minWidth: 0 }}>
@@ -347,11 +347,19 @@ export default function RiderBuilder({
       {confirmDialog}
       {hideChooser ? (
         // The parent owns the chooser: render the name field + the active
-        // mode's body directly, no boxes.
-        <>
-          {nameField}
-          {mode === 'upload' ? uploadBody : mode === 'custom' ? customBody : null}
-        </>
+        // mode's body. For upload, the name field and the uploaded-file area
+        // share ONE bordered box.
+        mode === 'upload' ? (
+          <div style={{ border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '1.1rem 1.2rem' }}>
+            {nameField}
+            {uploadBody}
+          </div>
+        ) : mode === 'custom' ? (
+          <>
+            {nameField}
+            {customBody}
+          </>
+        ) : null
       ) : (
         <>
           <div
