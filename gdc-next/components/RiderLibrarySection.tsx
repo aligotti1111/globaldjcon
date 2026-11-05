@@ -289,21 +289,28 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
         </div>
       )}
 
-      {/* Add a rider — both build options stay visible; the chosen one expands below it. */}
+      {/* Add a rider — once an option is chosen, the OTHER option (and the OR)
+          hide until the one being worked on is saved or cancelled. */}
       {riders.length < MAX ? (
         <div>
-          <div style={{ ...label, marginBottom: '.5rem' }}>Add a rider</div>
-          <BuildOption title="Upload Rider" hint="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." open={newUploadOpen} onClick={() => toggleNew('upload')}>
-            {newUploadOpen && editorBlock}
-          </BuildOption>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', padding: '.6rem .1rem' }}>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.1em', color: MUTED }}>OR</span>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
-          </div>
-          <BuildOption title="Create Custom Rider" hint="Build your rider from labeled fields. We generate a branded PDF for the host." open={newCustomOpen} onClick={() => toggleNew('custom')}>
-            {newCustomOpen && editorBlock}
-          </BuildOption>
+          {editing == null && <div style={{ ...label, marginBottom: '.5rem' }}>Add a rider</div>}
+          {(editing == null || newUploadOpen) && (
+            <BuildOption title="Upload Rider" hint="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." open={newUploadOpen} onClick={() => toggleNew('upload')}>
+              {newUploadOpen && editorBlock}
+            </BuildOption>
+          )}
+          {editing == null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', padding: '.6rem .1rem' }}>
+              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.1em', color: MUTED }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
+            </div>
+          )}
+          {(editing == null || newCustomOpen) && (
+            <BuildOption title="Create Custom Rider" hint="Build your rider from labeled fields. We generate a branded PDF for the host." open={newCustomOpen} onClick={() => toggleNew('custom')}>
+              {newCustomOpen && editorBlock}
+            </BuildOption>
+          )}
         </div>
       ) : (
         <div style={{ color: MUTED, fontSize: '.78rem' }}>You&rsquo;ve reached the {MAX}-rider limit. Delete one to add another.</div>
