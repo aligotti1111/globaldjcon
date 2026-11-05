@@ -227,7 +227,7 @@ export default function PackageEditor({
       {/* Title */}
       <div className={styles.pkgFieldGroup}>
         <label className={styles.pkgFieldLabel}>
-          Package Title <span className={styles.pkgFieldRequired}>*</span>
+          Package Title
         </label>
         <input
           type="text"
