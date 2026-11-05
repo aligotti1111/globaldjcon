@@ -8,7 +8,7 @@
   .rowWrap .stLabel { order: 0 !important; margin: 0 0 6px 0 !important; }
   .rowWrap .stCell > div { order: 1 !important; }
   .rowWrap .stBtn { flex-direction: column !important; align-items: center !important; }
-  .rowWrap .stCap { display: block !important; order: 2 !important; margin-top: 5px !important; text-align: center !important; }
+  .rowWrap .stCap { display: block !important; order: 2 !important; margin-top: 9px !important; text-align: center !important; }
   .rowWrap .stCell::after { top: 35px !important; }
 }
 
@@ -892,6 +892,44 @@ select.input {
   outline: none;
   border-color: var(--neon);
 }
+/* All placeholders (and empty-select text) use the same muted grey as the
+   date/time "Select…" fields, for a consistent look across every field. */
+.input::placeholder,
+.rateInput::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+/* Empty <select>s show their "Select…" option text in the same muted grey as
+   the input placeholders. Once a real value is chosen, the text returns to the
+   normal color. */
+.input:has(> option[value=""]:checked) {
+  color: var(--muted);
+}
+/* Let grid cells shrink below their content's intrinsic width so multi-column
+   field rows (e.g. Equipment / Set Type / Rate) stay on one line instead of
+   overflowing or pushing a field onto a new row. */
+.fieldRow > * {
+  min-width: 0;
+}
+/* Equipment / Set Type / Rate: three columns on desktop, but on a phone that
+   is far too cramped (labels wrap, selects truncate). On mobile the Equipment
+   field takes its own full-width row and Set Type + Rate share the row below. */
+.equipRow {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr 1fr;
+  gap: .75rem;
+}
+.equipRow > * {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .equipRow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .equipRow > :first-child {
+    grid-column: 1 / -1;
+  }
+}
 .optional {
   font-weight: 400;
   color: var(--muted);
@@ -1603,6 +1641,20 @@ select.input {
   border-color: rgba(255, 255, 255, .16);
 }
 /* Gradient chip header stamped on each section. */
+/* Section edit pencil (Details / Venue / Host) — smaller on mobile. */
+@media (max-width: 600px) {
+  .editPencilBtn { width: 22px !important; height: 22px !important; border-radius: 6px !important; }
+  .editPencilBtn svg { width: 11px !important; height: 11px !important; }
+}
+/* Header grid inside Details/Event/Venue cards (Event Date · Set Time, etc.).
+   Two-up on desktop; each field on its own full-width line on mobile. */
+.detailHeaderGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+@media (max-width: 600px) {
+  .detailHeaderGrid { grid-template-columns: 1fr; }
+}
 .detailChip {
   display: inline-flex;
   align-items: center;
@@ -1726,6 +1778,7 @@ select.input {
    panel so it reads as a distinct thing, not just another notes paragraph. */
 .packageBlock {
   margin-top: 1rem;
+  margin-bottom: 12px;
   padding: .8rem .95rem .9rem;
   border-radius: 12px;
   background: rgba(34, 227, 173, .07);
@@ -1733,6 +1786,17 @@ select.input {
 }
 .packageBlockLabel {
   color: var(--neon, #22e3ad);
+}
+/* Injected package-details HTML (bulleted list) — keep bullets inside the card
+   rather than hanging on the left border. */
+.packageDetailsHtml ul,
+.packageDetailsHtml ol {
+  margin: 0;
+  padding-left: 1.25em;
+  list-style-position: outside;
+}
+.packageDetailsHtml li {
+  margin: 0;
 }
 .packageName {
   margin-top: .35rem;
@@ -1842,14 +1906,16 @@ select.input {
        below. */
     /* Event type gets its OWN centered band on top (with a divider under it),
        matching the public sample card; date + time sit on the line below. */
-    grid-template-columns: 64px auto minmax(0, 1fr) 26px 22px;
+    grid-template-columns: 64px auto minmax(0, 1fr) 22px;
     grid-template-rows: auto 58px auto auto;
     grid-template-areas:
-      "event event   event  event event"
-      "date  toggle  .      mcol  chev"
-      "stat  stat    stat   stat  stat"
-      "val   val     val    val   val";
+      "event event   event  event"
+      "date  toggle  .      chev"
+      "stat  stat    stat   stat"
+      "val   val     val    val";
     column-gap: .5rem;
+    /* Lift the card header (event + date/time) off pure black with a faint grey. */
+    background: #121219;
     /* row-gap 0: the bands manage their OWN vertical spacing (icon band has
        margin-top, price band butts flush against it). A uniform grid row-gap
        used to drop .4rem BELOW the price band too — which, together with the
@@ -1878,6 +1944,13 @@ select.input {
     border-radius: 12px;
     margin-bottom: 12px;
   }
+  /* Give the expanded detail cards more width on mobile — the old 1.5rem/1.25rem
+     side padding left a big empty margin around every box. Tighten it so the
+     EVENT/VENUE/HOST/PACKAGE/PRICING cards fill the card width. */
+  .detailsPanel {
+    padding-left: .6rem;
+    padding-right: .6rem;
+  }
   /* On mobile the expanded row must NOT take the desktop #16161f "open header"
      surface. If it does, the card's whole top (date line + the gaps around the
      icon/price bands) lightens, so an OPEN card reads a different shade than a
@@ -1888,7 +1961,8 @@ select.input {
      add no specificity). */
   .rowWrapExpanded .row,
   .rowWrapExpanded .row:hover {
-    background: transparent;
+    /* Keep the grey header shade when the card is expanded too. */
+    background: #121219;
   }
   /* The column headers are the one thing that cannot survive the trip. They
      label tracks, and there are no tracks down here. */
@@ -1934,7 +2008,9 @@ select.input {
     padding: 0;
   }
   .stBtn { align-items: center; width: 100%; }
-  .stCap { width: 100%; text-align: center; }
+  /* Breathe between the icon and its status word ("Not Sent" etc.) — the
+     base .stBtn gap is 0, which left the caption flush against the ring. */
+  .stCap { width: 100%; text-align: center; margin-top: 9px; }
   /* Centre the ICON under its label, not the icon+chevron pair. The chevron is
      taken out of the row's flow (absolutely placed just to the right of the
      icon) so only the icon counts toward centering — nudging it right onto the
@@ -1980,27 +2056,32 @@ select.input {
     justify-content: flex-start;
     min-width: 0;
   }
+  /* Bigger date + time on the closed mobile card for readability. */
+  .dayNum { font-size: 33px; }
+  .dow,
+  .mo { font-size: 12px; }
   /* Flyer: hidden by default on mobile. Only club/bar rows render a FlyerSlot,
      so it's re-enabled below as a small thumb on the RIGHT of the top line,
      next to the venue name. The extra grid column is added on .monthListClub
      ONLY, so mobile-DJ rows keep their 4-area grid with no empty gap. */
   .flyerInline { display: none; }
   .monthListClub .row {
-    /* Club: venue band centered on top (divider under it), then the flyer
-       thumbnail sits beside the time on the line below. */
-    grid-template-columns: 64px auto 44px minmax(0, 1fr) 26px 22px;
+    /* Club: venue band centered on top (divider under it). On the line below the
+       date + time sit left, and the flyer thumbnail is pushed to the right next
+       to the chevron. */
+    grid-template-columns: 64px auto minmax(0, 1fr) 44px 22px;
     grid-template-rows: auto 58px auto auto;
     grid-template-areas:
-      "event  event   event  event  event  event"
-      "date   toggle  flyer  .      mcol   chev"
-      "stat   stat    stat   stat   stat   stat"
-      "val    val     val    val    val    val";
+      "event  event   event  event  event"
+      "date   toggle  .      flyer  chev"
+      "stat   stat    stat   stat   stat"
+      "val    val     val    val    val";
   }
   .monthListClub .flyerInline {
     display: block;
     grid-area: flyer;
     align-self: center;
-    justify-self: start;
+    justify-self: end;
   }
   .monthListClub .flyerBoxRow { width: 44px; height: 44px; }
   .rowToggle {
@@ -2009,7 +2090,7 @@ select.input {
   }
   .rowTime {
     justify-self: start;
-    font-size: 12px;
+    font-size: 15px;
   }
   .rowContext {
     grid-area: event;
@@ -2089,20 +2170,32 @@ select.input {
      become grid items: ⋯ in the top of the far-right column, the "M" pill on
      its own in the column just LEFT of the arrow, pinned to the bottom. */
   .rowActionsCell { display: contents; }
+  /* The ⋯ menu sits in the event-type band at the top of the card (top-right),
+     not down on the date/time line next to the chevron. */
   .rowActionsCell .shareCorner {
-    grid-area: chev;
+    grid-area: event;
     align-self: start;
-    justify-self: center;
-    /* Pull the ⋯ up toward the card's top edge (clears the row's top padding). */
-    margin-top: -10px;
+    justify-self: end;
     z-index: 6;
   }
+  /* The "M" manual tag and the overlap ⚠ sit in the top-right of the event band,
+     just left of the ⋯ menu (M closest to the corner), not centered under the
+     event name. */
+  .row { position: relative; }
   .rowActionsCell .manualPill,
   .rowActionsCell .cancelledInline {
-    grid-area: mcol;
-    /* On the same line as the arrow (both vertically centered). */
-    align-self: center;
-    justify-self: center;
+    grid-area: event;
+    position: absolute;
+    top: 9px;
+    right: 42px;
+    z-index: 6;
+  }
+  .rowContext .overlapPill {
+    position: absolute;
+    top: 9px;
+    right: 74px;
+    margin: 0;
+    z-index: 6;
   }
   .row .rowActionsCell .manualPill,
   .row:hover .rowActionsCell .manualPill { display: inline-block; }
