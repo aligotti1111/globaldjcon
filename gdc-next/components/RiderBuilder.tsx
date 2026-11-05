@@ -249,18 +249,32 @@ export default function RiderBuilder({
               <div style={{ color: '#fff', fontSize: '.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shownName || 'rider.pdf'}</div>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={removePdf}
-            style={{
-              flexShrink: 0, background: 'transparent', border: '1px solid rgba(255,255,255,.25)',
-              color: '#fff', borderRadius: 8, padding: '.4rem .9rem', fontSize: '.78rem',
-              fontWeight: 700, cursor: busy ? 'default' : 'pointer',
-            }}
-          >
-            Remove
-          </button>
+          <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: 'transparent', border: `1px solid ${NEON}`, color: NEON,
+                borderRadius: 8, padding: '.4rem .9rem', fontSize: '.78rem', fontWeight: 700,
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+              }}
+            >
+              View
+            </a>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={removePdf}
+              style={{
+                background: 'transparent', border: '1px solid rgba(255,255,255,.25)',
+                color: '#fff', borderRadius: 8, padding: '.4rem .9rem', fontSize: '.78rem',
+                fontWeight: 700, cursor: busy ? 'default' : 'pointer',
+              }}
+            >
+              Remove
+            </button>
+          </div>
         </div>
       )}
       {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
