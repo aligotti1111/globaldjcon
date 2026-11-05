@@ -393,12 +393,12 @@ export default function MobilePackagesEditor({
     setEtErr(null); setEtOpen(false);
   }
 
-  // ── Sidebar styling ──
-  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
+  // ── Sidebar styling ── (slightly smaller type on mobile to tighten the list)
+  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '1.3rem' : '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: isNarrow ? '0 0 .35rem .1rem' : '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
   const pkgItem = (active: boolean, isDirty: boolean, invalid: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', width: '100%',
-    padding: active ? '.5rem .7rem' : '.38rem .6rem', marginBottom: 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: active ? '1.3rem' : '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
+    padding: active ? (isNarrow ? '.4rem .6rem' : '.5rem .7rem') : (isNarrow ? '.3rem .5rem' : '.38rem .6rem'), marginBottom: isNarrow ? 3 : 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? (active ? '1.1rem' : '.92rem') : (active ? '1.3rem' : '1.05rem'), lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
     // The package being edited is spotlighted: brighter gradient fill, a thick
     // neon left bar, and a glow so it clearly reads as "this is open".
     background: invalid ? 'rgba(255,95,95,.08)' : 'transparent',
@@ -409,8 +409,8 @@ export default function MobilePackagesEditor({
     border: invalid ? '1px solid rgba(255,95,95,.65)' : (active ? '1px solid var(--neon)' : '1px solid transparent'),
     transition: 'border-color .12s',
   });
-  // Plain, centered "add" link — no frame, no underline.
-  const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: 'none', color: 'var(--neon)', padding: '.3rem .1rem .5rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', display: 'block' };
+  // Plain, centered "add" link — no frame, no underline. Tighter on mobile.
+  const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: 'none', color: 'var(--neon)', padding: isNarrow ? '.1rem .1rem .2rem' : '.3rem .1rem .5rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: isNarrow ? '.52rem' : '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', display: 'block' };
 
   // The tappable category header row (chevron + label + pkg count + remove ×).
   const renderCatHeader = (cat: string) => {
@@ -461,7 +461,7 @@ export default function MobilePackagesEditor({
           const invalid = showInvalid && pkgInvalid(cat, i);
           return (
             <button key={i} ref={active ? selPkgRef : undefined} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Package {i + 1}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isNarrow && <span style={{ color: 'var(--muted,#8a8aa0)', marginRight: 6 }}>&rsaquo;</span>}Package {i + 1}</span>
               {invalid ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#2a0b0b', background: '#ff8f8f', borderRadius: 4, padding: '.12rem .4rem' }}>Needs info</span>
               ) : pkgDirty(cat, i) ? (
