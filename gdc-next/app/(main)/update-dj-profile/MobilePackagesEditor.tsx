@@ -412,35 +412,40 @@ export default function MobilePackagesEditor({
   // Plain, centered "add" link — no frame, no underline.
   const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: 'none', color: 'var(--neon)', padding: '.3rem .1rem .5rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', display: 'block' };
 
-  const renderCategory = (cat: string) => {
+  // The tappable category header row (chevron + label + pkg count + remove ×).
+  const renderCatHeader = (cat: string) => {
     const list = listFor(mob, cat);
-    // On mobile the sidebar is an accordion: only the active category's packages
-    // are shown; the rest collapse to a tappable label. On desktop everything
-    // stays expanded as before.
     const catOpen = !isNarrow || selCat === cat;
     return (
-      <div key={cat} style={{ marginBottom: isNarrow ? 8 : 16 }}>
-        <div style={catLabel}>
-          {isNarrow ? (
-            <button type="button" onClick={() => { if (!catOpen) selectPkg(cat, 0); }} style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'none', border: 'none', color: catOpen ? 'var(--neon)' : 'var(--muted)', cursor: catOpen ? 'default' : 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}>{catOpen ? '▾' : '▸'}</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(cat)}</span>
-              {!catOpen && list.length > 0 && (
-                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>{list.length} pkg{list.length === 1 ? '' : 's'}</span>
-              )}
-            </button>
-          ) : cat === 'general' ? (
-            <button type="button" onClick={() => setGenCoversOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}>
-              <span>{labelFor(cat)}</span>
-              <span style={{ fontSize: '.9rem', lineHeight: 1 }}>▾</span>
-            </button>
-          ) : (
+      <div style={catLabel}>
+        {isNarrow ? (
+          <button type="button" onClick={() => { if (!catOpen) selectPkg(cat, 0); }} style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'none', border: 'none', color: catOpen ? 'var(--neon)' : '#fff', cursor: catOpen ? 'default' : 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0, color: catOpen ? 'var(--neon)' : '#9a9ab0' }}>{catOpen ? '▾' : '▸'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(cat)}</span>
+            {!catOpen && list.length > 0 && (
+              <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>{list.length} pkg{list.length === 1 ? '' : 's'}</span>
+            )}
+          </button>
+        ) : cat === 'general' ? (
+          <button type="button" onClick={() => setGenCoversOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}>
             <span>{labelFor(cat)}</span>
-          )}
-          {cat !== 'general' && (
-            <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={(e) => { e.stopPropagation(); removeEventType(cat); }} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
-          )}
-        </div>
+            <span style={{ fontSize: '.9rem', lineHeight: 1 }}>▾</span>
+          </button>
+        ) : (
+          <span>{labelFor(cat)}</span>
+        )}
+        {cat !== 'general' && (
+          <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={(e) => { e.stopPropagation(); removeEventType(cat); }} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
+        )}
+      </div>
+    );
+  };
+
+  // The open category's packages + inline editor (mobile) + add button.
+  const renderCatBody = (cat: string) => {
+    const list = listFor(mob, cat);
+    return (
+      <>
         {cat === 'general' && !isNarrow && genCoversOpen && (
           <div style={{ margin: '-.1rem 0 .55rem', padding: '.5rem .65rem', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 7 }}>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.3rem' }}>Pricing covers</div>
@@ -451,7 +456,7 @@ export default function MobilePackagesEditor({
             )}
           </div>
         )}
-        {catOpen && list.map((_, i) => {
+        {list.map((_, i) => {
           const active = selCat === cat && safeIdx === i;
           const invalid = showInvalid && pkgInvalid(cat, i);
           return (
@@ -471,7 +476,24 @@ export default function MobilePackagesEditor({
         {isNarrow && selCat === cat && list.length > 0 && (
           <div ref={cardRef} style={{ margin: '2px 0 12px', scrollMarginTop: 80 }}>{renderEditor()}</div>
         )}
-        {catOpen && <button type="button" style={addPkgBtn} onClick={() => addPackageTo(cat)}>+ Add Package</button>}
+        <button type="button" style={addPkgBtn} onClick={() => addPackageTo(cat)}>+ Add Package</button>
+      </>
+    );
+  };
+
+  // Header + body inline, per category. On mobile only the open category shows
+  // its body, and that body is indented so the packages read as nested under
+  // the event type being edited.
+  const renderCategory = (cat: string) => {
+    const open = !isNarrow || selCat === cat;
+    return (
+      <div key={cat} style={{ marginBottom: isNarrow ? 8 : 16 }}>
+        {renderCatHeader(cat)}
+        {open && (
+          <div style={isNarrow ? { paddingLeft: 16, marginLeft: 3, borderLeft: '1px solid var(--border)' } : undefined}>
+            {renderCatBody(cat)}
+          </div>
+        )}
       </div>
     );
   };
