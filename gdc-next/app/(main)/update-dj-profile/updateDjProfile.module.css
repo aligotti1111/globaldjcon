@@ -713,12 +713,17 @@
   font-size: .6rem;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: #ffffff;
-  display: inline-block;
-  margin-bottom: .45rem;
-  /* Neon accent band on the left edge of each field title. */
-  border-left: 3px solid var(--neon, #00e0a4);
-  padding: .1rem 0 .1rem .5rem;
+  /* Filled neon band hugging the title text; block + fit-content keeps it on
+     its own line so nothing flows up beside it. */
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: .5rem;
+  color: #05231b;
+  background: linear-gradient(90deg, var(--neon, #00e0a4), #27d2b4);
+  border-radius: 4px;
+  padding: .22rem .55rem;
+  font-weight: 700;
 }
 .pkgFieldRequired {
   color: #ff5f5f;
