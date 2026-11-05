@@ -300,6 +300,10 @@ export default function ClubBookingTab({
   function setRiderEnabled(v: boolean) {
     setLastChangedField('settings');
     patch({ rider_enabled: v } as unknown as Partial<BookingSettings>);
+    // rider_enabled is a manual-save (SETTINGS_KEYS) field. On the DJ Rider tab
+    // there's no Save button, so persist the toggle immediately; on the main
+    // Settings tab the Save button commits it like every other setting.
+    if (activeSection === 'rider') setTimeout(() => onSaveSettings?.(), 0);
   }
   // The saved rider library (up to 10) lives in booking_settings.riders and
   // rides the page's normal save. RiderLibrarySection owns the draft-editing UX;
@@ -839,6 +843,36 @@ export default function ClubBookingTab({
                   >
                     <span style={{
                       position: 'absolute', top: 3, left: requireContract ? 23 : 3,
+                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                      transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                    }} />
+                  </button>
+                </div>
+
+                {/* Enable DJ Rider — also lives on the DJ Rider tab; surfaced here
+                    so it can be turned on from the main Settings pane too. */}
+                <div className={styles.settingRow}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Enable DJ Rider</div>
+                    <div className={styles.settingHint}>
+                      Adds a rider step to your club/bar bookings. Build and send riders from the DJ Rider tab.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={riderEnabled}
+                    aria-label="Enable DJ Rider"
+                    onClick={() => setRiderEnabled(!riderEnabled)}
+                    style={{
+                      position: 'relative', width: 46, height: 26, borderRadius: 999,
+                      border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                      background: riderEnabled ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                      transition: 'background .15s ease',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 3, left: riderEnabled ? 23 : 3,
                       width: 20, height: 20, borderRadius: '50%', background: '#fff',
                       transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
                     }} />
