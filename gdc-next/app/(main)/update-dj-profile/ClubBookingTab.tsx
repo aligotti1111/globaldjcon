@@ -1136,8 +1136,8 @@ function RateInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
-          className={styles.rateInput}
-          style={{ paddingRight: 26 }}
+          className={`${styles.rateInput} ${styles.noSpin}`}
+          style={{ paddingRight: 26, textAlign: 'center' }}
         />
         {value.trim() !== '' && (
           <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--neon,#00e0a4)', fontWeight: 800, fontSize: '.95rem', pointerEvents: 'none' }}>✓</span>
