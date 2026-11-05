@@ -153,72 +153,92 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
     ...btnGhost, border: '1px solid rgba(255,120,120,.6)', color: '#ff8b8b',
   };
 
-  // ── Editor view ──
-  if (editing) {
-    return (
-      <div style={{ marginTop: '1.1rem' }}>
-        {confirmDialog}
-        <div style={{ ...label, marginBottom: '.8rem' }}>
-          {editing.id ? 'Editing rider' : 'New rider'}
-        </div>
-        <RiderBuilder
-          mode={mode}
-          onModeChange={setMode}
-          items={items}
-          onItemsChange={setItems}
-          pdfUrl={pdfUrl}
-          onPdfUrlChange={setPdfUrl}
-          name={name}
-          onNameChange={setName}
-          hideChooser
-        />
-
-        {hasContent && name.trim() !== '' && (
-          <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.5rem', textAlign: 'center' }}>
-            <div style={{ color: MUTED, fontSize: '.76rem', maxWidth: 420 }}>
-              Send yourself a test to see exactly what the host receives.
-            </div>
-            <button type="button" disabled={testBusy} onClick={sendTest} style={{ ...btnGhost, padding: '.55rem 1.3rem', fontSize: '.78rem', opacity: testBusy ? 0.6 : 1 }}>
-              {testBusy ? 'Sending…' : 'Send test email'}
-            </button>
-            {testMsg && <div style={{ color: testMsg.startsWith('✓') ? NEON : '#ff8b8b', fontSize: '.76rem' }}>{testMsg}</div>}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem', marginTop: '1rem' }}>
-          {!canSave && missing.length > 0 && (
-            <div style={{ color: '#ff8b8b', fontSize: '.72rem', textAlign: 'right' }}>
-              Add {missing.join(' and ')} before saving the rider.
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '.5rem' }}>
-            <button type="button" onClick={closeEditor} style={{ ...btnGhost, border: '1px solid var(--border,rgba(255,255,255,.2))', color: MUTED }}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={!canSave}
-              onClick={save}
-              style={{
-                ...btnGhost,
-                background: canSave ? NEON : 'transparent',
-                color: canSave ? '#04121a' : MUTED,
-                border: `1px solid ${canSave ? NEON : 'var(--border,rgba(255,255,255,.2))'}`,
-                cursor: canSave ? 'pointer' : 'not-allowed',
-                padding: '.4rem 1.3rem',
-              }}
-            >
-              Save rider
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  // Guard a mode switch: if an open draft has unsaved changes, warn first.
+  async function guardSwitch(): Promise<boolean> {
+    if (editing && dirty) {
+      return confirm({
+        title: 'Discard changes?',
+        message: "You haven't saved this rider. If you leave now, your changes won't be saved.",
+        confirmLabel: 'Discard',
+        variant: 'danger',
+      });
+    }
+    return true;
+  }
+  // Toggle a NEW-rider build option open/closed in place — nothing else closes.
+  async function toggleNew(m: RiderMode) {
+    if (editing?.id == null && mode === m) { if (await guardSwitch()) setEditing(null); return; }
+    if (!(await guardSwitch())) return;
+    openNew(m);
+  }
+  async function toggleEdit(r: NamedRider) {
+    if (editing?.id === r.id) { if (await guardSwitch()) setEditing(null); return; }
+    if (!(await guardSwitch())) return;
+    openEdit(r);
   }
 
-  // A build option shown directly in the list (no "Create rider" button) — each
-  // on a single line: bold title, a short inline hint, and an arrow.
-  const BuildOption = ({ title, hint, onClick }: { title: string; hint: string; onClick: () => void }) => (
+  // The inline editor body (builder + test + save/cancel) — rendered in place
+  // right under whichever row/option is open, so the list and the other option
+  // stay visible. `openMode` tells it which mode it belongs to.
+  const editorBlock = (
+    <div style={{ marginTop: '.8rem', paddingLeft: '.1rem' }}>
+      <RiderBuilder
+        mode={mode}
+        onModeChange={setMode}
+        items={items}
+        onItemsChange={setItems}
+        pdfUrl={pdfUrl}
+        onPdfUrlChange={setPdfUrl}
+        name={name}
+        onNameChange={setName}
+        hideChooser
+      />
+
+      {hasContent && name.trim() !== '' && (
+        <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.5rem', textAlign: 'center' }}>
+          <div style={{ color: MUTED, fontSize: '.76rem', maxWidth: 420 }}>
+            Send yourself a test to see exactly what the host receives.
+          </div>
+          <button type="button" disabled={testBusy} onClick={sendTest} style={{ ...btnGhost, padding: '.55rem 1.3rem', fontSize: '.78rem', opacity: testBusy ? 0.6 : 1 }}>
+            {testBusy ? 'Sending…' : 'Send test email'}
+          </button>
+          {testMsg && <div style={{ color: testMsg.startsWith('✓') ? NEON : '#ff8b8b', fontSize: '.76rem' }}>{testMsg}</div>}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem', marginTop: '1rem' }}>
+        {!canSave && missing.length > 0 && (
+          <div style={{ color: '#ff8b8b', fontSize: '.72rem', textAlign: 'right' }}>
+            Add {missing.join(' and ')} before saving the rider.
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <button type="button" onClick={closeEditor} style={{ ...btnGhost, border: '1px solid var(--border,rgba(255,255,255,.2))', color: MUTED }}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={save}
+            style={{
+              ...btnGhost,
+              background: canSave ? NEON : 'transparent',
+              color: canSave ? '#04121a' : MUTED,
+              border: `1px solid ${canSave ? NEON : 'var(--border,rgba(255,255,255,.2))'}`,
+              cursor: canSave ? 'pointer' : 'not-allowed',
+              padding: '.4rem 1.3rem',
+            }}
+          >
+            Save rider
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // A build option shown directly in the list — one line: bold title, hint, arrow.
+  // `open` rotates the arrow to signal its editor is expanded below.
+  const BuildOption = ({ title, hint, open, onClick }: { title: string; hint: string; open: boolean; onClick: () => void }) => (
     <button
       type="button"
       onClick={onClick}
@@ -230,11 +250,14 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
     >
       <span style={{ fontWeight: 700, fontSize: '.92rem', flexShrink: 0 }}>{title}</span>
       <span style={{ color: MUTED, fontSize: '.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</span>
-      <span style={{ marginLeft: 'auto', color: NEON, fontSize: '1.1rem', lineHeight: 1, flexShrink: 0 }}>›</span>
+      <span style={{ marginLeft: 'auto', color: NEON, fontSize: '1.1rem', lineHeight: 1, flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}>›</span>
     </button>
   );
 
-  // ── Library list view ──
+  const newUploadOpen = editing?.id == null && editing != null && mode === 'upload';
+  const newCustomOpen = editing?.id == null && editing != null && mode === 'custom';
+
+  // ── Library view — everything stays open; the editor expands in place. ──
   return (
     <div style={{ marginTop: '1.1rem' }}>
       {confirmDialog}
@@ -242,31 +265,36 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
         <div style={{ marginBottom: '.7rem', color: NEON, fontSize: '.82rem', fontWeight: 700 }}>✓ Rider saved</div>
       )}
 
-      {/* Saved riders — flat one-line rows, no frame. */}
+      {/* Saved riders — flat one-line rows, no frame. Editing one expands below it. */}
       {riders.length > 0 && (
         <div style={{ marginBottom: '1.2rem' }}>
           <div style={{ ...label, marginBottom: '.2rem' }}>Your riders ({riders.length}/{MAX})</div>
           {riders.map((r) => (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', padding: '.6rem .1rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-              <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '.5rem' }}>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
-                <span style={{ color: MUTED, fontSize: '.72rem', whiteSpace: 'nowrap', flexShrink: 0 }}>{r.mode === 'upload' ? 'Uploaded PDF' : 'Custom rider'}</span>
+            <div key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', padding: '.6rem .1rem' }}>
+                <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '.5rem' }}>
+                  <span style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
+                  <span style={{ color: MUTED, fontSize: '.72rem', whiteSpace: 'nowrap', flexShrink: 0 }}>{r.mode === 'upload' ? 'Uploaded PDF' : 'Custom rider'}</span>
+                </div>
+                <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
+                  <button type="button" onClick={() => toggleEdit(r)} style={btnGhost}>{editing?.id === r.id ? 'Close' : 'Edit'}</button>
+                  <button type="button" onClick={() => remove(r)} style={btnDanger}>Delete</button>
+                </div>
               </div>
-              <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
-                <button type="button" onClick={() => openEdit(r)} style={btnGhost}>Edit</button>
-                <button type="button" onClick={() => remove(r)} style={btnDanger}>Delete</button>
-              </div>
+              {editing?.id === r.id && editorBlock}
             </div>
           ))}
         </div>
       )}
 
-      {/* Add a rider — the two build options shown directly, each on one line. */}
+      {/* Add a rider — both build options stay visible; the chosen one expands below it. */}
       {riders.length < MAX ? (
         <div>
           <div style={{ ...label, marginBottom: '.2rem' }}>Add a rider</div>
-          <BuildOption title="Upload Rider" hint="Pre-made PDF, sent as-is" onClick={() => openNew('upload')} />
-          <BuildOption title="Create Custom Rider" hint="Build from labeled fields" onClick={() => openNew('custom')} />
+          <BuildOption title="Upload Rider" hint="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." open={newUploadOpen} onClick={() => toggleNew('upload')} />
+          {newUploadOpen && editorBlock}
+          <BuildOption title="Create Custom Rider" hint="Build your rider from labeled fields. We generate a branded PDF for the host." open={newCustomOpen} onClick={() => toggleNew('custom')} />
+          {newCustomOpen && editorBlock}
         </div>
       ) : (
         <div style={{ color: MUTED, fontSize: '.78rem' }}>You&rsquo;ve reached the {MAX}-rider limit. Delete one to add another.</div>
