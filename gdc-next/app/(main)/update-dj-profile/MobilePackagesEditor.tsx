@@ -457,12 +457,15 @@ export default function MobilePackagesEditor({
             )}
           </div>
         )}
-        {list.map((_, i) => {
+        {list.map((pk, i) => {
           const active = selCat === cat && safeIdx === i;
           const invalid = showInvalid && pkgInvalid(cat, i);
+          // Show the DJ's own title once they've named it; otherwise fall back to
+          // "Package N" so a package always has a name.
+          const label = ((pk as unknown as { title?: string })?.title || '').trim() || `Package ${i + 1}`;
           return (
             <button key={i} ref={active ? selPkgRef : undefined} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isNarrow && <span style={{ color: 'var(--muted,#8a8aa0)', marginRight: 6 }}>&rsaquo;</span>}Package {i + 1}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isNarrow && <span style={{ color: 'var(--muted,#8a8aa0)', marginRight: 6 }}>&rsaquo;</span>}{label}</span>
               {invalid ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#2a0b0b', background: '#ff8f8f', borderRadius: 4, padding: '.12rem .4rem' }}>Needs info</span>
               ) : (
@@ -512,7 +515,7 @@ export default function MobilePackagesEditor({
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.1rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>
         <span style={{ color: 'var(--neon)' }}>{labelFor(selCat)}</span>
         <span style={{ color: '#555', margin: '0 .5rem', fontSize: '1.1rem' }}>&rsaquo;</span>
-        <span style={{ color: '#fff' }}>Package {safeIdx + 1}</span>
+        <span style={{ color: '#fff' }}>{((currentPkg as unknown as { title?: string })?.title || '').trim() || `Package ${safeIdx + 1}`}</span>
       </div>
       {err && showInvalid && invalidList.length > 0 && (
         <div role="alert" style={{ position: 'sticky', top: 8, zIndex: 5, marginBottom: 14, padding: '.6rem .7rem', background: 'rgba(8,8,12,.96)', border: '1px solid var(--border)', borderRadius: 8, backdropFilter: 'blur(2px)', color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
