@@ -426,6 +426,7 @@ export default function ClubBookingTab({
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
                         I can provide Sound System &amp; Decks/Controller
+                        {equipFull && <span style={{ marginLeft: 8, color: 'var(--neon,#00e0a4)', fontWeight: 800 }}>✓</span>}
                       </div>
                       {equipFull && (
                         <input
@@ -449,6 +450,7 @@ export default function ClubBookingTab({
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
                         I can provide Decks/Controller only
+                        {equipDecks && <span style={{ marginLeft: 8, color: 'var(--neon,#00e0a4)', fontWeight: 800 }}>✓</span>}
                       </div>
                       {equipDecks && (
                         <input
@@ -472,6 +474,7 @@ export default function ClubBookingTab({
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
                         I require all equipment provided by venue
+                        {equipNone && <span style={{ marginLeft: 8, color: 'var(--neon,#00e0a4)', fontWeight: 800 }}>✓</span>}
                       </div>
                       {equipNone && (
                         <input
@@ -1122,7 +1125,8 @@ function RateInput({
   return (
     <div className={styles.rateFieldGroup}>
       <label className={styles.rateFieldLabel}>{label}</label>
-      <div className={styles.rateInputWrap}>
+      {/* Smaller box (maxWidth) + a neon ✓ once a rate has been entered. */}
+      <div className={styles.rateInputWrap} style={{ maxWidth: 240, position: 'relative' }}>
         <span className={styles.rateSymbol}>{symbol}</span>
         <input
           type="number"
@@ -1133,7 +1137,11 @@ function RateInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
           className={styles.rateInput}
+          style={{ paddingRight: 26 }}
         />
+        {value.trim() !== '' && (
+          <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--neon,#00e0a4)', fontWeight: 800, fontSize: '.95rem', pointerEvents: 'none' }}>✓</span>
+        )}
       </div>
     </div>
   );
