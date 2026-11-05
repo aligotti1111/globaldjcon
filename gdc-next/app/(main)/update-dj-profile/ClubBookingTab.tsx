@@ -785,7 +785,7 @@ export default function ClubBookingTab({
 
                 {taxEnabled && (
                   <>
-                    <div className={styles.settingRow}>
+                    <div className={styles.settingRow} style={{ marginTop: '1rem' }}>
                       <div className={styles.settingLabelWrap}>
                         <div className={styles.settingLabel}>Tax rate (%)</div>
                         <div className={styles.settingHint}>
@@ -851,7 +851,7 @@ export default function ClubBookingTab({
 
                 {/* Enable DJ Rider — also lives on the DJ Rider tab; surfaced here
                     so it can be turned on from the main Settings pane too. */}
-                <div className={styles.settingRow}>
+                <div className={styles.settingRow} style={{ paddingTop: '1.25rem', borderTop: '1px solid var(--border, rgba(255,255,255,.08))', marginTop: '1.25rem' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Enable DJ Rider</div>
                     <div className={styles.settingHint}>
