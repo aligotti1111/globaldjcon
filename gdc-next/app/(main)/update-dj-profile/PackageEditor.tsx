@@ -365,9 +365,18 @@ export default function PackageEditor({
         })()}
 
         {/* Overtime */}
-        <div className={styles.priceRow} style={{ marginTop: '1.1rem' }}>
-          <span className={styles.priceRowLabel} style={reqAll ? { opacity: 0.35 } : undefined}>
-            Overtime Rate:
+        <div className={styles.priceRow} style={{ marginTop: '1.2rem', paddingTop: '1.1rem', borderTop: '1px solid var(--border)' }}>
+          <span
+            className={styles.priceRowLabel}
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              background: 'linear-gradient(90deg, #19cdb3 0%, #16bcd0 100%)',
+              color: '#03201f', fontWeight: 800, borderRadius: 5,
+              padding: '.35rem .65rem', fontSize: '.8rem', letterSpacing: '.02em',
+              ...(reqAll ? { opacity: 0.35 } : null),
+            }}
+          >
+            Overtime Rate
           </span>
           <span className={`${styles.priceCurrency} ${reqAll ? styles.priceCurrencyDisabled : ''}`}>{cur}</span>
           <input
