@@ -707,7 +707,7 @@ export default function ClubBookingTab({
                       )}
                     </div>
                     <div className={styles.settingHint}>
-                      How many bookings you&rsquo;ll accept on a single day.
+                      How many bookings you can DJ in a single day.
                     </div>
                   </div>
                   <select
