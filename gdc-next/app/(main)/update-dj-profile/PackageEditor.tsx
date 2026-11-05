@@ -371,8 +371,8 @@ export default function PackageEditor({
             style={{
               display: 'inline-flex', alignItems: 'center',
               background: 'linear-gradient(90deg, #19cdb3 0%, #16bcd0 100%)',
-              color: '#03201f', fontWeight: 800, borderRadius: 5,
-              padding: '.35rem .65rem', fontSize: '.8rem', letterSpacing: '.02em',
+              color: '#03201f', fontWeight: 700, borderRadius: 5,
+              padding: '.3rem .5rem', letterSpacing: '.02em',
               ...(reqAll ? { opacity: 0.35 } : null),
             }}
           >
@@ -464,7 +464,27 @@ export default function PackageEditor({
           </div>
         )}
 
-        {/* Req-all toggle */}
+        {!reqAll && (
+          <div style={{ margin: '.4rem 0 0', maxWidth: 560 }}>
+            <button
+              type="button"
+              onClick={() => setShowOutsideNote((v) => !v)}
+              style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.62rem', fontFamily: "'Space Mono', monospace" }}
+            >
+              <span>Pricing for hours outside of your listed options?</span>
+              <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
+            </button>
+            {showOutsideNote && (
+              <p style={{ fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted)', margin: '.4rem 0 0' }}>
+                If a host books fewer hours than your shortest option, they&rsquo;re quoted that shortest option&rsquo;s price (rounded up to your nearest rate). If they book more than your longest option, the extra time is charged at your hourly overtime rate.
+                <br /><br />
+                <span style={{ color: '#fff' }}>Example:</span> you list 4 hours at {cur}500 and 6 hours at {cur}800, with {cur}100/hr overtime. A 3-hour booking is quoted {cur}500 (your 4-hour rate). A 7-hour booking is quoted {cur}900 ({cur}800 plus one hour of overtime).
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Req-all toggle — bottom of the price box. */}
         <div className={styles.reqAllRow}>
           <label className={styles.reqAllToggle}>
             <input
@@ -491,26 +511,6 @@ export default function PackageEditor({
             </span>
           </span>
         </div>
-
-        {!reqAll && (
-          <div style={{ margin: '.4rem 0 0', maxWidth: 560 }}>
-            <button
-              type="button"
-              onClick={() => setShowOutsideNote((v) => !v)}
-              style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.62rem', fontFamily: "'Space Mono', monospace" }}
-            >
-              <span>Pricing for hours outside of your listed options?</span>
-              <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
-            </button>
-            {showOutsideNote && (
-              <p style={{ fontSize: '.72rem', lineHeight: 1.5, color: 'var(--muted)', margin: '.4rem 0 0' }}>
-                If a host books fewer hours than your shortest option, they&rsquo;re quoted that shortest option&rsquo;s price (rounded up to your nearest rate). If they book more than your longest option, the extra time is charged at your hourly overtime rate.
-                <br /><br />
-                <span style={{ color: '#fff' }}>Example:</span> you list 4 hours at {cur}500 and 6 hours at {cur}800, with {cur}100/hr overtime. A 3-hour booking is quoted {cur}500 (your 4-hour rate). A 7-hour booking is quoted {cur}900 ({cur}800 plus one hour of overtime).
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       <div className={styles.pkgDivider} />
