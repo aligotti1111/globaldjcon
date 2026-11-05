@@ -274,11 +274,12 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
       {riders.length > 0 && (
         <div style={{ marginBottom: '1.2rem' }}>
           <div style={{ ...label, marginBottom: '.2rem' }}>Your riders ({riders.length}/{MAX})</div>
-          {riders.map((r) => (
+          {riders.map((r, i) => (
             <div key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', padding: '.6rem .1rem' }}>
-                <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '.5rem' }}>
-                  <span style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', padding: '.75rem .1rem' }}>
+                <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '.6rem' }}>
+                  <span style={{ color: NEON, fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>{i + 1}.</span>
+                  <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
                   <span style={{ color: MUTED, fontSize: '.72rem', whiteSpace: 'nowrap', flexShrink: 0 }}>{r.mode === 'upload' ? 'Uploaded PDF' : 'Custom rider'}</span>
                 </div>
                 <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
