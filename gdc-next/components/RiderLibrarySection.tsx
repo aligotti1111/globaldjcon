@@ -60,11 +60,14 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
 
-  function openNew() {
-    const blank = STARTER_RIDER.map((x) => ({ ...x }));
-    setMode(null); setItems(blank); setPdfUrl(null); setName(''); setTestMsg(null);
+  // Start a brand-new rider with its build mode already chosen (the two options
+  // live in the list view now, not behind a "Create rider" button), so the
+  // editor opens straight into that mode's body with no chooser.
+  function openNew(m: RiderMode) {
+    const blank = m === 'custom' ? STARTER_RIDER.map((x) => ({ ...x })) : [];
+    setMode(m); setItems(blank); setPdfUrl(null); setName(''); setTestMsg(null);
     setEditing({ id: null });
-    initialRef.current = JSON.stringify({ mode: null, items: blank, pdfUrl: null, name: '' });
+    initialRef.current = JSON.stringify({ mode: m, items: blank, pdfUrl: null, name: '' });
   }
   function openEdit(r: NamedRider) {
     const its = normalizeRiderItems(r.items);
@@ -167,6 +170,7 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
           onPdfUrlChange={setPdfUrl}
           name={name}
           onNameChange={setName}
+          hideChooser
         />
 
         {hasContent && name.trim() !== '' && (
@@ -212,6 +216,24 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
     );
   }
 
+  // A build option shown directly in the list (no "Create rider" button) — each
+  // on a single line: bold title, a short inline hint, and an arrow.
+  const BuildOption = ({ title, hint, onClick }: { title: string; hint: string; onClick: () => void }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: '.6rem', textAlign: 'left',
+        background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,.08)',
+        padding: '.7rem .1rem', cursor: 'pointer', color: '#fff',
+      }}
+    >
+      <span style={{ fontWeight: 700, fontSize: '.92rem', flexShrink: 0 }}>{title}</span>
+      <span style={{ color: MUTED, fontSize: '.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</span>
+      <span style={{ marginLeft: 'auto', color: NEON, fontSize: '1.1rem', lineHeight: 1, flexShrink: 0 }}>›</span>
+    </button>
+  );
+
   // ── Library list view ──
   return (
     <div style={{ marginTop: '1.1rem' }}>
@@ -219,19 +241,16 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
       {justSaved && (
         <div style={{ marginBottom: '.7rem', color: NEON, fontSize: '.82rem', fontWeight: 700 }}>✓ Rider saved</div>
       )}
-      {riders.length === 0 ? (
-        <div style={{ color: MUTED, fontSize: '.84rem', lineHeight: 1.5, marginBottom: '1rem' }}>
-          No riders yet. Create one — upload a PDF or build a custom rider — and it&rsquo;ll be
-          ready to send from any booking&rsquo;s rider icon.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', marginBottom: '1rem' }}>
-          <div style={label}>Your riders ({riders.length}/{MAX})</div>
+
+      {/* Saved riders — flat one-line rows, no frame. */}
+      {riders.length > 0 && (
+        <div style={{ marginBottom: '1.2rem' }}>
+          <div style={{ ...label, marginBottom: '.2rem' }}>Your riders ({riders.length}/{MAX})</div>
           {riders.map((r) => (
-            <div key={r.id} style={{ padding: '.7rem .9rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
-                <div style={{ ...label, marginTop: '.2rem' }}>{r.mode === 'upload' ? 'Uploaded PDF' : 'Custom rider'}</div>
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', padding: '.6rem .1rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '.5rem' }}>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
+                <span style={{ color: MUTED, fontSize: '.72rem', whiteSpace: 'nowrap', flexShrink: 0 }}>{r.mode === 'upload' ? 'Uploaded PDF' : 'Custom rider'}</span>
               </div>
               <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
                 <button type="button" onClick={() => openEdit(r)} style={btnGhost}>Edit</button>
@@ -242,10 +261,13 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
         </div>
       )}
 
+      {/* Add a rider — the two build options shown directly, each on one line. */}
       {riders.length < MAX ? (
-        <button type="button" onClick={openNew} style={{ ...btnGhost, padding: '.55rem 1.3rem', fontSize: '.72rem' }}>
-          + Create rider
-        </button>
+        <div>
+          <div style={{ ...label, marginBottom: '.2rem' }}>Add a rider</div>
+          <BuildOption title="Upload Rider" hint="Pre-made PDF, sent as-is" onClick={() => openNew('upload')} />
+          <BuildOption title="Create Custom Rider" hint="Build from labeled fields" onClick={() => openNew('custom')} />
+        </div>
       ) : (
         <div style={{ color: MUTED, fontSize: '.78rem' }}>You&rsquo;ve reached the {MAX}-rider limit. Delete one to add another.</div>
       )}
