@@ -236,22 +236,24 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
     </div>
   );
 
-  // A build option shown directly in the list — one line: bold title, hint, arrow.
-  // `open` rotates the arrow to signal its editor is expanded below.
-  const BuildOption = ({ title, hint, open, onClick }: { title: string; hint: string; open: boolean; onClick: () => void }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        width: '100%', display: 'flex', alignItems: 'center', gap: '.6rem', textAlign: 'left',
-        background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,.08)',
-        padding: '.7rem .1rem', cursor: 'pointer', color: '#fff',
-      }}
-    >
-      <span style={{ fontWeight: 700, fontSize: '.92rem', flexShrink: 0 }}>{title}</span>
-      <span style={{ color: MUTED, fontSize: '.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</span>
-      <span style={{ marginLeft: 'auto', color: NEON, fontSize: '1.1rem', lineHeight: 1, flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}>›</span>
-    </button>
+  // A build option — its own bordered bubble with a radio dot, one line. When
+  // open, the editor expands inside the bubble; the other bubble stays put.
+  const BuildOption = ({ title, hint, open, onClick, children }: { title: string; hint: string; open: boolean; onClick: () => void; children?: React.ReactNode }) => (
+    <div style={{ borderRadius: 12, overflow: 'hidden', border: open ? `1.5px solid ${NEON}` : '1.5px solid rgba(255,255,255,.14)', background: open ? 'rgba(0,224,164,.06)' : 'transparent' }}>
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: '.7rem', textAlign: 'left',
+          background: 'transparent', border: 'none', padding: '.8rem 1rem', cursor: 'pointer', color: '#fff',
+        }}
+      >
+        <span style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, border: open ? `5px solid ${NEON}` : '2px solid rgba(255,255,255,.35)', background: open ? '#06231b' : 'transparent' }} />
+        <span style={{ fontWeight: 800, fontSize: '.95rem', flexShrink: 0, color: open ? NEON : '#fff' }}>{title}</span>
+        <span style={{ color: MUTED, fontSize: '.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</span>
+      </button>
+      {open && children && <div style={{ padding: '.2rem 1.2rem 1.4rem' }}>{children}</div>}
+    </div>
   );
 
   const newUploadOpen = editing?.id == null && editing != null && mode === 'upload';
@@ -290,11 +292,18 @@ export default function RiderLibrarySection({ riders, onChange }: Props) {
       {/* Add a rider — both build options stay visible; the chosen one expands below it. */}
       {riders.length < MAX ? (
         <div>
-          <div style={{ ...label, marginBottom: '.2rem' }}>Add a rider</div>
-          <BuildOption title="Upload Rider" hint="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." open={newUploadOpen} onClick={() => toggleNew('upload')} />
-          {newUploadOpen && editorBlock}
-          <BuildOption title="Create Custom Rider" hint="Build your rider from labeled fields. We generate a branded PDF for the host." open={newCustomOpen} onClick={() => toggleNew('custom')} />
-          {newCustomOpen && editorBlock}
+          <div style={{ ...label, marginBottom: '.5rem' }}>Add a rider</div>
+          <BuildOption title="Upload Rider" hint="Upload your pre-made rider as a PDF. It's sent to the host exactly as-is." open={newUploadOpen} onClick={() => toggleNew('upload')}>
+            {newUploadOpen && editorBlock}
+          </BuildOption>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', padding: '.6rem .1rem' }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.1em', color: MUTED }}>OR</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.12)' }} />
+          </div>
+          <BuildOption title="Create Custom Rider" hint="Build your rider from labeled fields. We generate a branded PDF for the host." open={newCustomOpen} onClick={() => toggleNew('custom')}>
+            {newCustomOpen && editorBlock}
+          </BuildOption>
         </div>
       ) : (
         <div style={{ color: MUTED, fontSize: '.78rem' }}>You&rsquo;ve reached the {MAX}-rider limit. Delete one to add another.</div>
