@@ -465,11 +465,17 @@ export default function MobilePackagesEditor({
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isNarrow && <span style={{ color: 'var(--muted,#8a8aa0)', marginRight: 6 }}>&rsaquo;</span>}Package {i + 1}</span>
               {invalid ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#2a0b0b', background: '#ff8f8f', borderRadius: 4, padding: '.12rem .4rem' }}>Needs info</span>
-              ) : pkgDirty(cat, i) ? (
-                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04121a', background: '#ffd60a', borderRadius: 4, padding: '.12rem .4rem' }}>Unsaved</span>
-              ) : active ? (
-                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#04241b', animation: 'gdcEditBlink 1s steps(1,end) infinite' }} />Editing</span>
-              ) : null}
+              ) : (
+                // Editing first, then Unsaved to its right — both can show at once.
+                <>
+                  {active && (
+                    <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#04241b', animation: 'gdcEditBlink 1s steps(1,end) infinite' }} />Editing</span>
+                  )}
+                  {pkgDirty(cat, i) && (
+                    <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04121a', background: '#ffd60a', borderRadius: 4, padding: '.12rem .4rem' }}>Unsaved</span>
+                  )}
+                </>
+              )}
             </button>
           );
         })}
