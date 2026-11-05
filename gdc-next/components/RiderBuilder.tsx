@@ -241,33 +241,21 @@ export default function RiderBuilder({
           </label>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.9rem', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '.9rem 1rem' }}>
-          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '.6rem' }}>
-            <span aria-hidden style={{ fontSize: '1.1rem', flexShrink: 0 }}>📄</span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ color: NEON, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Uploaded rider</div>
-              <div style={{ color: '#fff', fontSize: '.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shownName || 'rider.pdf'}</div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.9rem', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '.9rem 1rem' }}>
+            <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <span aria-hidden style={{ fontSize: '1.1rem', flexShrink: 0 }}>📄</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: NEON, fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Uploaded rider</div>
+                <div style={{ color: '#fff', fontSize: '.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shownName || 'rider.pdf'}</div>
+              </div>
             </div>
-          </div>
-          <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                background: 'transparent', border: `1px solid ${NEON}`, color: NEON,
-                borderRadius: 8, padding: '.4rem .9rem', fontSize: '.78rem', fontWeight: 700,
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-              }}
-            >
-              View
-            </a>
             <button
               type="button"
               disabled={busy}
               onClick={removePdf}
               style={{
-                background: 'transparent', border: '1px solid rgba(255,255,255,.25)',
+                flexShrink: 0, background: 'transparent', border: '1px solid rgba(255,255,255,.25)',
                 color: '#fff', borderRadius: 8, padding: '.4rem .9rem', fontSize: '.78rem',
                 fontWeight: 700, cursor: busy ? 'default' : 'pointer',
               }}
@@ -275,6 +263,12 @@ export default function RiderBuilder({
               Remove
             </button>
           </div>
+          {/* Inline PDF preview on the page. */}
+          <iframe
+            title="Rider PDF preview"
+            src={pdfUrl}
+            style={{ width: '100%', height: 620, border: '1px solid rgba(255,255,255,.14)', borderRadius: 10, marginTop: '.8rem', background: '#fff' }}
+          />
         </div>
       )}
       {msg && <div style={{ marginTop: '.6rem', fontSize: '.8rem', color: MUTED }}>{msg}</div>}
