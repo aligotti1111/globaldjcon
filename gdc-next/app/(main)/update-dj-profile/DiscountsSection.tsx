@@ -823,7 +823,7 @@ export default function DiscountsSection({ promoCodes, sale, saleHistory = [], e
               <div
                 style={
                   isNarrow
-                    ? { order: 1, gridColumn: '1 / -1', justifySelf: 'end', display: 'flex', alignItems: 'flex-end', gap: '1rem' }
+                    ? { order: 9, gridColumn: '1 / -1', justifySelf: 'end', display: 'flex', alignItems: 'flex-end', gap: '1rem', marginTop: '.4rem' }
                     : { flex: '0 0 auto', marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: '1rem' }
                 }
               >
