@@ -810,7 +810,7 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
                   : [])
               // Opens the modal — the whole choose-a-planner, preview, customise
               // and send flow.
-              : [{ label: 'Select Planner/Playlist', run: () => { setPlannerErr(null); setSendOpen(true); } }],
+              : [{ label: 'Send Playlist/Planner', run: () => { setPlannerErr(null); setSendOpen(true); } }],
     });
   }
 
