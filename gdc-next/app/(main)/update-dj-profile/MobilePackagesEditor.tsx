@@ -468,7 +468,7 @@ export default function MobilePackagesEditor({
               ) : pkgDirty(cat, i) ? (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04121a', background: '#ffd60a', borderRadius: 4, padding: '.12rem .4rem' }}>Unsaved</span>
               ) : active ? (
-                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
+                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#04241b', animation: 'gdcEditBlink 1s steps(1,end) infinite' }} />Editing</span>
               ) : null}
             </button>
           );
@@ -570,6 +570,7 @@ export default function MobilePackagesEditor({
 
   return (
     <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <style>{`@keyframes gdcEditBlink{0%,49%{opacity:1}50%,100%{opacity:0}}`}</style>
       {/* ── SIDEBAR (full-width accordion on mobile) ── */}
       <aside style={isNarrow ? { flex: '1 1 100%', width: '100%' } : { flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
         {renderCategory('general')}
