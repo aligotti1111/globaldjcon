@@ -23,8 +23,8 @@ import {
   type BookingSettings,
 } from '@/app/(main)/[slug]/bookingSettings';
 import PaymentMethodsSection from './PaymentMethodsSection';
-import RiderBuilder from '@/components/RiderBuilder';
-import { normalizeRiderItems, type RiderItem, type RiderMode } from '@/lib/rider';
+import RiderLibrarySection from '@/components/RiderLibrarySection';
+import { normalizeNamedRiders, type NamedRider } from '@/lib/rider';
 import DiscountsSection from './DiscountsSection';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createClient } from '@/lib/supabase/client';
@@ -94,7 +94,7 @@ export default function ClubBookingTab({
   // Confirm modal — used to require explicit acknowledgement before
   // disabling booking. The Confirm hook returns the confirm() async fn
   // plus a JSX element to render once at the top of the component tree.
-  const { confirm, confirmDialog } = useConfirm();
+  const { confirmDialog } = useConfirm();
 
   // ── Booking config (subscription-gated; no manual toggle) ────────
   // Always render the config; whether booking goes live publicly is decided
@@ -110,19 +110,22 @@ export default function ClubBookingTab({
     equip_none: !!bookingSettings.equip_none,
     equip_full_detail: bookingSettings.equip_full_detail || '',
     equip_decks_detail: bookingSettings.equip_decks_detail || '',
+    equip_none_detail: bookingSettings.equip_none_detail || '',
   }));
   const equipFull = equipDraft.equip_full;
   const equipFullDetail = equipDraft.equip_full_detail;
   const equipDecks = equipDraft.equip_decks;
   const equipDecksDetail = equipDraft.equip_decks_detail;
   const equipNone = equipDraft.equip_none;
+  const equipNoneDetail = equipDraft.equip_none_detail;
   const hasEquipSelected = equipFull || equipDecks || equipNone;
   const equipDirty =
     equipDraft.equip_full !== !!bookingSettings.equip_full ||
     equipDraft.equip_decks !== !!bookingSettings.equip_decks ||
     equipDraft.equip_none !== !!bookingSettings.equip_none ||
     equipDraft.equip_full_detail !== (bookingSettings.equip_full_detail || '') ||
-    equipDraft.equip_decks_detail !== (bookingSettings.equip_decks_detail || '');
+    equipDraft.equip_decks_detail !== (bookingSettings.equip_decks_detail || '') ||
+    equipDraft.equip_none_detail !== (bookingSettings.equip_none_detail || '');
 
   // Mutually-exclusive selection — pick one, clear the others (draft only).
   function selectEquip(which: 'full' | 'decks' | 'none') {
@@ -134,6 +137,7 @@ export default function ClubBookingTab({
       equip_none: which === 'none',
       equip_full_detail: which === 'full' ? d.equip_full_detail : '',
       equip_decks_detail: which === 'decks' ? d.equip_decks_detail : '',
+      equip_none_detail: which === 'none' ? d.equip_none_detail : '',
     }));
   }
   function setEquipFullDetail(v: string) {
@@ -143,6 +147,10 @@ export default function ClubBookingTab({
   function setEquipDecksDetail(v: string) {
     setLastChangedField('equipment');
     setEquipDraft((d) => ({ ...d, equip_decks_detail: v }));
+  }
+  function setEquipNoneDetail(v: string) {
+    setLastChangedField('equipment');
+    setEquipDraft((d) => ({ ...d, equip_none_detail: v }));
   }
 
   // ── Rates section (MANUAL save) ────────────────────────────────────
@@ -232,6 +240,7 @@ export default function ClubBookingTab({
       equip_none: equipDraft.equip_none,
       equip_full_detail: equipDraft.equip_full_detail,
       equip_decks_detail: equipDraft.equip_decks_detail,
+      equip_none_detail: equipDraft.equip_none_detail,
       global_rate_type: ratesDraft.global_rate_type,
       allow_offers: ratesDraft.global_rate_type === 'offers',
       rate_currency: ratesDraft.rate_currency,
@@ -281,96 +290,24 @@ export default function ClubBookingTab({
   // the shared type doesn't declare it yet.
   const clubDepositPct = (bookingSettings as { club_deposit_pct?: number }).club_deposit_pct || 0;
 
-  // ── DJ Rider default (autosave) ───────────────────────────────────
-  const riderDefault: RiderItem[] = normalizeRiderItems((bookingSettings as { rider_default?: unknown }).rider_default);
-  function setRiderDefault(items: RiderItem[]) {
-    setLastChangedField('settings');
-    patch({ rider_default: items } as unknown as Partial<BookingSettings>);
-  }
-  // Force a manual pick every time: never pre-select a mode, even if one was
-  // saved before. Starts null on each mount — only a click on Upload/Custom
-  // selects a card and reveals its body.
-  const [riderMode, setRiderModeState] = useState<RiderMode | null>(null);
-  function setRiderMode(m: RiderMode) {
-    setRiderModeState(m);
-    setLastChangedField('settings');
-    patch({ rider_mode: m } as unknown as Partial<BookingSettings>);
-  }
-  // Delete the saved rider (with confirm). Clears the rider fields, resets the
-  // builder to blank, and persists — so it's gone, not just staged.
-  async function deleteRider() {
-    const ok = await confirm({
-      title: 'Delete this rider?',
-      message: 'This removes your saved rider. You can build a new one any time.',
-      confirmLabel: 'Delete rider',
-    });
-    if (!ok) return;
-    setLastChangedField('settings');
-    patch({ rider_default: [], rider_mode: null, rider_pdf_url: null, rider_name: '' } as unknown as Partial<BookingSettings>);
-    setRiderModeState(null);
-    setRiderEditing(false);
-    setRiderJustSaved(false);
-    // Let the cleared settings flow up, then persist on the next tick.
-    setTimeout(() => onSaveSettings?.(), 0);
-  }
-  const riderPdfUrl = ((bookingSettings as { rider_pdf_url?: string | null }).rider_pdf_url) || null;
-  function setRiderPdfUrl(url: string | null) {
-    setLastChangedField('settings');
-    patch({ rider_pdf_url: url } as unknown as Partial<BookingSettings>);
-  }
-  const riderName = ((bookingSettings as { rider_name?: string | null }).rider_name) || '';
-  function setRiderName(v: string) {
-    setLastChangedField('settings');
-    patch({ rider_name: v } as unknown as Partial<BookingSettings>);
-  }
+  // ── DJ Rider ───────────────────────────────────────────────────────
+  // The rider library itself (up to 10 named riders) lives in its own
+  // self-contained component <RiderLibrarySection/>, which reads/writes
+  // booking_settings.riders via /api/rider/library with LOCAL drafts (so an
+  // unnamed work-in-progress never leaks into settings). Here we only own the
+  // enable toggle, which rides the master autosave like the other settings.
   const riderEnabled = !!(bookingSettings as { rider_enabled?: boolean }).rider_enabled;
   function setRiderEnabled(v: boolean) {
     setLastChangedField('settings');
     patch({ rider_enabled: v } as unknown as Partial<BookingSettings>);
   }
-  // A rider can't be saved unless it has a name AND some content: a chosen PDF
-  // (upload mode) or at least one filled box/field (custom mode). Only enforced
-  // while the rider is enabled — a disabled rider blocks nothing.
-  const riderHasContent =
-    riderMode === 'upload'
-      ? !!riderPdfUrl
-      : riderMode === 'custom'
-        ? riderDefault.some((it) => it.type !== 'box' && (it.value || '').trim() !== '')
-        : false;
-  const riderMissing: string[] = [];
-  if (riderEnabled) {
-    if (riderName.trim() === '') riderMissing.push('a rider name');
-    if (!riderHasContent) riderMissing.push(riderMode === 'upload' ? 'an uploaded PDF' : 'at least one filled box');
-  }
-  const riderComplete = riderMissing.length === 0;
-  // A rider only counts as SAVED (and so collapses to the summary) once it has a
-  // name AND content. An unnamed work-in-progress keeps the builder open.
-  const riderSaved = riderHasContent && riderName.trim() !== '';
-  // Once a rider is saved we collapse the builder to a one-line "Saved rider —
-  // <name> [Edit]" row; clicking Edit re-opens the builder.
-  const [riderEditing, setRiderEditing] = useState(false);
-  // Shows a "Rider saved" confirmation when the builder collapses after a save.
-  const [riderJustSaved, setRiderJustSaved] = useState(false);
-  // Send-a-test-email state (see the button at the bottom of the DJ Rider card).
-  const [riderTestBusy, setRiderTestBusy] = useState(false);
-  const [riderTestMsg, setRiderTestMsg] = useState<string | null>(null);
-  async function sendRiderTest() {
-    setRiderTestMsg(null);
-    setRiderTestBusy(true);
-    try {
-      const res = await fetch('/api/rider/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: riderDefault, mode: riderMode ?? 'custom', pdfUrl: riderPdfUrl, name: riderName }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; emailedTo?: string; error?: string };
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not send the test.');
-      setRiderTestMsg(`✓ Test email sent${data.emailedTo ? ` to ${data.emailedTo}` : ''} — check your inbox.`);
-    } catch (e) {
-      setRiderTestMsg(e instanceof Error ? e.message : 'Could not send the test — try again.');
-    } finally {
-      setRiderTestBusy(false);
-    }
+  // The saved rider library (up to 10) lives in booking_settings.riders and
+  // rides the page's normal save. RiderLibrarySection owns the draft-editing UX;
+  // we only hand it the saved list + a setter that patches it back in.
+  const riders: NamedRider[] = normalizeNamedRiders((bookingSettings as { riders?: unknown }).riders);
+  function setRiders(next: NamedRider[]) {
+    setLastChangedField('settings');
+    patch({ riders: next } as unknown as Partial<BookingSettings>);
   }
   const guestlistEnabled = !!(bookingSettings as { guestlist_enabled?: boolean }).guestlist_enabled;
   function setGuestlistEnabled(v: boolean) {
@@ -484,7 +421,7 @@ export default function ClubBookingTab({
                     />
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
-                        I provide Sound System &amp; Decks/Controller
+                        I can provide Sound System &amp; Decks/Controller
                       </div>
                       {equipFull && (
                         <input
@@ -507,7 +444,7 @@ export default function ClubBookingTab({
                     />
                     <div className={styles.equipOptionBody}>
                       <div className={styles.equipOptionTitle}>
-                        I provide Decks/Controller only
+                        I can provide Decks/Controller only
                       </div>
                       {equipDecks && (
                         <input
@@ -532,6 +469,15 @@ export default function ClubBookingTab({
                       <div className={styles.equipOptionTitle}>
                         I require all equipment provided by venue
                       </div>
+                      {equipNone && (
+                        <input
+                          type="text"
+                          value={equipNoneDetail}
+                          onChange={(e) => setEquipNoneDetail(e.target.value)}
+                          placeholder="Specific equipment you need the venue to provide (e.g. 2× CDJ-3000, DJM-900, 2 monitors)"
+                          className={styles.equipDetailInput}
+                        />
+                      )}
                     </div>
                   </label>
                 </div>
@@ -579,6 +525,7 @@ export default function ClubBookingTab({
                             }`}
                           >
                             {t === 'flat' ? 'Flat Rate' : t === 'hourly' ? 'Hourly' : 'Offers'}
+                            {ratesDraft.global_rate_type === t && <span aria-hidden="true" style={{ marginLeft: 6 }}>✓</span>}
                           </button>
                         ))}
                       </div>
@@ -982,56 +929,14 @@ export default function ClubBookingTab({
                   </button>
                 </div>
 
-                {/* Saved rider — one line: the rider's name + an Edit button that
-                    re-opens the builder. Shown once there's saved content. */}
-                {riderSaved && !riderEditing && (
-                  <div style={{ marginTop: '.9rem' }}>
-                    {riderJustSaved && (
-                      <div style={{ marginBottom: '.5rem', color: 'var(--neon,#00e0a4)', fontSize: '.82rem', fontWeight: 700 }}>
-                        ✓ Rider saved
-                      </div>
-                    )}
-                    <div style={{ padding: '.7rem .9rem', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, background: 'rgba(255,255,255,.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>
-                          Saved rider
-                        </div>
-                        <div style={{ color: '#fff', fontWeight: 700, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {riderName.trim() || (riderMode === 'upload' ? 'Uploaded PDF' : 'Custom rider')}
-                        </div>
-                      </div>
-                      <div style={{ flexShrink: 0, display: 'flex', gap: '.4rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => { setRiderEditing(true); setRiderJustSaved(false); }}
-                          style={{
-                            background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
-                            borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
-                            fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={deleteRider}
-                          style={{
-                            background: 'transparent', border: '1px solid rgba(255,120,120,.6)', color: '#ff8b8b',
-                            borderRadius: 7, padding: '.4rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem',
-                            fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {riderEnabled && (!riderSaved || riderEditing) && (
-                  <div style={{ marginTop: '1.1rem' }}>
-                    <div className={styles.bodyHint} style={{ marginBottom: '1rem' }}>
-                      <div>There are two ways to add the rider:</div>
+                {/* The DJ's reusable rider library — up to 10 named riders,
+                    saved to booking_settings.riders and shared with the booking
+                    dashboard's rider loader. Drafts are local-only until Save;
+                    leaving with unsaved changes warns first. */}
+                {riderEnabled && (
+                  <div style={{ marginTop: '.4rem' }}>
+                    <div className={styles.bodyHint} style={{ marginBottom: '.6rem' }}>
+                      <div>There are two ways to add a rider:</div>
                       <div style={{ margin: '.35rem 0 0', paddingLeft: '1.2rem' }}>
                         <div>1. Upload a pre-existing rider.</div>
                         <div style={{ marginTop: '.2rem' }}>
@@ -1040,79 +945,11 @@ export default function ClubBookingTab({
                         </div>
                       </div>
                       <div style={{ marginTop: '.55rem' }}>
-                        Once the rider is set, you can deploy it with one click in the booking
-                        dashboard under the rider icon.
+                        Save up to 10 riders here, then deploy any of them with one click in the
+                        booking dashboard under the rider icon.
                       </div>
                     </div>
-                    <RiderBuilder
-                      mode={riderMode}
-                      onModeChange={setRiderMode}
-                      items={riderDefault}
-                      onItemsChange={setRiderDefault}
-                      pdfUrl={riderPdfUrl}
-                      onPdfUrlChange={setRiderPdfUrl}
-                      name={riderName}
-                      onNameChange={setRiderName}
-                    />
-                  </div>
-                )}
-                {onSaveSettings && (() => {
-                  const canSave = settingsDirty && riderComplete;
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem', marginTop: '.9rem' }}>
-                      {riderEnabled && !riderComplete && (
-                        <div style={{ color: '#ff8b8b', fontSize: '.72rem', textAlign: 'right' }}>
-                          Add {riderMissing.join(' and ')} before saving the rider.
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        disabled={!canSave}
-                        onClick={() => { onSaveSettings?.(); setRiderEditing(false); setRiderJustSaved(true); }}
-                        style={{
-                          background: canSave ? 'var(--neon)' : 'transparent',
-                          color: canSave ? '#04121a' : 'var(--muted)',
-                          border: `1px solid ${canSave ? 'var(--neon)' : 'var(--border)'}`,
-                          borderRadius: 7,
-                          padding: '.55rem 1.2rem',
-                          fontFamily: "'Space Mono', monospace",
-                          fontSize: '.62rem',
-                          fontWeight: 700,
-                          letterSpacing: '.06em',
-                          textTransform: 'uppercase',
-                          cursor: canSave ? 'pointer' : 'not-allowed',
-                        }}
-                      >
-                        {settingsDirty ? 'Save' : '✓ Saved'}
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {/* Send yourself a test — see exactly what the host receives when
-                    this rider is sent through the site. Goes to your own email. */}
-                {riderEnabled && riderHasContent && (
-                  <div style={{ marginTop: '1.4rem', paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.5rem', textAlign: 'center' }}>
-                    <div style={{ color: 'var(--muted)', fontSize: '.78rem', maxWidth: 420 }}>
-                      Send yourself a test to see exactly what the host receives when this rider is sent through the site.
-                    </div>
-                    <button
-                      type="button"
-                      disabled={riderTestBusy}
-                      onClick={sendRiderTest}
-                      style={{
-                        background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)',
-                        borderRadius: 8, padding: '.6rem 1.4rem', fontSize: '.85rem', fontWeight: 700,
-                        cursor: riderTestBusy ? 'default' : 'pointer', opacity: riderTestBusy ? 0.6 : 1,
-                      }}
-                    >
-                      {riderTestBusy ? 'Sending…' : 'Send test email'}
-                    </button>
-                    {riderTestMsg && (
-                      <div style={{ color: riderTestMsg.startsWith('✓') ? 'var(--neon,#00e0a4)' : '#ff8b8b', fontSize: '.78rem' }}>
-                        {riderTestMsg}
-                      </div>
-                    )}
+                    <RiderLibrarySection riders={riders} onChange={setRiders} />
                   </div>
                 )}
               </div>
