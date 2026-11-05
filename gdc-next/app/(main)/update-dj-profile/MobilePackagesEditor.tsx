@@ -472,10 +472,6 @@ export default function MobilePackagesEditor({
             </button>
           );
         })}
-        {/* On mobile, the selected package's editor opens inline here. */}
-        {isNarrow && selCat === cat && list.length > 0 && (
-          <div ref={cardRef} style={{ margin: '2px 0 12px', scrollMarginTop: 80 }}>{renderEditor()}</div>
-        )}
         <button type="button" style={addPkgBtn} onClick={() => addPackageTo(cat)}>+ Add Package</button>
       </>
     );
@@ -598,12 +594,11 @@ export default function MobilePackagesEditor({
         )}
       </aside>
 
-      {/* ── EDITOR (right pane on desktop; inline in the tree on mobile) ── */}
-      {!isNarrow && (
-        <main ref={cardRef} style={{ flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
-          {renderEditor()}
-        </main>
-      )}
+      {/* ── EDITOR (right pane on desktop; below the whole package list on
+             mobile, so the package list and its controls stay together up top) ── */}
+      <main ref={cardRef} style={isNarrow ? { flex: '1 1 100%', width: '100%', minWidth: 0, marginTop: 14, scrollMarginTop: 80 } : { flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
+        {renderEditor()}
+      </main>
 
       {/* ── Event types popup ── */}
       {etOpen && (() => {
