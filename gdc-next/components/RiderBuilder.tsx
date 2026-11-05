@@ -376,23 +376,26 @@ export default function RiderBuilder({
         </>
       )}
 
-      {/* Preview — opens the rider exactly as the host sees it (logo on top,
-          boxes, attachments), from the current unsaved draft. */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.4rem' }}>
-        <button
-          type="button"
-          onClick={() => setShowPreview(true)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '.45rem',
-            background: 'transparent', border: `1.5px solid ${NEON}`, borderRadius: 10,
-            color: NEON, padding: '.65rem 1.4rem', fontSize: '.9rem', fontWeight: 800, cursor: 'pointer',
-          }}
-        >
-          👁 Preview rider
-        </button>
-      </div>
+      {/* Preview — opens the rider exactly as the host sees it. Hidden for
+          UPLOAD mode: that rider is the DJ's own PDF sent as-is, so there's
+          nothing for us to render a preview of. */}
+      {mode !== 'upload' && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.4rem' }}>
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '.45rem',
+              background: 'transparent', border: `1.5px solid ${NEON}`, borderRadius: 10,
+              color: NEON, padding: '.65rem 1.4rem', fontSize: '.9rem', fontWeight: 800, cursor: 'pointer',
+            }}
+          >
+            👁 Preview rider
+          </button>
+        </div>
+      )}
 
-      {showPreview && (
+      {mode !== 'upload' && showPreview && (
         <div
           role="dialog"
           aria-modal="true"
