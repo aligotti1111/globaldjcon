@@ -719,10 +719,10 @@
   width: fit-content;
   max-width: 100%;
   margin-bottom: .5rem;
-  color: #05231b;
-  background: linear-gradient(90deg, var(--neon, #00e0a4), #27d2b4);
-  border-radius: 4px;
-  padding: .22rem .55rem;
+  color: #03201f;
+  background: linear-gradient(90deg, #19cdb3 0%, #16bcd0 100%);
+  border-radius: 5px;
+  padding: .25rem .6rem;
   font-weight: 700;
 }
 .pkgFieldRequired {
