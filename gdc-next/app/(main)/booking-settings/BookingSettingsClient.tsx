@@ -57,7 +57,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // them back here (as the old single-rider manual-save flow did) would let a
   // later autosave on another tab clobber the riders written out of band.
   const SETTINGS_KEYS: string[] = djType === 'club'
-    ? ['booking_window_months', 'club_bookings_per_day', 'club_deposit_pct', 'tax_enabled', 'tax_pct', 'require_contract', 'guestlist_enabled']
+    ? ['booking_window_months', 'club_bookings_per_day', 'club_deposit_pct', 'tax_enabled', 'tax_pct', 'require_contract', 'rider_enabled', 'guestlist_enabled']
     : ['mob_booking_window', 'mob_bookings_per_day', 'mob_deposit_pct', 'rate_currency', 'tax_enabled', 'tax_pct', 'require_contract'];
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests' | 'receipts';
   const [secTab, setSecTab] = useState<SecTab>('settings');
