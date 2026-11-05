@@ -293,11 +293,18 @@ export default function MobilePackagesEditor({
   }
   // Live validity of one package — recomputed as the DJ types, so a red flag in
   // the sidebar clears itself the moment that package is filled in.
+  // A package title can't be the same as its event type's name (e.g. a package
+  // titled "Wedding" inside the Wedding event type reads as a duplicate).
+  function titleMatchesEventType(cat: string, title: string | undefined): boolean {
+    const t = (title || '').trim().toLowerCase();
+    return t !== '' && t === labelFor(cat).trim().toLowerCase();
+  }
   function pkgInvalid(cat: string, i: number): boolean {
     const p = (listFor(mob, cat)[i] || {}) as { title?: string; details?: string };
     // Title isn't required — a blank one saves as "Package N" — so only details
-    // and pricing can mark a package incomplete.
-    return textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>);
+    // and pricing can mark a package incomplete. A title that collides with the
+    // event type name is also flagged.
+    return textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>) || titleMatchesEventType(cat, p.title);
   }
   // Is this a custom (pulled-out) event type that still has an incomplete package?
   function catIncomplete(cat: string): boolean {
@@ -332,6 +339,7 @@ export default function MobilePackagesEditor({
       for (let i = 0; i < list.length; i++) {
         const p = (list[i] || {}) as { title?: string; details?: string };
         const missing: string[] = []; const labels: string[] = [];
+        if (titleMatchesEventType(cat, p.title)) { missing.push('title'); labels.push(`a title different from “${labelFor(cat)}”`); }
         if (textEmpty(p.details)) { missing.push('details'); labels.push('a description'); }
         if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('a price in every box'); }
         if (missing.length) invalids.push({ cat, i, labels, missing });
@@ -581,6 +589,7 @@ export default function MobilePackagesEditor({
             // the first invalid one — so the red boxes follow the DJ around.
             const p = currentPkg as unknown as Record<string, unknown>;
             const m: string[] = [];
+            if (titleMatchesEventType(selCat, p.title as string | undefined)) m.push('title');
             if (textEmpty(p.details)) m.push('details');
             if (priceMissing(p)) m.push('priceTiers');
             return m.length ? m : undefined;
