@@ -50,8 +50,14 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   // Guest List too). These are EXCLUDED from the auto-save writes and persisted
   // only by their own Save button, so saving Packages / Discounts / Rates never
   // silently commits an in-progress Settings edit. Each tab saves independently.
+  // NOTE: the DJ Rider fields (rider_enabled + the riders library) are
+  // deliberately NOT here. The rider tab AUTOSAVES now — the rider library owns
+  // its own local-draft UX and only commits whole riders to booking_settings on
+  // an explicit Save, at which point the normal autosave persists them. Holding
+  // them back here (as the old single-rider manual-save flow did) would let a
+  // later autosave on another tab clobber the riders written out of band.
   const SETTINGS_KEYS: string[] = djType === 'club'
-    ? ['booking_window_months', 'club_bookings_per_day', 'club_deposit_pct', 'tax_enabled', 'tax_pct', 'require_contract', 'rider_enabled', 'rider_default', 'rider_mode', 'rider_pdf_url', 'guestlist_enabled']
+    ? ['booking_window_months', 'club_bookings_per_day', 'club_deposit_pct', 'tax_enabled', 'tax_pct', 'require_contract', 'guestlist_enabled']
     : ['mob_booking_window', 'mob_bookings_per_day', 'mob_deposit_pct', 'rate_currency', 'tax_enabled', 'tax_pct', 'require_contract'];
   type SecTab = 'settings' | 'packages' | 'discounts' | 'payments' | 'contracts' | 'planners' | 'rates' | 'rider' | 'guests' | 'receipts';
   const [secTab, setSecTab] = useState<SecTab>('settings');
@@ -174,7 +180,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
   function applyBookingSettings(next: BookingSettings) {
     setBookingSettings(next);
     const tab = secTabRef.current;
-    if (tab === 'settings' || tab === 'rider' || tab === 'guests') setManualDirtyTab(tab);
+    if (tab === 'settings' || tab === 'guests') setManualDirtyTab(tab);
   }
   // Clear the manual-tab dot the moment the manual-save fields are back in sync
   // with what's saved — independent of package / discount edits.
@@ -193,7 +199,7 @@ export default function BookingSettingsClient({ initialProfile, hasBookingAccess
     if (JSON.stringify(bookingSettings) === savedSnapshot) return;
     // Settings / DJ Rider / Guest List save manually via their own buttons —
     // don't autosave those. Every other tab keeps auto-saving.
-    if (secTabRef.current === 'settings' || secTabRef.current === 'rider' || secTabRef.current === 'guests') return;
+    if (secTabRef.current === 'settings' || secTabRef.current === 'guests') return;
     // Auto-save everything EXCEPT the manual-save fields: hold those at their
     // last-saved values so an unsaved Settings edit never rides along on a
     // Packages / Discounts / Rates save.
