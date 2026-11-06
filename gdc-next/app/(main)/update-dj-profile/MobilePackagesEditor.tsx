@@ -123,7 +123,7 @@ export default function MobilePackagesEditor({
   const [previewStart, setPreviewStart] = useState('18:00');
   const [previewEnd, setPreviewEnd] = useState('23:00');
   const [pvLb, setPvLb] = useState<{ photos: string[]; details: string; active: number } | null>(null);
-  function openPreview() { setPreviewEvent(selectedEventTypes[0] || 'general'); setPreviewSel(0); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
+  function openPreview() { setPreviewEvent(selCat || selectedEventTypes[0] || 'general'); setPreviewSel(safeIdx); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
 
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
