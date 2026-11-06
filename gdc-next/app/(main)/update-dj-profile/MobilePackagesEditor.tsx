@@ -631,7 +631,7 @@ export default function MobilePackagesEditor({
               </div>
             )}
             {onEventTypesSave && (
-              <button type="button" onClick={openEtEditor} style={{ width: '100%', background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 9, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <button type="button" onClick={openEtEditor} style={{ width: '100%', background: 'rgba(255,255,255,.03)', border: '1px solid #fff', color: '#fff', borderRadius: 9, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                 Edit Event Types
               </button>
