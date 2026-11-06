@@ -278,6 +278,7 @@ export default function MobileBookingForm({
 
   // Photo lightbox (when clicking a package thumbnail)
   const [photoLightboxUrl, setPhotoLightboxUrl] = useState<{ photos: string[]; details: string; active: number } | null>(null);
+  const [lbZoom, setLbZoom] = useState(false);
 
   // Submit state
   const [submitting, setSubmitting] = useState(false);
@@ -499,7 +500,14 @@ export default function MobileBookingForm({
   useEffect(() => {
     if (!photoLightboxUrl) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setPhotoLightboxUrl(null);
+      if (e.key === 'Escape') { setPhotoLightboxUrl(null); return; }
+      if (e.key === 'ArrowRight') {
+        setLbZoom(false);
+        setPhotoLightboxUrl((cur) => (cur ? { ...cur, active: (cur.active + 1) % cur.photos.length } : cur));
+      } else if (e.key === 'ArrowLeft') {
+        setLbZoom(false);
+        setPhotoLightboxUrl((cur) => (cur ? { ...cur, active: (cur.active - 1 + cur.photos.length) % cur.photos.length } : cur));
+      }
     }
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
@@ -508,6 +516,8 @@ export default function MobileBookingForm({
       document.body.style.overflow = '';
     };
   }, [photoLightboxUrl]);
+  // Reset zoom whenever the lightbox opens/closes.
+  useEffect(() => { if (!photoLightboxUrl) setLbZoom(false); }, [photoLightboxUrl]);
 
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit() {
@@ -1774,13 +1784,40 @@ export default function MobileBookingForm({
             onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.photoLightboxStage}>
-              <div className={styles.photoLightboxMain}>
+              <div className={styles.photoLightboxMain} style={{ position: 'relative', overflow: 'auto' }}>
+                {/* Prev / next arrows (desktop + keyboard ← →). */}
+                {photoLightboxUrl.photos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Previous photo"
+                      onClick={(e) => { e.stopPropagation(); setLbZoom(false); setPhotoLightboxUrl((cur) => cur ? { ...cur, active: (cur.active - 1 + cur.photos.length) % cur.photos.length } : cur); }}
+                      style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 3, width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer' }}
+                    >‹</button>
+                    <button
+                      type="button"
+                      aria-label="Next photo"
+                      onClick={(e) => { e.stopPropagation(); setLbZoom(false); setPhotoLightboxUrl((cur) => cur ? { ...cur, active: (cur.active + 1) % cur.photos.length } : cur); }}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 3, width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer' }}
+                    >›</button>
+                  </>
+                )}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photoLightboxUrl.photos[photoLightboxUrl.active]}
                   alt="Package preview"
                   className={styles.photoLightboxImg}
+                  onClick={(e) => { e.stopPropagation(); setLbZoom((z) => !z); }}
+                  title={lbZoom ? 'Click to zoom out' : 'Click to zoom in'}
+                  style={{ transform: lbZoom ? 'scale(2)' : 'scale(1)', transformOrigin: 'center', transition: 'transform .18s ease', cursor: lbZoom ? 'zoom-out' : 'zoom-in' }}
                 />
+                {/* Zoom toggle button. */}
+                <button
+                  type="button"
+                  aria-label={lbZoom ? 'Zoom out' : 'Zoom in'}
+                  onClick={(e) => { e.stopPropagation(); setLbZoom((z) => !z); }}
+                  style={{ position: 'absolute', right: 8, bottom: 8, zIndex: 3, padding: '.35rem .6rem', borderRadius: 8, border: 'none', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: '.9rem', cursor: 'pointer' }}
+                >{lbZoom ? '−' : '+'}</button>
               </div>
               {photoLightboxUrl.photos.length > 1 && (
                 <div className={styles.photoLightboxThumbs}>
