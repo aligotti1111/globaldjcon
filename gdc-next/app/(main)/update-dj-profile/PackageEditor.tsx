@@ -422,6 +422,9 @@ export default function PackageEditor({
           </span>
         </div>
 
+        {/* Divider before the wedding-only cocktail/ceremony blocks. */}
+        {!reqAll && isWedding && <div className={styles.pkgDivider} style={{ margin: '1.1rem 0' }} />}
+
         {/* Cocktail block — WEDDING ONLY. Hidden when reqAll. General and
             Mitzvah packages do not offer a cocktail-hour option. */}
         {!reqAll && isWedding && (
