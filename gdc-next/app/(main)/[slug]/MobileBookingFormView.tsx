@@ -1116,7 +1116,7 @@ export default function MobileBookingForm({
               onChange={(e) => setEventType(e.target.value)}
               className={`${fieldClass('mpf-event-type', styles.select)} ${styles.hasCheckSelect}`}
             >
-              <option value="">Select event type...</option>
+              <option value="">—</option>
               {Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) =>
                 eventTypesAllowed.includes(val) ? (
                   <option key={val} value={val}>{lbl}</option>
@@ -1362,7 +1362,7 @@ export default function MobileBookingForm({
                 onChange={(e) => setStartTime(e.target.value)}
                 className={`${fieldClass('mpf-start-time', styles.select)} ${styles.hasCheckSelect}`}
               >
-                <option value="">Select…</option>
+                <option value="">—</option>
                 {MOB_TIME_OPTIONS.map(o => (
                   <option key={o.val} value={o.val}>{o.label}</option>
                 ))}
@@ -1380,7 +1380,7 @@ export default function MobileBookingForm({
                 onChange={(e) => setEndTime(e.target.value)}
                 className={`${styles.select} ${styles.hasCheckSelect}`}
               >
-                <option value="">Select…</option>
+                <option value="">—</option>
                 {endTimeOptions.map(o => (
                   <option key={o.val} value={o.val}>{o.label}</option>
                 ))}
@@ -1445,7 +1445,7 @@ export default function MobileBookingForm({
                     onChange={(e) => setCocktailStart(e.target.value)}
                     className={fieldClass('mpf-cocktail-start', styles.select)}
                   >
-                    <option value="">Select…</option>
+                    <option value="">—</option>
                     {MOB_TIME_OPTIONS.map(o => (
                       <option key={o.val} value={o.val}>{o.label}</option>
                     ))}
@@ -1540,7 +1540,7 @@ export default function MobileBookingForm({
                     onChange={(e) => setCeremonyStart(e.target.value)}
                     className={fieldClass('mpf-ceremony-start', styles.select)}
                   >
-                    <option value="">Select…</option>
+                    <option value="">—</option>
                     {MOB_TIME_OPTIONS.map(o => (
                       <option key={o.val} value={o.val}>{o.label}</option>
                     ))}
