@@ -418,7 +418,8 @@
 .packageBody {
   padding: .75rem .9rem;
   display: flex;
-  gap: .75rem;
+  flex-direction: column;
+  gap: .6rem;
   align-items: flex-start;
   flex: 1;
 }
