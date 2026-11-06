@@ -605,6 +605,17 @@
   background: #000;
   border-radius: 6px;
 }
+
+/* Bigger lightbox on desktop so photos are easier to inspect. */
+@media (min-width: 768px) {
+  .photoLightboxInner {
+    max-width: min(920px, 92vw);
+    max-height: 90vh;
+  }
+  .photoLightboxImg {
+    max-height: 74vh;
+  }
+}
 .photoLightboxDetails {
   padding: 1rem 1.1rem;
   overflow-y: auto;
