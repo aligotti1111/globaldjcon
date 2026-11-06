@@ -157,6 +157,43 @@ export default function PackageEditor({
     updateField('details', html);
   }
 
+  // Enter inside a list item: browsers delete an empty item / collapse the whole
+  // list. Handle it ourselves — split the current <li> at the caret into a new
+  // one — so a list item never disappears on Enter.
+  function onEditorKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel || sel.rangeCount === 0) return;
+    let node: Node | null = sel.anchorNode;
+    if (node && node.nodeType === 3) node = (node as Text).parentElement;
+    let li: HTMLElement | null = node as HTMLElement | null;
+    while (li && li !== el && li.tagName !== 'LI') li = li.parentElement;
+    if (!li || li.tagName !== 'LI' || !li.parentElement) return; // not in a list → default
+    e.preventDefault();
+    const range = sel.getRangeAt(0);
+    // Everything from the caret to the end of this <li> moves into the new <li>.
+    const after = document.createRange();
+    after.selectNodeContents(li);
+    after.setStart(range.endContainer, range.endOffset);
+    const frag = after.extractContents();
+    const newLi = document.createElement('li');
+    if (frag.textContent && frag.textContent.length) newLi.appendChild(frag);
+    else newLi.appendChild(document.createElement('br'));
+    if (!li.textContent || !li.textContent.length) {
+      if (!li.querySelector('br')) li.appendChild(document.createElement('br'));
+    }
+    li.parentElement.insertBefore(newLi, li.nextSibling);
+    const r2 = document.createRange();
+    r2.setStart(newLi, 0);
+    r2.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r2);
+    const html = el.innerHTML;
+    lastSetDetailsRef.current = html;
+    updateField('details', html);
+  }
+
   // ── Photo upload ────────────────────────────────────────────────
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
   const [showOutsideNote, setShowOutsideNote] = useState(false);
@@ -258,6 +295,7 @@ export default function PackageEditor({
           ref={editorRef}
           contentEditable
           className={`${styles.rteEditor} ${errSet.has('details') ? styles.pkgFieldError : ''}`}
+          onKeyDown={onEditorKeyDown}
           onInput={(e) => {
             const html = (e.currentTarget as HTMLDivElement).innerHTML;
             lastSetDetailsRef.current = html;
