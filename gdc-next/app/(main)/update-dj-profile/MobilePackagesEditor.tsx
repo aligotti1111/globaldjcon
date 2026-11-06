@@ -614,24 +614,34 @@ export default function MobilePackagesEditor({
       <aside style={isNarrow ? { flex: '1 1 100%', width: '100%' } : { flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
         {renderCategory('general')}
         {railTypes.map((t) => renderCategory(t))}
-        {addableTypes.length > 0 && (
-          <select
-            aria-label="Add an event type with its own packages"
-            value=""
-            onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
-            style={{ width: '100%', marginTop: 2, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 7, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-          >
-            <option value="">+ Custom Pricing For Event Type</option>
-            {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
-          </select>
-        )}
-        {onEventTypesSave && (
-          <button type="button" onClick={openEtEditor} style={{ width: '100%', marginTop: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 7, padding: '.5rem', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Edit event types</button>
-        )}
-        {addableTypes.length > 0 && (
-          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: '#9a9ab0', margin: '.5rem .1rem 0' }}>
-            &ldquo;Add Event Type&rdquo; gives that event its own packages, pricing &amp; photos, separate from General.
-          </p>
+        {(addableTypes.length > 0 || onEventTypesSave) && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {addableTypes.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <select
+                  aria-label="Add an event type with its own packages"
+                  value=""
+                  onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
+                  style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', background: 'linear-gradient(180deg, rgba(0,224,164,.10), rgba(10,10,16,.4))', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 9, padding: '.7rem 2rem .7rem .8rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', outline: 'none' }}
+                >
+                  <option value="">+ Add Pricing For An Event Type</option>
+                  {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
+                </select>
+                <span aria-hidden="true" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--neon)', fontSize: '.7rem', pointerEvents: 'none' }}>▾</span>
+              </div>
+            )}
+            {onEventTypesSave && (
+              <button type="button" onClick={openEtEditor} style={{ width: '100%', background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 9, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                Edit Event Types
+              </button>
+            )}
+            {addableTypes.length > 0 && (
+              <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.6, letterSpacing: '.04em', textTransform: 'uppercase', color: '#9a9ab0', margin: '.2rem .1rem 0' }}>
+                Gives that event its own packages, pricing &amp; photos, separate from General.
+              </p>
+            )}
+          </div>
         )}
       </aside>
 
