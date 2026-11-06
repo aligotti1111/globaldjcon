@@ -637,8 +637,8 @@ export default function MobilePackagesEditor({
               </button>
             )}
             {addableTypes.length > 0 && (
-              <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.6, letterSpacing: '.04em', textTransform: 'uppercase', color: '#9a9ab0', margin: '.2rem .1rem 0' }}>
-                Gives that event its own packages, pricing &amp; photos, separate from General.
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.72rem', lineHeight: 1.5, color: '#9a9ab0', margin: '.2rem .1rem 0' }}>
+                Custom pricing for an event type gives that event its own packages.
               </p>
             )}
           </div>
