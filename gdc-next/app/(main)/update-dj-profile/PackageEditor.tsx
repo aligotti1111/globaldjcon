@@ -351,6 +351,7 @@ export default function PackageEditor({
                     {!reqAll && minH > 1 && (
                       <div className={styles.priceRow} style={{ marginBottom: '.35rem' }}>
                         <span className={styles.priceRowLabel} aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', padding: '.4rem .5rem', border: '1px solid transparent', visibility: 'hidden' }}>{minH - 1} Hour Event{isWedding ? ' (Reception)' : ''}</span>
+                        <span className={styles.priceCurrency} aria-hidden="true" style={{ visibility: 'hidden' }}>{cur}</span>
                         <button
                           type="button"
                           onClick={() => commit([{ hours: minH - 1, price: '' }, ...tiers])}
@@ -392,6 +393,7 @@ export default function PackageEditor({
                     {!reqAll && maxH < 9 && (
                       <div className={styles.priceRow} style={{ marginTop: '.35rem' }}>
                         <span className={styles.priceRowLabel} aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', padding: '.4rem .5rem', border: '1px solid transparent', visibility: 'hidden' }}>{maxH + 1} Hour Event{isWedding ? ' (Reception)' : ''}</span>
+                        <span className={styles.priceCurrency} aria-hidden="true" style={{ visibility: 'hidden' }}>{cur}</span>
                         <button
                           type="button"
                           onClick={() => commit([...tiers, { hours: maxH + 1, price: '' }])}
@@ -546,7 +548,7 @@ export default function PackageEditor({
               onClick={() => setShowOutsideNote((v) => !v)}
               style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', fontSize: '.74rem', fontFamily: "'DM Sans', sans-serif", fontWeight: 600, textAlign: 'left' }}
             >
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>How is pricing calculated if an event&rsquo;s hours selected are outside of the listed options?</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>How is pricing calculated if the hours of the event selected are outside the listed options?</span>
               <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
             </button>
             {showOutsideNote && (
