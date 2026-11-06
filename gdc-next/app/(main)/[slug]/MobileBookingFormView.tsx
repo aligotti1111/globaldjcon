@@ -1350,7 +1350,6 @@ export default function MobileBookingForm({
         </div>
 
         {/* Times */}
-        <div className={styles.timesLabel}>{dateLabel}</div>
         <div className={styles.timesRow}>
           <div className={styles.timeCol}>
             <label htmlFor="mpf-start-time">
