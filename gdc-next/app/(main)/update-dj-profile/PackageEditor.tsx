@@ -499,7 +499,7 @@ export default function PackageEditor({
               onClick={() => setShowOutsideNote((v) => !v)}
               style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.62rem', fontFamily: "'Space Mono', monospace" }}
             >
-              <span>How is pricing calculated if an event is outside of the listed options?</span>
+              <span>How is pricing calculated if an event&rsquo;s hours selected are outside of the listed options?</span>
               <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
             </button>
             {showOutsideNote && (
