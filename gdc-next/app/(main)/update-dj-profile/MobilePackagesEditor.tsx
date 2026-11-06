@@ -1,2028 +1,855 @@
 'use client';
 
-// MobileBookingForm — booking-request form for mobile DJ profiles.
-// Faithful port of vanilla djp-mob-public.js renderMobPubForm + submission
-// logic (lines 709–1340).
+// MobilePackagesEditor — INDEPENDENT packages, sidebar-tree layout.
 //
-// Renders as a centered popup modal (portaled to document.body), matching
-// ClubBookingForm. The parent (MobilePublicCalendar) controls visibility
-// by mounting/unmounting based on selectedDate, and provides onClose to
-// dismiss. The X button in the header invokes onClose; backdrop click
-// does NOT close (intentional — long forms shouldn't be lost by a stray
-// tap), again matching ClubBookingForm.
+// LEFT (sidebar, desktop): a tree of categories. General first with its own
+// packages + "Add Package"; then each pulled-out event type below with its own
+// packages + "Add Package"; then "+ Add Event Type" / "Edit event types".
+// RIGHT: the one selected package's editor (reuses PackageEditor).
 //
-// On submit, if the booker picked a Nominatim suggestion we capture the
-// venue lat/lon and store them on the booking row. The DJ's booking-
-// requests page (built in a later session) uses those coords + the DJ's
-// own zip to flag out-of-range events. The booker is never warned —
-// per Anthony's UX direction the warning is for the DJ only.
+// Each category owns a fully INDEPENDENT list of packages (title, description,
+// photos, prices) — nothing is shared or copied across event types. A booker
+// sees a pulled-out type's own packages; every other type uses General.
 //
-// DEFERRED:
-//   - International phone formats (this session is US-only)
-//   - mob_booking_request / mob_booking_confirm email types — these aren't
-//     even in vanilla send-email.js (calls fail silently in prod). When the
-//     email types are added in a later session, uncomment the fetch calls
-//     near the bottom of handleSubmit. For now booking inserts succeed but
-//     no email is sent — same behavior as vanilla.
+// Reads any stored shape via normalizeToIndependent (old buckets / v1 /
+// already-v2) and writes the v2 `{ model:'independent', general, overrides }`
+// shape on save. Migration is byte-safe: an existing DJ's page is identical.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useAuth } from '@/components/AuthProvider';
-import { isFullName, normalizeName, FULL_NAME_ERROR } from '@/lib/fullName';
-import styles from './mobileBookingForm.module.css';
-import { currencySymbol } from '@/lib/constants';
+import type { CSSProperties } from 'react';
+import styles from './updateDjProfile.module.css';
+import PackageEditor from './PackageEditor';
+import { useConfirm } from '@/components/ConfirmModal';
+import { type MobilePackage, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
+import { calcPrice, MOB_TIME_OPTIONS, MOB_END_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
+import bookingStyles from '@/app/(main)/[slug]/mobileBookingForm.module.css';
+import { MOB_EVENT_LABELS, mobEventLabel, makeCustomEventKey, currencySymbol, type CustomEventType } from '@/lib/constants';
 import {
-  type BookingSettings,
-  type MobilePackage,
-  computeDiscount,
-  isSaleActive,
-  isPromoUsable,
-  type DiscountResult,
-} from './bookingSettings';
-import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
-import {
-  MOB_EVENT_TYPE_LABELS,
-  EVENT_SUBFIELDS,
-  buildEventDetails,
-  MOB_TIME_OPTIONS,
-  buildMobEndTimeOptions,
-  formatUSPhone,
-  getPackageCategory,
-  resolvePackage,
-  calcPrice,
-  applyDayPriceAdjust,
-  hoursBetween,
-  halfHoursBetween,
-  durationLabel,
-  halfHourLabel,
-  formatLongDate,
-  searchAddresses,
-  type AddressSuggestion,
-} from './mobileBookingForm';
+  normalizeToIndependent,
+  serializeIndependent,
+  resolveIndependent,
+  listFor,
+  addPackage as addPkg,
+  removePackage as removePkg,
+  setPackageAt,
+  pullTypeOut,
+  putTypeBack,
+  type MobPackagesIndependent,
+  type Pkg,
+} from '@/app/(main)/[slug]/packageModelIndependent';
 
-// Country list for the venue-address autocomplete scope — same set the
-// homepage DJ search uses (idx-filters.js parity). Each entry pairs an
-// ISO 3166-1 alpha-2 code (passed to Nominatim's countrycodes= param)
-// with a flag emoji + display name. Dropdown shows "🇺🇸 US"; the booker
-// picks the country first so address suggestions stay scoped to it.
-const BOOKING_COUNTRIES: { code: string; flag: string; name: string }[] = [
-  { code: 'us', flag: '🇺🇸', name: 'United States' },
-  { code: 'gb', flag: '🇬🇧', name: 'United Kingdom' },
-  { code: 'ca', flag: '🇨🇦', name: 'Canada' },
-  { code: 'au', flag: '🇦🇺', name: 'Australia' },
-  { code: 'de', flag: '🇩🇪', name: 'Germany' },
-  { code: 'fr', flag: '🇫🇷', name: 'France' },
-  { code: 'nl', flag: '🇳🇱', name: 'Netherlands' },
-  { code: 'es', flag: '🇪🇸', name: 'Spain' },
-  { code: 'it', flag: '🇮🇹', name: 'Italy' },
-  { code: 'br', flag: '🇧🇷', name: 'Brazil' },
-  { code: 'mx', flag: '🇲🇽', name: 'Mexico' },
-  { code: 'jp', flag: '🇯🇵', name: 'Japan' },
-  { code: 'za', flag: '🇿🇦', name: 'South Africa' },
-  { code: 'nz', flag: '🇳🇿', name: 'New Zealand' },
-  { code: 'ie', flag: '🇮🇪', name: 'Ireland' },
-  { code: 'se', flag: '🇸🇪', name: 'Sweden' },
-  { code: 'no', flag: '🇳🇴', name: 'Norway' },
-  { code: 'dk', flag: '🇩🇰', name: 'Denmark' },
-  { code: 'be', flag: '🇧🇪', name: 'Belgium' },
-  { code: 'ch', flag: '🇨🇭', name: 'Switzerland' },
-  { code: 'pt', flag: '🇵🇹', name: 'Portugal' },
-];
-
-interface DjLite {
-  id: string;
-  name: string | null;
-  slug: string | null;
-  event_types: string | null;  // comma-separated
-  mob_custom_event_types?: unknown; // DJ-defined event types [{key,label}]
-  zip: string | null;          // for distance check
-  travel_distance: string | null; // 'worldwide' or numeric miles
+function catFor(eventType: string): 'general' | 'wedding' | 'mitzvah' {
+  if (eventType === 'weddings') return 'wedding';
+  if (eventType === 'mitzvah') return 'mitzvah';
+  return 'general';
 }
 
-interface CurrentUser {
-  id: string;
-  email?: string | null;
-  name?: string | null;
-}
+export default function MobilePackagesEditor({
+  mobPackages,
+  selectedEventTypes,
+  customEventTypes = [],
+  specialtyTypes = [],
+  userId,
+  currency,
+  onSave,
+  onDirtyChange,
+  masterSaveTrigger = 0,
+  onEventTypesSave,
+  depositPct = 0,
+  taxEnabled = false,
+  taxPct = 0,
+}: {
+  mobPackages: Record<string, unknown> | null | undefined;
+  selectedEventTypes: string[];
+  customEventTypes?: CustomEventType[];
+  specialtyTypes?: string[];
+  userId: string;
+  currency: string;
+  onSave: (next: MobPackagesIndependent) => void;
+  onEventTypesSave?: (selected: string[], custom: CustomEventType[], specialty: string[]) => void | Promise<void>;
+  depositPct?: number;
+  taxEnabled?: boolean;
+  taxPct?: number;
+  onDirtyChange?: (dirty: boolean) => void;
+  masterSaveTrigger?: number;
+}) {
+  const labelFor = (eventType: string): string =>
+    eventType === 'general' ? 'General events' : mobEventLabel(eventType, customEventTypes);
 
-interface Props {
-  dateKey: string;
-  dj: DjLite;
-  bookingSettings: BookingSettings;
-  currentUser: CurrentUser;
-  onClose: () => void;
-  // Fired once the booking row is successfully inserted — lets the parent
-  // calendar refresh its pending-dates set so this date flips to "Pending".
-  onSubmitted?: () => void;
-}
-
-export default function MobileBookingForm({
-  dateKey,
-  dj,
-  bookingSettings,
-  currentUser,
-  onClose,
-  onSubmitted,
-}: Props) {
-  // Full profile from auth context. The `currentUser` prop is a narrowed
-  // { id, email, name } from the calendar; anything outside those three fields
-  // has to come from here.
-  const { user: authUser } = useAuth();
-  // "Old" DJ accounts can have a legacy/blank role, so key off the profile
-  // slug (every DJ/venue has one; hosts don't). Venues may still book.
-  const viewerCannotBook = !!authUser?.isMember || (!!authUser?.slug && authUser?.role !== 'venue');
-
-  // ── Form state ────────────────────────────────────────────────────
-  /**
-   * Prefilled from the number on the account when there is one.
-   *
-   * A host who signed up by phone already proved they hold that number three
-   * minutes ago — asking them to type it again is the app forgetting something
-   * it was just told. Still editable: the booking contact might legitimately
-   * be a different number than the one they log in with.
-   *
-   * Runs through the same formatter as typed input so a stored "+19175551234"
-   * shows as "(917) 555-1234" rather than raw E.164.
-   *
-   * The leading country code has to come off FIRST. formatUSPhone only strips
-   * non-digits, so handing it 11 digits shifts every group left and produces
-   * "(191) 755-5123" — a plausible-looking wrong number, which is worse than
-   * an obviously broken one because nobody proofreads a prefilled field.
-   */
-  const accountPhone = (() => {
-    // NOT from the currentUser prop. The calendars that render this form pass
-    // a hand-picked { id, email, name } — sms_phone isn't in it and never was,
-    // so reading it from the prop silently produced an empty string. Widening
-    // that prop would mean editing both the mobile and desktop calendars;
-    // the auth context already has the full profile right here.
-    // sms_phone postdates the CurrentUser type, so it's cast rather than
-    // regenerating types for one field.
-    const stored = (authUser as { sms_phone?: string | null } | null)?.sms_phone || '';
-    const digits = stored.replace(/\D/g, '');
-    const ten = digits.length === 11 && digits.startsWith('1')
-      ? digits.slice(1)
-      : digits;
-    return ten.length === 10 ? formatUSPhone(ten) : '';
-  })();
-  const [phone, setPhone] = useState(accountPhone);
-  // Per-booking text-notification opt-in (checkbox under the phone field).
-  const [smsOptIn, setSmsOptIn] = useState(false);
-  /**
-   * Whether the number came from the ACCOUNT — not whether the field happens
-   * to have something in it. Deriving this from `phone` looked equivalent and
-   * wasn't: a host with no stored number would type one digit, this would flip
-   * true, and the input they were mid-way through typing into would disappear.
-   */
-  const knownPhone = accountPhone !== '';
-  /**
-   * Where this booking's paperwork gets sent.
-   *
-   * A host who signed up with a phone number has no email on their account,
-   * and everything that happens after this form — the offer, the confirmation
-   * with the bill, the contract to sign, the planner link, the cancellation
-   * link — is an email. Without one they'd book successfully and then never
-   * hear anything again, which is worse than not booking at all.
-   *
-   * So it's asked here, once, at the moment it actually buys them something.
-   * Hosts who already have an email never see this field.
-   */
-  const [contactEmail, setContactEmail] = useState('');
-  /**
-   * The address the server last refused, so the red ring can lift when they
-   * type a genuinely different one — not merely when what's in the box
-   * happens to look like a valid email. Without this the highlight clears on
-   * the first keystroke, while the address is still the rejected one.
-   */
-  const [rejectedEmail, setRejectedEmail] = useState('');
-  /**
-   * Declared up here, not down with the other *Valid flags, because the
-   * highlight-clearing effect lists it as a dependency — and dependency arrays
-   * are evaluated during render, at the effect's position in the file. Left
-   * below, it threw "Cannot access 'emailValid' before initialization" on
-   * every render of the form.
-   */
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
-  // Same reasoning as the phone: prefer the full profile, fall back to the
-  // narrowed prop so this still behaves if the context isn't there.
-  const needsEmail = !(((authUser?.email || currentUser.email) || '').trim());
-  /**
-   * The host's name, and whether we still need a usable one.
-   *
-   * A contract names two parties. Hosts were signing up with a first name
-   * only, and nothing noticed until a DJ went to generate the contract weeks
-   * later — by which point the host is long gone and the DJ is chasing them
-   * for a surname. Signup now requires both, but that does nothing for the
-   * accounts that already exist, and this form is the one place those hosts
-   * reliably come back to.
-   *
-   * Same shape as the phone above: when the account already has a full name we
-   * show it as plain text, because an empty-looking box next to something we
-   * already know reads as another chore. Only an incomplete name becomes a
-   * field.
-   */
-  const accountName = normalizeName(
-    (authUser as { name?: string | null } | null)?.name || currentUser.name || '',
-  );
-  const [fullName, setFullName] = useState(accountName);
-  // Known name/phone show as static text with a pencil; clicking it turns the
-  // field back into an editable input (booking-only — the edit rides with this
-  // request but doesn't change the account's stored value).
-  const [editingName, setEditingName] = useState(false);
-  const [editingPhone, setEditingPhone] = useState(false);
-  /**
-   * Derived from the ACCOUNT, not from the input — the same trap `knownPhone`
-   * documents. Reading `isFullName(fullName)` here would make the field vanish
-   * the instant they typed the space before their surname, mid-word.
-   */
-  const needsFullName = !isFullName(accountName);
-  const fullNameValid = isFullName(fullName);
-  const [eventType, setEventType] = useState('');
-  // Promo code entry (client-typed). appliedCode is set only after a valid
-  // code is confirmed via Apply; the actual discount is the better of an
-  // active sale and the applied code (no stacking — see computeDiscount).
-  const [promoInput, setPromoInput] = useState('');
-  const [appliedCode, setAppliedCode] = useState('');
-  const [promoError, setPromoError] = useState('');
-  const [eventTypeOther, setEventTypeOther] = useState('');
-  // Event-type-specific sub-fields (see EVENT_SUBFIELDS). subType covers the
-  // six "Type of X" text fields; birthdayAge + surprise cover Birthday Party.
-  const [eventSubType, setEventSubType] = useState('');
-  const [birthdayAge, setBirthdayAge] = useState('');
-  const [surprise, setSurprise] = useState(false);
-  const [venueName, setVenueName] = useState('');
-  const [venueAddress, setVenueAddress] = useState('');
-  // ISO alpha-2 country code scoping the venue-address autocomplete.
-  // Defaults to 'us'; Nominatim suggestions are restricted to this country.
-  const [venueCountry, setVenueCountry] = useState('us');
-  const [room, setRoom] = useState('');
-  const [guests, setGuests] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [message, setMessage] = useState('');
-
-  // Cocktail-hour fields (all mobile events). For weddings the cocktail
-  // prompt shows by default; for other events it's hidden behind an
-  // "Add Cocktail Hour" link that expands the section.
-  const [cocktailNeeded, setCocktailNeeded] = useState<boolean | null>(null);
-  const [cocktailStart, setCocktailStart] = useState('');
-  const [cocktailSameRoom, setCocktailSameRoom] = useState<boolean | null>(null);
-
-  // Music-for-ceremony fields (weddings only). Independent add-on that
-  // mirrors the cocktail-hour trio: needed? / start time / same room?
-  const [ceremonyNeeded, setCeremonyNeeded] = useState<boolean | null>(null);
-  const [ceremonyStart, setCeremonyStart] = useState('');
-  const [ceremonySameRoom, setCeremonySameRoom] = useState<boolean | null>(null);
-
-  // Package selection (index into packages array)
-  const [selectedPkgIdx, setSelectedPkgIdx] = useState<number | null>(null);
-
-  // Photo lightbox (when clicking a package thumbnail)
-  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<{ photos: string[]; details: string; active: number } | null>(null);
-
-  // Submit state
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // Id of the field that failed validation — drives scroll-to + a red
-  // highlight ring so the booker is taken straight to what they missed.
-  const [errorFieldId, setErrorFieldId] = useState<string | null>(null);
-  const [successState, setSuccessState] = useState<{ isQuote: boolean } | null>(null);
-
-  // ── Address autocomplete ─────────────────────────────────────────
-  // Dropdown of Nominatim suggestions; coords stick to whichever one the
-  // user picks (cleared if they type more after picking). Coords are
-  // stored on the booking row so the DJ's booking-requests page can flag
-  // out-of-range events — booker is never warned.
-  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
-  const [showAddrSuggestions, setShowAddrSuggestions] = useState(false);
-  const venueCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
-  // True once the booker selects an address from the autocomplete
-  // dropdown. Used (alongside a 10-char minimum) to decide when the
-  // address field's validity checkmark shows. Reset when they edit.
-  const [addressPicked, setAddressPicked] = useState(false);
-  const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── SSR-safe portal flag — Next.js renders on server where document
-  // doesn't exist. Render null until mounted, then portal to body so
-  // the modal escapes any parent stacking context. ──────────────────
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  // ── Derived data ─────────────────────────────────────────────────
-  const dateLabel = formatLongDate(dateKey);
-  const isWedding = eventType === 'weddings';
-  // Cocktail hour is available for ALL mobile event types (not just weddings),
-  // once an event type is chosen. isWedding is still used only for the
-  // "Reception" vs "Event" time labels.
-  const cocktailEligible = !!eventType;
-  const customEventTypes = useMemo(() => parseCustomEventTypes(dj.mob_custom_event_types), [dj.mob_custom_event_types]);
-  const endTimeOptions = useMemo(() => buildMobEndTimeOptions(dateKey), [dateKey]);
-  const eventTypesAllowed = useMemo(() => {
-    return (dj.event_types || '')
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-  }, [dj.event_types]);
-
-  // Packages — picked by category, fall back to general[idx] for shared fields
-  const cat = getPackageCategory(eventType);
-  const packagesAll = bookingSettings.mob_packages || {};
-  const generalPkgs: MobilePackage[] = packagesAll.general || [];
-  // Resolve the package list for THIS event type through resolvePackage so it
-  // works for both the old {general,wedding,mitzvah} shape and the new
-  // {general,overrides} shape (and for pulled-out custom/specialty types).
-  // Indexed by original package index; {} at an index the type has none.
-  const categoryPkgs: MobilePackage[] = useMemo(() => {
-    const ov = (packagesAll as { overrides?: Record<string, unknown[]> }).overrides;
-    const ovLen = ov && Array.isArray(ov[eventType]) ? ov[eventType].length : 0;
-    const oldLen = Array.isArray((packagesAll as Record<string, unknown>)[cat])
-      ? ((packagesAll as Record<string, unknown[]>)[cat] as unknown[]).length : 0;
-    const n = Math.max(generalPkgs.length, ovLen, oldLen);
-    return Array.from({ length: n }, (_, i) =>
-      (resolvePackage(packagesAll, eventType, i) as unknown as MobilePackage | null) ?? ({} as MobilePackage),
-    );
-  }, [packagesAll, eventType, cat, generalPkgs.length]);
-
-  // Has the DJ defined ANY usable package across ANY category? When false,
-  // we treat the whole booking as a "request a quote" — no package selection,
-  // no price, just the booker's event details + a message. The DJ will
-  // respond with a price via their booking-requests page (eventually via
-  // the Send Quote button — currently a placeholder).
-  const hasAnyPackages = Object.values(packagesAll).some((arr) =>
-    Array.isArray(arr) && arr.some((p) => p && p.title && p.title.trim())
-  );
-
-  // "Form is ready for package preview" — vanilla mobPubFormReady gate.
-  // Note: this is what vanilla checks before showing packages, NOT what's
-  // required for submit. Submit has its own validation below.
-  const formReadyForPackages = !!(
-    eventType && venueName.trim() && venueAddress.trim() && startTime && endTime
-  );
-
-  // Live price calculation when we have a package + times
-  const selectedPkg =
-    selectedPkgIdx != null
-      ? (resolvePackage(packagesAll, eventType, selectedPkgIdx) as unknown as MobilePackage | null)
-      : null;
-  const depositPct = bookingSettings.mob_deposit_pct || 0;
-  // Signed % the DJ set on THIS date (0 when none). Folded silently into every
-  // price shown for the date so the client sees only the adjusted number.
-  const dayAdjustPct = bookingSettings.mob_booking_days?.[dateKey]?.price_adjust_pct ?? 0;
-  const wantsCocktail = isWedding && cocktailNeeded === true;
-  const wantsCeremony = isWedding && ceremonyNeeded === true;
-  const priceResult = useMemo(() => {
-    if (!selectedPkg || !formReadyForPackages) return null;
-    const base = calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony);
-    return applyDayPriceAdjust(base, dayAdjustPct);
-  }, [selectedPkg, startTime, endTime, depositPct, formReadyForPackages, wantsCocktail, cocktailStart, wantsCeremony, dayAdjustPct]);
-
-  // Discount layer — applied on top of the computed price. Better of an active
-  // sale and the applied promo code wins (no stacking). Deposit is taken from
-  // the DISCOUNTED total.
-  const saleOn = isSaleActive(bookingSettings.sale);
-  const hasActiveCode = (bookingSettings.promo_codes || []).some((p) => isPromoUsable(p));
-  // Discounts the DJ has blocked on this specific date (from Booking Settings →
-  // Discounts → Exclusions). Used to explain why a sale/code isn't applying.
-  const dateExcl = (bookingSettings.exclusions || []).find((e) => e.date === dateKey);
-  const saleExcludedToday = !!dateExcl?.sale;
-  const codesExcludedToday = !!dateExcl?.codes;
-  // A single message reflecting what the DJ has blocked on this date (only when a
-  // sale/code would otherwise apply, so we don't warn about nothing).
-  const saleBlocked = saleOn && saleExcludedToday;
-  const codesBlocked = hasActiveCode && codesExcludedToday;
-  const exclusionMsg = saleBlocked && codesBlocked
-    ? 'Promo codes and sales are excluded from bookings for this date.'
-    : saleBlocked ? 'Sales are excluded from bookings for this date.'
-    : codesBlocked ? 'Promo codes are excluded from bookings for this date.'
-    : '';
-  const basePrice = priceResult?.price ?? null;
-  const discount: DiscountResult = useMemo(() => {
-    if (basePrice == null) return { amount: 0, kind: null, label: '' };
-    return computeDiscount(basePrice, bookingSettings, appliedCode, dateKey);
-  }, [basePrice, bookingSettings, appliedCode, dateKey]);
-  const discountedTotal = basePrice != null ? Math.max(0, basePrice - discount.amount) : null;
-  // Sales tax first (post-discount price), then the tax-inclusive total.
-  // The DJ's chosen currency symbol — shown on every price the booker sees,
-  // matching what gets frozen onto the booking (bookings.currency).
-  const cur = currencySymbol((bookingSettings as { rate_currency?: string }).rate_currency);
-  const taxEnabled = !!(bookingSettings as { tax_enabled?: boolean }).tax_enabled;
-  const taxPct = taxEnabled ? ((bookingSettings as { tax_pct?: number }).tax_pct || 0) : 0;
-  const taxAmount = (taxPct > 0 && discountedTotal != null)
-    ? Number(((discountedTotal * taxPct) / 100).toFixed(2))
-    : 0;
-  const grandTotal = discountedTotal != null ? discountedTotal + taxAmount : null;
-
-  // Deposit taken on the tax-inclusive total.
-  const discountedDeposit =
-    grandTotal != null && depositPct > 0
-      ? Number(((grandTotal * depositPct) / 100).toFixed(2))
-      : null;
-
-  // Show the itemized breakdown (Subtotal/Tax/Total…) when there's tax and/or
-  // a deposit — otherwise the package price alone is the whole story.
-  const showPriceBreakdown = !!priceResult && !priceResult.isQuote && priceResult.price != null
-    && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0);
-
-  function applyPromo() {
-    const code = promoInput.trim().toUpperCase();
-    if (!code) return;
-    const match = (bookingSettings.promo_codes || []).find(
-      (p) => (p.code || '').trim().toUpperCase() === code && isPromoUsable(p)
-    );
-    if (match && codesExcludedToday) {
-      // Real code, but the DJ blocked codes on this date.
-      setAppliedCode('');
-      setPromoError('Promo codes are excluded from bookings for this date.');
-    } else if (match) {
-      setAppliedCode(code);
-      setPromoError('');
-    } else {
-      setAppliedCode('');
-      setPromoError('Invalid or expired code');
+  // ── Initial model: migrate to independent, auto-pull specialty types ──
+  const initial = useMemo(() => {
+    let m = normalizeToIndependent(mobPackages);
+    for (const t of specialtyTypes) {
+      if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) m = pullTypeOut(m, t);
     }
-  }
-
-  // Reset selected package when event type changes (vanilla parity —
-  // line 874 of djp-mob-public.js sets mobPubSelectedPkg = null)
-  useEffect(() => {
-    setSelectedPkgIdx(null);
-    setCocktailNeeded(null);
-    setCeremonyNeeded(null);
-    setCeremonyStart('');
-    setCeremonySameRoom(null);
-    // Clear event-type-specific sub-fields so stale values don't carry over
-    // when the booker switches event type.
-    setEventSubType('');
-    setBirthdayAge('');
-    setSurprise(false);
-  }, [eventType]);
-
-  // Cocktail-time warning: cocktail must start before reception
-  const cocktailWarn =
-    cocktailNeeded === true &&
-    cocktailStart &&
-    startTime &&
-    cocktailStart >= startTime;
-
-  // Clear the validation highlight once the booker fixes the flagged
-  // field — keeps the red ring from lingering after they've filled it.
-  useEffect(() => {
-    if (!errorFieldId) return;
-    const fixed =
-      (errorFieldId === 'mpf-phone' && phone.trim()) ||
-      (errorFieldId === 'mpf-event-type' && eventType) ||
-      (errorFieldId === 'mpf-venue-name' && venueName.trim()) ||
-      (errorFieldId === 'mpf-venue-address' && venueAddress.trim()) ||
-      (errorFieldId === 'mpf-start-time' && startTime) ||
-      (errorFieldId === 'mpf-cocktail-start' && !!cocktailStart && !cocktailWarn) ||
-      (errorFieldId === 'mpf-cocktail-room' && cocktailSameRoom != null) ||
-      (errorFieldId === 'mpf-ceremony-start' && !!ceremonyStart) ||
-      (errorFieldId === 'mpf-ceremony-room' && ceremonySameRoom != null) ||
-      // "That address belongs to another account" is only cleared by typing a
-      // DIFFERENT address — not merely a valid-looking one. Comparing against
-      // what was rejected means the ring stays on while they edit a character
-      // and lifts the moment it's genuinely something else.
-      (errorFieldId === 'mpf-email' && emailValid && contactEmail.trim().toLowerCase() !== rejectedEmail) ||
-      (errorFieldId === 'mpf-full-name' && fullNameValid);
-    if (fixed) {
-      setErrorFieldId(null);
-      setErrorMsg(null);
-    }
-  }, [errorFieldId, phone, fullNameValid, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom, emailValid, contactEmail, rejectedEmail]);
-
-  // ── Phone formatting on input ────────────────────────────────────
-  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPhone(formatUSPhone(e.target.value));
-  }
-
-  // ── Lightbox ESC + body scroll lock ──────────────────────────────
-  useEffect(() => {
-    if (!photoLightboxUrl) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setPhotoLightboxUrl(null);
-    }
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+    return m;
+  }, [mobPackages, specialtyTypes, selectedEventTypes]);
+  // Give every untitled package the real text "Package N" in its title field
+  // (not just a placeholder), so the box shows it and the DJ can rename it.
+  const withPkgTitles = (m: MobPackagesIndependent): MobPackagesIndependent => {
+    const fill = <T extends { title?: string }>(list: T[]): T[] =>
+      list.map((p, i) => (String(p.title ?? '').trim() === '' ? { ...p, title: `Package ${i + 1}` } : p));
+    return {
+      ...m,
+      general: fill(m.general),
+      overrides: Object.fromEntries(Object.entries(m.overrides).map(([t, l]) => [t, fill(l)])),
     };
-  }, [photoLightboxUrl]);
+  };
+  // Always land on at least one General package ready to fill.
+  const startMob = withPkgTitles(initial.general.length === 0 ? addPkg(initial, 'general') : initial);
 
-  // ── Submit ────────────────────────────────────────────────────────
-  async function handleSubmit() {
-    setErrorMsg(null);
-    setErrorFieldId(null);
+  const [mob, setMob] = useState<MobPackagesIndependent>(startMob);
+  const [selCat, setSelCat] = useState<string>('general');
+  const [selIdx, setSelIdx] = useState(0);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeIndependent(startMob)));
+  const [err, setErr] = useState<string | null>(null);
+  // After a failed save we flag the invalid packages in red in the sidebar
+  // (instead of jumping to one), so the DJ can see which ones need attention
+  // without the view yanking away from where they were.
+  const [showInvalid, setShowInvalid] = useState(false);
+  const [invalidList, setInvalidList] = useState<Array<{ cat: string; i: number; labels: string[]; missing: string[] }>>([]);
 
-    // DJs can't book other DJs (hosts + venue accounts can). Pop a message
-    // instead of proceeding — the create route enforces this server-side too.
-    if (viewerCannotBook) {
-      setErrorMsg("You need a host account to book a DJ. DJ accounts can't book other DJs.");
+  const [etOpen, setEtOpen] = useState(false);
+  const [etSel, setEtSel] = useState<string[]>(selectedEventTypes);
+  const [etCustom, setEtCustom] = useState<CustomEventType[]>(customEventTypes);
+  const [etSpec, setEtSpec] = useState<string[]>(specialtyTypes);
+  const [etNewGen, setEtNewGen] = useState('');
+  const [etNewSpec, setEtNewSpec] = useState('');
+  const [etErr, setEtErr] = useState<string | null>(null);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewEvent, setPreviewEvent] = useState('');
+  const [previewSel, setPreviewSel] = useState(0);
+  const [previewStart, setPreviewStart] = useState('18:00');
+  const [previewEnd, setPreviewEnd] = useState('23:00');
+  const [pvLb, setPvLb] = useState<{ photos: string[]; details: string; active: number } | null>(null);
+  function openPreview() { setPreviewEvent(selCat || selectedEventTypes[0] || 'general'); setPreviewSel(safeIdx); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
+
+  const { confirm, confirmDialog } = useConfirm();
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // General Events expands to list every event type its pricing currently
+  // covers (the offered types that haven't been pulled out for their own).
+  const [genCoversOpen, setGenCoversOpen] = useState(false);
+  // On a narrow screen the sidebar + side editor becomes an accordion: tapping
+  // a package opens its editor inline, right under that package in the tree.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 760px)');
+    const apply = () => setIsNarrow(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
+  // Align the editor's left-edge notch with the open package in the tree, so the
+  // arrow follows whatever package is currently being edited.
+  const editorWrapRef = useRef<HTMLDivElement>(null);
+  const selPkgRef = useRef<HTMLButtonElement>(null);
+  const [notchTop, setNotchTop] = useState(22);
+  useEffect(() => {
+    if (isNarrow) return;
+    const measure = () => {
+      const wrap = editorWrapRef.current, btn = selPkgRef.current;
+      if (!wrap || !btn) return;
+      const w = wrap.getBoundingClientRect(), b = btn.getBoundingClientRect();
+      const center = b.top + b.height / 2 - w.top;
+      setNotchTop(Math.max(12, Math.min(center, w.height - 18)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [selCat, selIdx, isNarrow, mob]);
+
+  // Pulled-out types that are still offered (shown as their own rail branch).
+  const railTypes = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t));
+  // Types that could be pulled out (offered, not already pulled, not General).
+  const addableTypes = selectedEventTypes.filter((t) => t !== 'general' && !mob.overrides[t]);
+
+  const hasAnyPrice = (() => {
+    const has = (arr?: Pkg[]) => Array.isArray(arr) && arr.some((pk) => packageTiers(pk as unknown as MobilePackage).length > 0);
+    if (has(mob.general)) return true;
+    return Object.keys(mob.overrides).some((k) => has(mob.overrides[k]));
+  })();
+
+  // Keep newly-added specialty types pulled out live (no refresh needed).
+  useEffect(() => {
+    setMob((prev) => {
+      let m = prev;
+      for (const t of specialtyTypes) {
+        if (t !== 'general' && selectedEventTypes.includes(t) && !m.overrides[t]) m = pullTypeOut(m, t);
+      }
+      return m;
+    });
+  }, [specialtyTypes, selectedEventTypes]);
+
+  const curSer = useMemo(() => serializeIndependent(mob), [mob]);
+  const dirty = JSON.stringify(curSer) !== savedSnapshot;
+  const savedParsed = useMemo(() => {
+    try { return JSON.parse(savedSnapshot) as MobPackagesIndependent; } catch { return null; }
+  }, [savedSnapshot]);
+  const pkgDirty = (cat: string, i: number) => {
+    const cur = cat === 'general' ? curSer.general[i] : curSer.overrides[cat]?.[i];
+    const sav = cat === 'general' ? savedParsed?.general?.[i] : savedParsed?.overrides?.[cat]?.[i];
+    return JSON.stringify(cur ?? null) !== JSON.stringify(sav ?? null);
+  };
+
+  const onDirtyRef = useRef(onDirtyChange);
+  onDirtyRef.current = onDirtyChange;
+  useEffect(() => { onDirtyRef.current?.(dirty); }, [dirty]);
+  const saveRef = useRef<() => void>(() => {});
+  const lastMasterRef = useRef(masterSaveTrigger);
+  useEffect(() => {
+    if (masterSaveTrigger === lastMasterRef.current) return;
+    lastMasterRef.current = masterSaveTrigger;
+    if (masterSaveTrigger > 0) saveRef.current();
+  }, [masterSaveTrigger]);
+
+  function update(next: MobPackagesIndependent) { setMob(next); setErr(null); }
+
+  // Clamp the selected pointer if the list it points at shrank.
+  const selList = listFor(mob, selCat);
+  const safeIdx = Math.min(selIdx, Math.max(0, selList.length - 1));
+  const currentPkg = (selList[safeIdx] || {}) as MobilePackage;
+  // One-time copy source for the "use General's photos" helper in PackageEditor.
+  const generalPhotos = useMemo(() => {
+    const g = (mob.general[safeIdx] || {}) as { photo?: string; photos?: string[] };
+    return { photo: g.photo || '', photos: Array.isArray(g.photos) ? g.photos : [] };
+  }, [mob.general, safeIdx]);
+
+  function onEditPkg(next: MobilePackage) { update(setPackageAt(mob, selCat, safeIdx, next as Pkg)); }
+
+  function selectPkg(cat: string, i: number) { setSelCat(cat); setSelIdx(i); setErr(null); }
+  // Jump to a package from the missing-items list WITHOUT clearing the red
+  // validation — point the field highlights at the one we're carrying over to.
+  function goToInvalid(it: { cat: string; i: number; missing: string[] }) {
+    setSelCat(it.cat); setSelIdx(it.i);
+   
+    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function addPackageTo(cat: string) {
+    const n = withPkgTitles(addPkg(mob, cat));
+    setMob(n); setErr(null);
+    const list = listFor(n, cat);
+    setSelCat(cat); setSelIdx(list.length - 1);
+    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  }
+
+  async function removePackage() {
+    const list = listFor(mob, selCat);
+    // Keep at least one General package. A pulled-out type must keep one too;
+    // to drop a type entirely, use the × (put back under General).
+    if (list.length <= 1) return;
+    const ok = await confirm({
+      title: `Remove Package ${safeIdx + 1}?`,
+      message: `This deletes this package and its pricing for ${labelFor(selCat)}. This cannot be undone.`,
+      confirmLabel: 'Remove package', variant: 'danger',
+    });
+    if (!ok) return;
+    const n = removePkg(mob, selCat, safeIdx);
+    setMob(n); setSelIdx(Math.max(0, safeIdx - 1));
+  }
+
+  function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelCat(type); setSelIdx(0); }
+  async function removeEventType(type: string) {
+    const ok = await confirm({
+      title: `Put ${labelFor(type)} back under General events?`,
+      message: `${labelFor(type)} will lose its own packages and use your General events pricing instead.`,
+      confirmLabel: 'Put back under General', variant: 'danger',
+    });
+    if (!ok) return;
+    const next = putTypeBack(mob, type);
+    update(next);
+    if (selCat === type) { setSelCat('general'); setSelIdx(0); }
+    // Persist the removal right away so it sticks on refresh — otherwise the
+    // change would only live in local state until the next Save Packages click.
+    const ser = serializeIndependent(next);
+    onSave(ser);
+    setSavedSnapshot(JSON.stringify(ser));
+    // CRITICAL: a specialty event type is auto-pulled on every load, so dropping
+    // just its packages isn't enough — it would reappear blank after a refresh.
+    // Also remove it from the specialty list so it stays under General.
+    if (onEventTypesSave && specialtyTypes.includes(type)) {
+      void onEventTypesSave(selectedEventTypes, customEventTypes, specialtyTypes.filter((t) => t !== type));
+    }
+  }
+
+  function textEmpty(v: unknown): boolean {
+    if (v == null) return true;
+    return String(v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === '';
+  }
+  function priceMissing(pkg: Record<string, unknown>): boolean {
+    if (pkg.reqAll) return false;
+    // EVERY price box shown must have a price. A box left at 0/blank blocks save —
+    // the DJ fills it, or removes that length with the × button.
+    const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
+    const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
+      ? (pkg.priceTiers as Array<{ price?: unknown }>)
+      : null;
+    if (tiers) return tiers.some((x) => !pos(x?.price));
+    return ['price4', 'price5', 'price6'].some((k) => !pos((pkg)[k]));
+  }
+  // Live validity of one package — recomputed as the DJ types, so a red flag in
+  // the sidebar clears itself the moment that package is filled in.
+  // A package title can't be the same as its event type's name (e.g. a package
+  // titled "Wedding" inside the Wedding event type reads as a duplicate).
+  function titleMatchesEventType(cat: string, title: string | undefined): boolean {
+    const t = (title || '').trim().toLowerCase();
+    return t !== '' && t === labelFor(cat).trim().toLowerCase();
+  }
+  function pkgInvalid(cat: string, i: number): boolean {
+    const p = (listFor(mob, cat)[i] || {}) as { title?: string; details?: string };
+    // Title isn't required — a blank one saves as "Package N" — so only details
+    // and pricing can mark a package incomplete. A title that collides with the
+    // event type name is also flagged.
+    return textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>) || titleMatchesEventType(cat, p.title);
+  }
+  // Is this a custom (pulled-out) event type that still has an incomplete package?
+  function catIncomplete(cat: string): boolean {
+    return listFor(mob, cat).some((_, i) => pkgInvalid(cat, i));
+  }
+
+  function save() {
+    // Drop orphaned overrides — event types that are no longer offered. They
+    // aren't shown in the sidebar, so validating them would surface a "needs a
+    // price" error the DJ can't reach or fix. Pruning them cleans stored data.
+    // If the DJ never named a package, save it as "Package N" (real stored text,
+    // not just a placeholder) so a title is never blank.
+    const fillTitles = <T extends { title?: string }>(list: T[]): T[] =>
+      list.map((p, i) => (textEmpty(p.title) ? { ...p, title: `Package ${i + 1}` } : p));
+    const live: MobPackagesIndependent = {
+      ...mob,
+      general: fillTitles(mob.general),
+      overrides: Object.fromEntries(
+        Object.entries(mob.overrides)
+          .filter(([t]) => selectedEventTypes.includes(t))
+          .map(([t, list]) => [t, fillTitles(list)]),
+      ),
+    };
+    // Every package in every offered category is self-contained — each needs its
+    // own title, description and a price in every box (unless request-a-quote).
+    // A custom event type that's missing anything is PROMPTED (flagged below),
+    // never silently dropped — the DJ added it on purpose, so ask them to finish.
+    const cats = ['general', ...Object.keys(live.overrides)];
+    const invalids: Array<{ cat: string; i: number; labels: string[]; missing: string[] }> = [];
+    for (const cat of cats) {
+      const list = listFor(live, cat);
+      for (let i = 0; i < list.length; i++) {
+        const p = (list[i] || {}) as { title?: string; details?: string };
+        const missing: string[] = []; const labels: string[] = [];
+        if (titleMatchesEventType(cat, p.title)) { missing.push('title'); labels.push(`a title different from “${labelFor(cat)}”`); }
+        if (textEmpty(p.details)) { missing.push('details'); labels.push('a description'); }
+        if (priceMissing(p as unknown as Record<string, unknown>)) { missing.push('priceTiers'); labels.push('a price in every box'); }
+        if (missing.length) invalids.push({ cat, i, labels, missing });
+      }
+    }
+    if (invalids.length) {
+      // Don't jump — flag every invalid package in red in the sidebar and show an
+      // itemized, clickable list (event type › package → what's missing) so the
+      // DJ knows exactly where to go.
+      setErr(invalids.length === 1 ? 'Fix this before you can save:' : `Fix these ${invalids.length} packages before you can save:`);
+      setInvalidList(invalids.map(({ cat, i, labels, missing }) => ({ cat, i, labels, missing })));
+      setShowInvalid(true);
       return;
     }
+    setErr(null); setShowInvalid(false); setInvalidList([]);
+    // Commit the backfilled titles (and any pruned overrides) back into the live
+    // editor state so what's on screen matches what we just saved — otherwise the
+    // in-memory copy still has blank titles and the row stays "Unsaved" forever.
+    setMob(live);
+    const ser = serializeIndependent(live);
+    onSave(ser); setSavedSnapshot(JSON.stringify(ser));
+  }
+  saveRef.current = save;
 
-    // Validation. fail() sets the message, then scrolls the offending
-    // field into view and focuses it — errorFieldId drives a red ring
-    // highlight via the .fieldError class.
-    const fail = (msg: string, fieldId?: string): true => {
-      setErrorMsg(msg);
-      if (fieldId) {
-        setErrorFieldId(fieldId);
-        // Defer so the highlight class is applied before we scroll/focus.
-        setTimeout(() => {
-          const el = document.getElementById(fieldId);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            (el as HTMLElement).focus({ preventScroll: true });
-          }
-        }, 0);
-      }
-      return true;
+  // ── Clean up incomplete custom event types when the DJ leaves ──
+  // If they added a custom event type but left it unfinished and navigate away
+  // (switch tabs / leave the page) without completing + saving it, we drop it
+  // back to General pricing on unmount so a half-built type never lingers.
+  const leaveRef = useRef<() => void>(() => {});
+  leaveRef.current = () => {
+    const bad = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t) && catIncomplete(t));
+    const orphan = Object.keys(mob.overrides).filter((t) => !selectedEventTypes.includes(t));
+    if (!bad.length && !orphan.length) return;
+    let m = mob;
+    for (const t of bad) m = putTypeBack(m, t);
+    const cleaned: MobPackagesIndependent = {
+      ...m,
+      overrides: Object.fromEntries(Object.entries(m.overrides).filter(([t]) => selectedEventTypes.includes(t))),
     };
-
-    if (needsFullName) {
-      const n = normalizeName(fullName);
-      if (!n && fail('Please enter your name.', 'mpf-full-name')) return;
-      if (!isFullName(n) && fail(FULL_NAME_ERROR, 'mpf-full-name')) return;
+    onSave(serializeIndependent(cleaned));
+    // A specialty type is auto-pulled on load, so also drop it from the specialty
+    // list — otherwise it would reappear blank next time.
+    const badSpecialty = bad.filter((t) => specialtyTypes.includes(t));
+    if (onEventTypesSave && badSpecialty.length) {
+      void onEventTypesSave(selectedEventTypes, customEventTypes, specialtyTypes.filter((t) => !badSpecialty.includes(t)));
     }
-    if (!phone.trim() && fail('Please enter your phone number.', 'mpf-phone')) return;
-    if (needsEmail) {
-      const e = contactEmail.trim();
-      if (!e && fail('Please enter an email address for your booking documents.', 'mpf-email')) return;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
-        && fail('That email address doesn’t look right.', 'mpf-email')) return;
+  };
+  useEffect(() => () => { leaveRef.current(); }, []);
+
+  // ── Event-types editor popup ──
+  function openEtEditor() { setEtSel(selectedEventTypes); setEtCustom(customEventTypes); setEtSpec(Array.from(new Set([...specialtyTypes, ...railTypes]))); setEtNewGen(''); setEtNewSpec(''); setEtErr(null); setEtOpen(true); }
+  function etToggle(key: string, on: boolean) { setEtSel((prev) => (on ? Array.from(new Set([...prev, key])) : prev.filter((k) => k !== key))); }
+  function etAddCustom(label: string, toSpecialty: boolean) {
+    const trimmed = label.trim(); if (!trimmed) return;
+    const lc = trimmed.toLowerCase();
+    const existingNames = [...Object.values(MOB_EVENT_LABELS).map((v) => v.toLowerCase()), ...etCustom.map((c) => c.label.toLowerCase())];
+    if (existingNames.includes(lc)) { setEtErr(`“${trimmed}” already exists.`); return; }
+    const key = makeCustomEventKey(trimmed);
+    setEtCustom((prev) => [...prev, { key, label: trimmed }]);
+    setEtSel((prev) => Array.from(new Set([...prev, key])));
+    if (toSpecialty) setEtSpec((prev) => Array.from(new Set([...prev, key])));
+    setEtErr(null);
+    if (toSpecialty) setEtNewSpec(''); else setEtNewGen('');
+  }
+  async function etRemoveCustom(key: string) {
+    const label = etCustom.find((c) => c.key === key)?.label || 'this event type';
+    const ok = await confirm({ title: `Delete ${label}?`, message: `${label} will be removed from your event types, along with any pricing you set for it. This can't be undone.`, confirmLabel: 'Delete', variant: 'danger' });
+    if (!ok) return;
+    setEtCustom((prev) => prev.filter((c) => c.key !== key));
+    setEtSel((prev) => prev.filter((k) => k !== key));
+    setEtSpec((prev) => prev.filter((k) => k !== key));
+  }
+  function etSaveClose() { onEventTypesSave?.(etSel, etCustom, etSpec); setEtOpen(false); }
+  async function closeEtEditor() {
+    const baseSpec = Array.from(new Set([...specialtyTypes, ...railTypes])).sort();
+    const etDirty = JSON.stringify([[...etSel].sort(), etCustom, [...etSpec].sort()]) !== JSON.stringify([[...selectedEventTypes].sort(), customEventTypes, baseSpec]);
+    if (etDirty) {
+      const ok = await confirm({ title: 'Discard event type changes?', message: 'You changed your event types but didn\'t save. Discard these changes?', confirmLabel: 'Discard', cancelLabel: 'Keep editing', variant: 'danger' });
+      if (!ok) return;
     }
-    if (!eventType && fail('Please select an event type.', 'mpf-event-type')) return;
-    if (!venueName.trim() && fail('Please enter the venue name.', 'mpf-venue-name')) return;
-    if (!venueAddress.trim() && fail('Please enter the venue address.', 'mpf-venue-address')) return;
-    if (!startTime && fail('Please select a start time.', 'mpf-start-time')) return;
-    // When cocktail-hour music is needed, both the start time and the
-    // same-room choice are required (weddings only).
-    if (wantsCocktail) {
-      if (!cocktailStart && fail('Please select a cocktail hour start time.', 'mpf-cocktail-start')) return;
-      if (cocktailSameRoom == null && fail('Please choose whether the cocktail hour is in the same room as the reception.', 'mpf-cocktail-room')) return;
-    }
-    if (wantsCeremony) {
-      if (!ceremonyStart && fail('Please select a ceremony start time.', 'mpf-ceremony-start')) return;
-      if (ceremonySameRoom == null && fail('Please choose whether the ceremony is in the same room as the reception.', 'mpf-ceremony-room')) return;
-    }
-    if (cocktailWarn && fail(`Cocktail hour start time must be before the ${isWedding ? 'reception' : 'event'} start time.`, 'mpf-cocktail-start')) return;
-    // Package validation only applies when the DJ has packages defined.
-    // No-packages mode → fall through and submit as a quote-style request.
-    if (hasAnyPackages) {
-      if (selectedPkgIdx == null && fail('Please select a package.')) return;
-      if (!selectedPkg && fail('Invalid package selected.')) return;
-    }
-
-    // Compute final price. In no-packages mode there's nothing to price —
-    // the booking is a pure quote request, same shape vanilla uses for
-    // is_quote bookings (price null, deposit null, package_title null).
-    const finalPrice = hasAnyPackages && selectedPkg
-      ? applyDayPriceAdjust(
-          calcPrice(selectedPkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
-          dayAdjustPct,
-        )!
-      : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
-
-    // Apply the discount to the final total; deposit comes off the discounted
-    // amount. Stamp the booking with which discount was used so the DJ's
-    // usage history can show who booked with it.
-    const finalDiscount: DiscountResult =
-      finalPrice.price != null
-        ? computeDiscount(finalPrice.price, bookingSettings, appliedCode, dateKey)
-        : { amount: 0, kind: null, label: '' };
-    const finalTotal =
-      finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
-    // NOTE: finalPrice/finalDiscount/finalTotal are now PREVIEW-ONLY. The
-    // stored money fields (quoted_rate, discount_*, deposit_amount, package
-    // snapshots) are recomputed server-side by /api/bookings/create;
-    // finalTotal is sent as expectedTotal purely so the server can detect
-    // price drift (and 409 instead of booking at a different number).
-
-    setSubmitting(true);
-
-    try {
-      // Compose the event-type-specific detail string (e.g. "25th
-      // Anniversary" or "Guest of honor age: 30 · Surprise party: Yes").
-      // Null for event types without sub-fields. Shown under Event Type on
-      // the DJ's card and in both confirmation emails.
-      const eventDetails = buildEventDetails(eventType, {
-        subType: eventSubType,
-        birthdayAge,
-        surprise,
-      });
-      // Create the booking via the server route — it recomputes ALL money
-      // fields (price, discount, deposit, package/discount snapshots) from
-      // the DJ's own booking_settings, so a tampered client can't forge
-      // amounts. We send only the booker's CHOICES.
-      const res = await fetch('/api/bookings/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingType: 'mobile',
-          djId: dj.id,
-          dateKey,
-          eventType,
-          eventTypeOther,
-          eventSubType,
-          birthdayAge,
-          surprise,
-          venueName: venueName.trim(),
-          venueAddress: venueAddress.trim(),
-          // Coords from the Nominatim autocomplete pick (null if user typed
-          // freehand). Used by the DJ's booking-requests page to show a
-          // distance warning when the venue is outside their travel range.
-          venueLat: venueCoordsRef.current?.lat ?? null,
-          venueLon: venueCoordsRef.current?.lon ?? null,
-          room,
-          guests,
-          startTime,
-          endTime,
-          phone: phone.trim(),
-          smsOptIn,
-          // Only sent when the account has none. The server writes it to
-          // users.contact_email so every later email has somewhere to go.
-          contactEmail: needsEmail ? contactEmail.trim().toLowerCase() : null,
-          // Only sent when the stored name was incomplete. The server writes
-          // it to users.name so the next booking — and the contract — has a
-          // surname to print without asking again.
-          fullName: (needsFullName || editingName) ? normalizeName(fullName) : null,
-          cocktailNeeded,
-          cocktailStart,
-          cocktailSameRoom,
-          ceremonyNeeded,
-          ceremonyStart,
-          ceremonySameRoom,
-          packageIndex: selectedPkgIdx,
-          promoCode: appliedCode,
-          message,
-          // Preview total — server-verified, never stored as-is. A 409
-          // below means pricing changed while the form was open.
-          expectedTotal: finalTotal,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          (json && typeof json.error === 'string' && json.error) || 'Submission failed'
-        );
-      }
-      // Server-computed money snapshot — used for the emails below so they
-      // always match what was actually stored on the booking row.
-      // Wedding/Mitzvah packages inherit title/details from the General package
-      // at the same index when blank — mirror the card's display logic so the
-      // emails name the package the booker actually saw.
-      const pkgFallback = (selectedPkgIdx != null ? generalPkgs[selectedPkgIdx] : undefined) || {};
-      const pkgTitleForEmail =
-        (selectedPkg?.title?.trim() || pkgFallback.title?.trim()) || null;
-      const pkgDetailsForEmail =
-        (selectedPkg?.details || pkgFallback.details) || null;
-
-      const created: {
-        quoted_rate: number | null;
-        original_rate: number | null;
-        discount_label: string | null;
-        discount_amount: number | null;
-        is_quote: boolean;
-        tax_pct: number | null;
-        tax_amount: number | null;
-        total_with_tax: number | null;
-        deposit_pct: number | null;
-        deposit_amount: number | null;
-        cocktail_price: number | null;
-        ceremony_price: number | null;
-      } = json.booking;
-
-      // Email the DJ that a new booking request came in. The send-email
-      // route accepts djUserId and resolves the email server-side via the
-      // admin API (fixes the post-Auth-migration djData.email null bug).
-      // Failures are swallowed so a DB success isn't undone by an email
-      // outage — the booking still appears in the DJ's Booking Requests.
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'booking_request',
-            bookingId: json.id,
-            djUserId: dj.id,
-            djName: dj.name,
-            requesterName: normalizeName(fullName) || currentUser.name,
-            eventDate: dateKey,
-            // Event type — already saved to the DB above. We pass either
-            // the canonical type ('wedding', 'mitzvah', etc.) or the
-            // user-entered "other" label so the email reflects what the
-            // booker actually picked.
-            eventType: eventType === 'other'
-              ? (eventTypeOther.trim() || 'other')
-              : mobEventLabel(eventType, customEventTypes),
-            eventDetails,
-            // Times — DJ wants to know start/end at a glance from the
-            // email so they can decide quickly whether they're available.
-            startTime,
-            endTime: endTime || null,
-            // Package title — gives the DJ context on what tier was
-            // selected without opening the booking. Null for is_quote
-            // bookings where no package is involved.
-            packageTitle: pkgTitleForEmail,
-            // HTML-formatted package details (bullets / checklists from the
-            // DJ's profile editor). Shown under the Package row in the email
-            // so the DJ sees exactly what tier was requested.
-            packageDetails: pkgDetailsForEmail,
-            venueName: venueName.trim(),
-            venueAddress: venueAddress.trim(),
-            // isWedding drives the "Reception Start/End Time" labelling in the
-            // email. Cocktail hour itself is available for all mobile events.
-            isWedding,
-            cocktailNeeded: wantsCocktail ? true : null,
-            cocktailStart: wantsCocktail ? cocktailStart : null,
-            cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
-            ceremonyNeeded: wantsCeremony ? true : null,
-            ceremonyStart: wantsCeremony ? ceremonyStart : null,
-            ceremonySameRoom: wantsCeremony ? !!ceremonySameRoom : null,
-            setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
-            // Computed package price for this gig (null for is_quote
-            // bookings). The email route reads quotedRate to show the
-            // rate box instead of the "respond with a quote" prompt.
-            quotedRate: created.quoted_rate,
-            originalRate: created.original_rate,
-            discountLabel: created.discount_label,
-            discountAmount: created.discount_amount,
-          }),
-        });
-      } catch (e) {
-        console.warn('DJ email failed:', e);
-      }
-
-      // Confirmation copy to the booker — gives them a record of the
-      // request they just sent and confirms it landed. Mirrors the
-      // ClubBookingForm pattern. Best-effort; failures don't surface to
-      // the user since the booking itself already succeeded above.
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'booking_request_confirmation',
-            requesterUserId: currentUser.id,
-            requesterName: normalizeName(fullName) || currentUser.name,
-            djName: dj.name,
-            eventDate: dateKey,
-            eventType: eventType === 'other'
-              ? (eventTypeOther.trim() || 'other')
-              : mobEventLabel(eventType, customEventTypes),
-            eventDetails,
-            packageTitle: pkgTitleForEmail,
-            packageDetails: pkgDetailsForEmail,
-            venueName: venueName.trim(),
-            venueAddress: venueAddress.trim(),
-            startTime,
-            endTime: endTime || null,
-            isWedding,
-            cocktailNeeded: wantsCocktail ? true : null,
-            cocktailStart: wantsCocktail ? cocktailStart : null,
-            cocktailSameRoom: wantsCocktail ? !!cocktailSameRoom : null,
-            ceremonyNeeded: wantsCeremony ? true : null,
-            ceremonyStart: wantsCeremony ? ceremonyStart : null,
-            ceremonySameRoom: wantsCeremony ? !!ceremonySameRoom : null,
-            setupHours: selectedPkg?.setupHours ? String(selectedPkg.setupHours) : null,
-            quotedRate: created.quoted_rate,
-            originalRate: created.original_rate,
-            discountLabel: created.discount_label,
-            discountAmount: created.discount_amount,
-            // Frozen tax/deposit + add-on snapshot → the confirmation email's
-            // itemized bill (sales tax, deposit, balance due day of event).
-            taxPct: created.tax_pct,
-            taxAmount: created.tax_amount,
-            totalWithTax: created.total_with_tax,
-            depositPct: created.deposit_pct,
-            depositAmount: created.deposit_amount,
-            cocktailPrice: created.cocktail_price,
-            ceremonyPrice: created.ceremony_price,
-          }),
-        });
-      } catch {
-        // Best-effort
-      }
-
-      setSuccessState({ isQuote: created.is_quote });
-      // Notify the parent so the calendar can refresh pending dates — the
-      // just-requested date should immediately render a "Pending" pill.
-      onSubmitted?.();
-      // Auto-dismiss the form after a short delay (matches ClubBookingForm)
-      setTimeout(() => onClose(), 2500);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Submission failed';
-      setErrorMsg(`Error: ${msg}`);
-      setSubmitting(false);
-
-      // BRING THE ERROR INTO VIEW.
-      //
-      // Client-side validation scrolls to the offending field (see fail()),
-      // but a SERVER rejection didn't scroll anywhere — and by submit time the
-      // booker is at the bottom of a long form, looking at a button that
-      // stopped spinning for no visible reason. The message was rendered at
-      // the top of the modal, off screen.
-      //
-      // Rejections that name a field are pointed at that field so it gets the
-      // red ring too; everything else scrolls to the banner.
-      const emailRejected = /email/i.test(msg) && needsEmail;
-      if (emailRejected) setRejectedEmail(contactEmail.trim().toLowerCase());
-      setTimeout(() => {
-        const target = emailRejected
-          ? document.getElementById('mpf-email')
-          : document.getElementById('mpf-error');
-        if (!target) return;
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (emailRejected) {
-          setErrorFieldId('mpf-email');
-          (target as HTMLElement).focus({ preventScroll: true });
-        }
-      }, 50);
-    }
+    setEtErr(null); setEtOpen(false);
   }
 
-  // ── Success state ────────────────────────────────────────────────
-  if (successState) {
-    if (!mounted) return null;
-    const djName = dj.name || 'The DJ';
-    return createPortal(
-      <div className={styles.formWrap}>
-        <div className={styles.successCard}>
-          <div className={styles.successCheck}>✓</div>
-          <div className={styles.successTitle}>
-            {successState.isQuote ? 'Quote Request Sent' : 'Booking Request Sent'}
-          </div>
-          <div className={styles.successMsg}>
-            {djName} will be in touch shortly.
-          </div>
-        </div>
-      </div>,
-      document.body,
-    );
-  }
+  // ── Sidebar styling ── (slightly smaller type on mobile to tighten the list)
+  const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '1.3rem' : '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: isNarrow ? '0 0 .35rem .1rem' : '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
+  const pkgItem = (active: boolean, isDirty: boolean, invalid: boolean): CSSProperties => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '.5rem', width: '100%',
+    padding: isNarrow ? '.3rem .5rem' : '.38rem .6rem', marginBottom: isNarrow ? 3 : 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '.92rem' : '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
+    // The package being edited is spotlighted: brighter gradient fill, a thick
+    // neon left bar, and a glow so it clearly reads as "this is open".
+    background: invalid ? 'rgba(255,95,95,.08)' : 'transparent',
+    // Red flag wins so an invalid package stands out even while it's open.
+    color: invalid ? '#ff8f8f' : (active ? '#fff' : (isDirty ? '#ffd60a' : '#fff')),
+    // Open package: a full neon frame only (no fill). Resting packages have a
+    // transparent border so spacing stays even and no stray bracket shows.
+    // The "Editing" badge marks the open package, so no neon frame is needed.
+    border: invalid ? '1px solid rgba(255,95,95,.65)' : '1px solid transparent',
+    transition: 'border-color .12s',
+  });
+  // Plain, centered "add" link — no frame, no underline. Tighter on mobile.
+  const addPkgBtn: CSSProperties = { width: '100%', background: 'none', border: 'none', color: 'var(--neon)', padding: isNarrow ? '.1rem .1rem .2rem' : '.3rem .1rem .5rem', marginBottom: 2, fontFamily: "'Space Mono', monospace", fontSize: isNarrow ? '.52rem' : '.58rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', display: 'block' };
 
-  // ── Form render ──────────────────────────────────────────────────
-  // Submit label: in no-packages mode, the booking is implicitly a quote
-  // request (the DJ has nothing priced and will respond with a price).
-  // When packages exist, fall back to the priceResult check.
-  const submitLabel = !hasAnyPackages
-    ? 'Request Quote'
-    : priceResult?.isQuote
-    ? 'Request Quote'
-    : 'Request Booking';
-
-  if (!mounted) return null;
-
-  // Appends the red-ring highlight class to whichever field failed
-  // validation. The highlight clears as soon as errorFieldId is reset
-  // (on the next submit attempt or when that field is edited).
-  const fieldClass = (id: string, base: string): string =>
-    errorFieldId === id ? `${base} ${styles.fieldError}` : base;
-
-  // ── Per-field "valid → show checkmark" flags ───────────────────────
-  // A green check appears in a field once its value is valid. Rules vary
-  // by field (per Anthony): Phone needs a real number; text fields just
-  // need content; selects need a non-placeholder choice.
-  //   - Phone: 10–15 digits once formatting is stripped (covers US/CA
-  //     and international; rejects half-typed numbers).
-  //   - Guests: a real positive number.
-  //   - Text fields (venue name/address/room): any non-empty text.
-  //   - Selects (event type, times): any value other than the
-  //     "Select…" placeholder.
-  // The Message box is intentionally excluded.
-  const phoneValid = (() => {
-    const digits = phone.replace(/\D/g, '');
-    return digits.length >= 10 && digits.length <= 15;
-  })();
-  const guestsValid = guests.trim() !== '' && Number(guests) > 0;
-  const venueNameValid = venueName.trim() !== '';
-  // Address is valid for the checkmark once it's a substantial entry —
-  // either 10+ characters typed, or selected from the autocomplete
-  // dropdown (a real picked address is inherently complete).
-  const venueAddressValid = addressPicked || venueAddress.trim().length >= 10;
-  const roomValid = room.trim() !== '';
-  const eventTypeValid = eventType !== ''
-    && (eventType !== 'other' || eventTypeOther.trim() !== '');
-  const startTimeValid = startTime !== '';
-  const endTimeValid = endTime !== '';
-
-  // DJ-side accounts can't book DJs — show only the message, not the form.
-  if (viewerCannotBook) {
-    return createPortal(
-      <div className={styles.formWrap}>
-        <div className={styles.formCard}>
-          <div className={styles.formHeaderRow}>
-            <div>
-              <div className={styles.formHeaderEyebrow}>Booking Request</div>
-              <div className={styles.formHeaderDate}>{dateLabel}</div>
-            </div>
-            <button type="button" onClick={onClose} className={styles.formCloseBtn} aria-label="Close booking form">✕</button>
-          </div>
-          <div className={`${styles.alert} ${styles.alertError}`}>
-            You need a host account to book a DJ. DJ accounts can&apos;t book other DJs.
-          </div>
-        </div>
-      </div>,
-      document.body,
-    );
-  }
-
-  return createPortal(
-    <div className={styles.formWrap}>
-      <div ref={rootRef} className={styles.formCard}>
-        <div className={styles.formHeaderRow}>
-          <div>
-            <div className={styles.formHeaderEyebrow}>Booking Request</div>
-            <div className={styles.formHeaderDate}>{dateLabel}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={styles.formCloseBtn}
-            aria-label="Close booking form"
-          >
-            ✕
+  // The tappable category header row (chevron + label + pkg count + remove ×).
+  const renderCatHeader = (cat: string) => {
+    const list = listFor(mob, cat);
+    const catOpen = !isNarrow || selCat === cat;
+    return (
+      <div style={catLabel}>
+        {isNarrow ? (
+          <button type="button" onClick={() => { if (!catOpen) selectPkg(cat, 0); }} style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'none', border: 'none', color: catOpen ? 'var(--neon)' : '#fff', cursor: catOpen ? 'default' : 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0, color: catOpen ? 'var(--neon)' : '#9a9ab0' }}>{catOpen ? '▾' : '▸'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(cat)}</span>
+            {!catOpen && list.length > 0 && (
+              <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>{list.length} pkg{list.length === 1 ? '' : 's'}</span>
+            )}
           </button>
-        </div>
-
-        {/* id is what the submit handler scrolls to when the server rejects
-            something that doesn't map to a single field. */}
-        {errorMsg && <div id="mpf-error" className={`${styles.alert} ${styles.alertError}`}>{errorMsg}</div>}
-
-        {/* Your Name — the DJ's contract needs a first AND a last name, and
-            this is the last moment before one gets generated where the host is
-            actually here to supply it. Plain text when the account already has
-            a full one; a field only when it's short a surname. */}
-        <div className={styles.formRow}>
-          {!needsFullName && !editingName ? (
-            // Stored name: label + value + edit pencil all on ONE line, same as
-            // the known-phone row.
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-              <label htmlFor="mpf-full-name" style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Your Name</label>
-              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                {accountName}
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingName(true)}
-                aria-label="Edit your name"
-                title="Edit"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '1rem', lineHeight: 1, padding: 2, flex: 'none' }}
-              >
-                {'✎'}
-              </button>
-            </div>
-          ) : (
-            <>
-              <label htmlFor="mpf-full-name">Your Name</label>
-              <FieldCheck valid={fullNameValid}>
-                <input
-                  id="mpf-full-name"
-                  type="text"
-                  placeholder="Jane Smith"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={`${fieldClass('mpf-full-name', styles.input)} ${styles.hasCheck}`}
-                  autoComplete="name"
-                  autoFocus={editingName}
-                />
-              </FieldCheck>
-              <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-                First and last name.
-              </small>
-            </>
-          )}
-        </div>
-
-        {/* Phone — shown as plain text when we already have it from the
-            account. Nothing to fill in, so nothing that looks fillable: an
-            empty-looking input next to a number they just proved they own
-            reads as another thing to do. */}
-        <div className={styles.formRow}>
-          {knownPhone && !editingPhone ? (
-            // Label + number + SMS opt-in all on ONE line — the value is
-            // read-only (from the account), so a stacked label just burns a row.
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
-              <label htmlFor="mpf-phone" style={{ marginBottom: 0, whiteSpace: 'nowrap' }}>Phone</label>
-              <div style={{ color: 'var(--white,#fff)', fontSize: '.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                {phone}
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingPhone(true)}
-                aria-label="Edit your phone number"
-                title="Edit"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: '1rem', lineHeight: 1, padding: 2, flex: 'none' }}
-              >
-                {'✎'}
-              </button>
-              {/* Full-width on its own line (flexBasis 100%) so it never runs
-                  off the screen on a phone; sits inline beside the number only
-                  when there's room on wider screens. */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '.45rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0, flex: '1 1 100%', minWidth: 0 }}>
-                <input
-                  type="checkbox"
-                  checked={smsOptIn}
-                  onChange={(e) => setSmsOptIn(e.target.checked)}
-                  style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
-                />
-                <span style={{ fontSize: '.78rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400 }}>
-                  Text me updates. Msg &amp; data rates may apply.
-                </span>
-              </label>
-            </div>
-          ) : (
-            <>
-            <label htmlFor="mpf-phone">Phone Number</label>
-            <FieldCheck valid={phoneValid}>
-              <input
-                id="mpf-phone"
-                type="tel"
-                inputMode="tel"
-                placeholder="(555) 555-5555"
-                value={phone}
-                onChange={handlePhoneChange}
-                className={`${fieldClass('mpf-phone', styles.input)} ${styles.hasCheck}`}
-                autoComplete="tel"
-                autoFocus={editingPhone}
-              />
-            </FieldCheck>
-            </>
-          )}
-        </div>
-
-        {/* SMS opt-in — standalone row only when the phone is an editable input.
-            The known-phone case renders it inline on the phone row above. */}
-        {(!knownPhone || editingPhone) && (
-          <div className={styles.formRow}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '.55rem', cursor: 'pointer', userSelect: 'none', marginBottom: 0 }}>
-              <input
-                type="checkbox"
-                checked={smsOptIn}
-                onChange={(e) => setSmsOptIn(e.target.checked)}
-                style={{ accentColor: 'var(--neon,#00f5c4)', width: 16, height: 16, flex: 'none' }}
-              />
-              {/* Override .formRow label (uppercase + letter-spacing + bold) so
-                  the consent line reads as normal sentence-case body text. */}
-              <span style={{ fontSize: '.8rem', color: 'var(--muted,#9a9ab0)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 400 }}>
-                Text me updates. Msg &amp; data rates may apply.
-              </span>
-            </label>
-          </div>
-        )}
-
-        {/* Email — ONLY for accounts that don't have one (phone signups).
-            Everything after this booking is an email; without an address the
-            host would book and then never hear from anyone again. */}
-        {needsEmail && (
-          <div className={styles.formRow}>
-            <label htmlFor="mpf-email">Email Address</label>
-            <FieldCheck valid={emailValid}>
-              <input
-                id="mpf-email"
-                type="email"
-                inputMode="email"
-                placeholder="your@email.com"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className={`${fieldClass('mpf-email', styles.input)} ${styles.hasCheck}`}
-                autoComplete="email"
-              />
-            </FieldCheck>
-            <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--muted)', fontSize: '.7rem' }}>
-              Booking details will be sent to this email address.
-            </small>
-          </div>
-        )}
-
-        {/* Event Type */}
-        <div className={styles.formRow}>
-          <label htmlFor="mpf-event-type">Type of Event</label>
-          <FieldCheck valid={eventTypeValid}>
-            <select
-              id="mpf-event-type"
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value)}
-              className={`${fieldClass('mpf-event-type', styles.select)} ${styles.hasCheckSelect}`}
-            >
-              <option value="">Select event type...</option>
-              {Object.entries(MOB_EVENT_TYPE_LABELS).map(([val, lbl]) =>
-                eventTypesAllowed.includes(val) ? (
-                  <option key={val} value={val}>{lbl}</option>
-                ) : null
-              )}
-              {eventTypesAllowed
-                .filter((v) => !MOB_EVENT_TYPE_LABELS[v])
-                .map((v) => (
-                  <option key={v} value={v}>{mobEventLabel(v, customEventTypes)}</option>
-                ))}
-            </select>
-          </FieldCheck>
-          {eventType === 'other' && (
-            <input
-              type="text"
-              placeholder=""
-              value={eventTypeOther}
-              onChange={(e) => setEventTypeOther(e.target.value)}
-              className={styles.input}
-              style={{ marginTop: '.4rem' }}
-            />
-          )}
-          {/* Event-type-specific sub-fields. Six types take a single
-              "Type of X" text field; Birthday takes age + surprise. */}
-          {EVENT_SUBFIELDS[eventType]?.textLabel && (
-            <div style={{ marginTop: '.6rem' }}>
-              <label htmlFor="mpf-event-subtype">{EVENT_SUBFIELDS[eventType].textLabel}</label>
-              <input
-                id="mpf-event-subtype"
-                type="text"
-                placeholder=""
-                value={eventSubType}
-                onChange={(e) => setEventSubType(e.target.value)}
-                className={styles.input}
-                style={{ marginTop: '.3rem' }}
-              />
-            </div>
-          )}
-          {EVENT_SUBFIELDS[eventType]?.isBirthday && (
-            <div style={{ marginTop: '.6rem' }}>
-              <label htmlFor="mpf-birthday-age">Guest of Honor Age?</label>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  marginTop: '.3rem',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <input
-                  id="mpf-birthday-age"
-                  type="number"
-                  onWheel={(e) => e.currentTarget.blur()}
-                  min={0}
-                  inputMode="numeric"
-                  placeholder=""
-                  value={birthdayAge}
-                  onChange={(e) => setBirthdayAge(e.target.value)}
-                  className={styles.input}
-                  style={{ width: '90px', flexShrink: 0 }}
-                />
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '.55rem',
-                    cursor: 'pointer',
-                    fontSize: '.85rem',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={surprise}
-                    onChange={(e) => setSurprise(e.target.checked)}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      flexShrink: 0,
-                      accentColor: 'var(--neon)',
-                      cursor: 'pointer',
-                    }}
-                  />
-                  Is this a Surprise Party?
-                </label>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Venue Name */}
-        <div className={styles.formRow}>
-          <label htmlFor="mpf-venue-name">Venue Name</label>
-          <FieldCheck valid={venueNameValid}>
-            <input
-              id="mpf-venue-name"
-              type="text"
-              placeholder=""
-              value={venueName}
-              onChange={(e) => setVenueName(e.target.value)}
-              className={`${fieldClass('mpf-venue-name', styles.input)} ${styles.hasCheck}`}
-            />
-          </FieldCheck>
-        </div>
-
-        {/* Venue Address — country dropdown + Nominatim autocomplete.
-            The country select scopes suggestions; the booker picks it
-            first so addresses only populate for the selected country. */}
-        <div className={styles.formRow}>
-          <label htmlFor="mpf-venue-address">Venue Address</label>
-          <div className={styles.addressRow}>
-            <select
-              aria-label="Venue country"
-              className={`${styles.select} ${styles.countrySelect}`}
-              value={venueCountry}
-              onChange={(e) => {
-                setVenueCountry(e.target.value);
-                // Country changed — existing suggestions no longer valid.
-                setAddrSuggestions([]);
-                setShowAddrSuggestions(false);
-                venueCoordsRef.current = null;
-              }}
-            >
-              {BOOKING_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.flag} {c.code.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            <div className={styles.addressInputWrap}>
-              <input
-                id="mpf-venue-address"
-                type="text"
-                placeholder=""
-                value={venueAddress}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setVenueAddress(val);
-                  // User started typing again — invalidate previously picked coords
-                  venueCoordsRef.current = null;
-                  // No longer a dropdown-selected address.
-                  setAddressPicked(false);
-                  // Debounce the Nominatim fetch; vanilla uses 350ms
-                  if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
-                  if (val.trim().length < 3) {
-                    setAddrSuggestions([]);
-                    setShowAddrSuggestions(false);
-                    return;
-                  }
-                  addrTimerRef.current = setTimeout(async () => {
-                    // Scope suggestions to the selected country.
-                    const results = await searchAddresses(val.trim(), venueCountry);
-                    setAddrSuggestions(results);
-                    setShowAddrSuggestions(results.length > 0);
-                  }, 350);
-                }}
-                onBlur={() => {
-                  // Delay so click on a suggestion can fire before we hide
-                  setTimeout(() => setShowAddrSuggestions(false), 150);
-                }}
-                onFocus={() => {
-                  if (addrSuggestions.length > 0) setShowAddrSuggestions(true);
-                }}
-                className={`${fieldClass('mpf-venue-address', styles.input)} ${styles.hasCheck}`}
-                autoComplete="off"
-              />
-              {venueAddressValid && (
-                <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
-              )}
-              {showAddrSuggestions && addrSuggestions.length > 0 && (
-                <div className={styles.addrSuggestions}>
-                  {addrSuggestions.map((s, i) => (
-                    <div
-                      key={i}
-                      className={styles.addrSuggestion}
-                      // Use onMouseDown not onClick — fires before the input's
-                      // onBlur, so the suggestion list isn't dismissed first.
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setVenueAddress(s.display);
-                        setAddressPicked(true);
-                        if (s.lat != null && s.lon != null) {
-                          venueCoordsRef.current = { lat: s.lat, lon: s.lon };
-                        } else {
-                          venueCoordsRef.current = null;
-                        }
-                        setShowAddrSuggestions(false);
-                      }}
-                    >
-                      {s.display}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Room Details */}
-        <div className={styles.formRow}>
-          <label htmlFor="mpf-room">
-            Room Details <span className={styles.optional}>(optional)</span>
-          </label>
-          <FieldCheck valid={roomValid}>
-            <input
-              id="mpf-room"
-              type="text"
-              placeholder=""
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
-              className={`${styles.input} ${styles.hasCheck}`}
-            />
-          </FieldCheck>
-        </div>
-
-        {/* Guests */}
-        <div className={styles.formRow}>
-          <label htmlFor="mpf-guests">Estimated Number of Guests</label>
-          <FieldCheck valid={guestsValid}>
-            <input
-              id="mpf-guests"
-              type="number"
-              onWheel={(e) => e.currentTarget.blur()}
-              min={1}
-              placeholder=""
-              value={guests}
-              onChange={(e) => setGuests(e.target.value)}
-              className={`${styles.input} ${styles.smallNumberInput} ${styles.hasCheck}`}
-            />
-          </FieldCheck>
-        </div>
-
-        {/* Times */}
-        <div className={styles.timesLabel}>{dateLabel}</div>
-        <div className={styles.timesRow}>
-          <div className={styles.timeCol}>
-            <label htmlFor="mpf-start-time">
-              {isWedding ? 'Reception Start Time' : 'Event Start Time'}
-            </label>
-            <FieldCheck valid={startTimeValid}>
-              <select
-                id="mpf-start-time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className={`${fieldClass('mpf-start-time', styles.select)} ${styles.hasCheckSelect}`}
-              >
-                <option value="">Select…</option>
-                {MOB_TIME_OPTIONS.map(o => (
-                  <option key={o.val} value={o.val}>{o.label}</option>
-                ))}
-              </select>
-            </FieldCheck>
-          </div>
-          <div className={styles.timeCol}>
-            <label htmlFor="mpf-end-time">
-              {isWedding ? 'Reception End Time' : 'Event End Time'}
-            </label>
-            <FieldCheck valid={endTimeValid}>
-              <select
-                id="mpf-end-time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={`${styles.select} ${styles.hasCheckSelect}`}
-              >
-                <option value="">Select…</option>
-                {endTimeOptions.map(o => (
-                  <option key={o.val} value={o.val}>{o.label}</option>
-                ))}
-              </select>
-            </FieldCheck>
-          </div>
-        </div>
-        {durationLabel(hoursBetween(startTime, endTime)) && (
-          <div className={styles.durationNoteRight}>
-            {isWedding ? 'Reception Duration' : 'Event Duration'}: {durationLabel(hoursBetween(startTime, endTime))}
-          </div>
-        )}
-
-        {/* Cocktail-hour subsection — WEDDINGS ONLY. General/Mitzvah and other
-            mobile events no longer offer a cocktail-hour add-on. */}
-        {cocktailEligible && isWedding && (
-          <div className={styles.weddingFields}>
-            <div className={styles.cocktailHeaderRow}>
-              <div className={styles.weddingHeader}>Cocktail Hour</div>
-            </div>
-            <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
-            <div className={styles.radioGroup}>
-              <label className={styles.radioPill}>
-                <input
-                  type="radio"
-                  name="mpf-cocktail-yn"
-                  checked={cocktailNeeded === true}
-                  onChange={() => setCocktailNeeded(true)}
-                />
-                <span className={styles.radioPillLabel}>Yes</span>
-              </label>
-              <label className={styles.radioPill}>
-                <input
-                  type="radio"
-                  name="mpf-cocktail-yn"
-                  checked={cocktailNeeded === false}
-                  onChange={() => setCocktailNeeded(false)}
-                />
-                <span className={styles.radioPillLabel}>No</span>
-              </label>
-            </div>
-            {cocktailNeeded === true && (
-              <div>
-                <div style={{ marginBottom: '.6rem' }}>
-                  <label
-                    htmlFor="mpf-cocktail-start"
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: '.58rem',
-                      letterSpacing: '.06em',
-                      textTransform: 'uppercase',
-                      color: 'var(--white)',
-                      display: 'block',
-                      marginBottom: '.3rem',
-                    }}
-                  >
-                    Cocktail Start Time
-                  </label>
-                  <select
-                    id="mpf-cocktail-start"
-                    value={cocktailStart}
-                    onChange={(e) => setCocktailStart(e.target.value)}
-                    className={fieldClass('mpf-cocktail-start', styles.select)}
-                  >
-                    <option value="">Select…</option>
-                    {MOB_TIME_OPTIONS.map(o => (
-                      <option key={o.val} value={o.val}>{o.label}</option>
-                    ))}
-                  </select>
-                  {cocktailWarn && (
-                    <div className={styles.cocktailWarn}>
-                      ⚠ Cocktail hour must start before the {isWedding ? 'reception' : 'event'}. Please select an earlier time.
-                    </div>
-                  )}
-                  {!cocktailWarn && halfHourLabel(halfHoursBetween(cocktailStart, startTime)) && (
-                    <div className={styles.cocktailDurationNote}>
-                      Cocktail hour duration: {halfHourLabel(halfHoursBetween(cocktailStart, startTime))}
-                    </div>
-                  )}
-                </div>
-                <div id="mpf-cocktail-room" style={{ fontSize: '.85rem', color: errorFieldId === 'mpf-cocktail-room' ? 'var(--danger, #ff5f5f)' : 'var(--white)', marginBottom: '.5rem', scrollMarginTop: '90px' }}>
-                  Is the cocktail hour in the same room as the {isWedding ? 'reception' : 'event'}?
-                </div>
-                <div className={styles.radioGroup}>
-                  <label className={styles.radioPill}>
-                    <input
-                      type="radio"
-                      name="mpf-cocktail-room"
-                      checked={cocktailSameRoom === true}
-                      onChange={() => setCocktailSameRoom(true)}
-                    />
-                    <span className={styles.radioPillLabel}>Yes</span>
-                  </label>
-                  <label className={styles.radioPill}>
-                    <input
-                      type="radio"
-                      name="mpf-cocktail-room"
-                      checked={cocktailSameRoom === false}
-                      onChange={() => setCocktailSameRoom(false)}
-                    />
-                    <span className={styles.radioPillLabel}>No</span>
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Music-for-ceremony subsection — WEDDINGS ONLY. Independent add-on
-            that mirrors the cocktail-hour block above. */}
-        {isWedding && (
-          <div className={styles.weddingFields}>
-            <div className={styles.cocktailHeaderRow}>
-              <div className={styles.weddingHeader}>Music For Ceremony</div>
-            </div>
-            <div className={styles.weddingPrompt}>Is music needed for the ceremony?</div>
-            <div className={styles.radioGroup}>
-              <label className={styles.radioPill}>
-                <input
-                  type="radio"
-                  name="mpf-ceremony-yn"
-                  checked={ceremonyNeeded === true}
-                  onChange={() => setCeremonyNeeded(true)}
-                />
-                <span className={styles.radioPillLabel}>Yes</span>
-              </label>
-              <label className={styles.radioPill}>
-                <input
-                  type="radio"
-                  name="mpf-ceremony-yn"
-                  checked={ceremonyNeeded === false}
-                  onChange={() => setCeremonyNeeded(false)}
-                />
-                <span className={styles.radioPillLabel}>No</span>
-              </label>
-            </div>
-            {ceremonyNeeded === true && (
-              <div>
-                <div style={{ marginBottom: '.6rem' }}>
-                  <label
-                    htmlFor="mpf-ceremony-start"
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: '.58rem',
-                      letterSpacing: '.06em',
-                      textTransform: 'uppercase',
-                      color: 'var(--white)',
-                      display: 'block',
-                      marginBottom: '.3rem',
-                    }}
-                  >
-                    Ceremony Start Time
-                  </label>
-                  <select
-                    id="mpf-ceremony-start"
-                    value={ceremonyStart}
-                    onChange={(e) => setCeremonyStart(e.target.value)}
-                    className={fieldClass('mpf-ceremony-start', styles.select)}
-                  >
-                    <option value="">Select…</option>
-                    {MOB_TIME_OPTIONS.map(o => (
-                      <option key={o.val} value={o.val}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div id="mpf-ceremony-room" style={{ fontSize: '.85rem', color: errorFieldId === 'mpf-ceremony-room' ? 'var(--danger, #ff5f5f)' : 'var(--white)', marginBottom: '.5rem', scrollMarginTop: '90px' }}>
-                  Is the ceremony in the same room as the reception?
-                </div>
-                <div className={styles.radioGroup}>
-                  <label className={styles.radioPill}>
-                    <input
-                      type="radio"
-                      name="mpf-ceremony-room"
-                      checked={ceremonySameRoom === true}
-                      onChange={() => setCeremonySameRoom(true)}
-                    />
-                    <span className={styles.radioPillLabel}>Yes</span>
-                  </label>
-                  <label className={styles.radioPill}>
-                    <input
-                      type="radio"
-                      name="mpf-ceremony-room"
-                      checked={ceremonySameRoom === false}
-                      onChange={() => setCeremonySameRoom(false)}
-                    />
-                    <span className={styles.radioPillLabel}>No</span>
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Packages */}
-        {hasAnyPackages ? (
-          <div className={styles.formRow}>
-            <PackagesSection
-              formReady={formReadyForPackages}
-              eventType={eventType}
-              categoryPkgs={categoryPkgs}
-              generalPkgs={generalPkgs}
-              selectedPkgIdx={selectedPkgIdx}
-              onSelect={(idx) => setSelectedPkgIdx(idx)}
-              onPhotoClick={(photos, details, start = 0) => setPhotoLightboxUrl({ photos, details, active: start })}
-              startTime={startTime}
-              endTime={endTime}
-              depositPct={depositPct}
-              wantsCocktail={wantsCocktail}
-              cocktailStart={cocktailStart}
-              wantsCeremony={wantsCeremony}
-              dayAdjustPct={dayAdjustPct}
-              cur={cur}
-            />
-          </div>
+        ) : cat === 'general' ? (
+          <button type="button" onClick={() => setGenCoversOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}>
+            <span>{labelFor(cat)}</span>
+            <span style={{ fontSize: '.9rem', lineHeight: 1 }}>▾</span>
+          </button>
         ) : (
-          // No packages defined → quote-style notice. The DJ will respond
-          // with a price via their booking-requests page.
-          formReadyForPackages && (
-            <div className={styles.formRow}>
-              <div className={styles.noPackagesMsg}>
-                This DJ accepts custom requests. Submit your details and they&apos;ll
-                respond with a quote.
-              </div>
-            </div>
-          )
+          <span>{labelFor(cat)}</span>
         )}
+        {cat !== 'general' && (
+          <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={(e) => { e.stopPropagation(); removeEventType(cat); }} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
+        )}
+      </div>
+    );
+  };
 
-        {/* Price display */}
-        {priceResult && selectedPkgIdx != null && (
-          <div className={styles.priceDisplay}>
-            <div className={styles.priceLabel}>Estimated Price</div>
-
-            {discount.amount > 0 && (
-              <div className={styles.depositText} style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, marginBottom: 4 }}>
-                {discount.label} — you save {cur}{discount.amount.toLocaleString()}
-              </div>
-            )}
-
-            {/* Package price — big on its own when there's no breakdown;
-                demoted to a supporting size when a Total sits below. */}
-            <div
-              className={
-                priceResult.isQuote
-                  ? `${styles.priceValue} ${styles.priceValueQuote}`
-                  : styles.priceValue
-              }
-            >
-              {priceResult.isQuote || priceResult.price == null ? (
-                'Price on Request'
-              ) : discount.amount > 0 && discountedTotal != null ? (
-                <>
-                  <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.7em', marginRight: 8 }}>
-                    {cur}{priceResult.price.toLocaleString()}
-                  </span>
-                  {cur}{discountedTotal.toLocaleString()}
-                </>
-              ) : (
-                `${cur}${priceResult.price.toLocaleString()}`
-              )}
-            </div>
-
-            {/* On a quote, explain what "Price on Request" means for the host. */}
-            {(priceResult.isQuote || priceResult.price == null) && (
-              <div className={styles.depositText} style={{ color: 'var(--muted,#8a8aa0)', maxWidth: 300, margin: '6px auto 0', lineHeight: 1.5 }}>
-                The DJ will send back a quote once they review the details of your event and the package you have selected.
-              </div>
-            )}
-
-            {/* Itemized breakdown — the big Total sits at the bottom. */}
-            {showPriceBreakdown && discountedTotal != null && grandTotal != null && (
-              <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
-                {taxPct > 0 && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Subtotal</span><span>{cur}{discountedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>{cur}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
-                  <span>Total</span><span>{cur}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                {depositPct > 0 && discountedDeposit != null && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Deposit ({depositPct}%)</span><span>{cur}{discountedDeposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Balance due day of event</span><span>{cur}{(grandTotal - discountedDeposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            {priceResult.price != null && depositPct === 0 && taxPct === 0 && (
-              <div className={styles.depositText}>No deposit required</div>
-            )}
-            {priceResult.cocktailAddon > 0 && (
-              <div className={styles.cocktailNote}>
-                Includes cocktail hour: +{cur}{priceResult.cocktailAddon.toLocaleString()}
-              </div>
-            )}
-            {(priceResult.ceremonyAddon ?? 0) > 0 && (
-              <div className={styles.cocktailNote}>Includes ceremony music: +{cur}{(priceResult.ceremonyAddon ?? 0).toLocaleString()}</div>
-            )}
-            {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
-              <div className={styles.overtimeNote}>
-                Overtime rate: {cur}{Number(selectedPkg?.overtime).toLocaleString()}/hr
-              </div>
-            )}
-
-            {/* Discounts the DJ has blocked on this date — sits under overtime. */}
-            {exclusionMsg && (
-              <div className={styles.overtimeNote} style={{ color: 'var(--muted,#8a8aa0)' }}>
-                {exclusionMsg}
-              </div>
-            )}
-
-            {!priceResult.isQuote && priceResult.price != null && hasActiveCode && !codesExcludedToday && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <input
-                  type="text"
-                  value={promoInput}
-                  onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
-                  placeholder="Promo code"
-                  style={{
-                    textTransform: 'uppercase',
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border,rgba(255,255,255,.25))',
-                    background: 'transparent',
-                    color: 'inherit',
-                    maxWidth: 150,
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={applyPromo}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--neon,#00e0a4)',
-                    background: 'transparent',
-                    color: 'var(--neon,#00e0a4)',
-                    cursor: 'pointer',
-                    fontSize: '.8rem',
-                  }}
-                >
-                  Apply
-                </button>
-                {appliedCode && discount.kind === 'code' && (
-                  <span style={{ color: 'var(--neon,#00e0a4)', fontSize: '.8rem' }}>✓ Applied</span>
-                )}
-                {appliedCode && discount.kind === 'sale' && (
-                  <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.75rem' }}>
-                    Sale price is better — applied
-                  </span>
-                )}
-                {promoError && <span style={{ color: '#ff6b6b', fontSize: '.8rem' }}>{promoError}</span>}
-              </div>
+  // The open category's packages + inline editor (mobile) + add button.
+  const renderCatBody = (cat: string) => {
+    const list = listFor(mob, cat);
+    return (
+      <>
+        {cat === 'general' && !isNarrow && genCoversOpen && (
+          <div style={{ margin: '-.1rem 0 .55rem', padding: '.5rem .65rem', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 7 }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.3rem' }}>Pricing covers</div>
+            {addableTypes.length ? addableTypes.map((t) => (
+              <div key={t} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '.04em', textTransform: 'uppercase', color: '#fff', padding: '.14rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelFor(t)}</div>
+            )) : (
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.58rem', color: 'var(--muted)', padding: '.1rem 0' }}>Every event uses its own pricing.</div>
             )}
           </div>
         )}
+        {list.map((pk, i) => {
+          const active = selCat === cat && safeIdx === i;
+          const invalid = showInvalid && pkgInvalid(cat, i);
+          // Show the DJ's own title once they've named it; otherwise fall back to
+          // "Package N" so a package always has a name.
+          const label = ((pk as unknown as { title?: string })?.title || '').trim() || `Package ${i + 1}`;
+          return (
+            <button key={i} ref={active ? selPkgRef : undefined} type="button" onClick={() => selectPkg(cat, i)} style={pkgItem(active, pkgDirty(cat, i), invalid)}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isNarrow && <span style={{ color: 'var(--muted,#8a8aa0)', marginRight: 6 }}>&rsaquo;</span>}{label}</span>
+              {invalid ? (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#2a0b0b', background: '#ff8f8f', borderRadius: 4, padding: '.12rem .4rem' }}>Needs info</span>
+              ) : (
+                // Editing first, then Unsaved to its right — both can show at once.
+                <>
+                  {active && (
+                    <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#04241b', animation: 'gdcEditBlink 1s steps(1,end) infinite' }} />Editing</span>
+                  )}
+                  {pkgDirty(cat, i) && (
+                    <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04121a', background: '#ffd60a', borderRadius: 4, padding: '.12rem .4rem' }}>Unsaved</span>
+                  )}
+                </>
+              )}
+            </button>
+          );
+        })}
+        <button type="button" style={addPkgBtn} onClick={() => addPackageTo(cat)}>+ Add Package</button>
+      </>
+    );
+  };
 
-        {/* Message */}
-        <div className={styles.formRow}>
-          <label htmlFor="mpf-message">
-            Message <span className={styles.optional}>(optional)</span>
-          </label>
-          <textarea
-            id="mpf-message"
-            placeholder=""
-            rows={3}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className={styles.textarea}
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={submitting}
-          className={styles.submitBtn}
-        >
-          {submitting ? 'Submitting...' : submitLabel}
-        </button>
+  // Header + body inline, per category. On mobile only the open category shows
+  // its body, and that body is indented so the packages read as nested under
+  // the event type being edited.
+  const renderCategory = (cat: string) => {
+    const open = !isNarrow || selCat === cat;
+    return (
+      <div key={cat} style={{ marginBottom: isNarrow ? 8 : 16 }}>
+        {renderCatHeader(cat)}
+        {open && (
+          <div style={isNarrow ? { paddingLeft: 16, marginLeft: 3, borderLeft: '1px solid var(--border)' } : undefined}>
+            {renderCatBody(cat)}
+          </div>
+        )}
       </div>
+    );
+  };
 
-      {/* Photo lightbox for package thumbnails */}
-      {photoLightboxUrl && (
-        <div
-          className={styles.photoLightbox}
-          onClick={() => setPhotoLightboxUrl(null)}
-        >
-          <div
-            className={styles.photoLightboxInner}
-            onClick={(e) => e.stopPropagation()}
+  const renderEditor = () => (
+    <div ref={editorWrapRef} style={{ position: 'relative', border: '1px solid var(--neon)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem' }}>
+      {/* A small neon notch on the left edge points back at the highlighted
+          package in the tree, so the open editor reads as its expansion. */}
+      {!isNarrow && (
+        <span aria-hidden="true" style={{ position: 'absolute', left: -7, top: notchTop, width: 12, height: 12, background: '#07070b', borderLeft: '1px solid var(--neon)', borderBottom: '1px solid var(--neon)', transform: 'rotate(45deg)', transition: 'top .15s ease' }} />
+      )}
+      {/* Breadcrumb header: which event type + package this editor belongs to. */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.1rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>
+        <span style={{ color: 'var(--neon)' }}>{labelFor(selCat)}</span>
+        <span style={{ color: '#555', margin: '0 .5rem', fontSize: '1.1rem' }}>&rsaquo;</span>
+        <span style={{ color: '#fff' }}>{((currentPkg as unknown as { title?: string })?.title || '').trim() || `Package ${safeIdx + 1}`}</span>
+      </div>
+      {err && showInvalid && invalidList.length > 0 && (
+        <div role="alert" style={{ position: 'sticky', top: 8, zIndex: 5, marginBottom: 14, padding: '.6rem .7rem', background: 'rgba(8,8,12,.96)', border: '1px solid var(--border)', borderRadius: 8, backdropFilter: 'blur(2px)', color: '#ff8f8f', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', letterSpacing: '.03em', lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem', fontWeight: 700 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff8f8f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            <span>{err}</span>
+          </div>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+            {invalidList.map((it) => {
+              const here = it.cat === selCat && it.i === safeIdx;
+              return (
+                <li key={`${it.cat}-${it.i}`}>
+                  <button type="button" onClick={() => goToInvalid(it)} style={{ display: 'block', width: '100%', textAlign: 'left', background: here ? 'rgba(255,95,95,.08)' : 'transparent', border: 'none', borderLeft: here ? '2px solid #ff8f8f' : '2px solid transparent', borderRadius: 4, padding: '.2rem .5rem', color: '#ffb3b3', fontFamily: "'Space Mono', monospace", fontSize: '.66rem', letterSpacing: '.02em', lineHeight: 1.45, cursor: 'pointer' }}>
+                    <span style={{ color: '#fff', textTransform: 'uppercase' }}>{labelFor(it.cat)}</span>
+                    <span style={{ color: '#666', margin: '0 .35rem' }}>&rsaquo;</span>
+                    <span style={{ color: '#fff', textTransform: 'uppercase' }}>Package {it.i + 1}</span>
+                    <span style={{ color: '#888' }}> &mdash; needs </span>
+                    <span>{it.labels.join(', ')}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      <div className={styles.pkgCard}>
+        <PackageEditor
+          key={`${selCat}-${safeIdx}`}
+          cat={catFor(selCat)}
+          idx={safeIdx}
+          pkg={currentPkg}
+          totalCount={selList.length}
+          userId={userId}
+          currency={currency}
+          onChange={onEditPkg}
+          onRemove={() => {}}
+          hideOwnHeader
+          generalPhotos={selCat === 'general' ? undefined : generalPhotos}
+          errorFields={showInvalid ? (() => {
+            // Highlight the missing fields of WHATEVER package is open, not just
+            // the first invalid one — so the red boxes follow the DJ around.
+            const p = currentPkg as unknown as Record<string, unknown>;
+            const m: string[] = [];
+            if (titleMatchesEventType(selCat, p.title as string | undefined)) m.push('title');
+            if (textEmpty(p.details)) m.push('details');
+            if (priceMissing(p)) m.push('priceTiers');
+            return m.length ? m : undefined;
+          })() : undefined}
+        />
+        <div className={styles.pkgSaveRow}>
+          {selList.length > 1 && (
+            <button type="button" onClick={removePackage} style={{ background: 'transparent', border: '1px solid rgba(255,95,95,.5)', borderRadius: 6, color: '#ff8f8f', padding: '.5rem 1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Remove Package {safeIdx + 1}</button>
+          )}
+          <span style={{ flex: 1 }} />
+          <button type="button" onClick={openPreview} disabled={!hasAnyPrice} title={hasAnyPrice ? 'See how a host sees your packages' : 'Add a price to a package first'} style={{ background: 'none', border: 'none', padding: '0 .4rem', color: hasAnyPrice ? 'var(--neon)' : 'var(--muted)', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'underline', cursor: hasAnyPrice ? 'pointer' : 'not-allowed', opacity: hasAnyPrice ? 1 : 0.55, whiteSpace: 'nowrap' }}>Preview how a host sees this</button>
+          <button type="button" className={styles.pkgSaveBtn} onClick={save} style={{ opacity: dirty ? 1 : 0.6, cursor: 'pointer' }}>{dirty ? 'Save Packages' : 'All Changes Saved'}</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <style>{`@keyframes gdcEditBlink{0%,49%{opacity:1}50%,100%{opacity:0}}`}</style>
+      {/* ── SIDEBAR (full-width accordion on mobile) ── */}
+      <aside style={isNarrow ? { flex: '1 1 100%', width: '100%' } : { flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
+        {renderCategory('general')}
+        {railTypes.map((t) => renderCategory(t))}
+        {addableTypes.length > 0 && (
+          <select
+            aria-label="Add an event type with its own packages"
+            value=""
+            onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
+            style={{ width: '100%', marginTop: 2, background: 'rgba(10,10,16,.6)', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 7, padding: '.55rem .5rem', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}
           >
-            <div className={styles.photoLightboxStage}>
-              <div className={styles.photoLightboxMain}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photoLightboxUrl.photos[photoLightboxUrl.active]}
-                  alt="Package preview"
-                  className={styles.photoLightboxImg}
-                />
+            <option value="">+ Custom Pricing For Event Type</option>
+            {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
+          </select>
+        )}
+        {onEventTypesSave && (
+          <button type="button" onClick={openEtEditor} style={{ width: '100%', marginTop: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 7, padding: '.5rem', fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>Edit event types</button>
+        )}
+        {addableTypes.length > 0 && (
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', lineHeight: 1.5, letterSpacing: '.04em', textTransform: 'uppercase', color: '#9a9ab0', margin: '.5rem .1rem 0' }}>
+            &ldquo;Add Event Type&rdquo; gives that event its own packages, pricing &amp; photos, separate from General.
+          </p>
+        )}
+      </aside>
+
+      {/* ── EDITOR (right pane on desktop; below the whole package list on
+             mobile, so the package list and its controls stay together up top) ── */}
+      <main ref={cardRef} style={isNarrow ? { flex: '1 1 100%', width: '100%', minWidth: 0, marginTop: 14, scrollMarginTop: 80 } : { flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
+        {renderEditor()}
+      </main>
+
+      {/* ── Event types popup ── */}
+      {etOpen && (() => {
+        const builtIns = Object.entries(MOB_EVENT_LABELS).filter(([k]) => k !== 'other').map(([key, label]) => ({ key, label }));
+        const allOpts = [...builtIns, ...etCustom.map((c) => ({ key: c.key, label: c.label }))];
+        const genOpts = allOpts.filter((o) => !etSpec.includes(o.key));
+        const specOpts = allOpts.filter((o) => etSpec.includes(o.key));
+        const isCustom = (k: string) => etCustom.some((c) => c.key === k);
+        const cbRow = (o: { key: string; label: string }) => (
+          <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', color: '#fff', fontSize: '.85rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={etSel.includes(o.key)} onChange={(e) => etToggle(o.key, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--neon)', cursor: 'pointer' }} />
+            <span style={{ flex: 1 }}>{o.label}</span>
+            {isCustom(o.key) && (<span role="button" aria-label={`Remove ${o.label}`} title="Remove" onClick={(e) => { e.preventDefault(); void etRemoveCustom(o.key); }} style={{ color: '#ff8f8f', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>&times;</span>)}
+          </label>
+        );
+        const groupLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.55rem', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 .5rem' };
+        const addRow = (val: string, setVal: (v: string) => void, toSpec: boolean) => (
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.6rem' }}>
+            <input value={val} onChange={(e) => { setVal(e.target.value); setEtErr(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); etAddCustom(val, toSpec); } }} placeholder="Add event type" aria-label="Add event type" style={{ flex: 1, background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '.5rem .6rem', fontSize: '.82rem' }} />
+            <button type="button" onClick={() => etAddCustom(val, toSpec)} style={{ background: 'var(--neon)', color: '#04121a', border: 'none', borderRadius: 6, padding: '.5rem .85rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Add</button>
+          </div>
+        );
+        return (
+          <div onClick={() => closeEtEditor()} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, maxHeight: '85vh', overflowY: 'auto', background: '#0c0c12', border: '1px solid var(--neon)', borderRadius: 12, padding: '1.25rem', boxShadow: '0 20px 60px rgba(0,0,0,.6)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.3rem' }}>
+                <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '.04em', color: '#fff' }}>Event types</h3>
+                <button type="button" onClick={() => closeEtEditor()} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
               </div>
-              {photoLightboxUrl.photos.length > 1 && (
-                <div className={styles.photoLightboxThumbs}>
-                  {photoLightboxUrl.photos.map((p, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`${styles.photoLightboxThumb} ${i === photoLightboxUrl.active ? styles.photoLightboxThumbActive : ''}`}
-                      onClick={() => setPhotoLightboxUrl((cur) => cur ? { ...cur, active: i } : cur)}
-                    >
+              <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.75rem', lineHeight: 1.5 }}>Check the event types you offer, or add your own. These appear on your public booking form and here for pricing.</p>
+              <div style={groupLabel}>General events</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>{genOpts.map(cbRow)}</div>
+              {addRow(etNewGen, setEtNewGen, false)}
+              <div style={{ ...groupLabel, marginTop: '1.25rem' }}>Specialty / Custom</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>{specOpts.length > 0 ? specOpts.map(cbRow) : <span style={{ color: 'var(--muted)', fontSize: '.75rem' }}>None yet.</span>}</div>
+              {addRow(etNewSpec, setEtNewSpec, true)}
+              {etErr && <p style={{ color: '#ff8f8f', fontSize: '.75rem', margin: '1rem 0 0' }}>{etErr}</p>}
+              <button type="button" onClick={etSaveClose} style={{ width: '100%', marginTop: etErr ? '.5rem' : '1.25rem', background: 'var(--neon)', border: '1px solid var(--neon)', color: '#04121a', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.68rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Save event types</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Host preview ── */}
+      {previewOpen && (() => {
+        const cur = currencySymbol(currency);
+        const ser = serializeIndependent(mob);
+        type Card = { i: number; pkg: MobilePackage; title: string; details: string; photo: string; photos: string[]; reqAll: boolean; tiers: { hours: number; price: number }[] };
+        const list = resolveListFor(ser, previewEvent || 'general');
+        const cards: Card[] = [];
+        list.forEach((_, i) => {
+          const rp = resolveIndependent(ser, previewEvent || 'general', i) as unknown as MobilePackage | null;
+          if (!rp) return;
+          const title = String((rp as { title?: string }).title || '').trim();
+          if (!title) return;
+          const mainPhoto = String((rp as { photo?: string }).photo || '');
+          const extra = Array.isArray((rp as { photos?: string[] }).photos) ? ((rp as { photos?: string[] }).photos as string[]) : [];
+          cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: mainPhoto, photos: Array.from(new Set([mainPhoto, ...extra].filter(Boolean))), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
+        });
+        const sel = cards.find((c) => c.i === previewSel) || cards[0];
+        let summary: { quote: boolean; rate: number; tax: number; deposit: number; total: number } | null = null;
+        if (sel) {
+          const res = calcPrice(sel.pkg, previewStart, previewEnd, depositPct, false, '', false);
+          if (res.isQuote || res.price == null) summary = { quote: true, rate: 0, tax: 0, deposit: 0, total: 0 };
+          else {
+            const rate = res.price;
+            const tax = taxEnabled ? Number(((rate * taxPct) / 100).toFixed(2)) : 0;
+            const total = Number((rate + tax).toFixed(2));
+            const deposit = depositPct > 0 ? Number(((total * depositPct) / 100).toFixed(2)) : 0;
+            summary = { quote: false, rate, tax, deposit, total };
+          }
+        }
+        const lockField = (label: string, value: string) => (
+          <div style={{ marginBottom: '.55rem' }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.2rem' }}>{label}</div>
+            <div style={{ background: 'rgba(20,20,28,.5)', border: '1px dashed var(--border)', borderRadius: 7, padding: '.5rem .6rem', color: 'var(--muted)', fontSize: '.82rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none', userSelect: 'none' }}>
+              <span>{value}</span>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.1em', color: 'var(--neon)', fontWeight: 700 }}>SAMPLE</span>
+            </div>
+          </div>
+        );
+        const selStyle: CSSProperties = { width: '100%', background: 'rgba(10,10,16,.9)', color: '#fff', border: '1px solid var(--neon)', borderRadius: 7, padding: '.55rem .6rem', fontSize: '.85rem', cursor: 'pointer' };
+        const editLabel: CSSProperties = { fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', marginBottom: '.2rem' };
+        return (
+          <div onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem', overflowY: 'auto' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: '#000', border: '1px solid rgba(255,255,255,.6)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.7)', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--neon)', color: '#04121a', padding: '.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>Sample preview &middot; nothing is sent</span>
+                <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#04121a', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
+              </div>
+              <div style={{ padding: '1.1rem 1.25rem 1.25rem' }}>
+                <h3 style={{ margin: '0 0 .2rem', fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.04em', color: '#fff' }}>How a host books you</h3>
+                <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '.72rem', lineHeight: 1.5 }}>Change the <span style={{ color: 'var(--neon)' }}>event type</span> and <span style={{ color: 'var(--neon)' }}>times</span> below to see how your price moves. The greyed-out fields are just sample data.</p>
+                <div style={{ marginBottom: '.55rem' }}>
+                  <div style={editLabel}>Type of event</div>
+                  <select value={previewEvent} onChange={(e) => { setPreviewEvent(e.target.value); setPreviewSel(0); }} style={selStyle}>
+                    {selectedEventTypes.map((k) => <option key={k} value={k} style={{ background: '#0c0c12' }}>{labelFor(k)}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.55rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={editLabel}>Start time</div>
+                    <select value={previewStart} onChange={(e) => setPreviewStart(e.target.value)} style={selStyle}>{MOB_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}</select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={editLabel}>End time</div>
+                    <select value={previewEnd} onChange={(e) => setPreviewEnd(e.target.value)} style={selStyle}>{MOB_END_TIME_OPTIONS.map((o) => <option key={o.val} value={o.val} style={{ background: '#0c0c12' }}>{o.label}</option>)}</select>
+                  </div>
+                </div>
+                {lockField('Date', 'Saturday, August 15, 2026')}
+                {lockField('Venue', '123 Celebration Ave, Your City')}
+                {lockField('Your name', 'Jane Doe')}
+                {cards.length > 0 && (
+                  <div style={{ marginTop: '.8rem' }}>
+                    <div className={bookingStyles.packagesLabel}>Select a Package</div>
+                    <div className={bookingStyles.packagesGrid}>
+                      {cards.map((c) => {
+                        const isSel = previewSel === c.i;
+                        const hasBody = !!(c.details || c.photos.length);
+                        let priceEl: React.ReactNode = null;
+                        if (c.reqAll) priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>;
+                        else {
+                          const cp = calcPrice(c.pkg, previewStart, previewEnd, depositPct, false, '', false);
+                          if (cp.isQuote || cp.price == null) { if (c.tiers.length > 0) priceEl = <div className={bookingStyles.packagePriceQuote}>Price on request</div>; }
+                          else priceEl = <div className={bookingStyles.packagePrice}>{cur}{cp.price.toLocaleString()}</div>;
+                        }
+                        return (
+                          <div key={c.i} className={`${bookingStyles.packageCard} ${isSel ? bookingStyles.packageCardSelected : ''}`} onClick={() => setPreviewSel(c.i)} role="button">
+                            {isSel && <div className={bookingStyles.packageCheck}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg></div>}
+                            <div className={`${bookingStyles.packageHead} ${hasBody ? bookingStyles.packageHeadHasBody : ''}`}>
+                              <div className={bookingStyles.packageTitle}>{c.title}</div>
+                              {priceEl && <div className={bookingStyles.packagePriceWrap}>{priceEl}</div>}
+                            </div>
+                            {hasBody && (
+                              <div className={`${bookingStyles.packageBody} ${isSel ? bookingStyles.packageBodySelected : ''}`}>
+                                <div className={bookingStyles.packageDetails}>{c.details ? <div dangerouslySetInnerHTML={{ __html: c.details }} /> : <div className={bookingStyles.packageDetailsEmpty}>Details available on request</div>}</div>
+                                {c.photos.length > 0 && (
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                                    {c.photos.map((p, pi) => (
+                                      /* eslint-disable-next-line @next/next/no-img-element */
+                                      <img key={pi} src={p} alt="" onClick={(e) => { e.stopPropagation(); setPvLb({ photos: c.photos, details: c.details || '', active: pi }); }} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border, rgba(255,255,255,.18))' }} />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {summary && (
+                  <div className={bookingStyles.priceDisplay}>
+                    <div className={bookingStyles.priceLabel}>Estimated Price</div>
+                    <div className={summary.quote ? `${bookingStyles.priceValue} ${bookingStyles.priceValueQuote}` : bookingStyles.priceValue}>{summary.quote ? 'Price on Request' : `${cur}${summary.rate.toLocaleString()}`}</div>
+                    {!summary.quote && (taxEnabled || depositPct > 0) && (
+                      <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+                        {taxEnabled && (<>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Subtotal</span><span>{cur}{summary.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Tax ({taxPct}%)</span><span>{cur}{summary.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        </>)}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}><span>Total</span><span>{cur}{summary.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        {depositPct > 0 && (<>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Deposit ({depositPct}%)</span><span>{cur}{summary.deposit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}><span>Balance due day of event</span><span>{cur}{(summary.total - summary.deposit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        </>)}
+                      </div>
+                    )}
+                    {!summary.quote && depositPct === 0 && !taxEnabled && <div className={bookingStyles.depositText}>No deposit required</div>}
+                  </div>
+                )}
+                <button type="button" onClick={() => setPreviewOpen(false)} style={{ width: '100%', marginTop: '1.25rem', background: 'transparent', border: '1px solid var(--neon)', color: 'var(--neon)', borderRadius: 6, padding: '.7rem', fontFamily: "'Space Mono', monospace", fontSize: '.65rem', letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer' }}>Close preview</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {pvLb && (
+        <div className={bookingStyles.photoLightbox} onClick={() => setPvLb(null)}>
+          <div className={bookingStyles.photoLightboxInner} onClick={(e) => e.stopPropagation()}>
+            <div className={bookingStyles.photoLightboxStage}>
+              <div className={bookingStyles.photoLightboxMain}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pvLb.photos[pvLb.active]} alt="Package preview" className={bookingStyles.photoLightboxImg} />
+              </div>
+              {pvLb.photos.length > 1 && (
+                <div className={bookingStyles.photoLightboxThumbs}>
+                  {pvLb.photos.map((u, i) => (
+                    <button key={i} type="button" className={`${bookingStyles.photoLightboxThumb} ${i === pvLb.active ? bookingStyles.photoLightboxThumbActive : ''}`} onClick={() => setPvLb((c) => c ? { ...c, active: i } : c)}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p} alt={`Photo ${i + 1}`} />
+                      <img src={u} alt={`Photo ${i + 1}`} />
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            {photoLightboxUrl.details && (
-              <div
-                className={styles.photoLightboxDetails}
-                // Details come from the DJ's profile editor — trusted source.
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{ __html: photoLightboxUrl.details }}
-              />
-            )}
-            <button
-              type="button"
-              onClick={() => setPhotoLightboxUrl(null)}
-              className={styles.photoLightboxClose}
-              aria-label="Close"
-            >
-              ✕
-            </button>
+            {pvLb.details && (<div className={bookingStyles.photoLightboxDetails} dangerouslySetInnerHTML={{ __html: pvLb.details }} />)}
+            <button type="button" onClick={() => setPvLb(null)} className={bookingStyles.photoLightboxClose} aria-label="Close">&times;</button>
           </div>
         </div>
       )}
-    </div>,
-    document.body,
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// PackagesSection — handles the placeholder, no-packages-found, and the
-// package grid when ready. Pulled out for clarity.
-// ─────────────────────────────────────────────────────────────────────────
-
-function PackagesSection({
-  formReady,
-  eventType,
-  categoryPkgs,
-  generalPkgs,
-  selectedPkgIdx,
-  onSelect,
-  onPhotoClick,
-  startTime,
-  endTime,
-  depositPct,
-  wantsCocktail,
-  cocktailStart,
-  wantsCeremony,
-  dayAdjustPct,
-  cur,
-}: {
-  formReady: boolean;
-  eventType: string;
-  categoryPkgs: MobilePackage[];
-  generalPkgs: MobilePackage[];
-  selectedPkgIdx: number | null;
-  onSelect: (idx: number) => void;
-  onPhotoClick: (photos: string[], details: string, start?: number) => void;
-  startTime: string;
-  endTime: string;
-  depositPct: number;
-  wantsCocktail: boolean;
-  cocktailStart: string;
-  wantsCeremony: boolean;
-  dayAdjustPct: number;
-  cur: string;
-}) {
-  if (!formReady) {
-    return (
-      <div className={styles.packagesPlaceholder}>
-        Available packages will appear once we have all the information about your event.
-      </div>
-    );
-  }
-  if (!eventType) {
-    return null;
-  }
-
-  // Filter to packages with a usable title (matches vanilla's `if (!title) return`)
-  const usablePackages = categoryPkgs
-    .map((pkg, idx) => {
-      const fallback = generalPkgs[idx] || {};
-      const title = (pkg.title?.trim()) || (fallback.title?.trim());
-      if (!pkg || !title) return null;
-      return {
-        idx,
-        pkg,
-        fallback,
-        title,
-        details: pkg.details ?? fallback.details,
-        photo: pkg.photo ?? fallback.photo,
-        // Extra photos are specific to THIS package — they must not inherit
-        // from the general-category package at the same index (doing so made
-        // slots 2-4 appear shared across packages in a group). Main photo can
-        // still inherit; extras come only from this package's own `photos`.
-        photos: Array.from(new Set([
-          (pkg.photo ?? fallback.photo),
-          ...(((pkg as { photos?: string[] }).photos) ?? []),
-        ].filter((u): u is string => !!u))),
-      };
-    })
-    .filter((p): p is NonNullable<typeof p> => p != null);
-
-  if (usablePackages.length === 0) {
-    return (
-      <div className={styles.noPackagesMsg}>
-        No packages available for this event type. Message the DJ to discuss your event.
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className={styles.packagesLabel}>Select a Package</div>
-      <div className={styles.packagesGrid}>
-        {usablePackages.map(({ idx, pkg, title, details, photos }) => {
-          const isSelected = selectedPkgIdx === idx;
-
-          // Price preview on the card head. Dynamic: reflects the actual
-          // selected event duration using the same tier logic as the
-          // Estimated Price (calcPrice picks 4/5/6hr rate + overtime). Before
-          // start/end times are chosen, calcPrice falls back to the base rate.
-          let priceEl: React.ReactNode = null;
-          if (pkg.reqAll) {
-            priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
-          } else {
-            const cardPrice = applyDayPriceAdjust(
-              calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
-              dayAdjustPct,
-            )!;
-            if (cardPrice.isQuote || cardPrice.price == null) {
-              // No computable price (quote-only package, or no tiers set) —
-              // always show "Price on request" in the banner where the price
-              // would go, rather than leaving it blank.
-              priceEl = <div className={styles.packagePriceQuote}>Price on request</div>;
-            } else {
-              priceEl = (
-                <div className={styles.packagePrice}>
-                  {cur}{cardPrice.price.toLocaleString()}
-                </div>
-              );
-            }
-          }
-
-          const hasBody = !!(details || (photos && photos.length));
-
-          return (
-            <div
-              key={idx}
-              className={`${styles.packageCard} ${isSelected ? styles.packageCardSelected : ''}`}
-              onClick={() => onSelect(idx)}
-              role="button"
-            >
-              {isSelected && (
-                <div className={styles.packageCheck}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-              )}
-
-              <div
-                className={`${styles.packageHead} ${hasBody ? styles.packageHeadHasBody : ''}`}
-              >
-                <div className={styles.packageTitle}>{title}</div>
-                {priceEl && (
-                  <div className={styles.packagePriceWrap}>{priceEl}</div>
-                )}
-              </div>
-
-              {hasBody && (
-                <div
-                  className={`${styles.packageBody} ${isSelected ? styles.packageBodySelected : ''}`}
-                >
-                  <div className={styles.packageDetails}>
-                    {details ? (
-                      // Vanilla preserves the DJ's chosen formatting (bullets,
-                      // numbered list, gdj-check-list). Details come from the
-                      // DJ's profile editor — trusted source. Render as HTML.
-                      // eslint-disable-next-line react/no-danger
-                      <div dangerouslySetInnerHTML={{ __html: details }} />
-                    ) : (
-                      <div className={styles.packageDetailsEmpty}>
-                        Details available on request
-                      </div>
-                    )}
-                  </div>
-                  {photos && photos.length > 0 && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                      {photos.map((p, pi) => (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          key={pi}
-                          src={p}
-                          alt=""
-                          onClick={(e) => { e.stopPropagation(); onPhotoClick(photos, details || '', pi); }}
-                          style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border, rgba(255,255,255,.18))' }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {isSelected && !hasBody && <div style={{ height: '2rem' }} />}
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
-// FieldCheck — wraps a form control and shows a green ✓ at its right edge
-// once `valid` is true. The wrapper is position:relative so the check can
-// be absolutely positioned; the control inside keeps extra right-padding
-// (via the .hasCheck class) so long text never runs under the mark.
-function FieldCheck({
-  valid,
-  children,
-}: {
-  valid: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={styles.fieldCheckWrap}>
-      {children}
-      {valid && (
-        <span className={styles.fieldCheckMark} aria-hidden="true">✓</span>
-      )}
+      {confirmDialog}
     </div>
   );
+}
+
+// The package list a type offers in the resolved (serialized) model — a
+// pulled-out type's own list, else General.
+function resolveListFor(ser: MobPackagesIndependent, eventType: string): Pkg[] {
+  return ser.overrides[eventType] ?? ser.general;
 }
