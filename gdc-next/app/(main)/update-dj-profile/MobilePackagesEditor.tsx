@@ -427,8 +427,8 @@ export default function MobilePackagesEditor({
   const catLabel: CSSProperties = { fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '1.3rem' : '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', margin: isNarrow ? '0 0 .35rem .1rem' : '0 0 .5rem .1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' };
   const pkgItem = (active: boolean, isDirty: boolean, invalid: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '.5rem', width: '100%',
-    padding: active ? (isNarrow ? '.4rem .6rem' : '.5rem .7rem') : (isNarrow ? '.3rem .5rem' : '.38rem .6rem'), marginBottom: isNarrow ? 3 : 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
-    fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? (active ? '1.1rem' : '.92rem') : (active ? '1.3rem' : '1.05rem'), lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
+    padding: isNarrow ? '.3rem .5rem' : '.38rem .6rem', marginBottom: isNarrow ? 3 : 5, borderRadius: 8, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '.92rem' : '1.05rem', lineHeight: 1, letterSpacing: '.04em', textTransform: 'uppercase',
     // The package being edited is spotlighted: brighter gradient fill, a thick
     // neon left bar, and a glow so it clearly reads as "this is open".
     background: invalid ? 'rgba(255,95,95,.08)' : 'transparent',
