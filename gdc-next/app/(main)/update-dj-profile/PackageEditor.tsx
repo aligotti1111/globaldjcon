@@ -349,13 +349,16 @@ export default function PackageEditor({
                 return (
                   <>
                     {!reqAll && minH > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => commit([{ hours: minH - 1, price: '' }, ...tiers])}
-                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginBottom: '.35rem', marginLeft: '8.5rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
-                      >
-                        + {minH - 1} hour pricing
-                      </button>
+                      <div className={styles.priceRow} style={{ marginBottom: '.35rem' }}>
+                        <span className={styles.priceRowLabel} aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', padding: '.4rem .5rem', border: '1px solid transparent', visibility: 'hidden' }}>{minH - 1} Hour Event{isWedding ? ' (Reception)' : ''}</span>
+                        <button
+                          type="button"
+                          onClick={() => commit([{ hours: minH - 1, price: '' }, ...tiers])}
+                          style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                        >
+                          + {minH - 1} hour pricing
+                        </button>
+                      </div>
                     )}
                     {tiers.map((t, i) => (
                       <div key={i} className={styles.priceRow}>
@@ -387,13 +390,16 @@ export default function PackageEditor({
                       </div>
                     ))}
                     {!reqAll && maxH < 9 && (
-                      <button
-                        type="button"
-                        onClick={() => commit([...tiers, { hours: maxH + 1, price: '' }])}
-                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, marginTop: '.35rem', marginLeft: '8.5rem', textDecoration: 'underline', alignSelf: 'flex-start' }}
-                      >
-                        + {maxH + 1} hour pricing
-                      </button>
+                      <div className={styles.priceRow} style={{ marginTop: '.35rem' }}>
+                        <span className={styles.priceRowLabel} aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', padding: '.4rem .5rem', border: '1px solid transparent', visibility: 'hidden' }}>{maxH + 1} Hour Event{isWedding ? ' (Reception)' : ''}</span>
+                        <button
+                          type="button"
+                          onClick={() => commit([...tiers, { hours: maxH + 1, price: '' }])}
+                          style={{ background: 'none', border: 'none', color: 'var(--neon)', fontSize: '.78rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                        >
+                          + {maxH + 1} hour pricing
+                        </button>
+                      </div>
                     )}
                   </>
                 );
