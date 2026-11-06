@@ -493,13 +493,13 @@ export default function PackageEditor({
         )}
 
         {!reqAll && (
-          <div style={{ margin: '.4rem 0 0', maxWidth: 560 }}>
+          <div style={{ margin: '.4rem 0 0' }}>
             <button
               type="button"
               onClick={() => setShowOutsideNote((v) => !v)}
-              style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', fontSize: '.82rem', fontFamily: "'DM Sans', sans-serif", fontWeight: 600, textAlign: 'left' }}
+              style={{ width: '100%', background: 'rgba(10,10,16,.6)', border: '1px solid var(--border)', borderRadius: 8, padding: '.65rem .8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', color: 'var(--neon)', fontSize: '.74rem', fontFamily: "'DM Sans', sans-serif", fontWeight: 600, textAlign: 'left' }}
             >
-              <span>How is pricing calculated if an event&rsquo;s hours selected are outside of the listed options?</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>How is pricing calculated if an event&rsquo;s hours selected are outside of the listed options?</span>
               <span style={{ fontSize: '.8rem', flexShrink: 0 }}>{showOutsideNote ? '▾' : '▸'}</span>
             </button>
             {showOutsideNote && (
