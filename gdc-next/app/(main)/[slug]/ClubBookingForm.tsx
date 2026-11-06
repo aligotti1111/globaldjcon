@@ -1000,7 +1000,7 @@ export default function ClubBookingForm({
                 className={`${styles.input} ${styles.hasCheckSelect}`}
                 style={hasError('setType') ? { borderColor: '#ff5f5f' } : undefined}
               >
-                <option value="">Select…</option>
+                <option value="">—</option>
                 {Object.entries(CLUB_SET_TYPE_LABELS).map(([val, lbl]) => (
                   <option key={val} value={val}>{lbl}</option>
                 ))}
@@ -1131,7 +1131,7 @@ export default function ClubBookingForm({
                   className={`${styles.input} ${styles.hasCheckSelect}`}
                   style={hasError('startTime') ? { borderColor: '#ff5f5f' } : undefined}
                 >
-                  <option value="">Select…</option>
+                  <option value="">—</option>
                   {MOB_TIME_OPTIONS.map((t) => (
                     <option key={t.val} value={t.val}>{t.label}</option>
                   ))}
@@ -1147,7 +1147,7 @@ export default function ClubBookingForm({
                   className={`${styles.input} ${styles.hasCheckSelect}`}
                   style={hasError('endTime') ? { borderColor: '#ff5f5f' } : undefined}
                 >
-                  <option value="">Select…</option>
+                  <option value="">—</option>
                   {endTimeOptions.map((t) => (
                     <option key={t.val} value={t.val}>{t.label}</option>
                   ))}
