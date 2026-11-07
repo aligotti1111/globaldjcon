@@ -2539,6 +2539,10 @@
   margin-top: -6.2rem;
   padding: 2.6rem 1rem .55rem;
   background: transparent;
+  /* The strip's z-index (60) beats the hero (50), so its empty top area overlaps
+     the Edit Banner button and would steal its clicks. Let clicks pass through
+     the empty strip; the icons/children below re-enable pointer events. */
+  pointer-events: none;
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
@@ -2547,6 +2551,9 @@
   margin-left: auto;
   margin-right: auto;
 }
+/* Re-enable clicks on the actual icons/buttons (the container is pointer-events:
+   none so its empty overlap area doesn't block the Edit Banner button). */
+.underBannerSocials > * { pointer-events: auto; }
 /* Legacy cloud layer no longer used — the fade lives on the banner image. */
 .socialCloud { display: none; }
 .underBannerSocialBtn {
