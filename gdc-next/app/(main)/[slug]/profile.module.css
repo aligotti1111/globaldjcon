@@ -112,15 +112,21 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 48%;
-  /* Stops at ~0.7 black (not full) so the image is still faintly visible at the
-     hero's bottom edge — the social strip overlaps here and finishes the fade,
-     letting the banner bleed through the icons rather than cutting to black. */
+  height: 58%;
+  /* Progressive bottom blur: the banner image is sharp up top and CLOUDS OUT
+     toward the bottom. A backdrop blur, revealed by a gradient mask (nothing at
+     the top → full blur lower down), turns the lower image into soft haze; a
+     dark wash then takes it to the page colour so it dissolves into the social
+     row below. */
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 58%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 58%);
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.35) 58%,
-    rgba(0, 0, 0, 0.7) 100%
+    transparent 0%,
+    rgba(5, 5, 7, 0.32) 70%,
+    var(--black) 100%
   );
   pointer-events: none;
 }
@@ -2538,18 +2544,15 @@
   align-items: center;
   justify-content: center;
   gap: .55rem;
-  /* Pull the strip UP so it overlaps the banner's faded bottom, then CLOUD the
-     banner image behind the icons: a backdrop blur turns it into soft haze and
-     a dark gradient smokes it down to the page colour — the image dissolves
-     into cloud behind the icons rather than reading as a sharp photo.
-     position/z-index lift it above the banner layer. */
-  padding: 2rem 1rem .6rem;
-  margin-top: -3rem;
+  /* Pull the strip UP so the icons sit in the banner's clouded-out bottom (the
+     blur lives on the banner itself, above). The strip stays mostly transparent
+     so the haze shows behind the icons, finishing to the page colour at its
+     own bottom. position/z-index lift it above the banner layer. */
+  padding: 1.3rem 1rem .6rem;
+  margin-top: -2.6rem;
   position: relative;
   z-index: 2;
-  background: linear-gradient(to bottom, rgba(5,5,7,.28) 0%, rgba(5,5,7,.62) 55%, var(--black) 100%);
-  backdrop-filter: blur(16px) saturate(1.05);
-  -webkit-backdrop-filter: blur(16px) saturate(1.05);
+  background: linear-gradient(to bottom, transparent 0%, rgba(5,5,7,.55) 72%, var(--black) 100%);
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
@@ -2914,7 +2917,7 @@
 }
 @media (max-width: 700px) {
   /* Keep the clouded banner→social bleed on mobile, tuned for the shorter hero. */
-  .underBannerSocials { gap: .35rem; padding: 1.5rem .7rem .5rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -2rem; }
+  .underBannerSocials { gap: .35rem; padding: 1.1rem .7rem .5rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -1.9rem; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
   .underBannerSocialBtn svg { width: 16px; height: 16px; }
   .underBannerSocials .actionBtn {
