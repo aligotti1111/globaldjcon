@@ -2538,16 +2538,18 @@
   align-items: center;
   justify-content: center;
   gap: .55rem;
-  /* Pull the strip UP so it overlaps the banner's faded bottom — the banner
-     image bleeds behind the social icons instead of stopping at a hard edge.
-     Its own top-transparent → black gradient finishes the fade to the page
-     colour, so the image dissolves THROUGH the icons into the social area.
+  /* Pull the strip UP so it overlaps the banner's faded bottom, then CLOUD the
+     banner image behind the icons: a backdrop blur turns it into soft haze and
+     a dark gradient smokes it down to the page colour — the image dissolves
+     into cloud behind the icons rather than reading as a sharp photo.
      position/z-index lift it above the banner layer. */
-  padding: 1.7rem 1rem .6rem;
-  margin-top: -2.4rem;
+  padding: 2rem 1rem .6rem;
+  margin-top: -3rem;
   position: relative;
   z-index: 2;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, var(--black) 80%);
+  background: linear-gradient(to bottom, rgba(5,5,7,.28) 0%, rgba(5,5,7,.62) 55%, var(--black) 100%);
+  backdrop-filter: blur(16px) saturate(1.05);
+  -webkit-backdrop-filter: blur(16px) saturate(1.05);
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
@@ -2911,8 +2913,8 @@
   right: 1px !important;
 }
 @media (max-width: 700px) {
-  /* Keep the banner→social bleed on mobile, tuned for the shorter hero. */
-  .underBannerSocials { gap: .35rem; padding: 1.3rem .7rem .5rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -1.7rem; }
+  /* Keep the clouded banner→social bleed on mobile, tuned for the shorter hero. */
+  .underBannerSocials { gap: .35rem; padding: 1.5rem .7rem .5rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -2rem; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
   .underBannerSocialBtn svg { width: 16px; height: 16px; }
   .underBannerSocials .actionBtn {
