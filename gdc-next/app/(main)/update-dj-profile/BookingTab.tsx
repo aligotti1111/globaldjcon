@@ -757,9 +757,9 @@ export default function BookingTab({
 
                 {activeCats.length > 0 && selectedEventTypes.length > 1 && (
                   <p className={styles.packageIntro}>
-                    <span className={styles.packageIntroHi}>General events</span> is the default list every booker
-                    sees. Use &ldquo;Add Event Type&rdquo; to give an event type its own packages, pricing and
-                    photos — each one is fully independent, so nothing you set on one event type affects another.
+                    <span className={styles.packageIntroHi}>General events</span> is the default list every
+                    client/host sees. Use &ldquo;Add Pricing For An Event Type&rdquo; to give an event type its own
+                    packages, pricing and photos.
                   </p>
                 )}
 
