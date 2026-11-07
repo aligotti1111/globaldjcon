@@ -81,6 +81,9 @@ export default function Header() {
   // Managers & admins (and owners) can create discounts / promo codes — the one
   // slice of Booking Settings a teammate can reach. Drives the shortcut item.
   const canMakeDiscounts = canDiscounts(actingRole);
+  // Assistants don't get the client-message Inbox — it's for owner/manager-level
+  // seats (and the owner/host). Hide the toolbar + burger Inbox for them.
+  const showInbox = !(isTeammate && actingRole === 'assistant');
   // Whether this DJ has bookings activated — gates the booking-only items in
   // the dropdown (Upcoming Bookings, Add Booking Manually).
   // Booking nav items (Upcoming Bookings, Add Booking Manually) are gated on
@@ -203,6 +206,7 @@ export default function Header() {
                   {/* DJ-side accounts get the bell on the toolbar; their Inbox
                       moves into the burger menu on mobile, so hide this toolbar
                       Inbox below the mobile breakpoint for them (hosts keep it). */}
+                  {showInbox && (
                   <Link href="/inbox" className={`inbox-nav-btn${(isDj || isTeammate) ? ' inbox-hide-mobile' : ''}`} title="Inbox" style={{ textDecoration: 'none' }}>
                     <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -216,6 +220,7 @@ export default function Header() {
                       </span>
                     )}
                   </Link>
+                  )}
 
                   {/* Account Settings lives in the burger menu now — the gear
                       icon was removed from the toolbar to reduce clutter. */}
