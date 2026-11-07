@@ -1940,6 +1940,61 @@ function PackagesSection({
     );
   }
 
+  // Quote-only collapse — when EVERY package for this event type is an
+  // untouched placeholder (a default "Package N" name, no details, no photos,
+  // and no computable price), the DJ added the event type but never set it up.
+  // Rather than show bare "Package 1" cards, present a single, clean
+  // "Request a Quote" card. Still selectable so the host can submit, which the
+  // DJ receives as a quote request (never General prices).
+  const isPlaceholderTitle = (t: string) => /^package\s*\d+$/i.test((t || '').trim());
+  const quoteOnly = usablePackages.every(({ pkg, title, details, photos }) => {
+    if (!isPlaceholderTitle(title)) return false;
+    if (details && String(details).trim()) return false;
+    if (photos && photos.length) return false;
+    if (pkg.reqAll) return true;
+    const pr = applyDayPriceAdjust(
+      calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
+      dayAdjustPct,
+    );
+    return !pr || pr.isQuote || pr.price == null;
+  });
+
+  if (quoteOnly) {
+    const qi = usablePackages[0].idx;
+    const isSelected = selectedPkgIdx === qi;
+    return (
+      <>
+        <div className={styles.packagesLabel}>Request a Quote</div>
+        <div className={styles.packagesGrid}>
+          <div
+            className={`${styles.packageCard} ${isSelected ? styles.packageCardSelected : ''}`}
+            onClick={() => onSelect(qi)}
+            role="button"
+          >
+            {isSelected && (
+              <div className={styles.packageCheck}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            )}
+            <div className={`${styles.packageHead} ${styles.packageHeadHasBody}`}>
+              <div className={styles.packageTitle}>Request a Quote</div>
+              <div className={styles.packagePriceWrap}>
+                <div className={styles.packagePriceQuote}>Price on request</div>
+              </div>
+            </div>
+            <div className={styles.packageBody}>
+              <div className={styles.packageDetails}>
+                Select this and send your event details — the DJ will reply with a custom quote.
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className={styles.packagesLabel}>Select a Package</div>
