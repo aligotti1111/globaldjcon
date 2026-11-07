@@ -892,7 +892,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               style={
                 data.banner_url
                   ? ({
-                      backgroundImage: `url(${optimizedImageUrl(data.banner_url)})`,
+                      backgroundImage: `linear-gradient(to bottom, rgba(5,5,7,0) 60%, rgba(5,5,7,.65) 82%, #050507 100%), url(${optimizedImageUrl(data.banner_url)})`,
                       ['--banner-pos' as string]: data.banner_position || '50% 50%',
                       ['--banner-pos-mobile' as string]:
                         data.banner_position_mobile || data.banner_position || '50% 50%',
