@@ -48,7 +48,7 @@ const LANDING_CSS = String.raw`
    section boundary is clearly its own (one flat tone stops, the next begins). */
 .gdc-landing .hero{background:#07090e}
 .gdc-landing #built{background:#0c1019}
-.gdc-landing #bookingrequested{background:#07090e}
+.gdc-landing #bookingrequested{background:#000}
 .gdc-landing #dashsample{background:#000}
 .gdc-landing #features{background:#07090e}
 .gdc-landing #financesample{background:#000}
