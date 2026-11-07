@@ -44,6 +44,16 @@ const LANDING_CSS = String.raw`
 .gdc-landing *, .gdc-landing{box-sizing:border-box;margin:0;padding:0}
 .gdc-landing{scroll-behavior:smooth}
 .gdc-landing{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+/* Sectioned homepage — each section its own subtle dark shade, hard edges
+   (one flat tone stops, the next begins). */
+.gdc-landing .hero{background:#06080c}
+.gdc-landing #built{background:#0a0c12}
+.gdc-landing #bookingrequested{background:#090b11}
+.gdc-landing #dashsample{background:#0e1016}
+.gdc-landing #features{background:#0b0d13}
+.gdc-landing #financesample{background:#111219}
+.gdc-landing #how{background:#0c0e14}
+.gdc-landing #pricing{background:#07090d}
 .gdc-landing a{color:inherit;text-decoration:none}
 .gdc-landing .wrap{max-width:1200px;margin:0 auto;padding:0 26px}
 .gdc-landing .label{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
