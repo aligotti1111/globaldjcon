@@ -150,6 +150,18 @@ export default function BookingLog({ booking, payments, changes }: Props) {
     add(booking.planner_submitted_at, 'Planner & Playlist submitted by host', 'host');
   }
 
+  // ── Receipt edited & re-sent ── When a DJ edits what a receipt shows (the
+  // edit-receipt action), the time is stamped per-kind under receipt_overrides._edited.
+  // (The team activity log also records WHO edited it; the booking log shows the
+  // event itself, same as every other DJ-side action here.)
+  {
+    const edited = (booking.receipt_overrides as Record<string, unknown> | null | undefined)?._edited as
+      | Record<string, string>
+      | undefined;
+    add(edited?.deposit, 'Deposit receipt edited · re-sent', 'dj');
+    add(edited?.balance, 'Payment receipt edited · re-sent', 'dj');
+  }
+
   // ── Club / bar: rider + guest list host confirmations. ──
   add(booking.rider_confirmed_at, 'Rider confirmed by host', 'host');
   add(booking.guestlist_confirmed_at, 'Guest list confirmed by host', 'host');
