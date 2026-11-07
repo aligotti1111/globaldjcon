@@ -892,9 +892,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               style={
                 data.banner_url
                   ? ({
-                      // Top ~55% of the banner photo is untouched; only the bottom
-                      // ~45% fades from the photo down to solid page-dark.
-                      backgroundImage: `linear-gradient(to bottom, rgba(5,5,7,0) 55%, rgba(5,5,7,.45) 74%, rgba(5,5,7,.85) 90%, #050507 100%), url(${optimizedImageUrl(data.banner_url)})`,
+                      backgroundImage: `url(${optimizedImageUrl(data.banner_url)})`,
                       ['--banner-pos' as string]: data.banner_position || '50% 50%',
                       ['--banner-pos-mobile' as string]:
                         data.banner_position_mobile || data.banner_position || '50% 50%',
