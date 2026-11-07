@@ -115,8 +115,16 @@ export default function RequestPaymentModal({
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.5rem' }}>
           <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>{currencySymbol(currency)}</span>
+          {/* Hide the number input's up/down spinner arrows (no CSS module here,
+              so the rule is inlined). */}
+          <style>{`
+            .gdcReqAmount::-webkit-outer-spin-button,
+            .gdcReqAmount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+            .gdcReqAmount { -moz-appearance: textfield; appearance: textfield; }
+          `}</style>
           <input
             autoFocus
+            className="gdcReqAmount"
             type="number"
             min="0"
             step="0.01"
