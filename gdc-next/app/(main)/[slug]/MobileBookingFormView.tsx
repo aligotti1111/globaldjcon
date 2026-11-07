@@ -1582,6 +1582,10 @@ export default function MobileBookingForm({
               eventType={eventType}
               categoryPkgs={categoryPkgs}
               generalPkgs={generalPkgs}
+              ownList={
+                (packagesAll as { model?: string }).model === 'independent' &&
+                Array.isArray((packagesAll as { overrides?: Record<string, unknown[]> }).overrides?.[eventType])
+              }
               selectedPkgIdx={selectedPkgIdx}
               onSelect={(idx) => setSelectedPkgIdx(idx)}
               onPhotoClick={(photos, details, start = 0) => setPhotoLightboxUrl({ photos, details, active: start })}
@@ -1868,6 +1872,7 @@ function PackagesSection({
   eventType,
   categoryPkgs,
   generalPkgs,
+  ownList,
   selectedPkgIdx,
   onSelect,
   onPhotoClick,
@@ -1884,6 +1889,7 @@ function PackagesSection({
   eventType: string;
   categoryPkgs: MobilePackage[];
   generalPkgs: MobilePackage[];
+  ownList: boolean;
   selectedPkgIdx: number | null;
   onSelect: (idx: number) => void;
   onPhotoClick: (photos: string[], details: string, start?: number) => void;
@@ -1910,7 +1916,10 @@ function PackagesSection({
   // Filter to packages with a usable title (matches vanilla's `if (!title) return`)
   const usablePackages = categoryPkgs
     .map((pkg, idx) => {
-      const fallback = generalPkgs[idx] || {};
+      // A pulled-out (independent) event type owns its whole list — it must
+      // NOT borrow title/details/photos from the General package at the same
+      // index. Only General-sharing types fall back to General.
+      const fallback = ownList ? ({} as MobilePackage) : (generalPkgs[idx] || {});
       const title = (pkg.title?.trim()) || (fallback.title?.trim());
       if (!pkg || !title) return null;
       return {
