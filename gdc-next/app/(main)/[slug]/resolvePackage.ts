@@ -56,10 +56,19 @@ export function resolvePackage(
   mobPackages: Record<string, unknown> | null | undefined,
   eventType: string,
   index: number,
+  specialtyTypes: string[] = [],
 ): Pkg | null {
   const mob = (mobPackages || {}) as Record<string, unknown>;
   const general = (mob.general as Pkg[] | undefined) || [];
   const base = general[index] || null;
+
+  // A "specialty" event type is one the DJ marked as having (or needing) its
+  // OWN packages — it must NEVER inherit General's packages or prices. If such
+  // a type has no stored list of its own, the booking is quote-only: the host
+  // sends a request and the DJ replies with a custom price. One quote slot
+  // (index 0), nothing at later indexes.
+  const isSpecialty = specialtyTypes.includes(eventType);
+  const quoteSlot = (): Pkg | null => (index === 0 ? { title: 'Package 1', reqAll: true } : null);
 
   // ── v2 INDEPENDENT shape ──
   // { model: 'independent', general: Pkg[], overrides: { [type]: Pkg[] } }
@@ -69,13 +78,21 @@ export function resolvePackage(
   // prices. (Checked BEFORE isNewShape because v2 also has an `overrides` key.)
   if (mob.model === 'independent') {
     const overrides = (mob.overrides as Record<string, Pkg[]> | undefined) || {};
-    const list = overrides[eventType] ?? general;
-    const pkg = list[index];
+    const ownList = overrides[eventType];
+    // Specialty type with no own list → quote only, never General.
+    if (!Array.isArray(ownList)) {
+      if (isSpecialty) return quoteSlot();
+      const pkg = general[index];
+      return pkg ? { ...pkg } : null;
+    }
+    const pkg = ownList[index];
     return pkg ? { ...pkg } : null;
   }
 
   if (isNewShape(mob)) {
     const overrides = (mob.overrides as Record<string, Pkg[]> | undefined) || {};
+    // Specialty type with no override list → quote only, never General.
+    if (!Array.isArray(overrides[eventType]) && isSpecialty) return quoteSlot();
     const ov = overrides[eventType]?.[index] || null;
     // No override for this type -> inherit the General package entirely.
     if (!ov) return base ? { ...base } : null;
@@ -97,6 +114,12 @@ export function resolvePackage(
 
   // ── OLD shape ──
   const bucket = oldBucket(eventType);
+  // Specialty type whose own bucket has no packages → quote only, never General.
+  const ownBucket = mob[eventType] as Pkg[] | undefined;
+  if (isSpecialty && bucket === 'general' && eventType !== 'general'
+      && !(Array.isArray(ownBucket) && ownBucket.length)) {
+    return quoteSlot();
+  }
   const cur = ((mob[bucket] as Pkg[] | undefined) || [])[index] || null;
   if (!cur) return null;
 
