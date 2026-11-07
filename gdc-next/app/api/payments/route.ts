@@ -901,7 +901,13 @@ ${payBlocks}
     for (const [k, v] of Object.entries(snapshot)) if (v !== undefined) clean[k] = v;
 
     const curOverrides = (b.receipt_overrides && typeof b.receipt_overrides === 'object') ? b.receipt_overrides : {};
-    const nextOverrides = { ...curOverrides, [kind]: clean };
+    // Stamp when this kind's receipt was last edited, under a meta key the
+    // receipt renderer ignores (it only reads receipt_overrides[kind]). The
+    // Booking log reads this to show "receipt edited · re-sent" — so the edit
+    // appears on the per-booking history, not only the team activity log.
+    const prevEdited = (curOverrides as Record<string, unknown>)._edited;
+    const editedMeta = (prevEdited && typeof prevEdited === 'object') ? prevEdited as Record<string, unknown> : {};
+    const nextOverrides = { ...curOverrides, [kind]: clean, _edited: { ...editedMeta, [kind]: new Date().toISOString() } };
     // Use the generically-typed client: the generated Supabase types don't yet
     // include the receipt_overrides column (same pattern the rest of this route
     // uses for columns outside the generated schema).
