@@ -2526,6 +2526,9 @@
      bottom edge with a DARK haze — only a whisper of banner shows at the very top
      edge, then it settles to the page colour well before the icons. */
   position: relative;
+  /* The .hero has z-index:50, so without a higher z-index here the banner paints
+     OVER this strip and the cloud does nothing. Sit above it. */
+  z-index: 60;
   margin-top: -2.2rem;
   padding: 1.6rem 1rem .55rem;
   background: linear-gradient(to bottom, rgba(5,5,7,.5) 0%, rgba(5,5,7,.9) 35%, var(--black) 60%);
