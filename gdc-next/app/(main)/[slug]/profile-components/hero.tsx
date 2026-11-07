@@ -9,6 +9,7 @@ import {
 } from '../icons';
 import type { DjProfileData } from '../profileTypes';
 import { saveProfile } from '../profileSave';
+import { optimizedImageUrl } from '@/lib/img';
 
 // ──────────────────────────────────────────────────────────────────────────
 // HeroActions — buttons row in the hero (socials + Copy Link).
@@ -1203,7 +1204,11 @@ export function UnderBannerSocials({ data, effectiveSlug, isOwnProfile, bookingE
   // the share button at the end.
 
   return (
-    <div className={`${styles.underBannerSocials}${iconStyleColored ? ` ${styles.socialsColored}` : ''}${iconStylePlain ? ` ${styles.socialsNoCircle}` : ''}`}>
+    <div
+      className={`${styles.underBannerSocials}${iconStyleColored ? ` ${styles.socialsColored}` : ''}${iconStylePlain ? ` ${styles.socialsNoCircle}` : ''}`}
+      style={data.banner_url ? ({ ['--banner-img' as string]: `url(${optimizedImageUrl(data.banner_url)})` } as React.CSSProperties) : undefined}
+    >
+      {data.banner_url && <span className={styles.socialCloud} aria-hidden="true" />}
       {links.map(l => (
         isOwnProfile ? (
           // Owner: each SET social stays editable — the icon opens an inline
