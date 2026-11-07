@@ -49,9 +49,9 @@ const LANDING_CSS = String.raw`
 .gdc-landing .hero{background:#07090e}
 .gdc-landing #built{background:#0c1019}
 .gdc-landing #bookingrequested{background:#07090e}
-.gdc-landing #dashsample{background:#0c1019}
+.gdc-landing #dashsample{background:#000}
 .gdc-landing #features{background:#07090e}
-.gdc-landing #financesample{background:#0c1019}
+.gdc-landing #financesample{background:#000}
 .gdc-landing #how{background:#07090e}
 .gdc-landing #pricing{background:#0c1019}
 .gdc-landing a{color:inherit;text-decoration:none}
