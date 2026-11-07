@@ -264,7 +264,18 @@ export default function MobilePackagesEditor({
     setMob(n); setSelIdx(Math.max(0, safeIdx - 1));
   }
 
-  function addEventType(type: string) { update(pullTypeOut(mob, type)); setSelCat(type); setSelIdx(0); }
+  function addEventType(type: string) {
+    // Persist the pulled-out override immediately (with its default package
+    // titles filled in). Otherwise a specialty type the DJ adds but never
+    // prices lives only in local state — the host booking form then has no
+    // override stored and falls back to General prices. Saving now means an
+    // unpriced specialty type shows "price on request" from the moment it's
+    // added, never General pricing.
+    const next = withPkgTitles(pullTypeOut(mob, type));
+    update(next);
+    onSave(serializeIndependent(next));
+    setSelCat(type); setSelIdx(0);
+  }
   async function removeEventType(type: string) {
     const ok = await confirm({
       title: `Put ${labelFor(type)} back under General events?`,
