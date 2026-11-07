@@ -2523,12 +2523,12 @@
   justify-content: center;
   gap: .55rem;
   /* Soft dark CLOUD at the TOP of this strip (no blur): it overlaps the banner's
-     bottom edge with a transparent → black gradient, so the banner dissolves into
-     a smoky haze that settles to the page colour before the icons. */
+     bottom edge with a DARK haze — only a whisper of banner shows at the very top
+     edge, then it settles to the page colour well before the icons. */
   position: relative;
   margin-top: -2.2rem;
   padding: 1.6rem 1rem .55rem;
-  background: linear-gradient(to bottom, transparent 0%, rgba(5,5,7,.6) 40%, var(--black) 70%);
+  background: linear-gradient(to bottom, rgba(5,5,7,.5) 0%, rgba(5,5,7,.9) 35%, var(--black) 60%);
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
