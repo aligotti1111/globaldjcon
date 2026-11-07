@@ -1919,6 +1919,66 @@ function PackagesSection({
   dayAdjustPct: number;
   cur: string;
 }) {
+  // Filter to packages with a usable title (matches vanilla's `if (!title) return`).
+  // Computed before the early returns below so the auto-select effect's hook
+  // order stays stable; it's cheap and empty when the form isn't ready.
+  const usablePackages = (formReady && eventType)
+    ? categoryPkgs
+        .map((pkg, idx) => {
+          // A pulled-out (independent) event type owns its whole list — it must
+          // NOT borrow title/details/photos from the General package at the same
+          // index. Only General-sharing types fall back to General.
+          const fallback = ownList ? ({} as MobilePackage) : (generalPkgs[idx] || {});
+          const title = (pkg.title?.trim()) || (fallback.title?.trim());
+          if (!pkg || !title) return null;
+          return {
+            idx,
+            pkg,
+            fallback,
+            title,
+            details: pkg.details ?? fallback.details,
+            photo: pkg.photo ?? fallback.photo,
+            // Extra photos are specific to THIS package — they must not inherit
+            // from the general-category package at the same index (doing so made
+            // slots 2-4 appear shared across packages in a group). Main photo can
+            // still inherit; extras come only from this package's own `photos`.
+            photos: Array.from(new Set([
+              (pkg.photo ?? fallback.photo),
+              ...(((pkg as { photos?: string[] }).photos) ?? []),
+            ].filter((u): u is string => !!u))),
+          };
+        })
+        .filter((p): p is NonNullable<typeof p> => p != null)
+    : [];
+
+  // Quote-only collapse — when EVERY package for this event type is an
+  // untouched placeholder (a default "Package N" name, no details, no photos,
+  // and no computable price), the DJ added the event type but never set it up.
+  // Rather than show bare "Package 1" cards, present a single, clean
+  // "Request a Quote" card.
+  const isPlaceholderTitle = (t: string) => /^package\s*\d+$/i.test((t || '').trim());
+  const quoteOnly = usablePackages.length > 0 && usablePackages.every(({ pkg, title, details, photos }) => {
+    if (!isPlaceholderTitle(title)) return false;
+    if (details && String(details).trim()) return false;
+    if (photos && photos.length) return false;
+    if (pkg.reqAll) return true;
+    const pr = applyDayPriceAdjust(
+      calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
+      dayAdjustPct,
+    );
+    return !pr || pr.isQuote || pr.price == null;
+  });
+  const quoteIdx = quoteOnly ? usablePackages[0].idx : null;
+
+  // When the only option is a quote (specialty / unpriced type), auto-select it
+  // so the host doesn't have to tap the single card themselves.
+  useEffect(() => {
+    if (quoteIdx != null && selectedPkgIdx !== quoteIdx) onSelect(quoteIdx);
+    // onSelect is a fresh arrow each render; the guard above makes the effect
+    // idempotent, so it never loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteIdx, selectedPkgIdx]);
+
   if (!formReady) {
     return (
       <div className={styles.packagesPlaceholder}>
@@ -1930,34 +1990,6 @@ function PackagesSection({
     return null;
   }
 
-  // Filter to packages with a usable title (matches vanilla's `if (!title) return`)
-  const usablePackages = categoryPkgs
-    .map((pkg, idx) => {
-      // A pulled-out (independent) event type owns its whole list — it must
-      // NOT borrow title/details/photos from the General package at the same
-      // index. Only General-sharing types fall back to General.
-      const fallback = ownList ? ({} as MobilePackage) : (generalPkgs[idx] || {});
-      const title = (pkg.title?.trim()) || (fallback.title?.trim());
-      if (!pkg || !title) return null;
-      return {
-        idx,
-        pkg,
-        fallback,
-        title,
-        details: pkg.details ?? fallback.details,
-        photo: pkg.photo ?? fallback.photo,
-        // Extra photos are specific to THIS package — they must not inherit
-        // from the general-category package at the same index (doing so made
-        // slots 2-4 appear shared across packages in a group). Main photo can
-        // still inherit; extras come only from this package's own `photos`.
-        photos: Array.from(new Set([
-          (pkg.photo ?? fallback.photo),
-          ...(((pkg as { photos?: string[] }).photos) ?? []),
-        ].filter((u): u is string => !!u))),
-      };
-    })
-    .filter((p): p is NonNullable<typeof p> => p != null);
-
   if (usablePackages.length === 0) {
     return (
       <div className={styles.noPackagesMsg}>
@@ -1965,25 +1997,6 @@ function PackagesSection({
       </div>
     );
   }
-
-  // Quote-only collapse — when EVERY package for this event type is an
-  // untouched placeholder (a default "Package N" name, no details, no photos,
-  // and no computable price), the DJ added the event type but never set it up.
-  // Rather than show bare "Package 1" cards, present a single, clean
-  // "Request a Quote" card. Still selectable so the host can submit, which the
-  // DJ receives as a quote request (never General prices).
-  const isPlaceholderTitle = (t: string) => /^package\s*\d+$/i.test((t || '').trim());
-  const quoteOnly = usablePackages.every(({ pkg, title, details, photos }) => {
-    if (!isPlaceholderTitle(title)) return false;
-    if (details && String(details).trim()) return false;
-    if (photos && photos.length) return false;
-    if (pkg.reqAll) return true;
-    const pr = applyDayPriceAdjust(
-      calcPrice(pkg, startTime, endTime, depositPct, wantsCocktail, cocktailStart, wantsCeremony),
-      dayAdjustPct,
-    );
-    return !pr || pr.isQuote || pr.price == null;
-  });
 
   if (quoteOnly) {
     const qi = usablePackages[0].idx;
@@ -2012,7 +2025,7 @@ function PackagesSection({
             </div>
             <div className={styles.packageBody}>
               <div className={styles.packageDetails}>
-                Select this and send your event details — the DJ will reply with a custom quote.
+                Add your event details to the message box below and the DJ will reply with a custom quote.
               </div>
             </div>
           </div>
