@@ -102,6 +102,18 @@ export default function MobilePackagesEditor({
   const [selCat, setSelCat] = useState<string>('general');
   const [selIdx, setSelIdx] = useState(0);
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeIndependent(startMob)));
+  // A specialty event type is auto-pulled into its own override on load, but the
+  // host booking form only treats a type as a quote-type if its override is
+  // actually stored — otherwise it falls back to General pricing. So persist any
+  // newly auto-pulled specialty overrides once on mount, so a specialty type the
+  // DJ marked (but hasn't priced) shows "price on request", never General prices.
+  useEffect(() => {
+    const storedNorm = normalizeToIndependent(mobPackages);
+    const pulledNew = Object.keys(startMob.overrides).filter((t) => !storedNorm.overrides[t]);
+    if (pulledNew.length) onSave(serializeIndependent(startMob));
+    // mount only — startMob/mobPackages are the snapshot we booted from.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [err, setErr] = useState<string | null>(null);
   // After a failed save we flag the invalid packages in red in the sidebar
   // (instead of jumping to one), so the DJ can see which ones need attention
@@ -282,14 +294,19 @@ export default function MobilePackagesEditor({
   }
   function priceMissing(pkg: Record<string, unknown>): boolean {
     if (pkg.reqAll) return false;
-    // EVERY price box shown must have a price. A box left at 0/blank blocks save —
-    // the DJ fills it, or removes that length with the × button.
     const pos = (v: unknown) => Number(String(v ?? '').trim()) > 0;
     const tiers = Array.isArray(pkg.priceTiers) && pkg.priceTiers.length
       ? (pkg.priceTiers as Array<{ price?: unknown }>)
       : null;
-    if (tiers) return tiers.some((x) => !pos(x?.price));
-    return ['price4', 'price5', 'price6'].some((k) => !pos((pkg)[k]));
+    const prices: unknown[] = tiers
+      ? tiers.map((x) => x?.price)
+      : ['price4', 'price5', 'price6'].map((k) => (pkg)[k]);
+    const filled = prices.filter(pos).length;
+    // ALL prices blank → the package shows no price and the host sends a quote
+    // request, so that's valid. SOME filled + SOME blank → genuinely incomplete,
+    // so flag it (the DJ fills the rest, or removes that length with ×).
+    if (filled === 0) return false;
+    return prices.some((v) => !pos(v));
   }
   // Live validity of one package — recomputed as the DJ types, so a red flag in
   // the sidebar clears itself the moment that package is filled in.
@@ -306,11 +323,6 @@ export default function MobilePackagesEditor({
     // event type name is also flagged.
     return textEmpty(p.details) || priceMissing(p as unknown as Record<string, unknown>) || titleMatchesEventType(cat, p.title);
   }
-  // Is this a custom (pulled-out) event type that still has an incomplete package?
-  function catIncomplete(cat: string): boolean {
-    return listFor(mob, cat).some((_, i) => pkgInvalid(cat, i));
-  }
-
   function save() {
     // Drop orphaned overrides — event types that are no longer offered. They
     // aren't shown in the sidebar, so validating them would surface a "needs a
@@ -370,22 +382,16 @@ export default function MobilePackagesEditor({
   // back to General pricing on unmount so a half-built type never lingers.
   const leaveRef = useRef<() => void>(() => {});
   leaveRef.current = () => {
-    const bad = Object.keys(mob.overrides).filter((t) => selectedEventTypes.includes(t) && catIncomplete(t));
+    // Only drop ORPHANS — overrides for event types that are no longer offered at
+    // all. An unfinished specialty type the DJ chose stays a specialty type (the
+    // DJ decides where it lives); we never silently demote it back to General.
     const orphan = Object.keys(mob.overrides).filter((t) => !selectedEventTypes.includes(t));
-    if (!bad.length && !orphan.length) return;
-    let m = mob;
-    for (const t of bad) m = putTypeBack(m, t);
+    if (!orphan.length) return;
     const cleaned: MobPackagesIndependent = {
-      ...m,
-      overrides: Object.fromEntries(Object.entries(m.overrides).filter(([t]) => selectedEventTypes.includes(t))),
+      ...mob,
+      overrides: Object.fromEntries(Object.entries(mob.overrides).filter(([t]) => selectedEventTypes.includes(t))),
     };
     onSave(serializeIndependent(cleaned));
-    // A specialty type is auto-pulled on load, so also drop it from the specialty
-    // list — otherwise it would reappear blank next time.
-    const badSpecialty = bad.filter((t) => specialtyTypes.includes(t));
-    if (onEventTypesSave && badSpecialty.length) {
-      void onEventTypesSave(selectedEventTypes, customEventTypes, specialtyTypes.filter((t) => !badSpecialty.includes(t)));
-    }
   };
   useEffect(() => () => { leaveRef.current(); }, []);
 
