@@ -166,7 +166,8 @@ function IconChart() {
 export default function MobileMenu() {
   const { user, signOut } = useAuth();
   // Assistants can't accept/deny bookings or add manual ones — hide those nav.
-  const canBookings = canAcceptBookings(((user as unknown as { actingRole?: string })?.actingRole) || 'owner');
+  const actingRole = ((user as unknown as { actingRole?: string })?.actingRole) || 'owner';
+  const canBookings = canAcceptBookings(actingRole);
   // Owner/admin/manager can create discounts & promo codes — drives the shortcut.
   const canMakeDiscounts = canDiscounts(((user as unknown as { actingRole?: string })?.actingRole) || 'owner');
   const [open, setOpen] = useState(false);
@@ -295,7 +296,7 @@ export default function MobileMenu() {
                 <IconUser />{isStaff ? 'View Profile' : 'My Profile'}
               </Link>
             )}
-            {(isDj || isStaff) && (
+            {(isDj || (isStaff && actingRole !== 'assistant')) && (
               <Link href="/inbox" onClick={close} className="mobile-menu-item">
                 <IconInbox />Inbox
               </Link>
