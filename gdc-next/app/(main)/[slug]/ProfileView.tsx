@@ -24,7 +24,6 @@ import { createClient } from '@/lib/supabase/client';
 import { optimizedImageUrl } from '@/lib/img';
 import { parseAlbums, pruneAlbums, type Album } from '@/lib/albums';
 import { effectiveTier, TIERS, type AccessFields } from '@/lib/access';
-import AvatarCrop from '../update-dj-profile/AvatarCrop';
 import { ClaimAlertIcon } from './icons';
 
 
@@ -43,8 +42,7 @@ import {
   AboutStatsRow, ShareCalendarModal, UnderBannerSocials,
   StaffSection, AffiliatesSection, PressSection,
 } from './ProfileComponents';
-import { validateImageFile } from './profilePhotoUtils';
-import { saveProfile, setProfileEditContext, profileUploadFolder } from './profileSave';
+import { saveProfile, setProfileEditContext } from './profileSave';
 import { HeroColorMenu } from './profile-view/HeroColorMenu';
 import { bandSpanStyle } from './profile-view/colorUtils';
 import { Lightbox } from './profile-view/Lightbox';
@@ -232,12 +230,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Compose-message modal — opened by the "Message" button in HeroActions.
   // For logged-out visitors we route them to /login first.
   const [composeOpen, setComposeOpen] = useState(false);
-  // Avatar upload — owner-only. fileInputRef triggers the native file
-  // picker; pickedAvatarFile holds the chosen File until AvatarCrop's
-  // crop modal commits or cancels. On crop success we write the new
-  // public URL to users.avatar_url and reload to refresh the hero.
-  const avatarFileInputRef = useRef<HTMLInputElement>(null);
-  const [pickedAvatarFile, setPickedAvatarFile] = useState<File | null>(null);
   // Banner edit — owner-only. Opens a dedicated modal where the DJ
   // can upload/replace the banner image and reposition it vertically.
   // All upload + position logic lives inside BannerEditModal.
@@ -429,11 +421,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   }, []);
 
   // ── Derive view state ─────────────────────────────────────────────────
-  const typeClass =
-    data.dj_type === 'club'   ? styles.heroAvatarClub :
-    data.dj_type === 'mobile' ? styles.heroAvatarMobile :
-                                styles.heroAvatarNone;
-
   const location = (() => {
     const parts = [data.city, data.state, data.country].filter(Boolean) as string[];
     // Abbreviate verbose country names for display.
@@ -785,7 +772,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   };
 
   // Avatar URL with object-position support
-  const avatarPos = data.avatar_position || '50% 50%';
 
   // ── Tab-strip overflow hint ──────────────────────────────────────────
   // On narrow screens the tab row can hold more tabs than fit. It scrolls
@@ -959,226 +945,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 toggle it back. Visitors also see NO circle by default until an
                 image is actually added — an empty initials circle is owner-only
                 (so they can tap the centred camera to add one). */}
-            {(canEdit || (data.avatar_url && !data.avatar_hidden)) && (
-            <div style={canEdit ? { position: 'relative', flexShrink: 0 } : undefined}>
-              <div
-                className={`${styles.heroAvatar} ${typeClass}`}
-                style={canEdit && data.avatar_hidden ? { opacity: 0.4 } : undefined}
-              >
-                {data.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={data.avatar_url}
-                    alt={data.name || 'DJ'}
-                    style={{ objectPosition: avatarPos, cursor: 'zoom-in' }}
-                    onClick={() => setLightboxSrc(data.avatar_url!)}
-                  />
-                ) : (
-                  // Owner with no photo: leave the circle empty (camera + hint
-                  // fill it). Visitors never see this empty circle. Initials
-                  // still show as the fallback for a hidden-but-set avatar.
-                  canEdit ? null : initials(data.name)
-                )}
-              </div>
-              {/* Owner-only "Hidden" badge so they know visitors can't see it.
-                  Only when a picture actually exists — with no image the centred
-                  camera owns the middle of the circle. */}
-              {canEdit && data.avatar_hidden && data.avatar_url && (
-                <span style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  background: 'rgba(0,0,0,.75)',
-                  color: '#fff',
-                  fontFamily: "'Space Mono', monospace",
-                  fontSize: '.6rem',
-                  letterSpacing: '.08em',
-                  textTransform: 'uppercase',
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  pointerEvents: 'none',
-                  zIndex: 3,
-                  whiteSpace: 'nowrap',
-                }}>Hidden</span>
-              )}
-              {/* Owner-only camera badge — always visible, signals
-                  that the avatar can be changed. Click opens the native
-                  file picker; the chosen file flows through AvatarCrop
-                  modal for crop+upload, then we write the URL to users
-                  and reload. Sits outside the avatar's overflow:hidden
-                  clip so it always shows fully. */}
-              {canEdit && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => avatarFileInputRef.current?.click()}
-                    title={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
-                    aria-label={data.avatar_url ? 'Change profile picture' : 'Add profile picture'}
-                    style={{
-                      position: 'absolute',
-                      // With an image the camera is a small badge in the corner;
-                      // with no image yet it sits dead-centre in the circle as the
-                      // clear "add a photo" affordance.
-                      ...(data.avatar_url
-                        ? { bottom: 6, right: 6 }
-                        : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      background: 'var(--neon)',
-                      border: '2px solid #000',
-                      color: '#000',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      padding: 0,
-                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
-                      zIndex: 2,
-                    }}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                      <circle cx="12" cy="13" r="4"/>
-                    </svg>
-                  </button>
-                  {/* No photo yet: tell the owner this circle is hidden from
-                      visitors until they add one (only THEY see this circle). */}
-                  {!data.avatar_url && (
-                    <span
-                      className={styles.avatarHint}
-                      style={{
-                        position: 'absolute',
-                        top: '68%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '82%',
-                        textAlign: 'center',
-                        color: 'rgba(255,255,255,.45)',
-                        fontFamily: "'Space Mono', monospace",
-                        fontSize: '.5rem',
-                        lineHeight: 1.35,
-                        letterSpacing: '.02em',
-                        pointerEvents: 'none',
-                        zIndex: 2,
-                      }}
-                    >
-                      This circle won&rsquo;t show to visitors until you add a photo.
-                    </span>
-                  )}
-                  {/* Remove profile picture — only when one is set. Clears
-                      users.avatar_url and reloads to show the initials fallback. */}
-                  {data.avatar_url && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!(await confirm({ title: 'Remove your profile picture?', confirmLabel: 'Remove', variant: 'danger' }))) return;
-                        try {
-                          await saveProfile(data.id, { avatar_url: null }, actingAsMember);
-                          window.location.reload();
-                        } catch (err) {
-                          alert(err instanceof Error ? err.message : 'Could not remove picture.');
-                        }
-                      }}
-                      title="Remove profile picture"
-                      aria-label="Remove profile picture"
-                      style={{
-                        position: 'absolute',
-                        top: 6,
-                        right: 6,
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: '#ff5f5f',
-                        border: '2px solid #000',
-                        color: '#000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        padding: 0,
-                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
-                        zIndex: 2,
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                  {/* Hide / show toggle — hides the picture from visitors
-                      entirely (kept in the DB so it can be un-hidden). Only shown
-                      when a picture exists; an empty circle is already public-hidden. */}
-                  {data.avatar_url && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await saveProfile(data.id, { avatar_hidden: !data.avatar_hidden }, actingAsMember);
-                        window.location.reload();
-                      } catch (err) {
-                        alert(err instanceof Error ? err.message : 'Could not update.');
-                      }
-                    }}
-                    title={data.avatar_hidden ? 'Show profile picture on your profile' : 'Hide profile picture from your profile'}
-                    aria-label={data.avatar_hidden ? 'Show profile picture' : 'Hide profile picture'}
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      left: 6,
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      background: data.avatar_hidden ? 'var(--neon)' : 'rgba(0,0,0,.75)',
-                      border: '2px solid #000',
-                      color: data.avatar_hidden ? '#000' : '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      padding: 0,
-                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.6)',
-                      zIndex: 3,
-                    }}
-                  >
-                    {data.avatar_hidden ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                        <path d="M1 1l22 22" />
-                      </svg>
-                    )}
-                  </button>
-                  )}
-                  <input
-                    ref={avatarFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      // Reset input so picking the same file again
-                      // re-triggers onChange (browsers skip identical
-                      // selections otherwise).
-                      e.target.value = '';
-                      if (!file) return;
-                      const err = await validateImageFile(file);
-                      if (err) {
-                        alert(err);
-                        return;
-                      }
-                      setPickedAvatarFile(file);
-                    }}
-                  />
-                </>
-              )}
-            </div>
-            )}
+            {/* Profile picture removed — DJs no longer have an avatar circle. */}
             {/* Mobile-only column: name + badges next to avatar. Location sits
                 directly under the name here (mobile); on desktop it lives in
                 heroInfo below and this whole column is display:none. */}
@@ -2051,37 +1818,6 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           recipientUserId={data.id}
           recipientName={data.name || 'this DJ'}
           onClose={() => setComposeOpen(false)}
-        />
-      )}
-
-      {/* Avatar upload + crop modal — owner-only. Opens once the user
-          has picked a file via the camera badge. AvatarCrop handles the
-          crop UI + Supabase Storage upload at ${userId}/avatar.png and
-          calls onSuccess with the public URL. We then write that URL
-          to users.avatar_url and reload so the hero shows the new pic. */}
-      {pickedAvatarFile && canEdit && (
-        <AvatarCrop
-          file={pickedAvatarFile}
-          userId={data.id}
-          uploadFolder={profileUploadFolder(data.id)}
-          fitMode="contain"
-          onClose={() => {
-            setPickedAvatarFile(null);
-            // Reset the input so picking the same file again still fires
-            // onChange (browsers skip duplicate file selections).
-            if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
-          }}
-          onSuccess={async (publicUrl) => {
-            try {
-              await saveProfile(data.id, { avatar_url: publicUrl }, actingAsMember);
-            } catch {
-              // Non-blocking; the upload succeeded even if the row update
-              // failed. User can retry.
-            }
-            setPickedAvatarFile(null);
-            if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
-            window.location.reload();
-          }}
         />
       )}
 
