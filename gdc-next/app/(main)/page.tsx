@@ -1171,11 +1171,15 @@ const LANDING_BODY = String.raw`
       <table class="roletbl">
         <tr><th class="lbl"></th><th>Admin</th><th>Manager</th><th>Assistant</th></tr>
         <tr><td class="lbl">View bookings</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-        <tr><td class="lbl">Send planner &amp; playlist</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-        <tr><td class="lbl">Send invoices</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td class="lbl">Send planners &amp; playlists</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td class="lbl">Edit the DJ profile<span style="display:block;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.4;font-weight:400">Photos &amp; albums · bio · banner &amp; logo · tabs · FAQs · staff · press</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td class="lbl">Send invoices &amp; receipts</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
         <tr><td class="lbl">Accept or deny bookings</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Create manual bookings</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
         <tr><td class="lbl">Send &amp; sign contracts</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
-        <tr><td class="lbl">Request deposits</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Request deposit &amp; balance</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Edit planner &amp; playlist templates</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Create discounts &amp; promo codes</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
         <tr><td class="lbl">Manage team (invite &amp; remove staff)</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
         <tr><td class="lbl">Change billing or booking settings</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
       </table>
@@ -1192,10 +1196,14 @@ const LANDING_BODY = String.raw`
         <tr><th class="lbl"></th><th>Admin</th><th>Manager</th><th>Assistant</th></tr>
         <tr><td class="lbl">View bookings</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
         <tr><td class="lbl">Update flyer, send riders &amp; guest lists</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-        <tr><td class="lbl">Send invoices</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td class="lbl">Edit the DJ profile<span style="display:block;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.4;font-weight:400">Photos &amp; albums · bio · banner &amp; logo · tabs · FAQs · staff · press</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td class="lbl">Send invoices &amp; receipts</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
         <tr><td class="lbl">Accept, deny or counter bookings</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Create manual bookings</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
         <tr><td class="lbl">Send &amp; sign contracts</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
-        <tr><td class="lbl">Request deposits</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Request deposit &amp; balance</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Edit rider &amp; guest-list templates</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td class="lbl">Create discounts &amp; promo codes</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
         <tr><td class="lbl">Manage team (invite &amp; remove staff)</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
         <tr><td class="lbl">Change billing or booking settings</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
       </table>
