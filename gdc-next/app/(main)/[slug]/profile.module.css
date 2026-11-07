@@ -2533,7 +2533,7 @@
   z-index: 60;
   margin-top: -3.8rem;
   padding: 2.6rem 1rem .55rem;
-  background: linear-gradient(to bottom, rgba(5,5,7,0) 48%, var(--black) 100%);
+  background: linear-gradient(to bottom, rgba(5,5,7,0) 62%, var(--black) 100%);
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
@@ -2561,10 +2561,10 @@
   background-image: var(--banner-img, none);
   background-size: cover;
   background-position: 50% 100%;
-  filter: blur(18px) saturate(1.25) brightness(.7);
-  transform: scale(1.25);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.85) 45%, rgba(0,0,0,0) 90%);
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.85) 45%, rgba(0,0,0,0) 90%);
+  filter: blur(16px) saturate(1.5) brightness(1.15);
+  transform: scale(1.3);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, rgba(0,0,0,.55) 70%, rgba(0,0,0,0) 96%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 40%, rgba(0,0,0,.55) 70%, rgba(0,0,0,0) 96%);
 }
 .underBannerSocialBtn {
   width: 29px;
