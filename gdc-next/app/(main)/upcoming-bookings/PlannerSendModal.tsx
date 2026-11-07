@@ -129,9 +129,15 @@ const infoLabelStyle: CSSProperties = {
 const infoValStyle: CSSProperties = { fontSize: '.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
 export default function PlannerSendModal({
-  bookingId, onClose, onSent,
+  bookingId, canEditTemplate = true, onClose, onSent,
 }: {
   bookingId: string;
+  // Planner templates are account-wide (shared across every booking), so editing
+  // one from here changes it for the whole account. Only manager+ seats may do
+  // that; an Assistant can preview and send, but not edit the template. The
+  // server (/api/planners PUT) enforces the same rule — this just hides the
+  // button so an Assistant isn't offered an action that would 403.
+  canEditTemplate?: boolean;
   onClose: () => void;
   onSent: (r: { id: string; status: 'sent' | 'partial' | 'submitted'; warning?: string }) => void;
 }) {
@@ -320,13 +326,15 @@ export default function PlannerSendModal({
         >
           Preview
         </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name, t.id); }}
-          style={miniBtnStyle}
-        >
-          Edit Template
-        </button>
+        {canEditTemplate && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openCustomize(isAuto ? data.editEventType : t.eventType, t.name, t.id); }}
+            style={miniBtnStyle}
+          >
+            Edit Template
+          </button>
+        )}
       </div>
     );
   }
