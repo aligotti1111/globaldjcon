@@ -277,7 +277,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data: djRow, error: djErr } = await admin
     .from('users')
-    .select('id, name, slug, booking_settings, mob_custom_event_types, timezone')
+    .select('id, name, slug, booking_settings, mob_custom_event_types, mob_specialty_types, timezone')
     .eq('id', djId)
     .maybeSingle<{
       id: string;
@@ -381,6 +381,17 @@ export async function POST(req: Request) {
     const wantsCeremony = isWedding && ceremonyNeeded === true;
     const cat = getPackageCategory(eventType);
     const packagesAll = settings.mob_packages || {};
+    // Event types the DJ marked as "specialty" — they own their packages and
+    // never inherit General's prices. A specialty type with no priced list of
+    // its own resolves to a quote (price computed as null), so the booking is
+    // stored as a quote request, matching what the host saw on the form.
+    const specialtyTypes: string[] = (() => {
+      const raw = (djRow as { mob_specialty_types?: unknown }).mob_specialty_types;
+      let arr: unknown = raw;
+      if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = null; } }
+      if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string');
+      return ['weddings', 'mitzvah'];
+    })();
     // Wedding/Mitzvah packages INHERIT title, details and main photo from the
     // General package at the SAME index when their own field is blank — that's
     // exactly what the booking form displays. Without mirroring that here we
@@ -414,7 +425,7 @@ export async function POST(req: Request) {
     let selectedPkg: MobilePackage | null = null;
     if (hasAnyPackages) {
       if (packageIndex == null || packageIndex < 0) return bad('Please select a package.');
-      selectedPkg = (resolvePackage(packagesAll, eventType, packageIndex) as unknown as MobilePackage | null) ?? null;
+      selectedPkg = (resolvePackage(packagesAll, eventType, packageIndex, specialtyTypes) as unknown as MobilePackage | null) ?? null;
       if (!selectedPkg) return bad('Invalid package selected.');
     }
 
