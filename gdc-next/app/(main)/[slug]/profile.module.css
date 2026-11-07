@@ -1137,7 +1137,7 @@
   align-items: center;
   gap: 8px;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   letter-spacing: .06em;
   text-transform: uppercase;
   padding: .5rem .1rem;
@@ -2536,7 +2536,7 @@
   z-index: 60;
   /* Pull the strip up so the icons sit OVER the bottom of the (taller) banner,
      not below it. */
-  margin-top: -6.2rem;
+  margin-top: -5.3rem;
   padding: 2.6rem 1rem .55rem;
   background: transparent;
   /* The strip's z-index (60) beats the hero (50), so its empty top area overlaps
@@ -2911,7 +2911,7 @@
   right: 1px !important;
 }
 @media (max-width: 700px) {
-  .underBannerSocials { gap: .35rem; padding: 3.2rem .7rem .45rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -4.8rem; }
+  .underBannerSocials { gap: .35rem; padding: 3.2rem .7rem .45rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -4rem; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
   .underBannerSocialBtn svg { width: 16px; height: 16px; }
   .underBannerSocials .actionBtn {
