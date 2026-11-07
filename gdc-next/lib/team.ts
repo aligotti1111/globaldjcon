@@ -25,10 +25,16 @@ export function roleMatrix(djType: string | null | undefined): RoleCap[] {
   return [
     { label: 'View bookings', admin: true, manager: true, assistant: true },
     { label: sendDocsLabel, admin: true, manager: true, assistant: true },
+    // Edit the public DJ profile — photos & albums, bio & about, banner & logo,
+    // tabs, FAQs, staff, affiliates, press. Every seat may do this; only the
+    // Owner can change the DJ's displayed NAME and account settings.
+    { label: 'Edit the DJ profile (photos, bio, banner, tabs)', admin: true, manager: true, assistant: true },
+    { label: 'Send invoices & receipts', admin: true, manager: true, assistant: true },
     { label: 'Accept or deny bookings', admin: true, manager: true, assistant: false },
     { label: 'Create manual bookings', admin: true, manager: true, assistant: false },
     { label: 'Send & sign contracts', admin: true, manager: true, assistant: false },
     { label: 'Request deposit & balance', admin: true, manager: true, assistant: false },
+    { label: 'Edit planner & playlist templates', admin: true, manager: true, assistant: false },
     { label: 'Create discounts & promo codes', admin: true, manager: true, assistant: false },
     { label: 'Manage team (invite & remove staff)', admin: true, manager: false, assistant: false },
     { label: 'Change billing/subscription, account settings or booking settings', admin: false, manager: false, assistant: false },
