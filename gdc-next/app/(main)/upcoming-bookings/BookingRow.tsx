@@ -185,7 +185,7 @@ export function ColumnHeaders({ djType }: { djType: 'club' | 'mobile' }) {
   );
 }
 
-import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, type ActingRole } from '@/lib/acting';
+import { canSendContracts, canRequestDeposit as roleCanRequestDeposit, canSettings, type ActingRole } from '@/lib/acting';
 
 export default function BookingRow({
   booking, djType, userId, actingRole = 'owner', clubDepositPct, taxPct, djZip = null, djCity = null, djState = null, requireContract, archive: archiveProp, payments, onPaymentsChange, onMutated, canPro, plannerLeadDays = 14, autoDepositReceipt = true, autoBalanceReceipt = true, planner, onPlannerChange, overlaps, onDelete, onEdit, onAddHost, riderEnabled = false, guestlistEnabled = false, showNewActivity = false, defaultOpen = false,
@@ -1590,6 +1590,7 @@ export default function BookingRow({
       {sendOpen && (
         <PlannerSendModal
           bookingId={booking.id}
+          canEditTemplate={canSettings(actingRole)}
           onClose={() => setSendOpen(false)}
           onSent={(r) => {
             setSendOpen(false);
