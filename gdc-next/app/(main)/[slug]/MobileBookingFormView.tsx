@@ -440,6 +440,20 @@ export default function MobileBookingForm({
   const showPriceBreakdown = !!priceResult && !priceResult.isQuote && priceResult.price != null
     && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0);
 
+  // The auto-selected "Request a Quote" card (a specialty / unpriced type with a
+  // bare placeholder package) already says "Price on request" and explains the
+  // quote flow. In that case the Estimated Price box below would just repeat the
+  // same message, so we hide it. A NAMED quote-only package still shows it.
+  const selectedIsBareQuote = useMemo(() => {
+    if (!selectedPkg) return false;
+    const t = (selectedPkg.title || '').trim();
+    if (!/^package\s*\d+$/i.test(t)) return false;
+    if (selectedPkg.details && String(selectedPkg.details).trim()) return false;
+    if ((selectedPkg.photo) || ((selectedPkg as { photos?: string[] }).photos?.length)) return false;
+    if (selectedPkg.reqAll) return true;
+    return !priceResult || priceResult.isQuote || priceResult.price == null;
+  }, [selectedPkg, priceResult]);
+
   function applyPromo() {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
@@ -1630,7 +1644,7 @@ export default function MobileBookingForm({
         )}
 
         {/* Price display */}
-        {priceResult && selectedPkgIdx != null && (
+        {priceResult && selectedPkgIdx != null && !selectedIsBareQuote && (
           <div className={styles.priceDisplay}>
             <div className={styles.priceLabel}>Estimated Price</div>
 
