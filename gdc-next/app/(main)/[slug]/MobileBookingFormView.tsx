@@ -317,6 +317,16 @@ export default function MobileBookingForm({
   // "Reception" vs "Event" time labels.
   const cocktailEligible = !!eventType;
   const customEventTypes = useMemo(() => parseCustomEventTypes(dj.mob_custom_event_types), [dj.mob_custom_event_types]);
+  // Event types the DJ marked as "specialty" — these own their packages and
+  // must never inherit General's prices. A specialty type with no priced list
+  // of its own is quote-only (host requests a custom quote).
+  const specialtyTypes = useMemo(() => {
+    const raw = (dj as { mob_specialty_types?: unknown }).mob_specialty_types;
+    let arr: unknown = raw;
+    if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = null; } }
+    if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string');
+    return ['weddings', 'mitzvah'];
+  }, [dj]);
   const endTimeOptions = useMemo(() => buildMobEndTimeOptions(dateKey), [dateKey]);
   const eventTypesAllowed = useMemo(() => {
     return (dj.event_types || '')
@@ -335,14 +345,20 @@ export default function MobileBookingForm({
   // Indexed by original package index; {} at an index the type has none.
   const categoryPkgs: MobilePackage[] = useMemo(() => {
     const ov = (packagesAll as { overrides?: Record<string, unknown[]> }).overrides;
-    const ovLen = ov && Array.isArray(ov[eventType]) ? ov[eventType].length : 0;
+    const hasOwn = !!(ov && Array.isArray(ov[eventType]));
+    const ovLen = hasOwn ? (ov![eventType] as unknown[]).length : 0;
+    // A specialty type with no own list is quote-only — just one slot.
+    if (!hasOwn && specialtyTypes.includes(eventType)) {
+      const q = resolvePackage(packagesAll, eventType, 0, specialtyTypes) as unknown as MobilePackage | null;
+      return q ? [q] : [];
+    }
     const oldLen = Array.isArray((packagesAll as Record<string, unknown>)[cat])
       ? ((packagesAll as Record<string, unknown[]>)[cat] as unknown[]).length : 0;
     const n = Math.max(generalPkgs.length, ovLen, oldLen);
     return Array.from({ length: n }, (_, i) =>
-      (resolvePackage(packagesAll, eventType, i) as unknown as MobilePackage | null) ?? ({} as MobilePackage),
+      (resolvePackage(packagesAll, eventType, i, specialtyTypes) as unknown as MobilePackage | null) ?? ({} as MobilePackage),
     );
-  }, [packagesAll, eventType, cat, generalPkgs.length]);
+  }, [packagesAll, eventType, cat, generalPkgs.length, specialtyTypes]);
 
   // Has the DJ defined ANY usable package across ANY category? When false,
   // we treat the whole booking as a "request a quote" — no package selection,
@@ -363,7 +379,7 @@ export default function MobileBookingForm({
   // Live price calculation when we have a package + times
   const selectedPkg =
     selectedPkgIdx != null
-      ? (resolvePackage(packagesAll, eventType, selectedPkgIdx) as unknown as MobilePackage | null)
+      ? (resolvePackage(packagesAll, eventType, selectedPkgIdx, specialtyTypes) as unknown as MobilePackage | null)
       : null;
   const depositPct = bookingSettings.mob_deposit_pct || 0;
   // Signed % the DJ set on THIS date (0 when none). Folded silently into every
@@ -1583,8 +1599,9 @@ export default function MobileBookingForm({
               categoryPkgs={categoryPkgs}
               generalPkgs={generalPkgs}
               ownList={
-                (packagesAll as { model?: string }).model === 'independent' &&
-                Array.isArray((packagesAll as { overrides?: Record<string, unknown[]> }).overrides?.[eventType])
+                specialtyTypes.includes(eventType) ||
+                ((packagesAll as { model?: string }).model === 'independent' &&
+                  Array.isArray((packagesAll as { overrides?: Record<string, unknown[]> }).overrides?.[eventType]))
               }
               selectedPkgIdx={selectedPkgIdx}
               onSelect={(idx) => setSelectedPkgIdx(idx)}
