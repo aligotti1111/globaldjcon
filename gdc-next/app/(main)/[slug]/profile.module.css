@@ -2534,7 +2534,9 @@
      that faded zone and sits transparent, so the icons rest on the dissolve. */
   position: relative;
   z-index: 60;
-  margin-top: -3.8rem;
+  /* Pull the strip up so the icons sit OVER the bottom of the (taller) banner,
+     not below it. */
+  margin-top: -6.2rem;
   padding: 2.6rem 1rem .55rem;
   background: transparent;
   border-top: none;
@@ -2902,7 +2904,7 @@
   right: 1px !important;
 }
 @media (max-width: 700px) {
-  .underBannerSocials { gap: .35rem; padding: 2.1rem .7rem .45rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -3rem; }
+  .underBannerSocials { gap: .35rem; padding: 3.2rem .7rem .45rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -4.8rem; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
   .underBannerSocialBtn svg { width: 16px; height: 16px; }
   .underBannerSocials .actionBtn {
