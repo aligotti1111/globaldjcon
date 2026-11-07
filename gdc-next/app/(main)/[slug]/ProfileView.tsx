@@ -892,11 +892,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
               style={
                 data.banner_url
                   ? ({
-                      // Banner image dissolves into the page at the bottom like a
-                      // cloud: soft dark "puffs" rise from the bottom at varied
-                      // x/height over a gentle base fade, giving an uneven, billowy
-                      // edge instead of a straight gradient line.
-                      backgroundImage: `radial-gradient(60% 55% at 18% 112%, #050507 46%, rgba(5,5,7,0) 72%), radial-gradient(55% 62% at 42% 118%, #050507 44%, rgba(5,5,7,0) 74%), radial-gradient(62% 50% at 68% 110%, #050507 46%, rgba(5,5,7,0) 72%), radial-gradient(58% 60% at 88% 116%, #050507 44%, rgba(5,5,7,0) 74%), linear-gradient(to bottom, rgba(5,5,7,0) 45%, rgba(5,5,7,.35) 72%, rgba(5,5,7,.8) 92%, #050507 100%), url(${optimizedImageUrl(data.banner_url)})`,
+                      // Banner image dissolves into the page's black over the lower
+                      // half. The fade starts high (18%) so it's visible even when
+                      // the bottom of a photo is already dark — a fade only at the
+                      // very bottom would show nothing on such images.
+                      backgroundImage: `linear-gradient(to bottom, rgba(5,5,7,0) 18%, rgba(5,5,7,.3) 42%, rgba(5,5,7,.7) 64%, rgba(5,5,7,.92) 82%, #050507 96%), url(${optimizedImageUrl(data.banner_url)})`,
                       ['--banner-pos' as string]: data.banner_position || '50% 50%',
                       ['--banner-pos-mobile' as string]:
                         data.banner_position_mobile || data.banner_position || '50% 50%',
