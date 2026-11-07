@@ -4,11 +4,31 @@
 // loads /api/team, shows seats used/limit, invites by email + role, changes
 // roles, removes members. Hidden behind Pro+ (seatLimit 0 → upgrade prompt).
 
-import { useEffect, useState, useCallback, Fragment, type CSSProperties } from 'react';
+import { useEffect, useState, useCallback, type CSSProperties } from 'react';
 import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import SectionBanner from '../update-dj-profile/SectionBanner';
 import { TEAM_ROLES, roleMatrix, type TeamRole } from '@/lib/team';
+
+// Small line-icon per capability (keys come from lib/team.ts roleMatrix).
+function CapIcon({ name }: { name?: string }) {
+  const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (name) {
+    case 'eye': return <svg {...p}><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>;
+    case 'send': return <svg {...p}><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>;
+    case 'profile': return <svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 12 0v1" /></svg>;
+    case 'receipt': return <svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg>;
+    case 'check': return <svg {...p}><path d="M20 6 9 17l-5-5" /></svg>;
+    case 'plus': return <svg {...p}><path d="M12 5v14M5 12h14" /></svg>;
+    case 'contract': return <svg {...p}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+    case 'money': return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v10M9.5 9.5h4a1.8 1.8 0 0 1 0 3.6h-3a1.8 1.8 0 0 0 0 3.6h4" /></svg>;
+    case 'template': return <svg {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 14h8" /></svg>;
+    case 'tag': return <svg {...p}><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14v-4" /><path d="M18 12a2 2 0 0 0 0 4h4v-4z" /></svg>;
+    case 'team': return <svg {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+    case 'lock': return <svg {...p}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
+    default: return <svg {...p}><circle cx="12" cy="12" r="9" /></svg>;
+  }
+}
 
 interface Member { id: string; invited_email: string; name: string | null; role: string; status: string; member_id: string | null; can_addons: boolean; }
 interface Owner { id: string; name: string | null; email: string | null; }
@@ -233,30 +253,48 @@ export default function TeamSection({ djType }: { djType?: string | null }) {
             );
           })()}
 
-          {/* Role breakdown — a matrix so the owner can compare at a glance. */}
-          <div style={{ border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '.8rem .9rem', margin: '0 0 1rem', overflowX: 'auto' }}>
-            <div style={{ fontWeight: 700, fontSize: '.82rem', marginBottom: '.6rem' }}>What each role can do</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px,1.6fr) repeat(3, minmax(52px,1fr))', gap: '.35rem .4rem', alignItems: 'center', fontSize: '.74rem', minWidth: 320 }}>
+          {/* Role breakdown — Option C: icon rows that light up on hover, with a
+              sub-detail line under the profile capability and an Owner badge. */}
+          <div style={{ fontWeight: 700, fontSize: '.82rem', marginBottom: '.5rem' }}>What each role can do</div>
+          <div className={styles.capCard}>
+            <div className={styles.capHead}>
               <div />
-              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'admin' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'admin' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Admin</div>
-              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'manager' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'manager' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Manager</div>
-              <div style={{ textAlign: 'center', fontWeight: 700, color: 'var(--neon,#00e0a4)', borderRadius: 4, background: highlightRole === 'assistant' ? 'rgba(0,224,164,.16)' : undefined, boxShadow: highlightRole === 'assistant' ? '0 0 0 1px rgba(0,224,164,.5)' : undefined }}>Assistant</div>
-              {roleMatrix(djType).map((cap) => {
-                const cell = (ok: boolean, role: TeamRole) => (
-                  <div style={{ textAlign: 'center', color: ok ? 'var(--neon,#00e0a4)' : '#ff6b6b', fontWeight: 700, borderRadius: 4, background: highlightRole === role ? 'rgba(0,224,164,.10)' : undefined }}>{ok ? '✓' : '✗'}</div>
-                );
-                return (
-                  <Fragment key={cap.label}>
-                    <div style={{ color: 'rgba(255,255,255,.82)' }}>{cap.label}</div>
-                    {cell(cap.admin, 'admin')}
-                    {cell(cap.manager, 'manager')}
-                    {cell(cap.assistant, 'assistant')}
-                  </Fragment>
-                );
-              })}
+              <div />
+              {(['admin', 'manager', 'assistant'] as TeamRole[]).map((r) => (
+                <div
+                  key={r}
+                  className={styles.capColHead}
+                  style={highlightRole === r ? { background: 'rgba(0,224,164,.16)', borderRadius: 4, boxShadow: '0 0 0 1px rgba(0,224,164,.5)' } : undefined}
+                >
+                  {r === 'admin' ? 'Admin' : r === 'manager' ? 'Manager' : 'Assistant'}
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: '.72rem', color: muted, marginTop: '.6rem', paddingTop: '.5rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-              Only you (the Owner) control billing, the subscription, booking settings, and account settings.
+            {roleMatrix(djType).map((cap) => {
+              const cell = (ok: boolean, role: TeamRole) => (
+                <div
+                  className={styles.capCell}
+                  style={highlightRole === role ? { background: 'rgba(0,224,164,.08)', borderRadius: 4 } : undefined}
+                >
+                  <span className={ok ? styles.capYes : styles.capNo}>{ok ? '✓' : '✗'}</span>
+                </div>
+              );
+              return (
+                <div key={cap.label} className={styles.capRow}>
+                  <div className={styles.capIco}><CapIcon name={cap.icon} /></div>
+                  <div>
+                    <span className={styles.capLabel}>{cap.label}</span>
+                    {cap.sub && <span className={styles.capSub}>{cap.sub}</span>}
+                  </div>
+                  {cell(cap.admin, 'admin')}
+                  {cell(cap.manager, 'manager')}
+                  {cell(cap.assistant, 'assistant')}
+                </div>
+              );
+            })}
+            <div className={styles.capFoot}>
+              <span className={styles.capOwnerBadge}>👑 Owner only</span>
+              <span className={styles.capFootText}>Billing, the subscription, booking settings &amp; account settings.</span>
             </div>
           </div>
 
