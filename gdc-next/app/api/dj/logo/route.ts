@@ -23,6 +23,33 @@ import { getActingContext, canEditProfile } from '@/lib/acting';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// GET — the current logo for whoever's signed in, resolved through the SAME
+// acting context the writes use. For a teammate that's the OWNER's row
+// (acting.djId), so a teammate sees the logo the owner uploaded instead of a
+// blank "+ Add your logo" (keying the read to the teammate's own user.id was
+// the bug). Returns { url, djId }.
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+
+    const acting = await getActingContext(user.id);
+    const djId = acting.djId;
+
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('users')
+      .select('contract_logo_url')
+      .eq('id', djId)
+      .maybeSingle();
+    const row = data as { contract_logo_url?: string | null } | null;
+    return NextResponse.json({ url: row?.contract_logo_url || null, djId });
+  } catch {
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
