@@ -419,7 +419,7 @@ export default function PackageEditor({
               onChange={(e) => updateField('reqAll', e.target.checked)}
             />
             <span className={styles.reqAllLabel}>
-              REQUIRE EVENT HOST TO <span className={styles.reqAllHighlight}>REQUEST PRICE</span>
+              HIDE PRICING — REQUIRE EVENT HOST TO <span className={styles.reqAllHighlight}>REQUEST QUOTE</span>
             </span>
           </label>
           <span
