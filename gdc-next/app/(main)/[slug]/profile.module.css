@@ -96,6 +96,12 @@
   background-position: var(--banner-pos, 50% 50%);
   background-repeat: no-repeat;
   pointer-events: none;
+  /* The photo fades 100% to the page's dark at the bottom — top ~55% stays
+     fully visible, then the image fades to transparent (same technique as the
+     finance table). The name/location are .hero siblings, not masked; the
+     DJ-type badge and edit button sit in the opaque top zone. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 92%);
 }
 /* Re-enable pointer events on interactive children of .banner (top-left
    badge dropdown, edit-banner button) — they're explicitly clickable. */
