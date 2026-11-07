@@ -109,14 +109,14 @@ export default function PlannerBuilder({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !active) return;
         setUserId(user.id);
-        const { data } = await supabase
-          .from('users')
-          .select('contract_logo_url')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (active) {
-          const row = data as { contract_logo_url?: string | null } | null;
-          setLogoUrl(row?.contract_logo_url || null);
+        // Resolve the logo through /api/dj/logo so a TEAMMATE sees the OWNER's
+        // logo (the API keys to the owner's row via the acting context).
+        // Reading users.contract_logo_url off the teammate's own id showed
+        // nothing, since the logo lives on the owner's account.
+        const res = await fetch('/api/dj/logo', { cache: 'no-store' });
+        if (active && res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { url?: string | null };
+          setLogoUrl(j.url || null);
         }
       } catch { /* the logo is optional */ }
     })();
