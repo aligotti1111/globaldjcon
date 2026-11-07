@@ -106,36 +106,8 @@
    lower edge so it bleeds seamlessly into the social-media row below
    (no hard seam). Pseudo-element paints over the image but behind the
    hero content (name/location at z-index:1), so text stays crisp. */
-/* Light cloud-out at the bottom of the banner. The ::after is a blurred COPY of
-   the banner image (filter: blur — NOT backdrop-filter, which blurred the whole
-   thing), revealed by a mask only over the lowest slice, so the image is sharp
-   up top and softly clouds at the bottom. The ::before darkens that slice to the
-   page colour, sitting above the blur (z-index). */
-.banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image: inherit;
-  background-size: inherit;
-  background-position: inherit;
-  background-repeat: inherit;
-  filter: blur(7px);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 74%, #000 92%);
-  mask-image: linear-gradient(to bottom, transparent 74%, #000 92%);
-  pointer-events: none;
-}
-.banner::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 24%;
-  z-index: 1;
-  background: linear-gradient(to bottom, rgba(5, 5, 7, 0) 0%, var(--black) 100%);
-  pointer-events: none;
-}
+/* Banner stays clean/sharp. The light cloud lives at the TOP of the social strip
+   below (see .underBannerSocials), not on the banner. */
 .bannerCtaRow {
   position: absolute;
   top: 50%;
@@ -2550,8 +2522,13 @@
   align-items: center;
   justify-content: center;
   gap: .55rem;
-  padding: .55rem 1rem;
-  background: var(--black);
+  /* Soft dark CLOUD at the TOP of this strip (no blur): it overlaps the banner's
+     bottom edge with a transparent → black gradient, so the banner dissolves into
+     a smoky haze that settles to the page colour before the icons. */
+  position: relative;
+  margin-top: -2.2rem;
+  padding: 1.6rem 1rem .55rem;
+  background: linear-gradient(to bottom, transparent 0%, rgba(5,5,7,.6) 40%, var(--black) 70%);
   border-top: none;
   border-bottom: none;
   flex-wrap: wrap;
@@ -2915,7 +2892,7 @@
   right: 1px !important;
 }
 @media (max-width: 700px) {
-  .underBannerSocials { gap: .35rem; padding: .45rem .7rem; width: 100%; margin-left: 0; margin-right: 0; }
+  .underBannerSocials { gap: .35rem; padding: 1.3rem .7rem .45rem; width: 100%; margin-left: 0; margin-right: 0; margin-top: -1.7rem; }
   .underBannerSocialBtn { width: 28px; height: 28px; min-width: 28px; }
   .underBannerSocialBtn svg { width: 16px; height: 16px; }
   .underBannerSocials .actionBtn {
