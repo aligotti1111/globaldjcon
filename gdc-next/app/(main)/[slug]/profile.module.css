@@ -277,8 +277,12 @@
   .bannerEditBtn {
     top: 48px;
     right: 16px;
-    padding: .4rem .6rem;
-    font-size: .55rem;
+    padding: .45rem;
+    gap: 0;
+  }
+  /* Mobile: show the camera icon only — hide the text label. */
+  .bannerEditLabel {
+    display: none;
   }
 }
 
