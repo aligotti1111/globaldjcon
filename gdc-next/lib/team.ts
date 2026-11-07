@@ -15,29 +15,45 @@ export function docCapabilityLabel(djType: string | null | undefined): string {
     : 'Send contracts, riders & guest lists';
 }
 
-export interface RoleCap { label: string; admin: boolean; manager: boolean; assistant: boolean; }
+export interface RoleCap {
+  label: string;
+  admin: boolean;
+  manager: boolean;
+  assistant: boolean;
+  // Optional second line of detail under the label (e.g. what "Edit the DJ
+  // profile" actually covers), and an icon key the UI maps to an SVG.
+  sub?: string;
+  icon?: string;
+}
 
 export function roleMatrix(djType: string | null | undefined): RoleCap[] {
   // What documents an assistant may SEND (not contracts) depends on DJ type.
-  const sendDocsLabel = djType === 'mobile'
+  const isMobile = djType === 'mobile';
+  const sendDocsLabel = isMobile
     ? 'Send planners & playlists'
     : 'Update flyer, send riders & guest lists';
+  const tmplLabel = isMobile
+    ? 'Edit planner & playlist templates'
+    : 'Edit rider & guest-list templates';
   return [
-    { label: 'View bookings', admin: true, manager: true, assistant: true },
-    { label: sendDocsLabel, admin: true, manager: true, assistant: true },
-    // Edit the public DJ profile — photos & albums, bio & about, banner & logo,
-    // tabs, FAQs, staff, affiliates, press. Every seat may do this; only the
-    // Owner can change the DJ's displayed NAME and account settings.
-    { label: 'Edit the DJ profile (photos, bio, banner, tabs)', admin: true, manager: true, assistant: true },
-    { label: 'Send invoices & receipts', admin: true, manager: true, assistant: true },
-    { label: 'Accept or deny bookings', admin: true, manager: true, assistant: false },
-    { label: 'Create manual bookings', admin: true, manager: true, assistant: false },
-    { label: 'Send & sign contracts', admin: true, manager: true, assistant: false },
-    { label: 'Request deposit & balance', admin: true, manager: true, assistant: false },
-    { label: 'Edit planner & playlist templates', admin: true, manager: true, assistant: false },
-    { label: 'Create discounts & promo codes', admin: true, manager: true, assistant: false },
-    { label: 'Manage team (invite & remove staff)', admin: true, manager: false, assistant: false },
-    { label: 'Change billing/subscription, account settings or booking settings', admin: false, manager: false, assistant: false },
+    { label: 'View bookings', admin: true, manager: true, assistant: true, icon: 'eye' },
+    { label: sendDocsLabel, admin: true, manager: true, assistant: true, icon: 'send' },
+    // Edit the public DJ profile — every seat may do this; only the Owner can
+    // change the DJ's displayed NAME and account settings.
+    {
+      label: 'Edit the DJ profile',
+      sub: 'Photos & albums · bio & about · banner & logo · tabs · FAQs · staff · affiliates · press',
+      admin: true, manager: true, assistant: true, icon: 'profile',
+    },
+    { label: 'Send invoices & receipts', admin: true, manager: true, assistant: true, icon: 'receipt' },
+    { label: 'Accept or deny bookings', admin: true, manager: true, assistant: false, icon: 'check' },
+    { label: 'Create manual bookings', admin: true, manager: true, assistant: false, icon: 'plus' },
+    { label: 'Send & sign contracts', admin: true, manager: true, assistant: false, icon: 'contract' },
+    { label: 'Request deposit & balance', admin: true, manager: true, assistant: false, icon: 'money' },
+    { label: tmplLabel, admin: true, manager: true, assistant: false, icon: 'template' },
+    { label: 'Create discounts & promo codes', admin: true, manager: true, assistant: false, icon: 'tag' },
+    { label: 'Manage team (invite & remove staff)', admin: true, manager: false, assistant: false, icon: 'team' },
+    { label: 'Change billing/subscription, account settings or booking settings', admin: false, manager: false, assistant: false, icon: 'lock' },
   ];
 }
 
