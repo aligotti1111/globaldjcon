@@ -130,8 +130,8 @@ const LANDING_CSS = String.raw`
 .gdc-landing .capcard{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}
 .gdc-landing .capcard:hover,.gdc-landing .capcard:focus-visible{border-color:rgba(0,245,196,.6);transform:translateY(-3px);box-shadow:0 0 0 1px rgba(0,245,196,.25),0 10px 30px rgba(0,245,196,.12);outline:none}
 .gdc-landing .capcard.active{border-color:var(--neon);box-shadow:0 0 0 1px rgba(0,245,196,.45),0 10px 30px rgba(0,245,196,.16)}
-.gdc-landing .cappanel{position:relative;max-width:1260px;margin:0 auto;max-height:0;opacity:0;overflow:hidden;padding:0 56px 0 4px;transform:translateY(-8px);transition:max-height .45s cubic-bezier(.22,1,.36,1),opacity .35s ease,margin-top .45s cubic-bezier(.22,1,.36,1),padding .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1);pointer-events:none}
-.gdc-landing .cappanel.open{max-height:600px;opacity:1;margin-top:18px;padding-top:4px;padding-bottom:6px;transform:none;pointer-events:auto}
+.gdc-landing .cappanel{position:relative;max-width:1260px;margin:0 auto;max-height:0;opacity:0;overflow:hidden;padding:0 56px 0 4px;transform-origin:50% top;transform:translateY(-14px) scale(.85);transition:max-height .5s cubic-bezier(.22,1,.36,1),opacity .3s ease,margin-top .5s cubic-bezier(.22,1,.36,1),padding .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.34,1.3,.5,1);pointer-events:none}
+.gdc-landing .cappanel.open{max-height:600px;opacity:1;margin-top:18px;padding-top:4px;padding-bottom:6px;transform:translateY(0) scale(1);pointer-events:auto}
 .gdc-landing .cappanel-x{position:absolute;top:0;right:12px;background:none;border:none;color:var(--muted);font-size:1.5rem;line-height:1;cursor:pointer;padding:4px 8px;transition:color .15s}
 .gdc-landing .cappanel-x:hover{color:var(--ink)}
 .gdc-landing .cappanel-body{display:none}
@@ -380,9 +380,11 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.club .fbtn{border-color:var(--amber);color:var(--amber)}
 .gdc-landing .flowcards .flane.club .fbtn:hover{background:var(--amber);color:#050507}
 .gdc-landing .flowcards .fh{cursor:pointer;user-select:none}
-.gdc-landing .flowcards .fhtitle{position:relative;align-self:flex-start;display:inline-block;padding:.1em 5em .14em .5em;border-radius:5px;margin-left:-.5em}
+.gdc-landing .flowcards .fhtitle{position:relative;align-self:flex-start;display:inline-block;white-space:nowrap;padding:.1em 5em .14em .5em;border-radius:5px;margin-left:-.5em}
 .gdc-landing .flowcards .flane.mobile .fhtitle{background:linear-gradient(to left,rgba(0,245,196,.28),rgba(0,245,196,.10) 55%,transparent)}
 .gdc-landing .flowcards .flane.club .fhtitle{background:linear-gradient(to left,rgba(245,230,66,.28),rgba(245,230,66,.10) 55%,transparent)}
+.gdc-landing .flowcards .flane.open .fhtitle{align-self:center;text-align:center;padding-left:1.2em;padding-right:1.2em;margin-left:0}
+.gdc-landing .flowcards .flane.open .fh small{text-align:center}
 .gdc-landing .flowcards .fhtoggle{position:absolute;right:22px;bottom:14px;width:11px;height:11px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .3s ease;opacity:.75}
 .gdc-landing .flowcards .flane.open .fhtoggle{transform:rotate(-135deg);bottom:10px}
 .gdc-landing .flowcards .fbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
@@ -1287,7 +1289,7 @@ window.gdcChoosePlan=function(n){
 };
 function toggleFlane(h){var l=h.closest('.flane');if(!l)return;var wasOpen=l.classList.contains('open');var wrap=l.parentNode;if(wrap){wrap.querySelectorAll('.flane.open').forEach(function(o){o.classList.remove('open');});}if(!wasOpen){l.classList.add('open');}}
 function closeCap(){var p=document.getElementById('cappanel');if(p)p.classList.remove('open');document.querySelectorAll('.capcard.active').forEach(function(c){c.classList.remove('active');});}
-function openCap(key,card){var p=document.getElementById('cappanel');if(!p)return;var already=card.classList.contains('active');document.querySelectorAll('.capcard.active').forEach(function(c){c.classList.remove('active');});p.querySelectorAll('.cappanel-body').forEach(function(b){b.classList.remove('show');});if(already){p.classList.remove('open');return;}card.classList.add('active');var body=p.querySelector('.cappanel-body[data-cap="'+key+'"]');if(body){body.classList.add('show');p.classList.add('open');}}
+function openCap(key,card){var p=document.getElementById('cappanel');if(!p)return;var already=card.classList.contains('active');document.querySelectorAll('.capcard.active').forEach(function(c){c.classList.remove('active');});p.querySelectorAll('.cappanel-body').forEach(function(b){b.classList.remove('show');});if(already){p.classList.remove('open');return;}card.classList.add('active');try{var cr=card.getBoundingClientRect();var pr=p.getBoundingClientRect();var x=((cr.left+cr.width/2)-pr.left)/pr.width*100;p.style.transformOrigin=Math.max(0,Math.min(100,x))+'% top';}catch(e){}var body=p.querySelector('.cappanel-body[data-cap="'+key+'"]');if(body){body.classList.add('show');p.classList.add('open');}}
 function openLB(id){var e=document.getElementById(id);if(e){e.classList.add('open');document.body.style.overflow='hidden';}}
 function closeLB(id){var e=document.getElementById(id);if(e){e.classList.remove('open');document.body.style.overflow='';}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.lb.open').forEach(function(l){l.classList.remove('open');});document.body.style.overflow='';}});
