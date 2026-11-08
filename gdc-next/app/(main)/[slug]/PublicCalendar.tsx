@@ -33,6 +33,7 @@ import {
   windowLabel,
 } from './bookingSettings';
 import { currencySymbol } from '@/lib/constants';
+import { dateKey, calcMaxYM, calcMinYM, isInRange } from './calendarRange';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -109,35 +110,9 @@ interface Props {
 // ──────────────────────────────────────────────────────────────────────────
 
 // Pad a number to 2 digits with leading zero
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-// Build the YYYY-MM-DD key from a (year, monthIndex, day) trio
-function dateKey(y: number, m: number, d: number): string {
-  return `${y}-${pad2(m + 1)}-${pad2(d)}`;
-}
-
-// Latest navigable {year, month} based on today + window
-function calcMaxYM(windowMonths: number): { year: number; month: number } {
-  const t = new Date();
-  const totalMonths = t.getFullYear() * 12 + t.getMonth() + (windowMonths || 12);
-  return { year: Math.floor(totalMonths / 12), month: totalMonths % 12 };
-}
-
-// Earliest navigable {year, month} — the current month (no past nav)
-function calcMinYM(): { year: number; month: number } {
-  const t = new Date();
-  return { year: t.getFullYear(), month: t.getMonth() };
-}
-
-// Is (y, m) within [min, max] inclusive?
-function isInRange(y: number, m: number, windowMonths: number): boolean {
-  const min = calcMinYM();
-  const max = calcMaxYM(windowMonths);
-  const v = y * 12 + m;
-  return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
-}
+// pad2 / dateKey / calcMaxYM / calcMinYM / isInRange are imported from
+// ./calendarRange (shared with MobilePublicCalendar). Desktop uses the
+// default 12-month fallback.
 
 // ──────────────────────────────────────────────────────────────────────────
 // Main component
