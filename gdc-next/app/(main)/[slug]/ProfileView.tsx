@@ -914,22 +914,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                   </div>
                 )
               )}
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => setBannerModalOpen(true)}
-                  className={styles.bannerEditBtn}
-                  title="Edit banner"
-                  aria-label="Edit banner"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
-                  <span className={styles.bannerEditLabel}>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
-                </button>
-              )}
             </div>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setBannerModalOpen(true)}
+              className={styles.bannerEditBtn}
+              title="Edit banner"
+              aria-label="Edit banner"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span className={styles.bannerEditLabel}>{data.banner_url ? 'Edit banner' : 'Add banner'}</span>
+            </button>
           )}
           {/* Book Now + Message Us removed from the banner. Message now lives
               as a mail icon in the under-banner row (next to phone + Share);
