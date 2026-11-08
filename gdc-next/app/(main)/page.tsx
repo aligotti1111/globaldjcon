@@ -799,6 +799,10 @@ const LANDING_BODY = String.raw`
      the "Your Booking Dashboard" sample section. -->
 <section id="bookingrequested" style="padding:40px 0 8px">
   <div class="wrap">
+    <div class="shead reveal">
+      <div class="label">The process</div>
+      <h2>HOW IT WORKS</h2>
+    </div>
     <div class="brgrid reveal">
       <figure>
         <span class="brstep">Step 1</span>
