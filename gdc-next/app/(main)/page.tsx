@@ -125,6 +125,14 @@ const LANDING_CSS = String.raw`
 .gdc-landing .hero-steps b{font-size:2.3rem}
 .gdc-landing .hero-steps i{transform:rotate(90deg);font-size:1.6rem}
 }
+.gdc-landing .capbar{border-bottom:1px solid var(--line);background:rgba(255,255,255,.015);padding:34px 0}
+.gdc-landing .capcards{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;max-width:1260px;margin:0 auto}
+.gdc-landing .capcard{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.gdc-landing .capcard .ph{aspect-ratio:3/2;background:#0a0d13;overflow:hidden}
+.gdc-landing .capcard .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.gdc-landing .capcard h3{font-family:var(--disp);font-weight:400;letter-spacing:.02em;font-size:1.22rem;line-height:1.05;color:var(--neon);margin:13px 14px 5px}
+.gdc-landing .capcard p{font-family:var(--body);font-size:.78rem;line-height:1.45;color:#c9c9d2;margin:0 14px 15px}
+@media(max-width:860px){.gdc-landing .capcards{grid-template-columns:1fr;gap:12px}.gdc-landing .capcard{flex-direction:row}.gdc-landing .capcard .ph{flex:0 0 120px;aspect-ratio:auto}.gdc-landing .capcard .txt{display:flex;flex-direction:column;justify-content:center}.gdc-landing .capcard h3{margin:12px 14px 4px}}
 .gdc-landing /* compare / contrast table */
   .cmp{display:grid;grid-template-columns:1fr 1fr;max-width:960px;margin:0 auto;border-top:1px solid var(--line-2)}
 .gdc-landing .cmp .h{font-family:var(--disp);font-size:1.9rem;letter-spacing:.02em;padding:0 22px 16px;display:flex;flex-direction:column;gap:.15rem}
@@ -712,8 +720,8 @@ const LANDING_BODY = String.raw`
   </div>
 </section>
 
-<div class="stepbar">
-  <div class="wrap"><div class="hero-steps"><b>Create a DJ profile</b><i>→</i><b>Enter your rates &amp; details</b><i>→</i><b>Get booked</b></div></div>
+<div class="capbar">
+  <div class="wrap"><div class="capcards"><div class="capcard"><div class="ph"><img src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261108_062138_0a5312bf-e835-4e0a-8a0e-6000849c12b1.png" alt="" loading="lazy"></div><div class="txt"><h3>DJ Profile</h3><p>Your shareable DJ profile - bio, mixes, photos, and FAQ.</p></div></div><div class="capcard"><div class="ph"><img src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261108_062139_e5485914-99e9-4b3d-8d30-01bdc0c26340.png" alt="" loading="lazy"></div><div class="txt"><h3>Booking Engine</h3><p>A live availability calendar, your rates, approve/deny/counter requests, discount codes, and calendar sync.</p></div></div><div class="capcard"><div class="ph"><img src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261108_062139_5fa3ea4f-6d24-4575-bb0b-409454d42df3.png" alt="" loading="lazy"></div><div class="txt"><h3>Contracts &amp; Event Details</h3><p>Contracts, planners, riders, guest lists and per-booking messaging.</p></div></div><div class="capcard"><div class="ph"><img src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261108_062138_045a3e04-8078-4089-b428-b7363c729526.png" alt="" loading="lazy"></div><div class="txt"><h3>Payments</h3><p>Deposits, balances and branded invoices by Credit Card, PayPal, Venmo, Zelle, or Cash App.</p></div></div><div class="capcard"><div class="ph"><img src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261108_062139_1d7d20ea-939e-4f82-8b10-4566327a826b.png" alt="" loading="lazy"></div><div class="txt"><h3>Business &amp; Insights</h3><p>Finance dashboard, reports and projections.</p></div></div><div class="capcard"><div class="ph"><img src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261108_062139_fa57f463-4ebc-4cf2-8068-47c600a29e9c.png" alt="" loading="lazy"></div><div class="txt"><h3>Team</h3><p>Invite teammates with roles and control what each can do.</p></div></div></div></div>
 </div>
 
 <!-- TWO DJ TYPES + THEIR PIPELINES -->
