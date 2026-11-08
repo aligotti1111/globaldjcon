@@ -135,10 +135,16 @@ const LANDING_CSS = String.raw`
 .gdc-landing .cappanel-x{position:absolute;top:0;right:12px;background:none;border:none;color:var(--muted);font-size:1.5rem;line-height:1;cursor:pointer;padding:4px 8px;transition:color .15s}
 .gdc-landing .cappanel-x:hover{color:var(--ink)}
 .gdc-landing .cappanel-body{display:none}
-.gdc-landing .cappanel-body.show{display:block;animation:capfade .4s ease}
-@keyframes capfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.gdc-landing .cappanel-body h4{font-family:var(--disp);font-weight:400;letter-spacing:.02em;font-size:1.5rem;color:var(--neon);margin:0 0 8px}
-.gdc-landing .cappanel-body p{font-family:var(--body);font-size:.92rem;line-height:1.6;color:#d4d4dc;margin:0;max-width:980px}
+.gdc-landing .cappanel-body.show{display:block}
+.gdc-landing .cappanel-body.show h4,.gdc-landing .cappanel-body.show p{animation:capexpand .55s cubic-bezier(.16,1,.3,1) both}
+.gdc-landing .cappanel-body.show h4{animation-delay:.02s}
+.gdc-landing .cappanel-body.show p:nth-of-type(1){animation-delay:.1s}
+.gdc-landing .cappanel-body.show p:nth-of-type(2){animation-delay:.19s}
+.gdc-landing .cappanel-body.show p:nth-of-type(3){animation-delay:.28s}
+@keyframes capexpand{from{opacity:0;transform:translateY(16px) scale(.96);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+.gdc-landing .cappanel-body h4{font-family:var(--disp);font-weight:400;letter-spacing:.02em;font-size:1.5rem;color:var(--neon);margin:0 0 10px;transform-origin:left center}
+.gdc-landing .cappanel-body p{font-family:var(--body);font-size:.92rem;line-height:1.6;color:#d4d4dc;margin:0;max-width:980px;transform-origin:left center}
+.gdc-landing .cappanel-body p + p{margin-top:16px}
 .gdc-landing .capcard .ph{aspect-ratio:3/2;background:#0a0d13;overflow:hidden}
 .gdc-landing .capcard .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .gdc-landing .capcard h3{font-family:var(--disp);font-weight:400;letter-spacing:.02em;font-size:1.22rem;line-height:1.05;color:var(--neon);margin:13px 14px 5px}
