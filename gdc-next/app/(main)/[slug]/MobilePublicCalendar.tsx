@@ -36,6 +36,9 @@ import {
   packageTiers,
 } from './bookingSettings';
 import { currencySymbol } from '@/lib/constants';
+// Shared month-range helpers (also used by desktop PublicCalendar). Mobile
+// passes a 24-month fallback window at each call site; desktop uses the default 12.
+import { dateKey, calcMaxYM, calcMinYM, isInRange } from './calendarRange';
 import MobileBookingForm from './MobileBookingFormView';
 import BookingLoginGate from './BookingLoginGate';
 
@@ -99,31 +102,8 @@ interface Props {
 // Helpers — pure, stateless
 // ─────────────────────────────────────────────────────────────────────────
 
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function dateKey(y: number, m: number, d: number): string {
-  return `${y}-${pad2(m + 1)}-${pad2(d)}`;
-}
-
-function calcMaxYM(windowMonths: number): { year: number; month: number } {
-  const t = new Date();
-  const totalMonths = t.getFullYear() * 12 + t.getMonth() + (windowMonths || 24);
-  return { year: Math.floor(totalMonths / 12), month: totalMonths % 12 };
-}
-
-function calcMinYM(): { year: number; month: number } {
-  const t = new Date();
-  return { year: t.getFullYear(), month: t.getMonth() };
-}
-
-function isInRange(y: number, m: number, windowMonths: number): boolean {
-  const min = calcMinYM();
-  const max = calcMaxYM(windowMonths);
-  const v = y * 12 + m;
-  return v >= (min.year * 12 + min.month) && v <= (max.year * 12 + max.month);
-}
+// pad2 / dateKey / calcMaxYM / calcMinYM / isInRange imported from
+// ./calendarRange above. Mobile passes a 24-month fallback at each call site.
 
 // One package's price picture for the day-editor preview: its duration tiers,
 // or a "by request" flag when it has no fixed price. Deduped by title across
@@ -460,7 +440,7 @@ export default function MobilePublicCalendar({
     let newY = year;
     if (newM > 11) { newM = 0; newY += 1; }
     if (newM < 0)  { newM = 11; newY -= 1; }
-    if (!isInRange(newY, newM, bookingWindowMonths)) {
+    if (!isInRange(newY, newM, bookingWindowMonths, 24)) {
       if (dir > 0) showRangeMsg();
       return;
     }
@@ -512,7 +492,7 @@ export default function MobilePublicCalendar({
 
   // ── Bounds for prev/next ─────────────────────────────────────────
   const min = calcMinYM();
-  const max = calcMaxYM(bookingWindowMonths);
+  const max = calcMaxYM(bookingWindowMonths, 24);
   const cur = year * 12 + month;
   const atMin = cur <= (min.year * 12 + min.month);
   const atMax = cur >= (max.year * 12 + max.month);
@@ -521,7 +501,7 @@ export default function MobilePublicCalendar({
   //    month-jump dropdown so the user can skip straight to any month. ──
   const monthJumpOptions = useMemo(() => {
     const mn = calcMinYM();
-    const mx = calcMaxYM(bookingWindowMonths);
+    const mx = calcMaxYM(bookingWindowMonths, 24);
     const minV = mn.year * 12 + mn.month;
     const maxV = mx.year * 12 + mx.month;
     const opts: { y: number; m: number }[] = [];
