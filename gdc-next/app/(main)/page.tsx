@@ -382,9 +382,8 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.club .fbtn{border-color:var(--amber);color:var(--amber)}
 .gdc-landing .flowcards .flane.club .fbtn:hover{background:var(--amber);color:#050507}
 .gdc-landing .flowcards .fh{cursor:pointer;user-select:none}
-.gdc-landing .flowcards .fhtitle{position:relative;align-self:flex-start;display:inline-block;white-space:nowrap;padding:.1em 5em .14em .5em;border-radius:5px;margin-left:-.5em}
-.gdc-landing .flowcards .flane.mobile .fhtitle{background:linear-gradient(to left,rgba(0,245,196,.28),rgba(0,245,196,.10) 55%,transparent)}
-.gdc-landing .flowcards .flane.club .fhtitle{background:linear-gradient(to left,rgba(245,230,66,.28),rgba(245,230,66,.10) 55%,transparent)}
+.gdc-landing .flowcards .fhtitle{position:relative;align-self:center;text-align:center;display:inline-block;white-space:nowrap}
+.gdc-landing .flowcards .fh small{display:none}
 .gdc-landing .flowcards .fh{overflow:hidden}
 .gdc-landing .flowcards:has(.flane.open) .flane:not(.open) .fh{font-size:1.3rem}
 .gdc-landing .flowcards:has(.flane.open) .flane:not(.open) .fhtitle{padding-right:1.2em}
@@ -797,7 +796,6 @@ const LANDING_BODY = String.raw`
         </div>
       </div>
     </div>
-    <p class="types-note reveal">Every step in the booking pipeline can be customized to fit your need. Turn any of the steps on or off in your booking settings.</p>
   </div>
 </section>
 
