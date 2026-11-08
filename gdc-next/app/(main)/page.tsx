@@ -338,8 +338,8 @@ const LANDING_CSS = String.raw`
 .gdc-landing .types-note{font-family:'Archivo',sans-serif;text-align:center;color:var(--muted);font-size:.95rem;margin-top:12px}
 .gdc-landing .types-note b{color:var(--ink)}
 .gdc-landing /* two-flow glow cards — colored header, .gdc-landing no box */
-  .flowcards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(9,auto);gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
-.gdc-landing .flowcards .flane{position:relative;padding:0 30px 26px;counter-reset:step;display:grid;grid-template-rows:subgrid;grid-row:1 / -1;align-content:start}
+  .flowcards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto;gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2);align-items:start}
+.gdc-landing .flowcards .flane{position:relative;padding:0 30px 0;counter-reset:step;display:block}
 .gdc-landing .flowcards .flane.mobile{border-right:1px solid var(--line-2)}
 .gdc-landing .flowcards .fh{position:relative;font-family:var(--disp);font-size:1.9rem;letter-spacing:.02em;display:flex;flex-direction:column;gap:.12rem;padding:15px 22px;margin:0 -30px 0;border-bottom:2px solid}
 .gdc-landing .flowcards .fh small{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
@@ -366,6 +366,14 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .fbtn:hover{background:var(--neon);color:#000}
 .gdc-landing .flowcards .flane.club .fbtn{border-color:var(--amber);color:var(--amber)}
 .gdc-landing .flowcards .flane.club .fbtn:hover{background:var(--amber);color:#050507}
+.gdc-landing .flowcards .fh{cursor:pointer;user-select:none}
+.gdc-landing .flowcards .fhtitle{position:relative;align-self:flex-start;display:inline-block;padding:.1em 5em .14em .5em;border-radius:5px;margin-left:-.5em}
+.gdc-landing .flowcards .flane.mobile .fhtitle{background:linear-gradient(to left,rgba(0,245,196,.28),rgba(0,245,196,.10) 55%,transparent)}
+.gdc-landing .flowcards .flane.club .fhtitle{background:linear-gradient(to left,rgba(245,230,66,.28),rgba(245,230,66,.10) 55%,transparent)}
+.gdc-landing .flowcards .fhtoggle{position:absolute;right:22px;bottom:14px;width:11px;height:11px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .3s ease;opacity:.75}
+.gdc-landing .flowcards .flane.open .fhtoggle{transform:rotate(-135deg);bottom:10px}
+.gdc-landing .flowcards .fbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.gdc-landing .flowcards .flane.open .fbody{max-height:1400px;padding-bottom:26px}
 @media(max-width:640px){
 .gdc-landing .flowcards{grid-template-columns:1fr;grid-template-rows:none}
 .gdc-landing .flowcards .flane{display:block;grid-row:auto}
@@ -734,7 +742,8 @@ const LANDING_BODY = String.raw`
     </div>
     <div class="flowcards reveal">
       <div class="flane mobile">
-        <div class="fh">Mobile DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=mobile">Sign Up</a></div>
+        <div class="fh" onclick="toggleFlane(this)"><span class="fhtitle">Mobile DJs</span><small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=mobile" onclick="event.stopPropagation()">Sign Up</a><span class="fhtoggle" aria-hidden="true"></span></div>
+        <div class="fbody">
         <div class="fli"><span class="smk">Step</span><div>Host selects date, time &amp; venue. The packages display and rates calculate. The host selects a package. The booking request is sent to you for a decision. <a class="viewsample" onclick="openLB('lbMobile')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve or deny the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
@@ -742,9 +751,11 @@ const LANDING_BODY = String.raw`
         <div class="fli"><span class="smk">Step</span>Planner &amp; playlist sent to the host</div>
         <div class="fli"><span class="smk">Step</span>Invoice internally generated and sent at your discretion</div>
         <div class="fli topalign"><span class="smk">Step</span>Receipt auto‑sent once invoice is marked paid</div>
+        </div>
       </div>
       <div class="flane club">
-        <div class="fh">Club / Bar DJs<small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=club">Sign Up</a></div>
+        <div class="fh" onclick="toggleFlane(this)"><span class="fhtitle">Club / Bar DJs</span><small>Booking Process</small><a class="fhbtn" href="/signup?type=dj&amp;dj=club" onclick="event.stopPropagation()">Sign Up</a><span class="fhtoggle" aria-hidden="true"></span></div>
+        <div class="fbody">
         <div class="fli"><span class="smk">Step</span><div>Host / promoter selects a date and equipment option. The rate is calculated and the booking request is sent to you for decision <a class="viewsample" onclick="openLB('lbClub')">Booking request sample</a></div></div>
         <div class="fli"><span class="smk">Step</span>You approve, deny, or counter‑offer the request</div>
         <div class="fli"><span class="smk">Step</span>Contract selected, signed &amp; sent</div>
@@ -752,6 +763,7 @@ const LANDING_BODY = String.raw`
         <div class="fli"><span class="smk">Step</span>Guest list collected for the night</div>
         <div class="fli"><span class="smk">Step</span>Invoice internally generated and sent at your discretion</div>
         <div class="fli topalign"><span class="smk">Step</span><div>Receipt auto‑sent once invoice is marked paid<div class="finote">Deposit can be added to the booking pipeline but typically not required for club/bar bookings.</div></div></div>
+        </div>
       </div>
     </div>
     <p class="types-note reveal">Every step in the booking pipeline can be customized to fit your need. Turn any of the steps on or off in your booking settings.</p>
@@ -1251,6 +1263,7 @@ window.gdcChoosePlan=function(n){
   else{location.href='/signup?type=dj&plan='+n+'&interval='+interval;}
   return false;
 };
+function toggleFlane(h){var l=h.closest('.flane');if(l){l.classList.toggle('open');}}
 function openLB(id){var e=document.getElementById(id);if(e){e.classList.add('open');document.body.style.overflow='hidden';}}
 function closeLB(id){var e=document.getElementById(id);if(e){e.classList.remove('open');document.body.style.overflow='';}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.lb.open').forEach(function(l){l.classList.remove('open');});document.body.style.overflow='';}});
