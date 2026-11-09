@@ -111,6 +111,22 @@
 }
 .cta:hover { opacity: 0.9; }
 
+.startBtn {
+  margin: 0 12px 6px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #00f5c4;
+  color: #04120d;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.startBtn:hover { opacity: 0.9; }
+.startBtn:disabled { opacity: 0.5; cursor: default; }
+
 .foot {
   display: flex; align-items: flex-end; gap: 8px;
   padding: 10px 12px 4px; border-top: 1px solid rgba(255, 255, 255, 0.08);
