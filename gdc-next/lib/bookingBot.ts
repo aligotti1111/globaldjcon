@@ -155,6 +155,37 @@ function flowBlock(djType: string): string {
 export interface BookingPolicy {
   depositPct: number;       // 0 = no deposit required
   requireContract: boolean; // true = a signed contract is required
+  equipment?: string;       // human sentence: what gear the DJ provides ('' = not set)
+  packages?: string;        // mobile only: titles + what's included, so the bot
+                            // can answer "do you have a package with lights?" ('' = none)
+}
+
+// Build a compact, plain-text summary of a MOBILE DJ's packages (title + what's
+// included) so the bot can answer add-on questions like "can I book with lights
+// / moving heads / uplighting / a photo booth?" from the package contents.
+// Returns '' for club/bar or when there are no packages.
+export function mobilePackagesText(djType: string, settings: BookingSettings): string {
+  if (djType === 'club') return '';
+  const mob = normalizeMobPackages(settings.mob_packages as Record<string, unknown> | undefined);
+  const strip = (html: unknown) => String(html ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  const add = (p: Record<string, unknown>) => {
+    const title = String(p.title ?? '').trim() || 'Package';
+    const details = strip(p.details).slice(0, 320);
+    const key = title + '|' + details;
+    if (seen.has(key)) return;
+    seen.add(key);
+    lines.push(details ? `- ${title}: ${details}` : `- ${title}`);
+  };
+  for (const p of mob.general) add(p as Record<string, unknown>);
+  for (const k of Object.keys(mob.overrides)) for (const p of mob.overrides[k]) add(p as Record<string, unknown>);
+  return lines.slice(0, 12).join('\n').slice(0, 2000);
 }
 
 function policyBlock(p: BookingPolicy | undefined, name: string): string {
@@ -165,7 +196,15 @@ function policyBlock(p: BookingPolicy | undefined, name: string): string {
   const contract = p.requireContract
     ? `CONTRACT: yes — ${name} requires a signed contract before the booking is final; they'll send one to e-sign (no printing).`
     : `CONTRACT: ${name} doesn't require a contract by default (they may still send one). If asked, say it's not required but can be provided.`;
-  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract questions from these facts, not guesses):\n- ${deposit}\n- ${contract}`;
+  const equipment = p.equipment
+    ? `EQUIPMENT / SOUND: ${p.equipment} Answer "do they bring speakers / a sound system / own gear?" from this. If they need something specific beyond it, offer to pass the question to ${name}.`
+    : `EQUIPMENT / SOUND: ${name} hasn't specified their equipment setup here. If asked whether they bring speakers/sound, don't guess — say it's best confirmed with ${name} and offer to take their details or pass the question along.`;
+  const packages = p.packages
+    ? `PACKAGES & WHAT'S INCLUDED (answer add-on questions like "can I book with lighting?" by checking these):
+${p.packages}
+When they ask if an add-on is available (lighting, a photo booth, MC/host, fog/haze, karaoke, etc.), check the package details above and say which package includes it. Match on MEANING, not exact words — lighting may be written as "lights", "moving heads", "uplighting", "intelligent lighting", "dance-floor lighting", or "light show"; a host may be "MC" or "emcee"; haze may be "fog" or "smoke". If no package lists it, say it isn't shown in the packages but ${name} can confirm — offer to pass the question along or take their details.`
+    : '';
+  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}${packages ? `\n\n${packages}` : ''}`;
 }
 
 // ── System prompt (booker-facing) ───────────────────────────────
