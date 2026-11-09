@@ -36,6 +36,8 @@ interface Props {
   recipientName: string;
   // Optional pre-filled subject (e.g. "Booking inquiry: 2026-08-12")
   defaultSubject?: string;
+  // Optional pre-filled message body (e.g. the question the assistant couldn't answer)
+  defaultBody?: string;
   // Called when modal should close (after success or on cancel)
   onClose: () => void;
   // Called after a successful send (parent can show a toast etc.)
@@ -47,11 +49,12 @@ export default function ComposeMessageModal({
   recipientUserId,
   recipientName,
   defaultSubject = '',
+  defaultBody = '',
   onClose,
   onSent,
 }: Props) {
   const [subject, setSubject] = useState(defaultSubject);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(defaultBody);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Success state shown briefly before auto-closing the modal
