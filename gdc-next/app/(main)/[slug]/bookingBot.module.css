@@ -1,9 +1,10 @@
-/* BookingBot — booker-facing launcher + panel on the DJ profile. Bottom-LEFT so
-   it never collides with the DJ's own assistant (bottom-right). */
+/* BookingBot — booker-facing launcher + panel on the DJ profile. Bottom-RIGHT.
+   (The DJ's own dashboard assistant doesn't render on public profiles, so there's
+   no collision here.) */
 
 .launcher {
   position: fixed;
-  left: 20px;
+  right: 20px;
   bottom: 20px;
   z-index: 1150;
   display: inline-flex;
@@ -30,7 +31,7 @@
 
 .panel {
   position: fixed;
-  left: 20px;
+  right: 20px;
   bottom: 20px;
   z-index: 1150;
   width: 370px;
