@@ -154,6 +154,21 @@ export async function POST(req: Request) {
 
   const packages = settings ? mobilePackagesText(djType, settings) : '';
 
+  // How far ahead this DJ accepts bookings — so the bot refuses dates past the
+  // window and doesn't promise availability it can't see. Falls back to the
+  // same defaults the public calendar uses (club 12 months, mobile 24).
+  const winRaw = djType === 'club' ? s.booking_window_months : (s.mob_booking_window_months ?? s.booking_window_months);
+  const windowMonths = Math.max(1, Math.round(Number(winRaw) || (djType === 'club' ? 12 : 24)));
+  const tz = String(rp.timezone || '').trim() || 'America/New_York';
+  let todayLabel = '';
+  let cutoffLabel = '';
+  try {
+    const now = new Date();
+    todayLabel = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'long', day: 'numeric', year: 'numeric' }).format(now);
+    const cutoff = new Date(now.getFullYear(), now.getMonth() + windowMonths, now.getDate());
+    cutoffLabel = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'long', year: 'numeric' }).format(cutoff);
+  } catch { /* bad tz — labels stay empty, window months still apply */ }
+
   // The DJ's public About section: bio + the quick-fact cards they turned on.
   const rr0 = row as unknown as Record<string, unknown>;
   const aboutLines: string[] = [];
@@ -260,7 +275,7 @@ export async function POST(req: Request) {
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract, equipment, packages, exclusions, travel, payments }, existingBooking, about,
+    { depositPct, requireContract, equipment, packages, exclusions, travel, payments, windowMonths, todayLabel, cutoffLabel }, existingBooking, about,
   );
 
   let reply = '';
