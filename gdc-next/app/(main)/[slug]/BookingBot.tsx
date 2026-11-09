@@ -111,7 +111,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
       const d = (j && j.draft) || {};
       saveBookingPrefill({
         slug,
-        eventType: d.eventType, eventTypeKey: d.eventTypeKey,
+        eventType: d.eventType, eventTypeKey: d.eventTypeKey, eventSubType: d.eventSubType,
         date: d.date, startTime: d.startTime, endTime: d.endTime,
         venueName: d.venueName, venueAddress: d.venueAddress,
         fullName: d.fullName, email: d.email, phone: d.phone, notes: d.notes,
