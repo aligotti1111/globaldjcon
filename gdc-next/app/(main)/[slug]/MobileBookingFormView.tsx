@@ -248,6 +248,10 @@ export default function MobileBookingForm({
   // Event-type-specific sub-fields (see EVENT_SUBFIELDS). subType covers the
   // six "Type of X" text fields; birthdayAge + surprise cover Birthday Party.
   const [eventSubType, setEventSubType] = useState('');
+  // Booking Assistant prefill for the "Type of X" sub-field. setEventType fires a
+  // reset effect that clears eventSubType, so we stash the value here and re-apply
+  // it in an effect that runs AFTER that reset (see below).
+  const pendingSubTypeRef = useRef('');
   const [birthdayAge, setBirthdayAge] = useState('');
   const [surprise, setSurprise] = useState(false);
   const [venueName, setVenueName] = useState('');
@@ -277,6 +281,11 @@ export default function MobileBookingForm({
       if (p.venueAddress) setVenueAddress(p.venueAddress);
       // Event type: only set it if the bot matched one of this DJ's own keys.
       if (p.eventTypeKey && eventTypesAllowed.includes(p.eventTypeKey)) {
+        // Stash the "Type of X" detail so the post-reset effect can fill it in
+        // once the dropdown change has cleared the sub-field.
+        if (p.eventSubType && EVENT_SUBFIELDS[p.eventTypeKey]?.textLabel) {
+          pendingSubTypeRef.current = p.eventSubType;
+        }
         setEventType(p.eventTypeKey);
       }
       // Times: the draft stores 24-hour "HH:MM" — set only if it's a real option.
@@ -527,6 +536,16 @@ export default function MobileBookingForm({
     setEventSubType('');
     setBirthdayAge('');
     setSurprise(false);
+  }, [eventType]);
+
+  // Runs AFTER the reset effect above (declared later = fires later for the same
+  // eventType change): if the Booking Assistant stashed a "Type of X" value for
+  // the event type it just set, drop it into the now-cleared sub-field.
+  useEffect(() => {
+    if (pendingSubTypeRef.current && EVENT_SUBFIELDS[eventType]?.textLabel) {
+      setEventSubType(pendingSubTypeRef.current);
+    }
+    pendingSubTypeRef.current = '';
   }, [eventType]);
 
   // Cocktail-time warning: cocktail must start before reception
