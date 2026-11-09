@@ -159,6 +159,7 @@ export interface BookingPolicy {
   packages?: string;        // mobile only: titles + what's included, so the bot
                             // can answer "do you have a package with lights?" ('' = none)
   exclusions?: string;      // dates where the sale / promo codes don't apply ('' = none)
+  travel?: string;          // human sentence: do they travel / how far ('' = not set)
 }
 
 // Build a compact, plain-text summary of a MOBILE DJ's packages (title + what's
@@ -198,18 +199,21 @@ function policyBlock(p: BookingPolicy | undefined, name: string): string {
     ? `CONTRACT: yes — ${name} requires a signed contract before the booking is final; they'll send one to e-sign (no printing).`
     : `CONTRACT: ${name} doesn't require a contract by default (they may still send one). If asked, say it's not required but can be provided.`;
   const equipment = p.equipment
-    ? `EQUIPMENT / SOUND: ${p.equipment} Answer "do they bring speakers / a sound system / own gear?" from this. If they need something specific beyond it, offer to pass the question to ${name}.`
-    : `EQUIPMENT / SOUND: ${name} hasn't specified their equipment setup here. If asked whether they bring speakers/sound, don't guess — say it's best confirmed with ${name} and offer to take their details or pass the question along.`;
+    ? `EQUIPMENT / SOUND: ${p.equipment} Answer both "do they bring speakers / a sound system / own gear?" AND "what does ${name} require the venue/host to provide?" from this — the detail above says what ${name} brings and what the venue needs to supply (e.g. for a club/bar DJ, which gear they need on site). If they need something specific beyond it, offer to pass the question to ${name}.`
+    : `EQUIPMENT / SOUND: ${name} hasn't specified their equipment setup here. If asked what they bring or what the venue must provide, don't guess — say it's best confirmed with ${name} and offer to take their details or pass the question along.`;
   const packages = p.packages
     ? `PACKAGES & WHAT'S INCLUDED (answer add-on questions like "can I book with lighting?" by checking these):
 ${p.packages}
 When they ask whether a SPECIFIC item or add-on is offered (TVs/monitors/screens, lighting, a photo booth, MC/host, fog/haze, karaoke, cold sparks, etc.), go through the package details above and answer specifically about THAT item. Match on MEANING, not exact words — lighting may be written as "lights", "moving heads", "uplighting", "intelligent lighting", "dance-floor lighting", or "light show"; screens may be "TVs", "monitors", or "displays"; a host may be "MC" or "emcee"; haze may be "fog" or "smoke".
 Give a full, friendly answer, not a bare "yes/no." When it IS offered, confirm it, name ${name}, say which package(s) include it, and invite them to add their event details for a specific date to get an exact quote. For example: "Yes — ${name} offers lighting in their packages (it's included in the [Package name]). Add your event details and date and I'll get it onto a booking request so ${name} can quote you." Answer only about the item they asked about, and do NOT quote a price for the item or the package — whether it's included is what you confirm, and exact pricing shows on the booking form once they enter their details. If no package lists it, say it isn't shown in ${name}'s packages but ${name} can confirm — offer to take their details or pass the question along.`
     : '';
+  const travel = p.travel
+    ? `TRAVEL / SERVICE AREA: ${p.travel} If the booker asks whether ${name} travels, serves their area, or "do you DJ near me," and you don't already know where they are, ASK what city/area (or ZIP) their event is in. Once you know, tell them based on ${name}'s base location and how far they travel: if it's clearly within that distance, say yes it's in range; if it's clearly farther (out of range), say it may be beyond ${name}'s usual range but they could still make an exception — recommend they reach out to ${name} directly to ask, and put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears. You can't calculate exact mileage — give your best estimate and offer to take their details so ${name} can confirm.`
+    : `TRAVEL / SERVICE AREA: ${name} hasn't listed a travel range. If asked whether they travel or serve a certain area, say it's best confirmed with ${name} and offer to take their details or pass the question along.`;
   const exclusions = p.exclusions
     ? `DISCOUNT EXCLUSIONS: if the booker asks whether there are any exclusions for a promo code or the sale, tell them these — on these dates the discount doesn't apply: ${p.exclusions}. (This is about which DATES are excluded, not the codes themselves — you still never reveal a promo code.)`
     : `DISCOUNT EXCLUSIONS: ${name} hasn't set any date exclusions. If asked, say there are no listed date exclusions, and any code's own terms (expiry, limits) apply when they enter it at booking.`;
-  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${exclusions}${packages ? `\n\n${packages}` : ''}`;
+  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment/travel questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${travel}\n- ${exclusions}${packages ? `\n\n${packages}` : ''}`;
 }
 
 // A summary of the signed-in booker's OWN existing booking(s) with this DJ, so
@@ -220,8 +224,17 @@ function existingBookingBlock(summary: string, name: string): string {
   return `\nTHIS BOOKER'S EXISTING BOOKING(S) WITH ${name} (they're signed in; this is their own booking — use it to help them figure things out about what they already booked):\n${s}\nWhen they ask about THEIR booking (what package they got, what's included, times, what's paid, what's next), answer from this. For any CHANGE to it, or anything not shown here, recommend they reach out to ${name} directly — you can't change a booking — and put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears.`;
 }
 
+// The DJ's own bio + quick-facts (the public About section). Use it to answer
+// "tell me about ${name}", "how long have they been doing this?", "are they
+// insured?", etc. '' when the DJ hasn't filled it in.
+function aboutBlock(about: string, name: string): string {
+  const a = (about || '').trim();
+  if (!a) return '';
+  return `\nABOUT ${name} (their own bio and quick facts — use these to answer questions about ${name} themselves; they're already public on the profile):\n${a}`;
+}
+
 // ── System prompt (booker-facing) ───────────────────────────────
-export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy, existingBooking = ''): string {
+export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy, existingBooking = '', about = ''): string {
   const name = (djName || '').trim() || 'this DJ';
   const typeLabel = djType === 'club' ? 'club/bar' : 'mobile';
   const phone = (djPhone || '').trim();
@@ -235,6 +248,8 @@ YOUR JOBS:
 
 HARD RULES:
 - You CANNOT confirm a date, lock a booking, take payment, or sign anything. You only answer, quote ranges, and gather details.
+- CONTRACT: never hand over, paste, quote, summarize, or send ${name}'s contract or its terms — you don't have it and must not reproduce or draft one. If asked for the contract, say ${name} sends the contract to review and e-sign as part of booking (after a request), and they can ask ${name} directly about its terms.
+- RIDER: never give out, paste, list, or summarize what's on ${name}'s rider (their technical/hospitality requirements document) — you don't have it. If asked "what's on the rider," say the rider is shared with the venue as part of booking a club/bar gig, and they can ask ${name} directly for specifics. (You MAY still answer the general equipment question above — what ${name} brings vs. needs provided — just not the rider document itself.)
 - You represent ${name} ONLY. Keep the focus on booking ${name} — don't recommend or mention other DJs.
 - PROMO CODES: never give out, reveal, generate, or hint at any promo/discount code — you don't have ${name}'s codes and must not invent one. If a booker asks for a promo code or discount, politely say you can't share codes; if they already have one they can enter it when they book, and they're welcome to ask ${name} directly about any current offers (${phone ? `${name}'s number: ${phone}; ` : ''}put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears).
 - UPCOMING / SCHEDULED SALES: never reveal or hint at a future or scheduled sale (one that hasn't started yet) — don't confirm whether one is coming, when, or for how much. If asked about upcoming sales or "when's your next sale," say you can't share future promotions; any sale that's currently live is shown on the profile, and they can ask ${name} directly about upcoming offers.
@@ -256,6 +271,7 @@ HARD RULES:
 
 ${flowBlock(djType)}
 ${policyBlock(policy, name)}
+${aboutBlock(about, name)}
 ${existingBookingBlock(existingBooking, name)}
 
 ${HOST_FAQ}
