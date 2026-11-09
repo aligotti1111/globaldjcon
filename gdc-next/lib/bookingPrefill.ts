@@ -15,6 +15,7 @@ export interface BookingPrefill {
   slug: string;                 // the DJ profile this draft belongs to
   eventType?: string;           // human label, e.g. "Wedding"
   eventTypeKey?: string;        // matched dropdown key, e.g. "weddings" (form field)
+  eventSubType?: string;        // the "Type of X" sub-field, e.g. "Halloween" for a holiday party
   date?: string;                // YYYY-MM-DD if the bot got a clear date
   startTime?: string;           // 24-hour "HH:MM" (matches the time dropdown values)
   endTime?: string;
