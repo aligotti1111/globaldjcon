@@ -57,7 +57,7 @@ export default function AssistantSection() {
 
   return (
     <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
-      <SectionBanner icon="bell" title="AI Assistant" subtitle="Your in-app helper for questions about your bookings." />
+      <SectionBanner icon="bell" title="Your AI Assistant" subtitle="Your in-app helper for questions about your bookings." />
       <div style={{ padding: '1.5rem' }}>
         <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
           Shows a chat helper in the corner of your dashboard. Ask it about your own
