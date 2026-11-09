@@ -388,6 +388,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     }
   }, [data.name]);
 
+  // Booking Assistant hand-off (Phase 2): when the bot has collected a client's
+  // details, it saves a prefill and fires this event. Jump to the Booking tab
+  // and scroll to it; the booking form reads the prefill on mount.
+  useEffect(() => {
+    const onOpenBooking = (e: Event) => {
+      const detailSlug = (e as CustomEvent).detail?.slug;
+      if (detailSlug && detailSlug !== effectiveSlug) return;
+      setActiveTab('booking');
+      setTimeout(() => {
+        document.getElementById('booking-pane-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 90);
+    };
+    window.addEventListener('gdc:open-booking', onOpenBooking as EventListener);
+    return () => window.removeEventListener('gdc:open-booking', onOpenBooking as EventListener);
+  }, [effectiveSlug]);
+
   // Lock body scroll while lightbox open (vanilla does this). Also reset zoom
   // to fit whenever the open photo changes or the lightbox closes.
   useEffect(() => {
