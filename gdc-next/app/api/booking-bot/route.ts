@@ -126,7 +126,18 @@ export async function POST(req: Request) {
 
   const settings = parseBookingSettings(row.booking_settings);
   const range = priceRangeFor(djType, settings);
-  const system = buildBotSystemPrompt(row.name || 'this DJ', djType, range, faqText(row.faqs), row.booking_bot_instructions || '', row.phone || '');
+
+  // What this DJ requires — so the bot can answer deposit/contract questions.
+  const s = settings as unknown as Record<string, unknown>;
+  const depRaw = djType === 'club' ? s.deposit_pct : s.mob_deposit_pct;
+  const depositPct = Math.max(0, Math.round(Number(depRaw) || 0));
+  const requireContract = s.require_contract === true;
+
+  const system = buildBotSystemPrompt(
+    row.name || 'this DJ', djType, range, faqText(row.faqs),
+    row.booking_bot_instructions || '', row.phone || '',
+    { depositPct, requireContract },
+  );
 
   let reply = '';
   try {
