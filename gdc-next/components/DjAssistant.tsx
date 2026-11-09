@@ -49,6 +49,18 @@ export default function DjAssistant() {
     return () => { cancelled = true; };
   }, []);
 
+  // React instantly when the DJ flips the setting in Account Settings — no
+  // page refresh needed (the widget lives in the layout, so it stays mounted).
+  useEffect(() => {
+    const onToggle = (e: Event) => {
+      const on = (e as CustomEvent).detail?.enabled;
+      setEnabled(!!on);
+      if (!on) setOpen(false);
+    };
+    window.addEventListener('gdc:assistant-toggled', onToggle as EventListener);
+    return () => window.removeEventListener('gdc:assistant-toggled', onToggle as EventListener);
+  }, []);
+
   // Keep the transcript pinned to the newest message.
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
