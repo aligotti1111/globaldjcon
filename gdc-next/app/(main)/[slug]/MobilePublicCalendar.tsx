@@ -36,10 +36,12 @@ import {
   packageTiers,
 } from './bookingSettings';
 import { currencySymbol } from '@/lib/constants';
-// Shared month-range helpers (also used by desktop PublicCalendar). Mobile
-// passes a 24-month fallback window at each call site; desktop uses the default 12.
+// Shared month-range helpers (also used by the Club/Bar DJ calendar,
+// PublicCalendar). This Mobile DJ calendar passes a 24-month fallback window at
+// each call site; the Club/Bar calendar uses the default 12.
 import { dateKey, calcMaxYM, calcMinYM, isInRange } from './calendarRange';
 import MobileBookingForm from './MobileBookingFormView';
+import { readBookingPrefill } from '@/lib/bookingPrefill';
 import BookingLoginGate from './BookingLoginGate';
 
 const MONTH_NAMES = [
@@ -103,7 +105,8 @@ interface Props {
 // ─────────────────────────────────────────────────────────────────────────
 
 // pad2 / dateKey / calcMaxYM / calcMinYM / isInRange imported from
-// ./calendarRange above. Mobile passes a 24-month fallback at each call site.
+// ./calendarRange above. This Mobile DJ calendar passes a 24-month fallback at
+// each call site.
 
 // One package's price picture for the day-editor preview: its duration tiers,
 // or a "by request" flag when it has no fixed price. Deduped by title across
@@ -328,6 +331,45 @@ export default function MobilePublicCalendar({
     // modal). They'd need a fresh page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Booking Assistant hand-off (Phase 2): the bot saves a prefill (with the
+  // date it collected) and fires gdc:open-booking. On a mobile DJ the booking
+  // form lives inside this calendar and only opens when a date is selected, so
+  // we read the prefill date and open that date's form — then the form applies
+  // the rest of the prefill on mount. Without this, the hand-off would just
+  // land on the calendar and look like nothing happened.
+  useEffect(() => {
+    if (isOwnProfile) return;
+    const openFromPrefill = () => {
+      const p = readBookingPrefill(djSlug);
+      const dk = p?.date;
+      if (!dk || !/^\d{4}-\d{2}-\d{2}$/.test(dk)) return;
+      const [y, m, d] = dk.split('-').map(Number);
+      const cellDate = new Date(y, m - 1, d);
+      const todayMid = new Date();
+      todayMid.setHours(0, 0, 0, 0);
+      if (cellDate < todayMid) return;
+      const dayData = bookingDays[dk];
+      if (dayData?.booked || dayData?.unavailable) return;
+      if (currentUser && currentUser.email_verified) {
+        setRollingActive(false);
+        setYear(y);
+        setMonth(m - 1);
+        setSelectedDate(dk);
+      } else if (!currentUser) {
+        setLoginGateForDate(dk);
+      }
+    };
+    const onOpen = (e: Event) => {
+      const s = (e as CustomEvent).detail?.slug;
+      if (s && s !== djSlug) return;
+      // Let the form's own mount-time prefill run first on the newly opened date.
+      setTimeout(openFromPrefill, 0);
+    };
+    window.addEventListener('gdc:open-booking', onOpen as EventListener);
+    return () => window.removeEventListener('gdc:open-booking', onOpen as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [djSlug, bookingDays, currentUser, isOwnProfile]);
 
   // ── Owner: persist booking_days back to users.booking_settings ───
   // Vanilla mobPubOwnerSaveDays — fetches current booking_settings, merges
