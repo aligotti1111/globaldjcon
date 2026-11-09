@@ -160,6 +160,7 @@ export interface BookingPolicy {
                             // can answer "do you have a package with lights?" ('' = none)
   exclusions?: string;      // dates where the sale / promo codes don't apply ('' = none)
   travel?: string;          // human sentence: do they travel / how far ('' = not set)
+  payments?: string;        // accepted payment methods (cash, check, Venmo, …) ('' = none listed)
 }
 
 // Build a compact, plain-text summary of a MOBILE DJ's packages (title + what's
@@ -210,10 +211,13 @@ Give a full, friendly answer, not a bare "yes/no." When it IS offered, confirm i
   const travel = p.travel
     ? `TRAVEL / SERVICE AREA: ${p.travel} If the booker asks whether ${name} travels, serves their area, or "do you DJ near me," and you don't already know where they are, ASK what city/area (or ZIP) their event is in. Once you know, tell them based on ${name}'s base location and how far they travel: if it's clearly within that distance, say yes it's in range; if it's clearly farther (out of range), say it may be beyond ${name}'s usual range but they could still make an exception — recommend they reach out to ${name} directly to ask, and put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears. You can't calculate exact mileage — give your best estimate and offer to take their details so ${name} can confirm.`
     : `TRAVEL / SERVICE AREA: ${name} hasn't listed a travel range. If asked whether they travel or serve a certain area, say it's best confirmed with ${name} and offer to take their details or pass the question along.`;
+  const payments = p.payments
+    ? `PAYMENT METHODS: ${name} accepts: ${p.payments}. Answer "how can I pay / what are the ways to pay?", "can I bring cash?", "can I pay by check?", or "do you take Venmo/Zelle/PayPal/Cash App/card?" from THIS list — if a method is listed, yes; if it's not on the list, say it's not one of the accepted methods shown and ${name} can confirm. Usually a deposit secures the date and the balance is due later. (Cash can't be mailed — it's dropped off or paid at the event; checks may need to arrive ahead of time — the exact arrangements show on the booking/payment page.)`
+    : `PAYMENT METHODS: ${name} hasn't listed accepted payment methods here. If asked how they can pay, say the accepted methods appear once they book, and offer to pass the question to ${name}.`;
   const exclusions = p.exclusions
     ? `DISCOUNT EXCLUSIONS: if the booker asks whether there are any exclusions for a promo code or the sale, tell them these — on these dates the discount doesn't apply: ${p.exclusions}. (This is about which DATES are excluded, not the codes themselves — you still never reveal a promo code.)`
     : `DISCOUNT EXCLUSIONS: ${name} hasn't set any date exclusions. If asked, say there are no listed date exclusions, and any code's own terms (expiry, limits) apply when they enter it at booking.`;
-  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment/travel questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${travel}\n- ${exclusions}${packages ? `\n\n${packages}` : ''}`;
+  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment/travel questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${travel}\n- ${payments}\n- ${exclusions}${packages ? `\n\n${packages}` : ''}`;
 }
 
 // A summary of the signed-in booker's OWN existing booking(s) with this DJ, so
