@@ -169,6 +169,39 @@ export async function POST(req: Request) {
     cutoffLabel = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'long', year: 'numeric' }).format(cutoff);
   } catch { /* bad tz — labels stay empty, window months still apply */ }
 
+  // Which dates are NOT available — so the bot can tell a booker a date is taken
+  // instead of happily collecting details for it. A date is unavailable if the
+  // DJ marked it booked/unavailable in their calendar, OR it's full from approved
+  // bookings (club = any approved; mobile = approved count >= that day's capacity).
+  const todayISO = (() => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()); } catch { return new Date().toISOString().slice(0, 10); } })();
+  const blockedSet = new Set<string>();
+  const dayMap = (djType === 'club' ? s.booking_days : s.mob_booking_days) as Record<string, { booked?: boolean; unavailable?: boolean; bookings_available?: number }> | undefined;
+  const capacityFor = (dk: string): number => {
+    if (djType === 'club') return 1;
+    const c = dayMap?.[dk]?.bookings_available;
+    return typeof c === 'number' && c > 0 ? c : 1;
+  };
+  if (dayMap && typeof dayMap === 'object') {
+    for (const [dk, v] of Object.entries(dayMap)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dk) && dk >= todayISO && (v?.booked === true || v?.unavailable === true)) blockedSet.add(dk);
+    }
+  }
+  try {
+    const { data: appr } = await admin
+      .from('bookings')
+      .select('event_date')
+      .eq('dj_id', row.id)
+      .eq('status', 'approved')
+      .gte('event_date', todayISO);
+    const counts = new Map<string, number>();
+    for (const b of (appr || []) as { event_date?: string }[]) {
+      const dk = String(b?.event_date || '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dk)) counts.set(dk, (counts.get(dk) || 0) + 1);
+    }
+    for (const [dk, n] of counts) { if (n >= capacityFor(dk)) blockedSet.add(dk); }
+  } catch { /* booked-date lookup is best-effort */ }
+  const blockedDates = Array.from(blockedSet).sort().slice(0, 400).join(', ');
+
   // The DJ's public About section: bio + the quick-fact cards they turned on.
   const rr0 = row as unknown as Record<string, unknown>;
   const aboutLines: string[] = [];
@@ -275,7 +308,7 @@ export async function POST(req: Request) {
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract, equipment, packages, exclusions, travel, payments, windowMonths, todayLabel, cutoffLabel }, existingBooking, about,
+    { depositPct, requireContract, equipment, packages, exclusions, travel, payments, windowMonths, todayLabel, cutoffLabel, blockedDates }, existingBooking, about,
   );
 
   let reply = '';
