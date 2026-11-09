@@ -240,8 +240,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   // Whether the compose modal was opened from the Booking Assistant's "Message
-  // the DJ" button — so a successful send can tell the assistant to mark it sent.
+  // the DJ" button — so a successful send can tell the assistant to mark that
+  // specific prompt sent (composeAskId identifies which one).
   const [composeFromBot, setComposeFromBot] = useState(false);
+  const [composeAskId, setComposeAskId] = useState<number | null>(null);
   // Banner edit — owner-only. Opens a dedicated modal where the DJ
   // can upload/replace the banner image and reposition it vertically.
   // All upload + position logic lives inside BannerEditModal.
@@ -442,6 +444,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       setComposeSubject(typeof detail.subject === 'string' ? detail.subject : '');
       setComposeBody(typeof detail.body === 'string' ? detail.body : '');
       setComposeFromBot(true);
+      setComposeAskId(typeof detail.askId === 'number' ? detail.askId : null);
       setComposeOpen(true);
     };
     window.addEventListener('gdc:open-compose', onOpenCompose as EventListener);
@@ -1891,7 +1894,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           onClose={() => setComposeOpen(false)}
           onSent={() => {
             if (composeFromBot) {
-              window.dispatchEvent(new CustomEvent('gdc:message-sent', { detail: { slug: effectiveSlug } }));
+              window.dispatchEvent(new CustomEvent('gdc:message-sent', { detail: { slug: effectiveSlug, askId: composeAskId } }));
             }
           }}
         />
