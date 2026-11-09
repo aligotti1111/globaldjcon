@@ -14,15 +14,36 @@ import { saveBookingPrefill } from '@/lib/bookingPrefill';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
+// One saved conversation PER DJ (keyed by slug) so a booker who browses from
+// profile to profile keeps each chat separately and can come back to reread.
+// sessionStorage: survives close/reopen + navigation, clears when the tab closes.
+const storeKey = (slug: string) => `gdc_bookingbot_${slug}`;
+function loadSaved(slug: string): Msg[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.sessionStorage.getItem(storeKey(slug));
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
 export default function BookingBot({ slug, djName }: { slug: string; djName: string | null }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [locked, setLocked] = useState(false);
   const [prepping, setPrepping] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<Msg[]>(() => loadSaved(slug));
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // If this widget is reused for a different DJ, load that DJ's saved chat.
+  useEffect(() => { setMessages(loadSaved(slug)); }, [slug]);
+
+  // Persist this DJ's conversation under its own key.
+  useEffect(() => {
+    try { window.sessionStorage.setItem(storeKey(slug), JSON.stringify(messages.slice(-40))); } catch { /* ignore */ }
+  }, [slug, messages]);
 
   const name = (djName || 'this DJ').trim();
   const greeting = `Hi! I can answer questions about booking ${name}, give you a ballpark price, and get your booking request started. What's your event?`;
