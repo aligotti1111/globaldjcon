@@ -15,6 +15,7 @@ import EmailVerifiedBanner from '@/components/EmailVerifiedBanner';
 import BookingClaimedBanner from '@/components/BookingClaimedBanner';
 import ActivateBookingBanner from '@/components/ActivateBookingBanner';
 import SetupChecklist from '@/components/SetupChecklist';
+import DjAssistant from '@/components/DjAssistant';
 import { UnsavedChangesProvider } from '@/components/UnsavedChangesProvider';
 
 export default function MainLayout({
@@ -34,6 +35,7 @@ export default function MainLayout({
         <MobileMenu />
         {children}
         <Footer />
+        <DjAssistant />
       </div>
     </UnsavedChangesProvider>
   );
