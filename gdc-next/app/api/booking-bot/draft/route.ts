@@ -13,6 +13,7 @@ import { effectiveTier, type AccessFields } from '@/lib/access';
 import {
   BOT_MODEL, BOT_MAX_MESSAGES, BOT_MAX_INPUT_CHARS, BOT_MIN_TIER,
 } from '@/lib/bookingBot';
+import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,11 +26,13 @@ interface DjRow extends AccessFields {
 
 const EXTRACT_SYSTEM = `You extract booking details from a chat between a potential client and a DJ's booking assistant.
 Return ONLY a JSON object (no prose, no markdown fences) with exactly these string keys:
-"eventType", "date", "startTime", "endTime", "venueName", "venueAddress", "fullName", "email", "phone", "notes".
+"eventType", "eventTypeKey", "date", "startTime", "endTime", "venueName", "venueAddress", "fullName", "email", "phone", "notes".
 Rules:
 - Use the client's own words. Use an EMPTY STRING for anything not clearly stated. Never invent or guess.
 - "date": normalize to YYYY-MM-DD only if the year/month/day are unambiguous; otherwise empty string.
-- "eventType": a short label like "Wedding", "Birthday party", "Club night".
+- "eventType": a short human label like "Wedding", "Birthday party", "Halloween party".
+- "eventTypeKey": if an ALLOWED EVENT TYPES list is given below, copy the single key whose label best matches the event; if none clearly matches, use empty string. If no list is given, empty string.
+- "startTime" and "endTime": 24-hour "HH:MM", rounded to the nearest 30 minutes (e.g. 7 PM -> "19:00", 11:00 PM -> "23:00", 1 AM -> "01:00"). Empty string if not clearly stated.
 - "notes": anything else useful the client said (guest count, vibe, requests) — keep it brief.`;
 
 export async function POST(req: Request) {
@@ -60,8 +63,21 @@ export async function POST(req: Request) {
     .slice(-BOT_MAX_MESSAGES);
   if (messages.length === 0) return NextResponse.json({ error: 'Nothing to extract.' }, { status: 400 });
 
+  // Give the model the DJ's own allowed event types so it can map the client's
+  // wording to the exact key the booking form's event-type dropdown expects.
+  const rr = row as unknown as Record<string, unknown>;
+  const allowedKeys = String(rr.event_types || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const custom = parseCustomEventTypes(rr.mob_custom_event_types);
+  const allowedList = allowedKeys
+    .map((k) => `${k} = ${mobEventLabel(k, custom)}`)
+    .join('\n');
+  const allowedHint = allowedList
+    ? `\n\nALLOWED EVENT TYPES (key = label) for "eventTypeKey":\n${allowedList}`
+    : '';
+
   // Add one trailing user turn asking for the JSON, so the model answers with it.
-  const askMessages = [...messages, { role: 'user' as const, content: 'Extract the booking details now as the JSON object described.' }];
+  const askMessages = [...messages, { role: 'user' as const, content: `Extract the booking details now as the JSON object described.${allowedHint}` }];
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -82,8 +98,12 @@ export async function POST(req: Request) {
     const match = text.match(/\{[\s\S]*\}/);
     const parsed = match ? JSON.parse(match[0]) : {};
     const s = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 500) : '');
+    // Only trust eventTypeKey if it's actually one of this DJ's allowed keys.
+    const keyRaw = s(parsed.eventTypeKey);
+    const eventTypeKey = allowedKeys.includes(keyRaw) ? keyRaw : '';
     const draft = {
       eventType: s(parsed.eventType),
+      eventTypeKey,
       date: s(parsed.date),
       startTime: s(parsed.startTime),
       endTime: s(parsed.endTime),
