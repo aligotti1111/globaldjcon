@@ -40,6 +40,7 @@ import {
   type DiscountResult,
 } from './bookingSettings';
 import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
+import { readBookingPrefill, clearBookingPrefill, prefillSummary } from '@/lib/bookingPrefill';
 import {
   MOB_EVENT_TYPE_LABELS,
   EVENT_SUBFIELDS,
@@ -259,6 +260,35 @@ export default function MobileBookingForm({
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [message, setMessage] = useState('');
+
+  // Booking Assistant prefill (Phase 2): if the bot collected details for this
+  // DJ, drop the safe free-text fields in and fold event type/date/time into the
+  // message. Applies on mount (covers the signup-reload carry-through) and when
+  // the bot fires gdc:open-booking. Cleared after applying so it can't re-fill.
+  const prefillSlug = ((dj as { slug?: string | null })?.slug) || '';
+  useEffect(() => {
+    if (!prefillSlug) return;
+    const apply = () => {
+      const p = readBookingPrefill(prefillSlug);
+      if (!p) return;
+      if (p.fullName) setFullName(p.fullName);
+      if (p.phone) setPhone(p.phone);
+      if (p.venueName) setVenueName(p.venueName);
+      if (p.venueAddress) setVenueAddress(p.venueAddress);
+      const sum = prefillSummary(p);
+      if (sum) setMessage((cur) => (cur ? cur : sum));
+      clearBookingPrefill(prefillSlug);
+    };
+    apply();
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent).detail?.slug;
+      if (d && d !== prefillSlug) return;
+      apply();
+    };
+    window.addEventListener('gdc:open-booking', onOpen as EventListener);
+    return () => window.removeEventListener('gdc:open-booking', onOpen as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillSlug]);
 
   // Cocktail-hour fields (all mobile events). For weddings the cocktail
   // prompt shows by default; for other events it's hidden behind an
