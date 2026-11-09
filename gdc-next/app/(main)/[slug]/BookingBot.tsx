@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styles from './bookingBot.module.css';
+import { saveBookingPrefill } from '@/lib/bookingPrefill';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -18,6 +19,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [prepping, setPrepping] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -69,6 +71,40 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
+  // How many times the visitor has spoken — gate the hand-off button until
+  // there's something worth pre-filling.
+  const userTurns = messages.filter((m) => m.role === 'user').length;
+
+  // Pull what the bot collected into a prefill, then open the real booking
+  // request form (the Booking tab) pre-filled for the client to review + submit.
+  const startRequest = async () => {
+    if (prepping) return;
+    setPrepping(true);
+    try {
+      const r = await fetch('/api/booking-bot/draft', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug, messages }),
+      });
+      const j = await r.json().catch(() => ({}));
+      const d = (j && j.draft) || {};
+      saveBookingPrefill({
+        slug,
+        eventType: d.eventType, date: d.date, startTime: d.startTime, endTime: d.endTime,
+        venueName: d.venueName, venueAddress: d.venueAddress,
+        fullName: d.fullName, email: d.email, phone: d.phone, notes: d.notes,
+        ts: Date.now(),
+      });
+    } catch {
+      // Even if extraction fails, still take them to the form.
+      saveBookingPrefill({ slug, ts: Date.now() });
+    } finally {
+      setPrepping(false);
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent('gdc:open-booking', { detail: { slug } }));
+    }
+  };
+
   return (
     <>
       {!open && (
@@ -100,6 +136,12 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               <button className={styles.cta} onClick={openSignup}>Create a free account</button>
             )}
           </div>
+
+          {!locked && userTurns >= 2 && (
+            <button className={styles.startBtn} onClick={startRequest} disabled={prepping}>
+              {prepping ? 'Preparing…' : 'Start my booking request →'}
+            </button>
+          )}
 
           {!locked && (
             <div className={styles.foot}>
