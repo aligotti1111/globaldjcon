@@ -135,6 +135,18 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
   // there's something worth pre-filling.
   const userTurns = messages.filter((m) => m.role === 'user').length;
 
+  // Anchor the "Start my booking request" link to the point in the conversation
+  // where it first became available, so it lives IN the message flow and scrolls
+  // up as the chat continues — instead of staying pinned at the bottom.
+  const [startAnchor, setStartAnchor] = useState<number | null>(null);
+  useEffect(() => {
+    if (startAnchor === null && !locked && userTurns >= 2 && messages.length > 0) {
+      setStartAnchor(messages.length - 1);
+    }
+  }, [startAnchor, locked, userTurns, messages.length]);
+  // A new DJ's chat resets the anchor.
+  useEffect(() => { setStartAnchor(null); }, [slug]);
+
   // Pull what the bot collected into a prefill, then open the real booking
   // request form (the Booking tab) pre-filled for the client to review + submit.
   const startRequest = async () => {
@@ -222,19 +234,21 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
                       Message {name} →
                     </button>
                   ))}
+                  {/* Hand-off link, anchored to this message so it scrolls with
+                      the conversation instead of pinning to the bottom. */}
+                  {!locked && startAnchor === i && (
+                    requestSent ? (
+                      <span className={styles.sentNote}>✓ Your booking request was started for {name} — review &amp; submit it on the form.</span>
+                    ) : (
+                      <button className={styles.startBtn} onClick={startRequest} disabled={prepping}>
+                        {prepping ? 'Preparing…' : 'Start my booking request →'}
+                      </button>
+                    )
+                  )}
                 </div>
               );
             })}
             {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>…</div>}
-            {!locked && userTurns >= 2 && (
-              requestSent ? (
-                <span className={styles.sentNote}>✓ Your booking request was started for {name} — review & submit it on the form.</span>
-              ) : (
-                <button className={styles.startBtn} onClick={startRequest} disabled={prepping}>
-                  {prepping ? 'Preparing…' : 'Start my booking request →'}
-                </button>
-              )
-            )}
             {locked && (
               <button className={styles.cta} onClick={openSignup}>Create a free account</button>
             )}
