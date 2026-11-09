@@ -1,0 +1,168 @@
+/* DjAssistant — floating launcher + chat panel. Dark/neon to match the app.
+   Fixed, bottom-right, above page content. */
+
+.launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px 11px 13px;
+  border: 1px solid rgba(0, 245, 196, 0.45);
+  border-radius: 100px;
+  background: #0c0c11;
+  color: #00f5c4;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 245, 196, 0.12);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.launcher:hover {
+  transform: translateY(-2px);
+  border-color: #00f5c4;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5), 0 0 22px rgba(0, 245, 196, 0.22);
+}
+
+.panel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1200;
+  width: 370px;
+  max-width: calc(100vw - 32px);
+  height: 540px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  background: #0b0b0f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: pop 0.18s ease;
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(0, 245, 196, 0.08), transparent);
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00f5c4;
+  box-shadow: 0 0 8px rgba(0, 245, 196, 0.8);
+}
+.close {
+  background: none;
+  border: none;
+  color: #8b8b96;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.close:hover { color: #fff; }
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg {
+  max-width: 85%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.bot {
+  align-self: flex-start;
+  background: #16161d;
+  color: #d4d4dc;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom-left-radius: 4px;
+}
+.user {
+  align-self: flex-end;
+  background: #00f5c4;
+  color: #04120d;
+  font-weight: 500;
+  border-bottom-right-radius: 4px;
+}
+.typing { color: #8b8b96; letter-spacing: 2px; }
+
+.foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.input {
+  flex: 1;
+  resize: none;
+  max-height: 110px;
+  padding: 9px 11px;
+  background: #16161d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  outline: none;
+}
+.input:focus { border-color: rgba(0, 245, 196, 0.5); }
+.input::placeholder { color: #6b6b76; }
+
+.send {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: #00f5c4;
+  color: #04120d;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.send:disabled { opacity: 0.4; cursor: default; }
+
+.disclaimer {
+  padding: 4px 14px 10px;
+  font-size: 0.66rem;
+  color: #6b6b76;
+  text-align: center;
+}
