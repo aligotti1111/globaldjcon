@@ -113,8 +113,9 @@
 .cta:hover { opacity: 0.9; }
 
 .startBtn {
-  margin: 0 12px 6px;
-  padding: 10px 14px;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 10px 16px;
   border: none;
   border-radius: 10px;
   background: #00f5c4;
@@ -127,6 +128,7 @@
 }
 .startBtn:hover { opacity: 0.9; }
 .startBtn:disabled { opacity: 0.5; cursor: default; }
+.cta:disabled { opacity: 0.5; cursor: default; }
 
 .foot {
   display: flex; align-items: flex-end; gap: 8px;
