@@ -28,7 +28,8 @@ import Link from 'next/link';
 import ProfileView, { type DjProfileData } from './ProfileView';
 import styles from './profile.module.css';
 import type { Metadata } from 'next';
-import { canBook, canUsePro, type AccessFields } from '@/lib/access';
+import { canBook, canUsePro, effectiveTier, type AccessFields } from '@/lib/access';
+import { BOT_MIN_TIER } from '@/lib/bookingBot';
 import { getActingContext, canEditProfile as roleCanEditProfile } from '@/lib/acting';
 
 // Render fresh on every request. The DJ's booking_settings (deposit %,
@@ -257,6 +258,15 @@ export default async function DjProfilePage({ params }: PageProps) {
   // client beyond this single boolean.
   const ownerIsPro = canUsePro(profile as unknown as AccessFields);
 
+  // Booker-facing AI assistant on the profile — Premium Pro and up, DJ's own
+  // on/off switch, and only for mobile/club DJs (the two booking flows the bot
+  // quotes ranges for). One boolean to the client; no subscription columns leak.
+  const botEnabled =
+    profile.role === 'dj' &&
+    (profile.dj_type === 'mobile' || profile.dj_type === 'club') &&
+    effectiveTier(profile as unknown as AccessFields) >= BOT_MIN_TIER &&
+    (profile as unknown as { booking_bot_enabled?: boolean }).booking_bot_enabled === true;
+
   // Preload the banner as a high-priority image as the HTML streams. The banner
   // is a CSS background-image, which the browser can't discover until stylesheets
   // parse — so on mobile it fetched late and popped in. This tells the browser to
@@ -276,6 +286,7 @@ export default async function DjProfilePage({ params }: PageProps) {
       canEditProfile={canEditProfile}
       hasBookingAccess={hasBookingAccess}
       ownerIsPro={ownerIsPro}
+      botEnabled={botEnabled}
     />
   );
 }
