@@ -128,9 +128,25 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
 
           <div className={styles.body} ref={scrollRef}>
             <div className={`${styles.msg} ${styles.bot}`}>{greeting}</div>
-            {messages.map((m, i) => (
-              <div key={i} className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{m.content}</div>
-            ))}
+            {messages.map((m, i) => {
+              // The bot appends [[ASK_DJ]] when it can't answer a question about
+              // the DJ. Strip it from the text and show a "Message the DJ" button.
+              const askDj = m.role === 'assistant' && m.content.includes('[[ASK_DJ]]');
+              const text = askDj ? m.content.replace(/\[\[ASK_DJ\]\]/g, '').trim() : m.content;
+              return (
+                <div key={i}>
+                  <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
+                  {askDj && (
+                    <button
+                      className={styles.cta}
+                      onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('gdc:open-compose', { detail: { slug } })); }}
+                    >
+                      Message {name} →
+                    </button>
+                  )}
+                </div>
+              );
+            })}
             {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>…</div>}
             {locked && (
               <button className={styles.cta} onClick={openSignup}>Create a free account</button>
