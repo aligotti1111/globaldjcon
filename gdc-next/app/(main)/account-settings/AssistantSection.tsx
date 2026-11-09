@@ -43,6 +43,8 @@ export default function AssistantSection() {
       });
       const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) throw new Error(d.error || 'Could not save.');
+      // Tell the floating widget to show/hide immediately (no refresh needed).
+      window.dispatchEvent(new CustomEvent('gdc:assistant-toggled', { detail: { enabled: next } }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
