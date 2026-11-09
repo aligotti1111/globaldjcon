@@ -102,7 +102,7 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
     // AI assistants: the in-dashboard helper is on every paid tier; the
     // profile Booking Assistant is Premium Pro (tier 3) and up.
     { key: 'assistant', text: 'AI Assistant', included: d.booking, emphasis: true },
-    { key: 'bookingAssistant', text: 'Booking Assistant (on your profile)', included: d.tier >= 3, emphasis: true },
+    { key: 'bookingAssistant', text: 'AI Booking Assistant (on your profile)', included: d.tier >= 3, emphasis: true },
     // Deposits + invoicing combined: the DJ adds their payment options and
     // collects deposits & balances through the platform, paid straight to them.
     { key: 'deposits', text: 'Collect deposits & balances', included: d.proFeatures },
