@@ -51,6 +51,7 @@ import { OwnerViewToggle } from './profile-view/OwnerViewToggle';
 import { useHeroColors } from './profile-view/useHeroColors';
 import { HeroIdentity } from './profile-view/HeroIdentity';
 import BookingBot from './BookingBot';
+import { readBookingPrefill } from '@/lib/bookingPrefill';
 
 // Parse booking settings ONCE, outside the component (it's pure data) —
 // but we need profile.dj_type and booking_settings, so it has to live inside.
@@ -396,13 +397,30 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       const detailSlug = (e as CustomEvent).detail?.slug;
       if (detailSlug && detailSlug !== effectiveSlug) return;
       setActiveTab('booking');
+      // For club/bar DJs the booking form is opened by selecting a date on the
+      // calendar (mobile DJs handle this inside MobilePublicCalendar). If the
+      // bot collected a date, open that date's form so the hand-off lands on a
+      // filled form rather than just the calendar.
+      if (isClubDJ) {
+        const p = readBookingPrefill(effectiveSlug);
+        const dk = p?.date;
+        if (dk && /^\d{4}-\d{2}-\d{2}$/.test(dk)) {
+          const [y, m, d] = dk.split('-').map(Number);
+          const cellDate = new Date(y, m - 1, d);
+          const todayMid = new Date();
+          todayMid.setHours(0, 0, 0, 0);
+          if (cellDate >= todayMid && currentUser && currentUser.email_verified) {
+            setClubSelectedDate(dk);
+          }
+        }
+      }
       setTimeout(() => {
         document.getElementById('booking-pane-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 90);
     };
     window.addEventListener('gdc:open-booking', onOpenBooking as EventListener);
     return () => window.removeEventListener('gdc:open-booking', onOpenBooking as EventListener);
-  }, [effectiveSlug]);
+  }, [effectiveSlug, isClubDJ, currentUser]);
 
   // Booking Assistant: when it can't answer a question, it offers a "Message the
   // DJ" button that fires this. Same gate as the hero Message button — logged-out
