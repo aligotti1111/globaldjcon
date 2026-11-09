@@ -146,10 +146,43 @@ export async function POST(req: Request) {
 
   const packages = settings ? mobilePackagesText(djType, settings) : '';
 
+  // If the visitor is signed in AND has their OWN booking(s) with THIS DJ, pull a
+  // short summary so the bot can help them with what they already booked. Scoped
+  // to requester_id === their user id and dj_id === this DJ (their data only).
+  let existingBooking = '';
+  if (user) {
+    const { data: mine } = await admin
+      .from('bookings')
+      .select('event_date, start_time, end_time, event_type, package_title, package_details, status, deposit_pct, deposit_amount, total_with_tax, currency, contract_status, planner_status')
+      .eq('requester_id', user.id)
+      .eq('dj_id', row.id)
+      .order('event_date', { ascending: false })
+      .limit(3);
+    const rows = Array.isArray(mine) ? mine : [];
+    if (rows.length) {
+      const strip = (h: unknown) => String(h ?? '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+      existingBooking = rows.map((b) => {
+        const r = b as Record<string, unknown>;
+        const bits: string[] = [];
+        bits.push(`Date: ${r.event_date || 'TBD'}${r.start_time ? ` ${r.start_time}${r.end_time ? `–${r.end_time}` : ''}` : ''}`);
+        if (r.event_type) bits.push(`Event: ${r.event_type}`);
+        if (r.package_title) bits.push(`Package: ${r.package_title}`);
+        const det = strip(r.package_details).slice(0, 400);
+        if (det) bits.push(`Includes: ${det}`);
+        if (r.status) bits.push(`Status: ${r.status}`);
+        if (r.contract_status) bits.push(`Contract: ${r.contract_status}`);
+        if (r.planner_status) bits.push(`Planner: ${r.planner_status}`);
+        const ccy = String(r.currency || 'USD');
+        if (Number(r.total_with_tax) > 0) bits.push(`Total: ${ccy} ${Math.round(Number(r.total_with_tax))}`);
+        return '- ' + bits.join(' · ');
+      }).join('\n');
+    }
+  }
+
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract, equipment, packages },
+    { depositPct, requireContract, equipment, packages }, existingBooking,
   );
 
   let reply = '';
