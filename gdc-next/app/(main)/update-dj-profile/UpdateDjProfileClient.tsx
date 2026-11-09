@@ -265,6 +265,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
   const [tab, setTab] = useState<SecTab>('account');
   const tabs: { id: SecTab; label: string }[] = [
     { id: 'account', label: 'Profile Settings' },
+    { id: 'assistant', label: 'AI Assistant' },
     { id: 'eventTypes', label: initialProfile.dj_type === 'club' ? 'Music Genres' : 'Event Types' },
     { id: 'location', label: 'Location & Contact' },
     { id: 'team', label: 'Team' },
@@ -272,7 +273,6 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
     ...(notifyInit ? [{ id: 'notifications' as SecTab, label: 'Notifications' }] : []),
     { id: 'blocked', label: 'Blocked' },
     { id: 'timezone', label: 'Your Timezone' },
-    { id: 'assistant', label: 'AI Assistant' },
   ];
 
   // Supabase client for the manual General save below. (Booking settings and
