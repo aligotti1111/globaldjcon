@@ -172,8 +172,11 @@ async function handlePost(req: Request) {
     };
   };
 
+  // "Upcoming bookings" = CONFIRMED only — exactly what the dashboard shows.
+  // isAccepted() = approved or manual, never pending/declined/cancelled. A
+  // pending request is not a booking yet; it lives on /booking-requests.
   const upcoming = allBookings
-    .filter((b) => (b.event_date || '').slice(0, 10) >= today)
+    .filter((b) => isAccepted(b) && (b.event_date || '').slice(0, 10) >= today)
     .sort((a, z) => (a.event_date || '').localeCompare(z.event_date || ''))
     .slice(0, 40)
     .map(toBrief);
@@ -182,6 +185,15 @@ async function handlePost(req: Request) {
     .filter((b) => (b.event_date || '').slice(0, 10) < today && isAccepted(b))
     .sort((a, z) => (z.event_date || '').localeCompare(a.event_date || ''))
     .slice(0, 10)
+    .map(toBrief);
+
+  // Pending requests awaiting the DJ's approval — future, status 'pending'.
+  // Surfaced separately so the assistant can mention them as a side note
+  // without ever calling them a confirmed booking.
+  const pendingRequests = allBookings
+    .filter((b) => (b.status || '') === 'pending' && (b.event_date || '').slice(0, 10) >= today)
+    .sort((a, z) => (a.event_date || '').localeCompare(z.event_date || ''))
+    .slice(0, 20)
     .map(toBrief);
 
   // Finance totals — owner only (teammates never see money).
@@ -221,6 +233,7 @@ async function handlePost(req: Request) {
     today,
     djType,
     upcoming,
+    pendingRequests,
     recentPast,
     finance,
   };
