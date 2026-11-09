@@ -14,7 +14,13 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './DjAssistant.module.css';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Msg = { role: 'user' | 'assistant'; content: string; ts: number };
+
+function fmtTime(ts: number): string {
+  try {
+    return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch { return ''; }
+}
 
 const GREETING =
   "Hi! I'm your Global DJ Connect assistant. Ask me about your bookings or earnings — like “who owes me money?” or “what's on the books next month?” — or where to find something in the app.";
@@ -25,6 +31,7 @@ export default function DjAssistant() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [startedAt] = useState(() => Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,7 +63,7 @@ export default function DjAssistant() {
   const send = async () => {
     const text = input.trim();
     if (!text || busy) return;
-    const next: Msg[] = [...messages, { role: 'user', content: text }];
+    const next: Msg[] = [...messages, { role: 'user', content: text, ts: Date.now() }];
     setMessages(next);
     setInput('');
     setBusy(true);
@@ -66,13 +73,17 @@ export default function DjAssistant() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ messages: next }),
       });
-      const j = await r.json().catch(() => ({}));
+      // Read as text first so we can surface the real HTTP status even when the
+      // body isn't JSON (a platform 500/504 returns an HTML error page).
+      const bodyText = await r.text().catch(() => '');
+      let j: { reply?: string; error?: string } = {};
+      try { j = JSON.parse(bodyText); } catch { /* non-JSON error page */ }
       const reply = r.ok && j?.reply
         ? String(j.reply)
-        : (j?.error ? String(j.error) : 'Something went wrong. Please try again.');
-      setMessages((m) => [...m, { role: 'assistant', content: reply }]);
+        : (j?.error ? String(j.error) : `Something went wrong (HTTP ${r.status}). Please try again.`);
+      setMessages((m) => [...m, { role: 'assistant', content: reply, ts: Date.now() }]);
     } catch {
-      setMessages((m) => [...m, { role: 'assistant', content: 'Connection problem — please try again.' }]);
+      setMessages((m) => [...m, { role: 'assistant', content: 'Connection problem — please try again.', ts: Date.now() }]);
     } finally {
       setBusy(false);
     }
@@ -104,9 +115,15 @@ export default function DjAssistant() {
           </div>
 
           <div className={styles.body} ref={scrollRef}>
-            <div className={`${styles.msg} ${styles.bot}`}>{GREETING}</div>
+            <div className={`${styles.row} ${styles.rowBot}`}>
+              <div className={`${styles.msg} ${styles.bot}`}>{GREETING}</div>
+              <div className={styles.time}>{fmtTime(startedAt)}</div>
+            </div>
             {messages.map((m, i) => (
-              <div key={i} className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{m.content}</div>
+              <div key={i} className={`${styles.row} ${m.role === 'user' ? styles.rowUser : styles.rowBot}`}>
+                <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{m.content}</div>
+                <div className={styles.time}>{fmtTime(m.ts)}</div>
+              </div>
             ))}
             {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>…</div>}
           </div>
