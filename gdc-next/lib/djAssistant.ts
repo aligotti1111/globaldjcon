@@ -54,9 +54,10 @@ export interface AssistantSnapshot {
   djName: string;
   today: string;              // YYYY-MM-DD in the DJ's timezone
   djType: 'mobile' | 'club' | 'both' | 'unknown';
-  upcoming: BookingBrief[];   // future/active bookings, soonest first
-  recentPast: BookingBrief[]; // a few recent completed ones for "last month" asks
-  finance: FinanceBrief | null; // owner-only; null for teammates
+  upcoming: BookingBrief[];       // CONFIRMED future bookings, soonest first
+  pendingRequests: BookingBrief[];// future requests awaiting the DJ's approval (NOT confirmed bookings)
+  recentPast: BookingBrief[];     // a few recent completed ones for "last month" asks
+  finance: FinanceBrief | null;   // owner-only; null for teammates
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -152,8 +153,12 @@ export function formatSnapshot(s: AssistantSnapshot): string {
   }
 
   lines.push('');
-  lines.push(`Upcoming / active bookings (${s.upcoming.length}, soonest first):`);
+  lines.push(`CONFIRMED upcoming bookings (${s.upcoming.length}, soonest first) — these are the DJ's actual bookings:`);
   lines.push(s.upcoming.length ? s.upcoming.map(bookingLine).join('\n') : '(none)');
+
+  lines.push('');
+  lines.push(`PENDING booking requests awaiting approval (${s.pendingRequests.length}) — NOT confirmed bookings; they live on /booking-requests. Only mention these as a side note, never as "your next booking":`);
+  lines.push(s.pendingRequests.length ? s.pendingRequests.map(bookingLine).join('\n') : '(none)');
 
   if (s.recentPast.length) {
     lines.push('');
