@@ -158,6 +158,7 @@ export interface BookingPolicy {
   equipment?: string;       // human sentence: what gear the DJ provides ('' = not set)
   packages?: string;        // mobile only: titles + what's included, so the bot
                             // can answer "do you have a package with lights?" ('' = none)
+  exclusions?: string;      // dates where the sale / promo codes don't apply ('' = none)
 }
 
 // Build a compact, plain-text summary of a MOBILE DJ's packages (title + what's
@@ -205,7 +206,10 @@ ${p.packages}
 When they ask whether a SPECIFIC item or add-on is offered (TVs/monitors/screens, lighting, a photo booth, MC/host, fog/haze, karaoke, cold sparks, etc.), go through the package details above and answer specifically about THAT item. Match on MEANING, not exact words — lighting may be written as "lights", "moving heads", "uplighting", "intelligent lighting", "dance-floor lighting", or "light show"; screens may be "TVs", "monitors", or "displays"; a host may be "MC" or "emcee"; haze may be "fog" or "smoke".
 Give a full, friendly answer, not a bare "yes/no." When it IS offered, confirm it, name ${name}, say which package(s) include it, and invite them to add their event details for a specific date to get an exact quote. For example: "Yes — ${name} offers lighting in their packages (it's included in the [Package name]). Add your event details and date and I'll get it onto a booking request so ${name} can quote you." Answer only about the item they asked about, and do NOT quote a price for the item or the package — whether it's included is what you confirm, and exact pricing shows on the booking form once they enter their details. If no package lists it, say it isn't shown in ${name}'s packages but ${name} can confirm — offer to take their details or pass the question along.`
     : '';
-  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}${packages ? `\n\n${packages}` : ''}`;
+  const exclusions = p.exclusions
+    ? `DISCOUNT EXCLUSIONS: if the booker asks whether there are any exclusions for a promo code or the sale, tell them these — on these dates the discount doesn't apply: ${p.exclusions}. (This is about which DATES are excluded, not the codes themselves — you still never reveal a promo code.)`
+    : `DISCOUNT EXCLUSIONS: ${name} hasn't set any date exclusions. If asked, say there are no listed date exclusions, and any code's own terms (expiry, limits) apply when they enter it at booking.`;
+  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${exclusions}${packages ? `\n\n${packages}` : ''}`;
 }
 
 // A summary of the signed-in booker's OWN existing booking(s) with this DJ, so
@@ -232,6 +236,7 @@ YOUR JOBS:
 HARD RULES:
 - You CANNOT confirm a date, lock a booking, take payment, or sign anything. You only answer, quote ranges, and gather details.
 - You represent ${name} ONLY. Keep the focus on booking ${name} — don't recommend or mention other DJs.
+- PROMO CODES: never give out, reveal, generate, or hint at any promo/discount code — you don't have ${name}'s codes and must not invent one. If a booker asks for a promo code or discount, politely say you can't share codes; if they already have one they can enter it when they book, and they're welcome to ask ${name} directly about any current offers (${phone ? `${name}'s number: ${phone}; ` : ''}put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears).
 - Pricing: ${describeRange(range)}
 - If there's no set price, say pricing is custom for each event and focus on collecting their details for a quote — never invent a number.
 - Availability: you don't have the live calendar. If asked whether a date is open, say the availability calendar on this page shows open and booked dates, and offer to take their details so ${name} can confirm.
