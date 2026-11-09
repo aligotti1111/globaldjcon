@@ -127,12 +127,12 @@ async function handlePost(req: Request) {
   // ── Load the snapshot (same shape as the Finance page) ──
   const { data: bRows } = await admin
     .from('bookings')
-    .select('id, event_date, start_time, end_time, status, accepted_at, event_type, booking_type, venue_name, client_name, contract_status, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides, is_manual')
+    .select('id, event_date, start_time, end_time, status, accepted_at, event_type, booking_type, venue_name, contract_status, tax_amount, total_with_tax, counter_rate, quoted_rate, offer_amount, currency, overtime_amount, overtime_tax, overtime_paid_at, deposit_amount, deposit_pct, deposit_completed_at, balance_completed_at, status_overrides, is_manual')
     .eq('dj_id', djId)
     .is('deleted_at', null)
     .limit(2000);
   const allBookings = (bRows || []) as (FinanceBookingInput & {
-    venue_name: string | null; client_name: string | null; contract_status: string | null;
+    venue_name: string | null; contract_status: string | null;
     deposit_completed_at: string | null; balance_completed_at: string | null; status: string | null;
     event_date: string | null; booking_type: string | null;
   })[];
@@ -160,7 +160,7 @@ async function handlePost(req: Request) {
       date: (b.event_date || '').slice(0, 10) || null,
       eventType: resolveEventType(b),
       venue: b.venue_name || null,
-      host: b.client_name || null,
+      host: null,
       status: b.is_manual ? 'manual' : (b.status || 'unknown'),
       agreed,
       received,
