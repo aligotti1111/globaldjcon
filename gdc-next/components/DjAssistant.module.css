@@ -95,6 +95,19 @@
   gap: 10px;
 }
 
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rowUser { align-items: flex-end; }
+.rowBot { align-items: flex-start; }
+.time {
+  font-size: 0.62rem;
+  color: #6b6b76;
+  padding: 0 4px;
+}
+
 .msg {
   max-width: 85%;
   padding: 9px 12px;
