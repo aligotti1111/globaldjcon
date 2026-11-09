@@ -80,6 +80,20 @@ export async function GET() {
 
 // ── POST: answer a question ────────────────────────────────────────
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (e) {
+    // Surface the real reason instead of an opaque 500 so failures are
+    // debuggable (and the widget shows something useful).
+    console.error('[assistant] unhandled', e);
+    return NextResponse.json(
+      { error: 'Assistant error: ' + (e instanceof Error ? e.message : String(e)) },
+      { status: 500 },
+    );
+  }
+}
+
+async function handlePost(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
