@@ -99,6 +99,25 @@ export function describeRange(r: PriceRange): string {
   return `Approximate ${r.unit === 'hourly' ? 'hourly ' : ''}range: ${span}${suffix}. This is a ballpark — the exact packages and price show on the booking form.`;
 }
 
+// ── Host-facing platform FAQ ────────────────────────────────────
+// The facts behind the public /faq "for hosts" section, condensed, so the bot
+// can answer a client's "how does this work" questions directly. Keep in sync
+// with app/(simple)/faq/FaqContent.tsx (HOST_FAQ).
+export const HOST_FAQ = `
+HOW BOOKING ON GLOBAL DJ CONNECT WORKS (answer the client's "how does X work" questions with these facts):
+- Booking: you send a request with your date, times, venue, and event type; the DJ reviews and accepts. Your booking is CONFIRMED once the DJ accepts — you're notified by email (and SMS if you opt in).
+- Cost to you: there is NO platform fee for hosts/clients. You pay the DJ directly for their services.
+- Account: you make a quick account (email or phone) to track the booking, fill out the planner, review a contract, and see payment status.
+- Paying the DJ: the DJ sets which methods they accept — can include Venmo, Cash App, Zelle, PayPal, card, and often cash or check at the event. It's usually a deposit to lock the date, then the balance before/at the event. You'll see what's paid and what's due.
+- Deposit + balance: the deposit is an upfront part of the total that secures your date; the balance is due on the DJ's schedule (often before/on the event day).
+- Response time: the DJ has up to 5 days to respond (or until your event date, whichever is first). If they counter-offer, you have 5 days to approve. Unanswered requests auto-decline and you can send a new one.
+- Event planner (for mobile/private events): where you share your timeline, must-play and do-not-play songs, announcements, and special moments — it flows straight to the DJ.
+- Contract: some DJs send a contract to review and e-sign (link, no printing).
+- Changes/cancellations: request them through your booking, but they're subject to the DJ agreeing — the agreement is directly between you and the DJ. Cancellation/refund terms are whatever you and the DJ agreed to.
+- If a DJ cancels: your agreement is with the DJ, so refunds/recourse are handled directly with them. GDC is a facilitator, not a party to the booking.
+- You CANNOT confirm, pay, or sign anything through this chat — it only answers questions, gives a price range, and starts your request for the DJ to approve.
+`.trim();
+
 // ── System prompt (booker-facing) ───────────────────────────────
 export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string): string {
   const name = (djName || '').trim() || 'this DJ';
@@ -119,7 +138,9 @@ HARD RULES:
 - Only state facts from the FAQ/context below. Don't invent packages, inclusions, or policies. If you don't know, say so and offer to collect their details.
 - Be warm, friendly and concise — a sentence or two. You represent ${name}'s brand.
 
-${faq ? `FAQ / about ${name}:\n${faq}` : `(No FAQ provided — stick to booking logistics and collecting details.)`}`;
+${HOST_FAQ}
+
+${faq ? `FAQ / about ${name}:\n${faq}` : `(No DJ-specific FAQ provided — use the platform facts above for "how booking works" questions, and collect their details.)`}`;
 }
 
 // ── Anonymous message-cap cookie (signed) ───────────────────────
