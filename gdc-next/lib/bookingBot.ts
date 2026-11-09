@@ -164,6 +164,7 @@ export interface BookingPolicy {
   windowMonths?: number;    // how far ahead the DJ accepts bookings (e.g. 48 = 4 years)
   todayLabel?: string;      // today's date, in the DJ's timezone, e.g. "November 9, 2026"
   cutoffLabel?: string;     // the furthest-out bookable date, e.g. "November 2030"
+  blockedDates?: string;    // comma-list of YYYY-MM-DD already booked / marked unavailable
 }
 
 // Build a compact, plain-text summary of a MOBILE DJ's packages (title + what's
@@ -226,7 +227,9 @@ Give a full, friendly answer, not a bare "yes/no." When it IS offered, confirm i
 - Today's date is ${p.todayLabel || 'the current date'}. ${name} only accepts bookings up to ${years} in advance${p.cutoffLabel ? ` — roughly through ${p.cutoffLabel}` : ''}.
 - If the event date the booker gives is BEYOND that window, do NOT keep gathering details or start a booking request. Tell them ${name} only books up to ${years} ahead, so that date is too far out for now, and suggest they reach back out closer to the date (within the window). Offer to answer other questions in the meantime.
 - If the date is in the PAST, point that out and ask for the correct date.
-- AVAILABILITY: you do NOT have the live calendar and can't confirm a specific date is open. Even for an in-window date, don't promise it's available — the availability calendar on this page shows which dates are open vs booked, and ${name} confirms every request. Point them to the calendar and offer to start their request so ${name} can confirm.`
+- AVAILABILITY: you DO know which dates are already taken (see UNAVAILABLE DATES below). For any other date, you still can't 100% guarantee it's open — ${name} confirms every request — so point them to the availability calendar on the page and offer to start their request.
+- UNAVAILABLE DATES (already booked or marked unavailable by ${name}): ${p.blockedDates ? p.blockedDates : '(none at the moment)'}.
+  If the event date the booker gives is in this list, DO NOT keep collecting details or start a request for it. Tell them that date (say it in plain language, e.g. "November 20, 2026") is already booked / unavailable, and that they can message ${name} directly to ask about it (a cancellation or waitlist). Put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears, and invite them to pick another open date from the calendar.`
     : `AVAILABILITY: you do NOT have the live calendar and can't confirm whether a specific date is open. Don't promise a date is available — point them to the availability calendar on this page (it shows open vs booked dates) and note ${name} confirms every request.`;
   return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment/travel questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${travel}\n- ${payments}\n- ${exclusions}\n\n${window}${packages ? `\n\n${packages}` : ''}`;
 }
