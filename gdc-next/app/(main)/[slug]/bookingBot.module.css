@@ -97,38 +97,36 @@
 }
 .typing { color: #8b8b96; letter-spacing: 2px; }
 
-.cta {
-  align-self: flex-start;
-  margin-top: 2px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 10px;
-  background: #00f5c4;
-  color: #04120d;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.cta:hover { opacity: 0.9; }
-
+/* Rendered as text links (not filled buttons) inside the chat flow. */
+.cta,
 .startBtn {
   align-self: flex-start;
   margin-top: 2px;
-  padding: 10px 16px;
+  padding: 0;
   border: none;
-  border-radius: 10px;
-  background: #00f5c4;
-  color: #04120d;
+  background: none;
+  color: #00f5c4;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
   transition: opacity 0.15s;
 }
-.startBtn:hover { opacity: 0.9; }
-.startBtn:disabled { opacity: 0.5; cursor: default; }
-.cta:disabled { opacity: 0.5; cursor: default; }
+.cta:hover,
+.startBtn:hover { opacity: 0.8; }
+.cta:disabled,
+.startBtn:disabled { opacity: 0.55; cursor: default; text-decoration: none; }
+
+/* Shown in place of the link once the action has actually completed. */
+.sentNote {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.45);
+}
 
 .foot {
   display: flex; align-items: flex-end; gap: 8px;
