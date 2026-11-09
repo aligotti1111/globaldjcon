@@ -81,6 +81,7 @@ NAVIGATION MAP (where to do things in Global DJ Connect):
     • Receipts — logo, auto-send toggles
 - Account Settings (/account-settings): name, email, password, timezone, calendar sync, blocked users, notifications
 - Edit public profile (bio, photos, mixes, FAQ, banner): /update-dj-profile
+- QR code + share link to your profile: /update-dj-profile, in the General tab (just under your name/slug; paid plans)
 - Team (invite teammates, set roles): /team-settings
 - Subscription / plan / billing: /subscribe
 - Notifications settings: /notifications
