@@ -146,6 +146,17 @@ export async function POST(req: Request) {
 
   const packages = settings ? mobilePackagesText(djType, settings) : '';
 
+  // Discount date-exclusions: dates where the sale and/or promo codes don't apply.
+  const exclRaw = Array.isArray(s.exclusions) ? (s.exclusions as Array<Record<string, unknown>>) : [];
+  const exclusions = exclRaw
+    .filter((e) => e && typeof e.date === 'string')
+    .map((e) => {
+      const what = e.sale && e.codes ? 'sale & promo codes' : e.sale ? 'the sale' : e.codes ? 'promo codes' : 'discounts';
+      return `${e.date} (${what} excluded)`;
+    })
+    .slice(0, 30)
+    .join('; ');
+
   // If the visitor is signed in AND has their OWN booking(s) with THIS DJ, pull a
   // short summary so the bot can help them with what they already booked. Scoped
   // to requester_id === their user id and dj_id === this DJ (their data only).
@@ -182,7 +193,7 @@ export async function POST(req: Request) {
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract, equipment, packages }, existingBooking,
+    { depositPct, requireContract, equipment, packages, exclusions }, existingBooking,
   );
 
   let reply = '';
