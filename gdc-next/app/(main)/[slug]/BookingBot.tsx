@@ -198,7 +198,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
                 <div key={i}>
                   <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
                   {askDj && (messageSent ? (
-                    <span className={styles.sentNote}>Message sent ✓</span>
+                    <span className={styles.sentNote}>✓ Your message was sent to {name} — they&apos;ll get back to you directly.</span>
                   ) : (
                     <button
                       className={styles.cta}
@@ -228,7 +228,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
             {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>…</div>}
             {!locked && userTurns >= 2 && (
               requestSent ? (
-                <span className={styles.sentNote}>Booking request sent ✓</span>
+                <span className={styles.sentNote}>✓ Your booking request was started for {name} — review & submit it on the form.</span>
               ) : (
                 <button className={styles.startBtn} onClick={startRequest} disabled={prepping}>
                   {prepping ? 'Preparing…' : 'Start my booking request →'}
