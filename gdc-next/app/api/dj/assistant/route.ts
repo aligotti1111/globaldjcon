@@ -47,13 +47,21 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ACCESS_COLS =
-  'name, dj_type, timezone, role, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
+  'name, dj_type, timezone, role, assistant_enabled, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
 
 interface ProfileRow extends AccessFields {
   name: string | null;
   dj_type: string | null;
   timezone: string | null;
   role: string | null;
+  // The DJ's own on/off switch for the assistant (Account Settings). Default ON
+  // — only an explicit false hides it, so existing accounts keep it.
+  assistant_enabled: boolean | null;
+}
+
+// Eligible = paid access AND the DJ hasn't switched it off.
+function assistantEnabled(p: ProfileRow): boolean {
+  return p.role !== 'host' && canBook(p as AccessFields) && p.assistant_enabled !== false;
 }
 
 // ── GET: eligibility for the widget ────────────────────────────────
@@ -66,8 +74,8 @@ export async function GET() {
   const admin = createAdminClient() as unknown as SupabaseClient;
   const { data: p } = await admin
     .from('users').select(ACCESS_COLS).eq('id', acting.djId).maybeSingle<ProfileRow>();
-  if (!p || p.role === 'host') return NextResponse.json({ enabled: false });
-  return NextResponse.json({ enabled: canBook(p as AccessFields) });
+  if (!p) return NextResponse.json({ enabled: false });
+  return NextResponse.json({ enabled: assistantEnabled(p) });
 }
 
 // ── POST: answer a question ────────────────────────────────────────
@@ -82,8 +90,8 @@ export async function POST(req: Request) {
 
   const { data: profile } = await admin
     .from('users').select(ACCESS_COLS).eq('id', djId).maybeSingle<ProfileRow>();
-  if (!profile || profile.role === 'host' || !canBook(profile as AccessFields)) {
-    return NextResponse.json({ error: 'The assistant is available on paid plans.' }, { status: 403 });
+  if (!profile || !assistantEnabled(profile)) {
+    return NextResponse.json({ error: 'The assistant is unavailable.' }, { status: 403 });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
