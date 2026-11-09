@@ -131,6 +131,16 @@
   font-weight: 500;
   border-bottom-right-radius: 4px;
 }
+.navlink {
+  color: #00f5c4;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.navlink:hover {
+  color: #5affd9;
+}
 .typing { color: #8b8b96; letter-spacing: 2px; }
 
 .foot {
