@@ -51,6 +51,7 @@ import {
   currencySymbol,
 } from '@/lib/constants';
 import { computeRate, type RateInfo } from './clubRate';
+import { readBookingPrefill, clearBookingPrefill, prefillSummary } from '@/lib/bookingPrefill';
 
 interface DjLite {
   id: string;
@@ -175,6 +176,34 @@ export default function ClubBookingForm({
   const [venueEquipDetail, setVenueEquipDetail] = useState('');
   const [offerAmount, setOfferAmount] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Booking Assistant prefill (Phase 2) — same pattern as the mobile form:
+  // drop the free-text fields in, fold the rest into notes, apply on mount and
+  // on gdc:open-booking, then clear so it can't re-fill.
+  const prefillSlug = ((dj as { slug?: string | null })?.slug) || '';
+  useEffect(() => {
+    if (!prefillSlug) return;
+    const apply = () => {
+      const p = readBookingPrefill(prefillSlug);
+      if (!p) return;
+      if (p.fullName) setFullName(p.fullName);
+      if (p.phone) setPhone(p.phone);
+      if (p.venueName) setVenueName(p.venueName);
+      if (p.venueAddress) setVenueAddress(p.venueAddress);
+      const sum = prefillSummary(p);
+      if (sum) setNotes((cur) => (cur ? cur : sum));
+      clearBookingPrefill(prefillSlug);
+    };
+    apply();
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent).detail?.slug;
+      if (d && d !== prefillSlug) return;
+      apply();
+    };
+    window.addEventListener('gdc:open-booking', onOpen as EventListener);
+    return () => window.removeEventListener('gdc:open-booking', onOpen as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillSlug]);
 
   // Approved bookings already on this date for this DJ. Shown in red
   // under Set Times so the customer can see what's already booked.
