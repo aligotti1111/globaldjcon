@@ -28,7 +28,7 @@ function loadSaved(slug: string): Msg[] {
 }
 
 // Remember (per DJ, for the tab session) that the booker already submitted a
-// request / sent a message, so the buttons stay in their done state on reopen.
+// request, so the Start link stays in its done state on reopen.
 const flagKey = (slug: string, k: string) => `gdc_bookingbot_${k}_${slug}`;
 function loadFlag(slug: string, k: string): boolean {
   if (typeof window === 'undefined') return false;
@@ -36,6 +36,20 @@ function loadFlag(slug: string, k: string): boolean {
 }
 function saveFlag(slug: string, k: string): void {
   try { window.sessionStorage.setItem(flagKey(slug, k), '1'); } catch { /* ignore */ }
+}
+// Which specific "Message the DJ" prompts have been sent (keyed by the message
+// index they're attached to) — so a NEW ask-DJ prompt gets a fresh button
+// instead of inheriting a past "sent" note.
+function loadSentMsgs(slug: string): number[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.sessionStorage.getItem(flagKey(slug, 'msgset'));
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((n) => typeof n === 'number') : [];
+  } catch { return []; }
+}
+function saveSentMsgs(slug: string, set: Set<number>): void {
+  try { window.sessionStorage.setItem(flagKey(slug, 'msgset'), JSON.stringify([...set])); } catch { /* ignore */ }
 }
 
 export default function BookingBot({ slug, djName }: { slug: string; djName: string | null }) {
@@ -48,7 +62,8 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
   // Done states: the request was actually submitted / a message was actually
   // sent (fired by the booking form + compose modal, not just a click).
   const [requestSent, setRequestSent] = useState(() => loadFlag(slug, 'reqsent'));
-  const [messageSent, setMessageSent] = useState(() => loadFlag(slug, 'msgsent'));
+  // Set of message indices whose "Message the DJ" prompt has been sent.
+  const [sentMsgs, setSentMsgs] = useState<Set<number>>(() => new Set(loadSentMsgs(slug)));
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,7 +71,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
   useEffect(() => {
     setMessages(loadSaved(slug));
     setRequestSent(loadFlag(slug, 'reqsent'));
-    setMessageSent(loadFlag(slug, 'msgsent'));
+    setSentMsgs(new Set(loadSentMsgs(slug)));
   }, [slug]);
 
   // Listen for the real completion signals from the booking form / compose modal.
@@ -67,9 +82,15 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
       setRequestSent(true);
     };
     const onMessaged = (e: Event) => {
-      if ((e as CustomEvent).detail?.slug && (e as CustomEvent).detail.slug !== slug) return;
-      saveFlag(slug, 'msgsent');
-      setMessageSent(true);
+      const d = (e as CustomEvent).detail || {};
+      if (d.slug && d.slug !== slug) return;
+      const id = typeof d.askId === 'number' ? d.askId : -1;
+      setSentMsgs((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        saveSentMsgs(slug, next);
+        return next;
+      });
     };
     window.addEventListener('gdc:booking-submitted', onBooked as EventListener);
     window.addEventListener('gdc:message-sent', onMessaged as EventListener);
@@ -209,7 +230,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               return (
                 <div key={i}>
                   <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
-                  {askDj && (messageSent ? (
+                  {askDj && (sentMsgs.has(i) ? (
                     <span className={styles.sentNote}>✓ Your message was sent to {name} — they&apos;ll get back to you directly.</span>
                   ) : (
                     <button
@@ -228,7 +249,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
                         if (question) bodyParts.push(`My question: ${question}`);
                         bodyParts.push(`(Asked through your booking assistant on your profile.)`);
                         const body = bodyParts.join('\n\n');
-                        window.dispatchEvent(new CustomEvent('gdc:open-compose', { detail: { slug, subject, body } }));
+                        window.dispatchEvent(new CustomEvent('gdc:open-compose', { detail: { slug, subject, body, askId: i } }));
                       }}
                     >
                       Message {name} →
