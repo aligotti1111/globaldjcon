@@ -14,8 +14,9 @@
 export interface BookingPrefill {
   slug: string;                 // the DJ profile this draft belongs to
   eventType?: string;           // human label, e.g. "Wedding"
+  eventTypeKey?: string;        // matched dropdown key, e.g. "weddings" (form field)
   date?: string;                // YYYY-MM-DD if the bot got a clear date
-  startTime?: string;           // free text, e.g. "7:00 PM"
+  startTime?: string;           // 24-hour "HH:MM" (matches the time dropdown values)
   endTime?: string;
   venueName?: string;
   venueAddress?: string;
@@ -64,10 +65,12 @@ export function clearBookingPrefill(slug: string): void {
 // into the form's notes/message field so the DJ sees the full picture even for
 // fields the form can't structurally prefill (event type select, date/time).
 export function prefillSummary(p: BookingPrefill): string {
+  // Date, time, and event type now populate the real form fields, so they're
+  // NOT repeated here. Only carry the free-text extras into the message, plus
+  // the event label when we couldn't map it to a dropdown key (so the DJ/host
+  // still sees what kind of event it is).
   const bits: string[] = [];
-  if (p.eventType) bits.push(`Event: ${p.eventType}`);
-  if (p.date) bits.push(`Date: ${p.date}`);
-  if (p.startTime || p.endTime) bits.push(`Time: ${[p.startTime, p.endTime].filter(Boolean).join(' – ')}`);
+  if (p.eventType && !p.eventTypeKey) bits.push(`Event: ${p.eventType}`);
   if (p.notes) bits.push(p.notes);
   const summary = bits.join('\n');
   return summary ? `From the booking assistant:\n${summary}` : '';
