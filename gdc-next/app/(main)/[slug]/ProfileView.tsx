@@ -404,6 +404,22 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
     return () => window.removeEventListener('gdc:open-booking', onOpenBooking as EventListener);
   }, [effectiveSlug]);
 
+  // Booking Assistant: when it can't answer a question, it offers a "Message the
+  // DJ" button that fires this. Same gate as the hero Message button — logged-out
+  // visitors go to /login first, the owner can't message themselves.
+  useEffect(() => {
+    const onOpenCompose = (e: Event) => {
+      const detailSlug = (e as CustomEvent).detail?.slug;
+      if (detailSlug && detailSlug !== effectiveSlug) return;
+      if (isOwnProfile) return;
+      if (!requireVerified(`/${effectiveSlug}`)) return;
+      setComposeOpen(true);
+    };
+    window.addEventListener('gdc:open-compose', onOpenCompose as EventListener);
+    return () => window.removeEventListener('gdc:open-compose', onOpenCompose as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSlug, isOwnProfile, isLoggedIn, currentUser]);
+
   // Lock body scroll while lightbox open (vanilla does this). Also reset zoom
   // to fit whenever the open photo changes or the lightbox closes.
   useEffect(() => {
