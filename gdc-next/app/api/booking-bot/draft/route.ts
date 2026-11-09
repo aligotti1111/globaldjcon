@@ -88,7 +88,12 @@ export async function POST(req: Request) {
         'x-api-key': process.env.ANTHROPIC_API_KEY as string,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({ model: BOT_MODEL, max_tokens: 400, system: EXTRACT_SYSTEM, messages: askMessages }),
+      body: JSON.stringify({
+        model: BOT_MODEL,
+        max_tokens: 400,
+        system: [{ type: 'text', text: EXTRACT_SYSTEM, cache_control: { type: 'ephemeral' } }],
+        messages: askMessages,
+      }),
     });
     if (!resp.ok) return NextResponse.json({ error: 'Extraction failed.' }, { status: 502 });
     const data = await resp.json();
