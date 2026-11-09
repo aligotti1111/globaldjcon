@@ -30,6 +30,7 @@ import {
   priceRangeFor, buildBotSystemPrompt, mobilePackagesText,
   cookieName, makeCookieValue, readCookieCount,
 } from '@/lib/bookingBot';
+import { usableMethods, METHOD_TYPES, type PaymentMethod } from '@/lib/paymentMethods';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -133,6 +134,13 @@ export async function POST(req: Request) {
   const depositPct = Math.max(0, Math.round(Number(depRaw) || 0));
   const requireContract = s.require_contract === true;
 
+  // Accepted payment methods (so the bot can answer cash/check/"how can I pay").
+  const rp = row as unknown as Record<string, unknown>;
+  const pmList = Array.isArray(rp.payment_methods) ? (rp.payment_methods as PaymentMethod[]) : [];
+  const labels = usableMethods(pmList).map((m) => METHOD_TYPES[m.type]?.label || m.type);
+  if (rp.stripe_connect_ready === true && !labels.includes('Card')) labels.push('Card');
+  const payments = Array.from(new Set(labels)).join(', ');
+
   // Equipment / sound: what the DJ provides vs. needs from the venue.
   const detail = (v: unknown) => { const t = String(v ?? '').trim(); return t ? ` (${t})` : ''; };
   let equipment = '';
@@ -230,7 +238,7 @@ export async function POST(req: Request) {
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract, equipment, packages, exclusions, travel }, existingBooking, about,
+    { depositPct, requireContract, equipment, packages, exclusions, travel, payments }, existingBooking, about,
   );
 
   let reply = '';
