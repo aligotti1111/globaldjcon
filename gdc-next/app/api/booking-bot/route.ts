@@ -42,6 +42,7 @@ interface DjRow extends AccessFields {
   name: string | null;
   dj_type: string | null;
   booking_bot_enabled: boolean | null;
+  booking_bot_instructions: string | null;
   faqs: string | null;
   booking_settings: unknown;
 }
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
 
   const settings = parseBookingSettings(row.booking_settings);
   const range = priceRangeFor(djType, settings);
-  const system = buildBotSystemPrompt(row.name || 'this DJ', djType, range, faqText(row.faqs));
+  const system = buildBotSystemPrompt(row.name || 'this DJ', djType, range, faqText(row.faqs), row.booking_bot_instructions || '');
 
   let reply = '';
   try {
