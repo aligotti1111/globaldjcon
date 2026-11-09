@@ -23,6 +23,7 @@ import { updateMyEmailAction } from '@/lib/actions/updateMyEmail';
 import HostPhoneCard from './HostPhoneCard';
 import TeamSection from './TeamSection';
 import TimezoneSection from './TimezoneSection';
+import AssistantSection from './AssistantSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
 
@@ -979,6 +980,11 @@ export default function AccountSettingsClient({
           Owner-only: changing the account timezone is an owner setting, so
           teammates don't see this section. */}
       {!isTeammate && <TimezoneSection audience="host" />}
+
+      {/* AI Assistant on/off — DJ owners only (teammates ride the owner's
+          setting; hosts don't get the assistant). Paid-tier eligibility is
+          enforced server-side; this is just the show/hide preference. */}
+      {isDj && !isTeammate && <AssistantSection />}
 
       {/* Delete account — teammates only. A staff login has no standalone value,
           and deleting it frees the email for a real account later. */}
