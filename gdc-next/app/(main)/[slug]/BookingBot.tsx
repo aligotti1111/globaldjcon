@@ -197,12 +197,12 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               return (
                 <div key={i}>
                   <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
-                  {askDj && (
+                  {askDj && (messageSent ? (
+                    <span className={styles.sentNote}>Message sent ✓</span>
+                  ) : (
                     <button
                       className={styles.cta}
-                      disabled={messageSent}
                       onClick={() => {
-                        if (messageSent) return;
                         setOpen(false);
                         // Prefill the message to the DJ with the booker's own
                         // question (the most recent thing they asked) plus the
@@ -219,21 +219,21 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
                         window.dispatchEvent(new CustomEvent('gdc:open-compose', { detail: { slug, subject, body } }));
                       }}
                     >
-                      {messageSent ? 'Message sent ✓' : `Message ${name} →`}
+                      Message {name} →
                     </button>
-                  )}
+                  ))}
                 </div>
               );
             })}
             {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>…</div>}
             {!locked && userTurns >= 2 && (
-              <button
-                className={styles.startBtn}
-                onClick={startRequest}
-                disabled={prepping || requestSent}
-              >
-                {requestSent ? 'Booking request sent ✓' : prepping ? 'Preparing…' : 'Start my booking request →'}
-              </button>
+              requestSent ? (
+                <span className={styles.sentNote}>Booking request sent ✓</span>
+              ) : (
+                <button className={styles.startBtn} onClick={startRequest} disabled={prepping}>
+                  {prepping ? 'Preparing…' : 'Start my booking request →'}
+                </button>
+              )
             )}
             {locked && (
               <button className={styles.cta} onClick={openSignup}>Create a free account</button>
