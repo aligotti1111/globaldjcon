@@ -24,6 +24,7 @@ import HostPhoneCard from './HostPhoneCard';
 import TeamSection from './TeamSection';
 import TimezoneSection from './TimezoneSection';
 import AssistantSection from './AssistantSection';
+import BookingBotSection from './BookingBotSection';
 import { SlugInput } from '@/app/(simple)/signup/SlugInput';
 import { generateVenueAlternatives } from '@/app/(simple)/signup/helpers';
 
@@ -985,6 +986,10 @@ export default function AccountSettingsClient({
           setting; hosts don't get the assistant). Paid-tier eligibility is
           enforced server-side; this is just the show/hide preference. */}
       {isDj && !isTeammate && <AssistantSection />}
+
+      {/* Profile Booking Assistant — the booker-facing bot. Premium Pro feature;
+          the section shows an upsell for lower tiers. DJ owners only. */}
+      {isDj && !isTeammate && <BookingBotSection />}
 
       {/* Delete account — teammates only. A staff login has no standalone value,
           and deleting it frees the email for a real account later. */}
