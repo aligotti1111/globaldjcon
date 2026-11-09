@@ -235,6 +235,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // Compose-message modal — opened by the "Message" button in HeroActions.
   // For logged-out visitors we route them to /login first.
   const [composeOpen, setComposeOpen] = useState(false);
+  // Optional subject/body the Booking Assistant passes when it opens the compose
+  // modal, so the message to the DJ starts with the question it couldn't answer.
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  // Whether the compose modal was opened from the Booking Assistant's "Message
+  // the DJ" button — so a successful send can tell the assistant to mark it sent.
+  const [composeFromBot, setComposeFromBot] = useState(false);
   // Banner edit — owner-only. Opens a dedicated modal where the DJ
   // can upload/replace the banner image and reposition it vertically.
   // All upload + position logic lives inside BannerEditModal.
@@ -427,10 +434,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // visitors go to /login first, the owner can't message themselves.
   useEffect(() => {
     const onOpenCompose = (e: Event) => {
-      const detailSlug = (e as CustomEvent).detail?.slug;
+      const detail = (e as CustomEvent).detail || {};
+      const detailSlug = detail.slug;
       if (detailSlug && detailSlug !== effectiveSlug) return;
       if (isOwnProfile) return;
       if (!requireVerified(`/${effectiveSlug}`)) return;
+      setComposeSubject(typeof detail.subject === 'string' ? detail.subject : '');
+      setComposeBody(typeof detail.body === 'string' ? detail.body : '');
+      setComposeFromBot(true);
       setComposeOpen(true);
     };
     window.addEventListener('gdc:open-compose', onOpenCompose as EventListener);
@@ -1090,6 +1101,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
             // /login first, returning to the same profile.
             if (isOwnProfile) return;
             if (!requireVerified(`/${effectiveSlug}`)) return;
+            setComposeSubject('');
+            setComposeBody('');
+            setComposeFromBot(false);
             setComposeOpen(true);
           }}
         />
@@ -1864,6 +1878,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           Only renders for logged-in non-owner visitors (see onClickMessage). */}
       {composeOpen && currentUser && !isOwnProfile && (
         <ComposeMessageModal
+          key={`${composeSubject}|${composeBody}`}
           sender={{
             id: currentUser.id,
             name: currentUser.name || 'A user',
@@ -1871,7 +1886,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           }}
           recipientUserId={data.id}
           recipientName={data.name || 'this DJ'}
+          defaultSubject={composeSubject}
+          defaultBody={composeBody}
           onClose={() => setComposeOpen(false)}
+          onSent={() => {
+            if (composeFromBot) {
+              window.dispatchEvent(new CustomEvent('gdc:message-sent', { detail: { slug: effectiveSlug } }));
+            }
+          }}
         />
       )}
 
