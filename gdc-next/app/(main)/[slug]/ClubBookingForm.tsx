@@ -190,6 +190,13 @@ export default function ClubBookingForm({
       if (p.phone) setPhone(p.phone);
       if (p.venueName) setVenueName(p.venueName);
       if (p.venueAddress) setVenueAddress(p.venueAddress);
+      // Times: the draft stores 24-hour "HH:MM" — set only if it's a real option.
+      if (p.startTime && MOB_TIME_OPTIONS.some((o) => o.val === p.startTime)) {
+        setStartTime(p.startTime);
+      }
+      if (p.endTime && endTimeOptions.some((o) => o.val === p.endTime)) {
+        setEndTime(p.endTime);
+      }
       const sum = prefillSummary(p);
       if (sum) setNotes((cur) => (cur ? cur : sum));
       clearBookingPrefill(prefillSlug);
