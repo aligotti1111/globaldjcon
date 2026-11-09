@@ -67,24 +67,45 @@ export interface AssistantSnapshot {
 // Booking Settings and go to the X tab."
 // ───────────────────────────────────────────────────────────────────
 export const SITE_MAP = `
-NAVIGATION MAP (where to do things in Global DJ Connect):
-- Booking dashboard (all upcoming bookings, send reminders, request deposits, send contracts): /upcoming-bookings
-- Booking requests (pending requests to approve/deny): /booking-requests
-- Past bookings (completed events, re-download documents): /past-bookings
-- Finance (earnings, payouts, outstanding balances — owner only): /finance
-- Booking Settings (/booking-settings) holds:
-    • Packages / pricing (mobile DJs) or hourly & flat rate (club/bar DJs)
-    • Payments tab — deposit %, accepted payment methods (Venmo, Cash App, etc.), payment reminders
-    • Discounts & promo codes
-    • Planner & Playlist templates
-    • Rider (club/bar DJs)
-    • Receipts — logo, auto-send toggles
-- Account Settings (/account-settings): name, email, password, timezone, calendar sync, blocked users, notifications
-- Edit public profile (bio, photos, mixes, FAQ, banner): /update-dj-profile
-- QR code + share link to your profile: /update-dj-profile, in the General tab (just under your name/slug; paid plans)
-- Team (invite teammates, set roles): /team-settings
-- Subscription / plan / billing: /subscribe
-- Notifications settings: /notifications
+NAVIGATION MAP — where everything lives in Global DJ Connect. Use the exact page + tab names.
+
+MAIN PAGES:
+- Booking dashboard — every CONFIRMED upcoming booking; this is where you send contracts, request deposits, send the balance invoice, send the planner / rider / guest list, send reminders, and message the host: /upcoming-bookings
+- Booking requests — pending requests from clients waiting for you to approve, deny, or counter-offer: /booking-requests
+- Past bookings — completed events; re-download contracts/receipts, invoice overtime after the fact: /past-bookings
+- Finance — earnings, payouts, outstanding balances, reports (account owner only): /finance
+- Inbox / messages: /inbox
+- Subscription / plan / billing / upgrade: /subscribe
+- Discover other DJs (directory): /djs
+
+EDIT YOUR PUBLIC PROFILE (/update-dj-profile): bio, photos, mixes, video, banner, FAQ, social links, name/location colors, and — on paid plans — your QR code + shareable profile link (in the Profile Settings tab, under your name).
+
+ACCOUNT SETTINGS (/account-settings) — tabs:
+- Profile Settings: your DJ name, email, password, business logo, and the Private-profile toggle.
+- AI Assistant: turn this dashboard assistant and the profile Booking Assistant on/off.
+- Event Types (mobile) / Music Genres (club).
+- Location & Contact: your location, address, contact details.
+- Team: invite teammates and set their role (Assistant / Manager / Admin).
+- Notifications: which email and SMS alerts you receive.
+- Blocked: blocked users.
+- Your Timezone: the clock your booking deadlines use.
+
+BOOKING SETTINGS (/booking-settings) — all booking RULES and pricing. Tabs:
+- Settings: booking window, DEPOSIT %, SALES TAX (turn tax on/off and set the tax %), require-contract toggle, and (mobile) your currency.
+- Packages & Prices (mobile DJs): your event packages and their prices.
+- Equipment & Rates (club/bar DJs): your hourly or flat rate and equipment options.
+- Payments Accepted: which payment methods you take (Venmo, Cash App, PayPal, Zelle, card, check, cash) and your handles.
+- Contracts: upload your own contract or use a pre-built one, and set the auto-fill fields.
+- Receipts: your receipt logo, logo backing, and receipt auto-send toggles.
+- Planner & Playlist (mobile DJs): your planner templates.
+- DJ Rider (club/bar DJs): your technical & hospitality rider.
+- Guest List (club/bar DJs): guest-list settings.
+- Discounts: promo codes and site-wide discounts.
+
+OTHER:
+- Calendar sync (Google/Apple) and the embeddable calendar: Account Settings area / Booking Settings — if you can't find it, say it's in your settings and offer to pass it to support.
+- Team management also at: /team-settings
+- For anything you genuinely can't place from this map, tell them to email info@globaldjconnect.com.
 `.trim();
 
 // ───────────────────────────────────────────────────────────────────
