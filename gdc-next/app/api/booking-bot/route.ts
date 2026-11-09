@@ -209,16 +209,36 @@ export async function POST(req: Request) {
   if (user) {
     const { data: mine } = await admin
       .from('bookings')
-      .select('event_date, start_time, end_time, event_type, package_title, package_details, status, deposit_pct, deposit_amount, total_with_tax, currency, contract_status, planner_status')
+      .select('id, event_date, start_time, end_time, event_type, package_title, package_details, status, deposit_pct, deposit_amount, total_with_tax, currency, contract_status, planner_status')
       .eq('requester_id', user.id)
       .eq('dj_id', row.id)
       .order('event_date', { ascending: false })
       .limit(3);
     const rows = Array.isArray(mine) ? mine : [];
     if (rows.length) {
+      // Pull payment requests for these bookings so the bot knows whether the
+      // deposit/balance has been REQUESTED yet (a payments row exists) and its
+      // state. 'requested'/'pending' = sent, not fully paid; 'paid' = done.
+      const ids = rows.map((b) => (b as Record<string, unknown>).id).filter(Boolean);
+      const payByBooking: Record<string, { deposit?: string; balance?: string }> = {};
+      if (ids.length) {
+        const { data: pays } = await admin
+          .from('payments')
+          .select('booking_id, kind, status')
+          .in('booking_id', ids as string[]);
+        for (const p of (Array.isArray(pays) ? pays : [])) {
+          const pr = p as Record<string, unknown>;
+          const bid = String(pr.booking_id);
+          const k = String(pr.kind);
+          if (k !== 'deposit' && k !== 'balance') continue;
+          (payByBooking[bid] ||= {})[k as 'deposit' | 'balance'] = String(pr.status);
+        }
+      }
+      const payWord = (s?: string) => !s ? 'not requested yet' : (s === 'paid' ? 'paid' : (s === 'waived' ? 'waived' : 'requested (awaiting payment)'));
       const strip = (h: unknown) => String(h ?? '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
       existingBooking = rows.map((b) => {
         const r = b as Record<string, unknown>;
+        const pay = payByBooking[String(r.id)] || {};
         const bits: string[] = [];
         bits.push(`Date: ${r.event_date || 'TBD'}${r.start_time ? ` ${r.start_time}${r.end_time ? `–${r.end_time}` : ''}` : ''}`);
         if (r.event_type) bits.push(`Event: ${r.event_type}`);
@@ -230,6 +250,8 @@ export async function POST(req: Request) {
         if (r.planner_status) bits.push(`Planner: ${r.planner_status}`);
         const ccy = String(r.currency || 'USD');
         if (Number(r.total_with_tax) > 0) bits.push(`Total: ${ccy} ${Math.round(Number(r.total_with_tax))}`);
+        bits.push(`Deposit: ${payWord(pay.deposit)}`);
+        bits.push(`Balance: ${payWord(pay.balance)}`);
         return '- ' + bits.join(' · ');
       }).join('\n');
     }
