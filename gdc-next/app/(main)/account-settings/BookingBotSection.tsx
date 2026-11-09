@@ -14,6 +14,8 @@ import SectionBanner from '../update-dj-profile/SectionBanner';
 const NEON = 'var(--neon,#00e0a4)';
 const MUTED = 'var(--muted,#8a8aa0)';
 
+const INSTR_MAX = 600;
+
 export default function BookingBotSection() {
   const [enabled, setEnabled] = useState(false);
   const [eligible, setEligible] = useState(true);
@@ -22,21 +24,50 @@ export default function BookingBotSection() {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Custom instructions (tone / emphasis) the DJ can give the bot.
+  const [instructions, setInstructions] = useState('');
+  const [savedInstructions, setSavedInstructions] = useState('');
+  const [instrSaving, setInstrSaving] = useState(false);
+  const [instrSaved, setInstrSaved] = useState(false);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const res = await fetch('/api/dj/booking-bot-setting');
-        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; eligible?: boolean };
+        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; eligible?: boolean; instructions?: string };
         if (alive && res.ok && d.ok) {
           setEnabled(d.enabled === true);
           setEligible(d.eligible !== false);
+          setInstructions(d.instructions || '');
+          setSavedInstructions(d.instructions || '');
         }
       } catch { /* keep defaults */ }
       finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false; };
   }, []);
+
+  async function saveInstructions() {
+    const next = instructions.slice(0, INSTR_MAX);
+    setInstrSaving(true); setInstrSaved(false); setErr(null);
+    try {
+      const res = await fetch('/api/dj/booking-bot-setting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructions: next }),
+      });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || 'Could not save.');
+      setSavedInstructions(next);
+      setInstrSaved(true);
+      setTimeout(() => setInstrSaved(false), 2000);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save.');
+    } finally {
+      setInstrSaving(false);
+    }
+  }
 
   async function toggle() {
     if (!eligible) return;
@@ -108,6 +139,51 @@ export default function BookingBotSection() {
               {saving && <span style={{ color: MUTED, fontSize: '.8rem' }}>Saving…</span>}
               {saved && <span style={{ color: NEON, fontSize: '.8rem', fontWeight: 700 }}>Saved ✓</span>}
             </div>
+
+            {enabled && (
+              <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: '1.25rem' }}>
+                <label style={{ display: 'block', color: '#fff', fontSize: '.9rem', fontWeight: 600, marginBottom: '.4rem' }}>
+                  Custom instructions <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
+                </label>
+                <p style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 .7rem' }}>
+                  Shape how the assistant sounds and what it highlights — tone, phrases, things to
+                  mention (e.g. &ldquo;keep it upbeat and casual,&rdquo; &ldquo;we specialize in weddings and
+                  bilingual events,&rdquo; &ldquo;always suggest adding uplighting&rdquo;). It still follows the
+                  core rules: it won&apos;t quote exact prices, confirm dates, or take payment.
+                </p>
+                <textarea
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value.slice(0, INSTR_MAX))}
+                  maxLength={INSTR_MAX}
+                  rows={4}
+                  placeholder="e.g. Friendly and concise. We mainly do weddings and corporate events. Mention our premium package includes uplighting and a photo booth add-on."
+                  style={{
+                    width: '100%', boxSizing: 'border-box', resize: 'vertical',
+                    background: '#15151c', color: '#eaeaf0',
+                    border: '1px solid rgba(255,255,255,.14)', borderRadius: 10,
+                    padding: '.7rem .8rem', fontSize: '.88rem', lineHeight: 1.5, fontFamily: 'inherit',
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.7rem' }}>
+                  <button
+                    type="button"
+                    onClick={saveInstructions}
+                    disabled={instrSaving || instructions === savedInstructions}
+                    style={{
+                      background: instructions === savedInstructions ? '#2a2a33' : NEON,
+                      color: instructions === savedInstructions ? MUTED : '#04120d',
+                      border: 'none', borderRadius: 8, padding: '.5rem 1.1rem',
+                      fontSize: '.85rem', fontWeight: 700,
+                      cursor: (instrSaving || instructions === savedInstructions) ? 'default' : 'pointer',
+                    }}
+                  >
+                    {instrSaving ? 'Saving…' : 'Save instructions'}
+                  </button>
+                  {instrSaved && <span style={{ color: NEON, fontSize: '.8rem', fontWeight: 700 }}>Saved ✓</span>}
+                  <span style={{ color: MUTED, fontSize: '.75rem', marginLeft: 'auto' }}>{instructions.length}/{INSTR_MAX}</span>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
