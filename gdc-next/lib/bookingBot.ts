@@ -207,8 +207,16 @@ When they ask if an add-on is available (lighting, a photo booth, MC/host, fog/h
   return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}${packages ? `\n\n${packages}` : ''}`;
 }
 
+// A summary of the signed-in booker's OWN existing booking(s) with this DJ, so
+// the bot can help them with what they already booked. '' when none / anonymous.
+function existingBookingBlock(summary: string, name: string): string {
+  const s = (summary || '').trim();
+  if (!s) return '';
+  return `\nTHIS BOOKER'S EXISTING BOOKING(S) WITH ${name} (they're signed in; this is their own booking — use it to help them figure things out about what they already booked):\n${s}\nWhen they ask about THEIR booking (what package they got, what's included, times, what's paid, what's next), answer from this. For any CHANGE to it, or anything not shown here, recommend they reach out to ${name} directly — you can't change a booking — and put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears.`;
+}
+
 // ── System prompt (booker-facing) ───────────────────────────────
-export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy): string {
+export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy, existingBooking = ''): string {
   const name = (djName || '').trim() || 'this DJ';
   const typeLabel = djType === 'club' ? 'club/bar' : 'mobile';
   const phone = (djPhone || '').trim();
@@ -240,6 +248,7 @@ HARD RULES:
 
 ${flowBlock(djType)}
 ${policyBlock(policy, name)}
+${existingBookingBlock(existingBooking, name)}
 
 ${HOST_FAQ}
 
