@@ -199,7 +199,7 @@ function policyBlock(p: BookingPolicy | undefined, name: string): string {
     ? `CONTRACT: yes — ${name} requires a signed contract before the booking is final; they'll send one to e-sign (no printing).`
     : `CONTRACT: ${name} doesn't require a contract by default (they may still send one). If asked, say it's not required but can be provided.`;
   const equipment = p.equipment
-    ? `EQUIPMENT / SOUND: ${p.equipment} Answer both "do they bring speakers / a sound system / own gear?" AND "what does ${name} require the venue/host to provide?" from this — the detail above says what ${name} brings and what the venue needs to supply (e.g. for a club/bar DJ, which gear they need on site). If they need something specific beyond it, offer to pass the question to ${name}.`
+    ? `EQUIPMENT / SOUND (AUTHORITATIVE — this is from ${name}'s actual Equipment settings and OVERRIDES any equipment-related quick fact in the ABOUT section; if they conflict, use THIS): ${p.equipment} Answer both "do they bring speakers / a sound system / own gear?" AND "what does ${name} require the venue/host to provide?" from this — the detail above says what ${name} brings and what the venue needs to supply (e.g. for a club/bar DJ, which gear they need on site). If they need something specific beyond it, offer to pass the question to ${name}.`
     : `EQUIPMENT / SOUND: ${name} hasn't specified their equipment setup here. If asked what they bring or what the venue must provide, don't guess — say it's best confirmed with ${name} and offer to take their details or pass the question along.`;
   const packages = p.packages
     ? `PACKAGES & WHAT'S INCLUDED (answer add-on questions like "can I book with lighting?" by checking these):
