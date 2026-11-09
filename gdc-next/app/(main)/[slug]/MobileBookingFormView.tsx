@@ -906,6 +906,11 @@ export default function MobileBookingForm({
       }
 
       setSuccessState({ isQuote: created.is_quote });
+      // Tell the Booking Assistant the request actually went through, so its
+      // "Start my booking request" button can switch to a sent/disabled state.
+      if (prefillSlug) {
+        window.dispatchEvent(new CustomEvent('gdc:booking-submitted', { detail: { slug: prefillSlug } }));
+      }
       // Notify the parent so the calendar can refresh pending dates — the
       // just-requested date should immediately render a "Pending" pill.
       onSubmitted?.();
