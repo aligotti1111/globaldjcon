@@ -133,6 +133,23 @@ ${txt}
 """`;
 }
 
+// The two booking flows speak different languages. This tailors the bot to the
+// DJ's own type so it collects the right details and uses the right vocabulary.
+function flowBlock(djType: string): string {
+  if (djType === 'club') {
+    return `THIS DJ'S BOOKING FLOW — CLUB / BAR:
+- This is a venue gig (a club night, bar set, lounge, private venue, corporate party, etc.), booked by the hour or a flat rate for a set length — NOT event "packages."
+- Collect: venue name & location, the event/night type, the date, start & end time (so the set length is clear), expected vibe/genre, and the booker's name + contact. Length and timing matter most here.
+- Pricing talk should be about the hourly or flat rate and how long they need you — never wedding-style packages.
+- Do NOT bring up a client "event planner" (that's a mobile-DJ thing). If anything, this DJ may send a technical/hospitality RIDER to the venue after booking — mention that only if they ask what happens next.`;
+  }
+  return `THIS DJ'S BOOKING FLOW — MOBILE / PRIVATE EVENTS:
+- These are private events (weddings, receptions, birthdays, anniversaries, corporate parties, etc.), priced by event PACKAGES (hours + add-ons), not a bare hourly rate.
+- Collect: the event type (wedding, birthday, etc.), date, start & end time, venue/location, rough guest count if it comes up, and the booker's name + contact. The event type drives which package fits.
+- Pricing talk should be about packages and what's included — point out the exact packages appear on the booking form.
+- After booking, this DJ sends an event PLANNER (timeline, must-play / do-not-play songs, special moments). You can mention that as a helpful "here's what happens next" if they ask — do NOT bring up a venue "rider."`;
+}
+
 // ── System prompt (booker-facing) ───────────────────────────────
 export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = ''): string {
   const name = (djName || '').trim() || 'this DJ';
@@ -153,6 +170,8 @@ HARD RULES:
 - Availability: you don't have the live calendar. If asked whether a date is open, say the availability calendar on this page shows open and booked dates, and offer to take their details so ${name} can confirm.
 - Only state facts from the FAQ/context below. Don't invent packages, inclusions, or policies. If you don't know, say so and offer to collect their details.
 - Be warm, friendly and concise — a sentence or two. You represent ${name}'s brand.
+
+${flowBlock(djType)}
 
 ${HOST_FAQ}
 
