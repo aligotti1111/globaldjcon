@@ -50,6 +50,7 @@ import { CaptionEditorModal } from './profile-view/CaptionEditorModal';
 import { OwnerViewToggle } from './profile-view/OwnerViewToggle';
 import { useHeroColors } from './profile-view/useHeroColors';
 import { HeroIdentity } from './profile-view/HeroIdentity';
+import BookingBot from './BookingBot';
 
 // Parse booking settings ONCE, outside the component (it's pure data) —
 // but we need profile.dj_type and booking_settings, so it has to live inside.
@@ -69,9 +70,12 @@ interface Props {
   // Phone paywall: true when the owner is on a paid/comped plan. A free DJ's
   // saved number stays editable but is hidden from visitors until this is true.
   ownerIsPro?: boolean;
+  // Booker-facing AI assistant: true when the owner is Premium Pro+, a
+  // mobile/club DJ, and switched it on. Decided server-side in page.tsx.
+  botEnabled?: boolean;
 }
 
-export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess, ownerIsPro = false }: Props) {
+export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProfile, canEditProfile = false, hasBookingAccess, ownerIsPro = false, botEnabled = false }: Props) {
   // Who may edit the public profile (all tabs except Booking): the owner, or a
   // permitted team member. `actingAsMember` is true only for the member case —
   // their writes route through /api/profile/update instead of a direct write.
@@ -1930,6 +1934,10 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
           onClose={() => setEmbedModalOpen(false)}
         />
       )}
+
+      {/* Booker-facing AI assistant — only when the owner (Premium Pro+) switched
+          it on. Hidden while the owner is editing their own profile. */}
+      {botEnabled && !canEdit && <BookingBot slug={effectiveSlug} djName={data.name} />}
     </>
   );
 }
