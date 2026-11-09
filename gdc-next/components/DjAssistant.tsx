@@ -12,6 +12,7 @@
 // navigation between dashboard pages within that layout.
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './DjAssistant.module.css';
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts: number };
@@ -22,10 +23,38 @@ function fmtTime(ts: number): string {
   } catch { return ''; }
 }
 
+// Render the assistant's text, turning [label](/path) markdown links into
+// clickable in-app links. Only internal paths (starting with "/") become real
+// links; anything else is shown as plain text so the bot can't link off-site.
+const LINK_RE = /\[([^\]]+)\]\((\/[^)\s]*)\)/g;
+function renderContent(text: string, onNavigate: (href: string) => void) {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  LINK_RE.lastIndex = 0;
+  while ((m = LINK_RE.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const label = m[1];
+    const href = m[2];
+    out.push(
+      <a
+        key={`${m.index}-${href}`}
+        href={href}
+        className={styles.navlink}
+        onClick={(e) => { e.preventDefault(); onNavigate(href); }}
+      >{label}</a>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 const GREETING =
   "Hi! I'm your Global DJ Connect assistant. Ask me about your bookings or earnings — like “who owes me money?” or “what's on the books next month?” — or where to find something in the app.";
 
 export default function DjAssistant() {
+  const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -105,6 +134,13 @@ export default function DjAssistant() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
+  // Click a link in the assistant's reply → navigate there in-app and close the
+  // panel so they land on the page. Only internal paths reach here.
+  const navigate = (href: string) => {
+    setOpen(false);
+    try { router.push(href); } catch { window.location.href = href; }
+  };
+
   return (
     <>
       {!open && (
@@ -133,7 +169,7 @@ export default function DjAssistant() {
             </div>
             {messages.map((m, i) => (
               <div key={i} className={`${styles.row} ${m.role === 'user' ? styles.rowUser : styles.rowBot}`}>
-                <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{m.content}</div>
+                <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{m.role === 'assistant' ? renderContent(m.content, navigate) : m.content}</div>
                 <div className={styles.time}>{fmtTime(m.ts)}</div>
               </div>
             ))}
