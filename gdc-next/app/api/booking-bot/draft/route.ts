@@ -26,12 +26,13 @@ interface DjRow extends AccessFields {
 
 const EXTRACT_SYSTEM = `You extract booking details from a chat between a potential client and a DJ's booking assistant.
 Return ONLY a JSON object (no prose, no markdown fences) with exactly these string keys:
-"eventType", "eventTypeKey", "date", "startTime", "endTime", "venueName", "venueAddress", "fullName", "email", "phone", "notes".
+"eventType", "eventTypeKey", "eventSubType", "date", "startTime", "endTime", "venueName", "venueAddress", "fullName", "email", "phone", "notes".
 Rules:
 - Use the client's own words. Use an EMPTY STRING for anything not clearly stated. Never invent or guess.
 - "date": normalize to YYYY-MM-DD only if the year/month/day are unambiguous; otherwise empty string.
 - "eventType": a short human label like "Wedding", "Birthday party", "Halloween party".
 - "eventTypeKey": if an ALLOWED EVENT TYPES list is given below, copy the single key whose label best matches the event; if none clearly matches, use empty string. If no list is given, empty string.
+- "eventSubType": the specific kind WITHIN the event type, if stated — e.g. for a holiday party which holiday ("Halloween", "Christmas"), for a graduation which school/degree, for an anniversary which number. A short phrase; empty string if not stated.
 - "startTime" and "endTime": 24-hour "HH:MM", rounded to the nearest 30 minutes (e.g. 7 PM -> "19:00", 11:00 PM -> "23:00", 1 AM -> "01:00"). Empty string if not clearly stated.
 - "notes": anything else useful the client said (guest count, vibe, requests) — keep it brief.`;
 
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
     const draft = {
       eventType: s(parsed.eventType),
       eventTypeKey,
+      eventSubType: s(parsed.eventSubType),
       date: s(parsed.date),
       startTime: s(parsed.startTime),
       endTime: s(parsed.endTime),
