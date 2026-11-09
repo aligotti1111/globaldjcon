@@ -16,8 +16,22 @@ import { BOT_MIN_TIER, BOT_MAX_INSTRUCTIONS } from '@/lib/bookingBot';
 
 export const runtime = 'nodejs';
 
-const COLS = 'booking_bot_enabled, booking_bot_instructions, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
-interface Row extends AccessFields { booking_bot_enabled: boolean | null; booking_bot_instructions: string | null }
+// Columns that ALWAYS exist — tier/eligibility + the on/off flag. Keeping the
+// instructions column OUT of this read means a not-yet-migrated DB (no
+// booking_bot_instructions column) can never break eligibility and wrongly show
+// the upgrade prompt to a paid account.
+const COLS = 'booking_bot_enabled, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
+interface Row extends AccessFields { booking_bot_enabled: boolean | null }
+
+// Best-effort read of the custom-instructions column: if the column doesn't
+// exist yet, swallow the error and return '' rather than failing the request.
+async function readInstructions(db: SupabaseClient, djId: string): Promise<string> {
+  try {
+    const { data, error } = await db.from('users').select('booking_bot_instructions').eq('id', djId).maybeSingle<{ booking_bot_instructions: string | null }>();
+    if (error) return '';
+    return data?.booking_bot_instructions || '';
+  } catch { return ''; }
+}
 
 export async function GET() {
   const supabase = await createClient();
@@ -27,10 +41,11 @@ export async function GET() {
   const db = createAdminClient() as unknown as SupabaseClient;
   const { data } = await db.from('users').select(COLS).eq('id', acting.djId).maybeSingle<Row>();
   const eligible = !!data && effectiveTier(data as AccessFields) >= BOT_MIN_TIER;
+  const instructions = await readInstructions(db, acting.djId);
   return NextResponse.json({
     ok: true,
     enabled: data?.booking_bot_enabled === true,
-    instructions: data?.booking_bot_instructions || '',
+    instructions,
     eligible,
   });
 }
@@ -61,15 +76,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'The booking assistant is a Premium Pro feature.' }, { status: 403 });
   }
 
-  const update: { booking_bot_enabled?: boolean; booking_bot_instructions?: string } = {};
-  if (hasEnabled) update.booking_bot_enabled = body.enabled as boolean;
-  if (hasInstructions) update.booking_bot_instructions = String(body.instructions).slice(0, BOT_MAX_INSTRUCTIONS);
+  // Save the on/off flag (always-present column) on its own, so saving it never
+  // depends on the instructions column existing.
+  if (hasEnabled) {
+    const { error } = await db.from('users').update({ booking_bot_enabled: body.enabled as boolean }).eq('id', acting.djId);
+    if (error) return NextResponse.json({ error: 'Could not save your setting.' }, { status: 500 });
+  }
 
-  const { error } = await db.from('users').update(update).eq('id', acting.djId);
-  if (error) return NextResponse.json({ error: 'Could not save your setting.' }, { status: 500 });
+  // Save instructions separately; if the column isn't migrated yet, report that
+  // specifically instead of failing the whole request.
+  let savedInstructions = await readInstructions(db, acting.djId);
+  if (hasInstructions) {
+    const next = String(body.instructions).slice(0, BOT_MAX_INSTRUCTIONS);
+    const { error } = await db.from('users').update({ booking_bot_instructions: next }).eq('id', acting.djId);
+    if (error) {
+      return NextResponse.json({ error: 'Your settings are saved, but custom instructions need a quick database update first (the booking_bot_instructions column).' }, { status: 409 });
+    }
+    savedInstructions = next;
+  }
+
   return NextResponse.json({
     ok: true,
     enabled: hasEnabled ? (body.enabled as boolean) : data?.booking_bot_enabled === true,
-    instructions: hasInstructions ? update.booking_bot_instructions : (data?.booking_bot_instructions || ''),
+    instructions: savedInstructions,
   });
 }
