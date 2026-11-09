@@ -109,6 +109,33 @@ OTHER:
 `.trim();
 
 // ───────────────────────────────────────────────────────────────────
+// FAQ KNOWLEDGE — the facts behind the public /faq page, condensed, so the
+// assistant can answer "how does X work" questions directly (not just point at
+// a page). Keep in sync with app/(simple)/faq/FaqContent.tsx.
+// ───────────────────────────────────────────────────────────────────
+export const FAQ_KNOWLEDGE = `
+HOW GLOBAL DJ CONNECT WORKS (use these facts to answer "how does X work" questions):
+- What it is: a DJ directory + booking platform. Clients find a DJ, send a request with their event details, and the DJ approves — no endless back-and-forth.
+- Money model: GDC is a subscription tool, NOT a middleman. It takes 0% of bookings. The DJ is the merchant of record and keeps their full fee; clients pay the DJ directly. The only thing the DJ pays for is their GDC subscription.
+- Pricing: there's a free account (profile + take bookings, no card). Paid tiers unlock contracts, deposits, and the full planning suite. Current pricing is on /subscribe.
+- Payments: the DJ connects the methods they accept (Venmo, Cash App, Zelle, PayPal, card) and sets deposit + tax terms (Booking Settings). Clients pay directly; the DJ can mark cash/check received; receipts can auto-send. Payments usually come as a deposit (locks the date) then the balance (before/at the event).
+- Deposit %: set in Booking Settings → Settings. The balance is auto-calculated after the deposit.
+- Sales tax: turn on and set the % in Booking Settings → Settings.
+- Response windows: a DJ has up to 5 days to answer a request (or until the event date, whichever is first); a client has 5 days to approve a counter-offer. Unanswered requests auto-decline.
+- Account type: chosen at signup — Mobile DJ or Club/Bar DJ — and it is LOCKED afterward (it shapes the booking form, pricing, and planners vs riders). To change it, email info@globaldjconnect.com.
+- Planners vs riders: Mobile DJ accounts use PLANNERS (client fills in timeline, must-play/do-not-play songs, special moments; customizable per event type). Club/Bar DJ accounts use RIDERS (send technical + hospitality requirements to the venue).
+- Contracts: build from the booking's details or your own text, send for e-signature; the DJ signs first, then the client. Track status from the booking. Both get a copy once signed.
+- Manual bookings: add gigs booked off-platform with full event/pricing/payment details; optionally add the host's email so they get the booking, planner, and payment requests.
+- Team: invite teammates with roles — Assistant, Manager, or Admin.
+- Calendar sync: a private feed you subscribe to in Google/Apple/Outlook; confirmed bookings also have an "Add to Calendar" option.
+- Notifications: key events (new request, accepted booking, sent contract, received payment) are emailed; clients can opt into SMS for their booking.
+- Change plan: upgrade/downgrade anytime on /subscribe via "Manage Subscription". Upgrades are instant; downgrades keep current features until the paid period ends. Profile, bookings, and history stay intact.
+- Cancel subscription: /subscribe → "Manage Subscription" toolbar, or email info@globaldjconnect.com.
+- QR code: Edit Profile (Profile Settings), right under your public profile link — paid feature.
+- Cancellation/refunds between a DJ and a client are handled directly between them (GDC never holds the money); a contract is recommended.
+`.trim();
+
+// ───────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT
 // ───────────────────────────────────────────────────────────────────
 export function buildSystemPrompt(djName: string): string {
@@ -134,7 +161,9 @@ MONEY MODEL (use this for any billing / refund / payment question):
 - For any billing, refund, account, or support issue you can't answer from the data, direct them to email info@globaldjconnect.com.
 - If a DJ ever needs to refund a host (e.g. a cancelled event), that's handled by the DJ directly through whatever method the host paid — GDC can't reverse it because it never held the funds. Only bring this up if the DJ explicitly asks about paying a host back.
 
-${SITE_MAP}`;
+${SITE_MAP}
+
+${FAQ_KNOWLEDGE}`;
 }
 
 // ───────────────────────────────────────────────────────────────────
