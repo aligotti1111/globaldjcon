@@ -65,7 +65,7 @@ export default function BookingBotSection() {
 
   return (
     <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
-      <SectionBanner icon="bell" title="Profile Booking Assistant" subtitle="A chat helper on your public profile that answers clients and starts their request." />
+      <SectionBanner icon="bell" title="Booking Assistant" subtitle="A chat helper on your public profile that answers clients and starts their request." />
       <div style={{ padding: '1.5rem' }}>
         <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
           Adds a chat bubble to your public profile. It answers potential clients&apos;
