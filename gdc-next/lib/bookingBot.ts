@@ -161,6 +161,9 @@ export interface BookingPolicy {
   exclusions?: string;      // dates where the sale / promo codes don't apply ('' = none)
   travel?: string;          // human sentence: do they travel / how far ('' = not set)
   payments?: string;        // accepted payment methods (cash, check, Venmo, …) ('' = none listed)
+  windowMonths?: number;    // how far ahead the DJ accepts bookings (e.g. 48 = 4 years)
+  todayLabel?: string;      // today's date, in the DJ's timezone, e.g. "November 9, 2026"
+  cutoffLabel?: string;     // the furthest-out bookable date, e.g. "November 2030"
 }
 
 // Build a compact, plain-text summary of a MOBILE DJ's packages (title + what's
@@ -217,7 +220,15 @@ Give a full, friendly answer, not a bare "yes/no." When it IS offered, confirm i
   const exclusions = p.exclusions
     ? `DISCOUNT EXCLUSIONS: if the booker asks whether there are any exclusions for a promo code or the sale, tell them these — on these dates the discount doesn't apply: ${p.exclusions}. (This is about which DATES are excluded, not the codes themselves — you still never reveal a promo code.)`
     : `DISCOUNT EXCLUSIONS: ${name} hasn't set any date exclusions. If asked, say there are no listed date exclusions, and any code's own terms (expiry, limits) apply when they enter it at booking.`;
-  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment/travel questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${travel}\n- ${payments}\n- ${exclusions}${packages ? `\n\n${packages}` : ''}`;
+  const years = p.windowMonths ? (p.windowMonths % 12 === 0 ? `${p.windowMonths / 12} year${p.windowMonths / 12 === 1 ? '' : 's'}` : `${p.windowMonths} months`) : '';
+  const window = p.windowMonths
+    ? `BOOKING WINDOW / DATE LIMITS (CHECK THIS before collecting details or starting a request):
+- Today's date is ${p.todayLabel || 'the current date'}. ${name} only accepts bookings up to ${years} in advance${p.cutoffLabel ? ` — roughly through ${p.cutoffLabel}` : ''}.
+- If the event date the booker gives is BEYOND that window, do NOT keep gathering details or start a booking request. Tell them ${name} only books up to ${years} ahead, so that date is too far out for now, and suggest they reach back out closer to the date (within the window). Offer to answer other questions in the meantime.
+- If the date is in the PAST, point that out and ask for the correct date.
+- AVAILABILITY: you do NOT have the live calendar and can't confirm a specific date is open. Even for an in-window date, don't promise it's available — the availability calendar on this page shows which dates are open vs booked, and ${name} confirms every request. Point them to the calendar and offer to start their request so ${name} can confirm.`
+    : `AVAILABILITY: you do NOT have the live calendar and can't confirm whether a specific date is open. Don't promise a date is available — point them to the availability calendar on this page (it shows open vs booked dates) and note ${name} confirms every request.`;
+  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract/equipment/travel questions from these facts, not guesses):\n- ${deposit}\n- ${contract}\n- ${equipment}\n- ${travel}\n- ${payments}\n- ${exclusions}\n\n${window}${packages ? `\n\n${packages}` : ''}`;
 }
 
 // A summary of the signed-in booker's OWN existing booking(s) with this DJ, so
