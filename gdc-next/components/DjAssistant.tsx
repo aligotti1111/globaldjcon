@@ -53,16 +53,35 @@ function renderContent(text: string, onNavigate: (href: string) => void) {
 const GREETING =
   "Hi! I'm your Global DJ Connect assistant. Ask me about your bookings or earnings — like “who owes me money?” or “what's on the books next month?” — or where to find something in the app.";
 
+const STORE_KEY = 'gdc_dj_assistant_convo';
+
+// Load a saved conversation (survives closing the widget or navigating between
+// dashboard pages, which can remount this component). sessionStorage so it
+// clears when the tab closes — a fresh visit starts clean.
+function loadSaved(): Msg[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.sessionStorage.getItem(STORE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
 export default function DjAssistant() {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<Msg[]>(loadSaved);
   const [startedAt] = useState(() => Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Persist the conversation so it survives closing/reopening and navigation.
+  useEffect(() => {
+    try { window.sessionStorage.setItem(STORE_KEY, JSON.stringify(messages.slice(-40))); } catch { /* ignore */ }
+  }, [messages]);
 
   // Ask the server whether this viewer may use the assistant.
   useEffect(() => {
