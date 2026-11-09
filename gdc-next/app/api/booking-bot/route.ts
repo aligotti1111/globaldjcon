@@ -200,7 +200,12 @@ export async function POST(req: Request) {
     }
     for (const [dk, n] of counts) { if (n >= capacityFor(dk)) blockedSet.add(dk); }
   } catch { /* booked-date lookup is best-effort */ }
-  const blockedDates = Array.from(blockedSet).sort().slice(0, 400).join(', ');
+  // Only carry the next ~12 months of blocked dates into the prompt — that's the
+  // window a booker realistically asks about, and it keeps the (repeated-every-
+  // turn) system prompt small. Further-out conflicts are caught by the DJ's
+  // approval + the live calendar.
+  const horizonISO = (() => { const d = new Date(); d.setMonth(d.getMonth() + 12); try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d); } catch { return d.toISOString().slice(0, 10); } })();
+  const blockedDates = Array.from(blockedSet).filter((d) => d <= horizonISO).sort().join(', ');
 
   // The DJ's public About section: bio + the quick-fact cards they turned on.
   const rr0 = row as unknown as Record<string, unknown>;
@@ -320,7 +325,15 @@ export async function POST(req: Request) {
         'x-api-key': process.env.ANTHROPIC_API_KEY as string,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({ model: BOT_MODEL, max_tokens: BOT_MAX_TOKENS, system, messages }),
+      // Cache the (large, repeated-every-turn) system prompt so follow-up
+      // messages in the same conversation re-read it at ~1/10th the input cost.
+      // No effect on output quality — identical tokens, just billed as a cache read.
+      body: JSON.stringify({
+        model: BOT_MODEL,
+        max_tokens: BOT_MAX_TOKENS,
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages,
+      }),
     });
     if (!resp.ok) {
       const detail = await resp.text().catch(() => '');
