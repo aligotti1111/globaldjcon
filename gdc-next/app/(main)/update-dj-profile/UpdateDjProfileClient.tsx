@@ -22,6 +22,8 @@ import GeneralTab, { type AccountTab } from './GeneralTab';
 import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
 import TimezoneSection from '../account-settings/TimezoneSection';
+import AssistantSection from '../account-settings/AssistantSection';
+import BookingBotSection from '../account-settings/BookingBotSection';
 import NotificationsClient from '../notifications/NotificationsClient';
 import SectionBanner, { type BannerIcon } from './SectionBanner';
 // Booking configuration moved to its own page (/booking-settings); the
@@ -168,7 +170,7 @@ interface Props {
 // The section tab bar now includes a Notifications tab. AccountTab (from
 // GeneralTab) covers the panes GeneralTab owns; 'notifications' is rendered
 // separately below (like Team / Timezone), so we widen the local tab type.
-type SecTab = AccountTab | 'notifications';
+type SecTab = AccountTab | 'notifications' | 'assistant';
 
 export default function UpdateDjProfileClient({ initialProfile, authEmail, notifyInit, isPaid = false }: Props) {
 
@@ -270,6 +272,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
     ...(notifyInit ? [{ id: 'notifications' as SecTab, label: 'Notifications' }] : []),
     { id: 'blocked', label: 'Blocked' },
     { id: 'timezone', label: 'Your Timezone' },
+    { id: 'assistant', label: 'AI Assistant' },
   ];
 
   // Supabase client for the manual General save below. (Booking settings and
@@ -693,7 +696,7 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
           edges) so it reads as the box's header, same as Booking Settings. */}
       <div
         className={styles.card}
-        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' ? 'none' : undefined, overflow: 'hidden', padding: 0 }}
+        style={{ display: tab === 'team' || tab === 'timezone' || tab === 'notifications' || tab === 'assistant' ? 'none' : undefined, overflow: 'hidden', padding: 0 }}
       >
         {(() => {
           const b = initialProfile.dj_type === 'club'
@@ -768,6 +771,13 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
           mounted (hidden) for the same reason as Team above — pre-fetch on load. */}
       <div style={{ display: tab === 'timezone' ? undefined : 'none' }}>
         <TimezoneSection />
+      </div>
+
+      {/* AI Assistant — the DJ-dashboard helper on/off, plus the booker-facing
+          Profile Booking Assistant (Premium Pro). Both save themselves. */}
+      <div style={{ display: tab === 'assistant' ? 'flex' : 'none', flexDirection: 'column', gap: '1rem' }}>
+        <AssistantSection />
+        <BookingBotSection />
       </div>
     </div>
   );
