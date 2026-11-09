@@ -740,6 +740,11 @@ export default function ClubBookingForm({
       }
 
       setSuccess(true);
+      // Tell the Booking Assistant the request actually went through, so its
+      // "Start my booking request" button can switch to a sent/disabled state.
+      if (prefillSlug) {
+        window.dispatchEvent(new CustomEvent('gdc:booking-submitted', { detail: { slug: prefillSlug } }));
+      }
       // Auto-dismiss the form after a short delay
       setTimeout(() => onClose(), 2500);
     } catch (err) {
