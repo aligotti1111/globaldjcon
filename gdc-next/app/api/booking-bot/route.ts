@@ -146,6 +146,30 @@ export async function POST(req: Request) {
 
   const packages = settings ? mobilePackagesText(djType, settings) : '';
 
+  // The DJ's public About section: bio + the quick-fact cards they turned on.
+  const rr0 = row as unknown as Record<string, unknown>;
+  const aboutLines: string[] = [];
+  const bio = String(rr0.bio ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (bio) aboutLines.push(`Bio: ${bio.slice(0, 800)}`);
+  try {
+    const st = typeof rr0.about_stats === 'string' ? JSON.parse(rr0.about_stats) : (rr0.about_stats || {});
+    const on = (c: unknown): c is Record<string, unknown> => !!c && typeof c === 'object' && (c as Record<string, unknown>).on === true;
+    const push = (label: string, v: unknown) => { const t = String(v ?? '').trim(); if (t) aboutLines.push(`${label}: ${t}`); };
+    if (on(st.established)) push('Established', (st.established as Record<string, unknown>).year);
+    if (on(st.events)) push('Events experience', (st.events as Record<string, unknown>).tier);
+    if (on(st.eventsTotal)) push('Total events', (st.eventsTotal as Record<string, unknown>).count);
+    if (on(st.insured)) push('Insured', (st.insured as Record<string, unknown>).answer);
+    if (on(st.destination)) push('Destination events', (st.destination as Record<string, unknown>).answer);
+    if (on(st.backup)) push('Backup equipment', (st.backup as Record<string, unknown>).answer);
+    if (on(st.ownEquipment)) push('Owns equipment', (st.ownEquipment as Record<string, unknown>).answer);
+    if (on(st.residencies)) push('Residencies', (st.residencies as Record<string, unknown>).text || (st.residencies as Record<string, unknown>).answer);
+    if (on(st.mixer)) push('Preferred mixer', (st.mixer as Record<string, unknown>).text);
+    if (on(st.decks)) push('Preferred decks', (st.decks as Record<string, unknown>).text);
+    if (on(st.goToFormat)) push('Go-to format', (st.goToFormat as Record<string, unknown>).value);
+    if (on(st.followers)) push('Social following', (st.followers as Record<string, unknown>).count);
+  } catch { /* ignore malformed about_stats */ }
+  const about = aboutLines.join('\n').slice(0, 1500);
+
   // Discount date-exclusions: dates where the sale and/or promo codes don't apply.
   const exclRaw = Array.isArray(s.exclusions) ? (s.exclusions as Array<Record<string, unknown>>) : [];
   const exclusions = exclRaw
@@ -156,6 +180,19 @@ export async function POST(req: Request) {
     })
     .slice(0, 30)
     .join('; ');
+
+  // Travel / service area: base location + how far the DJ travels.
+  const rr = row as unknown as Record<string, unknown>;
+  const base = [rr.city, rr.state].map((v) => String(v ?? '').trim()).filter(Boolean).join(', ');
+  const td = String(rr.travel_distance ?? '').trim().toLowerCase();
+  let travel = '';
+  if (td === 'worldwide') {
+    travel = `${row.name || 'This DJ'}${base ? ` is based in ${base} and` : ''} travels worldwide (available anywhere).`;
+  } else if (Number(td) > 0) {
+    travel = `${row.name || 'This DJ'}${base ? ` is based in ${base} and` : ''} travels up to ${Number(td)} miles for events.`;
+  } else if (base) {
+    travel = `${row.name || 'This DJ'} is based in ${base}.`;
+  }
 
   // If the visitor is signed in AND has their OWN booking(s) with THIS DJ, pull a
   // short summary so the bot can help them with what they already booked. Scoped
@@ -193,7 +230,7 @@ export async function POST(req: Request) {
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract, equipment, packages, exclusions }, existingBooking,
+    { depositPct, requireContract, equipment, packages, exclusions, travel }, existingBooking, about,
   );
 
   let reply = '';
