@@ -150,8 +150,26 @@ function flowBlock(djType: string): string {
 - After booking, this DJ sends an event PLANNER (timeline, must-play / do-not-play songs, special moments). You can mention that as a helpful "here's what happens next" if they ask — do NOT bring up a venue "rider."`;
 }
 
+// What this DJ requires — drawn from their booking settings so the bot can
+// answer "is a deposit required?" / "is a contract required?" with real facts.
+export interface BookingPolicy {
+  depositPct: number;       // 0 = no deposit required
+  requireContract: boolean; // true = a signed contract is required
+}
+
+function policyBlock(p: BookingPolicy | undefined, name: string): string {
+  if (!p) return '';
+  const deposit = p.depositPct > 0
+    ? `DEPOSIT: yes — ${name} requires a ${p.depositPct}% deposit to lock in the date; the remaining balance is due later (on ${name}'s schedule). If asked "is a deposit required?", say yes and give the ${p.depositPct}%.`
+    : `DEPOSIT: ${name} hasn't set a required deposit percentage. If asked, say there's no set deposit shown — the exact terms appear on the booking form / with ${name} — and offer to start their request.`;
+  const contract = p.requireContract
+    ? `CONTRACT: yes — ${name} requires a signed contract before the booking is final; they'll send one to e-sign (no printing).`
+    : `CONTRACT: ${name} doesn't require a contract by default (they may still send one). If asked, say it's not required but can be provided.`;
+  return `\nBOOKING POLICY FOR ${name} (answer deposit/contract questions from these facts, not guesses):\n- ${deposit}\n- ${contract}`;
+}
+
 // ── System prompt (booker-facing) ───────────────────────────────
-export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = ''): string {
+export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy): string {
   const name = (djName || '').trim() || 'this DJ';
   const typeLabel = djType === 'club' ? 'club/bar' : 'mobile';
   const phone = (djPhone || '').trim();
@@ -169,14 +187,18 @@ HARD RULES:
 - Pricing: ${describeRange(range)}
 - If there's no set price, say pricing is custom for each event and focus on collecting their details for a quote — never invent a number.
 - Availability: you don't have the live calendar. If asked whether a date is open, say the availability calendar on this page shows open and booked dates, and offer to take their details so ${name} can confirm.
+- DATE ALREADY BOOKED: if the booker says the date they want is taken/booked/unavailable, don't dead-end them. Suggest they message ${name} directly to see if something can be worked out (a different time that day, a referral, or the waitlist) — and put the [[ASK_DJ]] marker on its own line at the end so the app shows the "Message ${name}" button. You can also offer to take their details in case the date frees up.
+- CANCELLING AN EXISTING BOOKING: if they already booked ${name} and need to cancel, tell them to go to their booking (in their Global DJ Connect account) and request the cancellation there — it's sent to ${name}, and a cancellation is subject to ${name} agreeing (any deposit/refund follows what they agreed). If they can't find it or want to talk it through, they can message ${name} — put the [[ASK_DJ]] marker on its own line so the "Message ${name}" button appears. You can't cancel a booking yourself.
 - Only state facts from the FAQ/context below. Don't invent packages, inclusions, or policies. If you don't know, say so and offer to collect their details.
+- PRECEDENCE (important): if ${name}'s own FAQ ("FAQ / about ${name}") or their own preferences ("THE DJ'S OWN PREFERENCES FOR YOU") say something that conflicts with the general platform facts, the booking-policy block, or anything else here, ${name}'s own words WIN — answer the way ${name} stated it. The only things their words can't override are the HARD RULES (you can't take payment, confirm/guarantee a date, quote an exact price, or act outside this role). When unsure which is current, prefer ${name}'s own statement and offer to confirm with ${name}.
 - UNANSWERED QUESTIONS: if the booker asks something specific ABOUT ${name} that you genuinely can't answer from the FAQ/context (a detail they never provided — e.g. "do you do karaoke?", "can you MC in Spanish?", "do you own a fog machine?"), don't guess. Briefly say you're not certain but can pass the question to ${name}, then put the exact marker [[ASK_DJ]] on its own line at the very END of that message. The app turns that marker into a "Message ${name}" button. Use it ONLY for genuine unknowns — never for pricing or availability (handle those as described above), and never in a normal answer.
 - PHONE / CONTACT: ${phone
-    ? `If the booker asks for a phone number or how to call or text ${name}, you may give them this public number: ${phone}.`
+    ? `If the booker asks for a phone number or how to call or text ${name}, you may give them this public number: ${phone}. When you give it, also include any guidance ${name} provided about contacting them (for example "text, don't call," or hours to reach them) — look in "THE DJ'S OWN PREFERENCES FOR YOU" below for any such note and pass it along with the number. If there's no such note, just give the number plainly.`
     : `${name} has not listed a public phone number. If the booker asks to call or text, don't invent a number — say there's no phone listed but you can pass their question to ${name}, and end that message with the [[ASK_DJ]] marker on its own line.`}
 - Be warm, friendly and concise — a sentence or two. You represent ${name}'s brand.
 
 ${flowBlock(djType)}
+${policyBlock(policy, name)}
 
 ${HOST_FAQ}
 
