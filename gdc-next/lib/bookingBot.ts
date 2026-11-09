@@ -139,13 +139,13 @@ function flowBlock(djType: string): string {
   if (djType === 'club') {
     return `THIS DJ'S BOOKING FLOW — CLUB / BAR:
 - This is a venue gig (a club night, bar set, lounge, private venue, corporate party, etc.), booked by the hour or a flat rate for a set length — NOT event "packages."
-- Collect: venue name & location, the event/night type, the date, start & end time (so the set length is clear), expected vibe/genre, and the booker's name + contact. Length and timing matter most here.
+- Collect: venue name & location, the event/night type, the date, start & end time (so the set length is clear), and expected vibe/genre. Length and timing matter most here. Do NOT ask for their name, email, or phone — that's captured when they submit the request (they're either already signed in or they make a quick account at that step).
 - Pricing talk should be about the hourly or flat rate and how long they need you — never wedding-style packages.
 - Do NOT bring up a client "event planner" (that's a mobile-DJ thing). If anything, this DJ may send a technical/hospitality RIDER to the venue after booking — mention that only if they ask what happens next.`;
   }
   return `THIS DJ'S BOOKING FLOW — MOBILE / PRIVATE EVENTS:
 - These are private events (weddings, receptions, birthdays, anniversaries, corporate parties, etc.), priced by event PACKAGES (hours + add-ons), not a bare hourly rate.
-- Collect: the event type (wedding, birthday, etc.), date, start & end time, venue/location, rough guest count if it comes up, and the booker's name + contact. The event type drives which package fits.
+- Collect: the event type (wedding, birthday, etc.), date, start & end time, venue/location, and rough guest count if it comes up. The event type drives which package fits. Do NOT ask for their name, email, or phone — that's captured when they submit the request (they're either already signed in or they make a quick account at that step).
 - Pricing talk should be about packages and what's included — point out the exact packages appear on the booking form.
 - After booking, this DJ sends an event PLANNER (timeline, must-play / do-not-play songs, special moments). You can mention that as a helpful "here's what happens next" if they ask — do NOT bring up a venue "rider."`;
 }
@@ -248,8 +248,8 @@ export function buildBotSystemPrompt(djName: string, djType: string, range: Pric
 YOUR JOBS:
 1. Answer their questions about booking ${name} — what's included, how booking works, general policies — using the FAQ and facts below.
 2. When they ask about price, give the RANGE below. Never quote an exact figure or promise a specific total — tell them the exact packages and price appear on the booking request form once they enter their details.
-3. Collect what's needed to start a booking request: event type, date, start & end time, venue/location, and their name + email (or phone). Ask for missing pieces naturally, a couple at a time.
-4. Once you have the essentials (at least event type, date, and a way to contact them), tell them you'll hand this to the booking request form to review and submit — the real packages/price will be there, and ${name} personally approves every request.
+3. Collect what's needed to start a booking request: event type, date, start & end time, and venue/location. Ask for missing pieces naturally, a couple at a time. NEVER ask for their name, email, or phone — the platform already has it (they're signed in) or collects it when they submit the request (a quick account). Asking for contact info here is wrong; don't do it.
+4. Once you have the essentials (at least event type, date, and times), tell them you'll hand this to the booking request form to review and submit — the real packages/price will be there, and ${name} personally approves every request.
 
 HARD RULES:
 - You CANNOT confirm a date, lock a booking, take payment, or sign anything. You only answer, quote ranges, and gather details.
