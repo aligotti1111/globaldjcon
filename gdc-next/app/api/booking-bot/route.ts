@@ -27,7 +27,7 @@ import type { Faq } from '@/app/(main)/[slug]/profileTypes';
 import {
   BOT_MODEL, BOT_MAX_TOKENS, BOT_MAX_MESSAGES, BOT_MAX_INPUT_CHARS,
   BOT_FREE_MESSAGES, BOT_MIN_TIER,
-  priceRangeFor, buildBotSystemPrompt,
+  priceRangeFor, buildBotSystemPrompt, mobilePackagesText,
   cookieName, makeCookieValue, readCookieCount,
 } from '@/lib/bookingBot';
 
@@ -127,16 +127,29 @@ export async function POST(req: Request) {
   const settings = parseBookingSettings(row.booking_settings);
   const range = priceRangeFor(djType, settings);
 
-  // What this DJ requires — so the bot can answer deposit/contract questions.
+  // What this DJ requires — so the bot can answer deposit/contract/equipment questions.
   const s = settings as unknown as Record<string, unknown>;
   const depRaw = djType === 'club' ? s.deposit_pct : s.mob_deposit_pct;
   const depositPct = Math.max(0, Math.round(Number(depRaw) || 0));
   const requireContract = s.require_contract === true;
 
+  // Equipment / sound: what the DJ provides vs. needs from the venue.
+  const detail = (v: unknown) => { const t = String(v ?? '').trim(); return t ? ` (${t})` : ''; };
+  let equipment = '';
+  if (s.equip_full === true) {
+    equipment = `${row.name || 'This DJ'} provides a full sound system (speakers) AND decks/controller — they bring the gear${detail(s.equip_full_detail)}.`;
+  } else if (s.equip_decks === true) {
+    equipment = `${row.name || 'This DJ'} brings their own decks/controller only — the venue/host provides the sound system (speakers)${detail(s.equip_decks_detail)}.`;
+  } else if (s.equip_none === true) {
+    equipment = `${row.name || 'This DJ'} needs all equipment provided by the venue/host (they don't bring gear)${detail(s.equip_none_detail)}.`;
+  }
+
+  const packages = settings ? mobilePackagesText(djType, settings) : '';
+
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
-    { depositPct, requireContract },
+    { depositPct, requireContract, equipment, packages },
   );
 
   let reply = '';
