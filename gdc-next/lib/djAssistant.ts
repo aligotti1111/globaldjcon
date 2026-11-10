@@ -67,16 +67,16 @@ export interface AssistantSnapshot {
 // Booking Settings and go to the X tab."
 // ───────────────────────────────────────────────────────────────────
 export const SITE_MAP = `
-NAVIGATION MAP — where everything lives in Global DJ Connect. Use the exact page + tab names.
+NAVIGATION MAP — where everything lives in Global DJ Connect. Use the EXACT page names shown here (the label before the colon), never the URL slug. In particular, the page at /upcoming-bookings is called "Booking Dashboard" — always call it that, never "Upcoming Bookings."
 
 MAIN PAGES:
-- Booking dashboard — every CONFIRMED upcoming booking; this is where you send contracts, request deposits, send the balance invoice, send the planner / rider / guest list, send reminders, and message the host: /upcoming-bookings
+- Booking Dashboard — every CONFIRMED upcoming booking; this is where you send contracts, request deposits, send the balance invoice, send the planner / rider / guest list, send reminders, and message the host: /upcoming-bookings
 - Booking requests — pending requests from clients waiting for you to approve, deny, or counter-offer: /booking-requests
 - Past bookings — completed events; re-download contracts/receipts, invoice overtime after the fact: /past-bookings
 - Finance — earnings, payouts, outstanding balances, reports (account owner only): /finance
 - Inbox / messages: /inbox
 - Subscription / plan / billing / upgrade: /subscribe
-- Discover other DJs (directory): /djs
+- Discover other DJs (directory): /djs — browse-only for a DJ account; a DJ CANNOT book another DJ from here (booking requires a host account).
 
 EDIT YOUR PUBLIC PROFILE (/update-dj-profile): bio, photos, mixes, video, banner, FAQ, social links, name/location colors, and — on paid plans — your QR code + shareable profile link (in the Profile Settings tab, under your name).
 
@@ -123,7 +123,8 @@ HOW GLOBAL DJ CONNECT WORKS (use these facts to answer "how does X work" questio
 - Sales tax: turn on and set the % in Booking Settings → Settings.
 - Per-day pricing: you CAN charge more (or less) for a specific date — both DJ types. In Edit Profile, open your availability calendar, tap the date → "Edit day." Mobile DJs set a price adjustment % (e.g. +20% for a high-demand day); club/bar DJs set a per-day rate override (a specific flat or hourly rate for that date). Bookings on that date are automatically quoted at the adjusted amount; the client just sees the adjusted price — no manual counter-offer needed. This is the built-in way to raise prices on peak dates.
 - Response windows: a DJ has up to 5 days to answer a request (or until the event date, whichever is first); a client has 5 days to approve a counter-offer. Unanswered requests auto-decline.
-- Account type: chosen at signup — Mobile DJ or Club/Bar DJ — and it is LOCKED afterward (it shapes the booking form, pricing, and planners vs riders). To change it, email info@globaldjconnect.com.
+- Account type: chosen at signup — Mobile DJ or Club/Bar DJ — and it is LOCKED afterward (it shapes the booking form, pricing, and planners vs riders). It CANNOT be switched on an existing account. To change type, the DJ has to DELETE this account and sign up again, choosing the other type. Don't tell them to email support to "switch it" — there's no switch; it's delete and re-create.
+- DJs CANNOT book other DJs. A DJ account is for RECEIVING bookings, not placing them. If the DJ asks how to book/hire another DJ (e.g. a mobile DJ for their own party), tell them they'd need a separate HOST account to do that — a DJ account can't book through the site. Do NOT send them to "Discover Other DJs" to book, because a DJ account can't submit a booking there.
 - Planners vs riders: Mobile DJ accounts use PLANNERS (client fills in timeline, must-play/do-not-play songs, special moments; customizable per event type). Club/Bar DJ accounts use RIDERS (send technical + hospitality requirements to the venue).
 - Booking pipeline (the stages on each confirmed booking card) DIFFERS by DJ type. Shared stages: the request/accept, Contract (if required), Deposit, and Balance. Then: MOBILE DJs have a PLANNER stage (send the planner, client fills it in); CLUB/BAR DJs have a RIDER stage and a GUEST LIST stage instead — there is no planner on club/bar bookings, and no rider/guest-list on mobile bookings. When explaining "what's left to do on this booking" or the steps, use the stages for THIS DJ's type, not the other.
 - Contracts: build from the booking's details or your own text, send for e-signature; the DJ signs first, then the client. Track status from the booking. Both get a copy once signed.
