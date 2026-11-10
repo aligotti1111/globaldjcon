@@ -191,6 +191,11 @@ export default function ContractPortal({
   // that so "Lock it in & send" on a brand-new contract can require a save first,
   // and so the leave-warning copy is accurate.
   const [fieldsSaved, setFieldsSaved] = useState(false);
+  // Whether the DJ has saved AT LEAST ONCE in this builder session. Distinct from
+  // fieldsSaved (which flips back to false on the next edit): if a brand-new
+  // contract is abandoned having NEVER been saved, we delete it so it doesn't
+  // linger in the list. Once saved even once, the contract is real and we keep it.
+  const [everSaved, setEverSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [savingStd, setSavingStd] = useState(false);
   const [stdDisclaimer, setStdDisclaimer] = useState(false);
@@ -289,7 +294,20 @@ export default function ContractPortal({
   }
   function requestLeave(action: () => void) {
     if (needsLeaveWarning()) {
-      setLeaveConfirm(() => action);
+      // Abandoning a BRAND-NEW contract that was never saved: actually delete it
+      // so "leave without saving" means the contract isn't created. (A contract
+      // saved even once in this session is real — we keep it and just close.)
+      const editingC = contracts.find((c) => c.id === editingId);
+      const isStd = !!editingC?.is_standard;
+      const discardNew = view === 'builder' && builderNew && !everSaved && !isStd && !!editingId;
+      const id = editingId;
+      const wrapped = discardNew
+        ? async () => {
+            try { if (id) { await fetch(`/api/contracts?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); await load(); } } catch { /* ignore */ }
+            action();
+          }
+        : action;
+      setLeaveConfirm(() => wrapped);
     } else {
       action();
     }
@@ -424,7 +442,7 @@ export default function ContractPortal({
     // chip-based wording editor, which IS their anchor-tag editor.
     if (c.is_standard) { openStandardText(c); return; }
     if (!isNew) void checkSignatures(c.id);
-    setFieldsSaved(false);
+    setFieldsSaved(false); setEverSaved(false);
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -445,8 +463,10 @@ export default function ContractPortal({
       });
       await load();
       // The DJ explicitly saved in the builder — mark it so the leave-warning and
-      // the "Lock it in & send" gate know the layout is persisted.
+      // the "Lock it in & send" gate know the layout is persisted. everSaved stays
+      // true for the rest of the session so we never delete a contract they saved.
       setFieldsSaved(true);
+      setEverSaved(true);
       // After the DJ saves fields, re-check whether the client signature is
       // present so the red warning + proceed gate update live.
       if (editingId) void checkSignatures(editingId);
@@ -504,7 +524,7 @@ export default function ContractPortal({
       // (signatures, auto-fill) on the document, DocuSeal-style.
       const cid = json.contractId || editingId;
       if (cid) {
-        setEditingId(cid); setFieldsSaved(false); setView('builder'); setBuilderToken(null);
+        setEditingId(cid); setFieldsSaved(false); setEverSaved(false); setView('builder'); setBuilderToken(null);
         try {
           const tres = await fetch('/api/contracts/builder-token', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
