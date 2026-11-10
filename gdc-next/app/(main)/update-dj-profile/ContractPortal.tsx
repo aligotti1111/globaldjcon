@@ -184,6 +184,13 @@ export default function ContractPortal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [builderToken, setBuilderToken] = useState<string | null>(null);
+  // Whether the DJ has saved the field layout in THIS builder session. The
+  // DocuSeal builder runs with autosave OFF (so dragging a field doesn't persist
+  // on its own — see the builder render below); it only writes when the DJ hits
+  // the builder's Save button, which fires onSave → handleBuilderSave. We track
+  // that so "Lock it in & send" on a brand-new contract can require a save first,
+  // and so the leave-warning copy is accurate.
+  const [fieldsSaved, setFieldsSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [savingStd, setSavingStd] = useState(false);
   const [stdDisclaimer, setStdDisclaimer] = useState(false);
@@ -266,10 +273,22 @@ export default function ContractPortal({
     if (cur == null) return false;
     return cur.trim() !== wordingBaseline.trim();
   }
-  // Run `action` to leave the editor, but if there are unsaved wording edits,
-  // ask first. The confirm modal below calls the stashed action on "Leave".
+  // Run `action` to leave an editor, but ask first when leaving would drop work.
+  // Two cases warrant a confirm:
+  //   • wording editors (standard / paste) with unsaved text edits, and
+  //   • the DocuSeal field builder — the DJ must hit "Save changes" / "Create
+  //     Contract" to finalize; leaving via ✕, the backdrop or Cancel otherwise
+  //     discards a new contract / the edits, so warn instead of leaving silently.
+  function needsLeaveWarning(): boolean {
+    if ((view === 'standard' || view === 'paste') && isWordingDirty()) return true;
+    // In the field builder, only warn when there are UNSAVED layout changes —
+    // i.e. the DJ hasn't hit "Save fields" since the last edit. (Autosave is off,
+    // so leaving before saving genuinely drops those edits.)
+    if (view === 'builder' && !fieldsSaved) return true;
+    return false;
+  }
   function requestLeave(action: () => void) {
-    if ((view === 'standard' || view === 'paste') && isWordingDirty()) {
+    if (needsLeaveWarning()) {
       setLeaveConfirm(() => action);
     } else {
       action();
@@ -405,6 +424,7 @@ export default function ContractPortal({
     // chip-based wording editor, which IS their anchor-tag editor.
     if (c.is_standard) { openStandardText(c); return; }
     if (!isNew) void checkSignatures(c.id);
+    setFieldsSaved(false);
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -424,6 +444,9 @@ export default function ContractPortal({
         body: JSON.stringify({ templateId: String(id), name, contractId: editingId }),
       });
       await load();
+      // The DJ explicitly saved in the builder — mark it so the leave-warning and
+      // the "Lock it in & send" gate know the layout is persisted.
+      setFieldsSaved(true);
       // After the DJ saves fields, re-check whether the client signature is
       // present so the red warning + proceed gate update live.
       if (editingId) void checkSignatures(editingId);
@@ -481,7 +504,7 @@ export default function ContractPortal({
       // (signatures, auto-fill) on the document, DocuSeal-style.
       const cid = json.contractId || editingId;
       if (cid) {
-        setEditingId(cid); setView('builder'); setBuilderToken(null);
+        setEditingId(cid); setFieldsSaved(false); setView('builder'); setBuilderToken(null);
         try {
           const tres = await fetch('/api/contracts/builder-token', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -565,7 +588,13 @@ export default function ContractPortal({
         <div onClick={(e) => { e.stopPropagation(); setLeaveConfirm(null); }} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 12, padding: '1.3rem', boxShadow: '0 24px 60px rgba(0,0,0,.4)' }}>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: '#111', marginBottom: '.5rem' }}>Leave without saving?</div>
-            <p style={{ margin: '0 0 1.1rem', fontSize: '.85rem', color: '#555', lineHeight: 1.5 }}>You&rsquo;ve made changes to the wording that haven&rsquo;t been saved. If you leave now, they&rsquo;ll be lost.</p>
+            <p style={{ margin: '0 0 1.1rem', fontSize: '.85rem', color: '#555', lineHeight: 1.5 }}>{
+              view === 'builder'
+                ? (builderNew
+                    ? 'You haven’t finished setting up this contract. Hit “Create Contract” to save it — if you leave now, it won’t be created and your field changes will be lost.'
+                    : 'You haven’t saved your changes. Hit “Save changes” to keep them — if you leave now, your edits to this contract’s fields will be lost.')
+                : 'You’ve made changes to the wording that haven’t been saved. If you leave now, they’ll be lost.'
+            }</p>
             <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setLeaveConfirm(null)} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.82rem' }}>Keep editing</button>
               <button type="button" onClick={() => { const a = leaveConfirm; setLeaveConfirm(null); if (a) a(); }} style={{ background: '#c0392b', border: 'none', color: '#fff', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.82rem' }}>Leave without saving</button>
@@ -623,7 +652,7 @@ export default function ContractPortal({
         <div style={{ padding: '.85rem 1rem', borderBottom: '1px solid #eee', background: '#fff' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contract name"
             style={{ width: '50%', boxSizing: 'border-box', padding: '.55rem .75rem', borderRadius: 6, border: '1px solid #ccc', color: '#111', fontSize: '.95rem', fontWeight: 600 }} />
-          <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. {bookingMode ? 'Then Lock it in.' : 'Then save your changes.'}</div>
+          <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. Your layout changes aren&rsquo;t kept until you hit the <strong>Save fields</strong> button in the builder{bookingMode ? ', then Lock it in below.' : '.'}</div>
           {isStdBuilder && (
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
               <button type="button" onClick={() => { setStdWordingOnly(false); setView('standard'); }} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit Contract Text</button>
@@ -634,7 +663,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={builderFields} onlyDefinedFields={true} withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={builderFields} onlyDefinedFields={true} autosave={false} saveButtonText="Save fields" withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} onChange={() => setFieldsSaved(false)} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ borderTop: '1px solid #eee', padding: '.6rem 1rem', background: '#fff' }}>
@@ -664,8 +693,12 @@ export default function ContractPortal({
           })()}
           {(() => {
             const needsClientSig = !isStdBuilder && !!sigCheck && !sigCheck.hasClient;
-            const blocked = (isStdBuilder && bookingMode && !stdDisclaimer) || needsClientSig || sigChecking;
+            // A brand-new contract being sent on a booking must have its field
+            // layout saved first (autosave is off), or there's nothing to send.
+            const needsSaveFirst = bookingMode && builderNew && !fieldsSaved;
+            const blocked = (isStdBuilder && bookingMode && !stdDisclaimer) || needsClientSig || needsSaveFirst || sigChecking;
             const title = needsClientSig ? 'Add a Client signature first'
+              : needsSaveFirst ? 'Hit “Save fields” in the builder first'
               : (isStdBuilder && bookingMode && !stdDisclaimer) ? 'Accept the disclaimer to finish'
               : undefined;
             return (
@@ -680,10 +713,14 @@ export default function ContractPortal({
                       if (!r.hasClient) return;
                     }
                     try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {}
-                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { setView('grid'); }
+                    // In Booking Settings the actual save is the builder's own
+                    // "Save fields" button, so this is just "Done" — route it
+                    // through the leave guard so closing with unsaved field edits
+                    // still warns. Booking mode proceeds to the send.
+                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { requestLeave(() => setView('grid')); }
                   }}
                   style={{ background: blocked ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: blocked ? 'not-allowed' : 'pointer' }}>
-                  {sigChecking ? 'Checking…' : bookingMode ? 'Lock it in & send →' : (builderNew ? 'Create Contract' : 'Save changes')}
+                  {sigChecking ? 'Checking…' : bookingMode ? 'Lock it in & send →' : 'Done'}
                 </button>
               </div>
             );
