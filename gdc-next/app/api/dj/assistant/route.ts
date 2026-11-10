@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext, canBilling } from '@/lib/acting';
-import { canBook, type AccessFields } from '@/lib/access';
+import { canBook, effectiveTier, TIERS, type AccessFields } from '@/lib/access';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import {
   buildReceivedEvents,
@@ -238,7 +238,13 @@ async function handlePost(req: Request) {
     finance,
   };
 
-  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot);
+  // This DJ's own current plan — so the assistant answers "how many photos can I
+  // add?" etc. with THEIR exact caps, not just the generic table.
+  const myTier = effectiveTier(profile as AccessFields);
+  const td = TIERS[myTier];
+  const planLine = `\n\nTHIS DJ'S CURRENT PLAN: ${td.label}${td.monthlyPrice ? ` ($${td.monthlyPrice}/mo)` : ' (free)'}. Their media caps: ${td.photos} photos, ${td.videos} videos, ${td.mixes} mixes. Contracts: ${td.contractQuota}/billing cycle. Team seats: ${td.seats}. When they ask about their own limits, use THESE numbers; to raise a cap they upgrade at /subscribe.`;
+
+  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine;
 
   // ── Call Anthropic (no SDK dependency — plain REST) ──
   try {
