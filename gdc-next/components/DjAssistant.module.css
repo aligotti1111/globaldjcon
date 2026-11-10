@@ -87,6 +87,22 @@
   background: #00f5c4;
   box-shadow: 0 0 8px rgba(0, 245, 196, 0.8);
 }
+.headBtns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.min {
+  background: none;
+  border: none;
+  color: #8b8b96;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px 0;
+  display: inline-flex;
+  align-items: center;
+}
+.min:hover { color: #fff; }
 .close {
   background: none;
   border: none;
