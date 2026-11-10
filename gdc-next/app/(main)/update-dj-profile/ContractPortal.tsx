@@ -367,36 +367,30 @@ export default function ContractPortal({
     setError(null); setEditingId(null); setName('My contract'); setPasteText(''); setBuilderNew(false); setView('paste');
   }
 
-  // Create a fresh Global DJ Connect standard contract and open it straight on
-  // the FIELDS builder (fields auto-placed from the tags). The DJ can hit
-  // "Edit text" to change wording; the disclaimer is on the fields page.
+  // Create a fresh Global DJ Connect standard contract, then open its WORDING/CHIP
+  // editor — NOT the DocuSeal drag builder. A standard contract is an HTML
+  // template; its fields are the green chips in the wording, so there's no PDF
+  // builder step (that empty "Add a document" screen is DocuSeal's for templates
+  // with no uploaded PDF). Clicking Save commits it; abandoning deletes the new row.
   async function openStandardTemplate(variant?: 'wedding') {
     setError(null);
     const defText = variant === 'wedding' ? WEDDING_CONTRACT_TEXT : defaultContractText(djType);
     const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect Standard Contract';
     setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
-    setBuilderNew(true); setStdWordingOnly(false);
-    // Fresh and uncommitted: no unsaved field edits yet (fieldsSaved=true), but
-    // everSaved=false so abandoning via ✕/backdrop deletes it (no duplicate rows).
-    // Clicking "Done" commits it; the Standard contract is complete on creation.
-    setEverSaved(false); setSigCheck(null);
-    setView('builder'); setBuilderToken(null); setSavingStd(true);
+    setBuilderNew(true); setEverSaved(false); setSigCheck(null);
+    setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: defText, name: nm, contractId: null, logoUrl: null }),
       });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string };
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; name?: string };
       if (!res.ok || !json.ok || !json.contractId) throw new Error(json.error || 'Could not create the standard contract.');
       await load();
       setEditingId(json.contractId);
-      const tres = await fetch('/api/contracts/builder-token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractId: json.contractId, name: nm }),
-      });
-      const tjson = (await tres.json().catch(() => ({}))) as { token?: string; error?: string };
-      if (tjson.token) setBuilderToken(tjson.token);
-      else setError(tjson.error || 'Could not open the field editor.');
+      if (json.name) setName(json.name);
+      setStdWordingOnly(true);  // Save → back to the list
+      setView('standard');
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the standard contract.'); }
     finally { setSavingStd(false); }
   }
@@ -528,32 +522,13 @@ export default function ContractPortal({
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
       await load();
-      // "Edit Wording" from the list is wording-only: save and go straight back
-      // to the contracts list (or close), never on to the anchor-tags builder.
-      if (stdWordingOnly) {
-        setSavingStd(false);
-        if (inline) { setView('grid'); } else { closePortal(); }
-        return;
-      }
-      // Hand off to the drag builder so the DJ can place/reposition the fields
-      // (signatures, auto-fill) on the document, DocuSeal-style.
-      const cid = json.contractId || editingId;
-      if (cid) {
-        // The wording was just saved to the DB here, so the contract is real —
-        // mark it saved so leaving the builder doesn't delete it.
-        setEditingId(cid); setEverSaved(true); setView('builder'); setBuilderToken(null);
-        try {
-          const tres = await fetch('/api/contracts/builder-token', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contractId: cid, name: name || 'Standard contract' }),
-          });
-          const tjson = (await tres.json().catch(() => ({}))) as { token?: string; error?: string };
-          if (tjson.token) setBuilderToken(tjson.token);
-          else setError(tjson.error || 'Could not open the field editor.');
-        } catch { setError('Could not open the field editor.'); }
-      } else {
-        setView('grid');
-      }
+      // A standard contract is edited entirely here (wording + chips = the fields).
+      // There is NO separate DocuSeal drag-builder step, so saving always commits
+      // the contract and returns to the list. everSaved=true so a brand-new one
+      // isn't deleted on the way out.
+      setEverSaved(true);
+      setSavingStd(false);
+      if (inline) { setView('grid'); } else { closePortal(); }
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setSavingStd(false); }
   }
