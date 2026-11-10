@@ -717,7 +717,6 @@ export default function ContractPortal({
           <div style={{ color: '#777', fontSize: '.75rem', marginTop: 6 }}>Fields fill in automatically from the booking. Drag any field to move it, or add ones you need — your fields (name, date, price, your signature) are under <strong>DJ</strong> in the top-right dropdown; the <strong>client&rsquo;s signature</strong> is under <strong>Client</strong>. {bookingMode ? 'When it looks right, hit Lock it in below.' : 'When it looks right, hit Save below.'}</div>
           {isStdBuilder && (
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-              <button type="button" onClick={() => { setStdWordingOnly(false); setView('standard'); }} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.45rem 1.1rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Edit Contract Text</button>
               <button type="button" onClick={() => logoInputFields.current?.click()} disabled={logoBusy} style={{ background: 'transparent', border: '1px solid #ccc', color: '#0a7', borderRadius: 6, padding: '.45rem 1.1rem', cursor: logoBusy ? 'wait' : 'pointer', fontSize: '.8rem', fontWeight: 600 }}>{logoBusy ? 'Adding logo…' : logoUrl ? 'Change logo' : 'Add logo to contract'}</button>
               <input ref={logoInputFields} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoFromFields} />
             </div>
@@ -760,7 +759,13 @@ export default function ContractPortal({
               : (isStdBuilder && bookingMode && !stdDisclaimer) ? 'Accept the disclaimer to finish'
               : undefined;
             return (
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', justifyContent: isStdBuilder ? 'space-between' : 'flex-end', alignItems: 'center', gap: '.5rem' }}>
+                {isStdBuilder && (
+                  <button type="button" onClick={() => { setStdWordingOnly(false); setView('standard'); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1rem', cursor: 'pointer', fontSize: '.82rem', fontWeight: 600 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+                    Edit Contract Text
+                  </button>
+                )}
                 <button type="button" disabled={blocked} title={title}
                   onClick={async () => {
                     // Gate written/uploaded contracts on a client signature.
