@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './DjAssistant.module.css';
 
-type Msg = { role: 'user' | 'assistant'; content: string; ts: number };
+type Msg = { role: 'user' | 'assistant'; content: string; ts: number; isError?: boolean };
 
 function fmtTime(ts: number): string {
   try {
@@ -134,27 +134,31 @@ export default function DjAssistant() {
   const send = async () => {
     const text = input.trim();
     if (!text || busy) return;
-    const next: Msg[] = [...messages, { role: 'user', content: text, ts: Date.now() }];
-    setMessages(next);
+    const userMsg: Msg = { role: 'user', content: text, ts: Date.now() };
+    setMessages((m) => [...m, userMsg]);
     setInput('');
     setBusy(true);
     try {
+      // Only send REAL turns to the server — drop any prior error placeholders
+      // (e.g. "Connection problem…") so they don't pollute the model's context.
+      const history = messages.filter((m) => !m.isError);
       const r = await fetch('/api/dj/assistant', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: [...history, userMsg] }),
       });
       // Read as text first so we can surface the real HTTP status even when the
       // body isn't JSON (a platform 500/504 returns an HTML error page).
       const bodyText = await r.text().catch(() => '');
       let j: { reply?: string; error?: string } = {};
       try { j = JSON.parse(bodyText); } catch { /* non-JSON error page */ }
-      const reply = r.ok && j?.reply
+      const ok = r.ok && !!j?.reply;
+      const reply = ok
         ? String(j.reply)
         : (j?.error ? String(j.error) : `Something went wrong (HTTP ${r.status}). Please try again.`);
-      setMessages((m) => [...m, { role: 'assistant', content: reply, ts: Date.now() }]);
+      setMessages((m) => [...m, { role: 'assistant', content: reply, ts: Date.now(), isError: !ok }]);
     } catch {
-      setMessages((m) => [...m, { role: 'assistant', content: 'Connection problem — please try again.', ts: Date.now() }]);
+      setMessages((m) => [...m, { role: 'assistant', content: 'Connection problem — please try again.', ts: Date.now(), isError: true }]);
     } finally {
       setBusy(false);
     }
