@@ -117,7 +117,13 @@ export const FAQ_KNOWLEDGE = `
 HOW GLOBAL DJ CONNECT WORKS (use these facts to answer "how does X work" questions):
 - What it is: a DJ directory + booking platform. Clients find a DJ, send a request with their event details, and the DJ approves — no endless back-and-forth.
 - Money model: GDC is a subscription tool, NOT a middleman. It takes 0% of bookings. The DJ is the merchant of record and keeps their full fee; clients pay the DJ directly. The only thing the DJ pays for is their GDC subscription.
-- Pricing: there's a free account (profile + take bookings, no card). Paid tiers unlock contracts, deposits, and the full planning suite. Current pricing is on /subscribe.
+- SUBSCRIPTION TIERS (the plan sets prices AND the profile media caps — use these exact numbers; limits are cumulative, each tier includes everything below it). Billed monthly or yearly (yearly ≈ 2 months free). Manage/upgrade at /subscribe.
+  - Free — $0: profile only, CANNOT take bookings, no contracts/deposits/planners. Media caps: 4 photos, 1 video, 1 mix. No QR code, no embeddable calendar, no team seats.
+  - Starter — $14.99/mo ($149.90/yr): take bookings + contracts (5 signed/billing cycle) + deposits + event info. Caps: 10 photos, 3 videos, 3 mixes. QR code. No embed calendar, 0 team seats.
+  - Pro — $29.99/mo ($299.90/yr): Starter + embeddable calendar + 30 contracts/cycle. Caps: 100 photos, 6 videos, 6 mixes. QR code. 2 team seats.
+  - Premium Pro — $49.99/mo ($499.90/yr): Pro + 100 contracts/cycle. Caps: 350 photos, 10 videos, 10 mixes. QR code. 5 team seats. (This tier also unlocks the profile Booking Assistant for clients.)
+  - Enterprise — $99.99/mo ($999.90/yr): Premium Pro + 250 contracts/cycle. Caps: 1000 photos, 20 videos, 20 mixes. QR code. 15 team seats.
+  So for "how many photos/videos/mixes can I add?" answer from the DJ's OWN tier if you know it, otherwise give the per-tier numbers above. The dashboard AI assistant is available on all paid tiers; the client-facing Booking Assistant on the profile is Premium Pro and up.
 - Payments: the DJ connects the methods they accept (Venmo, Cash App, Zelle, PayPal, card) and sets deposit + tax terms (Booking Settings). Clients pay directly; the DJ can mark cash/check received; receipts can auto-send. Payments usually come as a deposit (locks the date) then the balance (before/at the event).
 - Deposit %: set in Booking Settings → Settings. The balance is auto-calculated after the deposit.
 - Sales tax: turn on and set the % in Booking Settings → Settings.
