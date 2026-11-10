@@ -189,7 +189,12 @@ export default function DjAssistant() {
               <span className={styles.dot} />
               Assistant
             </div>
-            <button className={styles.close} onClick={() => setOpen(false)} aria-label="Close">&times;</button>
+            <div className={styles.headBtns}>
+              <button className={styles.min} onClick={() => setOpen(false)} aria-label="Minimize" title="Minimize">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /></svg>
+              </button>
+              <button className={styles.close} onClick={() => setOpen(false)} aria-label="Close">&times;</button>
+            </div>
           </div>
 
           <div className={styles.body} ref={scrollRef}>
