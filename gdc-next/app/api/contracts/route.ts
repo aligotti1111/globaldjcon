@@ -25,7 +25,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('contracts')
-    .select('id, name, docuseal_template_id, is_standard, body_text, updated_at')
+    .select('id, name, docuseal_template_id, is_standard, body_text, logo_url, updated_at')
     .eq('dj_id', acting.djId)
     .order('updated_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
