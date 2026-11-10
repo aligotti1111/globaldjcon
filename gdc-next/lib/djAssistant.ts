@@ -78,7 +78,7 @@ MAIN PAGES:
 - Subscription / plan / billing / upgrade: /subscribe
 - Discover other DJs (directory): /djs — browse-only for a DJ account; a DJ CANNOT book another DJ from here (booking requires a host account).
 
-EDIT YOUR PUBLIC PROFILE (/update-dj-profile): bio, photos, mixes, video, banner, FAQ, social links, name/location colors, and — on paid plans — your QR code + shareable profile link (in the Profile Settings tab, under your name).
+EDIT YOUR PUBLIC PROFILE — do this DIRECTLY ON your own profile page. Open your DJ profile (your public profile) and use the on-page edit controls (the pencil / "Edit" buttons on each section) to change your bio, photos, mixes, video, banner, FAQ, social links, name/location colors, and — on paid plans — your QR code + shareable profile link. There is NO separate "Update DJ Profile" editor page for this content anymore: all of it is edited inline on the profile itself. (So when a DJ asks how to update their bio, mixes, photos, FAQ, etc., tell them to go to their own profile and edit it there, NOT to "Update DJ Profile.")
 
 ACCOUNT SETTINGS (/account-settings) — tabs:
 - Profile Settings: your DJ name, email, password, business logo, and the Private-profile toggle.
@@ -121,7 +121,7 @@ HOW GLOBAL DJ CONNECT WORKS (use these facts to answer "how does X work" questio
 - Payments: the DJ connects the methods they accept (Venmo, Cash App, Zelle, PayPal, card) and sets deposit + tax terms (Booking Settings). Clients pay directly; the DJ can mark cash/check received; receipts can auto-send. Payments usually come as a deposit (locks the date) then the balance (before/at the event).
 - Deposit %: set in Booking Settings → Settings. The balance is auto-calculated after the deposit.
 - Sales tax: turn on and set the % in Booking Settings → Settings.
-- Per-day pricing: you CAN charge more (or less) for a specific date — both DJ types. In Edit Profile, open your availability calendar, tap the date → "Edit day." Mobile DJs set a price adjustment % (e.g. +20% for a high-demand day); club/bar DJs set a per-day rate override (a specific flat or hourly rate for that date). Bookings on that date are automatically quoted at the adjusted amount; the client just sees the adjusted price — no manual counter-offer needed. This is the built-in way to raise prices on peak dates.
+- Per-day pricing: you CAN charge more (or less) for a specific date — both DJ types. On your own profile, open your availability calendar (the Booking tab), tap the date → "Edit day." Mobile DJs set a price adjustment % (e.g. +20% for a high-demand day); club/bar DJs set a per-day rate override (a specific flat or hourly rate for that date). Bookings on that date are automatically quoted at the adjusted amount; the client just sees the adjusted price — no manual counter-offer needed. This is the built-in way to raise prices on peak dates.
 - Response windows: a DJ has up to 5 days to answer a request (or until the event date, whichever is first); a client has 5 days to approve a counter-offer. Unanswered requests auto-decline.
 - Account type: chosen at signup — Mobile DJ or Club/Bar DJ — and it is LOCKED afterward (it shapes the booking form, pricing, and planners vs riders). It CANNOT be switched on an existing account. To change type, the DJ has to DELETE this account and sign up again, choosing the other type. Don't tell them to email support to "switch it" — there's no switch; it's delete and re-create.
 - DJs CANNOT book other DJs. A DJ account is for RECEIVING bookings, not placing them. If the DJ asks how to book/hire another DJ (e.g. a mobile DJ for their own party), tell them they'd need a separate HOST account to do that — a DJ account can't book through the site. Do NOT send them to "Discover Other DJs" to book, because a DJ account can't submit a booking there.
@@ -134,7 +134,7 @@ HOW GLOBAL DJ CONNECT WORKS (use these facts to answer "how does X work" questio
 - Notifications: key events (new request, accepted booking, sent contract, received payment) are emailed; clients can opt into SMS for their booking.
 - Change plan: upgrade/downgrade anytime on /subscribe via "Manage Subscription". Upgrades are instant; downgrades keep current features until the paid period ends. Profile, bookings, and history stay intact.
 - Cancel subscription: /subscribe → "Manage Subscription" toolbar, or email info@globaldjconnect.com.
-- QR code: Edit Profile (Profile Settings), right under your public profile link — paid feature.
+- QR code: on your own profile, right under your public profile link (use the on-page edit controls) — paid feature.
 - Cancellation/refunds between a DJ and a client are handled directly between them (GDC never holds the money); a contract is recommended.
 `.trim();
 
