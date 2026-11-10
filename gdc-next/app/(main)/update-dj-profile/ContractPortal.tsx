@@ -253,6 +253,11 @@ export default function ContractPortal({
   const editorRef = useRef<HTMLDivElement>(null);
   // The standard-contract "Edit Contract Text" editor (chips for {{tags}}).
   const stdRef = useRef<HTMLDivElement>(null);
+  // DocuSeal's builder fires onChange during its INITIAL field population, not
+  // just on real edits. We ignore onChange until onLoad fires, so opening an
+  // already-saved contract doesn't flip fieldsSaved=false (which would wrongly
+  // warn on leave and block "Lock it in & send"). Reset to false on every open.
+  const builderReadyRef = useRef(false);
 
   // Seed the rich-text editor with the contract content when the write/edit
   // screen opens (uncontrolled contenteditable, read back on save).
@@ -288,7 +293,16 @@ export default function ContractPortal({
   //   • the DocuSeal field builder — the DJ must hit "Save changes" / "Create
   //     Contract" to finalize; leaving via ✕, the backdrop or Cancel otherwise
   //     discards a new contract / the edits, so warn instead of leaving silently.
+  // A brand-new contract that hasn't been committed (saved or "Done") yet — so
+  // leaving it discards/deletes it. True in the field builder AND the standard
+  // wording editor reached from it (a new standard has a DB row from the tile).
+  function isAbandoningNew(): boolean {
+    return builderNew && !everSaved && !!editingId && (view === 'builder' || view === 'standard');
+  }
   function needsLeaveWarning(): boolean {
+    // Abandoning a brand-new, uncommitted contract always warns (then deletes) —
+    // even from the clean wording view, so the Standard tile can't leave stray rows.
+    if (isAbandoningNew()) return true;
     if ((view === 'standard' || view === 'paste') && isWordingDirty()) return true;
     // In the field builder, only warn when there are UNSAVED layout changes —
     // i.e. the DJ hasn't hit "Save fields" since the last edit. (Autosave is off,
@@ -310,7 +324,7 @@ export default function ContractPortal({
       // doesn't pile up duplicates. everSaved is true for existing contracts and
       // once the DJ saves/finishes, so those are never deleted. Covers both the
       // field builder and the standard wording editor reached from it.
-      const discardNew = !opts?.keep && builderNew && !everSaved && !!editingId && (view === 'builder' || view === 'standard');
+      const discardNew = !opts?.keep && isAbandoningNew();
       const id = editingId;
       const wrapped = discardNew
         ? async () => {
@@ -364,7 +378,7 @@ export default function ContractPortal({
 
   // Open the blank "write your contract" screen (new contract).
   function openPaste() {
-    setError(null); setEditingId(null); setName('My contract'); setPasteText(''); setView('paste');
+    setError(null); setEditingId(null); setName('My contract'); setPasteText(''); setBuilderNew(false); setView('paste');
   }
 
   // Create a fresh Global DJ Connect standard contract and open it straight on
@@ -379,7 +393,7 @@ export default function ContractPortal({
     // Fresh and uncommitted: no unsaved field edits yet (fieldsSaved=true), but
     // everSaved=false so abandoning via ✕/backdrop deletes it (no duplicate rows).
     // Clicking "Done" commits it; the Standard contract is complete on creation.
-    setFieldsSaved(true); setEverSaved(false);
+    setFieldsSaved(true); setEverSaved(false); setSigCheck(null); builderReadyRef.current = false;
     setView('builder'); setBuilderToken(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
@@ -403,7 +417,7 @@ export default function ContractPortal({
 
   // Reopen an existing text contract's words so the DJ can edit and re-lock.
   function openTextEditor(c: Contract) {
-    setError(null); setEditingId(c.id); setName(c.name); setPasteText(c.body_text || ''); setView('paste');
+    setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name); setPasteText(c.body_text || ''); setView('paste');
   }
 
   // Edit the WORDING of a standard contract — opens the standard text editor
@@ -448,19 +462,18 @@ export default function ContractPortal({
     // Reset the signature check for the new contract. Standard/wedding never
     // need it; written/uploaded get checked on open and after each save.
     setSigCheck(null);
-    // STANDARD contracts don't use the DocuSeal document builder — their fields
-    // are the green chips in the wording (they mark where booking details and
-    // the DJ/Client signatures fill in automatically), and the PDF is generated
-    // at send time. Opening the DocuSeal builder here would show its empty
-    // "Add a new document / Replace existing document" screen whenever the
-    // template PDF hasn't been generated yet. So route standard contracts to the
-    // chip-based wording editor, which IS their anchor-tag editor.
-    if (c.is_standard) { openStandardText(c); return; }
+    // Standard contracts open straight to the FIELDS builder (Edit Anchor Tags).
+    // Their DocuSeal template is built from HTML by /api/contracts/standard, so it
+    // already has a document — the builder shows it with the fields placed. The
+    // builder header also has an "Edit Contract Text" button for the wording.
+    // (Preload the saved wording so that button is ready.)
+    if (c.is_standard) { setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
+    setStdWordingOnly(false); // don't inherit a stale "Edit Wording" mode
     if (!isNew) void checkSignatures(c.id);
     // No unsaved field edits yet (fieldsSaved=true). everSaved marks a committed
     // contract that must never be deleted on abandon: an EXISTING contract is
     // already committed; a brand-NEW one isn't until the DJ saves or finishes.
-    setFieldsSaved(true); setEverSaved(!isNew);
+    setFieldsSaved(true); setEverSaved(!isNew); builderReadyRef.current = false;
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -545,7 +558,7 @@ export default function ContractPortal({
       if (cid) {
         // The wording was just saved to the DB here, so the contract is real —
         // mark it saved so leaving the builder doesn't delete it.
-        setEditingId(cid); setFieldsSaved(true); setEverSaved(true); setView('builder'); setBuilderToken(null);
+        setEditingId(cid); setFieldsSaved(true); setEverSaved(true); builderReadyRef.current = false; setView('builder'); setBuilderToken(null);
         try {
           const tres = await fetch('/api/contracts/builder-token', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -724,7 +737,7 @@ export default function ContractPortal({
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {error ? <div style={{ padding: '2rem', color: '#c00' }}>{error}</div>
-            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={builderFields} onlyDefinedFields={true} autosave={false} saveButtonText="Save fields" withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onSave={handleBuilderSave} onChange={() => setFieldsSaved(false)} />
+            : builderToken ? <DocusealBuilder token={builderToken} roles={['DJ', 'Client/Host']} fields={builderFields} onlyDefinedFields={true} autosave={false} saveButtonText="Save fields" withSendButton={false} withRecipientsButton={false} withSignYourselfButton={false} withAddPageButton={false} withRevisions={false} withDocumentsList={false} withTitle={false} onLoad={() => { builderReadyRef.current = true; }} onSave={handleBuilderSave} onChange={() => { if (builderReadyRef.current) setFieldsSaved(false); }} />
             : <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Opening builder…</div>}
         </div>
         <div style={{ borderTop: '1px solid #eee', padding: '.6rem 1rem', background: '#fff' }}>
@@ -781,7 +794,13 @@ export default function ContractPortal({
                     // discard a brand-new one). It still warns about unsaved field
                     // edits. Booking mode proceeds straight to the send.
                     setEverSaved(true);
-                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { requestLeave(() => setView('grid'), { keep: true }); }
+                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); }
+                    // Done = keep & close. If there are no unsaved field edits, just
+                    // close (no confirm — setEverSaved above is async, so we don't
+                    // route through the leave guard, which would read stale state and
+                    // pop a bogus warning). Only warn when real field edits are unsaved.
+                    else if (fieldsSaved) { setView('grid'); }
+                    else { requestLeave(() => setView('grid'), { keep: true }); }
                   }}
                   style={{ background: blocked ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: blocked ? 'not-allowed' : 'pointer' }}>
                   {sigChecking ? 'Checking…' : bookingMode ? 'Lock it in & send →' : 'Done'}
@@ -815,7 +834,12 @@ export default function ContractPortal({
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
         <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
-          <button type="button" onClick={() => requestLeave(() => setView(editingId && !stdWordingOnly ? 'builder' : 'grid'))} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{editingId && !stdWordingOnly ? 'Back to fields' : 'Cancel'}</button>
+          {(() => { const backToFields = editingId && !stdWordingOnly;
+            // "Back to fields" is in-flow navigation (same contract) → keep:true so
+            // it never deletes. "Cancel" can discard a brand-new one.
+            return (
+          <button type="button" onClick={() => requestLeave(() => setView(backToFields ? 'builder' : 'grid'), backToFields ? { keep: true } : undefined)} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{backToFields ? 'Back to fields' : 'Cancel'}</button>
+            ); })()}
           <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : stdWordingOnly ? 'Save changes' : 'Save & review fields →'}</button>
         </div>
       </div>, true, 'Global DJ Connect Standard Contract',
