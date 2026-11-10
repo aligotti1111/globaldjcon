@@ -441,6 +441,30 @@ export default function ContractPortal({
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not open the builder.'); }
   }
 
+  // "Edit Anchor Tags" straight from a standard contract's row — jump right into
+  // the DocuSeal builder for it (skip the wording step). Seeds the edit state the
+  // builder + its "Edit Contract Text" back-button rely on. The contract already
+  // exists and is committed, so everSaved=true (abandoning never deletes it).
+  async function openStandardAnchors(c: Contract) {
+    setError(null);
+    setBuilderNew(false); setEverSaved(true); setSigCheck(null);
+    setEditingId(c.id); setName(c.name);
+    setText(c.body_text || defaultContractText(djType));
+    setLogoUrl(c.logo_url ?? null); setStdDisclaimer(false);
+    setStdWordingOnly(false);
+    setView('builder');
+    setBuilderToken(null);
+    try {
+      const res = await fetch('/api/contracts/builder-token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: c.id, name: c.name }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
+      if (!res.ok || !json.token) throw new Error(json.error || 'Could not open the builder.');
+      setBuilderToken(json.token);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not open the builder.'); }
+  }
+
   // Lock the text in: (re)build the contract from the text, then hand off to the
   // drag builder to place fields. Passes contractId when editing (re-lock).
   async function submitPastedText() {
@@ -915,15 +939,14 @@ export default function ContractPortal({
                       system (standard + written/pasted). Uploaded PDFs/images have
                       no editable text, so they only get data fields. */}
                   {(c.is_standard || c.body_text != null) && (
-                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c, false) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit Contract & Fields' : 'Edit Wording'}</button>
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c, true) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
                   )}
-                  {/* Standard contracts get both wording and fields through the one
-                      "Edit Contract & Fields" button above (wording → builder), so
-                      no separate anchor button. Written/uploaded (PDF) contracts
-                      keep their dedicated drag-builder entry below. */}
-                  {!c.is_standard && (
-                    <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
-                  )}
+                  {/* Edit Anchor Tags → the DocuSeal builder. Standard contracts jump
+                      straight in via openStandardAnchors (their template loads by id);
+                      written/uploaded (PDF) contracts use openCard. Both land in the
+                      same builder, so every editable contract row has the same pair
+                      of buttons. */}
+                  <button type="button" onClick={() => (c.is_standard ? openStandardAnchors(c) : openCard(c))} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
                 </>
               )}
               <button type="button" onClick={() => deleteContract(c)} title="Delete contract" aria-label="Delete contract" style={{ width: bookingMode ? 24 : undefined, flexShrink: 0, textAlign: 'center', lineHeight: 1, background: 'transparent', border: 'none', color: '#ff5f5f', cursor: 'pointer', fontSize: bookingMode ? '1rem' : '.75rem', fontWeight: 700 }}>{bookingMode ? '✕' : 'Delete'}</button>
