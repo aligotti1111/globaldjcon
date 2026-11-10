@@ -18,7 +18,11 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getActingContext, canBilling } from '@/lib/acting';
+import {
+  getActingContext, canBilling, canSettings, canManageTeam,
+  canAcceptBookings, canSendContracts, canRequestDeposit, canDiscounts,
+  canInvoice, canSendDocs, canEditProfile,
+} from '@/lib/acting';
 import { canBook, effectiveTier, TIERS, type AccessFields } from '@/lib/access';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import {
@@ -252,7 +256,30 @@ async function handlePost(req: Request) {
     ? `\n\nYOUR OWN PROFILE PAGE: /${mySlug} . Your booking calendar is /${mySlug}?tab=booking . To send the DJ to edit a day, their pricing, or availability, give a CLICKABLE markdown link to this — and when they name a specific date, deep-link to its month with &date=YYYY-MM-DD, e.g. [open your booking calendar on November 30](/${mySlug}?tab=booking&date=2026-11-30). Then they tap that day → "Edit day." Always prefer a clickable link to the booking calendar over telling them where to click.`
     : '';
 
-  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + profileLine;
+  // Who is actually using the assistant. Teammates act under the DJ's account
+  // but only within their seat's permissions — the assistant must respect that
+  // and never route them to areas they can't open, or reveal owner-only data.
+  const r = acting.role;
+  const yn = (ok: boolean, restriction: string) => (ok ? 'ALLOWED' : `NOT ALLOWED — ${restriction}`);
+  const rolePerm = acting.isMember
+    ? [
+        `\n\nWHO YOU ARE TALKING TO: a TEAMMATE on ${snapshot.djName}'s account, with the "${r}" role — NOT the owner. Honor their permissions strictly:`,
+        `- Finance / earnings / payout totals: ${yn(canBilling(r), 'OWNER-ONLY. You have no finance data for them; if they ask about money totals or earnings, say it is limited to the account owner and you cannot show it.')}`,
+        `- Billing / subscription / plan changes (/subscribe): OWNER-ONLY — never tell a teammate to change the plan or go to billing; say the owner handles that.`,
+        `- Manage Team (invite/remove teammates, roles): ${yn(canManageTeam(r), 'owner/admin only; do not send them to Team settings.')}`,
+        `- Settings (Booking Settings, Account Settings tabs like pricing/deposits/payment methods/tax): ${yn(canSettings(r), 'manager+ only; do not send them to Booking Settings or Account Settings to change these.')}`,
+        `- Accept / deny / counter booking requests, add manual bookings: ${yn(canAcceptBookings(r), 'manager+ only.')}`,
+        `- Send contracts: ${yn(canSendContracts(r), 'manager+ only.')}`,
+        `- Request deposits / change money state: ${yn(canRequestDeposit(r), 'manager+ only.')}`,
+        `- Discounts / promo codes: ${yn(canDiscounts(r), 'manager+ only.')}`,
+        `- Send invoices / receipts: ${yn(canInvoice(r), 'not permitted for this seat.')}`,
+        `- Send documents (planner, playlist, rider, guest list, flyer): ${yn(canSendDocs(r), 'not permitted for this seat.')}`,
+        `- Edit the public profile (non-booking tabs): ${yn(canEditProfile(r), 'not permitted for this seat.')}`,
+        `HARD RULE: Only guide the teammate through actions marked ALLOWED above, and only link them to pages those actions live on. For anything NOT ALLOWED, do NOT give steps, do NOT link the page, and do NOT reveal owner-only figures — briefly say it is outside their access and the account owner handles it. Never help a teammate get around their permissions.`,
+      ].join('\n')
+    : '';
+
+  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + profileLine + rolePerm;
 
   // ── Call Anthropic (no SDK dependency — plain REST) ──
   try {
