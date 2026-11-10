@@ -297,9 +297,11 @@ export default function ContractPortal({
       // Abandoning a BRAND-NEW contract that was never saved: actually delete it
       // so "leave without saving" means the contract isn't created. (A contract
       // saved even once in this session is real — we keep it and just close.)
-      const editingC = contracts.find((c) => c.id === editingId);
-      const isStd = !!editingC?.is_standard;
-      const discardNew = view === 'builder' && builderNew && !everSaved && !isStd && !!editingId;
+      // This covers the "Global DJ Connect Standard Contract" tile too: it creates
+      // the row immediately and opens the builder with builderNew=true, so leaving
+      // without saving should delete it rather than pile up duplicates. Editing an
+      // EXISTING standard contract never sets builderNew, so it's never deleted.
+      const discardNew = view === 'builder' && builderNew && !everSaved && !!editingId;
       const id = editingId;
       const wrapped = discardNew
         ? async () => {
@@ -365,6 +367,9 @@ export default function ContractPortal({
     const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect Standard Contract';
     setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
     setBuilderNew(true);
+    // Fresh, unsaved: if the DJ abandons this via ✕ without saving, it's deleted
+    // (so the Standard tile doesn't pile up duplicate contracts).
+    setFieldsSaved(false); setEverSaved(false);
     setView('builder'); setBuilderToken(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
@@ -524,7 +529,9 @@ export default function ContractPortal({
       // (signatures, auto-fill) on the document, DocuSeal-style.
       const cid = json.contractId || editingId;
       if (cid) {
-        setEditingId(cid); setFieldsSaved(false); setEverSaved(false); setView('builder'); setBuilderToken(null);
+        // The wording was just saved to the DB here, so the contract is real —
+        // mark it saved so leaving the builder doesn't delete it.
+        setEditingId(cid); setFieldsSaved(true); setEverSaved(true); setView('builder'); setBuilderToken(null);
         try {
           const tres = await fetch('/api/contracts/builder-token', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
