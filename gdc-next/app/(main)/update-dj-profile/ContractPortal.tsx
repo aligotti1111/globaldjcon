@@ -396,10 +396,15 @@ export default function ContractPortal({
     // Reset the signature check for the new contract. Standard/wedding never
     // need it; written/uploaded get checked on open and after each save.
     setSigCheck(null);
-    if (!c.is_standard && !isNew) void checkSignatures(c.id);
-    // Standard contracts open straight to the fields builder (which has the
-    // "Edit text" button + disclaimer); preload wording so Edit text is ready.
-    if (c.is_standard) { setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
+    // STANDARD contracts don't use the DocuSeal document builder — their fields
+    // are the green chips in the wording (they mark where booking details and
+    // the DJ/Client signatures fill in automatically), and the PDF is generated
+    // at send time. Opening the DocuSeal builder here would show its empty
+    // "Add a new document / Replace existing document" screen whenever the
+    // template PDF hasn't been generated yet. So route standard contracts to the
+    // chip-based wording editor, which IS their anchor-tag editor.
+    if (c.is_standard) { openStandardText(c); return; }
+    if (!isNew) void checkSignatures(c.id);
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
