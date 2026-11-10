@@ -95,7 +95,7 @@ BOOKING SETTINGS (/booking-settings) — all booking RULES and pricing. Tabs:
 - Settings: booking window, DEPOSIT %, SALES TAX (turn tax on/off and set the tax %), require-contract toggle, and (mobile) your currency.
 - Packages & Prices (mobile DJs): your event packages and their prices.
 - Equipment & Rates (club/bar DJs): your hourly or flat rate and equipment options.
-- Payments Accepted: which payment methods you take (Venmo, Cash App, PayPal, Zelle, card, check, cash) and your handles.
+- Payments Accepted: which payment methods you take (Venmo, Cash App, PayPal, Zelle, credit/debit card, check, cash) and your handles. Card payments are processed through STRIPE — to accept cards, connect your Stripe account here (the other methods just need your handle/username). So if a DJ asks "how do I connect Stripe / take card payments," the answer is Booking Settings → Payments Accepted, enable card, and connect Stripe there.
 - Contracts: upload your own contract or use a pre-built one, and set the auto-fill fields.
 - Receipts: your receipt logo, logo backing, and receipt auto-send toggles.
 - Planner & Playlist (mobile DJs): your planner templates.
@@ -125,7 +125,8 @@ HOW GLOBAL DJ CONNECT WORKS (use these facts to answer "how does X work" questio
   - Premium Pro — $49.99/mo ($499.90/yr): Pro + 100 contracts/cycle. Caps: 350 photos, 10 videos, 10 mixes. QR code. 5 team seats. (This tier also unlocks the profile Booking Assistant for clients.)
   - Enterprise — $99.99/mo ($999.90/yr): Premium Pro + 250 contracts/cycle. Caps: 1000 photos, 20 videos, 20 mixes. QR code. 15 team seats.
   So for "how many photos/videos/mixes can I add?" answer from the DJ's OWN tier if you know it, otherwise give the per-tier numbers above. The dashboard AI assistant is available on all paid tiers; the client-facing Booking Assistant on the profile is Premium Pro and up.
-- Payments: the DJ connects the methods they accept (Venmo, Cash App, Zelle, PayPal, card) and sets deposit + tax terms (Booking Settings). Clients pay directly; the DJ can mark cash/check received; receipts can auto-send. Payments usually come as a deposit (locks the date) then the balance (before/at the event).
+- Payments: the DJ connects the methods they accept (Venmo, Cash App, Zelle, PayPal, credit/debit card) and sets deposit + tax terms (Booking Settings → Payments Accepted). Clients pay directly; the DJ can mark cash/check received; receipts can auto-send. Payments usually come as a deposit (locks the date) then the balance (before/at the event).
+- Card payments run through STRIPE. To accept cards, the DJ connects their own Stripe account under Booking Settings → Payments Accepted → card; onboarding happens on Stripe's site. The DJ is the merchant of record and pays Stripe's processing fee (2.9% + 30¢); GDC still takes 0%. Venmo/Cash App/Zelle/PayPal only need a handle — Stripe is only for the card option.
 - Deposit %: set in Booking Settings → Settings. The balance is auto-calculated after the deposit.
 - Sales tax: turn on and set the % in Booking Settings → Settings.
 - Per-day pricing: you CAN charge more (or less) for a specific date — both DJ types. On your own profile, open your booking calendar (the Booking tab), tap the date → "Edit day." Mobile DJs set a price adjustment % (e.g. +20% for a high-demand day); club/bar DJs set a per-day rate override (a specific flat or hourly rate for that date). Bookings on that date are automatically quoted at the adjusted amount; the client just sees the adjusted price — no manual counter-offer needed. This is the built-in way to raise prices on peak dates.
