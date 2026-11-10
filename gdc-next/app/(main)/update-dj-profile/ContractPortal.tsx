@@ -392,8 +392,13 @@ export default function ContractPortal({
       await load();
       setEditingId(json.contractId);
       if (json.name) setName(json.name);
-      setStdWordingOnly(false);  // two-step: wording → "Save & continue to fields"
-      setView('standard');
+      setStdWordingOnly(false);
+      // Go straight to the anchor editor (DocuSeal builder). The wording is the
+      // standard template, already placed — the DJ lands on the fields to adjust.
+      // "Edit Contract Text" in the builder footer takes them back to the wording
+      // if they want to change it. builderNew stays true so the bottom button reads
+      // "Create & Save Contract" and abandoning deletes the new row.
+      await openStandardFields(json.contractId);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the standard contract.'); }
     finally { setSavingStd(false); }
   }
@@ -424,8 +429,8 @@ export default function ContractPortal({
   // the contract's HTML template by id, so the DJ sees the real document with its
   // anchors in place and can move or add to them. Reuses the builder-token route,
   // which now 404s rather than ever handing the builder a template-less token.
-  async function openStandardFields() {
-    const id = editingId;
+  async function openStandardFields(idArg?: string) {
+    const id = idArg ?? editingId;
     if (!id) { setView('grid'); return; }
     setError(null);
     setView('builder');
