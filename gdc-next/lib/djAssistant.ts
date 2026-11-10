@@ -211,14 +211,17 @@ function money(n: number, ccy: string): string {
   return `${ccy || 'USD'} ${v.toFixed(2)}`;
 }
 
-function bookingLine(b: BookingBrief): string {
+function bookingLine(b: BookingBrief, hideMoney = false): string {
   const bits: string[] = [];
   bits.push(b.date || 'no date');
   bits.push(b.eventType || 'event');
   if (b.venue) bits.push(`@ ${b.venue}`);
   if (b.host) bits.push(`host ${b.host}`);
   bits.push(`status ${b.status}`);
-  if (b.agreed > 0) {
+  // Per-booking money (agreed/received/outstanding) is owner-only, same as the
+  // finance totals. For a teammate without billing access (hideMoney), leave it
+  // out entirely rather than printing figures they shouldn't see.
+  if (!hideMoney && b.agreed > 0) {
     bits.push(`agreed ${money(b.agreed, b.currency)}`);
     bits.push(`received ${money(b.received, b.currency)}`);
     if (b.outstanding > 0.01) bits.push(`OWES ${money(b.outstanding, b.currency)}`);
@@ -243,21 +246,24 @@ export function formatSnapshot(s: AssistantSnapshot): string {
       `total outstanding: ${money(f.outstandingTotal, f.currency)} across ${f.owingCount} booking(s) still owing.`
     );
   } else {
-    lines.push('Finance: not available (viewer is a teammate, not the account owner). Do not discuss money totals.');
+    lines.push('Finance: not available (viewer is a teammate, not the account owner). Do not discuss money totals or any booking’s agreed/received/outstanding amounts.');
   }
+
+  // No finance block ⇒ teammate without billing ⇒ hide per-booking money too.
+  const hideMoney = !s.finance;
 
   lines.push('');
   lines.push(`CONFIRMED upcoming bookings (${s.upcoming.length}, soonest first) — these are the DJ's actual bookings:`);
-  lines.push(s.upcoming.length ? s.upcoming.map(bookingLine).join('\n') : '(none)');
+  lines.push(s.upcoming.length ? s.upcoming.map((b) => bookingLine(b, hideMoney)).join('\n') : '(none)');
 
   lines.push('');
   lines.push(`PENDING booking requests awaiting approval (${s.pendingRequests.length}) — NOT confirmed bookings; they live on /booking-requests. Only mention these as a side note, never as "your next booking":`);
-  lines.push(s.pendingRequests.length ? s.pendingRequests.map(bookingLine).join('\n') : '(none)');
+  lines.push(s.pendingRequests.length ? s.pendingRequests.map((b) => bookingLine(b, hideMoney)).join('\n') : '(none)');
 
   if (s.recentPast.length) {
     lines.push('');
     lines.push(`Recent past bookings (${s.recentPast.length}, newest first):`);
-    lines.push(s.recentPast.map(bookingLine).join('\n'));
+    lines.push(s.recentPast.map((b) => bookingLine(b, hideMoney)).join('\n'));
   }
 
   return lines.join('\n');
