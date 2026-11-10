@@ -1,6 +1,18 @@
 /* DjAssistant — floating launcher + chat panel. Dark/neon to match the app.
    Fixed, bottom-right, above page content. */
 
+.previewNote {
+  margin: 0 2px 4px;
+  padding: 9px 11px;
+  border: 1px solid rgba(0, 245, 196, 0.35);
+  border-radius: 10px;
+  background: rgba(0, 245, 196, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.previewNote strong { color: #00f5c4; }
+
 .launcher {
   position: fixed;
   right: 20px;
