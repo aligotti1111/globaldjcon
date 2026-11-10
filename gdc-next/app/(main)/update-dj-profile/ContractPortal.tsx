@@ -293,19 +293,24 @@ export default function ContractPortal({
     // In the field builder, only warn when there are UNSAVED layout changes —
     // i.e. the DJ hasn't hit "Save fields" since the last edit. (Autosave is off,
     // so leaving before saving genuinely drops those edits.)
-    if (view === 'builder' && !fieldsSaved) return true;
+    // Warn when there are unsaved field-layout edits (fieldsSaved false), OR when
+    // this is a brand-new contract that hasn't been committed yet (so leaving will
+    // discard it). Existing contracts open with fieldsSaved=true + everSaved=true,
+    // so opening and immediately closing one does NOT warn.
+    if (view === 'builder' && (!fieldsSaved || (builderNew && !everSaved))) return true;
     return false;
   }
-  function requestLeave(action: () => void) {
+  // keep=true means the DJ is explicitly FINISHING ("Done") — never delete the
+  // contract, just warn about any unsaved field edits. keep is undefined for ✕,
+  // the backdrop and Cancel, which can discard a brand-new, never-committed one.
+  function requestLeave(action: () => void, opts?: { keep?: boolean }) {
     if (needsLeaveWarning()) {
-      // Abandoning a BRAND-NEW contract that was never saved: actually delete it
-      // so "leave without saving" means the contract isn't created. (A contract
-      // saved even once in this session is real — we keep it and just close.)
-      // This covers the "Global DJ Connect Standard Contract" tile too: it creates
-      // the row immediately and opens the builder with builderNew=true, so leaving
-      // without saving should delete it rather than pile up duplicates. Editing an
-      // EXISTING standard contract never sets builderNew, so it's never deleted.
-      const discardNew = view === 'builder' && builderNew && !everSaved && !!editingId;
+      // Abandoning a BRAND-NEW contract that was never committed: delete it so
+      // "leave without saving" means the contract isn't created and the list
+      // doesn't pile up duplicates. everSaved is true for existing contracts and
+      // once the DJ saves/finishes, so those are never deleted. Covers both the
+      // field builder and the standard wording editor reached from it.
+      const discardNew = !opts?.keep && builderNew && !everSaved && !!editingId && (view === 'builder' || view === 'standard');
       const id = editingId;
       const wrapped = discardNew
         ? async () => {
@@ -370,10 +375,11 @@ export default function ContractPortal({
     const defText = variant === 'wedding' ? WEDDING_CONTRACT_TEXT : defaultContractText(djType);
     const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect Standard Contract';
     setName(nm); setText(defText); setStdDisclaimer(false); setEditingId(null); setLogoUrl(null);
-    setBuilderNew(true);
-    // Fresh, unsaved: if the DJ abandons this via ✕ without saving, it's deleted
-    // (so the Standard tile doesn't pile up duplicate contracts).
-    setFieldsSaved(false); setEverSaved(false);
+    setBuilderNew(true); setStdWordingOnly(false);
+    // Fresh and uncommitted: no unsaved field edits yet (fieldsSaved=true), but
+    // everSaved=false so abandoning via ✕/backdrop deletes it (no duplicate rows).
+    // Clicking "Done" commits it; the Standard contract is complete on creation.
+    setFieldsSaved(true); setEverSaved(false);
     setView('builder'); setBuilderToken(null); setSavingStd(true);
     try {
       const res = await fetch('/api/contracts/standard', {
@@ -451,7 +457,10 @@ export default function ContractPortal({
     // chip-based wording editor, which IS their anchor-tag editor.
     if (c.is_standard) { openStandardText(c); return; }
     if (!isNew) void checkSignatures(c.id);
-    setFieldsSaved(false); setEverSaved(false);
+    // No unsaved field edits yet (fieldsSaved=true). everSaved marks a committed
+    // contract that must never be deleted on abandon: an EXISTING contract is
+    // already committed; a brand-NEW one isn't until the DJ saves or finishes.
+    setFieldsSaved(true); setEverSaved(!isNew);
     setView('builder'); setBuilderToken(null);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -465,17 +474,18 @@ export default function ContractPortal({
   }
   async function handleBuilderSave(data: { id?: number | string }) {
     const id = data?.id; if (id == null) return;
+    // DocuSeal persisted the template on its side the moment onSave fired, so the
+    // DJ's work is saved no matter what our link call does. Mark saved/committed
+    // FIRST — if we only set these after a fetch that errors, a saved contract
+    // could wrongly be deleted on abandon, or the send gate could stay blocked.
+    setFieldsSaved(true);
+    setEverSaved(true);
     try {
       await fetch('/api/contracts/save-template', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: String(id), name, contractId: editingId }),
       });
       await load();
-      // The DJ explicitly saved in the builder — mark it so the leave-warning and
-      // the "Lock it in & send" gate know the layout is persisted. everSaved stays
-      // true for the rest of the session so we never delete a contract they saved.
-      setFieldsSaved(true);
-      setEverSaved(true);
       // After the DJ saves fields, re-check whether the client signature is
       // present so the red warning + proceed gate update live.
       if (editingId) void checkSignatures(editingId);
@@ -575,11 +585,15 @@ export default function ContractPortal({
       // accept "…(2)", undo it and warn — put the DJ back in the field to rename.
       if (j?.name && j.name.trim().toLowerCase() !== newName.toLowerCase()) {
         setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: c.name } : x));
-        // Revert the server too, so the stored name matches what's shown.
+        // Revert the server too, so the stored name matches what's shown, then
+        // reload so the clashing name is in `contracts` and the next attempt is
+        // caught by the client check (no repeated server round-trips).
         try { await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: c.name }) }); } catch { /* ignore */ }
-        setRenameVal(newName);
+        try { await load(); } catch { /* ignore */ }
+        // Only reopen THIS row's editor if the DJ hasn't moved on to another one.
+        setRenaming((cur) => (cur === null ? c.id : cur));
+        setRenameVal((v) => (renaming === c.id || v === '' ? newName : v));
         setRenameErr(`You already have a contract named "${newName}." Pick a different name.`);
-        setRenaming(c.id);
       }
     } catch { /* optimistic */ }
   }
@@ -636,11 +650,11 @@ export default function ContractPortal({
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 12, padding: '1.3rem', boxShadow: '0 24px 60px rgba(0,0,0,.4)' }}>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: '#111', marginBottom: '.5rem' }}>Leave without saving?</div>
             <p style={{ margin: '0 0 1.1rem', fontSize: '.85rem', color: '#555', lineHeight: 1.5 }}>{
-              view === 'builder'
-                ? (builderNew
-                    ? 'You haven’t finished setting up this contract. Hit “Create Contract” to save it — if you leave now, it won’t be created and your field changes will be lost.'
-                    : 'You haven’t saved your changes. Hit “Save changes” to keep them — if you leave now, your edits to this contract’s fields will be lost.')
-                : 'You’ve made changes to the wording that haven’t been saved. If you leave now, they’ll be lost.'
+              (builderNew && !everSaved)
+                ? 'This new contract hasn’t been kept yet. If you leave now it won’t be created. To keep it, click “Done” (bottom-right) — and “Save fields” first if you changed the field layout.'
+                : (view === 'builder'
+                    ? 'You have unsaved changes to this contract’s fields. Click “Save fields” in the builder to keep them — if you leave now, they’ll be lost.'
+                    : 'You’ve made changes to the wording that haven’t been saved. If you leave now, they’ll be lost.')
             }</p>
             <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setLeaveConfirm(null)} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', fontWeight: 700, borderRadius: 6, padding: '.5rem 1rem', cursor: 'pointer', fontSize: '.82rem' }}>Keep editing</button>
@@ -740,9 +754,10 @@ export default function ContractPortal({
           })()}
           {(() => {
             const needsClientSig = !isStdBuilder && !!sigCheck && !sigCheck.hasClient;
-            // A brand-new contract being sent on a booking must have its field
-            // layout saved first (autosave is off), or there's nothing to send.
-            const needsSaveFirst = bookingMode && builderNew && !fieldsSaved;
+            // Sending on a booking requires the field layout to be saved (autosave
+            // is off): block if the contract was never committed (new & unsaved) OR
+            // if there are unsaved field edits (fieldsSaved false after a drag).
+            const needsSaveFirst = bookingMode && (!fieldsSaved || (builderNew && !everSaved));
             const blocked = (isStdBuilder && bookingMode && !stdDisclaimer) || needsClientSig || needsSaveFirst || sigChecking;
             const title = needsClientSig ? 'Add a Client signature first'
               : needsSaveFirst ? 'Hit “Save fields” in the builder first'
@@ -760,11 +775,13 @@ export default function ContractPortal({
                       if (!r.hasClient) return;
                     }
                     try { if (editingId) await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editingId, name }) }); } catch {}
-                    // In Booking Settings the actual save is the builder's own
-                    // "Save fields" button, so this is just "Done" — route it
-                    // through the leave guard so closing with unsaved field edits
-                    // still warns. Booking mode proceeds to the send.
-                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { requestLeave(() => setView('grid')); }
+                    // "Done" is an explicit KEEP — the DJ is finished and wants the
+                    // contract. Mark it committed and close via the leave guard with
+                    // keep:true, so it is NEVER deleted here (only ✕/backdrop can
+                    // discard a brand-new one). It still warns about unsaved field
+                    // edits. Booking mode proceeds straight to the send.
+                    setEverSaved(true);
+                    if (bookingMode && onUseContract && editingId) { onUseContract(editingId); } else { requestLeave(() => setView('grid'), { keep: true }); }
                   }}
                   style={{ background: blocked ? 'rgba(0,224,164,.4)' : 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: blocked ? 'not-allowed' : 'pointer' }}>
                   {sigChecking ? 'Checking…' : bookingMode ? 'Lock it in & send →' : 'Done'}
