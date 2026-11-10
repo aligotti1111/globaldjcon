@@ -87,6 +87,13 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   const baseCanEdit = isOwnProfile || canEditProfile;
   const [previewPublic, setPreviewPublic] = useState(false);
   const canEdit = baseCanEdit && !previewPublic;
+  // Let the DJ dashboard assistant know the owner is in public-preview, so it can
+  // remind them they're still chatting with their DJ assistant (not the client's
+  // Booking Assistant). Only relevant for owners/teammates.
+  useEffect(() => {
+    if (!baseCanEdit) return;
+    window.dispatchEvent(new CustomEvent('gdc:preview-public', { detail: { on: previewPublic } }));
+  }, [previewPublic, baseCanEdit]);
   const actingAsMember = canEditProfile && !isOwnProfile;
   // ── Booking settings parsing & "show booking tab" decision ──────────
   // Vanilla shows a booking tab (and makes it the default) when the DJ has
@@ -2012,7 +2019,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
 
       {/* Booker-facing AI assistant — only when the owner (Premium Pro+) switched
           it on. Hidden while the owner is editing their own profile. */}
-      {botEnabled && !canEdit && <BookingBot slug={effectiveSlug} djName={data.name} />}
+      {/* The booker-facing Booking Assistant is for real visitors only. The DJ
+          (owner/teammate) never gets it — not even in "View as public" preview,
+          where they keep their own DJ assistant. Gate on baseCanEdit (who they
+          ARE), not canEdit (which flips with preview). */}
+      {botEnabled && !baseCanEdit && <BookingBot slug={effectiveSlug} djName={data.name} />}
     </>
   );
 }
