@@ -24,6 +24,7 @@ import {
   canInvoice, canSendDocs, canEditProfile,
 } from '@/lib/acting';
 import { canBook, effectiveTier, TIERS, type AccessFields } from '@/lib/access';
+import { getContractUsage } from '@/lib/contractQuota';
 import { effectiveTimezone, todayInTz } from '@/lib/bookingExpiry';
 import {
   buildReceivedEvents,
@@ -51,7 +52,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ACCESS_COLS =
-  'name, slug, dj_type, timezone, role, assistant_enabled, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
+  'name, slug, dj_type, timezone, role, assistant_enabled, sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source';
 
 interface ProfileRow extends AccessFields {
   name: string | null;
@@ -253,6 +254,46 @@ async function handlePost(req: Request) {
   const td = TIERS[myTier];
   const planLine = `\n\nTHIS DJ'S CURRENT PLAN: ${td.label}${td.monthlyPrice ? ` ($${td.monthlyPrice}/mo)` : ' (free)'}. Their media caps: ${td.photos} photos, ${td.videos} videos, ${td.mixes} mixes. Contracts: ${td.contractQuota}/billing cycle. Team seats: ${td.seats}. When they ask about their own limits, use THESE numbers; to raise a cap they upgrade at /subscribe.`;
 
+  // Live contract usage THIS billing cycle — so "how many contracts have I sent /
+  // how many do I have left this month?" gets a real number, not "I don't know."
+  // A contract counts only once it's fully SIGNED (both parties); sending/drafting
+  // doesn't consume a slot.
+  let contractLine = '';
+  try {
+    const usage = await getContractUsage(admin, djId, profile as AccessFields, { now: new Date() });
+    if (usage.quota > 0) {
+      contractLine = `\n\nCONTRACT USAGE THIS BILLING CYCLE: ${usage.used} of ${usage.quota} used, ${usage.remaining} remaining${usage.atLimit ? ' (at the limit — no room for another until the cycle resets or they upgrade)' : ''}. A contract only counts once it's fully SIGNED by both parties; sending or drafting one doesn't use a slot. The cycle resets at their next billing date. If they ask how many contracts they can send / have left this month, use THESE numbers.`;
+    }
+  } catch { /* usage is best-effort; omit the line if it can't be computed */ }
+
+  // "When is my account active till / when does my plan renew or expire?" — give
+  // the actual date from the subscription (or complimentary access) record,
+  // formatted in the DJ's timezone. Billing is owner-only, so a teammate without
+  // billing access gets pointed to the owner instead of the date.
+  const sub = profile as unknown as { sub_status?: string | null; sub_period_end?: string | null; comp_tier?: number | null; comp_expires_at?: string | null; comp_source?: string | null };
+  const fmtDate = (iso?: string | null): string | null => {
+    if (!iso) return null;
+    try { return new Date(iso).toLocaleDateString('en-US', { timeZone: tz, year: 'numeric', month: 'long', day: 'numeric' }); } catch { return null; }
+  };
+  let subLine: string;
+  if (acting.isMember && !canBilling(acting.role)) {
+    subLine = `\n\nSUBSCRIPTION STATUS: billing and the subscription renewal/expiry date are owner-only — if a teammate asks when the account is active until or when it renews, tell them the account owner handles billing and can see it under /subscribe. Don't state a date.`;
+  } else {
+    const compUntil = fmtDate(sub.comp_expires_at);
+    const periodEnd = fmtDate(sub.sub_period_end);
+    const status = String(sub.sub_status || '').toLowerCase();
+    const ending = status === 'canceled' || status === 'cancelled' || status === 'non_renewing';
+    if (myTier > 0 && sub.comp_tier != null && compUntil) {
+      subLine = `\n\nSUBSCRIPTION STATUS: COMPLIMENTARY ${td.label} access${sub.comp_source ? ` (${sub.comp_source})` : ''}, active until ${compUntil}. If they ask when their account is active till / when it expires, the answer is ${compUntil}. Manage or add a paid plan at /subscribe.`;
+    } else if (myTier > 0 && periodEnd) {
+      subLine = `\n\nSUBSCRIPTION STATUS: ${td.label} plan, status "${sub.sub_status || 'active'}". Their current billing period ${ending ? 'ENDS (does not renew)' : 'renews'} on ${periodEnd}. So "active till" = ${periodEnd}${ending ? ' — after that it won’t renew unless they resubscribe.' : ' — it renews that day unless they cancel first.'} Manage at /subscribe.`;
+    } else if (myTier > 0) {
+      subLine = `\n\nSUBSCRIPTION STATUS: ${td.label} plan, but I don't have an exact renewal/expiry date on file. Tell them to open /subscribe → Manage Subscription to see their exact date.`;
+    } else {
+      subLine = `\n\nSUBSCRIPTION STATUS: Free plan — no paid subscription, so there's no expiry/renewal date. To take bookings they'd subscribe at /subscribe.`;
+    }
+  }
+
   // The DJ's own profile slug — so the assistant can give a CLICKABLE link to
   // their availability calendar (and the right month) instead of describing a path.
   const mySlug = String((profile as unknown as { slug?: string | null }).slug || '').trim();
@@ -283,7 +324,7 @@ async function handlePost(req: Request) {
       ].join('\n')
     : '';
 
-  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + profileLine + rolePerm;
+  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + contractLine + subLine + profileLine + rolePerm;
 
   // ── Call Anthropic (no SDK dependency — plain REST) ──
   try {
