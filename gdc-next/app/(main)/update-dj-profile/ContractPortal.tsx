@@ -448,25 +448,18 @@ export default function ContractPortal({
     // Reset the signature check for the new contract. Standard/wedding never
     // need it; written/uploaded get checked on open and after each save.
     setSigCheck(null);
-    setStdWordingOnly(false); // don't inherit a stale "Edit Wording" mode
+    setStdWordingOnly(false);
+    // STANDARD contracts are HTML templates — their fields are the green chips in
+    // the wording, NOT drag-placed on a PDF. DocuSeal's field builder only works
+    // on uploaded-PDF templates, so for a standard contract it shows its empty
+    // "Add a new document" screen. So a standard contract always opens its
+    // wording/chip editor instead of the builder. (This function is only wired to
+    // non-standard contracts now, but guard anyway.)
+    if (c.is_standard) { openStandardText(c); return; }
     // everSaved marks a committed contract that must never be deleted on abandon:
     // an EXISTING contract is already committed; a brand-NEW one isn't until Save.
     setEverSaved(!isNew);
     setView('builder'); setBuilderToken(null);
-    // STANDARD contracts: rebuild the DocuSeal template from the saved wording
-    // before opening, so the builder ALWAYS has the document. Some older standard
-    // templates have no document attached, which made DocuSeal show its empty
-    // "Add a new document / Replace existing document" screen. Logo is preserved.
-    if (c.is_standard) {
-      const body = c.body_text || defaultContractText(djType);
-      setText(body); setStdDisclaimer(false); setLogoUrl(c.logo_url ?? null);
-      try {
-        await fetch('/api/contracts/standard', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: body, name: c.name, contractId: c.id, logoUrl: c.logo_url ?? null }),
-        });
-      } catch { /* non-fatal — open whatever template exists */ }
-    }
     if (!isNew) void checkSignatures(c.id);
     try {
       const res = await fetch('/api/contracts/builder-token', {
@@ -891,10 +884,15 @@ export default function ContractPortal({
                   ) : (
                     <span aria-hidden style={{ width: 82, flexShrink: 0 }} />
                   )}
-                  {/* Edit Anchor Tags — the DocuSeal field builder, always available.
-                      Same action Booking Settings exposes; added here so the dashboard
-                      can reposition auto-fill fields too. */}
-                  <button type="button" onClick={() => openCard(c)} style={{ width: 102, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: 'pointer', fontSize: '.6rem' }}>Edit Anchor Tags</button>
+                  {/* Edit Anchor Tags — the DocuSeal field builder. Only for
+                      written/uploaded contracts (PDF documents). Standard contracts
+                      are HTML templates: their fields are the chips in the wording,
+                      edited via "Edit Wording", so they get a spacer here instead. */}
+                  {!c.is_standard ? (
+                    <button type="button" onClick={() => openCard(c)} style={{ width: 102, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: 'pointer', fontSize: '.6rem' }}>Edit Anchor Tags</button>
+                  ) : (
+                    <span aria-hidden style={{ width: 102, flexShrink: 0 }} />
+                  )}
                 </>
               ) : (
                 <>
@@ -902,9 +900,13 @@ export default function ContractPortal({
                       system (standard + written/pasted). Uploaded PDFs/images have
                       no editable text, so they only get data fields. */}
                   {(c.is_standard || c.body_text != null) && (
-                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Wording</button>
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit Contract & Fields' : 'Edit Wording'}</button>
                   )}
-                  <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
+                  {/* The DocuSeal drag-builder is for written/uploaded (PDF) contracts
+                      only. Standard = HTML template → fields live in the wording. */}
+                  {!c.is_standard && (
+                    <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
+                  )}
                 </>
               )}
               <button type="button" onClick={() => deleteContract(c)} title="Delete contract" aria-label="Delete contract" style={{ width: bookingMode ? 24 : undefined, flexShrink: 0, textAlign: 'center', lineHeight: 1, background: 'transparent', border: 'none', color: '#ff5f5f', cursor: 'pointer', fontSize: bookingMode ? '1rem' : '.75rem', fontWeight: 700 }}>{bookingMode ? '✕' : 'Delete'}</button>
@@ -999,10 +1001,10 @@ export default function ContractPortal({
                   {bookingMode ? (
                     <>
                       <button type="button" onClick={() => onUseContract?.(c.id)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Use this contract</button>
-                      <button type="button" onClick={() => (c.is_standard ? openCard(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit wording' : c.body_text != null ? 'Edit Contract Text' : 'Edit auto-fill fields'}</button>
+                      <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : c.body_text != null ? openTextEditor(c) : openCard(c))} style={{ width: '100%', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.45rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit Contract & Fields' : c.body_text != null ? 'Edit Contract Text' : 'Edit auto-fill fields'}</button>
                     </>
                   ) : c.is_standard ? (
-                    <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Open / Customize</button>
+                    <button type="button" onClick={() => openStandardText(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Edit Contract &amp; Fields</button>
                   ) : c.body_text != null ? (
                     <>
                       <button type="button" onClick={() => openCard(c)} style={{ width: '100%', background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.5rem', cursor: 'pointer', fontSize: '.8rem' }}>Place fields</button>
