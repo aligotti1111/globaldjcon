@@ -75,6 +75,10 @@ export default function DjAssistant() {
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Msg[]>(loadSaved);
   const [startedAt] = useState(() => Date.now());
+  // True while the DJ is viewing their own profile in "View as public" preview.
+  // We keep showing THIS (the DJ assistant) and add a note so they know they're
+  // still talking to their own assistant, not the client Booking Assistant.
+  const [previewPublic, setPreviewPublic] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -107,6 +111,13 @@ export default function DjAssistant() {
     };
     window.addEventListener('gdc:assistant-toggled', onToggle as EventListener);
     return () => window.removeEventListener('gdc:assistant-toggled', onToggle as EventListener);
+  }, []);
+
+  // Track the owner's "View as public" preview so we can show the reminder note.
+  useEffect(() => {
+    const onPreview = (e: Event) => setPreviewPublic(!!(e as CustomEvent).detail?.on);
+    window.addEventListener('gdc:preview-public', onPreview as EventListener);
+    return () => window.removeEventListener('gdc:preview-public', onPreview as EventListener);
   }, []);
 
   // Keep the transcript pinned to the newest message.
@@ -182,6 +193,11 @@ export default function DjAssistant() {
           </div>
 
           <div className={styles.body} ref={scrollRef}>
+            {previewPublic && (
+              <div className={styles.previewNote}>
+                You&apos;re viewing your profile as the public sees it. This is still <strong>your DJ assistant</strong> — not the client Booking Assistant visitors use.
+              </div>
+            )}
             <div className={`${styles.row} ${styles.rowBot}`}>
               <div className={`${styles.msg} ${styles.bot}`}>{GREETING}</div>
               <div className={styles.time}>{fmtTime(startedAt)}</div>
