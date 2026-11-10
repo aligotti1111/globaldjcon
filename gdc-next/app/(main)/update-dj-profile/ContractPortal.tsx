@@ -48,6 +48,7 @@ interface Contract {
   docuseal_template_id: string | null;
   is_standard: boolean;
   body_text?: string | null;
+  logo_url?: string | null;
   updated_at?: string;
 }
 type View = 'grid' | 'builder' | 'standard' | 'paste';
@@ -447,19 +448,26 @@ export default function ContractPortal({
     // Reset the signature check for the new contract. Standard/wedding never
     // need it; written/uploaded get checked on open and after each save.
     setSigCheck(null);
-    // Standard contracts open straight to the FIELDS builder (Edit Anchor Tags).
-    // Their DocuSeal template is built from HTML by /api/contracts/standard, so it
-    // already has a document — the builder shows it with the fields placed. The
-    // builder header also has an "Edit Contract Text" button for the wording.
-    // (Preload the saved wording so that button is ready.)
-    if (c.is_standard) { setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null); }
     setStdWordingOnly(false); // don't inherit a stale "Edit Wording" mode
-    if (!isNew) void checkSignatures(c.id);
-    // No unsaved field edits yet (fieldsSaved=true). everSaved marks a committed
-    // contract that must never be deleted on abandon: an EXISTING contract is
-    // already committed; a brand-NEW one isn't until the DJ saves or finishes.
+    // everSaved marks a committed contract that must never be deleted on abandon:
+    // an EXISTING contract is already committed; a brand-NEW one isn't until Save.
     setEverSaved(!isNew);
     setView('builder'); setBuilderToken(null);
+    // STANDARD contracts: rebuild the DocuSeal template from the saved wording
+    // before opening, so the builder ALWAYS has the document. Some older standard
+    // templates have no document attached, which made DocuSeal show its empty
+    // "Add a new document / Replace existing document" screen. Logo is preserved.
+    if (c.is_standard) {
+      const body = c.body_text || defaultContractText(djType);
+      setText(body); setStdDisclaimer(false); setLogoUrl(c.logo_url ?? null);
+      try {
+        await fetch('/api/contracts/standard', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: body, name: c.name, contractId: c.id, logoUrl: c.logo_url ?? null }),
+        });
+      } catch { /* non-fatal — open whatever template exists */ }
+    }
+    if (!isNew) void checkSignatures(c.id);
     try {
       const res = await fetch('/api/contracts/builder-token', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
