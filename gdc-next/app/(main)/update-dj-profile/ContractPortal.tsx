@@ -373,6 +373,7 @@ export default function ContractPortal({
   // builder step (that empty "Add a document" screen is DocuSeal's for templates
   // with no uploaded PDF). Clicking Save commits it; abandoning deletes the new row.
   async function openStandardTemplate(variant?: 'wedding') {
+    if (savingStd) return; // guard against a double-click creating two rows
     setError(null);
     const defText = variant === 'wedding' ? WEDDING_CONTRACT_TEXT : defaultContractText(djType);
     const nm = variant === 'wedding' ? 'Global DJ Connect Standard Wedding Contract' : 'Global DJ Connect Standard Contract';
@@ -406,7 +407,9 @@ export default function ContractPortal({
     setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name);
     // Load the contract's SAVED wording (body_text), not the blank default —
     // otherwise edits look lost: reopening would always show the template again.
-    setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(null);
+    // Load the contract's saved logo so a wording edit doesn't wipe it (the save
+    // rebuilds the HTML with whatever logoUrl is in state).
+    setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(c.logo_url ?? null);
     setStdWordingOnly(true);
     setView('standard');
   }
@@ -562,9 +565,9 @@ export default function ContractPortal({
         try { await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: c.name }) }); } catch { /* ignore */ }
         try { await load(); } catch { /* ignore */ }
         // Only reopen THIS row's editor if the DJ hasn't moved on to another one.
-        setRenaming((cur) => (cur === null ? c.id : cur));
-        setRenameVal((v) => (renaming === c.id || v === '' ? newName : v));
-        setRenameErr(`You already have a contract named "${newName}." Pick a different name.`);
+        let stillHere = false;
+        setRenaming((cur) => { stillHere = cur === null || cur === c.id; return stillHere ? c.id : cur; });
+        if (stillHere) { setRenameVal(newName); setRenameErr(`You already have a contract named "${newName}." Pick a different name.`); }
       }
     } catch { /* optimistic */ }
   }
