@@ -47,10 +47,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ACCESS_COLS =
-  'name, dj_type, timezone, role, assistant_enabled, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
+  'name, slug, dj_type, timezone, role, assistant_enabled, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
 
 interface ProfileRow extends AccessFields {
   name: string | null;
+  slug?: string | null;
   dj_type: string | null;
   timezone: string | null;
   role: string | null;
@@ -244,7 +245,14 @@ async function handlePost(req: Request) {
   const td = TIERS[myTier];
   const planLine = `\n\nTHIS DJ'S CURRENT PLAN: ${td.label}${td.monthlyPrice ? ` ($${td.monthlyPrice}/mo)` : ' (free)'}. Their media caps: ${td.photos} photos, ${td.videos} videos, ${td.mixes} mixes. Contracts: ${td.contractQuota}/billing cycle. Team seats: ${td.seats}. When they ask about their own limits, use THESE numbers; to raise a cap they upgrade at /subscribe.`;
 
-  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine;
+  // The DJ's own profile slug — so the assistant can give a CLICKABLE link to
+  // their availability calendar (and the right month) instead of describing a path.
+  const mySlug = String((profile as unknown as { slug?: string | null }).slug || '').trim();
+  const profileLine = mySlug
+    ? `\n\nYOUR OWN PROFILE PAGE: /${mySlug} . Your booking calendar is /${mySlug}?tab=booking . To send the DJ to edit a day, their pricing, or availability, give a CLICKABLE markdown link to this — and when they name a specific date, deep-link to its month with &date=YYYY-MM-DD, e.g. [open your booking calendar on November 30](/${mySlug}?tab=booking&date=2026-11-30). Then they tap that day → "Edit day." Always prefer a clickable link to the booking calendar over telling them where to click.`
+    : '';
+
+  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + profileLine;
 
   // ── Call Anthropic (no SDK dependency — plain REST) ──
   try {
