@@ -125,6 +125,10 @@ async function handlePost(req: Request) {
     .filter((m) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: String(m.content).slice(0, ASSISTANT_MAX_INPUT_CHARS) }))
     .slice(-ASSISTANT_MAX_MESSAGES);
+  // The Anthropic Messages API requires the first message to be a 'user' turn.
+  // After slicing a long conversation the window can start on an 'assistant'
+  // message, which would 400 the request — drop any leading assistant turns.
+  while (messages.length && messages[0].role !== 'user') messages.shift();
   if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
     return NextResponse.json({ error: 'No question.' }, { status: 400 });
   }
