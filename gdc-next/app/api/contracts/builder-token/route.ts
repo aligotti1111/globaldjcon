@@ -57,15 +57,34 @@ export async function POST(req: Request) {
     } catch {
       templateId = null;
     }
+    // A contractId was given but we couldn't resolve its DocuSeal template. If we
+    // signed a token WITHOUT a template_id, the embedded builder would open its
+    // blank "Add a new document" create screen — the exact thing we never want to
+    // surface. Fail with an error instead so the client shows "couldn't open" and
+    // the builder is never handed a template-less token.
+    if (!templateId) {
+      return NextResponse.json(
+        { error: 'This contract’s template could not be found. Please try again.' },
+        { status: 404 },
+      );
+    }
   }
 
-  const payload: Record<string, unknown> = {
-    user_email: adminEmail,
-    integration_email: `dj_${acting.djId}@globaldjconnect.com`,
-    external_id: `dj_${acting.djId}_${contractId || Date.now()}`,
-    name,
-  };
-  if (templateId) payload.template_id = Number(templateId) || templateId;
+  // Two shapes, and ONLY these two:
+  //   • Editing an existing contract (templateId resolved) → load that template by
+  //     id and nothing else. We deliberately omit external_id here: passing an
+  //     external_id that doesn't match the template's own makes DocuSeal treat it
+  //     as an upsert key and spin up a NEW blank template (the empty builder).
+  //   • A fresh builder with no contract yet (legacy path; the app always creates
+  //     the template server-side first, so this is effectively unused) → key the
+  //     new template by external_id.
+  const payload: Record<string, unknown> = { user_email: adminEmail, name };
+  if (templateId) {
+    payload.template_id = Number(templateId) || templateId;
+  } else {
+    payload.integration_email = `dj_${acting.djId}@globaldjconnect.com`;
+    payload.external_id = `dj_${acting.djId}_${Date.now()}`;
+  }
 
   const token = jwt.sign(payload, apiKey);
   return NextResponse.json({ token });
