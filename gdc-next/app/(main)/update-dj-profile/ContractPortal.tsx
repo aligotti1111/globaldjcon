@@ -243,6 +243,10 @@ export default function ContractPortal({
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  // Inline message shown under the rename input when the typed name collides with
+  // another contract — we tell the DJ why and keep them editing instead of
+  // silently reverting / auto-numbering.
+  const [renameErr, setRenameErr] = useState('');
   // Styled delete-confirm (replaces the browser's native confirm() box).
   const [pendingDelete, setPendingDelete] = useState<Contract | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -550,16 +554,32 @@ export default function ContractPortal({
 
   async function commitRename(c: Contract) {
     const newName = renameVal.trim();
+    if (!newName || newName === c.name) { setRenaming(null); setRenameErr(''); return; }
+    // If the name already belongs to another contract, DON'T silently revert or
+    // auto-number — tell the DJ why and keep them in the field so they can pick a
+    // different name (or tweak this one).
+    const clash = contracts.some((x) => x.id !== c.id && x.name.trim().toLowerCase() === newName.toLowerCase());
+    if (clash) {
+      setRenameErr(`You already have a contract named "${newName}." Pick a different name.`);
+      setRenaming(c.id); // keep editing
+      return;
+    }
+    setRenameErr('');
     setRenaming(null);
-    if (!newName || newName === c.name) return;
     setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: newName } : x));
     try {
       const res = await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: newName }) });
-      // The server auto-numbers a name that collides with another contract, so
-      // reflect the final (possibly deduped) name it returns.
       const j = (await res.json().catch(() => ({}))) as { name?: string };
-      if (j?.name && j.name !== newName) {
-        setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: j.name as string } : x));
+      // Backstop: if the server AUTO-NUMBERED the name (returned something other
+      // than what we sent), a duplicate already existed. Rather than silently
+      // accept "…(2)", undo it and warn — put the DJ back in the field to rename.
+      if (j?.name && j.name.trim().toLowerCase() !== newName.toLowerCase()) {
+        setContracts((cs) => cs.map((x) => x.id === c.id ? { ...x, name: c.name } : x));
+        // Revert the server too, so the stored name matches what's shown.
+        try { await fetch('/api/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, name: c.name }) }); } catch { /* ignore */ }
+        setRenameVal(newName);
+        setRenameErr(`You already have a contract named "${newName}." Pick a different name.`);
+        setRenaming(c.id);
       }
     } catch { /* optimistic */ }
   }
@@ -810,9 +830,12 @@ export default function ContractPortal({
             <div style={{ fontSize: 20 }}>📄</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {renaming === c.id ? (
-                <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} style={{ width: '100%', boxSizing: 'border-box', padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
+                <>
+                  <input autoFocus value={renameVal} onChange={(e) => { setRenameVal(e.target.value); if (renameErr) setRenameErr(''); }} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); else if (e.key === 'Escape') { setRenaming(null); setRenameErr(''); } }} style={{ width: '100%', boxSizing: 'border-box', padding: '.3rem .4rem', borderRadius: 4, border: `1px solid ${renameErr ? '#f1b0b0' : 'var(--neon,#00e0a4)'}`, background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
+                  {renameErr && <div style={{ color: '#ff8f8f', fontSize: '.72rem', marginTop: 4 }}>{renameErr}</div>}
+                </>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); setRenameErr(''); }}>
                   <span style={{ color: 'var(--white,#fff)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{c.name}</span>
                   <span style={{ opacity: .6, fontWeight: 400, flexShrink: 0, color: 'var(--white,#fff)' }}>✎</span>
                 </div>
@@ -942,9 +965,12 @@ export default function ContractPortal({
                 <div>
                   <div style={{ fontSize: 22 }}>📄</div>
                   {renaming === c.id ? (
-                    <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); }} onClick={(e) => e.stopPropagation()} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '.3rem .4rem', borderRadius: 4, border: '1px solid var(--neon,#00e0a4)', background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
+                    <>
+                      <input autoFocus value={renameVal} onChange={(e) => { setRenameVal(e.target.value); if (renameErr) setRenameErr(''); }} onBlur={() => commitRename(c)} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(c); else if (e.key === 'Escape') { setRenaming(null); setRenameErr(''); } }} onClick={(e) => e.stopPropagation()} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '.3rem .4rem', borderRadius: 4, border: `1px solid ${renameErr ? '#f1b0b0' : 'var(--neon,#00e0a4)'}`, background: 'transparent', color: 'var(--white,#fff)', fontWeight: 700 }} />
+                      {renameErr && <div style={{ color: '#ff8f8f', fontSize: '.72rem', marginTop: 4 }}>{renameErr}</div>}
+                    </>
                   ) : (
-                    <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); }}>{c.name} ✎</div>
+                    <div style={{ color: 'var(--white,#fff)', fontWeight: 700, marginTop: 6, wordBreak: 'break-word', cursor: 'text' }} onClick={() => { setRenaming(c.id); setRenameVal(c.name); setRenameErr(''); }}>{c.name} ✎</div>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
