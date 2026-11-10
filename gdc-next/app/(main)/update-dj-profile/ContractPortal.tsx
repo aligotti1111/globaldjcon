@@ -368,10 +368,12 @@ export default function ContractPortal({
   }
 
   // Create a fresh Global DJ Connect standard contract, then open its WORDING/CHIP
-  // editor — NOT the DocuSeal drag builder. A standard contract is an HTML
-  // template; its fields are the green chips in the wording, so there's no PDF
-  // builder step (that empty "Add a document" screen is DocuSeal's for templates
-  // with no uploaded PDF). Clicking Save commits it; abandoning deletes the new row.
+  // editor as step one of a two-step flow: edit the wording → "Save & continue to
+  // fields" → the DocuSeal builder, where the DJ can move the auto-placed anchors
+  // or add new ones for any field they added to the wording. (The builder loads
+  // the standard contract's HTML template by id, so it shows the real document —
+  // it never opens DocuSeal's blank "Add a document" screen.) Committing happens
+  // on the builder's "Create & Save Contract"; abandoning deletes the new row.
   async function openStandardTemplate(variant?: 'wedding') {
     if (savingStd) return; // guard against a double-click creating two rows
     setError(null);
@@ -390,7 +392,7 @@ export default function ContractPortal({
       await load();
       setEditingId(json.contractId);
       if (json.name) setName(json.name);
-      setStdWordingOnly(true);  // Save → back to the list
+      setStdWordingOnly(false);  // two-step: wording → "Save & continue to fields"
       setView('standard');
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the standard contract.'); }
     finally { setSavingStd(false); }
@@ -401,17 +403,42 @@ export default function ContractPortal({
     setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name); setPasteText(c.body_text || ''); setView('paste');
   }
 
-  // Edit the WORDING of a standard contract — opens the standard text editor
-  // (the fields builder is a separate "Edit data fields" action).
-  function openStandardText(c: Contract) {
+  // Edit a standard contract's WORDING. wordingOnly=true (booking-mode "Edit
+  // Wording") saves straight back to the list. wordingOnly=false ("Edit Contract
+  // & Fields" in Booking Settings) is the two-step flow: "Save & continue to
+  // fields" hands off to the DocuSeal builder so the DJ can move the auto-placed
+  // anchors or add new ones for anything they changed in the wording.
+  function openStandardText(c: Contract, wordingOnly = true) {
     setError(null); setBuilderNew(false); setEditingId(c.id); setName(c.name);
     // Load the contract's SAVED wording (body_text), not the blank default —
     // otherwise edits look lost: reopening would always show the template again.
     // Load the contract's saved logo so a wording edit doesn't wipe it (the save
     // rebuilds the HTML with whatever logoUrl is in state).
     setText(c.body_text || defaultContractText(djType)); setStdDisclaimer(false); setLogoUrl(c.logo_url ?? null);
-    setStdWordingOnly(true);
+    setStdWordingOnly(wordingOnly);
     setView('standard');
+  }
+
+  // Open the DocuSeal field builder for the standard contract currently being
+  // edited (editingId). This is step two of the standard flow — the builder loads
+  // the contract's HTML template by id, so the DJ sees the real document with its
+  // anchors in place and can move or add to them. Reuses the builder-token route,
+  // which now 404s rather than ever handing the builder a template-less token.
+  async function openStandardFields() {
+    const id = editingId;
+    if (!id) { setView('grid'); return; }
+    setError(null);
+    setView('builder');
+    setBuilderToken(null);
+    try {
+      const res = await fetch('/api/contracts/builder-token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: id, name }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
+      if (!res.ok || !json.token) throw new Error(json.error || 'Could not open the builder.');
+      setBuilderToken(json.token);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not open the builder.'); }
   }
 
   // Lock the text in: (re)build the contract from the text, then hand off to the
@@ -446,13 +473,11 @@ export default function ContractPortal({
     // need it; written/uploaded get checked on open and after each save.
     setSigCheck(null);
     setStdWordingOnly(false);
-    // STANDARD contracts are HTML templates — their fields are the green chips in
-    // the wording, NOT drag-placed on a PDF. DocuSeal's field builder only works
-    // on uploaded-PDF templates, so for a standard contract it shows its empty
-    // "Add a new document" screen. So a standard contract always opens its
-    // wording/chip editor instead of the builder. (This function is only wired to
-    // non-standard contracts now, but guard anyway.)
-    if (c.is_standard) { openStandardText(c); return; }
+    // STANDARD contracts have their own two-step entry (wording → fields) via
+    // openStandardText(c, false), so they're never routed through openCard. This
+    // function is wired only to written/uploaded (PDF) contracts; the guard below
+    // just redirects a stray standard open into its wording editor to be safe.
+    if (c.is_standard) { openStandardText(c, false); return; }
     // everSaved marks a committed contract that must never be deleted on abandon:
     // an EXISTING contract is already committed; a brand-NEW one isn't until Save.
     setEverSaved(!isNew);
@@ -525,13 +550,21 @@ export default function ContractPortal({
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; contractId?: string; templateId?: string };
       if (!res.ok || !json.ok) throw new Error(json.error || 'Could not save.');
       await load();
-      // A standard contract is edited entirely here (wording + chips = the fields).
-      // There is NO separate DocuSeal drag-builder step, so saving always commits
-      // the contract and returns to the list. everSaved=true so a brand-new one
-      // isn't deleted on the way out.
-      setEverSaved(true);
       setSavingStd(false);
-      if (inline) { setView('grid'); } else { closePortal(); }
+      if (stdWordingOnly) {
+        // Wording-only edit (booking-mode "Edit Wording"): this IS the save —
+        // commit and return to the list. everSaved=true so a brand-new one isn't
+        // deleted on the way out.
+        setEverSaved(true);
+        if (inline) { setView('grid'); } else { closePortal(); }
+      } else {
+        // Two-step flow: the wording is saved; now hand off to the DocuSeal builder
+        // so the DJ can position the anchors / add fields for anything they changed.
+        // Do NOT set everSaved here — a brand-new contract is only committed when
+        // the DJ clicks "Create & Save Contract" in the builder (so abandoning the
+        // builder still deletes the new row).
+        await openStandardFields();
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setSavingStd(false); }
   }
@@ -786,13 +819,17 @@ export default function ContractPortal({
           {error && <div style={{ color: '#c00', fontSize: '.82rem', marginTop: '.6rem', textAlign: 'center' }}>{error}</div>}
         </div>
         <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '.7rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
-          {(() => { const backToFields = editingId && !stdWordingOnly;
-            // "Back to fields" is in-flow navigation (same contract) → keep:true so
-            // it never deletes. "Cancel" can discard a brand-new one.
+          {(() => {
+            // "Back to fields" only when a builder session already exists for this
+            // contract (they came wording ← builder via "Edit Contract Text") — then
+            // it's in-flow navigation, keep:true so it never deletes. Otherwise this
+            // is the first wording step and the button is "Cancel", which can discard
+            // a brand-new, uncommitted contract.
+            const backToFields = !!editingId && !stdWordingOnly && !!builderToken;
             return (
           <button type="button" onClick={() => requestLeave(() => setView(backToFields ? 'builder' : 'grid'), backToFields ? { keep: true } : undefined)} style={{ background: 'transparent', border: '1px solid #ccc', color: '#333', borderRadius: 6, padding: '.55rem 1.2rem', cursor: 'pointer' }}>{backToFields ? 'Back to fields' : 'Cancel'}</button>
             ); })()}
-          <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : stdWordingOnly ? 'Save changes' : 'Save & review fields →'}</button>
+          <button type="button" onClick={() => saveStandard()} disabled={savingStd} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.55rem 1.4rem', cursor: savingStd ? 'wait' : 'pointer' }}>{savingStd ? 'Saving…' : stdWordingOnly ? 'Save changes' : 'Save & continue to fields →'}</button>
         </div>
       </div>, true, 'Global DJ Connect Standard Contract',
     );
@@ -878,10 +915,12 @@ export default function ContractPortal({
                       system (standard + written/pasted). Uploaded PDFs/images have
                       no editable text, so they only get data fields. */}
                   {(c.is_standard || c.body_text != null) && (
-                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit Contract & Fields' : 'Edit Wording'}</button>
+                    <button type="button" onClick={() => (c.is_standard ? openStandardText(c, false) : openTextEditor(c))} style={{ background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 6, padding: '.42rem .8rem', cursor: 'pointer', fontSize: '.78rem' }}>{c.is_standard ? 'Edit Contract & Fields' : 'Edit Wording'}</button>
                   )}
-                  {/* The DocuSeal drag-builder is for written/uploaded (PDF) contracts
-                      only. Standard = HTML template → fields live in the wording. */}
+                  {/* Standard contracts get both wording and fields through the one
+                      "Edit Contract & Fields" button above (wording → builder), so
+                      no separate anchor button. Written/uploaded (PDF) contracts
+                      keep their dedicated drag-builder entry below. */}
                   {!c.is_standard && (
                     <button type="button" onClick={() => openCard(c)} style={{ background: 'var(--neon,#00e0a4)', border: 'none', color: '#06231b', fontWeight: 700, borderRadius: 6, padding: '.42rem .9rem', cursor: 'pointer', fontSize: '.78rem' }}>Edit Anchor Tags</button>
                   )}
