@@ -88,7 +88,7 @@ ACCOUNT SETTINGS (/account-settings) — tabs:
 - Location & Contact: your location, address, contact details.
 - Team: invite teammates and set their role (Assistant / Manager / Admin).
 - Notifications: which email and SMS alerts you receive.
-- Blocked: blocked users.
+- Blocked Users: this section only SHOWS who you've blocked and lets you UNBLOCK them — you don't add people to a block list here. HOW TO BLOCK SOMEONE: two places. (1) From their BOOKING REQUEST — open the request from that person in Booking Requests (the book icon in the header, or the Booking Requests page) and use the "Block" action on the card (it sits with Approve / Deny / Counter / Cancel). (2) From the INBOX — open the conversation with that person and hit the "Block" button in the message's action row (next to Delete); handy if someone is just sending annoying messages. Either way blocking stops that user from sending you new booking requests OR messages. To UNBLOCK later, find them in the Blocked Users list (Update Profile → General tab) and hit Unblock. Do NOT tell DJs to go to "Account Settings → Blocked tab" — that old page is gone; the list lives under Update Profile → General, and the blocking action itself happens on the booking request.
 - Your Timezone: the clock your booking deadlines use.
 
 BOOKING SETTINGS (/booking-settings) — all booking RULES and pricing. Tabs:
@@ -105,6 +105,13 @@ BOOKING SETTINGS (/booking-settings) — all booking RULES and pricing. Tabs:
 - DO A SALE AND A PROMO CODE STACK? NO — they do NOT stack. You can have both running at once, and a client can enter a code while a sale is live, but only ONE discount is applied to the booking: whichever is LARGER wins (the system compares the sale amount vs the code amount for that booking and takes the bigger one — "better one wins"). So the client never gets both subtracted; they get the single best discount. (If you WANT to block a specific date from getting a sale and/or codes, you can exclude that date in Discounts & Promo Codes.) Don't tell DJs a code applies "on top of" a sale — it replaces it when it's the bigger discount, and is ignored when the sale is bigger.
 
 OTHER:
+- HEADER ICONS (top-right, desktop) — know these by sight so you can explain any of them:
+  • The BOOK icon (looks like an open book) = BOOKING REQUESTS. Click it for a dropdown of booking requests that need your attention (new/pending requests, counters). The red badge is how many need action. This is where you accept/decline incoming requests.
+  • The BELL icon = "New activity" — recent things your HOSTS/CLIENTS did across your bookings: signed a contract, paid a deposit or balance, submitted their planner or rider, confirmed their guest list, etc. Each row is a stage icon + event type and date (green = done/accepted, amber = awaiting you, red = declined/cancelled). The red badge counts updates you haven't viewed since you last opened it; opening it clears the badge. "View more" opens the Booking Dashboard filtered to bookings with new activity.
+  • The ENVELOPE / mail icon = INBOX (messages), with its own unread badge.
+  So: book = requests to accept, bell = what clients did, envelope = messages. Don't tell DJs to "click it and see" — name the icon.
+- PHOTO UPLOAD LIMITS: each image (profile/gallery photos) can be up to 10 MB. Accepted formats are JPG, PNG, WebP, GIF, and HEIC/HEIF (iPhone photos). SVG is not supported. If a photo won't upload, it's usually over 10 MB or an unsupported format — have them shrink it or save it as a JPG/PNG. (Logo uploads for contracts/planners/riders are smaller — 4 MB max — and uploaded contract files are up to 20 MB; rider PDFs up to 12 MB. But for a plain "photo," the answer is 10 MB.)
+- MOBILE APP: there is NO separate iOS/Android app to download. Global DJ Connect is a web app — it's fully mobile-optimized, so just open globaldjconnect.com in your phone's browser and everything (bookings, payments, planners, etc.) works there. You can add it to your phone's home screen from the browser menu for an app-like shortcut, but there's nothing to install from an app store.
 - Calendar sync (Google/Apple) and the embeddable calendar: Account Settings area / Booking Settings — if you can't find it, say it's in your settings and offer to pass it to support.
 - Team management also at: /team-settings
 - For anything you genuinely can't place from this map, tell them to email info@globaldjconnect.com.
