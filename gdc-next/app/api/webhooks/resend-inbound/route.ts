@@ -1,24 +1,29 @@
 // POST /api/webhooks/resend-inbound
 //
 // Inbound-email handler for the "reply to the inbox notification email and it
-// posts through the platform" feature. When a DJ (or anyone) replies to one of
-// our inbox notification emails, the reply lands at a tokenized address
-// (reply+<token>@<INBOUND_EMAIL_DOMAIN>). The email provider (Resend inbound)
-// POSTs the parsed message here; we:
+// posts through the platform" feature. When someone replies to one of our inbox
+// notification emails, the reply lands at a tokenized address
+// (reply+<token>@<INBOUND_EMAIL_DOMAIN>). Resend's inbound service POSTs an
+// `email.received` event here; we:
 //   1. verify the webhook signature (Svix, same scheme as the opens webhook)
 //   2. pull the token from the recipient address → (thread, replying user)
-//   3. strip the quoted history so only the typed text remains
-//   4. insert it as a real message row from that user to the other party
-//   5. email the other party a normal "new message" notification
+//   3. FETCH the email body from Resend (the webhook is metadata-only — the body,
+//      headers and attachments are NOT in the payload; you retrieve them by id)
+//   4. skip auto-replies / bounces so two auto-responders can't ping-pong
+//   5. strip the quoted history so only the typed text remains
+//   6. verify the replier actually belongs to the thread, and isn't blocked
+//   7. insert it as a real message row from that user to the other party
+//   8. email the other party a normal "new message" notification
 //
 // SETUP (one-time, outside the code):
-//   - Set INBOUND_EMAIL_DOMAIN to the subdomain that receives replies
-//     (e.g. reply.globaldjconnect.com).
-//   - Point that subdomain's MX records at Resend's inbound service and add
-//     this route as the inbound webhook in the Resend dashboard.
-//   - Set RESEND_INBOUND_SECRET (whsec_...) to the inbound webhook's signing
-//     secret (falls back to RESEND_WEBHOOK_SECRET if you reuse one).
-// Until that's done the route just no-ops (returns 200), so it's safe to deploy.
+//   - INBOUND_EMAIL_DOMAIN = the subdomain that receives replies
+//     (e.g. reply.globaldjconnect.com), with its MX records pointed at Resend
+//     inbound and this route set as the inbound webhook.
+//   - RESEND_INBOUND_SECRET (whsec_...) = that webhook's signing secret.
+//   - RESEND_API_KEY = already set (used to fetch the email body).
+//   - CRON_SECRET = already set (used to call /api/send-email internally).
+// Until INBOUND_EMAIL_DOMAIN is set the route no-ops (returns 200), so it's safe
+// to deploy ahead of the DNS setup.
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
@@ -29,11 +34,15 @@ import { SITE_URL } from '@/lib/emails/constants';
 export const runtime = 'nodejs';
 
 // Svix signature check — identical scheme to app/api/webhooks/resend (opens).
+// Also rejects stale timestamps (replay guard): the signed timestamp must be
+// within 5 minutes of now.
 function verifySignature(secret: string, headers: Headers, body: string): boolean {
   const id = headers.get('svix-id');
   const ts = headers.get('svix-timestamp');
   const sigHeader = headers.get('svix-signature');
   if (!id || !ts || !sigHeader) return false;
+  const tsNum = Number(ts);
+  if (!Number.isFinite(tsNum) || Math.abs(Date.now() / 1000 - tsNum) > 300) return false;
   let secretBytes: Buffer;
   try { secretBytes = Buffer.from(secret.replace(/^whsec_/, ''), 'base64'); } catch { return false; }
   const signed = `${id}.${ts}.${body}`;
@@ -47,20 +56,15 @@ function verifySignature(secret: string, headers: Headers, body: string): boolea
   });
 }
 
-// A quick browser/health check: is the route deployed and is a secret set?
+// A quick browser/health check. Intentionally minimal — doesn't leak config.
 export async function GET() {
-  return NextResponse.json({
-    ok: true,
-    route: 'resend-inbound',
-    hasSecret: !!(process.env.RESEND_INBOUND_SECRET || process.env.RESEND_WEBHOOK_SECRET),
-    inboundDomain: process.env.INBOUND_EMAIL_DOMAIN || null,
-  });
+  return NextResponse.json({ ok: true, route: 'resend-inbound' });
 }
 
-// Resend inbound payloads vary a little by version; pull recipients/body
-// defensively from the likeliest fields.
 type AnyObj = Record<string, unknown>;
 function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
+
+// The webhook payload's recipient list (data.to is an array of bare addresses).
 function collectRecipients(data: AnyObj): string[] {
   const out: string[] = [];
   const push = (v: unknown) => {
@@ -74,106 +78,142 @@ function collectRecipients(data: AnyObj): string[] {
     }
   };
   push(data.to);
-  push((data as AnyObj).to_addresses);
-  push((data as AnyObj).recipient);
-  push((data as AnyObj).envelope && (data.envelope as AnyObj).to);
+  push(data.received_for);
+  push(data.recipient);
   return out;
 }
-function bodyText(data: AnyObj): string {
-  const t = asStr(data.text) || asStr((data as AnyObj).plain) || asStr((data as AnyObj).body);
-  if (t) return t;
-  // Last resort: crude HTML → text so a reply with no plain part still works.
-  const html = asStr(data.html);
+
+// Crude HTML → text for emails that only have an html part.
+function htmlToText(html: string): string {
   if (!html) return '';
   return html
-    .replace(/<br\s*\/?>(?=)/gi, '\n')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#3[49];/g, "'");
+}
+
+// Retrieve the full received email (body + headers) by id. The webhook payload
+// is metadata-only, so this is REQUIRED to get the reply text.
+async function fetchReceivedEmail(emailId: string): Promise<{ text: string; headers: AnyObj } | null> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || !emailId) return null;
+  try {
+    const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return null;
+    const email = (await res.json()) as AnyObj;
+    const text = asStr(email.text) || htmlToText(asStr(email.html));
+    const headers = (email.headers && typeof email.headers === 'object' ? email.headers as AnyObj : {});
+    return { text, headers };
+  } catch {
+    return null;
+  }
+}
+
+// Drop auto-replies, out-of-office, bounces, list mail — so a tokenized Reply-To
+// can't start an auto-responder ping-pong or post a vacation notice as a message.
+function isAutomated(headers: AnyObj, from: string): boolean {
+  const h = (k: string) => asStr(headers[k] ?? headers[k.toLowerCase()]).toLowerCase();
+  const autoSubmitted = h('auto-submitted');
+  if (autoSubmitted && autoSubmitted !== 'no') return true;
+  const precedence = h('precedence');
+  if (['bulk', 'auto_reply', 'junk', 'list'].includes(precedence)) return true;
+  if (h('x-autoreply') || h('x-autorespond') || h('x-auto-response-suppress')) return true;
+  const f = (from || '').toLowerCase();
+  if (/(mailer-daemon|postmaster|no-?reply|do-?not-?reply)@/.test(f)) return true;
+  return false;
 }
 
 export async function POST(req: Request) {
   const raw = await req.text();
 
-  // Verify when a secret is configured. Without one we still process (so the
-  // feature works the moment DNS + webhook are wired), but you SHOULD set the
-  // secret before launch — this route writes messages on users' behalf.
-  const secret = process.env.RESEND_INBOUND_SECRET || process.env.RESEND_WEBHOOK_SECRET;
+  const secret = process.env.RESEND_INBOUND_SECRET;
   if (secret) {
     if (!verifySignature(secret, req.headers, raw)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
   } else {
-    console.warn('[resend-inbound] no signing secret set — processing unverified. Set RESEND_INBOUND_SECRET before launch.');
+    console.warn('[resend-inbound] RESEND_INBOUND_SECRET not set — processing unverified. Set it before launch.');
   }
 
   let evt: AnyObj;
   try { evt = JSON.parse(raw) as AnyObj; } catch { return NextResponse.json({ ok: true }); }
-  // Payload shape: { type, data: {...} } — fall back to the top level if no data.
+  if (asStr(evt.type) && evt.type !== 'email.received') {
+    return NextResponse.json({ ok: true, ignored: 'wrong-type' });
+  }
   const data: AnyObj = (evt.data && typeof evt.data === 'object' ? evt.data as AnyObj : evt);
 
   // 1. Token → (thread, replier).
-  const recipients = collectRecipients(data);
-  const token = parseReplyToken(recipients);
-  if (!token) {
-    // Not one of our reply addresses (or inbound domain not configured) — ignore.
-    return NextResponse.json({ ok: true, ignored: 'no-token' });
-  }
+  const token = parseReplyToken(collectRecipients(data));
+  if (!token) return NextResponse.json({ ok: true, ignored: 'no-token' });
 
   const admin = createAdminClient();
   try {
     const resolved = await lookupReplyToken(admin, token);
-    if (!resolved) {
-      return NextResponse.json({ ok: true, ignored: 'unknown-token' });
-    }
+    if (!resolved) return NextResponse.json({ ok: true, ignored: 'unknown-token' });
     const { parentId, replierUserId } = resolved;
 
-    // 2. Clean the body.
-    const message = stripQuoted(bodyText(data));
-    if (!message) {
-      return NextResponse.json({ ok: true, ignored: 'empty-body' });
+    // 2. Fetch the real body (webhook is metadata-only) + drop automated mail.
+    const emailId = asStr(data.email_id) || asStr(data.id);
+    const fetched = await fetchReceivedEmail(emailId);
+    if (!fetched) return NextResponse.json({ ok: true, ignored: 'no-body' });
+    if (isAutomated(fetched.headers, asStr(data.from))) {
+      return NextResponse.json({ ok: true, ignored: 'automated' });
     }
 
-    // 3. Resolve the thread + the OTHER party (who should receive this reply).
-    const { data: parent } = await admin
+    const message = stripQuoted(fetched.text).slice(0, 5000);
+    if (!message) return NextResponse.json({ ok: true, ignored: 'empty-body' });
+
+    // 3. Load the thread. The replier MUST be a participant (parent or a reply),
+    // and we resolve the OTHER party as the recipient.
+    const { data: thread } = await admin
       .from('messages')
-      .select('id, from_user_id, to_user_id, subject')
-      .eq('id', parentId)
-      .maybeSingle();
-    const p = parent as { from_user_id?: string; to_user_id?: string; subject?: string } | null;
-    if (!p) return NextResponse.json({ ok: true, ignored: 'thread-gone' });
+      .select('id, from_user_id, to_user_id, subject, parent_id')
+      .or(`id.eq.${parentId},parent_id.eq.${parentId}`);
+    const rows = (thread as { id: string; from_user_id?: string; to_user_id?: string; subject?: string; parent_id?: string | null }[] | null) || [];
+    const parent = rows.find((r) => r.id === parentId) || null;
+    if (!parent) return NextResponse.json({ ok: true, ignored: 'thread-gone' });
 
-    // The other party is whoever in the thread isn't the replier. Scan the whole
-    // thread (parent + replies) so we find them even on multi-party history.
+    const participants = new Set<string>();
+    for (const r of rows) {
+      if (r.from_user_id) participants.add(r.from_user_id);
+      if (r.to_user_id) participants.add(r.to_user_id);
+    }
+    if (!participants.has(replierUserId)) {
+      // The token's user isn't actually in this thread — refuse (defends against
+      // a token minted for a thread the user was never part of).
+      return NextResponse.json({ ok: true, ignored: 'not-participant' });
+    }
     let otherUserId: string | null = null;
-    if (p.from_user_id && p.from_user_id !== replierUserId) {
-      otherUserId = p.from_user_id;
-    } else if (p.to_user_id && p.to_user_id !== replierUserId) {
-      otherUserId = p.to_user_id;
-    }
-    if (!otherUserId) {
-      const { data: thread } = await admin
-        .from('messages')
-        .select('from_user_id, to_user_id')
-        .or(`id.eq.${parentId},parent_id.eq.${parentId}`);
-      for (const m of ((thread as { from_user_id?: string; to_user_id?: string }[] | null) || [])) {
-        if (m.from_user_id && m.from_user_id !== replierUserId) { otherUserId = m.from_user_id; break; }
-        if (m.to_user_id && m.to_user_id !== replierUserId) { otherUserId = m.to_user_id; break; }
-      }
-    }
+    for (const id of participants) { if (id !== replierUserId) { otherUserId = id; break; } }
     if (!otherUserId) return NextResponse.json({ ok: true, ignored: 'no-recipient' });
 
-    // Replier's display name for the bubble + the outgoing notification.
-    const { data: ru } = await admin
-      .from('users').select('name').eq('id', replierUserId).maybeSingle();
-    const replierName = ((ru as { name?: string | null } | null)?.name) || 'A user';
+    // 4. Block check — if the recipient has blocked the replier, drop it. (The
+    // messages insert trigger also enforces this, but short-circuit to avoid a
+    // noisy exception + to skip the notification.)
+    try {
+      const { data: ru } = await admin.from('users').select('blocked_users').eq('id', otherUserId).maybeSingle();
+      const blocked = (ru as { blocked_users?: string[] | null } | null)?.blocked_users || [];
+      if (blocked.includes(replierUserId)) {
+        return NextResponse.json({ ok: true, ignored: 'blocked' });
+      }
+    } catch { /* fall through — the trigger is the backstop */ }
 
-    const subject = (p.subject || '').startsWith('Re:') ? p.subject : 'Re: ' + (p.subject || '(no subject)');
+    const { data: ruName } = await admin.from('users').select('name').eq('id', replierUserId).maybeSingle();
+    const replierName = ((ruName as { name?: string | null } | null)?.name) || 'A user';
+    const subject = (parent.subject || '').startsWith('Re:') ? parent.subject : 'Re: ' + (parent.subject || '(no subject)');
 
-    // 4. Insert the reply as a real message row.
+    // 5. Insert the reply. (A DB trigger rejects it if the recipient blocked the
+    // sender — caught below and treated as ignored.)
     const { error: insErr } = await admin
       .from('messages')
       .insert({
@@ -185,17 +225,17 @@ export async function POST(req: Request) {
         message,
         read: false,
       } as unknown as never);
-    if (insErr) throw insErr;
+    if (insErr) {
+      if (/blocked/i.test(insErr.message || '')) return NextResponse.json({ ok: true, ignored: 'blocked' });
+      throw insErr;
+    }
 
-    // 5. Notify the other party (server-to-server; threadId keeps THEIR reply
+    // 6. Notify the other party (server-to-server; threadId keeps THEIR reply
     // email repliable too). Failures here don't undo the stored message.
     try {
-      await fetch(`${SITE_URL}/api/send-email`, {
+      const r = await fetch(`${SITE_URL}/api/send-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.CRON_SECRET || '',
-        },
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
         body: JSON.stringify({
           type: 'inbox_notification',
           recipientUserId: otherUserId,
@@ -205,6 +245,7 @@ export async function POST(req: Request) {
           threadId: parentId,
         }),
       });
+      if (!r.ok) console.warn('[resend-inbound] notify non-OK:', r.status);
     } catch (e) {
       console.warn('[resend-inbound] notify failed:', e);
     }
@@ -212,8 +253,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[resend-inbound] error:', e);
-    // Return 200 so the provider doesn't retry-storm on a transient error; the
-    // failure is logged. (Signature failures already returned 401 above.)
     return NextResponse.json({ ok: true, error: 'handled' });
   }
 }
