@@ -286,9 +286,30 @@ export async function POST(req: Request) {
     const threadId = typeof body.threadId === 'string' && body.threadId ? body.threadId : null;
     if (threadId) {
       try {
-        const token = await getOrCreateReplyToken(createAdminClient(), threadId, recipientUserId);
-        const addr = token ? replyAddressFor(token) : null;
-        if (addr) inboxReplyTo = addr;
+        // SECURITY: only mint a reply token when the people involved actually
+        // belong to the thread. Without this, an authed user could pass a
+        // threadId they're not part of and have the recipient's email reply get
+        // posted into someone else's conversation. We load the thread
+        // (parent + replies) and require the recipient to be a participant, and
+        // for a NON-internal caller, that the caller is too. Internal callers
+        // (the inbound webhook) already validated participants on their side.
+        const adminC = createAdminClient();
+        const { data: tRows } = await adminC
+          .from('messages')
+          .select('from_user_id, to_user_id')
+          .or(`id.eq.${threadId},parent_id.eq.${threadId}`);
+        const parts = new Set<string>();
+        for (const r of ((tRows as { from_user_id?: string; to_user_id?: string }[] | null) || [])) {
+          if (r.from_user_id) parts.add(r.from_user_id);
+          if (r.to_user_id) parts.add(r.to_user_id);
+        }
+        const recipientOk = parts.has(recipientUserId);
+        const callerOk = isInternal || (!!authUser && parts.has(authUser.id));
+        if (recipientOk && callerOk) {
+          const token = await getOrCreateReplyToken(adminC, threadId, recipientUserId);
+          const addr = token ? replyAddressFor(token) : null;
+          if (addr) inboxReplyTo = addr;
+        }
       } catch { /* keep the default Reply-To */ }
     }
 
