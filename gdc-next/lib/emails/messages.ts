@@ -82,21 +82,34 @@ export function buildInboxNotificationBody(opts: {
   message: string;
   // The recent conversation, oldest → newest (up to the last few). When there's
   // more than one, the email shows the back-and-forth with each sender labelled.
-  // Falls back to the single { senderName, message } when not provided.
-  messages?: { fromName: string; text: string }[];
+  // Falls back to the single { senderName, message } when not provided. `at` is
+  // an ISO timestamp shown muted in the corner of each message.
+  messages?: { fromName: string; text: string; at?: string }[];
 }): string {
   const { recipientName, senderName, subject, message, replyRouted, messages } = opts;
   const thread = (messages && messages.length)
     ? messages
-    : [{ fromName: senderName || '', text: message }];
-  // Each message as a labelled block: who wrote it + what they said. The newest
-  // (last) is emphasized so the reader sees the latest line at a glance.
+    : [{ fromName: senderName || '', text: message, at: undefined as string | undefined }];
+  // Compact, readable timestamp (defaults to the app's home timezone so it
+  // doesn't render in the server's UTC). e.g. "Nov 11, 2:56 AM".
+  const fmtAt = (iso?: string): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    try {
+      return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } catch { return ''; }
+  };
+  // Each message as a labelled block: who wrote it + what they said, with a muted
+  // time in the bottom-right. The newest (last) is emphasized.
   const bubbles = thread.map((m, i) => {
     const isLast = i === thread.length - 1;
+    const time = fmtAt(m.at);
     return `
           <div style="padding:12px 0;${i > 0 ? 'border-top:1px solid #ececec;' : ''}">
             <p style="margin:0 0 4px;color:${isLast ? '#0f7a57' : '#888'};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${escHtml(m.fromName || 'Message')}</p>
             <p style="margin:0;color:${isLast ? '#1a1a2e' : '#666'};font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(m.text)}</p>
+            ${time ? `<p style="margin:4px 0 0;text-align:right;color:#b4b4b4;font-size:10px;">${escHtml(time)}</p>` : ''}
           </div>`;
   }).join('');
   const replyHint = replyRouted
