@@ -74,7 +74,10 @@ export default function ComposeMessageModal({
     try {
       // Insert the message. parent_id is null because this is a new thread
       // (not a reply to an existing message). Replies happen in /inbox.
-      const { error: insErr } = await db
+      // We select the new row's id so we can pass it as threadId to the
+      // notification email — that's what lets the recipient reply to the
+      // email and have it route back through the platform.
+      const { data: insertedRow, error: insErr } = await db
         .from('messages')
         .insert([{
           parent_id: null,
@@ -85,9 +88,12 @@ export default function ComposeMessageModal({
           subject: subj,
           message: msg,
           read: false,
-        }] as unknown as never);
+        }] as unknown as never)
+        .select('id')
+        .single();
 
       if (insErr) throw insErr;
+      const threadId = (insertedRow as { id?: string } | null)?.id || null;
 
       // Email the recipient that they have a new message. Server-side
       // looks up the recipient's email via admin API if not provided.
@@ -104,6 +110,7 @@ export default function ComposeMessageModal({
             senderEmail: sender.email || undefined,
             subject: subj,
             message: msg,
+            threadId,
           }),
         });
       } catch (e) {
