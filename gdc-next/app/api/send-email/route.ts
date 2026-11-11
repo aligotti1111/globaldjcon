@@ -316,7 +316,7 @@ export async function POST(req: Request) {
     // Pull the last few messages of the thread so the email shows the recent
     // back-and-forth, not just the newest line. Falls back to the single new
     // message when there's no thread (or the lookup fails).
-    let threadMessages: { fromName: string; text: string }[] = [{ fromName: senderName || '', text: message }];
+    let threadMessages: { fromName: string; text: string; at?: string }[] = [{ fromName: senderName || '', text: message }];
     if (threadId) {
       try {
         const adminT = createAdminClient();
@@ -326,9 +326,9 @@ export async function POST(req: Request) {
           .or(`id.eq.${threadId},parent_id.eq.${threadId}`)
           .order('created_at', { ascending: false })
           .limit(4);
-        const rows = (convo as { from_name?: string; message?: string }[] | null) || [];
+        const rows = (convo as { from_name?: string; message?: string; created_at?: string }[] | null) || [];
         if (rows.length) {
-          threadMessages = rows.reverse().map((r) => ({ fromName: r.from_name || '', text: r.message || '' }));
+          threadMessages = rows.reverse().map((r) => ({ fromName: r.from_name || '', text: r.message || '', at: r.created_at }));
         }
       } catch { /* fall back to the single message */ }
     }
