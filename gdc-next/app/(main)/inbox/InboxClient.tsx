@@ -327,6 +327,67 @@ export default function InboxClient({
     }
   }
 
+  // ── Who's the other person in this thread? ─────────────────────
+  // Mirrors sendReply's recipient logic: if I started the thread, the other
+  // party is whoever replied (or the original recipient); otherwise it's the
+  // sender. Returns null id for an anonymous/no-account counterparty (nothing
+  // to block).
+  function threadCounterparty(parentMsg: InboxMessage): { id: string | null; name: string } {
+    if (parentMsg.from_user_id === currentUser.id) {
+      const otherReply = replies.find(
+        (r) => r.parent_id === parentMsg.id && r.from_user_id !== currentUser.id
+      );
+      return {
+        id: otherReply?.from_user_id ?? parentMsg.to_user_id ?? null,
+        name: otherReply?.from_name || parentMsg.from_name || 'this person',
+      };
+    }
+    return { id: parentMsg.from_user_id ?? null, name: parentMsg.from_name || 'this person' };
+  }
+
+  // ── Block the other person from the inbox ──────────────────────
+  // Adds their user id to MY users.blocked_users — the same list the booking
+  // flow and the Blocked Users settings section use. Once blocked they can't
+  // send new booking requests or messages. We hide the thread afterward so the
+  // annoying conversation is out of the way (it's not deleted — it resurfaces
+  // if you unblock and they write again).
+  async function blockFromThread(parentMsg: InboxMessage) {
+    const { id: otherId, name } = threadCounterparty(parentMsg);
+    if (!otherId || otherId === currentUser.id) {
+      alert('This conversation has no account to block (it may be an anonymous message).');
+      return;
+    }
+    if (!(await confirm({
+      title: `Block ${name}?`,
+      message: 'They will no longer be able to send you booking requests or messages. You can unblock them later under Update Profile → General → Blocked Users.',
+      confirmLabel: 'Block',
+      variant: 'danger',
+    }))) return;
+    const supabase = createClient();
+    try {
+      const { data, error: readErr } = await supabase
+        .from('users')
+        .select('blocked_users')
+        .eq('id', currentUser.id)
+        .single();
+      if (readErr) throw readErr;
+      const current = (data as { blocked_users?: string[] | null } | null)?.blocked_users || [];
+      const updated = [...new Set([...current, otherId])];
+      const { error } = await supabase
+        .from('users')
+        .update({ blocked_users: updated } as unknown as never)
+        .eq('id', currentUser.id);
+      if (error) throw error;
+      // Hide the thread from view (collapse + drop from local list).
+      setMessages((prev) => prev.filter((m) => m.id !== parentMsg.id));
+      setReplies((prev) => prev.filter((r) => r.parent_id !== parentMsg.id));
+      if (openId === parentMsg.id) setOpenId(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Block failed';
+      alert('Error: ' + msg);
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────
   return (
     <div className={styles.pageWrap}>
@@ -434,6 +495,14 @@ export default function InboxClient({
                         >
                           {replyStatus[msg.id]?.text || ''}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => blockFromThread(msg)}
+                          className={styles.blockBtn}
+                          title="Block this person from messaging or booking you"
+                        >
+                          Block
+                        </button>
                         <button
                           type="button"
                           onClick={() => deleteThread(msg.id)}
