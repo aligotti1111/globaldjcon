@@ -118,7 +118,8 @@ OTHER:
 - MOBILE APP: there is NO separate iOS/Android app to download. Global DJ Connect is a web app — it's fully mobile-optimized, so just open globaldjconnect.com in your phone's browser and everything (bookings, payments, planners, etc.) works there. You can add it to your phone's home screen from the browser menu for an app-like shortcut, but there's nothing to install from an app store.
 - Calendar sync (Google/Apple) and the embeddable calendar: Account Settings area / Booking Settings — if you can't find it, say it's in your settings and offer to pass it to support.
 - Team management also at: /team-settings
-- For anything you genuinely can't place from this map, tell them to email info@globaldjconnect.com.
+- For anything you genuinely can't place from this map, tell them to use the [contact us](/contact) link.
+- CONTACTING SUPPORT: never print a raw support email address (do NOT write "info@globaldjconnect.com" or any mailto). Whenever you'd point the DJ to email/contact support, instead give them the markdown link exactly as [contact us](/contact) — the app turns that into a button that opens the Contact Us form right there. Always phrase it like "reach out via [contact us](/contact)", never as an email address.
 `.trim();
 
 // ───────────────────────────────────────────────────────────────────
@@ -180,9 +181,9 @@ PAYMENT METHODS — EVERY RAIL AND THE COMMON QUESTIONS (all set up in Booking S
 - Calendar sync: a private feed you subscribe to in Google/Apple/Outlook; confirmed bookings also have an "Add to Calendar" option.
 - Notifications: key events (new request, accepted booking, sent contract, received payment) are emailed; clients can opt into SMS for their booking.
 - Change plan: upgrade/downgrade anytime on /subscribe via "Manage Subscription". Upgrades are instant; downgrades keep current features until the paid period ends. Profile, bookings, and history stay intact.
-- Cancel subscription: /subscribe → "Manage Subscription" toolbar, or email info@globaldjconnect.com.
+- Cancel subscription: /subscribe → "Manage Subscription" toolbar, or use the [contact us](/contact) link.
 - SUBSCRIPTION RECEIPTS / INVOICES — you can get these yourself, don't tell them to email support. Go to /subscribe → "Manage Subscription"; there's an Invoices list of your past subscription charges, each as a downloadable Global DJ Connect-branded invoice/receipt PDF. (This is for the DJ's own GDC subscription charges — different from booking receipts, which are the deposit/balance receipts on each booking.)
-- QR code: on your own profile, right under your public profile link (use the on-page edit controls) — paid feature.
+- QR code: it's in ACCOUNT SETTINGS → Profile Settings tab (/account-settings), NOT on your public profile. A paid feature. If a DJ asks where their QR code is, send them to Account Settings → Profile Settings — do NOT tell them it's on their profile page or "under your public profile link."
 - Cancellation/refunds between a DJ and a client are handled directly between them (GDC never holds the money); a contract is recommended.
 `.trim();
 
@@ -211,8 +212,8 @@ HARD RULES:
 MONEY MODEL (use this for any billing / refund / payment question):
 - Global DJ Connect NEVER holds or processes the booking money. Hosts pay the DJ directly (card, Venmo, Cash App, PayPal, Zelle, check, cash) and GDC takes 0%. So the DJ only ever RECEIVES money from hosts — the DJ never pays a host through the platform.
 - The only thing the DJ pays for is their own Global DJ Connect subscription.
-- Therefore, if the DJ asks for "a refund," assume they mean their SUBSCRIPTION/billing unless they clearly say otherwise. You can't process it — tell them to email info@globaldjconnect.com (they can manage their plan at /subscribe). Do NOT frame it as a host owing or paying them.
-- For any billing, refund, account, or support issue you can't answer from the data, direct them to email info@globaldjconnect.com.
+- Therefore, if the DJ asks for "a refund," assume they mean their SUBSCRIPTION/billing unless they clearly say otherwise. You can't process it — tell them to use the [contact us](/contact) link (they can manage their plan at /subscribe). Do NOT frame it as a host owing or paying them.
+- For any billing, refund, account, or support issue you can't answer from the data, direct them to use the [contact us](/contact) link.
 - If a DJ ever needs to refund a host (e.g. a cancelled event), that's handled by the DJ directly through whatever method the host paid — GDC can't reverse it because it never held the funds. Only bring this up if the DJ explicitly asks about paying a host back.
 
 ${SITE_MAP}
