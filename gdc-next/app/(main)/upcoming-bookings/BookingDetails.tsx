@@ -115,16 +115,19 @@ export default function BookingDetails({
       const fromName = (me as { name?: string | null } | null)?.name || 'Your DJ';
       const subject = 'Message about your event'
         + (booking.event_date ? ' — ' + formatLongDate(booking.event_date) : '');
-      // New top-level thread (parent_id left null).
-      const { error } = await supabase.from('messages').insert([{
+      // New top-level thread (parent_id left null). Select the new row's id
+      // so we can pass it as threadId — that's what lets the host reply to the
+      // notification email and have it route back through the platform.
+      const { data: insertedRow, error } = await supabase.from('messages').insert([{
         to_user_id: hostUserId,
         from_user_id: userId,
         from_name: fromName,
         subject,
         message: t,
         read: false,
-      }] as unknown as never);
+      }] as unknown as never).select('id').single();
       if (error) throw error;
+      const threadId = (insertedRow as { id?: string } | null)?.id || null;
       // Best-effort email nudge — identical shape to the inbox reply flow.
       try {
         await fetch('/api/send-email', {
