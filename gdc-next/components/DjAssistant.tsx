@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './DjAssistant.module.css';
+import { ContactTrigger } from '@/components/ContactModal';
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts: number; isError?: boolean };
 
@@ -36,14 +37,23 @@ function renderContent(text: string, onNavigate: (href: string) => void) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const label = m[1];
     const href = m[2];
-    out.push(
-      <a
-        key={`${m.index}-${href}`}
-        href={href}
-        className={styles.navlink}
-        onClick={(e) => { e.preventDefault(); onNavigate(href); }}
-      >{label}</a>
-    );
+    // A /contact link opens the Contact Us form as a popup (over the dashboard)
+    // instead of navigating away — so the assistant can hand off to support
+    // without ever exposing a raw email address.
+    if (href === '/contact') {
+      out.push(
+        <ContactTrigger key={`${m.index}-contact`} className={styles.navlink}>{label}</ContactTrigger>
+      );
+    } else {
+      out.push(
+        <a
+          key={`${m.index}-${href}`}
+          href={href}
+          className={styles.navlink}
+          onClick={(e) => { e.preventDefault(); onNavigate(href); }}
+        >{label}</a>
+      );
+    }
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
