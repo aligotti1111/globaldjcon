@@ -80,17 +80,37 @@ export function buildInboxNotificationBody(opts: {
   replyRouted?: boolean;
   subject: string;
   message: string;
+  // The recent conversation, oldest → newest (up to the last few). When there's
+  // more than one, the email shows the back-and-forth with each sender labelled.
+  // Falls back to the single { senderName, message } when not provided.
+  messages?: { fromName: string; text: string }[];
 }): string {
-  const { recipientName, senderName, subject, message, replyRouted } = opts;
+  const { recipientName, senderName, subject, message, replyRouted, messages } = opts;
+  const thread = (messages && messages.length)
+    ? messages
+    : [{ fromName: senderName || '', text: message }];
+  // Each message as a labelled block: who wrote it + what they said. The newest
+  // (last) is emphasized so the reader sees the latest line at a glance.
+  const bubbles = thread.map((m, i) => {
+    const isLast = i === thread.length - 1;
+    return `
+          <div style="padding:12px 0;${i > 0 ? 'border-top:1px solid #ececec;' : ''}">
+            <p style="margin:0 0 4px;color:${isLast ? '#0f7a57' : '#888'};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${escHtml(m.fromName || 'Message')}</p>
+            <p style="margin:0;color:${isLast ? '#1a1a2e' : '#666'};font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(m.text)}</p>
+          </div>`;
+  }).join('');
   const replyHint = replyRouted
     ? `<p style="margin:0 0 24px;color:#1a1a2e;font-size:13px;line-height:1.6;background:#eef6f1;border:1px solid #cfe6da;border-radius:8px;padding:12px 16px;">💬 You can reply straight from this email — just hit reply and your message will send through your Global DJ Connect inbox.</p>`
     : '';
   return `
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Message</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, you have a new message from <strong>${escHtml(senderName || 'a Global DJ Connect user')}</strong>.</p>
-        <div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;color:#1a1a2e;font-size:13px;font-weight:600;">${escHtml(subject)}</p>
-          <p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p>
+        <div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+          <div style="background:#1a1a2e;padding:12px 20px;">
+            <p style="margin:0;color:#9aa0b4;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Subject</p>
+            <p style="margin:2px 0 0;color:#ffffff;font-size:15px;font-weight:600;">${escHtml(subject)}</p>
+          </div>
+          <div style="padding:4px 20px 12px;">${bubbles}</div>
         </div>
         ${replyHint}
         ${ctaButton(`${SITE_URL}/inbox`, 'View Inbox')}
