@@ -94,6 +94,7 @@ export function buildInboxNotificationBody(opts: {
         </div>
         ${replyHint}
         ${ctaButton(`${SITE_URL}/inbox`, 'View Inbox')}
+        <p style="color:#999999;margin-top:24px;font-size:11px;line-height:1.6;text-align:center;">Update your <a href="${SITE_URL}/notifications" style="color:#999999;text-decoration:underline;">settings</a> to no longer receive an email for each inbox message.</p>
       `;
 }
 
