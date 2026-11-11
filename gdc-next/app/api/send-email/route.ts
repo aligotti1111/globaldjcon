@@ -322,7 +322,7 @@ export async function POST(req: Request) {
       subject: senderName
         ? `New message from ${senderName}`
         : `New message: ${subject}`,
-      html: emailTemplate(buildInboxNotificationBody({ recipientName, senderName, subject, message })),
+      html: emailTemplate(buildInboxNotificationBody({ recipientName, senderName, subject, message, replyRouted: inboxReplyTo !== REPLY_TO })),
     };
 
     if (body.recipientUserId) {
