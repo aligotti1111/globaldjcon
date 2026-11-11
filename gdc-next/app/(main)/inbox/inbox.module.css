@@ -279,3 +279,24 @@
   border-color: var(--error);
   color: var(--error);
 }
+
+/* Block — sits next to Delete, pushed to the right. Amber hover so it reads as
+   a warning action distinct from the red destructive Delete. */
+.blockBtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .4rem .8rem;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .2s;
+  margin-left: auto;
+}
+.blockBtn:hover {
+  border-color: #eaa94a;
+  color: #eaa94a;
+}
