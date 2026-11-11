@@ -17,6 +17,7 @@ import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, ty
 // Shared email identity/links + the render + formatting helpers, now extracted
 // into lib/emails/* so this route holds orchestration + the per-type branches.
 import { FROM, REPLY_TO, ADMIN_EMAIL, SITE_URL } from '@/lib/emails/constants';
+import { getOrCreateReplyToken, replyAddressFor } from '@/lib/emails/inboundReply';
 import {
   escHtml, fmtDate, fmtTimeRange, eventTypeLabel,
   statusLabel, currencySymbol, setTypeLabel, venueTypeLabel,
@@ -260,7 +261,9 @@ export async function POST(req: Request) {
     const recipientName = body.recipientName as string | undefined;
     // SENDER IDENTITY comes from the authenticated caller, not the body — so
     // nobody can send a message that claims to be from someone else. Falls back
-    // to the generic label if the profile name can't be read.
+    // to the generic label if the profile name can't be read. For INTERNAL calls
+    // (the inbound-email webhook posting an email-reply through the platform)
+    // there's no authUser, so we trust the server-supplied senderName.
     let senderName: string | undefined;
     if (authUser) {
       try {
@@ -268,12 +271,30 @@ export async function POST(req: Request) {
           .from('users').select('name').eq('id', authUser.id).maybeSingle();
         senderName = ((su as { name?: string | null } | null)?.name) || undefined;
       } catch { /* fall through to generic */ }
+    } else if (isInternal) {
+      senderName = (body.senderName as string | undefined) || undefined;
     }
     const subject = (body.subject as string | undefined) || '(no subject)';
     const message = (body.message as string | undefined) || '';
+
+    // REPLY-BY-EMAIL: if this notification belongs to a thread and inbound email
+    // is configured, set Reply-To to a tokenized address so the recipient can
+    // just reply to the email and have it post back through the platform (the
+    // inbound webhook resolves the token). Falls back to the normal Reply-To when
+    // there's no thread or inbound isn't set up.
+    let inboxReplyTo: string = REPLY_TO;
+    const threadId = typeof body.threadId === 'string' && body.threadId ? body.threadId : null;
+    if (threadId) {
+      try {
+        const token = await getOrCreateReplyToken(createAdminClient(), threadId, recipientUserId);
+        const addr = token ? replyAddressFor(token) : null;
+        if (addr) inboxReplyTo = addr;
+      } catch { /* keep the default Reply-To */ }
+    }
+
     emailPayload = {
       from: FROM,
-      replyTo: REPLY_TO,
+      replyTo: inboxReplyTo,
       to: [recipientEmail],
       // Include sender name in subject so the inbox preview is useful at a
       // glance. Falls back to a generic subject if name is missing.
