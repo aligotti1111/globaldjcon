@@ -20,7 +20,7 @@
 // permissive on this table — same as vanilla). All state mutations are
 // optimistic; the DB write happens in parallel.
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import styles from './inbox.module.css';
 import MessageThread from './MessageThread';
@@ -53,6 +53,37 @@ export default function InboxClient({
   const [sending, setSending] = useState<Record<string, boolean>>({});
   // Site-uniform confirm dialog (replaces native window.confirm)
   const { confirm, confirmDialog } = useConfirm();
+
+  // Resolve display names for everyone in these threads by user id. The message
+  // rows only carry the SENDER's name (from_name), so a thread I started shows
+  // no name for the recipient until they reply. We look the participants up once
+  // so the card header can show the real person (host or DJ) right away.
+  const [nameById, setNameById] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const m of [...messages, ...replies]) {
+      if (m.from_user_id) ids.add(m.from_user_id);
+      if (m.to_user_id) ids.add(m.to_user_id);
+    }
+    ids.delete(currentUser.id);
+    const want = [...ids].filter((id) => !(id in nameById));
+    if (!want.length) return;
+    (async () => {
+      try {
+        const db = createClient();
+        const { data } = await db.from('users').select('id, name').in('id', want);
+        const rows = (data as { id: string; name?: string | null }[] | null) || [];
+        if (rows.length) {
+          setNameById((prev) => {
+            const next = { ...prev };
+            for (const r of rows) next[r.id] = r.name || '';
+            return next;
+          });
+        }
+      } catch { /* names stay as their fallbacks */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, replies]);
 
   // ── Helpers ────────────────────────────────────────────────────
   // A thread is "unread" if the parent is unread to current user OR any
@@ -444,10 +475,17 @@ export default function InboxClient({
             // never a blanket "DJ".
             const iSentThis = msg.from_user_id === currentUser.id;
             const cp = threadCounterparty(msg);
+            // The other person's user id — recipient if I sent it, sender if I
+            // received it — resolved to their real name via the nameById lookup.
+            const otherId = iSentThis ? (cp.id ?? msg.to_user_id ?? null) : (msg.from_user_id ?? null);
+            const resolvedName = otherId ? nameById[otherId] : '';
             const slug = msg.to_dj_slug && msg.to_dj_slug !== 'NULL' ? msg.to_dj_slug : '';
-            const conversationName = iSentThis
-              ? (cp.name && cp.name !== 'this person' ? cp.name : (slug || 'Recipient'))
-              : (msg.from_name || 'Anonymous');
+            const conversationName =
+              resolvedName
+              || (cp.name && cp.name !== 'this person' ? cp.name : '')
+              || (iSentThis ? '' : (msg.from_name || ''))
+              || slug
+              || 'Recipient';
 
             // Sent/Received indicator based on most recent message in thread
             const threadReplies = replies.filter((r) => r.parent_id === msg.id);
