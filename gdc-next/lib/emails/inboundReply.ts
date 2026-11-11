@@ -126,21 +126,25 @@ export function stripQuoted(raw: string): string {
   const text = raw.replace(/\r\n/g, '\n');
   const lines = text.split('\n');
   const out: string[] = [];
-  const onWrote = /^\s*On .+ wrote:\s*$/i;
+  // "On <date>, <name> wrote:" — Gmail/Apple. Gmail wraps it onto two lines when
+  // the name+address is long, so we test this line AND this+next joined.
+  const onWrote = /On .+ wrote:\s*$/i;
   const origMsg = /^\s*-{2,}\s*Original Message\s*-{2,}\s*$/i;
   const outlookDivider = /^\s*_{5,}\s*$/;
-  const fromHeader = /^\s*(From|De|Von):\s.+/i;
   const sentFrom = /^\s*Sent from my \w+/i;
+  // "From:"/"De:"/"Von:" only counts as a quoted-header block when the NEXT
+  // couple of lines look like the rest of a mail header (Sent:/Date:/To:/Subject:)
+  // — otherwise a legit sentence starting with "From:" would wrongly truncate.
+  const headerKey = /^\s*(From|De|Von):\s/i;
+  const headerFollow = /^\s*(Sent|Date|To|Subject|Cc|Envoyé|Gesendet|An):\s/i;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (onWrote.test(line) || origMsg.test(line) || outlookDivider.test(line) || fromHeader.test(line)) {
-      break; // everything from here down is quoted history
-    }
-    if (sentFrom.test(line)) {
-      break; // drop a trailing mobile signature
-    }
-    // A block of ">"-quoted lines signals the quoted section too — stop at the
-    // first one (after trimming trailing blank lines we kept).
+    const joined = line + ' ' + (lines[i + 1] || '');
+    if (onWrote.test(line) || onWrote.test(joined)) break;
+    if (origMsg.test(line) || outlookDivider.test(line)) break;
+    if (headerKey.test(line) && (headerFollow.test(lines[i + 1] || '') || headerFollow.test(lines[i + 2] || ''))) break;
+    if (sentFrom.test(line)) break; // drop a trailing mobile signature
+    // A block of ">"-quoted lines signals the quoted section too — stop at the first.
     if (/^\s*>/.test(line)) break;
     out.push(line);
   }
