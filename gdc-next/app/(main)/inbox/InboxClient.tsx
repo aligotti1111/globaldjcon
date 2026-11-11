@@ -237,6 +237,10 @@ export default function InboxClient({
             senderEmail: currentUser.email || undefined,
             subject,
             message: text,
+            // Lets the recipient reply straight from the email (routes back
+            // through the platform via the inbound webhook). parentMsg.id is the
+            // thread id.
+            threadId: parentMsg.id,
           }),
         });
       } catch (e) {
