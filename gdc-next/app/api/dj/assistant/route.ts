@@ -47,6 +47,7 @@ import {
   type AssistantSnapshot,
   type BookingBrief,
 } from '@/lib/djAssistant';
+import { parseBookingSettings, isSaleActive } from '@/app/(main)/[slug]/bookingSettings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -324,7 +325,27 @@ async function handlePost(req: Request) {
       ].join('\n')
     : '';
 
-  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + contractLine + subLine + profileLine + rolePerm;
+  // Active sale / promo codes — read from the DJ's own booking_settings so
+  // "do I have an active sale?" is answered from real data, not a guess.
+  let discountLine = '';
+  try {
+    const { data: bsRow } = await admin
+      .from('users').select('booking_settings').eq('id', djId).maybeSingle();
+    const bs = parseBookingSettings((bsRow as { booking_settings?: unknown } | null)?.booking_settings);
+    const sale = bs?.sale || null;
+    const codeCount = Array.isArray(bs?.promo_codes) ? bs!.promo_codes!.length : 0;
+    if (isSaleActive(sale, tz)) {
+      const pct = Math.min(100, Math.max(0, sale!.percent || 0));
+      const shown = sale!.show_on_profile !== false
+        ? 'and it IS advertised on their public profile'
+        : 'but it is NOT shown on their profile (applied at quote time only)';
+      discountLine = `\n\nACTIVE SALE: YES — a ${pct}% off sale is currently ACTIVE on this DJ's bookings, ${shown}. If they ask whether they have an active sale, answer YES and give this percentage. Sales and promo codes are managed in Booking Settings → Discounts.`;
+    } else {
+      discountLine = `\n\nACTIVE SALE: none active right now.${codeCount ? ` They do have ${codeCount} promo code(s) set up.` : ''} If they ask, say there's no active sale; sales and promo codes are managed in Booking Settings → Discounts.`;
+    }
+  } catch { /* best-effort — omit if settings can't be read */ }
+
+  const system = buildSystemPrompt(snapshot.djName) + '\n\n' + formatSnapshot(snapshot) + planLine + contractLine + subLine + profileLine + discountLine + rolePerm;
 
   // ── Call Anthropic (no SDK dependency — plain REST) ──
   try {
