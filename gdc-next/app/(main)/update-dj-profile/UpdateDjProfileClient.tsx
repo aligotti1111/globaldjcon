@@ -23,6 +23,7 @@ import { parseCustomEventTypes, type CustomEventType } from '@/lib/constants';
 import TeamSection from '../account-settings/TeamSection';
 import TimezoneSection from '../account-settings/TimezoneSection';
 import AssistantSection from '../account-settings/AssistantSection';
+import PlannerAssistantSection from '../account-settings/PlannerAssistantSection';
 import BookingBotSection from '../account-settings/BookingBotSection';
 import NotificationsClient from '../notifications/NotificationsClient';
 import SectionBanner, { type BannerIcon } from './SectionBanner';
@@ -777,6 +778,9 @@ export default function UpdateDjProfileClient({ initialProfile, authEmail, notif
           Profile Booking Assistant (Premium Pro). Both save themselves. */}
       <div style={{ display: tab === 'assistant' ? 'flex' : 'none', flexDirection: 'column', gap: '1rem' }}>
         <AssistantSection />
+        {/* Host-facing planner helper — only Mobile DJs send planners, so only
+            they get the switch for it. */}
+        {initialProfile.dj_type === 'mobile' && <PlannerAssistantSection />}
         <BookingBotSection />
       </div>
     </div>
