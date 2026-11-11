@@ -74,10 +74,17 @@ export function buildWelcomeBody(opts: {
 export function buildInboxNotificationBody(opts: {
   recipientName: string | undefined;
   senderName: string | undefined;
+  // When true, the notification's Reply-To is a tokenized address, so a plain
+  // email reply posts straight back into the platform inbox. We only show the
+  // "just reply" hint in that case — otherwise a reply would go to info@.
+  replyRouted?: boolean;
   subject: string;
   message: string;
 }): string {
-  const { recipientName, senderName, subject, message } = opts;
+  const { recipientName, senderName, subject, message, replyRouted } = opts;
+  const replyHint = replyRouted
+    ? `<p style="margin:0 0 24px;color:#1a1a2e;font-size:13px;line-height:1.6;background:#eef6f1;border:1px solid #cfe6da;border-radius:8px;padding:12px 16px;">💬 You can reply straight from this email — just hit reply and your message will send through your Global DJ Connect inbox.</p>`
+    : '';
   return `
         <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px;">New Message</h2>
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(recipientName || 'there')}, you have a new message from <strong>${escHtml(senderName || 'a Global DJ Connect user')}</strong>.</p>
@@ -85,6 +92,7 @@ export function buildInboxNotificationBody(opts: {
           <p style="margin:0 0 8px;color:#1a1a2e;font-size:13px;font-weight:600;">${escHtml(subject)}</p>
           <p style="margin:0;color:#666;font-size:13px;line-height:1.6;white-space:pre-wrap;">${escHtml(message)}</p>
         </div>
+        ${replyHint}
         ${ctaButton(`${SITE_URL}/inbox`, 'View Inbox')}
       `;
 }
