@@ -25,8 +25,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { recordStageView } from '@/lib/recordView';
 import { visibleFields, type PlannerField, type PlannerResponses } from '@/lib/planner';
+import { canBook, type AccessFields } from '@/lib/access';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
 import PlannerForm from './PlannerForm';
+import PlannerAssistant from './PlannerAssistant';
 
 // Prefilled time questions that only ever echoed the booking's own start/end
 // (and wedding cocktail) — now shown once in the "Your booking" strip instead of
@@ -177,10 +179,10 @@ export default async function PlannerPage({
   // and a fallback that reads fine is how it goes unnoticed.
   const { data: djData } = await admin
     .from('users')
-    .select('name, contract_logo_url, address, phone, planner_lead_days, planner_theme, planner_accent')
+    .select('name, contract_logo_url, address, phone, planner_lead_days, planner_theme, planner_accent, dj_type, planner_assistant_enabled, sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source')
     .eq('id', planner.dj_id)
     .maybeSingle();
-  const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null; planner_lead_days?: number | null; planner_theme?: string | null; planner_accent?: string | null } | null;
+  const dj = djData as unknown as ({ name?: string | null; contract_logo_url?: string | null; address?: string | null; phone?: string | null; planner_lead_days?: number | null; planner_theme?: string | null; planner_accent?: string | null; dj_type?: string | null; planner_assistant_enabled?: boolean | null } & Partial<AccessFields>) | null;
   const djName = dj?.name || 'your DJ';
   const djAddress = dj?.address?.trim() || null;
   const djPhone = dj?.phone?.trim() || null;
@@ -189,6 +191,15 @@ export default async function PlannerPage({
   // to every planner they send; the client just sees whatever the DJ set.
   const plannerTheme: 'dark' | 'light' = dj?.planner_theme === 'light' ? 'light' : 'dark';
   const plannerAccent = dj?.planner_accent || null;
+
+  // The host-facing planner helper is FREE for paid Mobile DJ accounts, and the
+  // DJ can switch it off (planner_assistant_enabled). Planners are a Mobile
+  // feature, but we still re-check paid access + type here so a lapsed account's
+  // clients don't keep getting it. Only an explicit FALSE on the toggle hides it.
+  const djIsMobile = (dj?.dj_type || '').toLowerCase().includes('mobile');
+  const djIsPaid = canBook(dj as unknown as AccessFields);
+  const assistantOn = dj?.planner_assistant_enabled !== false;
+  const showAssistant = !lockedView && djIsMobile && djIsPaid && assistantOn;
   // Has the submission deadline (event date − leadDays) arrived? Used with 100%
   // completion to lock the planner. Date-only, T12:00:00 so it doesn't slip a day.
   let duePassed = false;
@@ -268,25 +279,33 @@ export default async function PlannerPage({
   ].filter((r) => !!r.v);
 
   return (
-    <PlannerForm
-      plannerId={planner.id}
-      fields={fields}
-      initialResponses={planner.responses ?? {}}
-      initialStatus={planner.status}
-      djName={djName}
-      hostName={booking?.requester_name || null}
-      eventDateLabel={fmtDate(booking?.event_date ?? null)}
-      venueName={booking?.venue_name || null}
-      logoUrl={djLogo}
-      djAddress={djAddress}
-      djPhone={djPhone}
-      leadDays={leadDays}
-      duePassed={duePassed}
-      dueDateLabel={dueDateLabel}
-      known={known}
-      lockedView={lockedView}
-      theme={plannerTheme}
-      accent={plannerAccent}
-    />
+    <>
+      <PlannerForm
+        plannerId={planner.id}
+        fields={fields}
+        initialResponses={planner.responses ?? {}}
+        initialStatus={planner.status}
+        djName={djName}
+        hostName={booking?.requester_name || null}
+        eventDateLabel={fmtDate(booking?.event_date ?? null)}
+        venueName={booking?.venue_name || null}
+        logoUrl={djLogo}
+        djAddress={djAddress}
+        djPhone={djPhone}
+        leadDays={leadDays}
+        duePassed={duePassed}
+        dueDateLabel={dueDateLabel}
+        known={known}
+        lockedView={lockedView}
+        theme={plannerTheme}
+        accent={plannerAccent}
+      />
+      {/* Host helper: knows this event type's planner and walks them through
+          each question. Free for paid Mobile DJs, who can switch it off; hidden
+          in the locked (past-event) view. */}
+      {showAssistant && (
+        <PlannerAssistant plannerId={planner.id} accent={plannerAccent || '#1f9e74'} />
+      )}
+    </>
   );
 }
