@@ -436,11 +436,18 @@ export default function InboxClient({
             const isUnread = threadIsUnread(msg);
             const isOpen = openId === msg.id;
 
-            // Card header label: show the OTHER party's name. If I sent it,
-            // show recipient (slug fallback). If I received it, show sender.
+            // Card header label: show the OTHER party's name. threadCounterparty
+            // resolves the real name when the other person has written in the
+            // thread. If I started it and they haven't replied yet, we can't know
+            // their name from the row (from_name is ME), so fall back to the DJ
+            // slug when the recipient is a DJ, otherwise a neutral "Recipient" —
+            // never a blanket "DJ".
             const iSentThis = msg.from_user_id === currentUser.id;
-            const recipientName = msg.to_dj_slug && msg.to_dj_slug !== 'NULL' ? msg.to_dj_slug : 'DJ';
-            const conversationName = iSentThis ? recipientName : (msg.from_name || 'Anonymous');
+            const cp = threadCounterparty(msg);
+            const slug = msg.to_dj_slug && msg.to_dj_slug !== 'NULL' ? msg.to_dj_slug : '';
+            const conversationName = iSentThis
+              ? (cp.name && cp.name !== 'this person' ? cp.name : (slug || 'Recipient'))
+              : (msg.from_name || 'Anonymous');
 
             // Sent/Received indicator based on most recent message in thread
             const threadReplies = replies.filter((r) => r.parent_id === msg.id);
