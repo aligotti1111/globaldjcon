@@ -341,9 +341,12 @@ export default function InboxClient({
       const otherReply = replies.find(
         (r) => r.parent_id === parentMsg.id && r.from_user_id !== currentUser.id
       );
+      // I started this thread, so parentMsg.from_name is ME — never use it as the
+      // other person's name. Use the replier's name if they've written, else a
+      // neutral label.
       return {
         id: otherReply?.from_user_id ?? parentMsg.to_user_id ?? null,
-        name: otherReply?.from_name || parentMsg.from_name || 'this person',
+        name: otherReply?.from_name || 'this person',
       };
     }
     return { id: parentMsg.from_user_id ?? null, name: parentMsg.from_name || 'this person' };
@@ -382,10 +385,19 @@ export default function InboxClient({
         .update({ blocked_users: updated } as unknown as never)
         .eq('id', currentUser.id);
       if (error) throw error;
+      // Also soft-delete this thread from MY inbox so it stays gone on reload
+      // (same per-user delete flags as the Delete action). Blocking stops future
+      // messages (enforced by a DB trigger); this clears the current one.
+      const pid = parentMsg.id;
+      await supabase.from('messages').update({ deleted_by_sender: true } as unknown as never).eq('id', pid).eq('from_user_id', currentUser.id);
+      await supabase.from('messages').update({ deleted_by_recipient: true } as unknown as never).eq('id', pid).eq('to_user_id', currentUser.id);
+      await supabase.from('messages').update({ deleted_by_sender: true } as unknown as never).eq('parent_id', pid).eq('from_user_id', currentUser.id);
+      await supabase.from('messages').update({ deleted_by_recipient: true } as unknown as never).eq('parent_id', pid).eq('to_user_id', currentUser.id);
       // Hide the thread from view (collapse + drop from local list).
       setMessages((prev) => prev.filter((m) => m.id !== parentMsg.id));
       setReplies((prev) => prev.filter((r) => r.parent_id !== parentMsg.id));
       if (openId === parentMsg.id) setOpenId(null);
+      window.dispatchEvent(new CustomEvent('gdc:refresh-inbox-count'));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Block failed';
       alert('Error: ' + msg);
