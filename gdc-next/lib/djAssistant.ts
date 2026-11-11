@@ -105,6 +105,11 @@ BOOKING SETTINGS (/booking-settings) — all booking RULES and pricing. Tabs:
 - Settings: booking window, DEPOSIT %, SALES TAX (turn tax on/off and set the tax %), require-contract toggle, and (mobile) your currency.
 - Packages & Prices (mobile DJs): your event packages and their prices.
 - Equipment & Rates (club/bar DJs): your hourly or flat rate and equipment options.
+- EQUIPMENT OPTIONS (club/bar DJs, in Booking Settings → Equipment & Rates): you pick what gear you bring vs. what the venue must supply. Three choices, each with a free-text detail field, and you can set a different rate per option:
+  • "I provide Sound System & Decks/Controller" — you bring EVERYTHING: the full sound system (PA/speakers) AND the decks/controller. A self-contained setup; the venue just gives you space and power. (This is what "I can provide sound system and decks" means.)
+  • "I provide Decks/Controller only" — you bring just your decks/controller; the VENUE supplies the sound system (PA/speakers).
+  • "I require all equipment from venue" — you bring nothing; the venue provides the whole rig and you just show up and play.
+  So if a DJ asks what "provide sound system and decks" means, it's the option where they supply both the PA and the decks — the fullest setup — and they can charge a different rate for it than the decks-only or venue-provides-everything options.
 - Payments Accepted: which payment methods you take (Venmo, Cash App, PayPal, Zelle, credit/debit card, check, cash) and your handles. Card payments are processed through STRIPE — to accept cards, connect your Stripe account here (the other methods just need your handle/username). So if a DJ asks "how do I connect Stripe / take card payments," the answer is Booking Settings → Payments Accepted, enable card, and connect Stripe there.
 - Contracts: upload your own contract or use a pre-built one, and set the Anchor Tags (the auto-fill + signature fields). Open it from Booking Settings → Contracts, then "Edit Anchor Tags" on the contract.
 - Receipts: your receipt logo, logo backing, and receipt auto-send toggles.
