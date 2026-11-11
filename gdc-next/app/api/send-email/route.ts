@@ -313,6 +313,26 @@ export async function POST(req: Request) {
       } catch { /* keep the default Reply-To */ }
     }
 
+    // Pull the last few messages of the thread so the email shows the recent
+    // back-and-forth, not just the newest line. Falls back to the single new
+    // message when there's no thread (or the lookup fails).
+    let threadMessages: { fromName: string; text: string }[] = [{ fromName: senderName || '', text: message }];
+    if (threadId) {
+      try {
+        const adminT = createAdminClient();
+        const { data: convo } = await adminT
+          .from('messages')
+          .select('from_name, message, created_at')
+          .or(`id.eq.${threadId},parent_id.eq.${threadId}`)
+          .order('created_at', { ascending: false })
+          .limit(4);
+        const rows = (convo as { from_name?: string; message?: string }[] | null) || [];
+        if (rows.length) {
+          threadMessages = rows.reverse().map((r) => ({ fromName: r.from_name || '', text: r.message || '' }));
+        }
+      } catch { /* fall back to the single message */ }
+    }
+
     emailPayload = {
       from: FROM,
       replyTo: inboxReplyTo,
@@ -322,7 +342,7 @@ export async function POST(req: Request) {
       subject: senderName
         ? `New message from ${senderName}`
         : `New message: ${subject}`,
-      html: emailTemplate(buildInboxNotificationBody({ recipientName, senderName, subject, message, replyRouted: inboxReplyTo !== REPLY_TO })),
+      html: emailTemplate(buildInboxNotificationBody({ recipientName, senderName, subject, message, messages: threadMessages, replyRouted: inboxReplyTo !== REPLY_TO })),
     };
 
     if (body.recipientUserId) {
