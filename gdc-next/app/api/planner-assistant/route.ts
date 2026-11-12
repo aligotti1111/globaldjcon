@@ -131,6 +131,40 @@ export async function POST(req: Request) {
   const eventDateLabel = fmtDay((booking as Row | null)?.event_date as string | undefined);
   const todayLabel = (() => { try { return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); } catch { return ''; } })();
 
+  // YEAR-ACCURATE SONGS. The model's knowledge isn't live, so it can't reliably
+  // name current-year releases. When the host asks for "this year / latest /
+  // <current year>" songs, pull REAL tracks from Deezer's live chart and hand
+  // the model that verified list to recommend from. For a specific PAST year we
+  // can't verify a chart, so we just tell it to be honest about the year.
+  const currentYear = new Date().getFullYear();
+  const lastUserMsg = (messages[messages.length - 1]?.content || '').toLowerCase();
+  const songContext = /\b(song|songs|track|tracks|music|hit|hits|playlist|artist|tune|jam|dj|dance|edm|pop|rap|hip ?hop|r&b|country|genre|anthem|banger)\b/.test(lastUserMsg);
+  const yrMatch = lastUserMsg.match(/\b(19\d{2}|20\d{2})\b/);
+  const requestedYear = yrMatch ? Number(yrMatch[1]) : null;
+  const wantsCurrent = /\b(this year|latest|current|newest|out now|right now|recent|nowadays|these days|top charts?|billboard|trending|whats? (hot|popular|new))\b/.test(lastUserMsg) || (requestedYear != null && requestedYear >= currentYear);
+
+  let hitsBlock = '';
+  if (songContext && wantsCurrent) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
+      let chartRes: Response | null = null;
+      try { chartRes = await fetch('https://api.deezer.com/chart/0/tracks?limit=25', { signal: ctrl.signal, headers: { Accept: 'application/json' } }); } finally { clearTimeout(timer); }
+      const cj = chartRes && chartRes.ok ? ((await chartRes.json().catch(() => null)) as { data?: unknown } | null) : null;
+      const rows = Array.isArray(cj?.data) ? (cj!.data as Array<{ title_short?: string; title?: string; artist?: { name?: string } }>) : [];
+      const lines = rows
+        .map((t) => { const title = str(t.title_short) || str(t.title); const artist = str(t.artist?.name); return title ? `- ${title}${artist ? ` — ${artist}` : ''}` : ''; })
+        .filter(Boolean)
+        .slice(0, 25);
+      if (lines.length) {
+        hitsBlock += `\n\nVERIFIED CURRENT HITS (real tracks on the charts RIGHT NOW, ${currentYear}): the host asked for current / this-year / latest songs. Your own knowledge is NOT live, so for their current/latest/${currentYear} request recommend ONLY from this real list — pick the ones that best fit their moment, event and vibe — and emit a [[SONG]] marker for each one you suggest. These are genuinely out now:\n${lines.join('\n')}\nDo NOT add other songs you merely think are current, and don't claim a song is from a specific year unless it's in this list. If none of these fit the moment, say so and offer timeless picks instead.`;
+      }
+    } catch { /* chart is best-effort — fall through without it */ }
+  }
+  if (songContext && requestedYear != null && requestedYear < currentYear) {
+    hitsBlock += `\n\nThe host asked specifically for songs from ${requestedYear}. You cannot verify an exact ${requestedYear} chart from memory, so do NOT state that a song is "from ${requestedYear}" unless you are genuinely sure. Suggest well-known songs you're confident were popular around then, be upfront you can't guarantee the precise year, and point them to a ${requestedYear} year-end chart if they want certainty. Still emit [[SONG]] markers so they can preview the ones you name.`;
+  }
+
   const system = [
     `You are the friendly Planner & Playlist helper on Global DJ Connect. You are talking to ${hostName || 'the host'} — the person who booked ${djName} — while they fill out the planner for their ${eventLabel}${occasion ? ` (${occasion})` : ''}${venue ? ` at ${venue}` : ''}.`,
     `DATES you already know (never ask the host what year it is or when their event is — you have it):${eventDateLabel ? ` the event is on ${eventDateLabel}.` : ' the exact event date is not on file.'}${todayLabel ? ` Today is ${todayLabel}.` : ''} When they ask for "current" or "this year's" hits, use the event's year (or the current year) from these dates instead of asking.`,
@@ -149,7 +183,7 @@ export async function POST(req: Request) {
     `SONG MARKERS (so they can PLAY a preview): whenever you recommend a SPECIFIC song by title, also output it on ITS OWN LINE as a marker exactly like this: [[SONG: Song Title — Artist]] (use an em dash — between the title and the artist). Put one marker per song, each on its own line, right after the short sentence that introduces your picks. The app turns each marker into a little play-a-preview card for them. Still write your normal friendly prose around the markers (the intro and the genre/era follow-up question) — the markers are IN ADDITION to, not instead of, talking to them. Only use a marker for a real, specific song you're recommending; don't wrap a whole genre or a vague idea in a marker.`,
     `When they ask about a specific question, answer for the real field below. Here is the exact planner they are filling out, section by section:`,
     formatFields(fields),
-  ].join('\n\n');
+  ].join('\n\n') + hitsBlock;
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
