@@ -187,7 +187,7 @@ export default function PlannerAssistant({
           boxShadow: '0 8px 24px rgba(0,0,0,.35)', fontFamily: 'inherit',
         }}
       >
-        💬 Need help?
+        💬 Planner Assistant
       </button>
     );
   }
@@ -209,7 +209,7 @@ export default function PlannerAssistant({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0e0e14', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: accent, display: 'inline-block' }} />
-          Planner Helper
+          Planner Assistant
         </div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#9aa0b4', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>✕</button>
       </div>
