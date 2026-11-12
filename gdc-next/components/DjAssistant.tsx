@@ -11,7 +11,7 @@
 // Mounted once in (main)/layout.tsx, so its state (the conversation) survives
 // navigation between dashboard pages within that layout.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './DjAssistant.module.css';
 import { ContactTrigger } from '@/components/ContactModal';
@@ -64,6 +64,26 @@ const GREETING =
   "Hi! I'm your Global DJ Connect assistant. Ask me about your bookings or earnings — like “who owes me money?” or “what's on the books next month?” — or where to find something in the app.";
 
 const STORE_KEY = 'gdc_dj_assistant_convo';
+const SIZE_KEY = 'gdc_dj_assistant_size';
+
+// The panel can be made smaller or wider. Three steps; the middle one is the
+// default. Width/height are applied inline and still get clamped to the
+// viewport by the CSS (max-width / max-height), so "wide" can't overflow a
+// phone. Persisted so the DJ's choice sticks across reopen + navigation.
+type PanelSize = 'sm' | 'md' | 'lg';
+const SIZE_DIMS: Record<PanelSize, { width: number; height: number }> = {
+  sm: { width: 320, height: 440 },
+  md: { width: 370, height: 540 },
+  lg: { width: 460, height: 660 },
+};
+const SIZE_ORDER: PanelSize[] = ['sm', 'md', 'lg'];
+function loadSize(): PanelSize {
+  if (typeof window === 'undefined') return 'md';
+  try {
+    const v = window.sessionStorage.getItem(SIZE_KEY);
+    return v === 'sm' || v === 'lg' ? v : 'md';
+  } catch { return 'md'; }
+}
 
 // Load a saved conversation (survives closing the widget or navigating between
 // dashboard pages, which can remount this component). sessionStorage so it
@@ -84,6 +104,7 @@ export default function DjAssistant() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Msg[]>(loadSaved);
+  const [size, setSize] = useState<PanelSize>(loadSize);
   const [startedAt] = useState(() => Date.now());
   // True while the DJ is viewing their own profile in "View as public" preview.
   // We keep showing THIS (the DJ assistant) and add a note so they know they're
@@ -96,6 +117,15 @@ export default function DjAssistant() {
   useEffect(() => {
     try { window.sessionStorage.setItem(STORE_KEY, JSON.stringify(messages.slice(-40))); } catch { /* ignore */ }
   }, [messages]);
+
+  // Remember the chosen panel size.
+  useEffect(() => {
+    try { window.sessionStorage.setItem(SIZE_KEY, size); } catch { /* ignore */ }
+  }, [size]);
+
+  // Step the panel one size bigger / smaller (clamped to the three presets).
+  const resize = (dir: 1 | -1) =>
+    setSize((s) => SIZE_ORDER[Math.min(SIZE_ORDER.length - 1, Math.max(0, SIZE_ORDER.indexOf(s) + dir))]);
 
   // Ask the server whether this viewer may use the assistant.
   useEffect(() => {
@@ -197,13 +227,24 @@ export default function DjAssistant() {
       )}
 
       {open && (
-        <div className={styles.panel} role="dialog" aria-label="Assistant">
+        <div
+          className={styles.panel}
+          role="dialog"
+          aria-label="Assistant"
+          style={{ ['--panel-w']: `${SIZE_DIMS[size].width}px`, ['--panel-h']: `${SIZE_DIMS[size].height}px` } as React.CSSProperties}
+        >
           <div className={styles.head}>
             <div className={styles.title}>
               <span className={styles.dot} />
               Assistant
             </div>
             <div className={styles.headBtns}>
+              <button className={styles.min} onClick={() => resize(-1)} disabled={size === 'sm'} aria-label="Make smaller" title="Make smaller" style={{ opacity: size === 'sm' ? 0.4 : 1 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 4 4 4 4 9" /><polyline points="15 20 20 20 20 15" /><line x1="4" y1="4" x2="10" y2="10" /><line x1="20" y1="20" x2="14" y2="14" /></svg>
+              </button>
+              <button className={styles.min} onClick={() => resize(1)} disabled={size === 'lg'} aria-label="Make wider" title="Make wider" style={{ opacity: size === 'lg' ? 0.4 : 1 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+              </button>
               <button className={styles.min} onClick={() => setOpen(false)} aria-label="Minimize" title="Minimize">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /></svg>
               </button>
