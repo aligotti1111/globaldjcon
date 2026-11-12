@@ -123,6 +123,8 @@ function planFeatures(d: TierDef, djType?: 'mobile' | 'club' | null): Feat[] {
   // each with a type label so it's clear which DJ type it applies to.
   if (djType !== 'club') {
     feats.push({ key: 'planner', text: 'Planner & Playlist (Mobile DJs)', included: true });
+    // The host-facing AI Planner Assistant is free on every paid plan.
+    feats.push({ key: 'plannerAssistant', text: 'AI Planner Assistant (Mobile DJs)', included: true, emphasis: true });
   }
   if (djType !== 'mobile') {
     feats.push({ key: 'rider', text: 'DJ Rider (Club/Bar DJs)', included: true });
