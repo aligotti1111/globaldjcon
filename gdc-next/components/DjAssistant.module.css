@@ -60,6 +60,24 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   animation: pop 0.18s ease;
 }
+/* Phones: pull the panel in a little so it doesn't dominate the screen —
+   narrower, shorter (capped to a fraction of the viewport), tighter corners,
+   and a smaller launcher pill. */
+@media (max-width: 480px) {
+  .panel {
+    width: calc(100vw - 24px);
+    height: min(540px, 62dvh);
+    right: 12px;
+    bottom: 12px;
+    border-radius: 14px;
+  }
+  .launcher {
+    right: 14px;
+    bottom: 14px;
+    padding: 9px 13px 9px 11px;
+    font-size: 0.8rem;
+  }
+}
 @keyframes pop {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: none; }
