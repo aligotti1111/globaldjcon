@@ -65,6 +65,16 @@ const GREETING =
 
 const STORE_KEY = 'gdc_dj_assistant_convo';
 const SIZE_KEY = 'gdc_dj_assistant_size';
+const ENABLED_KEY = 'gdc_dj_assistant_enabled';
+
+// Remember whether this account is eligible so the launcher shows INSTANTLY on
+// the next page instead of waiting for the /api/dj/assistant round-trip. We
+// still re-check on mount to catch a plan/toggle change — this just removes the
+// visible delay on every navigation after the first.
+function loadEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try { return window.sessionStorage.getItem(ENABLED_KEY) === '1'; } catch { return false; }
+}
 
 // The panel can be made smaller or wider. Three steps; the middle one is the
 // default. Width/height are applied inline and still get clamped to the
@@ -99,7 +109,7 @@ function loadSaved(): Msg[] {
 
 export default function DjAssistant() {
   const router = useRouter();
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(loadEnabled);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -135,8 +145,12 @@ export default function DjAssistant() {
         const r = await fetch('/api/dj/assistant', { method: 'GET' });
         if (!r.ok) return;
         const j = await r.json();
-        if (!cancelled && j?.enabled) setEnabled(true);
-      } catch { /* silent — just don't show the widget */ }
+        if (cancelled) return;
+        const ok = !!j?.enabled;
+        setEnabled(ok);
+        // Cache the verdict so the launcher appears instantly next navigation.
+        try { window.sessionStorage.setItem(ENABLED_KEY, ok ? '1' : '0'); } catch { /* ignore */ }
+      } catch { /* silent — keep whatever the cache showed */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -147,6 +161,7 @@ export default function DjAssistant() {
     const onToggle = (e: Event) => {
       const on = (e as CustomEvent).detail?.enabled;
       setEnabled(!!on);
+      try { window.sessionStorage.setItem(ENABLED_KEY, on ? '1' : '0'); } catch { /* ignore */ }
       if (!on) setOpen(false);
     };
     window.addEventListener('gdc:assistant-toggled', onToggle as EventListener);
