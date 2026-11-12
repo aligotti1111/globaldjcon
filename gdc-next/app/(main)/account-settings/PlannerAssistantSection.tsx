@@ -62,7 +62,7 @@ export default function PlannerAssistantSection() {
 
   return (
     <div className={styles.card} style={{ padding: 0, overflow: 'hidden' }}>
-      <SectionBanner icon="bell" title="Planner Helper for Clients" subtitle="A chat helper on your clients' Planner & Playlist page." />
+      <SectionBanner icon="bell" title="AI Planner Assistant" subtitle="A chat helper on your clients' Planner & Playlist page." />
       <div style={{ padding: '1.5rem' }}>
         <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
           When you send a client their Planner &amp; Playlist, a friendly helper
