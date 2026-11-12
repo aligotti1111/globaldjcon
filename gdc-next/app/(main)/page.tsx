@@ -864,6 +864,7 @@ const LANDING_BODY = String.raw`
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_351e51b1-cf96-42a8-ae49-b8f568baabea.png" alt=""><h3>Manual booking</h3><p>Booked a gig off‑platform? Add it with one click — enter the date, venue and rate and it drops alongside your online bookings. From there you can add the host's email, send a contract, request a deposit, invoice. The manual booking will act just as a normal booking through the platform.</p></div>
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_090555_9783c217-7752-446f-b96e-871e543cdac6.png" alt=""><h3>Discounts &amp; promo codes</h3><p>Create promo codes with a % off or exact dollar amount, or set a site‑wide % discount off all bookings. Includes an exclusion option for select dates (e.g. New Year's Eve).</p></div>
       <div class="r reveal framed"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084917_664ddc37-4986-4420-ab8e-10d1889ac023.png" alt=""><div class="titlecol"><span class="tg mobile">Mobile DJ only</span><h3>Planner &amp; playlist</h3></div><p>Customize a planner for each event and send it with one click for all future events. It auto‑saves the moment the host starts filling it in, so they don't have to do it all at once. Track the total % complete to the minute from your booking dashboard, and send a reminder email any time.</p></div>
+      <div class="r reveal framed"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20261109_070602_31158670-618d-404c-9168-7c89920981da.png" alt=""><div class="titlecol"><span class="tg mobile">Mobile DJ only</span><h3>AI Planner Assistant</h3></div><p>A friendly AI helper right on your client&rsquo;s Planner &amp; Playlist page that walks them through every question and suggests song ideas tailored to their event — first‑dance picks for a wedding, kid‑friendly sets for a birthday, clean corporate vibes, and more. Powered by Global DJ Connect: it only explains the form and never fills it in for them. Free on every paid plan — toggle it on or off in your settings.</p></div>
       <div class="r reveal framed-amber"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_83fb9f5b-de14-4737-9b42-a37962810cd2.png" alt=""><div class="titlecol"><span class="tg club">Club/Bar DJ only</span><h3>Rider</h3></div><p>Send the host / promoter your technical &amp; hospitality rider. Customize it within Global DJ Connect, or upload a pre‑made rider — either way it sends straight through Global DJ Connect.</p></div>
       <div class="r reveal framed-amber"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_27083888-d22d-4bb4-9149-ef297714a195.png" alt=""><div class="titlecol"><span class="tg club">Club/Bar DJ only</span><h3>Guest list</h3></div><p>Add and sort the guest list, then send it to the host through Global DJ Connect so they can confirm names have been approved.</p></div>
       <div class="r reveal"><img loading="lazy" decoding="async" src="https://d8j0ntlcm91z4.cloudfront.net/user_3I7KWF53YRk0UtD2aF2XnRfCPCI/hf_20260826_084816_d83ad708-0d07-45a7-ba99-fb6fdbc21b09.png" alt=""><h3>Calendar sync</h3><p>Connect all bookings to your Google or Apple calendar with "Sync to Calendar." Once synced, all existing and future bookings are added to your calendar automatically.</p></div>
@@ -973,6 +974,7 @@ const LANDING_BODY = String.raw`
           <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Embeddable calendar</li>
           <li class="off"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg> Team logins</li>
           <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> AI Planner Assistant <span class="tq">(Mobile DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
@@ -1001,6 +1003,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited videos</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> AI Planner Assistant <span class="tq">(Mobile DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
@@ -1029,6 +1032,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
           <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> AI Planner Assistant <span class="tq">(Mobile DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
@@ -1057,6 +1061,7 @@ const LANDING_BODY = String.raw`
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Unlimited mixes</li>
           <li><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Embeddable calendar</li>
           <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Planner &amp; Playlist <span class="tq">(Mobile DJs)</span></li>
+          <li class="mob-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> AI Planner Assistant <span class="tq">(Mobile DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> DJ Rider <span class="tq">(Club/Bar DJs)</span></li>
           <li class="club-only"><svg viewBox="0 0 24 24" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg> Guest list <span class="tq">(Club/Bar DJs)</span></li>
         </ul>
