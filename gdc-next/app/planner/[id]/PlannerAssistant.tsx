@@ -78,7 +78,7 @@ export default function PlannerAssistant({
     <div
       style={{
         position: 'fixed', right: 18, bottom: 18, zIndex: 4000,
-        width: 'min(380px, calc(100vw - 36px))', height: 'min(540px, calc(100dvh - 36px))',
+        width: 'min(380px, calc(100vw - 24px))', height: 'min(540px, 72dvh)',
         display: 'flex', flexDirection: 'column',
         background: '#15151c', color: '#f0f0f8', borderRadius: 16, overflow: 'hidden',
         boxShadow: '0 16px 48px rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
