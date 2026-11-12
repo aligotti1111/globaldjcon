@@ -44,6 +44,7 @@ import {
   ASSISTANT_MAX_INPUT_CHARS,
   buildSystemPrompt,
   formatSnapshot,
+  stripReplyMarkdown,
   type AssistantSnapshot,
   type BookingBrief,
 } from '@/lib/djAssistant';
@@ -372,7 +373,8 @@ async function handlePost(req: Request) {
     const reply = Array.isArray(data?.content)
       ? data.content.filter((c: { type?: string }) => c?.type === 'text').map((c: { text?: string }) => c?.text || '').join('').trim()
       : '';
-    return NextResponse.json({ reply: reply || "Sorry, I couldn't put together an answer. Try rephrasing?" });
+    // Strip any stray markdown emphasis so the widget never shows literal ** / _.
+    return NextResponse.json({ reply: stripReplyMarkdown(reply) || "Sorry, I couldn't put together an answer. Try rephrasing?" });
   } catch (e) {
     console.error('[assistant] fetch failed', e);
     return NextResponse.json({ error: 'The assistant is unavailable right now.' }, { status: 502 });
