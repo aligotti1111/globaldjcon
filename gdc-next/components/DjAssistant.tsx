@@ -254,11 +254,11 @@ export default function DjAssistant() {
               Assistant
             </div>
             <div className={styles.headBtns}>
-              <button className={styles.min} onClick={() => resize(-1)} disabled={size === 'sm'} aria-label="Make smaller" title="Make smaller" style={{ opacity: size === 'sm' ? 0.4 : 1 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 4 4 4 4 9" /><polyline points="15 20 20 20 20 15" /><line x1="4" y1="4" x2="10" y2="10" /><line x1="20" y1="20" x2="14" y2="14" /></svg>
+              <button className={styles.min} onClick={() => resize(-1)} disabled={size === 'sm'} aria-label="Make smaller" title="Make smaller" style={{ opacity: size === 'sm' ? 0.35 : 1 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 7 9 12 5 17" /><polyline points="19 7 15 12 19 17" /></svg>
               </button>
-              <button className={styles.min} onClick={() => resize(1)} disabled={size === 'lg'} aria-label="Make wider" title="Make wider" style={{ opacity: size === 'lg' ? 0.4 : 1 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+              <button className={styles.min} onClick={() => resize(1)} disabled={size === 'lg'} aria-label="Make wider" title="Make wider" style={{ opacity: size === 'lg' ? 0.35 : 1 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 7 5 12 9 17" /><polyline points="15 7 19 12 15 17" /></svg>
               </button>
               <button className={styles.min} onClick={() => setOpen(false)} aria-label="Minimize" title="Minimize">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /></svg>
