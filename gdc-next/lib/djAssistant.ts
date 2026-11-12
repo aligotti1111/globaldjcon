@@ -139,6 +139,10 @@ OTHER:
   • The BELL icon = "New activity" — recent things your HOSTS/CLIENTS did across your bookings: signed a contract, paid a deposit or balance, submitted their planner or rider, confirmed their guest list, etc. Each row is a stage icon + event type and date (green = done/accepted, amber = awaiting you, red = declined/cancelled). The red badge counts updates you haven't viewed since you last opened it; opening it clears the badge. "View more" opens the Booking Dashboard filtered to bookings with new activity.
   • The ENVELOPE / mail icon = INBOX (messages), with its own unread badge.
   So: book = requests to accept, bell = what clients did, envelope = messages. Don't tell DJs to "click it and see" — name the icon.
+- LOGOS — there are exactly TWO logos, not three. Don't invent a separate "contract logo":
+  1) BUSINESS LOGO — your one main logo. Set it in Account Settings → Profile Settings. This SAME logo is what appears on your contracts, planners, and riders — there is no separate contract logo; the contract uses your business logo.
+  2) RECEIPT LOGO — a separate logo just for receipts (plus its logo backing). Set it in Booking Settings → Receipts tab.
+  So: business logo (Account Settings → Profile Settings) covers contracts/planners/riders, and the receipt logo (Booking Settings → Receipts) is its own thing. If you change your business logo it does NOT change the receipt logo (and vice versa) — update each where it lives if you want them to match. Do NOT tell a DJ there's a "contract logo" in Booking Settings → Contracts; that doesn't exist.
 - PHOTO UPLOAD LIMITS: each image (profile/gallery photos) can be up to 10 MB. Accepted formats are JPG, PNG, WebP, GIF, and HEIC/HEIF (iPhone photos). SVG is not supported. If a photo won't upload, it's usually over 10 MB or an unsupported format — have them shrink it or save it as a JPG/PNG. (Logo uploads for contracts/planners/riders are smaller — 4 MB max — and uploaded contract files are up to 20 MB; rider PDFs up to 12 MB. But for a plain "photo," the answer is 10 MB.)
 - MOBILE APP: there is NO separate iOS/Android app to download. Global DJ Connect is a web app — it's fully mobile-optimized, so just open globaldjconnect.com in your phone's browser and everything (bookings, payments, planners, etc.) works there. You can add it to your phone's home screen from the browser menu for an app-like shortcut, but there's nothing to install from an app store.
 - EMBEDDABLE CALENDAR — this lives ON YOUR PROFILE, not in settings. Go to your own profile and scroll to your booking calendar; as the owner you'll see an "Embed Calendar" button UNDER the booking calendar (just below it). Click it to get the embed code/options to paste on your own website. So if a DJ asks how to embed their calendar, send them to their profile, to the "Embed Calendar" button under their booking calendar — do NOT tell them it's in Account Settings or Booking Settings. (It's a Pro-and-up feature.)
@@ -260,6 +264,23 @@ MONEY MODEL (use this for any billing / refund / payment question):
 ${SITE_MAP}
 
 ${FAQ_KNOWLEDGE}`;
+}
+
+// Strip markdown emphasis from a reply before it's shown. The widget only
+// renders [label](/path) links as rich; everything else is plain text, so
+// stray **bold** / __bold__ / *italic* / _italic_ show up as literal asterisks
+// and underscores and look messy. We unwrap them here (belt-and-suspenders on
+// top of the "write plain text" instruction) and also tidy leading "* " / "- "
+// bullets into "• ". Navigation links [label](/path) are left untouched.
+export function stripReplyMarkdown(text: string): string {
+  return String(text || '')
+    // Bold / italic wrappers → their inner text.
+    .replace(/\*\*(.+?)\*\*/gs, '$1')
+    .replace(/__(.+?)__/gs, '$1')
+    .replace(/(^|[^\w*])\*(?!\s)([^*\n]+?)\*(?![\w*])/g, '$1$2')
+    .replace(/(^|[^\w_])_(?!\s)([^_\n]+?)_(?![\w_])/g, '$1$2')
+    // Leading markdown bullets → a clean bullet dot.
+    .replace(/^[ \t]*[*-][ \t]+/gm, '• ');
 }
 
 // ───────────────────────────────────────────────────────────────────
