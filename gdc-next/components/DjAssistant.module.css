@@ -48,7 +48,9 @@
   width: 370px;
   max-width: calc(100vw - 32px);
   height: 540px;
-  max-height: calc(100vh - 40px);
+  /* dvh (dynamic viewport height) so the panel — and its bottom input — stay on
+     screen when a phone's keyboard/toolbar is open; vh ignores the keyboard. */
+  max-height: calc(100dvh - 40px);
   display: flex;
   flex-direction: column;
   background: #0b0b0f;
