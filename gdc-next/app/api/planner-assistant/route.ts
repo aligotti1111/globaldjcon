@@ -20,6 +20,7 @@ import {
   ASSISTANT_MAX_TOKENS,
   ASSISTANT_MAX_MESSAGES,
   ASSISTANT_MAX_INPUT_CHARS,
+  stripReplyMarkdown,
 } from '@/lib/djAssistant';
 import { visibleFields, type PlannerField, isSection } from '@/lib/planner';
 import { canBook, type AccessFields } from '@/lib/access';
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
     const reply = Array.isArray(data?.content)
       ? data.content.filter((c: { type?: string }) => c?.type === 'text').map((c: { text?: string }) => c?.text || '').join('').trim()
       : '';
-    return NextResponse.json({ reply: reply || "Sorry, I couldn't put that together. Try asking another way?" });
+    return NextResponse.json({ reply: stripReplyMarkdown(reply) || "Sorry, I couldn't put that together. Try asking another way?" });
   } catch (e) {
     console.error('[planner-assistant] fetch failed', e);
     return NextResponse.json({ error: 'The helper is unavailable right now.' }, { status: 502 });
