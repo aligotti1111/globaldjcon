@@ -118,7 +118,7 @@ export default function PlannerAssistant({
             knows the suggestions are the platform's, not the DJ's. */}
         {msgs.some((m) => m.role === 'assistant') && (
           <div style={{ alignSelf: 'center', textAlign: 'center', maxWidth: '94%', color: '#8a8fa3', fontSize: 11, lineHeight: 1.5, padding: '2px 4px' }}>
-            ℹ️ Suggestions and responses here are powered by Global DJ Connect and are not shaped by the DJ you&apos;ve booked.
+            ℹ️ Suggestions and responses here are powered by Global DJ Connect and are not influenced by the DJ you&apos;ve booked.
           </div>
         )}
         {error && (
