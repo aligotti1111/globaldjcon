@@ -124,10 +124,31 @@ export const SONG_LIBRARY: CuratedSong[] = [
   { title: 'Thank You', artist: 'Led Zeppelin', pairing: 'father-daughter', genres: ['rock', 'classic'], niche: true },
   { title: 'My Hero', artist: 'Foo Fighters', pairing: 'father-daughter', genres: ['rock'], niche: true },
 
-  // ── FIRST DANCE — the couple. (Moved here from father-daughter.) ──────────
+  // ── FIRST DANCE — the couple. ────────────────────────────────────────────
+  // Slower / classic first-dance love songs.
   { title: 'Perfect', artist: 'Ed Sheeran', pairing: 'first-dance', genres: ['modern', 'pop'] },
-  { title: 'Just the Way You Are', artist: 'Billy Joel', pairing: 'first-dance', genres: ['classic', 'pop'] },
-  { title: 'My Girl', artist: 'The Temptations', pairing: 'first-dance', genres: ['classic', 'soul', 'motown'] },
+  { title: 'Just the Way You Are', artist: 'Billy Joel', pairing: 'first-dance', genres: ['classic', 'pop', '70s'] },
+  { title: 'My Girl', artist: 'The Temptations', pairing: 'first-dance', genres: ['classic', 'soul', 'motown', '60s'] },
+  { title: 'At Last', artist: 'Etta James', pairing: 'first-dance', genres: ['classic', 'soul', '60s'] },
+  { title: "Can't Help Falling in Love", artist: 'Elvis Presley', pairing: 'first-dance', genres: ['classic', '60s'] },
+  { title: 'Thinking Out Loud', artist: 'Ed Sheeran', pairing: 'first-dance', genres: ['modern', 'pop'] },
+  { title: 'All of Me', artist: 'John Legend', pairing: 'first-dance', genres: ['modern', 'rnb', 'pop'] },
+  { title: 'Make You Feel My Love', artist: 'Adele', pairing: 'first-dance', genres: ['modern', 'pop'] },
+  { title: 'A Thousand Years', artist: 'Christina Perri', pairing: 'first-dance', genres: ['modern', 'pop'] },
+  { title: 'Your Song', artist: 'Elton John', pairing: 'first-dance', genres: ['classic', 'rock', '70s'] },
+  { title: 'Unchained Melody', artist: 'The Righteous Brothers', pairing: 'first-dance', genres: ['classic', 'oldies', '60s'] },
+  { title: 'Wonderful Tonight', artist: 'Eric Clapton', pairing: 'first-dance', genres: ['classic', 'rock', '70s'] },
+  // Uptempo / upbeat first-dance picks (tagged 'uptempo').
+  { title: 'You Make My Dreams', artist: 'Daryl Hall & John Oates', pairing: 'first-dance', genres: ['classic', 'pop', 'uptempo', '80s'] },
+  { title: "Signed, Sealed, Delivered (I'm Yours)", artist: 'Stevie Wonder', pairing: 'first-dance', genres: ['soul', 'motown', 'uptempo', '70s'] },
+  { title: "I'm Yours", artist: 'Jason Mraz', pairing: 'first-dance', genres: ['modern', 'acoustic', 'uptempo'] },
+  { title: "Can't Stop the Feeling!", artist: 'Justin Timberlake', pairing: 'first-dance', genres: ['modern', 'pop', 'uptempo'] },
+  { title: 'Marry You', artist: 'Bruno Mars', pairing: 'first-dance', genres: ['modern', 'pop', 'uptempo'] },
+  { title: 'Love on Top', artist: 'Beyoncé', pairing: 'first-dance', genres: ['modern', 'rnb', 'uptempo'] },
+  { title: 'You Are the Best Thing', artist: 'Ray LaMontagne', pairing: 'first-dance', genres: ['modern', 'soul', 'uptempo'] },
+  { title: 'L-O-V-E', artist: 'Nat King Cole', pairing: 'first-dance', genres: ['classic', 'jazz', 'uptempo', '60s'] },
+  { title: 'Sugar', artist: 'Maroon 5', pairing: 'first-dance', genres: ['modern', 'pop', 'uptempo'] },
+  { title: 'Lucky', artist: 'Jason Mraz & Colbie Caillat', pairing: 'first-dance', genres: ['modern', 'acoustic', 'uptempo'] },
 ];
 
 // Songs explicitly NOT to recommend (e.g. commonly suggested but a poor fit).
@@ -188,10 +209,20 @@ export function curatedForMoment(momentText: string, limit = 24, isWedding = tru
       !(s.wedding && !isWedding), // drop marriage-specific songs when it's not a wedding
   );
   const t = momentText.toLowerCase();
-  // Pull out any genre word the host used so we can sort those first.
-  const askedGenres = ['modern', 'country', 'classic', 'rock', 'soul', 'rnb', 'r&b', 'pop', 'jazz', 'folk', 'hiphop', 'hip hop', 'acoustic', '80s', '90s', 'oldies']
-    .filter((g) => new RegExp(`\\b${g.replace('&', '&').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t))
-    .map((g) => (g === 'r&b' ? 'rnb' : g === 'hip hop' ? 'hiphop' : g));
+  // Pull out any genre / era / energy word the host used so we can sort those
+  // first. Synonyms collapse to the tag used on songs (e.g. "upbeat" → uptempo).
+  const SYNONYM: Record<string, string> = {
+    'r&b': 'rnb', 'hip hop': 'hiphop', upbeat: 'uptempo', 'up tempo': 'uptempo', 'up-tempo': 'uptempo',
+    fast: 'uptempo', 'high energy': 'uptempo', 'high-energy': 'uptempo', dancey: 'uptempo', danceable: 'uptempo',
+    '1950s': '50s', '1960s': '60s', '1970s': '70s', '1980s': '80s', '1990s': '90s',
+  };
+  const askedGenres = [
+    'modern', 'country', 'classic', 'rock', 'soul', 'rnb', 'r&b', 'pop', 'jazz', 'folk', 'hiphop', 'hip hop', 'acoustic', 'motown',
+    '50s', '60s', '70s', '80s', '90s', '1950s', '1960s', '1970s', '1980s', '1990s', 'oldies',
+    'uptempo', 'upbeat', 'up tempo', 'up-tempo', 'fast', 'high energy', 'high-energy', 'dancey', 'danceable',
+  ]
+    .filter((g) => new RegExp(`\\b${g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t))
+    .map((g) => SYNONYM[g] || g);
   const match = (s: CuratedSong) => s.genres.some((g) => askedGenres.includes(g));
   const sorted = [...songs].sort((a, b) => {
     // When a genre is asked, matching songs float up. Otherwise niche songs sink.
