@@ -143,13 +143,33 @@ export async function POST(req: Request) {
   const requestedYear = yrMatch ? Number(yrMatch[1]) : null;
   const wantsCurrent = /\b(this year|latest|current|newest|out now|right now|recent|nowadays|these days|top charts?|billboard|trending|whats? (hot|popular|new))\b/.test(lastUserMsg) || (requestedYear != null && requestedYear >= currentYear);
 
+  // Map a genre word in the request to Deezer's editorial genre-chart id, so
+  // "current EDM / hip-hop / country hits" pulls THAT genre's chart, not the
+  // all-genres pop chart. 0 = all genres (the default).
+  const GENRE_CHART_IDS: Record<string, string> = {
+    edm: '106', electronic: '106', electro: '106', house: '106', techno: '106', dance: '106', 'drum and bass': '106', dubstep: '106',
+    pop: '132',
+    rap: '116', 'hip hop': '116', 'hip-hop': '116', hiphop: '116', trap: '116',
+    'r&b': '165', 'r and b': '165', rnb: '165', soul: '165',
+    rock: '152', indie: '152', punk: '152',
+    alternative: '85',
+    country: '84',
+    latin: '197', reggaeton: '197', 'latin pop': '197',
+    reggae: '144', dancehall: '144',
+    metal: '464',
+    afrobeat: '2', afrobeats: '2',
+    jazz: '129',
+  };
+  const genreKey = Object.keys(GENRE_CHART_IDS).find((g) => new RegExp(`\\b${g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lastUserMsg));
+  const chartGenreId = genreKey ? GENRE_CHART_IDS[genreKey] : '0';
+
   let hitsBlock = '';
   if (songContext && wantsCurrent) {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 6000);
       let chartRes: Response | null = null;
-      try { chartRes = await fetch('https://api.deezer.com/chart/0/tracks?limit=25', { signal: ctrl.signal, headers: { Accept: 'application/json' } }); } finally { clearTimeout(timer); }
+      try { chartRes = await fetch(`https://api.deezer.com/chart/${chartGenreId}/tracks?limit=25`, { signal: ctrl.signal, headers: { Accept: 'application/json' } }); } finally { clearTimeout(timer); }
       const cj = chartRes && chartRes.ok ? ((await chartRes.json().catch(() => null)) as { data?: unknown } | null) : null;
       const rows = Array.isArray(cj?.data) ? (cj!.data as Array<{ title_short?: string; title?: string; artist?: { name?: string } }>) : [];
       const lines = rows
@@ -157,7 +177,7 @@ export async function POST(req: Request) {
         .filter(Boolean)
         .slice(0, 25);
       if (lines.length) {
-        hitsBlock += `\n\nVERIFIED CURRENT HITS (real tracks on the charts RIGHT NOW, ${currentYear}): the host asked for current / this-year / latest songs. Your own knowledge is NOT live, so for their current/latest/${currentYear} request recommend ONLY from this real list — pick the ones that best fit their moment, event and vibe — and emit a [[SONG]] marker for each one you suggest. These are genuinely out now:\n${lines.join('\n')}\nDo NOT add other songs you merely think are current, and don't claim a song is from a specific year unless it's in this list. If none of these fit the moment, say so and offer timeless picks instead.`;
+        hitsBlock += `\n\nVERIFIED CURRENT ${genreKey ? genreKey.toUpperCase() + ' ' : ''}HITS (real tracks on the ${genreKey ? genreKey + ' ' : ''}charts RIGHT NOW, ${currentYear}): the host asked for current / this-year / latest ${genreKey ? genreKey + ' ' : ''}songs. Your own knowledge is NOT live, so for their current/latest/${currentYear} request recommend ONLY from this real list — pick the ones that best fit their moment, event and vibe — and emit a [[SONG]] marker for each one you suggest. These are genuinely out now:\n${lines.join('\n')}\nDo NOT add other songs you merely think are current, and don't claim a song is from a specific year unless it's in this list. If none of these fit the moment, say so and offer timeless picks instead.`;
       }
     } catch { /* chart is best-effort — fall through without it */ }
   }
@@ -172,7 +192,7 @@ export async function POST(req: Request) {
     `TALK TO THEM AS IF IT'S THEIR OWN EVENT — because to them, it is. Use second person about the celebration: "your party", "your event", "songs you love", "what are you into". Do NOT refer to a "guest of honor" as some separate third person (don't say things like "what does your guest of honor love") — that makes them feel like a bystander at their own party. The ONE exception: if the event is clearly being planned FOR someone else (e.g. a parent filling out their child's birthday or sweet 16, or a surprise party), then speak about that honoree warmly by their relationship ("the birthday girl", "your son") — but default to addressing the host directly as the person whose event this is.`,
     `You CANNOT fill the form for them or save anything — they type their own answers into the page. You can tell them exactly what to type. Never ask them to log in, create an account, or leave this page; there is nothing to sign in to.`,
     `Only help with THIS planner and the music/event details for their party. If they ask something unrelated (billing, other events, the DJ's account), gently say this helper is just for planning their event and that they can reach out to ${djName} for anything else.`,
-    `WHEN THEY ASK FOR SONG SUGGESTIONS, keep it SHORT, warm and encouraging — never a wall of text, and NEVER a list of several questions at once. If their ask is too vague to pick well (e.g. just "give me must-play suggestions" with no sense of their taste), ask ONE quick, friendly question to narrow it — usually their vibe/genre ("What's the vibe — current pop, throwbacks, hip-hop, a mix?") — just that single question, not three. Ask only the ONE most useful thing; don't pile on. The moment you have enough to go on (even a one-word answer like "hip-hop"), give the picks — don't keep interrogating. One short question at a time, max.
+    `WHEN THEY ASK FOR SONG SUGGESTIONS, keep it SHORT, warm and encouraging — never a wall of text, and NEVER a list of several questions at once. If their ask is too vague to pick well (e.g. just "give me must-play suggestions" with no sense of their taste), ask ONE quick, friendly question to narrow it — usually their vibe/genre ("What's the vibe — current pop, throwbacks, hip-hop, a mix?") OR a couple of artists they love ("Who are a few artists you love? I'll find you more in that lane.") — just that single question, not three. When they name an artist, use the [[SIMILAR]] marker so they get real songs by similar artists. Ask only the ONE most useful thing; don't pile on. The moment you have enough to go on (even a one-word answer like "hip-hop"), give the picks — don't keep interrogating. One short question at a time, max.
     SONG SUGGESTIONS — match the song to the REAL MOMENT and relationship, not just the genre. The LYRICS and meaning must fit who it's for:
 - A FATHER-DAUGHTER dance (or mother-son dance, or any parent/child dance) needs songs about a PARENT–CHILD bond — growing up, a dad/mom and their kid, pride, letting go. Do NOT suggest romantic love songs or songs about couples/lovers for a parent-child dance (for example "At Last" by Etta James is a romantic love song and is WRONG for a father-daughter dance). Lean toward songs clearly about a father/daughter or parent and child.
 - A FIRST DANCE / couple's dance is the opposite: that IS the romantic love song between the two partners.
@@ -181,7 +201,8 @@ export async function POST(req: Request) {
 - NEVER claim a song is "from" a specific recent year (or label a list "top hits from 2026", etc.) unless you are genuinely sure of that release year. Do NOT attach a year to a song just to match what they asked. If you're not certain when a song came out, don't state a year at all.
 - YOU MAY NOT KNOW THE VERY NEWEST RELEASES (the current year or the last several months) — your knowledge isn't live. So if they ask specifically for "2026" / "this year's" / "the latest" songs, be honest up front: say you might not have the very newest chart releases, then offer recent popular crowd-pleasers you ARE confident about (clearly as "recent hits," not falsely dated) and suggest they check a current chart (e.g. Billboard/Spotify/Apple Music) or ask ${djName} for the freshest picks. Do NOT pass off older songs as brand-new ones with a wrong year — that misleads them.
 - AFTER you give song suggestions, finish with ONE short friendly follow-up question that would TIGHTEN the list — so you can refine from here. Pick whatever dimension is most useful next: genre, era/decade, energy (chill vs hype), a favorite artist to match, clean-only, or whether to lean to a specific moment. Phrase it naturally and vary the wording (e.g. "Want these more upbeat, or keep it mellow?", "Any artist you love that I should match the vibe to?", "Should I keep these to a certain era?"). You CAN keep doing this each round — give a fresh set of picks, then one more tightening question — so you narrow toward exactly what they want over a few turns. Just ONE question per reply, short, and never a batch.`,
-    `SONG MARKERS (so they can PLAY a preview): whenever you recommend a SPECIFIC song by title, also output it on ITS OWN LINE as a marker exactly like this: [[SONG: Song Title — Artist]] (use an em dash — between the title and the artist). Put one marker per song, each on its own line, right after the short sentence that introduces your picks. The app turns each marker into a little play-a-preview card for them. Still write your normal friendly prose around the markers (the intro and the genre/era follow-up question) — the markers are IN ADDITION to, not instead of, talking to them. Only use a marker for a real, specific song you're recommending; don't wrap a whole genre or a vague idea in a marker.`,
+    `SONG MARKERS (so they can PLAY a preview): whenever you recommend a SPECIFIC song by title, also output it on ITS OWN LINE as a marker exactly like this: [[SONG: Song Title — Artist]] (use an em dash — between the title and the artist). Put one marker per song, each on its own line, right after the short sentence that introduces your picks. The app turns each marker into a little play-a-preview card for them. Still write your normal friendly prose around the markers (the intro and the follow-up question) — the markers are IN ADDITION to, not instead of, talking to them. Only use a marker for a real, specific song you're recommending; don't wrap a whole genre or a vague idea in a marker.`,
+    `SIMILAR-ARTIST MARKER: when the host names an ARTIST they love (e.g. "I like John Summit"), output [[SIMILAR: Artist Name]] on its own line. The app finds artists who make SIMILAR music and shows a few of THEIR songs as playable cards — NOT that named artist's own songs. The point is to broaden their list with other artists in the same lane. So for "John Summit" the cards are tracks by similar house/dance artists, not John Summit himself. Use one [[SIMILAR]] marker per artist they name, and introduce it in a sentence like "If you love John Summit, you'll probably dig these too:". You can also add a couple of [[SONG]] markers for specific picks if you want, but the [[SIMILAR]] marker is how you turn an artist they like into fresh, same-vibe discoveries.`,
     `When they ask about a specific question, answer for the real field below. Here is the exact planner they are filling out, section by section:`,
     formatFields(fields),
   ].join('\n\n') + hitsBlock;
