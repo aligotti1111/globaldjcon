@@ -275,6 +275,9 @@ export function billBreakdownBox(
     // figure is reconstructed as quotedRate + discountAmount.
     discountPct?: number | null;
     discountAmount?: number | null;
+    // Chosen add-ons (title + price). Their prices are already folded into
+    // quotedRate, so they're netted out of the package price and itemized.
+    addons?: { title: string; price: number }[];
   },
   sym: string,
   currency: string,
@@ -284,6 +287,8 @@ export function billBreakdownBox(
   if (!Number.isFinite(subtotal) || subtotal <= 0) return '';
   const cocktailAdd = b.cocktailPrice != null ? Number(b.cocktailPrice) : 0;
   const ceremonyAdd = b.ceremonyPrice != null ? Number(b.ceremonyPrice) : 0;
+  const addonItems = Array.isArray(b.addons) ? b.addons.filter((a) => a && a.title) : [];
+  const addonAdd = addonItems.reduce((s, a) => s + (Number.isFinite(Number(a.price)) ? Number(a.price) : 0), 0);
   const taxAmt = b.taxAmount != null ? Number(b.taxAmount) : 0;
   const depAmt = b.depositAmount != null ? Number(b.depositAmount) : 0;
   // Extras the price already covers (no separate charge) — noted, not itemized.
@@ -294,9 +299,9 @@ export function billBreakdownBox(
   const discAmt = b.discountAmount != null ? Number(b.discountAmount) : 0;
   const discPct = b.discountPct != null ? Number(b.discountPct) : 0;
   // Nothing to break down → no box.
-  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && taxAmt <= 0 && depAmt <= 0
+  if (cocktailAdd <= 0 && ceremonyAdd <= 0 && addonAdd <= 0 && taxAmt <= 0 && depAmt <= 0
       && discAmt <= 0 && bundled.length === 0) return '';
-  const basePrice = subtotal - cocktailAdd - ceremonyAdd;
+  const basePrice = subtotal - cocktailAdd - ceremonyAdd - addonAdd;
   const taxPct = b.taxPct != null ? Number(b.taxPct) : 0;
   const total = b.totalWithTax != null ? Number(b.totalWithTax) : subtotal + taxAmt;
   const depPct = b.depositPct != null ? Number(b.depositPct) : 0;
@@ -306,10 +311,13 @@ export function billBreakdownBox(
   const row = (label: string, val: string, o?: { bold?: boolean; muted?: boolean; top?: boolean }) =>
     `<tr><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}text-align:right;color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
   const rows: string[] = [];
-  if (cocktailAdd > 0 || ceremonyAdd > 0) {
+  if (cocktailAdd > 0 || ceremonyAdd > 0 || addonAdd > 0) {
     rows.push(row('Package price', money(basePrice)));
     if (cocktailAdd > 0) rows.push(row('Cocktail Hour', `+${money(cocktailAdd)}`, { muted: true }));
     if (ceremonyAdd > 0) rows.push(row('Music For Ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
+    for (const a of addonItems) {
+      rows.push(row(a.title, `+${money(Number(a.price) || 0)}`, { muted: true }));
+    }
   } else if (discAmt > 0) {
     // subtotal is already net of the discount — show what it was before.
     rows.push(row('Total Event Price', money(subtotal + discAmt)));
