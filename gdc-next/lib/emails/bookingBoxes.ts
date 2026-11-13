@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { canUsePro, type AccessFields } from '@/lib/access';
 import { currencySymbol } from './format';
 import { billBreakdownBox } from './layout';
+import { parseBookingAddons } from '@/lib/addons';
 
 // Fetch a booking's frozen price snapshot and render the itemized bill. Used
 // by every priced email that has a bookingId, so the breakdown always matches
@@ -27,7 +28,7 @@ export async function billBreakdownForBooking(
     const admin = createAdminClient();
     const { data } = await admin
       .from('bookings')
-      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type')
+      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type, addons')
       .eq('id', bookingId)
       .maybeSingle<{
         quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
@@ -35,7 +36,7 @@ export async function billBreakdownForBooking(
         offer_discount_pct: number | null; offer_discount_amount: number | null;
         tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
         deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
-        dj_id: string | null; booking_type: string | null;
+        dj_id: string | null; booking_type: string | null; addons: unknown;
       }>();
     if (!data) return '';
     const cur = data.currency || currency || 'USD';
@@ -77,6 +78,7 @@ export async function billBreakdownForBooking(
       quotedRate: data.quoted_rate,
       cocktailPrice: data.cocktail_price,
       ceremonyPrice: data.ceremony_price,
+      addons: parseBookingAddons(data.addons),
       bundledCocktail: !!data.cocktail_needed,
       bundledCeremony: !!data.ceremony_needed,
       discountPct: data.offer_discount_pct,
