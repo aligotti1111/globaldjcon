@@ -375,6 +375,37 @@ export async function POST(req: Request) {
       return bad('Please select a valid ceremony start time.');
     }
 
+    // ── DUPLICATE-REQUEST GUARDRAIL (mobile only) ───────────────────────────
+    // A host can't send the SAME DJ a second request for the SAME date + start
+    // time at the SAME venue while a prior request is still live (pending or
+    // approved). Stops accidental double-submits and re-requesting a slot they
+    // already have in flight. A declined or cancelled prior request does NOT
+    // block — they're free to try again. Keyed by the session user, the DJ, the
+    // date, the start time and the venue (name + address, as typed on the form).
+    {
+      const { data: liveDup } = await admin
+        .from('bookings')
+        .select('id')
+        .eq('dj_id', djRow.id)
+        .eq('requester_id', user.id)
+        .eq('booking_type', 'mobile')
+        .eq('event_date', dateKey)
+        .eq('start_time', startTime)
+        .eq('venue_name', venueName)
+        .eq('venue_address', venueAddress)
+        .in('status', ['pending', 'approved'])
+        .limit(1);
+      if (Array.isArray(liveDup) && liveDup.length > 0) {
+        return NextResponse.json(
+          {
+            error: "You've already requested this DJ for that date, time and venue — it's still awaiting a response. Check your bookings instead of sending another request.",
+            code: 'DUPLICATE_REQUEST',
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     // Derivations — EXACT mirror of MobileBookingForm's submit handler.
     const isWedding = eventType === 'weddings';
     const wantsCocktail = isWedding && cocktailNeeded === true;
