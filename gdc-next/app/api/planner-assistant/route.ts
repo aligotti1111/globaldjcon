@@ -141,7 +141,7 @@ export async function POST(req: Request) {
   const songContext = /\b(song|songs|track|tracks|music|hit|hits|playlist|artist|tune|jam|dj|dance|edm|pop|rap|hip ?hop|r&b|country|genre|anthem|banger)\b/.test(lastUserMsg);
   const yrMatch = lastUserMsg.match(/\b(19\d{2}|20\d{2})\b/);
   const requestedYear = yrMatch ? Number(yrMatch[1]) : null;
-  const wantsCurrent = /\b(this year|latest|current|newest|out now|right now|recent|nowadays|these days|top charts?|billboard|trending|whats? (hot|popular|new))\b/.test(lastUserMsg) || (requestedYear != null && requestedYear >= currentYear);
+  const wantsCurrent = /\b(this year|latest|current|new|newest|fresh|freshest|hot|hottest|popular|trending|upcoming|out now|right now|recent|nowadays|these days|top charts?|billboard|whats? (hot|popular|new))\b/.test(lastUserMsg) || (requestedYear != null && requestedYear >= currentYear);
 
   // Map a genre word in the request to Deezer's editorial genre-chart id, so
   // "current EDM / hip-hop / country hits" pulls THAT genre's chart, not the
@@ -163,19 +163,30 @@ export async function POST(req: Request) {
   const genreKey = Object.keys(GENRE_CHART_IDS).find((g) => new RegExp(`\\b${g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lastUserMsg));
   const chartGenreId = genreKey ? GENRE_CHART_IDS[genreKey] : '0';
 
-  let hitsBlock = '';
-  if (songContext && wantsCurrent) {
+  // Fetch a Deezer chart's track lines ("- Title — Artist"). Returns [] on any
+  // failure/empty.
+  async function chartLines(chartId: string): Promise<string[]> {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 6000);
-      let chartRes: Response | null = null;
-      try { chartRes = await fetch(`https://api.deezer.com/chart/${chartGenreId}/tracks?limit=25`, { signal: ctrl.signal, headers: { Accept: 'application/json' } }); } finally { clearTimeout(timer); }
-      const cj = chartRes && chartRes.ok ? ((await chartRes.json().catch(() => null)) as { data?: unknown } | null) : null;
+      let res: Response | null = null;
+      try { res = await fetch(`https://api.deezer.com/chart/${chartId}/tracks?limit=25`, { signal: ctrl.signal, headers: { Accept: 'application/json' } }); } finally { clearTimeout(timer); }
+      const cj = res && res.ok ? ((await res.json().catch(() => null)) as { data?: unknown } | null) : null;
       const rows = Array.isArray(cj?.data) ? (cj!.data as Array<{ title_short?: string; title?: string; artist?: { name?: string } }>) : [];
-      const lines = rows
+      return rows
         .map((t) => { const title = str(t.title_short) || str(t.title); const artist = str(t.artist?.name); return title ? `- ${title}${artist ? ` — ${artist}` : ''}` : ''; })
         .filter(Boolean)
         .slice(0, 25);
+    } catch { return []; }
+  }
+
+  let hitsBlock = '';
+  if (songContext && wantsCurrent) {
+    try {
+      // Try the genre chart; if it comes back empty, fall back to the
+      // all-genres chart so we NEVER drop to the "check Spotify" hedge.
+      let lines = await chartLines(chartGenreId);
+      if (lines.length === 0 && chartGenreId !== '0') lines = await chartLines('0');
       if (lines.length) {
         hitsBlock += `\n\nVERIFIED CURRENT ${genreKey ? genreKey.toUpperCase() + ' ' : ''}HITS (real tracks on the ${genreKey ? genreKey + ' ' : ''}charts RIGHT NOW, ${currentYear}): the host asked for current / this-year / latest ${genreKey ? genreKey + ' ' : ''}songs. Your own knowledge is NOT live, so for their current/latest/${currentYear} request recommend ONLY from this real list — pick the ones that best fit their moment, event and vibe — and emit a [[SONG]] marker for each one you suggest. These are genuinely out now:\n${lines.join('\n')}\nDo NOT add other songs you merely think are current, and don't claim a song is from a specific year unless it's in this list. If none of these fit the moment, say so and offer timeless picks instead.`;
       }
