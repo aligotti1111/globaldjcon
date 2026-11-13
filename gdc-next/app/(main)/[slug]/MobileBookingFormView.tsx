@@ -338,6 +338,28 @@ export default function MobileBookingForm({
   const [errorFieldId, setErrorFieldId] = useState<string | null>(null);
   const [successState, setSuccessState] = useState<{ isQuote: boolean } | null>(null);
 
+  // ADD-ONS — optional extras the DJ offers on any package (uplighting, photo
+  // booth, extra hour, …). One global list in booking_settings.mob_addons. The
+  // host toggles which they want; selected prices fold into the quoted total.
+  // Indexes into the add-ons list (server re-reads prices by index — never
+  // trusts a client-sent price).
+  const mobAddons = useMemo(
+    () => ((bookingSettings as { mob_addons?: Array<{ title?: string; price?: number | string; photo?: string; details?: string }> }).mob_addons || [])
+      .filter((a) => a && (a.title || '').trim()),
+    [bookingSettings],
+  );
+  const [selectedAddons, setSelectedAddons] = useState<number[]>([]);
+  const addonsTotal = useMemo(
+    () => selectedAddons.reduce((sum, i) => {
+      const p = Number(mobAddons[i]?.price);
+      return sum + (Number.isFinite(p) && p > 0 ? p : 0);
+    }, 0),
+    [selectedAddons, mobAddons],
+  );
+  function toggleAddon(i: number) {
+    setSelectedAddons((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
+  }
+
   // ── Address autocomplete ─────────────────────────────────────────
   // Dropdown of Nominatim suggestions; coords stick to whichever one the
   // user picks (cleared if they type more after picking). Coords are
@@ -462,7 +484,10 @@ export default function MobileBookingForm({
     : saleBlocked ? 'Sales are excluded from bookings for this date.'
     : codesBlocked ? 'Promo codes are excluded from bookings for this date.'
     : '';
-  const basePrice = priceResult?.price ?? null;
+  // Selected add-ons fold into the subtotal (like the cocktail/ceremony add-ons
+  // already do) — so the discount, tax and deposit all compute on the inclusive
+  // amount. A quote (price null) can't be priced, so add-ons don't affect it.
+  const basePrice = priceResult?.price != null ? priceResult.price + addonsTotal : null;
   const discount: DiscountResult = useMemo(() => {
     if (basePrice == null) return { amount: 0, kind: null, label: '' };
     return computeDiscount(basePrice, bookingSettings, appliedCode, dateKey);
@@ -687,12 +712,15 @@ export default function MobileBookingForm({
     // Apply the discount to the final total; deposit comes off the discounted
     // amount. Stamp the booking with which discount was used so the DJ's
     // usage history can show who booked with it.
+    // Fold selected add-ons into the subtotal before discount — mirrors the
+    // basePrice preview above and what the server recomputes.
+    const finalSubtotal = finalPrice.price != null ? finalPrice.price + addonsTotal : null;
     const finalDiscount: DiscountResult =
-      finalPrice.price != null
-        ? computeDiscount(finalPrice.price, bookingSettings, appliedCode, dateKey)
+      finalSubtotal != null
+        ? computeDiscount(finalSubtotal, bookingSettings, appliedCode, dateKey)
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
-      finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
+      finalSubtotal != null ? Math.max(0, finalSubtotal - finalDiscount.amount) : null;
     // NOTE: finalPrice/finalDiscount/finalTotal are now PREVIEW-ONLY. The
     // stored money fields (quoted_rate, discount_*, deposit_amount, package
     // snapshots) are recomputed server-side by /api/bookings/create;
@@ -754,6 +782,10 @@ export default function MobileBookingForm({
           ceremonyStart,
           ceremonySameRoom,
           packageIndex: selectedPkgIdx,
+          // Indexes of the add-ons the host selected. The server re-reads each
+          // add-on's price from booking_settings.mob_addons by index — the
+          // client never sends prices.
+          addonIndexes: selectedAddons,
           promoCode: appliedCode,
           message,
           // Preview total — server-verified, never stored as-is. A 409
@@ -1706,6 +1738,63 @@ export default function MobileBookingForm({
               </div>
             </div>
           )
+        )}
+
+        {/* ADD-ONS — optional extras for any package. Shown once a package is
+            picked; toggling one adds its price to the estimate below. */}
+        {mobAddons.length > 0 && selectedPkgIdx != null && (
+          <div style={{ margin: '18px 0' }}>
+            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.04em', color: 'var(--neon,#00e0a4)', textTransform: 'uppercase', marginBottom: 8 }}>
+              Add-ons
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {mobAddons.map((addon, i) => {
+                const on = selectedAddons.includes(i);
+                const price = Number(addon.price);
+                const hasPrice = Number.isFinite(price) && price > 0;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleAddon(i)}
+                    aria-pressed={on}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                      width: '100%', padding: 10, borderRadius: 12, cursor: 'pointer',
+                      background: on ? 'rgba(0,224,164,.08)' : 'rgba(255,255,255,.03)',
+                      border: `1.5px solid ${on ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.12)'}`,
+                      color: 'inherit', font: 'inherit',
+                    }}
+                  >
+                    {addon.photo && (
+                      <span style={{ width: 52, height: 52, flex: '0 0 auto', borderRadius: 8, background: `center/cover no-repeat url(${addon.photo})` }} />
+                    )}
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{addon.title}</span>
+                        {hasPrice && <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>+{cur}{price.toLocaleString()}</span>}
+                      </span>
+                      {addon.details && (
+                        <span style={{ display: 'block', fontSize: 12, color: '#9aa0b4', marginTop: 2, lineHeight: 1.4 }}>{addon.details}</span>
+                      )}
+                    </span>
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 22, height: 22, flex: '0 0 auto', borderRadius: 6,
+                        border: `2px solid ${on ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.3)'}`,
+                        background: on ? 'var(--neon,#00e0a4)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#0b0b10', fontSize: 14, fontWeight: 900,
+                      }}
+                    >
+                      {on ? '✓' : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Price display */}
