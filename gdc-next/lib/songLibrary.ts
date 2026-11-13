@@ -261,7 +261,7 @@ export function formatCuratedBlock(momentText: string, isWedding = true): string
   const avoid = AVOID_SONGS.map((a) => `- ${a.title}${a.artist ? ` — ${a.artist}` : ''} (${a.reason})`).join('\n');
   return (
     `VETTED ${label} SONGS (a DJ-curated list for THIS exact moment — this is your PREFERRED source, not your memory). ` +
-    `Lead with these. If the host named a genre/era, pick the ones tagged with it (tags are in brackets); the list is already ordered to help. ` +
+    `Pick just the BEST 4–6 of these for what they asked — do NOT paste the whole list; offer more only if they want it. If the host named a genre/era/energy, choose the ones tagged with it (tags are in brackets); the list is already ordered to help. ` +
     `You MAY add a song that's NOT on this list if it genuinely fits this exact pairing and the host's vibe — the list guides you, it doesn't cap you. If the host asks for MORE and you've used the best fits from this list, WEB-SEARCH for additional real "${label.toLowerCase()} dance songs" (plus their genre/vibe) to pull fresh vetted picks rather than guessing from memory, then apply the same pairing/meaning check. ` +
     `But NEVER offer a song meant for a different pairing (these are ${label} songs — do not use them for a father's dance or a first dance, and vice-versa):\n${lines}` +
     (avoid ? `\nDo NOT recommend:\n${avoid}` : '')
