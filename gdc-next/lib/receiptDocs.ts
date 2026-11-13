@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildDocumentPdf, type DocMoneyLine } from './receiptPdf';
 import { isFullName, normalizeName } from './fullName';
 import { methodDisplayLabel } from './paymentMethods';
+import { parseBookingAddons } from './addons';
 
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
 
@@ -164,6 +165,10 @@ interface BookingDocRow {
   // Receipt-only per-kind override snapshots (see db/receipt_overrides.sql).
   // Printed VERBATIM; never recalculated; never read by booking/pipeline math.
   receipt_overrides: Record<string, ReceiptOverride> | null;
+  // Chosen mobile add-ons (title + price). Their prices are already folded into
+  // quoted_rate, so they're listed in the DETAILS block for the itemized record,
+  // not as separate money lines (same treatment as cocktail / ceremony charges).
+  addons: unknown;
 }
 
 // A frozen snapshot of what the DJ typed into the Edit Receipt modal for one
@@ -255,7 +260,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_pct, tax_amount, total_with_tax, deposit_amount, status_overrides, requester_name, requester_id, host_email, receipt_overrides')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_pct, tax_amount, total_with_tax, deposit_amount, status_overrides, requester_name, requester_id, host_email, receipt_overrides, addons')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -368,6 +373,17 @@ export async function buildBookingDocAttachment(
       if (pkgTitle) details.push({ label: 'Package Name', value: pkgTitle });
       const includes = ovStr(ov?.includes, (b.package_details && b.package_details.trim()) ? stripHtml(b.package_details) : null);
       if (includes) details.push({ label: 'Package Includes', value: includes });
+      // Add-ons — itemized on their own DETAILS line (title — price each), with a
+      // blank line separating them from the package details above. Their prices
+      // are already inside the quoted_rate / Event Total, so this is a record of
+      // what the price covers, not an extra money line.
+      const docAddons = parseBookingAddons(b.addons);
+      if (docAddons.length > 0) {
+        details.push({
+          label: 'Add-ons',
+          value: docAddons.map((a) => `${a.title} — ${fmtCur(Number(a.price) || 0, currency)}`).join('\n'),
+        });
+      }
     }
 
     // Wedding ceremony + cocktail-hour times → EVENT block (under the venue).
