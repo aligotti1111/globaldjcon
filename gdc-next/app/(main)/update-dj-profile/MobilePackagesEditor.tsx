@@ -19,8 +19,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import styles from './updateDjProfile.module.css';
 import PackageEditor from './PackageEditor';
+import AddonsEditor from './AddonsEditor';
 import { useConfirm } from '@/components/ConfirmModal';
-import { type MobilePackage, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
+import { type MobilePackage, type MobAddon, packageTiers } from '@/app/(main)/[slug]/bookingSettings';
 import { calcPrice, MOB_TIME_OPTIONS, MOB_END_TIME_OPTIONS, hoursBetween } from '@/app/(main)/[slug]/mobileBookingForm';
 import bookingStyles from '@/app/(main)/[slug]/mobileBookingForm.module.css';
 import { MOB_EVENT_LABELS, mobEventLabel, makeCustomEventKey, currencySymbol, type CustomEventType } from '@/lib/constants';
@@ -58,6 +59,8 @@ export default function MobilePackagesEditor({
   depositPct = 0,
   taxEnabled = false,
   taxPct = 0,
+  addons = [],
+  onAddonsChange,
 }: {
   mobPackages: Record<string, unknown> | null | undefined;
   selectedEventTypes: string[];
@@ -72,6 +75,10 @@ export default function MobilePackagesEditor({
   taxPct?: number;
   onDirtyChange?: (dirty: boolean) => void;
   masterSaveTrigger?: number;
+  // Global ADD-ONS (uplighting, photo booth, …) a client can add to ANY package.
+  // Rendered as its own sidebar entry whose editor takes the package area's place.
+  addons?: MobAddon[];
+  onAddonsChange?: (next: MobAddon[]) => void;
 }) {
   const labelFor = (eventType: string): string =>
     eventType === 'general' ? 'General events' : mobEventLabel(eventType, customEventTypes);
@@ -100,6 +107,8 @@ export default function MobilePackagesEditor({
 
   const [mob, setMob] = useState<MobPackagesIndependent>(startMob);
   const [selCat, setSelCat] = useState<string>('general');
+  // Which editor the right pane shows: a package, or the global ADD-ONS list.
+  const [view, setView] = useState<'packages' | 'addons'>('packages');
   const [selIdx, setSelIdx] = useState(0);
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => JSON.stringify(serializeIndependent(startMob)));
   // A specialty event type is auto-pulled into its own override on load, but the
@@ -232,7 +241,7 @@ export default function MobilePackagesEditor({
 
   function onEditPkg(next: MobilePackage) { update(setPackageAt(mob, selCat, safeIdx, next as Pkg)); }
 
-  function selectPkg(cat: string, i: number) { setSelCat(cat); setSelIdx(i); setErr(null); }
+  function selectPkg(cat: string, i: number) { setSelCat(cat); setSelIdx(i); setErr(null); setView('packages'); }
   // Jump to a package from the missing-items list WITHOUT clearing the red
   // validation — point the field highlights at the one we're carrying over to.
   function goToInvalid(it: { cat: string; i: number; missing: string[] }) {
@@ -245,7 +254,7 @@ export default function MobilePackagesEditor({
     const n = withPkgTitles(addPkg(mob, cat));
     setMob(n); setErr(null);
     const list = listFor(n, cat);
-    setSelCat(cat); setSelIdx(list.length - 1);
+    setSelCat(cat); setSelIdx(list.length - 1); setView('packages');
     requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   }
 
@@ -274,7 +283,7 @@ export default function MobilePackagesEditor({
     const next = withPkgTitles(pullTypeOut(mob, type));
     update(next);
     onSave(serializeIndependent(next));
-    setSelCat(type); setSelIdx(0);
+    setSelCat(type); setSelIdx(0); setView('packages');
   }
   async function removeEventType(type: string) {
     const ok = await confirm({
@@ -660,12 +669,50 @@ Add pricing for an event type gives that event type its own packages.
             )}
           </div>
         )}
+        {/* ── ADD-ONS entry ── Its own sidebar item; selecting it swaps the
+            right pane from the package editor to the add-ons editor, so add-ons
+            live alongside the event types rather than below the whole page. */}
+        {onAddonsChange && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <button
+              type="button"
+              onClick={() => { setView('addons'); if (isNarrow) requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                background: view === 'addons' ? 'linear-gradient(180deg, rgba(0,224,164,.14), rgba(10,10,16,.4))' : 'rgba(255,255,255,.03)',
+                border: `1px solid ${view === 'addons' ? 'var(--neon)' : '#fff'}`,
+                color: view === 'addons' ? 'var(--neon)' : '#fff', borderRadius: 9, padding: '.7rem .8rem',
+                fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer',
+              }}
+            >
+              <span>Add-ons</span>
+              {addons.filter((a) => (a?.title || '').trim()).length > 0 && (
+                <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>
+                  {addons.filter((a) => (a?.title || '').trim()).length} item{addons.filter((a) => (a?.title || '').trim()).length === 1 ? '' : 's'}
+                </span>
+              )}
+              {view === 'addons' && (
+                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
+              )}
+            </button>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.72rem', lineHeight: 1.5, color: '#9a9ab0', margin: '.4rem .1rem 0' }}>
+              Optional extras a client can add to any package when they book.
+            </p>
+          </div>
+        )}
       </aside>
 
       {/* ── EDITOR (right pane on desktop; below the whole package list on
              mobile, so the package list and its controls stay together up top) ── */}
       <main ref={cardRef} style={isNarrow ? { flex: '1 1 100%', width: '100%', minWidth: 0, marginTop: 14, scrollMarginTop: 80 } : { flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
-        {renderEditor()}
+        {view === 'addons' && onAddonsChange ? (
+          <div style={{ position: 'relative', border: '1px solid var(--neon)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem' }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>Add-ons</div>
+            <AddonsEditor addons={addons} userId={userId} currency={currency} onChange={onAddonsChange} />
+          </div>
+        ) : (
+          renderEditor()
+        )}
       </main>
 
       {/* ── Event types popup ── */}
