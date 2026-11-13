@@ -109,6 +109,7 @@ interface BookingRow {
   cocktail_included: boolean | null;
   ceremony_price: number | null;
   ceremony_included: boolean | null;
+  addons: { title: string; price: number }[] | null;
   setup_hours: string | null;
   is_quote: boolean | null;
   // Set when the DJ explicitly sends a drafted quote to the booker.
