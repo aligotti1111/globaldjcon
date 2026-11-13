@@ -503,15 +503,48 @@ export async function POST(req: Request) {
         )!
       : { isQuote: true, price: null, overtimeHours: 0, depositAmount: null, cocktailAddon: 0, ceremonyAddon: 0 };
 
+    // ADD-ONS — the host's selected extras. The client sends only the chosen
+    // INDEXES; we re-read each add-on's price from the DJ's own
+    // booking_settings.mob_addons (never trust a client-sent price) and fold the
+    // total into the subtotal before discount/tax/deposit, exactly like the
+    // client preview. A snapshot (title + price, frozen now) is stored on the
+    // booking's `addons` jsonb for the itemized display — there is no separate
+    // add-ons money column; the price lives inside quoted_rate.
+    const settingsAddons: Array<{ title?: string; price?: number | string }> =
+      Array.isArray((settings as { mob_addons?: unknown }).mob_addons)
+        ? ((settings as { mob_addons?: Array<{ title?: string; price?: number | string }> }).mob_addons as Array<{ title?: string; price?: number | string }>)
+        : [];
+    const rawAddonIdx = Array.isArray(body.addonIndexes) ? body.addonIndexes : [];
+    const chosenAddonIdx = Array.from(
+      new Set(
+        rawAddonIdx
+          .map((v) => (typeof v === 'number' && Number.isInteger(v) ? v : -1))
+          .filter((i) => i >= 0 && i < settingsAddons.length),
+      ),
+    );
+    const addonSnapshot = chosenAddonIdx
+      .map((i) => {
+        const a = settingsAddons[i];
+        const title = str(a?.title).trim();
+        const price = Number(a?.price);
+        return title ? { title, price: Number.isFinite(price) && price > 0 ? price : 0 } : null;
+      })
+      .filter((a): a is { title: string; price: number } => !!a);
+    const addonsTotal = addonSnapshot.reduce((sum, a) => sum + a.price, 0);
+
+    // Fold add-ons into the subtotal (package price + add-ons), mirroring the
+    // client. A quote (price null) can't be priced, so add-ons don't change it.
+    const subtotalWithAddons = finalPrice.price != null ? finalPrice.price + addonsTotal : null;
+
     // Load the code's true redemption count into `settings` so the usage cap
     // is enforced against reality before this quote is computed.
     await applyLiveUsageCount(djRow.id, promoCode, settings);
     const finalDiscount: DiscountResult =
-      finalPrice.price != null
-        ? computeDiscount(finalPrice.price, settings, promoCode, dateKey, djTz)
+      subtotalWithAddons != null
+        ? computeDiscount(subtotalWithAddons, settings, promoCode, dateKey, djTz)
         : { amount: 0, kind: null, label: '' };
     const finalTotal =
-      finalPrice.price != null ? Math.max(0, finalPrice.price - finalDiscount.amount) : null;
+      subtotalWithAddons != null ? Math.max(0, subtotalWithAddons - finalDiscount.amount) : null;
 
     // Sales-tax SNAPSHOT — computed once here and frozen onto the booking
     // row, so a DJ later changing their tax settings can never re-price an
@@ -634,8 +667,12 @@ export async function POST(req: Request) {
       total_with_tax: totalWithTax,
       // Discount snapshot — what was applied, for the DJ's records + usage
       // history. original_rate keeps the pre-discount total for reference.
-      original_rate: finalDiscount.amount > 0 ? finalPrice.price : null,
+      original_rate: finalDiscount.amount > 0 ? subtotalWithAddons : null,
       discount_code: finalDiscount.kind === 'code' ? promoCode : null,
+      // Chosen add-ons snapshot (title + price, frozen now). Priced into
+      // quoted_rate above; stored here only for the itemized display. Null when
+      // none were selected.
+      addons: addonSnapshot.length ? addonSnapshot : null,
       discount_label: finalDiscount.amount > 0 ? finalDiscount.label : null,
       discount_amount: finalDiscount.amount > 0 ? finalDiscount.amount : null,
       overtime_rate: !finalPrice.isQuote && selectedPkg && Number(selectedPkg.overtime) > 0
