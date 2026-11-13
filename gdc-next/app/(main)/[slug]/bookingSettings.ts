@@ -117,6 +117,14 @@ export interface BookingSettings {
   mob_bookings_per_day?: number;    // default 1 — capacity per date
   mob_packages?: Record<string, MobilePackage[]>;  // 'general' | 'wedding' | 'mitzvah'
   mob_deposit_pct?: number;
+  // Optional extras a host can add to ANY package at booking time (uplighting,
+  // photo booth, extra hour, etc.). One global list across all event types —
+  // not per-package. Each has a title, a single flat price, a photo and a
+  // description. Selected add-ons' prices are folded into the booking's single
+  // quoted_rate server-side (never a separate money column); the booking stores
+  // only the chosen items (title + price) in its own `addons` jsonb for the
+  // itemized display on the card, emails and contract. Mobile DJs only.
+  mob_addons?: MobAddon[];
 
   // Club DJ daily capacity — how many bookings the DJ will accept on a
   // single date (1–3, default 1). A specific date can override this via
@@ -321,6 +329,19 @@ export interface MobilePackage {
   cocktailNotOffered?: boolean;
   // Hours the DJ needs to set up before the event start time (per package).
   setupHours?: string | number;
+}
+
+// An optional extra a mobile host can add to ANY package at booking time
+// (uplighting, photo booth, extra hour, monogram, etc.). One flat price each.
+// Stored in booking_settings.mob_addons. When the host selects one, its price
+// is folded into the booking's single quoted_rate server-side — there is no
+// separate add-ons money column; the booking keeps the chosen items (title +
+// price) in its own `addons` jsonb only for the itemized display.
+export interface MobAddon {
+  title?: string;
+  price?: number | string; // single flat price for this add-on
+  photo?: string;          // one sample photo URL
+  details?: string;        // description (plain text or light HTML)
 }
 
 // Canonical, sorted list of valid pricing tiers for a package. Uses
