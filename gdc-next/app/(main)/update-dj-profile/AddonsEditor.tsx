@@ -32,8 +32,18 @@ export default function AddonsEditor({
   const sym = currencySymbol(currency);
   const { confirm, confirmDialog } = useConfirm();
   const list = Array.isArray(addons) ? addons : [];
+  // Always show at least the first add-on's fields, even before anything is
+  // saved — a blank starter card so the DJ can type straight in instead of
+  // having to click "Add Add-on" first. Editing it promotes it into the list.
+  const display: MobAddon[] = list.length ? list : [{ title: '', price: '', photo: '', details: '' }];
 
   function update(idx: number, patch: Partial<MobAddon>) {
+    // Editing the blank starter card (which isn't in the stored list yet)
+    // creates the first real add-on.
+    if (idx >= list.length) {
+      onChange([...list, { title: '', price: '', photo: '', details: '', ...patch }]);
+      return;
+    }
     onChange(list.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   }
   function add() {
@@ -63,14 +73,8 @@ export default function AddonsEditor({
         booth, an extra hour, and so on. Each add-on has one price; the client&apos;s picks are added to their total.
       </p>
 
-      {list.length === 0 && (
-        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#777d90', fontStyle: 'italic' }}>
-          No add-ons yet.
-        </p>
-      )}
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {list.map((addon, idx) => (
+        {display.map((addon, idx) => (
           <AddonCard
             key={idx}
             addon={addon}
@@ -78,7 +82,7 @@ export default function AddonsEditor({
             userId={userId}
             sym={sym}
             onChange={(p) => update(idx, p)}
-            onRemove={() => remove(idx)}
+            onRemove={idx < list.length ? () => remove(idx) : undefined}
           />
         ))}
       </div>
@@ -106,7 +110,7 @@ function AddonCard({
   userId: string;
   sym: string;
   onChange: (patch: Partial<MobAddon>) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
@@ -135,7 +139,7 @@ function AddonCard({
   return (
     <div
       style={{
-        background: '#15151c', border: '1px solid rgba(255,255,255,.08)', borderRadius: 14,
+        background: '#000', border: '1px solid rgba(255,255,255,.08)', borderRadius: 14,
         padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
       }}
     >
@@ -143,14 +147,16 @@ function AddonCard({
         <span style={{ fontSize: 12, fontWeight: 700, color: '#9aa0b4', letterSpacing: '.04em' }}>
           ADD-ON {idx + 1}
         </span>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label="Remove add-on"
-          style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
-        >
-          ✕
-        </button>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remove add-on"
+            style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Title + price on one row */}
