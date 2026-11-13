@@ -23,6 +23,7 @@ import OvertimeSection from './OvertimeSection';
 import BookingLog, { type ChangeLogItem } from './BookingLog';
 import BookingEditModal, { type EditSection, type ContractState } from './BookingEditModal';
 import VenueDistance from './VenueDistance';
+import { parseBookingAddons, addonsTotal } from '@/lib/addons';
 import { useConfirm } from '@/components/ConfirmModal';
 import {
   MOBILE_EVENT_TYPES, NEON, capitalize, formatLongDate, formatTime12,
@@ -616,14 +617,24 @@ export default function BookingDetails({
     && !payments.some((p) => p.kind === 'balance' && Number(p.amount_paid) > 0);
   const cocktailCharge = booking.cocktail_price != null ? Number(booking.cocktail_price) : 0;
   const ceremonyCharge = booking.ceremony_price != null ? Number(booking.ceremony_price) : 0;
+  // Chosen add-ons (title + price, frozen at booking). Their prices were folded
+  // into quoted_rate server-side, so they're netted out of the base below and
+  // itemized on their own lines — just like the cocktail / ceremony charges.
+  const bookingAddons = parseBookingAddons((booking as { addons?: unknown }).addons);
+  const addonSum = addonsTotal(bookingAddons);
   const hasSeparateCocktail = cocktailCharge > 0 && agreedTotal != null;
   const hasSeparateCeremony = ceremonyCharge > 0 && agreedTotal != null;
-  const agreedBase = (hasSeparateCocktail || hasSeparateCeremony) ? (Number(agreedTotal) - cocktailCharge - ceremonyCharge) : null;
-  const agreedRateValue = (hasSeparateCocktail || hasSeparateCeremony) ? (
+  const hasAddons = bookingAddons.length > 0 && agreedTotal != null;
+  const itemizedRate = hasSeparateCocktail || hasSeparateCeremony || hasAddons;
+  const agreedBase = itemizedRate ? (Number(agreedTotal) - cocktailCharge - ceremonyCharge - addonSum) : null;
+  const agreedRateValue = itemizedRate ? (
     <span>
       {money(agreedBase)}
       {hasSeparateCocktail && <> + <span className={styles.cocktailHighlight}>{money(cocktailCharge)} cocktail</span></>}
       {hasSeparateCeremony && <> + <span className={styles.cocktailHighlight}>{money(ceremonyCharge)} ceremony</span></>}
+      {bookingAddons.map((a, i) => (
+        <Fragment key={`ad${i}`}> + <span className={styles.cocktailHighlight}>{money(a.price)} {a.title}</span></Fragment>
+      ))}
       {' = '}{money(agreedTotal)}
     </span>
   ) : money(agreedTotal);
@@ -726,11 +737,12 @@ export default function BookingDetails({
     // combined subtotal — Tax and Total Event Cost follow). Every other event
     // type is a single "Price" (the agreed rate). (Overtime moved out of the
     // receipt to the Event card's bottom-right — see overtimeControl.)
-    ...((isWedding && (hasSeparateCocktail || hasSeparateCeremony))
+    ...((isWedding && itemizedRate)
       ? ([
           [{ label: 'Reception', value: money(agreedBase) }],
           ...(hasSeparateCeremony ? [[{ label: 'Ceremony', value: money(ceremonyCharge) }]] : []),
           ...(hasSeparateCocktail ? [[{ label: 'Cocktail Hour', value: money(cocktailCharge) }]] : []),
+          ...bookingAddons.map((a) => [{ label: a.title, value: money(a.price) }]),
         ] as DetailRow[])
       : ([
           [{ label: isWedding ? 'Reception' : 'Price', value: agreedRateWithDiscount }],
