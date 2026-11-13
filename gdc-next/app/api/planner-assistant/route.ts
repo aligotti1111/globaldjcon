@@ -25,6 +25,7 @@ import {
 import { visibleFields, type PlannerField, isSection } from '@/lib/planner';
 import { canBook, type AccessFields } from '@/lib/access';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
+import { formatCuratedBlock, curatedTitlesForMoment } from '@/lib/songLibrary';
 
 export const runtime = 'nodejs';
 
@@ -217,6 +218,20 @@ export async function POST(req: Request) {
     hitsBlock += `\n\nThe host asked specifically for songs from ${requestedYear}. You cannot verify an exact ${requestedYear} chart from memory, so do NOT state that a song is "from ${requestedYear}" unless you are genuinely sure. Suggest well-known songs you're confident were popular around then, be upfront you can't guarantee the precise year, and point them to a ${requestedYear} year-end chart if they want certainty. List each as plain "Title — Artist" text.`;
   }
 
+  // DJ-CURATED LIST for meaning-critical moments (mother-son / father-daughter /
+  // first dance, etc.). When the host's recent chat names one of these, inject
+  // the vetted list from lib/songLibrary as the PREFERRED source so picks come
+  // from a hand-vetted list, not the model's unreliable memory.
+  {
+    const recentUserText = (messages as Array<{ role?: string; content?: string }>)
+      .filter((m) => m?.role === 'user')
+      .map((m) => str(m?.content))
+      .slice(-4)
+      .join('  |  ');
+    const curatedBlock = formatCuratedBlock(recentUserText);
+    if (curatedBlock) hitsBlock += `\n\n${curatedBlock}`;
+  }
+
   const system = [
     `You are the friendly Planner & Playlist helper on Global DJ Connect. You are talking to ${hostName || 'the host'} — the person who booked ${djName} — while they fill out the planner for their ${eventLabel}${occasion ? ` (${occasion})` : ''}${venue ? ` at ${venue}` : ''}.`,
     `DATES you already know (never ask the host what year it is or when their event is — you have it):${eventDateLabel ? ` the event is on ${eventDateLabel}.` : ' the exact event date is not on file.'}${todayLabel ? ` Today is ${todayLabel}.` : ''} When they ask for "current" or "this year's" hits, use the event's year (or the current year) from these dates instead of asking.`,
@@ -307,7 +322,7 @@ export async function POST(req: Request) {
   // song is physically removed. Fails OPEN (keeps the song) on any error so the
   // feature can never break the reply.
   const SENSITIVE_MOMENT_RE =
-    /\b(father[-\s]?daughter|mother[-\s]?son|mother[-\s]?daughter|father[-\s]?son|parent[-\s]?child|daddy[-\s]?daughter|first\s+dance|processional|recessional|down the aisle|ceremony|anniversary dance|money dance)\b/i;
+    /\b(father[-\s]?daughter|mother[-\s]?son|mother[-\s]?daughter|father[-\s]?son|parent[-\s]?child|daddy[-\s]?daughter|grand(pa|ma|father|mother|parent|son|daughter|child|kid)|grand[-\s]?(daughter|son|child|kid)|aunt|uncle|niece|nephew|first\s+dance|processional|recessional|down the aisle|ceremony|anniversary dance|money dance)\b/i;
   // Recent host text = the moment context (the moment is often named a couple of
   // turns before the "modern"/"timeless" refinement, so look back a few turns).
   const recentUserRaw = (messages as Array<{ role?: string; content?: string }>)
@@ -368,7 +383,16 @@ export async function POST(req: Request) {
     if (!SENSITIVE_MOMENT_RE.test(recentUserRaw)) return replyText;
     const songs = extractSongLines(replyText);
     if (songs.length < 2) return replyText; // not a real list; nothing to vet
-    const keep = await verifyFit(recentUserRaw, songs.map((s) => s.song));
+    // Songs on the DJ's curated list for this moment are trusted — never vet or
+    // drop them. Only the model's OWN additions get checked.
+    const curatedTitles = curatedTitlesForMoment(recentUserRaw);
+    const titleOf = (s: string) => s.split(/\s+[—–]\s+/)[0].trim().toLowerCase();
+    const needCheck = songs.map((s) => !curatedTitles.has(titleOf(s.song)));
+    const toVerify = songs.filter((_, i) => needCheck[i]).map((s) => s.song);
+    const verdict = toVerify.length ? await verifyFit(recentUserRaw, toVerify) : [];
+    // Reassemble a keep-flag per original song: curated = keep, others = verdict.
+    let vi = 0;
+    const keep = songs.map((_, i) => (needCheck[i] ? verdict[vi++] : true));
     const dropLineIdx = new Set<number>();
     songs.forEach((s, i) => { if (!keep[i]) dropLineIdx.add(s.lineIdx); });
     if (dropLineIdx.size === 0) return replyText;
