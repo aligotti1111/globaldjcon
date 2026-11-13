@@ -247,26 +247,60 @@ export async function POST(req: Request) {
 - AFTER you give song suggestions, finish with ONE short friendly follow-up question that would TIGHTEN the list — so you can refine from here. Pick whatever dimension is most useful next: genre, era/decade, energy (chill vs hype), a favorite artist to match, clean-only, or whether to lean to a specific moment. Phrase it naturally and vary the wording (e.g. "Want these more upbeat, or keep it mellow?", "Any artist you love that I should match the vibe to?", "Should I keep these to a certain era?"). You CAN keep doing this each round — give a fresh set of picks, then one more tightening question — so you narrow toward exactly what they want over a few turns. Just ONE question per reply, short, and never a batch.`,
     `HOW TO LIST SONGS: name each specific pick as plain text in the form "Title — Artist" (use an em dash — between title and artist). List one per line so it's easy to read. Do NOT output any special brackets, markers, codes, or tags around songs (no [[...]], no links) — just the plain "Title — Artist" text. The host adds songs to their planner using the song search ON THE FORM, which plays a 30-second preview of each; so if they want to hear a pick, tell them to search it in the matching song field on their planner. Keep your friendly intro sentence and your one follow-up question around the list.`,
     `WHEN THEY NAME AN ARTIST THEY LOVE (e.g. "I like John Summit"): suggest a few OTHER artists who make similar music and name a couple of real songs by those similar artists (again as plain "Title — Artist" lines) — the goal is to broaden their list with same-lane discoveries, not just echo the artist they named. Introduce it naturally, like "If you love John Summit, you'll probably dig these too:". Use your own knowledge to pick genuinely similar artists.`,
+    `WEB SEARCH — you have a web_search tool for CURRENT / NEW music only. Your own music knowledge has a cutoff and isn't live, so when the host asks for songs that are current, "this year", "the latest", brand-new, or trending — OR when they want something recent for a sensitive moment and you need to confirm a real song's release year or what it's actually about — do a quick web search to get real, accurate info before answering. Use it to (a) find genuinely current/new songs that fit, (b) confirm a song's release year, and (c) check what a recent song is really about so you only place it in a moment it truly fits. Keep searches minimal — one or two, just enough to answer. Do NOT search for ordinary questions you can already answer (established songs, planner field help, general advice) — that wastes time and money. After searching, still follow all the song-matching and plain-text listing rules above, and don't dump links or raw search text — just give the clean "Title — Artist" picks and your normal friendly reply. If a search comes back empty or unhelpful, fall back to being honest about what you can't verify rather than guessing.`,
     `When they ask about a specific question, answer for the real field below. Here is the exact planner they are filling out, section by section:`,
     formatFields(fields),
   ].join('\n\n') + hitsBlock;
 
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  // Give the model a live web_search tool so it can answer "what's current/new"
+  // music questions with real, up-to-the-minute info instead of its stale
+  // training memory. max_uses caps the cost; the model only searches when the
+  // system prompt says to (current/new music + verifying a recent song's year
+  // or meaning), so most planner questions trigger zero searches.
+  //   Anthropic server tool: runs on Anthropic's servers, searches the public
+  //   web, returns a final cited answer in one request (no manual tool loop).
+  //   It must be enabled for the org in the Anthropic Console (Settings →
+  //   Privacy); if it's OFF the request 400s, so we retry once WITHOUT the tool
+  //   and the assistant falls back to its current behavior — the feature just
+  //   lies dormant until the toggle is flipped.
+  const WEB_SEARCH_TOOL = { type: 'web_search_20250305', name: 'web_search', max_uses: 2 };
+
+  async function callAnthropic(withSearch: boolean) {
+    return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY as string,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({ model: ASSISTANT_MODEL, max_tokens: ASSISTANT_MAX_TOKENS, system, messages }),
+      body: JSON.stringify({
+        model: ASSISTANT_MODEL,
+        max_tokens: ASSISTANT_MAX_TOKENS,
+        system,
+        messages,
+        ...(withSearch ? { tools: [WEB_SEARCH_TOOL] } : {}),
+      }),
     });
+  }
+
+  try {
+    let resp = await callAnthropic(true);
+    // If web search isn't enabled on the account (or the tool is rejected for
+    // any reason), retry the exact same request without it so the assistant
+    // still answers — just without live lookups.
+    if (!resp.ok && (resp.status === 400 || resp.status === 403)) {
+      const detail = await resp.text().catch(() => '');
+      console.warn('[planner-assistant] web_search unavailable, retrying without it', resp.status, detail.slice(0, 300));
+      resp = await callAnthropic(false);
+    }
     if (!resp.ok) {
       const detail = await resp.text().catch(() => '');
       console.error('[planner-assistant] anthropic error', resp.status, detail.slice(0, 500));
       return NextResponse.json({ error: 'The helper is unavailable right now.' }, { status: 502 });
     }
     const data = await resp.json();
+    // With the search tool on, content holds server_tool_use and
+    // web_search_tool_result blocks alongside the text — we only want the text.
     const reply = Array.isArray(data?.content)
       ? data.content.filter((c: { type?: string }) => c?.type === 'text').map((c: { text?: string }) => c?.text || '').join('').trim()
       : '';
