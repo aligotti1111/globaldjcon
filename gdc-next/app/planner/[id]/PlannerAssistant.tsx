@@ -6,34 +6,39 @@
 // so it sits cleanly on either planner theme (dark or light). It only advises —
 // the host still types their answers into the form itself.
 //
-// SONG PREVIEWS: when the assistant recommends a specific song it emits a
-// [[SONG: Title — Artist]] marker. We turn each marker into a little card with
-// album art and a 30-second play button, using the same Deezer-backed
-// /api/songs/search the planner's song picker already uses. Only one preview
-// plays at a time.
+// SONG PREVIEWS: the assistant drops two kinds of marker, each becomes
+// playable cards (Deezer-backed, same /api/songs the picker uses):
+//   [[SONG: Title — Artist]]  → that one song, resolved + previewable.
+//   [[SIMILAR: Artist]]        → a few songs by artists SIMILAR to that one.
+// Only one preview plays at a time.
 
 import { useState, useRef, useEffect } from 'react';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
-// One track as /api/songs/search returns it (see lib/planner Track).
+// One track as /api/songs/* returns it (see lib/planner Track).
 type Track = { title: string; artist?: string; album_art?: string; url?: string; preview?: string };
 
 const GREETING =
   "Hi! I can help you fill out your planner. Not sure what to put for a question, or want song ideas for your event? Just ask — like “what should I put for must-play songs?”";
 
-// [[SONG: Title — Artist]] markers the assistant drops inline.
-const SONG_RE = /\[\[SONG:\s*([^\]]+?)\s*\]\]/g;
+// Markers the assistant drops inline: [[SONG: ...]] and [[SIMILAR: ...]].
+const MARKER_RE = /\[\[(SONG|SIMILAR):\s*([^\]]+?)\s*\]\]/g;
 
-type Seg = { type: 'text'; text: string } | { type: 'song'; raw: string };
+type Seg =
+  | { type: 'text'; text: string }
+  | { type: 'song'; raw: string }
+  | { type: 'similar'; name: string };
+
 function parseSegments(content: string): Seg[] {
   const out: Seg[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
-  SONG_RE.lastIndex = 0;
-  while ((m = SONG_RE.exec(content)) !== null) {
+  MARKER_RE.lastIndex = 0;
+  while ((m = MARKER_RE.exec(content)) !== null) {
     if (m.index > last) out.push({ type: 'text', text: content.slice(last, m.index) });
-    out.push({ type: 'song', raw: m[1].trim() });
+    if (m[1] === 'SIMILAR') out.push({ type: 'similar', name: m[2].trim() });
+    else out.push({ type: 'song', raw: m[2].trim() });
     last = m.index + m[0].length;
   }
   if (last < content.length) out.push({ type: 'text', text: content.slice(last) });
@@ -46,7 +51,54 @@ function splitTitleArtist(raw: string): { title: string; artist?: string } {
   return { title: raw.trim() };
 }
 
-// A single recommended song, resolved to a real track with a playable preview.
+// Pure presentation of one track: art/play, title, artist, open link.
+function TrackRow({
+  track, accent, playingUrl, onToggle, fallbackArtist,
+}: {
+  track: Track;
+  accent: string;
+  playingUrl: string | null;
+  onToggle: (url: string) => void;
+  fallbackArtist?: string;
+}) {
+  const preview = track.preview;
+  const isPlaying = !!preview && playingUrl === preview;
+  const artist = track.artist || fallbackArtist || '';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#1b1b24', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '8px 10px' }}>
+      <button
+        type="button"
+        onClick={() => preview && onToggle(preview)}
+        disabled={!preview}
+        aria-label={preview ? (isPlaying ? 'Pause preview' : 'Play 30-second preview') : 'No preview available'}
+        title={preview ? 'Play a 30-second preview' : 'No preview available'}
+        style={{
+          position: 'relative', width: 44, height: 44, flex: '0 0 auto', borderRadius: 8, overflow: 'hidden',
+          border: 'none', padding: 0, cursor: preview ? 'pointer' : 'default',
+          background: track.album_art ? `center/cover no-repeat url(${track.album_art})` : '#2a2a35',
+        }}
+      >
+        {preview && (
+          <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.38)', color: '#fff', fontSize: 15 }}>
+            {isPlaying ? '❚❚' : '▶'}
+          </span>
+        )}
+      </button>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f0f8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
+        <div style={{ fontSize: 11.5, color: '#9aa0b4', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{artist}</div>
+      </div>
+      {track.url && (
+        <a href={track.url} target="_blank" rel="noopener noreferrer" aria-label="Open song" title="Open the full song"
+          style={{ flex: '0 0 auto', color: accent, fontSize: 11, fontWeight: 700, textDecoration: 'none', padding: '4px 6px' }}>
+          Open ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
+// [[SONG: Title — Artist]] → resolve to a real track and show it.
 function SongCard({
   raw, accent, playingUrl, onToggle,
 }: {
@@ -74,48 +126,55 @@ function SongCard({
     return () => { alive = false; };
   }, [parsed.title, parsed.artist]);
 
-  const title = track?.title || parsed.title;
-  const artist = track?.artist || parsed.artist || '';
-  const preview = track?.preview;
-  const isPlaying = !!preview && playingUrl === preview;
-
+  if (track) return <TrackRow track={track} accent={accent} playingUrl={playingUrl} onToggle={onToggle} fallbackArtist={parsed.artist} />;
+  // Loading / no-match: show the plain title so the suggestion still reads.
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#1b1b24', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '8px 10px' }}>
-      {/* Art / play button */}
-      <button
-        type="button"
-        onClick={() => preview && onToggle(preview)}
-        disabled={!preview}
-        aria-label={preview ? (isPlaying ? 'Pause preview' : 'Play 30-second preview') : 'No preview available'}
-        title={preview ? 'Play a 30-second preview' : 'No preview available'}
-        style={{
-          position: 'relative', width: 44, height: 44, flex: '0 0 auto', borderRadius: 8, overflow: 'hidden',
-          border: 'none', padding: 0, cursor: preview ? 'pointer' : 'default',
-          background: track?.album_art ? `center/cover no-repeat url(${track.album_art})` : '#2a2a35',
-        }}
-      >
-        {preview && (
-          <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.38)', color: '#fff', fontSize: 15 }}>
-            {isPlaying ? '❚❚' : '▶'}
-          </span>
-        )}
-      </button>
-
-      {/* Title + artist */}
+      <div style={{ width: 44, height: 44, flex: '0 0 auto', borderRadius: 8, background: '#2a2a35' }} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f0f8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#f0f0f8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{parsed.title}</div>
         <div style={{ fontSize: 11.5, color: '#9aa0b4', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {status === 'loading' ? 'Finding it…' : (artist || (status === 'none' ? 'No preview found' : ''))}
+          {status === 'loading' ? 'Finding it…' : (parsed.artist || 'No preview found')}
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Open the full track */}
-      {track?.url && (
-        <a href={track.url} target="_blank" rel="noopener noreferrer" aria-label="Open song" title="Open the full song"
-          style={{ flex: '0 0 auto', color: accent, fontSize: 11, fontWeight: 700, textDecoration: 'none', padding: '4px 6px' }}>
-          Open ↗
-        </a>
-      )}
+// [[SIMILAR: Artist]] → a few songs by artists SIMILAR to that one.
+function SimilarBlock({
+  name, accent, playingUrl, onToggle,
+}: {
+  name: string;
+  accent: string;
+  playingUrl: string | null;
+  onToggle: (url: string) => void;
+}) {
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [status, setStatus] = useState<'loading' | 'done' | 'none'>('loading');
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/songs/similar?name=${encodeURIComponent(name)}&limit=6`);
+        const d = (await res.json().catch(() => ({}))) as { tracks?: Track[] };
+        const list = Array.isArray(d.tracks) ? d.tracks.filter((t) => t && t.title) : [];
+        if (!alive) return;
+        if (list.length) { setTracks(list); setStatus('done'); } else setStatus('none');
+      } catch { if (alive) setStatus('none'); }
+    })();
+    return () => { alive = false; };
+  }, [name]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ fontSize: 11, color: '#9aa0b4', fontWeight: 600, letterSpacing: '.02em', padding: '0 2px' }}>
+        {status === 'loading' ? `Finding artists like ${name}…` : (status === 'none' ? `Couldn’t find artists like ${name}` : `More like ${name}`)}
+      </div>
+      {tracks.map((t, i) => (
+        <TrackRow key={i} track={t} accent={accent} playingUrl={playingUrl} onToggle={onToggle} />
+      ))}
     </div>
   );
 }
@@ -178,7 +237,7 @@ export default function PlannerAssistant({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Open the planner helper"
+        aria-label="Open the planner assistant"
         style={{
           position: 'fixed', right: 18, bottom: 18, zIndex: 4000,
           display: 'flex', alignItems: 'center', gap: 8,
@@ -226,11 +285,10 @@ export default function PlannerAssistant({
               </div>
             );
           }
-          // Assistant: split prose from [[SONG]] markers. Prose goes in the
-          // bubble; each marker becomes a playable song card below it.
+          // Assistant: prose in the bubble; each marker becomes playable cards.
           const segs = parseSegments(m.content);
           const text = segs.filter((s): s is { type: 'text'; text: string } => s.type === 'text').map((s) => s.text).join('').trim();
-          const songs = segs.filter((s): s is { type: 'song'; raw: string } => s.type === 'song');
+          const media = segs.filter((s) => s.type !== 'text');
           return (
             <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '92%', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {text && (
@@ -238,9 +296,13 @@ export default function PlannerAssistant({
                   {text}
                 </div>
               )}
-              {songs.map((s, j) => (
-                <SongCard key={j} raw={s.raw} accent={accent} playingUrl={playingUrl} onToggle={togglePreview} />
-              ))}
+              {media.map((s, j) =>
+                s.type === 'song'
+                  ? <SongCard key={j} raw={s.raw} accent={accent} playingUrl={playingUrl} onToggle={togglePreview} />
+                  : s.type === 'similar'
+                    ? <SimilarBlock key={j} name={s.name} accent={accent} playingUrl={playingUrl} onToggle={togglePreview} />
+                    : null,
+              )}
             </div>
           );
         })}
