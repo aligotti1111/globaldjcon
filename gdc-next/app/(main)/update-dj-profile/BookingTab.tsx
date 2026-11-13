@@ -36,6 +36,7 @@ import {
 } from './constants';
 import PackageEditor, { newMobPackage } from './PackageEditor';
 import MobilePackagesEditor from './MobilePackagesEditor';
+import AddonsEditor from './AddonsEditor';
 import type { CustomEventType } from '@/lib/constants';
 import PaymentMethodsSection from './PaymentMethodsSection';
 import DiscountsSection from './DiscountsSection';
@@ -790,6 +791,19 @@ export default function BookingTab({
                     depositPct={deposit}
                     taxEnabled={taxEnabled}
                     taxPct={taxPct}
+                  />
+                )}
+                {/* ADD-ONS — a global list of extras (uplighting, photo booth,
+                    extra hour, …) a client can add to ANY package at booking.
+                    Lives under the packages editor; persists into
+                    booking_settings.mob_addons via patch() like the other
+                    settings sections. */}
+                {activeCats.length > 0 && (
+                  <AddonsEditor
+                    addons={bookingSettings.mob_addons || []}
+                    userId={userId}
+                    currency={rateCurrency}
+                    onChange={(next) => patch({ mob_addons: next })}
                   />
                 )}
                 {/* The internal "Save All Packages" button was removed —
