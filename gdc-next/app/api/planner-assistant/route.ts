@@ -228,7 +228,8 @@ export async function POST(req: Request) {
       .map((m) => str(m?.content))
       .slice(-4)
       .join('  |  ');
-    const curatedBlock = formatCuratedBlock(recentUserText);
+    const isWedding = /\bwedding\b/i.test(eventLabel) || /\bwedding\b/i.test(occasion);
+    const curatedBlock = formatCuratedBlock(recentUserText, isWedding);
     if (curatedBlock) hitsBlock += `\n\n${curatedBlock}`;
   }
 
