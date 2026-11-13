@@ -376,34 +376,51 @@ export async function POST(req: Request) {
     }
 
     // ── DUPLICATE-REQUEST GUARDRAIL (mobile only) ───────────────────────────
-    // A host can't send the SAME DJ a second request for the SAME date + start
-    // time at the SAME venue while a prior request is still live (pending or
-    // approved). Stops accidental double-submits and re-requesting a slot they
-    // already have in flight. A declined or cancelled prior request does NOT
-    // block — they're free to try again. Keyed by the session user, the DJ, the
-    // date, the start time and the venue (name + address, as typed on the form).
-    {
-      const { data: liveDup } = await admin
+    // A host can't send ANOTHER request for the SAME date + start time at the
+    // SAME venue while a prior request is still live. Two cases:
+    //   • same DJ   → they're re-requesting a slot they already have in flight.
+    //   • other DJ  → they've already asked a DIFFERENT DJ for that exact slot.
+    // Both are blocked with a clear message so a host can't double-book a time
+    // and place across DJs. A declined or cancelled prior request does NOT block
+    // — they're free to try again. Keyed by the session user, the date, the
+    // start time and the venue (name + address, as typed on the form).
+    try {
+      // 'counter' (DJ sent a price back) and 'approved' are live too, not just
+      // 'pending'. Only 'denied'/'cancelled' free the host to re-request.
+      // Fetch up to a few matches (not just one) so the same-DJ vs other-DJ
+      // message is accurate even if the host somehow has live rows for both.
+      const { data: liveDup, error: dupErr } = await admin
         .from('bookings')
-        .select('id')
-        .eq('dj_id', djRow.id)
+        .select('id, dj_id')
         .eq('requester_id', user.id)
         .eq('booking_type', 'mobile')
         .eq('event_date', dateKey)
         .eq('start_time', startTime)
         .eq('venue_name', venueName)
         .eq('venue_address', venueAddress)
-        .in('status', ['pending', 'approved'])
-        .limit(1);
-      if (Array.isArray(liveDup) && liveDup.length > 0) {
+        .in('status', ['pending', 'counter', 'approved'])
+        .limit(10);
+      // Fail open — a broken guardrail must never block a real booking — but log
+      // it so a silently-failing check is visible.
+      if (dupErr) {
+        console.warn('[bookings/create] duplicate-request check failed:', dupErr.message);
+      } else if (Array.isArray(liveDup) && liveDup.length > 0) {
+        const rows = liveDup as Array<{ dj_id?: string }>;
+        const sameDj = rows.some((r) => r.dj_id === djRow.id);
         return NextResponse.json(
           {
-            error: "You've already requested this DJ for that date, time and venue — it's still awaiting a response. Check your bookings instead of sending another request.",
+            error: sameDj
+              ? 'You already have an active request with this DJ for that date, time and venue. Check your bookings instead of sending another one.'
+              : 'You already have an active request with another DJ for that date, time and venue. Resolve or cancel that one before requesting a different DJ for the same slot.',
             code: 'DUPLICATE_REQUEST',
           },
           { status: 409 },
         );
       }
+    } catch (e) {
+      // Any thrown error (network/fetch) also fails open — never block a booking
+      // because the guardrail check itself broke.
+      console.warn('[bookings/create] duplicate-request check threw:', e);
     }
 
     // Derivations — EXACT mirror of MobileBookingForm's submit handler.
