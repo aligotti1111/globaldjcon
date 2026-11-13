@@ -297,6 +297,91 @@ export async function POST(req: Request) {
     });
   }
 
+  // ── SONG-FIT VERIFICATION PASS ────────────────────────────────────────────
+  // Prompt rules alone kept letting wrong-meaning songs through for sensitive
+  // moments (a romantic song for a parent-child dance, a father-daughter song
+  // for a mother-son dance, a "feel-good" song that isn't about the
+  // relationship). So for those moments we run a SECOND, strict check over the
+  // songs the model proposed and drop any that don't genuinely fit, before the
+  // host ever sees them. The main model can't rationalize past this — a rejected
+  // song is physically removed. Fails OPEN (keeps the song) on any error so the
+  // feature can never break the reply.
+  const SENSITIVE_MOMENT_RE =
+    /\b(father[-\s]?daughter|mother[-\s]?son|mother[-\s]?daughter|father[-\s]?son|parent[-\s]?child|daddy[-\s]?daughter|first\s+dance|processional|recessional|down the aisle|ceremony|anniversary dance|money dance)\b/i;
+  // Recent host text = the moment context (the moment is often named a couple of
+  // turns before the "modern"/"timeless" refinement, so look back a few turns).
+  const recentUserRaw = (messages as Array<{ role?: string; content?: string }>)
+    .filter((m) => m?.role === 'user')
+    .map((m) => str(m?.content))
+    .slice(-4)
+    .join('  |  ');
+
+  // Pull "Title — Artist" lines out of the reply (one song per line, em/en dash).
+  function extractSongLines(text: string): { lineIdx: number; song: string }[] {
+    const out: { lineIdx: number; song: string }[] = [];
+    text.split('\n').forEach((ln, idx) => {
+      const t = ln.trim();
+      if (!t || t.length > 80 || /[?:]\s*$/.test(t)) return; // skip prose/questions
+      const m = t.match(/^[•\-•\s]*(.+?\s+[—–]\s+.+?)\s*$/); // em/en dash
+      if (m && m[1]) out.push({ lineIdx: idx, song: m[1].trim() });
+    });
+    return out;
+  }
+
+  // Ask the model, strictly, which of these songs truly fit the moment/pairing.
+  // Returns a keep-flag per song; defaults to keep-all on any failure.
+  async function verifyFit(moment: string, songs: string[]): Promise<boolean[]> {
+    const keepAll = songs.map(() => true);
+    try {
+      const numbered = songs.map((s, i) => `${i + 1}. ${s}`).join('\n');
+      const vSystem =
+        'You verify whether specific songs GENUINELY fit a specific event moment by their real lyrics and meaning. Be strict about the relationship and the exact pairing. Rules: ' +
+        '(1) A parent-child dance (father-daughter, mother-son, etc.) needs a song whose lyrics are about THAT parent and THAT child, and the child\'s GENDER must match — a mother-son dance needs a mother-and-son song; a father-daughter song like "Butterfly Kisses" does NOT fit a mother-son dance. ' +
+        '(2) Reject romantic couple\'s love songs for any parent-child dance. ' +
+        '(3) Reject generic "good day / good life / feel-good" songs that are not actually about the relationship (e.g. "Best Day of My Life"). ' +
+        '(4) A first dance needs a romantic song about the two partners; reject breakup songs. ' +
+        '(5) If you are not sure a song truly fits, REJECT it. ' +
+        'Return ONLY a JSON array of the numbers of the songs that DO fit, e.g. [1,3]. If none fit, return []. No other text.';
+      const vUser = `The moment the host is choosing music for (from their chat): "${moment}"\n\nSongs to check:\n${numbered}`;
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: ASSISTANT_MODEL, max_tokens: 150, system: vSystem, messages: [{ role: 'user', content: vUser }] }),
+      });
+      if (!r.ok) return keepAll;
+      const d = await r.json();
+      const txt = Array.isArray(d?.content)
+        ? d.content.filter((c: { type?: string }) => c?.type === 'text').map((c: { text?: string }) => c?.text || '').join('')
+        : '';
+      const m = txt.match(/\[[\s\d,]*\]/);
+      if (!m) return keepAll;
+      const nums = JSON.parse(m[0]) as unknown[];
+      const keep = new Set<number>(nums.map((n) => Number(n)).filter((n) => Number.isFinite(n)));
+      return songs.map((_, i) => keep.has(i + 1));
+    } catch {
+      return keepAll;
+    }
+  }
+
+  // Run the pass only for sensitive moments that actually produced a song list.
+  async function filterSensitiveSongs(replyText: string): Promise<string> {
+    if (!SENSITIVE_MOMENT_RE.test(recentUserRaw)) return replyText;
+    const songs = extractSongLines(replyText);
+    if (songs.length < 2) return replyText; // not a real list; nothing to vet
+    const keep = await verifyFit(recentUserRaw, songs.map((s) => s.song));
+    const dropLineIdx = new Set<number>();
+    songs.forEach((s, i) => { if (!keep[i]) dropLineIdx.add(s.lineIdx); });
+    if (dropLineIdx.size === 0) return replyText;
+    const lines = replyText.split('\n');
+    let kept = lines.filter((_, idx) => !dropLineIdx.has(idx)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    // If the vetting removed every song, don't leave the host with intro+question
+    // and no picks — add a short honest note.
+    if (dropLineIdx.size >= songs.length) {
+      kept += '\n\nActually, let me get these right for the moment — can you tell me a bit more about the vibe you want? I\'d rather give you songs that truly fit.';
+    }
+    return kept;
+  }
+
   try {
     let resp = await callAnthropic(true);
     // If web search isn't enabled on the account (or the tool is rejected for
@@ -318,7 +403,12 @@ export async function POST(req: Request) {
     const reply = Array.isArray(data?.content)
       ? data.content.filter((c: { type?: string }) => c?.type === 'text').map((c: { text?: string }) => c?.text || '').join('').trim()
       : '';
-    return NextResponse.json({ reply: stripReplyMarkdown(reply) || "Sorry, I couldn't put that together. Try asking another way?" });
+    const cleaned = stripReplyMarkdown(reply);
+    if (!cleaned) {
+      return NextResponse.json({ reply: "Sorry, I couldn't put that together. Try asking another way?" });
+    }
+    const vetted = await filterSensitiveSongs(cleaned);
+    return NextResponse.json({ reply: vetted });
   } catch (e) {
     console.error('[planner-assistant] fetch failed', e);
     return NextResponse.json({ error: 'The helper is unavailable right now.' }, { status: 502 });
