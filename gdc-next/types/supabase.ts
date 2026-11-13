@@ -154,6 +154,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          addons: Json | null
           contract_id: string | null
           booking_type: string | null
           cocktail_included: boolean | null
