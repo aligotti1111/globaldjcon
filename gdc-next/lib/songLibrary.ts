@@ -29,6 +29,14 @@ export interface CuratedSong {
   /** lowercase genre/era tags the host might ask for: modern, country, classic,
    *  rock, soul, rnb, pop, jazz, folk, hiphop, acoustic, etc. */
   genres: string[];
+  /** niche for THIS moment — a fine pick but not a crowd default. Kept OFF the
+   *  top of a general (no-genre) ask, and only surfaces when the host asks for
+   *  a genre this song matches. */
+  niche?: boolean;
+  /** the lyrics are specifically about a WEDDING — the daughter getting married,
+   *  giving her away, her wedding day. ONLY offered at a wedding. Excluded for a
+   *  Sweet 16, quinceañera, birthday, etc. (she isn't getting married). */
+  wedding?: boolean;
 }
 
 export interface AvoidSong {
@@ -75,13 +83,13 @@ export const SONG_LIBRARY: CuratedSong[] = [
 
   // ── FATHER'S DANCE — a father and his DAUGHTER. ───────────────────────────
   { title: "Isn't She Lovely", artist: 'Stevie Wonder', pairing: 'father-daughter', genres: ['classic', 'soul'] },
-  { title: 'I Loved Her First', artist: 'Heartland', pairing: 'father-daughter', genres: ['country'] },
-  { title: 'Butterfly Kisses', artist: 'Bob Carlisle', pairing: 'father-daughter', genres: ['country', 'classic', 'ballad'] },
+  { title: 'I Loved Her First', artist: 'Heartland', pairing: 'father-daughter', genres: ['country'], wedding: true },
+  { title: 'Butterfly Kisses', artist: 'Bob Carlisle', pairing: 'father-daughter', genres: ['country', 'classic', 'ballad'], wedding: true },
   { title: 'Dance with My Father', artist: 'Luther Vandross', pairing: 'father-daughter', genres: ['rnb', 'soul'] },
   { title: 'Wildflowers', artist: 'Tom Petty', pairing: 'father-daughter', genres: ['classic', 'rock'] },
-  { title: 'Daddy Daughter Dance', artist: 'Julia Cole', pairing: 'father-daughter', genres: ['country', 'modern'] },
-  { title: 'Yours', artist: 'Post Malone', pairing: 'father-daughter', genres: ['modern', 'pop'] }, // wedding-only
-  { title: 'My Little Girl', artist: 'Tim McGraw', pairing: 'father-daughter', genres: ['country'] },
+  { title: 'Daddy Daughter Dance', artist: 'Julia Cole', pairing: 'father-daughter', genres: ['country', 'modern'], wedding: true },
+  { title: 'Yours', artist: 'Post Malone', pairing: 'father-daughter', genres: ['modern', 'pop'], wedding: true },
+  { title: 'My Little Girl', artist: 'Tim McGraw', pairing: 'father-daughter', genres: ['country'], wedding: true },
   { title: 'First Man', artist: 'Camila Cabello', pairing: 'father-daughter', genres: ['modern', 'pop'] },
   { title: 'Count on Me', artist: 'Bruno Mars', pairing: 'father-daughter', genres: ['modern', 'pop'] },
   { title: 'Tiny Dancer', artist: 'Elton John', pairing: 'father-daughter', genres: ['classic', 'rock'] },
@@ -102,13 +110,19 @@ export const SONG_LIBRARY: CuratedSong[] = [
   { title: 'Daughters', artist: 'John Mayer', pairing: 'father-daughter', genres: ['modern', 'acoustic'] },
   { title: "He Didn't Have to Be", artist: 'Brad Paisley', pairing: 'father-daughter', genres: ['country'] }, // great for a stepdad
   { title: 'Gracie', artist: 'Ben Folds', pairing: 'father-daughter', genres: ['modern', 'acoustic'] },
-  { title: 'Cinderella', artist: 'Steven Curtis Chapman', pairing: 'father-daughter', genres: ['country', 'ballad'] },
-  { title: 'Stealing Cinderella', artist: 'Chuck Wicks', pairing: 'father-daughter', genres: ['country'] },
+  { title: 'Cinderella', artist: 'Steven Curtis Chapman', pairing: 'father-daughter', genres: ['country', 'ballad'], wedding: true },
+  { title: 'Stealing Cinderella', artist: 'Chuck Wicks', pairing: 'father-daughter', genres: ['country'], wedding: true },
   { title: 'The Way You Look Tonight', artist: 'Frank Sinatra', pairing: 'father-daughter', genres: ['classic', 'jazz'] },
   { title: 'Good Hands', artist: 'Kylie Morgan', pairing: 'father-daughter', genres: ['country', 'modern'] },
   { title: 'Forever Now', artist: 'Michael Bublé', pairing: 'father-daughter', genres: ['modern', 'pop', 'jazz'] },
   { title: 'Daddy Dance with Me', artist: 'Krystal Keith', pairing: 'father-daughter', genres: ['country', 'modern'] },
   { title: 'Dance With My Daughter', artist: 'Jason Blaine', pairing: 'father-daughter', genres: ['country', 'modern'] },
+  // Rock father-daughter picks.
+  { title: 'Father and Daughter', artist: 'Paul Simon', pairing: 'father-daughter', genres: ['rock', 'folk'] },
+  { title: 'Have I Told You Lately', artist: 'Rod Stewart', pairing: 'father-daughter', genres: ['rock', 'classic'] },
+  { title: 'Lullaby (Goodnight, My Angel)', artist: 'Billy Joel', pairing: 'father-daughter', genres: ['rock', 'classic', 'ballad'] },
+  { title: 'Thank You', artist: 'Led Zeppelin', pairing: 'father-daughter', genres: ['rock', 'classic'], niche: true },
+  { title: 'My Hero', artist: 'Foo Fighters', pairing: 'father-daughter', genres: ['rock'], niche: true },
 
   // ── FIRST DANCE — the couple. (Moved here from father-daughter.) ──────────
   { title: 'Perfect', artist: 'Ed Sheeran', pairing: 'first-dance', genres: ['modern', 'pop'] },
@@ -162,45 +176,54 @@ export function detectPairing(text: string): keyof typeof PAIRING_COVERAGE | nul
 // Return the vetted songs for a moment, optionally sorted so the host's
 // requested genre floats to the top (never filtered out entirely — the genre
 // shapes the order, it doesn't limit). Returns [] if we have no list for it.
-export function curatedForMoment(momentText: string, limit = 24): CuratedSong[] {
+export function curatedForMoment(momentText: string, limit = 24, isWedding = true): CuratedSong[] {
   const pairing = detectPairing(momentText);
   if (!pairing) return [];
   const cover = new Set(PAIRING_COVERAGE[pairing]);
   const extended = EXTENDED_FAMILY_MOMENTS.has(pairing);
   const songs = SONG_LIBRARY.filter(
-    (s) => cover.has(s.pairing) && !(extended && PARENT_NAMED_TITLES.has(s.title.trim().toLowerCase())),
+    (s) =>
+      cover.has(s.pairing) &&
+      !(extended && PARENT_NAMED_TITLES.has(s.title.trim().toLowerCase())) &&
+      !(s.wedding && !isWedding), // drop marriage-specific songs when it's not a wedding
   );
   const t = momentText.toLowerCase();
   // Pull out any genre word the host used so we can sort those first.
   const askedGenres = ['modern', 'country', 'classic', 'rock', 'soul', 'rnb', 'r&b', 'pop', 'jazz', 'folk', 'hiphop', 'hip hop', 'acoustic', '80s', '90s', 'oldies']
     .filter((g) => new RegExp(`\\b${g.replace('&', '&').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t))
     .map((g) => (g === 'r&b' ? 'rnb' : g === 'hip hop' ? 'hiphop' : g));
-  if (askedGenres.length === 0) return songs.slice(0, limit);
   const match = (s: CuratedSong) => s.genres.some((g) => askedGenres.includes(g));
-  const sorted = [...songs].sort((a, b) => Number(match(b)) - Number(match(a)));
+  const sorted = [...songs].sort((a, b) => {
+    // When a genre is asked, matching songs float up. Otherwise niche songs sink.
+    if (askedGenres.length) return Number(match(b)) - Number(match(a));
+    return Number(!!a.niche) - Number(!!b.niche);
+  });
   return sorted.slice(0, limit);
 }
 
 // Normalized titles of EVERY vetted song for a moment (no genre limit). The
 // route uses this so the verification pass TRUSTS a curated pick and never
 // strips it — if the DJ put it on the list, it's approved.
-export function curatedTitlesForMoment(momentText: string): Set<string> {
+export function curatedTitlesForMoment(momentText: string, isWedding = true): Set<string> {
   const pairing = detectPairing(momentText);
   if (!pairing) return new Set();
   const cover = new Set(PAIRING_COVERAGE[pairing]);
   const extended = EXTENDED_FAMILY_MOMENTS.has(pairing);
   return new Set(
     SONG_LIBRARY.filter(
-      (s) => cover.has(s.pairing) && !(extended && PARENT_NAMED_TITLES.has(s.title.trim().toLowerCase())),
+      (s) =>
+        cover.has(s.pairing) &&
+        !(extended && PARENT_NAMED_TITLES.has(s.title.trim().toLowerCase())) &&
+        !(s.wedding && !isWedding),
     ).map((s) => s.title.trim().toLowerCase()),
   );
 }
 
 // Format the vetted list for injection into the assistant's prompt.
-export function formatCuratedBlock(momentText: string): string | null {
+export function formatCuratedBlock(momentText: string, isWedding = true): string | null {
   const pairing = detectPairing(momentText);
   if (!pairing) return null;
-  const songs = curatedForMoment(momentText);
+  const songs = curatedForMoment(momentText, 24, isWedding);
   if (songs.length === 0) return null;
   const label = pairing.replace(/-/g, '–').toUpperCase();
   const lines = songs.map((s) => `- ${s.title} — ${s.artist} [${s.genres.join(', ')}]`).join('\n');
@@ -208,7 +231,7 @@ export function formatCuratedBlock(momentText: string): string | null {
   return (
     `VETTED ${label} SONGS (a DJ-curated list for THIS exact moment — this is your PREFERRED source, not your memory). ` +
     `Lead with these. If the host named a genre/era, pick the ones tagged with it (tags are in brackets); the list is already ordered to help. ` +
-    `You MAY add a song that's NOT on this list if it genuinely fits this exact pairing and the host's vibe — the list guides you, it doesn't cap you. ` +
+    `You MAY add a song that's NOT on this list if it genuinely fits this exact pairing and the host's vibe — the list guides you, it doesn't cap you. If the host asks for MORE and you've used the best fits from this list, WEB-SEARCH for additional real "${label.toLowerCase()} dance songs" (plus their genre/vibe) to pull fresh vetted picks rather than guessing from memory, then apply the same pairing/meaning check. ` +
     `But NEVER offer a song meant for a different pairing (these are ${label} songs — do not use them for a father's dance or a first dance, and vice-versa):\n${lines}` +
     (avoid ? `\nDo NOT recommend:\n${avoid}` : '')
   );
