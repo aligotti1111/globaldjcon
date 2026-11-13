@@ -21,6 +21,7 @@ import {
 import BookingCardShell, { SectionFrame, type BookingCardShellProps } from './BookingCardShell';
 import type { BookingRow } from './page';
 import { currencySymbol } from '@/lib/constants';
+import { parseBookingAddons } from '@/lib/addons';
 import { isPackageEdited } from './packageDiff';
 
 // Same prop shape as BookingCardShell except eventLabel/detailsSlot/
@@ -407,6 +408,17 @@ export default function MobileBookingCard(props: Props) {
                 {cur}{(Number(bigPriceVal) - Number(b.ceremony_price)).toLocaleString()} + {cur}{Number(b.ceremony_price).toLocaleString()} ceremony
               </div>
             )}
+            {(() => {
+              // Chosen add-ons (prices already folded into the quote). Listed so
+              // the DJ sees exactly what the host picked when reviewing the request.
+              const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
+              if (reqAddons.length === 0) return null;
+              return (
+                <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
+                  Add-ons: {reqAddons.map((a) => `${cur}${(Number(a.price) || 0).toLocaleString()} ${a.title}`).join(', ')}
+                </div>
+              );
+            })()}
             {overtimeRate != null && (
               <div className={styles.priceSub}>
                 Overtime: <span>{cur}{overtimeRate.toLocaleString()}/hr</span>
