@@ -643,21 +643,21 @@ export default function MobilePackagesEditor({
         {(addableTypes.length > 0 || onEventTypesSave) && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {addableTypes.length > 0 && (
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
                 <select
                   aria-label="Add an event type with its own packages"
                   value=""
                   onChange={(e) => { if (e.target.value) addEventType(e.target.value); }}
-                  style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', background: 'linear-gradient(180deg, rgba(0,224,164,.10), rgba(10,10,16,.4))', color: 'var(--neon)', border: '1px solid var(--neon)', borderRadius: 9, padding: '.7rem 2rem .7rem .8rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', outline: 'none' }}
+                  style={{ width: 'auto', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', background: 'transparent', color: 'var(--neon)', border: 'none', borderRadius: 0, padding: '.35rem 1.1rem .35rem .1rem', fontFamily: "'Space Mono', monospace", fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', outline: 'none' }}
                 >
-                  <option value="">+ Add Pricing For An Event Type</option>
+                  <option value="">+ Add Custom Pricing</option>
                   {addableTypes.map((t) => <option key={t} value={t}>{labelFor(t)}</option>)}
                 </select>
-                <span aria-hidden="true" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--neon)', fontSize: '.7rem', pointerEvents: 'none' }}>▾</span>
+                <span aria-hidden="true" style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', color: 'var(--neon)', fontSize: '.7rem', pointerEvents: 'none' }}>▾</span>
               </div>
             )}
             {onEventTypesSave && (
-              <button type="button" onClick={openEtEditor} style={{ width: '100%', background: 'rgba(255,255,255,.03)', border: '1px solid #fff', color: '#fff', borderRadius: 9, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <button type="button" onClick={openEtEditor} style={{ background: 'none', border: 'none', color: '#9a9ab0', padding: '.35rem .1rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', alignSelf: 'flex-start' }}>
                 Edit Event Types (You DJ)
               </button>
             )}
