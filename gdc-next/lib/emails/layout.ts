@@ -307,7 +307,7 @@ export function billBreakdownBox(
   const depPct = b.depositPct != null ? Number(b.depositPct) : 0;
   const balance = total - depAmt;
   const money = (n: number) =>
-    `${sym}${Number(n).toLocaleString(undefined, { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} ${currency}`;
+    `${sym}${Number(n).toLocaleString(undefined, { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
   const row = (label: string, val: string, o?: { bold?: boolean; muted?: boolean; top?: boolean }) =>
     `<tr><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}text-align:right;color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
   const rows: string[] = [];
