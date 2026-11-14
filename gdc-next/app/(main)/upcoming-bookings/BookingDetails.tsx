@@ -747,49 +747,8 @@ export default function BookingDetails({
       : ([
           [{ label: isWedding ? 'Reception' : 'Price', value: agreedRateWithDiscount }],
         ] as DetailRow[])),
-    // Row 7: Deposit
-    [
-      {
-        label: 'Deposit',
-        value: (() => {
-          // Frozen snapshot first: deposit_amount as stored at creation
-          // (computed on the tax-inclusive total — the exact number the
-          // client's booking form showed). Trusted only while the agreed
-          // price still matches the snapshot's base; after a renegotiation
-          // we recompute below (still using the frozen tax %).
-          if (snapshotFresh && booking.deposit_amount != null) {
-            // Percentage sits just LEFT of the amount so the dollar figure stays
-            // flush-right, aligned with the other amounts.
-            return booking.deposit_pct != null
-              ? `(${booking.deposit_pct}%) ${money(Number(booking.deposit_amount))}`
-              : money(Number(booking.deposit_amount));
-          }
-          // Deposit % is taken on the tax-inclusive total (cardTotal).
-          // A stored % wins; else the DJ's standing club % as a fallback.
-          // Snapshot rows recompute to the cent; legacy rows keep the old
-          // whole-dollar rounding.
-          if (booking.deposit_pct != null) {
-            return cardTotal != null
-              ? `(${booking.deposit_pct}%) ${money(snapTaxPct != null
-                  ? round2((cardTotal * booking.deposit_pct) / 100)
-                  : Math.round((cardTotal * booking.deposit_pct) / 100))}`
-              : `${booking.deposit_pct}%`;
-          }
-          if (djType === 'club' && clubDepositPct > 0) {
-            return cardTotal != null && cardTotal > 0
-              ? `(${clubDepositPct}%) ${money(Math.round((cardTotal * clubDepositPct) / 100))}`
-              : `${clubDepositPct}%`;
-          }
-          // Last resort: a stored fixed deposit amount.
-          if (booking.deposit_amount != null) {
-            return money(booking.deposit_amount);
-          }
-          return null;
-        })(),
-      },
-    ],
     // Row 7b: Balance due on the day of the event (tax-inclusive total minus the
-    // deposit). Always shown alongside the deposit so the receipt is complete.
+    // deposit). Always shown so the receipt is complete.
     [
       { label: 'Balance due day of event', value: balanceDueNum != null ? money(balanceDueNum) : null },
     ],
@@ -1151,14 +1110,14 @@ export default function BookingDetails({
   ) : null;
 
   // Package card — rendered just above the Pricing card (see the section map).
-  const packageBlock = (hasPackageDetails || booking.package_title) ? (
+  const packageBlock = (hasPackageDetails || booking.package_title || bookingAddons.length > 0) ? (
     <div className={styles.packageBlock} style={{ gridColumn: '1 / -1', background: 'transparent', backgroundImage: 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div className={styles.detailChip}><span>Package</span></div>
         {sectionPencil('PACKAGE')}
       </div>
       {booking.package_title && (
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--white,#fff)', marginTop: 12 }}>
+        <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--white,#fff)', marginTop: 12 }}>
           {booking.package_title}{badgeFor('package_title')}
         </div>
       )}
@@ -1168,9 +1127,26 @@ export default function BookingDetails({
       {hasPackageDetails && (
         <div
           className={styles.packageDetailsHtml}
-          style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--muted,#8a8aa0)', marginTop: booking.package_title ? 6 : 12 }}
+          style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--white,#e8e8ef)', marginTop: booking.package_title ? 8 : 12 }}
           dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
         />
+      )}
+      {bookingAddons.length > 0 && (
+        <div style={{ marginTop: hasPackageDetails || booking.package_title ? 14 : 12 }}>
+          <div className={styles.detailLabel} style={{ marginBottom: 6 }}>Add-ons/Extras</div>
+          {bookingAddons.map((a, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex', justifyContent: 'space-between', gap: 12,
+                fontSize: 14, color: 'var(--white,#e8e8ef)', padding: '3px 0',
+              }}
+            >
+              <span>{a.title}</span>
+              <span style={{ color: 'var(--muted,#8a8aa0)' }}>{money(a.price)}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   ) : null;
