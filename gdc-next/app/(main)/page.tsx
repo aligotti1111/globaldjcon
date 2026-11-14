@@ -389,8 +389,6 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.open .fh small{text-align:center}
 .gdc-landing .flowcards .fhtoggle{position:absolute;right:22px;bottom:14px;width:11px;height:11px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .3s ease;opacity:.75}
 .gdc-landing .flowcards .flane.open .fhtoggle{transform:rotate(-135deg);bottom:10px}
-/* When a lane is open, keep each banner's color but center its title and run a
-   solid top accent line in that lane's own color across the top of the header. */
 .gdc-landing .flowcards:has(.flane.open) .fh{border-top:3px solid;align-items:center;text-align:center}
 .gdc-landing .flowcards:has(.flane.open) .flane.mobile .fh{border-top-color:var(--neon)}
 .gdc-landing .flowcards:has(.flane.open) .flane.club .fh{border-top-color:var(--amber)}
@@ -398,12 +396,12 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.open .fbody{max-height:1400px;padding-bottom:26px}
 .gdc-landing .flowcards .flane.mobile.open .fbody{margin-left:-30px;width:calc(200% + 120px)}
 .gdc-landing .flowcards .flane.club.open .fbody{margin-left:calc(-100% - 90px);width:calc(200% + 120px)}
+.gdc-landing .flowcards .flane.open .fbody .fli{max-width:720px;margin-left:auto;margin-right:auto}
 @media(max-width:640px){
 .gdc-landing .flowcards{flex-direction:column}
 .gdc-landing .flowcards .flane{display:block;flex:0 0 auto}
 .gdc-landing .flowcards .flane.open{flex-grow:0}
 .gdc-landing .flowcards .flane.mobile{border-right:0;border-bottom:1px solid var(--line-2)}
-/* Mobile stays as-is: no open-state top accent line. */
 .gdc-landing .flowcards:has(.flane.open) .fh{border-top:0}
 .gdc-landing .flowcards .flane.open .fbody{margin-left:0;width:auto}
 }
