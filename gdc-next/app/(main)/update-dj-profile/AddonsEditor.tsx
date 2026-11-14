@@ -14,6 +14,7 @@
 import { useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
+import RichTextEditor from './RichTextEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import type { MobAddon } from '@/app/(main)/[slug]/bookingSettings';
 import { currencySymbol } from '@/lib/constants';
@@ -218,16 +219,13 @@ function AddonCard({
         </div>
       </div>
 
-      {/* Description */}
+      {/* Description — same rich-text toolbar as the package details field. */}
       <div>
         <label className={styles.pkgFieldLabel}>Description</label>
-        <textarea
-          placeholder="What this add-on includes…"
+        <RichTextEditor
           value={addon.details || ''}
-          onChange={(e) => onChange({ details: e.target.value })}
-          rows={3}
-          className={styles.pkgInput}
-          style={{ resize: 'vertical', minHeight: 64, fontFamily: 'inherit' }}
+          onChange={(html) => onChange({ details: html })}
+          placeholder="What this add-on includes…"
         />
       </div>
 
