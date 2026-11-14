@@ -579,6 +579,7 @@ export async function POST(req: Request) {
         confDiscAmt, confOrigRate, confDiscLabel,
         cocktailPrice: body.cocktailPrice,
         ceremonyPrice: body.ceremonyPrice,
+        addons: body.addons,
         taxPct: body.taxPct,
         taxAmount: body.taxAmount,
         totalWithTax: body.totalWithTax,
