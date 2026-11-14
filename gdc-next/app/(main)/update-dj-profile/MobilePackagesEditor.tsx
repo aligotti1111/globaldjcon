@@ -658,7 +658,7 @@ export default function MobilePackagesEditor({
             )}
             {onEventTypesSave && (
               <button type="button" onClick={openEtEditor} style={{ width: '100%', background: 'rgba(255,255,255,.03)', border: '1px solid #fff', color: '#fff', borderRadius: 9, padding: '.6rem', fontFamily: "'Space Mono', monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                Edit Event Types
+                Edit Event Types (You DJ)
               </button>
             )}
             {addableTypes.length > 0 && (
