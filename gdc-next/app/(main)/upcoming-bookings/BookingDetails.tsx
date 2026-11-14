@@ -1111,8 +1111,8 @@ export default function BookingDetails({
 
   // Package card — rendered just above the Pricing card (see the section map).
   const packageBlock = (hasPackageDetails || booking.package_title || bookingAddons.length > 0) ? (
-    <div className={styles.packageBlock} style={{ gridColumn: '1 / -1', background: 'transparent', backgroundImage: 'none', textAlign: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+    <div className={styles.packageBlock} style={{ gridColumn: '1 / -1', background: 'transparent', backgroundImage: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div className={styles.detailChip}><span>Package</span></div>
         {sectionPencil('PACKAGE')}
       </div>
