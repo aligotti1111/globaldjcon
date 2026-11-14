@@ -40,7 +40,16 @@ export async function billBreakdownForBooking(
       }>();
     if (!data) return '';
     const cur = data.currency || currency || 'USD';
-    if (overrideRate != null && Number.isFinite(Number(overrideRate)) && Number(overrideRate) > 0) {
+    // Only take the flat "new proposal" path for a GENUINE counter/offer — one
+    // whose rate isn't the stored package quote. When the caller passes the
+    // agreed price but it equals the frozen quoted_rate (an ordinary approved
+    // package booking), fall through to the snapshot path so the bill stays
+    // itemized (add-ons, cocktail, ceremony) and tax/deposit come from the
+    // frozen snapshot rather than being recomputed from the DJ's live settings.
+    const overrideDiffers =
+      overrideRate != null && Number.isFinite(Number(overrideRate)) && Number(overrideRate) > 0
+      && (data.quoted_rate == null || Math.abs(Number(overrideRate) - Number(data.quoted_rate)) > 0.01);
+    if (overrideDiffers) {
       const rate = Number(overrideRate);
       // A counter/quote is a NEW proposal, so tax + deposit apply at the DJ's
       // CURRENT setting (fetched live), falling back to the booking's frozen
