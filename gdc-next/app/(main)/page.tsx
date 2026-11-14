@@ -352,7 +352,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .types-note{font-family:'Archivo',sans-serif;text-align:center;color:var(--muted);font-size:.95rem;margin-top:12px}
 .gdc-landing .types-note b{color:var(--ink)}
 .gdc-landing /* two-flow glow cards — colored header, .gdc-landing no box */
-  .flowcards{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
+  .flowcards{display:flex;align-items:flex-start;gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
 .gdc-landing .flowcards .flane{position:relative;padding:0 30px 0;counter-reset:step;display:block;flex:1 1 0;min-width:0;transition:flex-grow .45s cubic-bezier(.22,1,.36,1)}
 .gdc-landing .flowcards .flane.open{flex-grow:1}
 .gdc-landing .flowcards .flane.mobile{border-right:1px solid var(--line-2)}
@@ -394,10 +394,10 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards:has(.flane.open) .fh{border-top:3px solid;align-items:center;text-align:center}
 .gdc-landing .flowcards:has(.flane.open) .flane.mobile .fh{border-top-color:var(--neon)}
 .gdc-landing .flowcards:has(.flane.open) .flane.club .fh{border-top-color:var(--amber)}
-.gdc-landing .flowcards:has(.flane.open) .flane{flex-basis:100%}
-.gdc-landing .flowcards:has(.flane.open) .flane.mobile{border-right:0;border-bottom:1px solid var(--line-2)}
 .gdc-landing .flowcards .fbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
 .gdc-landing .flowcards .flane.open .fbody{max-height:1400px;padding-bottom:26px}
+.gdc-landing .flowcards .flane.mobile.open .fbody{margin-left:-30px;width:calc(200% + 120px)}
+.gdc-landing .flowcards .flane.club.open .fbody{margin-left:calc(-100% - 90px);width:calc(200% + 120px)}
 @media(max-width:640px){
 .gdc-landing .flowcards{flex-direction:column}
 .gdc-landing .flowcards .flane{display:block;flex:0 0 auto}
@@ -405,6 +405,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.mobile{border-right:0;border-bottom:1px solid var(--line-2)}
 /* Mobile stays as-is: no open-state top accent line. */
 .gdc-landing .flowcards:has(.flane.open) .fh{border-top:0}
+.gdc-landing .flowcards .flane.open .fbody{margin-left:0;width:auto}
 }
 .gdc-landing /* features */
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
