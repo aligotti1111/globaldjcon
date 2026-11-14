@@ -156,7 +156,13 @@ export default function ContractPortal({
   const builderFields = BUILDER_FIELDS
     .filter((f) => !('only' in f) || (f as { only?: string }).only === djType)
     // Club/bar DJs don't use a company — label the field just "DJ Name".
-    .map((f) => (f.name === 'dj_name' && djType === 'club') ? { ...f, title: 'DJ Name' } : f);
+    // "Set" wording is club-only; mobile DJs see "Event Start/End Time".
+    .map((f) => {
+      if (f.name === 'dj_name' && djType === 'club') return { ...f, title: 'DJ Name' };
+      if (f.name === 'start_time' && djType !== 'club') return { ...f, title: 'Event Start Time' };
+      if (f.name === 'end_time' && djType !== 'club') return { ...f, title: 'Event End Time' };
+      return f;
+    });
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
