@@ -514,7 +514,7 @@ export default function MobilePackagesEditor({
           </div>
         )}
         {list.map((pk, i) => {
-          const active = selCat === cat && safeIdx === i;
+          const active = view === 'packages' && selCat === cat && safeIdx === i;
           const invalid = showInvalid && pkgInvalid(cat, i);
           // Show the DJ's own title once they've named it; otherwise fall back to
           // "Package N" so a package always has a name.
