@@ -737,9 +737,9 @@ export default function BookingDetails({
     // combined subtotal — Tax and Total Event Cost follow). Every other event
     // type is a single "Price" (the agreed rate). (Overtime moved out of the
     // receipt to the Event card's bottom-right — see overtimeControl.)
-    ...((isWedding && itemizedRate)
+    ...(itemizedRate
       ? ([
-          [{ label: 'Reception', value: money(agreedBase) }],
+          [{ label: isWedding ? 'Reception' : 'Package price', value: money(agreedBase) }],
           ...(hasSeparateCeremony ? [[{ label: 'Ceremony', value: money(ceremonyCharge) }]] : []),
           ...(hasSeparateCocktail ? [[{ label: 'Cocktail Hour', value: money(cocktailCharge) }]] : []),
           ...bookingAddons.map((a) => [{ label: a.title, value: money(a.price) }]),
@@ -1111,8 +1111,8 @@ export default function BookingDetails({
 
   // Package card — rendered just above the Pricing card (see the section map).
   const packageBlock = (hasPackageDetails || booking.package_title || bookingAddons.length > 0) ? (
-    <div className={styles.packageBlock} style={{ gridColumn: '1 / -1', background: 'transparent', backgroundImage: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div className={styles.packageBlock} style={{ gridColumn: '1 / -1', background: 'transparent', backgroundImage: 'none', textAlign: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <div className={styles.detailChip}><span>Package</span></div>
         {sectionPencil('PACKAGE')}
       </div>
@@ -1138,15 +1138,8 @@ export default function BookingDetails({
         <div style={{ marginTop: hasPackageDetails || booking.package_title ? 14 : 12 }}>
           <div className={styles.detailLabel} style={{ marginBottom: 6 }}>Add-ons/Extras</div>
           {bookingAddons.map((a, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex', justifyContent: 'space-between', gap: 12,
-                fontSize: 14, color: 'var(--white,#e8e8ef)', padding: '3px 0',
-              }}
-            >
-              <span>{a.title}</span>
-              <span style={{ color: 'var(--muted,#8a8aa0)' }}>{money(a.price)}</span>
+            <div key={i} style={{ fontSize: 14, color: 'var(--white,#e8e8ef)', padding: '3px 0' }}>
+              {a.title}
             </div>
           ))}
         </div>
