@@ -316,7 +316,7 @@ export function billBreakdownBox(
     if (cocktailAdd > 0) rows.push(row('Cocktail Hour', `+${money(cocktailAdd)}`, { muted: true }));
     if (ceremonyAdd > 0) rows.push(row('Music For Ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
     for (const a of addonItems) {
-      rows.push(row(a.title, `+${money(Number(a.price) || 0)}`, { muted: true }));
+      rows.push(row(escHtml(a.title), `+${money(Number(a.price) || 0)}`, { muted: true }));
     }
   } else if (discAmt > 0) {
     // subtotal is already net of the discount — show what it was before.
