@@ -1849,7 +1849,7 @@ export default function MobileBookingForm({
         {/* Price display */}
         {priceResult && selectedPkgIdx != null && !selectedIsBareQuote && (
           <div className={styles.priceDisplay}>
-            <div className={styles.priceLabel}>Estimated Price</div>
+            <div className={styles.priceLabel}>Estimated Total Price</div>
 
             {discount.amount > 0 && (
               <div className={styles.depositText} style={{ color: 'var(--neon,#00e0a4)', fontWeight: 700, marginBottom: 4 }}>
@@ -1868,15 +1868,15 @@ export default function MobileBookingForm({
             >
               {priceResult.isQuote || priceResult.price == null ? (
                 'Price on Request'
-              ) : discount.amount > 0 && discountedTotal != null ? (
+              ) : discount.amount > 0 && grandTotal != null ? (
                 <>
                   <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '.7em', marginRight: 8 }}>
-                    {cur}{priceResult.price.toLocaleString()}
+                    {cur}{(grandTotal + discount.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  {cur}{discountedTotal.toLocaleString()}
+                  {cur}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </>
               ) : (
-                `${cur}${priceResult.price.toLocaleString()}`
+                `${cur}${(grandTotal ?? (priceResult.price + addonsTotal)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               )}
             </div>
 
