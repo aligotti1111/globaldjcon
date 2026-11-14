@@ -111,21 +111,28 @@ export default function AddonsEditor({
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-        <button
-          type="button"
-          onClick={activate}
-          disabled={!canActivate}
-          title={canActivate ? 'Activate this add-on and start another' : 'Add a title first'}
-          style={{
-            background: canActivate ? 'rgba(56,232,176,.14)' : 'transparent',
-            border: `1px solid ${canActivate ? '#38e8b0' : 'rgba(56,232,176,.4)'}`,
-            color: canActivate ? '#38e8b0' : '#6b7080',
-            borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
-            cursor: canActivate ? 'pointer' : 'not-allowed', letterSpacing: '.03em',
-          }}
-        >
-          Activate
-        </button>
+        {(() => {
+          const isActive = !!working?.active;
+          const live = canActivate && !isActive; // can still be activated
+          return (
+            <button
+              type="button"
+              onClick={activate}
+              disabled={!live}
+              title={isActive ? 'Already active' : (canActivate ? 'Activate this add-on' : 'Add a title first')}
+              style={{
+                background: live ? 'rgba(56,232,176,.14)' : 'transparent',
+                border: `1px solid ${live ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
+                color: live ? '#38e8b0' : '#6b7080',
+                borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
+                cursor: live ? 'pointer' : 'default', letterSpacing: '.03em',
+                opacity: isActive ? 0.6 : 1,
+              }}
+            >
+              {isActive ? 'Activated' : 'Activate'}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
