@@ -82,36 +82,42 @@ export default function AddonsEditor({
             userId={userId}
             sym={sym}
             onChange={(p) => update(idx, p)}
+            onToggleActive={() => update(idx, { active: !addon.active })}
             onRemove={idx < list.length ? () => remove(idx) : undefined}
           />
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={add}
-        style={{
-          marginTop: 14, background: 'transparent', border: '1px dashed rgba(56,232,176,.5)',
-          color: '#38e8b0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
-          cursor: 'pointer', letterSpacing: '.03em',
-        }}
-      >
-        + Add Add-on
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+        <button
+          type="button"
+          onClick={add}
+          style={{
+            background: 'transparent', border: '1px dashed rgba(56,232,176,.5)',
+            color: '#38e8b0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', letterSpacing: '.03em',
+          }}
+        >
+          + Add Add-on
+        </button>
+      </div>
     </div>
   );
 }
 
 function AddonCard({
-  addon, idx, userId, sym, onChange, onRemove,
+  addon, idx, userId, sym, onChange, onToggleActive, onRemove,
 }: {
   addon: MobAddon;
   idx: number;
   userId: string;
   sym: string;
   onChange: (patch: Partial<MobAddon>) => void;
+  onToggleActive: () => void;
   onRemove?: () => void;
 }) {
+  const active = !!addon.active;
+  const canActivate = (addon.title || '').trim().length > 0;
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
 
@@ -143,20 +149,45 @@ function AddonCard({
         padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: '#9aa0b4', letterSpacing: '.04em' }}>
           ADD-ON {idx + 1}
         </span>
-        {onRemove && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Per-add-on Activate toggle — only ACTIVE add-ons are offered to
+              hosts at booking. Needs a title before it can be activated. */}
           <button
             type="button"
-            onClick={onRemove}
-            aria-label="Remove add-on"
-            style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+            onClick={onToggleActive}
+            disabled={!active && !canActivate}
+            title={active ? 'Active — hosts can add this' : (canActivate ? 'Activate so hosts can add this' : 'Add a title first')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: active ? 'rgba(56,232,176,.14)' : 'transparent',
+              border: `1px solid ${active ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
+              color: active ? '#38e8b0' : (canActivate ? '#e6e6ef' : '#6b7080'),
+              borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700,
+              letterSpacing: '.03em', cursor: (!active && !canActivate) ? 'not-allowed' : 'pointer',
+            }}
           >
-            ✕
+            {active && (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+            {active ? 'Active' : 'Activate'}
           </button>
-        )}
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label="Remove add-on"
+              style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Title + price on one row */}
@@ -200,41 +231,56 @@ function AddonCard({
         />
       </div>
 
-      {/* Photo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div
-          style={{
-            width: 64, height: 64, borderRadius: 10, flex: '0 0 auto', overflow: 'hidden',
-            background: addon.photo ? `center/cover no-repeat url(${addon.photo})` : '#23232e',
-            border: '1px solid rgba(255,255,255,.1)',
-          }}
-        />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              style={{ background: '#23232e', border: '1px solid rgba(255,255,255,.12)', color: '#e6e6ef', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}
-            >
-              {addon.photo ? 'Change photo' : 'Upload photo'}
-            </button>
-            {addon.photo && (
-              <button
-                type="button"
-                onClick={() => onChange({ photo: '' })}
-                style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 12, cursor: 'pointer' }}
-              >
-                Remove
-              </button>
-            )}
-          </div>
-          {uploadStatus.kind !== 'idle' && (
-            <span style={{ fontSize: 11, color: uploadStatus.kind === 'error' ? '#f3899a' : '#9aa0b4' }}>
-              {uploadStatus.msg}
-            </span>
+      {/* Photo — same slot UI as the package photo upload. */}
+      <div className={styles.pkgFieldGroup}>
+        <div className={styles.photoHeaderRow}>
+          <label className={styles.pkgFieldLabel}>Add-on Photo</label>
+        </div>
+        <div className={styles.photoSlotGrid}>
+          {addon.photo ? (
+            <div className={styles.photoSlot}>
+              <div className={styles.photoPreviewWrap}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={addon.photo} alt="Add-on photo" className={styles.photoSlotImg} />
+                <div className={styles.photoIconActions}>
+                  <label className={styles.photoIconBtn} title="Replace photo">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                  </label>
+                  <button type="button" onClick={() => onChange({ photo: '' })} className={styles.photoIconBtn} title="Delete photo">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.photoSlot}>
+              <label className={styles.photoSlotEmpty}>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                <span className={styles.photoSlotPlus}>+</span>
+                <span className={styles.photoSlotHint}>Add photo</span>
+                <span className={styles.photoSlotSize}>1000&times;1000px</span>
+              </label>
+            </div>
           )}
         </div>
+        {uploadStatus.kind !== 'idle' && (
+          <div
+            className={`${styles.uploadStatus} ${
+              uploadStatus.kind === 'uploading' ? styles.uploadStatusUploading
+                : uploadStatus.kind === 'done' ? styles.uploadStatusDone
+                : styles.uploadStatusError
+            }`}
+          >
+            {uploadStatus.msg}
+          </div>
+        )}
       </div>
     </div>
   );
