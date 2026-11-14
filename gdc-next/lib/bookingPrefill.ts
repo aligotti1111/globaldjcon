@@ -21,6 +21,8 @@ export interface BookingPrefill {
   endTime?: string;
   venueName?: string;
   venueAddress?: string;
+  roomDetails?: string;         // the "Room details" field
+  guestCount?: string;          // the "Estimated number of guests" field
   fullName?: string;
   email?: string;
   phone?: string;
