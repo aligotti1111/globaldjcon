@@ -361,7 +361,7 @@
 
 /* Section card with neon header bar */
 .sectionCard {
-  background: var(--deep);
+  background: #000;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
