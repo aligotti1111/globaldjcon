@@ -668,9 +668,10 @@ export default function MobilePackagesEditor({
               style={{
                 display: 'flex', alignItems: 'center', gap: '.5rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                 color: 'var(--neon)', fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '1.3rem' : '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
               }}
             >
-              <span>Add-ons/Extras</span>
+              <span style={{ whiteSpace: 'nowrap' }}>Add-ons/Extras</span>
               {view === 'addons' && (
                 <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
               )}
