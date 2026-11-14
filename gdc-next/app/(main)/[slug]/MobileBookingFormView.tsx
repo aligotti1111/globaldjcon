@@ -353,6 +353,8 @@ export default function MobileBookingForm({
     [bookingSettings],
   );
   const [selectedAddons, setSelectedAddons] = useState<number[]>([]);
+  // Which add-on photo is open full-size in the lightbox (null = closed).
+  const [addonZoom, setAddonZoom] = useState<string | null>(null);
   const addonsTotal = useMemo(
     () => selectedAddons.reduce((sum, origIdx) => {
       const a = mobAddons.find((x) => x._idx === origIdx);
@@ -1766,13 +1768,22 @@ export default function MobileBookingForm({
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
                       width: '100%', padding: 10, borderRadius: 12, cursor: 'pointer',
-                      background: on ? 'rgba(0,224,164,.08)' : 'rgba(255,255,255,.03)',
+                      // Selection shows only in the border + checkbox — no text-area tint.
+                      background: 'rgba(255,255,255,.03)',
                       border: `1.5px solid ${on ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.12)'}`,
                       color: 'inherit', font: 'inherit',
                     }}
                   >
                     {addon.photo && (
-                      <span style={{ width: 52, height: 52, flex: '0 0 auto', borderRadius: 8, background: `center/cover no-repeat url(${addon.photo})` }} />
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Expand photo"
+                        title="Tap to expand"
+                        onClick={(e) => { e.stopPropagation(); setAddonZoom(addon.photo || null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setAddonZoom(addon.photo || null); } }}
+                        style={{ width: 52, height: 52, flex: '0 0 auto', borderRadius: 8, cursor: 'zoom-in', background: `center/cover no-repeat url(${addon.photo})` }}
+                      />
                     )}
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
@@ -1802,6 +1813,36 @@ export default function MobileBookingForm({
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Add-on photo lightbox — tap the thumbnail to see it full-size. */}
+        {addonZoom && (
+          <div
+            onClick={() => setAddonZoom(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.85)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, cursor: 'zoom-out',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={addonZoom}
+              alt="Add-on"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '92vw', maxHeight: '88vh', borderRadius: 12, objectFit: 'contain', boxShadow: '0 10px 40px rgba(0,0,0,.6)' }}
+            />
+            <button
+              type="button"
+              onClick={() => setAddonZoom(null)}
+              aria-label="Close"
+              style={{
+                position: 'fixed', top: 16, right: 16, width: 40, height: 40, borderRadius: '50%',
+                background: 'rgba(255,255,255,.14)', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
           </div>
         )}
 
