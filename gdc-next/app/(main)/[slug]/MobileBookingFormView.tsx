@@ -1750,7 +1750,7 @@ export default function MobileBookingForm({
         {mobAddons.length > 0 && selectedPkgIdx != null && (
           <div style={{ margin: '18px 0' }}>
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.04em', color: 'var(--neon,#00e0a4)', textTransform: 'uppercase', marginBottom: 8 }}>
-              Add-ons
+              Add-ons/Extras
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {mobAddons.map((addon) => {
