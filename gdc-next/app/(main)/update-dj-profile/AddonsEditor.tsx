@@ -74,11 +74,6 @@ export default function AddonsEditor({
   return (
     <div style={{ marginTop: 24 }}>
       {confirmDialog}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-        <h3 style={{ margin: 0, fontSize: 15, letterSpacing: '.04em', color: '#38e8b0', textTransform: 'uppercase' }}>
-          Add-ons/Extras
-        </h3>
-      </div>
       <p style={{ margin: '0 0 14px', fontSize: 13, color: '#9aa0b4', lineHeight: 1.5 }}>
         Optional extras a client can add to <strong>any</strong> package when they book you — uplighting, a photo
         booth, an extra hour, and so on. Each add-on has one price; the client&apos;s picks are added to their total.
