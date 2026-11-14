@@ -393,11 +393,6 @@ export default function MobileBookingCard(props: Props) {
                 </>
               );
             })()}
-            {!hasCounter && b.deposit_amount != null && (
-              <div className={styles.priceDeposit}>
-                Deposit ({b.deposit_pct}%): {cur}{Number(b.deposit_amount).toLocaleString()}
-              </div>
-            )}
             {b.cocktail_price != null && Number(b.cocktail_price) > 0 && bigPriceVal != null && (
               <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
                 {cur}{(Number(bigPriceVal) - Number(b.cocktail_price)).toLocaleString()} + {cur}{Number(b.cocktail_price).toLocaleString()} cocktail
@@ -408,17 +403,6 @@ export default function MobileBookingCard(props: Props) {
                 {cur}{(Number(bigPriceVal) - Number(b.ceremony_price)).toLocaleString()} + {cur}{Number(b.ceremony_price).toLocaleString()} ceremony
               </div>
             )}
-            {(() => {
-              // Chosen add-ons (prices already folded into the quote). Listed so
-              // the DJ sees exactly what the host picked when reviewing the request.
-              const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
-              if (reqAddons.length === 0) return null;
-              return (
-                <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
-                  Add-ons: {reqAddons.map((a) => `${cur}${(Number(a.price) || 0).toLocaleString()} ${a.title}`).join(', ')}
-                </div>
-              );
-            })()}
             {overtimeRate != null && (
               <div className={styles.priceSub}>
                 Overtime: <span>{cur}{overtimeRate.toLocaleString()}/hr</span>
@@ -438,7 +422,16 @@ export default function MobileBookingCard(props: Props) {
         </div>
       ) : null}
       {b.package_title && (
-        <div className={styles.packageBlock}>
+        <div
+          className={styles.packageBlock}
+          style={{
+            marginTop: '.4rem',
+            padding: '1rem',
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+          }}
+        >
           <div className={styles.tinyLabel}>
             Package
             {isPackageEdited(b.package_details) && (
@@ -460,11 +453,12 @@ export default function MobileBookingCard(props: Props) {
               </span>
             )}
           </div>
-          <div className={styles.packageTitle}>{b.package_title}</div>
+          <div className={styles.packageTitle} style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--white)' }}>{b.package_title}</div>
           {b.package_details && (
             <>
               <div
                 className={styles.packageDetails}
+                style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--white)' }}
                 // package_details is admin/DJ-controlled HTML stored as a
                 // pre-sanitized fragment from the package editor. When it
                 // contains the GDJ_EDITED marker (DJ counter-edited the
@@ -492,6 +486,28 @@ export default function MobileBookingCard(props: Props) {
               )}
             </>
           )}
+          {(() => {
+            // Chosen add-ons, itemized at the bottom of the package block.
+            const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
+            if (reqAddons.length === 0) return null;
+            return (
+              <div style={{ marginTop: '.7rem' }}>
+                <div className={styles.tinyLabel} style={{ marginBottom: 4 }}>Add-ons/Extras</div>
+                {reqAddons.map((a, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', gap: 12,
+                      fontSize: 14, color: 'var(--white)', padding: '3px 0',
+                    }}
+                  >
+                    <span>{a.title}</span>
+                    <span style={{ color: 'var(--muted)' }}>{cur}{(Number(a.price) || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
       {/* View History — read-only modal of all counters/quotes on this
