@@ -1121,15 +1121,18 @@ export default function BookingDetails({
           {booking.package_title}{badgeFor('package_title')}
         </div>
       )}
-      {(pendingCols.has('package_details') || fieldEdits['package_details']) && (
-        <div style={{ marginTop: 8 }}><span className={styles.detailLabel}>Details</span>{badgeFor('package_details')}</div>
-      )}
       {hasPackageDetails && (
-        <div
-          className={styles.packageDetailsHtml}
-          style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--white,#e8e8ef)', marginTop: booking.package_title ? 8 : 12 }}
-          dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
-        />
+        <div style={{ marginTop: booking.package_title ? 12 : 12 }}>
+          <div className={styles.detailLabel} style={{ marginBottom: 6 }}>Details{badgeFor('package_details')}</div>
+          <div
+            className={styles.packageDetailsHtml}
+            style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--white,#e8e8ef)' }}
+            dangerouslySetInnerHTML={{ __html: booking.package_details || '' }}
+          />
+        </div>
+      )}
+      {!hasPackageDetails && (pendingCols.has('package_details') || fieldEdits['package_details']) && (
+        <div style={{ marginTop: 8 }}><span className={styles.detailLabel}>Details</span>{badgeFor('package_details')}</div>
       )}
       {bookingAddons.length > 0 && (
         <div style={{ marginTop: hasPackageDetails || booking.package_title ? 14 : 12 }}>
