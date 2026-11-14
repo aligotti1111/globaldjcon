@@ -342,6 +342,10 @@ export interface MobAddon {
   price?: number | string; // single flat price for this add-on
   photo?: string;          // one sample photo URL
   details?: string;        // description (plain text or light HTML)
+  // Only ACTIVE add-ons are offered to hosts at booking. The DJ activates each
+  // one explicitly (per card) once it's filled in; inactive ones stay saved but
+  // hidden from the booking form.
+  active?: boolean;
 }
 
 // Canonical, sorted list of valid pricing tiers for a package. Uses
