@@ -47,8 +47,18 @@ export default function AddonsEditor({
     }
     onChange(list.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   }
-  function add() {
-    onChange([...list, { title: '', price: '', photo: '', details: '' }]);
+  // Activate the add-on being worked on (the last card). A separate "+" below
+  // the cards opens a new blank slot.
+  const working = display[display.length - 1];
+  const canActivate = !!(working && (working.title || '').trim());
+  function activate() {
+    if (!canActivate) return;
+    const lastIdx = display.length - 1;
+    const activated: MobAddon = { ...working, active: true };
+    onChange(lastIdx >= list.length ? [...list, activated] : list.map((a, i) => (i === lastIdx ? activated : a)));
+  }
+  function addSlot() {
+    onChange([...list, { title: '', price: '', photo: '', details: '', active: false }]);
   }
   async function remove(idx: number) {
     const ok = await confirm({
@@ -83,23 +93,43 @@ export default function AddonsEditor({
             userId={userId}
             sym={sym}
             onChange={(p) => update(idx, p)}
-            onToggleActive={() => update(idx, { active: !addon.active })}
             onRemove={idx < list.length ? () => remove(idx) : undefined}
           />
         ))}
       </div>
 
+      {/* "+" under the most recent add-on — opens a fresh blank slot. */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+        <button
+          type="button"
+          onClick={addSlot}
+          aria-label="Add another add-on"
+          title="Add another add-on"
+          style={{
+            width: 40, height: 40, borderRadius: '50%', display: 'inline-flex', alignItems: 'center',
+            justifyContent: 'center', background: 'transparent', border: '1px dashed rgba(56,232,176,.5)',
+            color: '#38e8b0', fontSize: 22, lineHeight: 1, cursor: 'pointer',
+          }}
+        >
+          +
+        </button>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
         <button
           type="button"
-          onClick={add}
+          onClick={activate}
+          disabled={!canActivate}
+          title={canActivate ? 'Activate this add-on and start another' : 'Add a title first'}
           style={{
-            background: 'transparent', border: '1px dashed rgba(56,232,176,.5)',
-            color: '#38e8b0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', letterSpacing: '.03em',
+            background: canActivate ? 'rgba(56,232,176,.14)' : 'transparent',
+            border: `1px solid ${canActivate ? '#38e8b0' : 'rgba(56,232,176,.4)'}`,
+            color: canActivate ? '#38e8b0' : '#6b7080',
+            borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
+            cursor: canActivate ? 'pointer' : 'not-allowed', letterSpacing: '.03em',
           }}
         >
-          + Add Add-on
+          Activate
         </button>
       </div>
     </div>
@@ -107,18 +137,15 @@ export default function AddonsEditor({
 }
 
 function AddonCard({
-  addon, idx, userId, sym, onChange, onToggleActive, onRemove,
+  addon, idx, userId, sym, onChange, onRemove,
 }: {
   addon: MobAddon;
   idx: number;
   userId: string;
   sym: string;
   onChange: (patch: Partial<MobAddon>) => void;
-  onToggleActive: () => void;
   onRemove?: () => void;
 }) {
-  const active = !!addon.active;
-  const canActivate = (addon.title || '').trim().length > 0;
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
 
@@ -154,41 +181,16 @@ function AddonCard({
         <span style={{ fontSize: 12, fontWeight: 700, color: '#9aa0b4', letterSpacing: '.04em' }}>
           ADD-ON {idx + 1}
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Per-add-on Activate toggle — only ACTIVE add-ons are offered to
-              hosts at booking. Needs a title before it can be activated. */}
+        {onRemove && (
           <button
             type="button"
-            onClick={onToggleActive}
-            disabled={!active && !canActivate}
-            title={active ? 'Active — hosts can add this' : (canActivate ? 'Activate so hosts can add this' : 'Add a title first')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: active ? 'rgba(56,232,176,.14)' : 'transparent',
-              border: `1px solid ${active ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
-              color: active ? '#38e8b0' : (canActivate ? '#e6e6ef' : '#6b7080'),
-              borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700,
-              letterSpacing: '.03em', cursor: (!active && !canActivate) ? 'not-allowed' : 'pointer',
-            }}
+            onClick={onRemove}
+            aria-label="Remove add-on"
+            style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
           >
-            {active && (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-            {active ? 'Active' : 'Activate'}
+            ✕
           </button>
-          {onRemove && (
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label="Remove add-on"
-              style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Title + price on one row */}
