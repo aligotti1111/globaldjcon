@@ -78,7 +78,7 @@ export default function SectionBanner({
       style={{
         position: 'relative', display: 'flex', alignItems: 'center', gap: 16,
         padding: '20px 26px', borderBottom: '1px solid rgba(255,255,255,.14)',
-        background: '#000',
+        background: 'linear-gradient(180deg,rgba(34,227,173,.10),rgba(34,227,173,.02))',
       }}
     >
       {/* On phones the right-side meters stack UNDER the title (they're
