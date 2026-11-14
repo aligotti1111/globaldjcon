@@ -20,6 +20,7 @@ import {
   ctaButton, bookingInfoBox, mobileBookingRequestBox, billBreakdownBox,
 } from '@/lib/emails/layout';
 import { googleCalendarLink } from '@/lib/ics';
+import { parseBookingAddons } from '@/lib/addons';
 
 // ── 1. WELCOME ─────────────────────────────────────────────────────────
 export function buildWelcomeBody(opts: {
@@ -251,7 +252,7 @@ export function buildBookingRequestBody(opts: {
   // renders the "respond with your quote" prompt when no rate is set.
   const djRateBox = rateValueNum != null && !isNaN(rateValueNum)
     ? `<div style="background:#eafaf4;border:1px solid #b6e8d6;border-radius:8px;padding:14px 20px;margin-bottom:24px;">
-           <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>${hasOffer ? 'Offered Rate' : 'Quoted Rate'}:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(rateValueNum.toLocaleString()))} ${escHtml(offerCurrency)}${
+           <p style="margin:0;color:#1a1a2e;font-size:14px;"><strong>${hasOffer ? 'Offered Rate' : 'Quoted Rate'}:</strong> ${currencySymbol(offerCurrency)}${escHtml(String(rateValueNum.toLocaleString()))}${
            totalHours != null && String(totalHours).trim() !== '' && !hasOffer
              ? ` <span style="color:#666;">(${escHtml(String(totalHours))} hr total)</span>`
              : ''
@@ -279,7 +280,7 @@ export function buildBookingRequestBody(opts: {
     packageDetails,
     rateLabel: rateValueNum != null && !isNaN(rateValueNum) ? 'Quoted Rate' : undefined,
     rateValue: rateValueNum != null && !isNaN(rateValueNum)
-      ? `${currencySymbol(offerCurrency)}${rateValueNum.toLocaleString()} ${offerCurrency}`
+      ? `${currencySymbol(offerCurrency)}${rateValueNum.toLocaleString()}`
       : undefined,
     rateBreakdown: discountBreakdown,
     isWedding,
@@ -358,6 +359,7 @@ export function buildBookingRequestConfirmationBody(opts: {
   confDiscLabel: string;
   cocktailPrice: unknown;
   ceremonyPrice: unknown;
+  addons?: unknown;
   taxPct: unknown;
   taxAmount: unknown;
   totalWithTax: unknown;
@@ -372,7 +374,7 @@ export function buildBookingRequestConfirmationBody(opts: {
     setType, venueType, equipment, equipNoneDetail,
     offerAmount, quotedRate, confCurrency, confTotalHours, confHourlyRate,
     confDiscAmt, confOrigRate, confDiscLabel,
-    cocktailPrice, ceremonyPrice, taxPct, taxAmount, totalWithTax, depositPct, depositAmount,
+    cocktailPrice, ceremonyPrice, addons, taxPct, taxAmount, totalWithTax, depositPct, depositAmount,
   } = opts;
   // Mobile vs club — same discriminator the DJ-side email uses.
   const isMobileBooking = !setType;
@@ -412,7 +414,7 @@ export function buildBookingRequestConfirmationBody(opts: {
         packageDetails,
         rateLabel: confRateNum != null && !isNaN(confRateNum) ? 'Quoted Rate' : undefined,
         rateValue: confRateNum != null && !isNaN(confRateNum)
-          ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}`
+          ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()}`
           : undefined,
         rateBreakdown: confDiscountBreakdown,
         isWedding,
@@ -438,7 +440,7 @@ export function buildBookingRequestConfirmationBody(opts: {
           ? (confHasOffer ? 'Offered Rate' : 'Quoted Rate')
           : undefined,
         rateValue: confRateNum != null && !isNaN(confRateNum)
-          ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()} ${confCurrency}${
+          ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()}${
               confTotalHours != null && String(confTotalHours).trim() !== '' && !confHasOffer
                 ? ` (${confTotalHours} hr total)` : ''
             }`
@@ -460,6 +462,7 @@ export function buildBookingRequestConfirmationBody(opts: {
     quotedRate: confRateNum != null && !isNaN(confRateNum) ? confRateNum : null,
     cocktailPrice: cocktailPrice != null ? Number(cocktailPrice) : null,
     ceremonyPrice: ceremonyPrice != null ? Number(ceremonyPrice) : null,
+    addons: parseBookingAddons(addons),
     taxPct: taxPct != null ? Number(taxPct) : null,
     taxAmount: taxAmount != null ? Number(taxAmount) : null,
     totalWithTax: totalWithTax != null ? Number(totalWithTax) : null,
@@ -574,7 +577,7 @@ export function buildBookingCounterBody(opts: {
           venueName,
           venueAddress,
           rateLabel: 'Counter Offer',
-          rateValue: counterRate ? `${sym}${Number(counterRate).toLocaleString()} ${currency}` : '',
+          rateValue: counterRate ? `${sym}${Number(counterRate).toLocaleString()}` : '',
           message: counterMessage,
         })}
         ${billBox}
@@ -611,7 +614,7 @@ export function buildQuoteSentBody(opts: {
           venueName,
           venueAddress,
           rateLabel: 'Quoted Rate',
-          rateValue: quotedRate ? `${sym}${Number(quotedRate).toLocaleString()} ${currency}` : '',
+          rateValue: quotedRate ? `${sym}${Number(quotedRate).toLocaleString()}` : '',
           message: quoteMessage,
         })}
         ${billBox}
@@ -676,11 +679,11 @@ export function buildBookingApprovedBody(opts: {
           venueAddress,
           equipmentText: equipNeedsText ? `Venue provides all — DJ needs: ${equipNeedsText}` : undefined,
           rateLabel: 'Agreed Price',
-          rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()} ${currency}` : '',
+          rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()}` : '',
         })}
         ${billBox}
         ${overtimeRate != null
-          ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()} ${currency}/hr</p></div>`
+          ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()}/hr</p></div>`
           : ''}
         <p style="color:#666;margin-bottom:16px;font-size:13px;">You can review full booking details and the other party's contact info in your dashboard.</p>
         ${ctaButton(`${SITE_URL}/booking-requests`, 'View Booking')}
@@ -756,7 +759,7 @@ export function buildManualBookingInviteBody(opts: {
 }): string {
   const { djName, djType, bookingId, eventDate, startTime, endTime, venueName, venueAddress, venueType, setType, eventType, eventDetails, packageTitle, packageDetails, rate, currency, isResend, taxPct, taxAmount, total, depositPct, depositAmount, balanceDue, overtimeRate, cocktailNeeded, cocktailStart, ceremonyNeeded, ceremonyStart, existingUserId, recipientEmail } = opts;
   const hasPrice = rate != null && Number.isFinite(rate) && rate > 0;
-  const fmtAmt = (n: number) => `${currency} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtAmt = (n: number) => `${currencySymbol(currency)}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const row = (label: string, val: string, bold = false, muted = false) =>
     `<tr><td style="padding:4px 0;font-size:14px;color:${muted ? '#888888' : '#333333'};${bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:4px 0;font-size:14px;text-align:right;color:${muted ? '#888888' : '#1a1a2e'};${bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
   const priceBlock = hasPrice
@@ -854,7 +857,7 @@ export function buildEventInviteFromHostBody(opts: {
     : '';
 
   const rateLine = (rate != null && Number.isFinite(rate) && rate > 0)
-    ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Rate:</strong> ${escHtml(currency)} ${rate.toLocaleString()}</p>`
+    ? `<p style="margin:0 0 8px;color:#1a1a2e;"><strong>Rate:</strong> ${currencySymbol(currency)}${rate.toLocaleString()}</p>`
     : '';
 
   // Compose a one-line "shared event details for {date} at {venue}" summary.
