@@ -1892,9 +1892,9 @@ export default function MobileBookingForm({
             {showPriceBreakdown && discountedTotal != null && grandTotal != null && (() => {
               const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               const rowStyle = { display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' } as const;
-              // The headline price already has add-ons folded in; split them back
-              // out so the package shows on its own line and each add-on separately.
-              const pkgBase = (priceResult.price ?? 0) - addonsTotal;
+              // priceResult.price is the package price (cocktail / ceremony folded
+              // in); the chosen mobile add-ons are added on their own lines below.
+              const pkgBase = priceResult.price ?? 0;
               const pkgName = ((selectedPkg as { title?: string } | null)?.title || '').trim() || 'Package';
               return (
               <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
