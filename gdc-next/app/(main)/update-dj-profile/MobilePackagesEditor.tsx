@@ -685,7 +685,7 @@ Add pricing for an event type gives that event type its own packages.
                 fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer',
               }}
             >
-              <span>Add-ons</span>
+              <span>Add-ons/Extras</span>
               {addons.filter((a) => (a?.title || '').trim()).length > 0 && (
                 <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>
                   {addons.filter((a) => (a?.title || '').trim()).length} item{addons.filter((a) => (a?.title || '').trim()).length === 1 ? '' : 's'}
@@ -707,7 +707,7 @@ Add pricing for an event type gives that event type its own packages.
       <main ref={cardRef} style={isNarrow ? { flex: '1 1 100%', width: '100%', minWidth: 0, marginTop: 14, scrollMarginTop: 80 } : { flex: '1000 1 300px', minWidth: 0, scrollMarginTop: 90 }}>
         {view === 'addons' && onAddonsChange ? (
           <div style={{ position: 'relative', border: '1px solid var(--neon)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem' }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>Add-ons</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--neon)', borderBottom: '1px solid var(--border)', paddingBottom: '.7rem', marginBottom: '.9rem' }}>Add-ons/Extras</div>
             <AddonsEditor addons={addons} userId={userId} currency={currency} onChange={onAddonsChange} />
           </div>
         ) : (
