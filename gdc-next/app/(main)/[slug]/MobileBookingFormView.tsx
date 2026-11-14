@@ -40,7 +40,7 @@ import {
   type DiscountResult,
 } from './bookingSettings';
 import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
-import { readBookingPrefill, clearBookingPrefill, prefillSummary } from '@/lib/bookingPrefill';
+import { readBookingPrefill, saveBookingPrefill, clearBookingPrefill, prefillSummary } from '@/lib/bookingPrefill';
 import {
   MOB_EVENT_TYPE_LABELS,
   EVENT_SUBFIELDS,
@@ -264,6 +264,8 @@ export default function MobileBookingForm({
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [message, setMessage] = useState('');
+  // Close-with-unsaved-details prompt: "save to book later?"
+  const [savePromptOpen, setSavePromptOpen] = useState(false);
 
   // Booking Assistant prefill (Phase 2): if the bot collected details for this
   // DJ, drop the safe free-text fields in and fold event type/date/time into the
@@ -279,6 +281,9 @@ export default function MobileBookingForm({
       if (p.phone) setPhone(p.phone);
       if (p.venueName) setVenueName(p.venueName);
       if (p.venueAddress) setVenueAddress(p.venueAddress);
+      if (p.roomDetails) setRoom(p.roomDetails);
+      if (p.guestCount) setGuests(p.guestCount);
+      if (p.email) setContactEmail(p.email);
       // Event type: only set it if the bot matched one of this DJ's own keys.
       if (p.eventTypeKey && eventTypesAllowed.includes(p.eventTypeKey)) {
         // Stash the "Type of X" detail so the post-reset effect can fill it in
@@ -830,6 +835,7 @@ export default function MobileBookingForm({
         deposit_amount: number | null;
         cocktail_price: number | null;
         ceremony_price: number | null;
+        addons: { title: string; price: number }[] | null;
       } = json.booking;
 
       // Email the DJ that a new booking request came in. The send-email
@@ -938,6 +944,7 @@ export default function MobileBookingForm({
             depositAmount: created.deposit_amount,
             cocktailPrice: created.cocktail_price,
             ceremonyPrice: created.ceremony_price,
+            addons: created.addons,
           }),
         });
       } catch {
@@ -1051,6 +1058,48 @@ export default function MobileBookingForm({
   const startTimeValid = startTime !== '';
   const endTimeValid = endTime !== '';
 
+  // ── Close with "save to book later?" ───────────────────────────────
+  // If the host typed any booking details, closing offers to stash them so a
+  // later visit (or clicking a date again) lands on a pre-filled form.
+  // "Discard" wipes the saved draft; a clean form just closes.
+  const formHasData = !!(
+    venueName.trim() || venueAddress.trim() || room.trim() || guests.trim()
+    || eventType || startTime || endTime || message.trim() || selectedPkgIdx != null
+    || contactEmail.trim()
+  );
+  function requestClose() {
+    if (formHasData) setSavePromptOpen(true);
+    else onClose();
+  }
+  function saveForLater() {
+    if (prefillSlug) {
+      saveBookingPrefill({
+        slug: prefillSlug,
+        date: dateKey,
+        eventTypeKey: eventType || undefined,
+        eventSubType: eventSubType || undefined,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
+        venueName: venueName || undefined,
+        venueAddress: venueAddress || undefined,
+        roomDetails: room || undefined,
+        guestCount: guests || undefined,
+        fullName: fullName || undefined,
+        email: contactEmail || undefined,
+        phone: phone || undefined,
+        notes: message || undefined,
+        ts: Date.now(),
+      });
+    }
+    setSavePromptOpen(false);
+    onClose();
+  }
+  function discardAndClose() {
+    if (prefillSlug) clearBookingPrefill(prefillSlug);
+    setSavePromptOpen(false);
+    onClose();
+  }
+
   // DJ-side accounts can't book DJs — show only the message, not the form.
   if (viewerCannotBook) {
     return createPortal(
@@ -1082,7 +1131,7 @@ export default function MobileBookingForm({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className={styles.formCloseBtn}
             aria-label="Close booking form"
           >
@@ -2110,6 +2159,70 @@ export default function MobileBookingForm({
             >
               ✕
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Save-for-later prompt — shown when the host closes a form that has
+          details typed in. "Save" stashes the draft so clicking the date again
+          lands on a pre-filled form; "Discard" wipes it. */}
+      {savePromptOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100000,
+            background: 'rgba(0,0,0,.72)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+          onClick={() => setSavePromptOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#000', border: '1px solid rgba(255,255,255,.14)',
+              borderRadius: 16, maxWidth: 380, width: '100%', padding: '26px 24px',
+              boxShadow: '0 24px 60px -20px rgba(0,0,0,.9)',
+            }}
+          >
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '.03em', color: '#fff' }}>
+              Save your details?
+            </div>
+            <div style={{ marginTop: 8, fontSize: '.86rem', lineHeight: 1.5, color: 'var(--muted,#8b8da3)' }}>
+              Keep what you&apos;ve entered so you can pick up where you left off next time you open this date.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={saveForLater}
+                style={{
+                  width: '100%', padding: '13px 16px', borderRadius: 10, border: 'none',
+                  background: 'var(--neon,#00e0a4)', color: '#04241b', fontWeight: 700,
+                  fontSize: '.92rem', cursor: 'pointer',
+                }}
+              >
+                Save for later
+              </button>
+              <button
+                type="button"
+                onClick={discardAndClose}
+                style={{
+                  width: '100%', padding: '13px 16px', borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,.2)', background: 'transparent',
+                  color: '#fff', fontWeight: 600, fontSize: '.92rem', cursor: 'pointer',
+                }}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={() => setSavePromptOpen(false)}
+                style={{
+                  width: '100%', padding: '8px', border: 'none', background: 'transparent',
+                  color: 'var(--muted,#8b8da3)', fontSize: '.82rem', cursor: 'pointer',
+                }}
+              >
+                Keep editing
+              </button>
+            </div>
           </div>
         </div>
       )}
