@@ -548,8 +548,19 @@ export default function MobilePackagesEditor({
   // the event type being edited.
   const renderCategory = (cat: string) => {
     const open = !isNarrow || selCat === cat;
+    // Neon left bar + faint tint on the event type currently being edited, so
+    // it's clear which type the open package belongs to.
+    const beingEdited = view === 'packages' && selCat === cat;
     return (
-      <div key={cat} style={{ marginBottom: isNarrow ? 8 : 16 }}>
+      <div
+        key={cat}
+        style={{
+          marginBottom: isNarrow ? 8 : 16,
+          ...(beingEdited
+            ? { borderLeft: '3px solid var(--neon)', background: 'rgba(0,224,164,.06)', borderRadius: '0 8px 8px 0', padding: '8px 10px 10px', marginLeft: -2 }
+            : {}),
+        }}
+      >
         {renderCatHeader(cat)}
         {open && (
           <div style={isNarrow ? { paddingLeft: 16, marginLeft: 3, borderLeft: '1px solid var(--border)' } : undefined}>
