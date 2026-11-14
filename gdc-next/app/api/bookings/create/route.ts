@@ -510,16 +510,18 @@ export async function POST(req: Request) {
     // client preview. A snapshot (title + price, frozen now) is stored on the
     // booking's `addons` jsonb for the itemized display — there is no separate
     // add-ons money column; the price lives inside quoted_rate.
-    const settingsAddons: Array<{ title?: string; price?: number | string }> =
+    const settingsAddons: Array<{ title?: string; price?: number | string; active?: boolean }> =
       Array.isArray((settings as { mob_addons?: unknown }).mob_addons)
-        ? ((settings as { mob_addons?: Array<{ title?: string; price?: number | string }> }).mob_addons as Array<{ title?: string; price?: number | string }>)
+        ? ((settings as { mob_addons?: Array<{ title?: string; price?: number | string; active?: boolean }> }).mob_addons as Array<{ title?: string; price?: number | string; active?: boolean }>)
         : [];
     const rawAddonIdx = Array.isArray(body.addonIndexes) ? body.addonIndexes : [];
     const chosenAddonIdx = Array.from(
       new Set(
         rawAddonIdx
           .map((v) => (typeof v === 'number' && Number.isInteger(v) ? v : -1))
-          .filter((i) => i >= 0 && i < settingsAddons.length),
+          // Only ACTIVE add-ons can be priced — never trust a client that sends
+          // an inactive (or out-of-range) index.
+          .filter((i) => i >= 0 && i < settingsAddons.length && settingsAddons[i]?.active === true),
       ),
     );
     const addonSnapshot = chosenAddonIdx
