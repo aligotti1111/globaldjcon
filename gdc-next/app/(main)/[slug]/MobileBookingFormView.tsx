@@ -1780,7 +1780,10 @@ export default function MobileBookingForm({
                         {hasPrice && <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>+{cur}{price.toLocaleString()}</span>}
                       </span>
                       {addon.details && (
-                        <span style={{ display: 'block', fontSize: 12, color: '#9aa0b4', marginTop: 2, lineHeight: 1.4 }}>{addon.details}</span>
+                        <span
+                          style={{ display: 'block', fontSize: 12, color: '#9aa0b4', marginTop: 2, lineHeight: 1.4 }}
+                          dangerouslySetInnerHTML={{ __html: addon.details }}
+                        />
                       )}
                     </span>
                     <span
