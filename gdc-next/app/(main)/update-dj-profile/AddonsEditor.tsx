@@ -47,10 +47,25 @@ export default function AddonsEditor({
     }
     onChange(list.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   }
+  // Two add-ons can't share a title. Mark any card whose (trimmed, case-
+  // insensitive) title matches an EARLIER card's — so the first use is kept
+  // and later duplicates are flagged. Blank titles never count as duplicates.
+  const dupFlags: boolean[] = (() => {
+    const seen = new Set<string>();
+    return display.map((a) => {
+      const key = (a.title || '').trim().toLowerCase();
+      if (!key) return false;
+      if (seen.has(key)) return true;
+      seen.add(key);
+      return false;
+    });
+  })();
+
   // Activate the add-on being worked on (the last card). A separate "+" below
   // the cards opens a new blank slot.
   const working = display[display.length - 1];
-  const canActivate = !!(working && (working.title || '').trim());
+  const workingIsDup = dupFlags[display.length - 1];
+  const canActivate = !!(working && (working.title || '').trim()) && !workingIsDup;
   function activate() {
     if (!canActivate) return;
     const lastIdx = display.length - 1;
@@ -87,6 +102,7 @@ export default function AddonsEditor({
             idx={idx}
             userId={userId}
             sym={sym}
+            duplicate={dupFlags[idx]}
             onChange={(p) => update(idx, p)}
             onRemove={idx < list.length ? () => remove(idx) : undefined}
           />
@@ -139,12 +155,13 @@ export default function AddonsEditor({
 }
 
 function AddonCard({
-  addon, idx, userId, sym, onChange, onRemove,
+  addon, idx, userId, sym, duplicate, onChange, onRemove,
 }: {
   addon: MobAddon;
   idx: number;
   userId: string;
   sym: string;
+  duplicate?: boolean;
   onChange: (patch: Partial<MobAddon>) => void;
   onRemove?: () => void;
 }) {
@@ -205,7 +222,13 @@ function AddonCard({
             value={addon.title || ''}
             onChange={(e) => onChange({ title: e.target.value })}
             className={styles.pkgInput}
+            style={duplicate ? { borderColor: '#f3899a' } : undefined}
           />
+          {duplicate && (
+            <div style={{ marginTop: 4, fontSize: 12, color: '#f3899a' }}>
+              Another add-on already uses this title. Give it a unique name.
+            </div>
+          )}
         </div>
         <div style={{ flex: '1 1 120px' }}>
           <label className={styles.pkgFieldLabel}>Price</label>
