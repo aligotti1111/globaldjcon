@@ -352,9 +352,9 @@ const LANDING_CSS = String.raw`
 .gdc-landing .types-note{font-family:'Archivo',sans-serif;text-align:center;color:var(--muted);font-size:.95rem;margin-top:12px}
 .gdc-landing .types-note b{color:var(--ink)}
 .gdc-landing /* two-flow glow cards — colored header, .gdc-landing no box */
-  .flowcards{display:flex;align-items:flex-start;gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
+  .flowcards{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0;max-width:940px;margin:0 auto;border-top:1px solid var(--line-2)}
 .gdc-landing .flowcards .flane{position:relative;padding:0 30px 0;counter-reset:step;display:block;flex:1 1 0;min-width:0;transition:flex-grow .45s cubic-bezier(.22,1,.36,1)}
-.gdc-landing .flowcards .flane.open{flex-grow:2.6}
+.gdc-landing .flowcards .flane.open{flex-grow:1}
 .gdc-landing .flowcards .flane.mobile{border-right:1px solid var(--line-2)}
 .gdc-landing .flowcards .fh{position:relative;font-family:var(--disp);font-size:1.9rem;letter-spacing:.02em;display:flex;flex-direction:column;gap:.12rem;padding:15px 22px;margin:0 -30px 0;border-bottom:2px solid}
 .gdc-landing .flowcards .fh small{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
@@ -385,18 +385,17 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .fhtitle{position:relative;align-self:center;text-align:center;display:inline-block;white-space:nowrap}
 .gdc-landing .flowcards .fh small{display:none}
 .gdc-landing .flowcards .fh{overflow:hidden}
-.gdc-landing .flowcards:has(.flane.open) .flane:not(.open) .fh{font-size:1.3rem}
-.gdc-landing .flowcards:has(.flane.open) .flane:not(.open) .fhtitle{padding-right:1.2em}
 .gdc-landing .flowcards .flane.open .fhtitle{align-self:center;text-align:center;padding-left:1.2em;padding-right:1.2em;margin-left:0}
 .gdc-landing .flowcards .flane.open .fh small{text-align:center}
 .gdc-landing .flowcards .fhtoggle{position:absolute;right:22px;bottom:14px;width:11px;height:11px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .3s ease;opacity:.75}
 .gdc-landing .flowcards .flane.open .fhtoggle{transform:rotate(-135deg);bottom:10px}
 /* When a lane is open, keep each banner's color but center its title and run a
-   top accent line in that lane's own color across the top of the header. */
-.gdc-landing .flowcards:has(.flane.open) .fh{border-top:2px solid;align-items:center;text-align:center}
-.gdc-landing .flowcards:has(.flane.open) .flane.mobile .fh{border-top-color:rgba(0,245,196,.5)}
-.gdc-landing .flowcards:has(.flane.open) .flane.club .fh{border-top-color:rgba(245,230,66,.5)}
-.gdc-landing .flowcards:has(.flane.open) .flane:not(.open) .fhtitle{padding-left:1.2em}
+   solid top accent line in that lane's own color across the top of the header. */
+.gdc-landing .flowcards:has(.flane.open) .fh{border-top:3px solid;align-items:center;text-align:center}
+.gdc-landing .flowcards:has(.flane.open) .flane.mobile .fh{border-top-color:var(--neon)}
+.gdc-landing .flowcards:has(.flane.open) .flane.club .fh{border-top-color:var(--amber)}
+.gdc-landing .flowcards:has(.flane.open) .flane{flex-basis:100%}
+.gdc-landing .flowcards:has(.flane.open) .flane.mobile{border-right:0;border-bottom:1px solid var(--line-2)}
 .gdc-landing .flowcards .fbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
 .gdc-landing .flowcards .flane.open .fbody{max-height:1400px;padding-bottom:26px}
 @media(max-width:640px){
@@ -404,6 +403,8 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane{display:block;flex:0 0 auto}
 .gdc-landing .flowcards .flane.open{flex-grow:0}
 .gdc-landing .flowcards .flane.mobile{border-right:0;border-bottom:1px solid var(--line-2)}
+/* Mobile stays as-is: no open-state top accent line. */
+.gdc-landing .flowcards:has(.flane.open) .fh{border-top:0}
 }
 .gdc-landing /* features */
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
