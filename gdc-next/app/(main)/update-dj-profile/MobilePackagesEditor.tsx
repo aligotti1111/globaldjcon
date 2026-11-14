@@ -651,6 +651,35 @@ export default function MobilePackagesEditor({
       <aside style={isNarrow ? { flex: '1 1 100%', width: '100%' } : { flex: '1 1 230px', maxWidth: 300, minWidth: 220 }}>
         {renderCategory('general')}
         {railTypes.map((t) => renderCategory(t))}
+        {/* ── ADD-ONS entry ── Sits right under the last event type, styled like a
+            category (no frame) with a neon left bar when it's the open view. */}
+        {onAddonsChange && (
+          <div
+            style={{
+              marginBottom: isNarrow ? 8 : 16,
+              ...(view === 'addons'
+                ? { borderLeft: '3px solid var(--neon)', background: 'rgba(0,224,164,.06)', borderRadius: '0 8px 8px 0', padding: '8px 10px 10px', marginLeft: -2 }
+                : {}),
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { setView('addons'); if (isNarrow) requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '.5rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                color: 'var(--neon)', fontFamily: "'Bebas Neue', sans-serif", fontSize: isNarrow ? '1.3rem' : '1.6rem', lineHeight: 1, letterSpacing: '.05em', textTransform: 'uppercase',
+              }}
+            >
+              <span>Add-ons/Extras</span>
+              {view === 'addons' && (
+                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
+              )}
+            </button>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.72rem', lineHeight: 1.5, color: '#9a9ab0', margin: '.35rem .1rem 0' }}>
+              Optional extras a client can add to any package when they book.
+            </p>
+          </div>
+        )}
         {(addableTypes.length > 0 || onEventTypesSave) && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {addableTypes.length > 0 && (
@@ -672,32 +701,6 @@ export default function MobilePackagesEditor({
                 Edit Event Types (You DJ)
               </button>
             )}
-          </div>
-        )}
-        {/* ── ADD-ONS entry ── Its own sidebar item; selecting it swaps the
-            right pane from the package editor to the add-ons editor, so add-ons
-            live alongside the event types rather than below the whole page. */}
-        {onAddonsChange && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-            <button
-              type="button"
-              onClick={() => { setView('addons'); if (isNarrow) requestAnimationFrame(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                background: view === 'addons' ? 'linear-gradient(180deg, rgba(0,224,164,.14), rgba(10,10,16,.4))' : 'rgba(255,255,255,.03)',
-                border: `1px solid ${view === 'addons' ? 'var(--neon)' : '#fff'}`,
-                color: view === 'addons' ? 'var(--neon)' : '#fff', borderRadius: 9, padding: '.7rem .8rem',
-                fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer',
-              }}
-            >
-              <span>Add-ons/Extras</span>
-              {view === 'addons' && (
-                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#04241b', background: 'var(--neon)', borderRadius: 4, padding: '.12rem .4rem' }}>Editing</span>
-              )}
-            </button>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.72rem', lineHeight: 1.5, color: '#9a9ab0', margin: '.4rem .1rem 0' }}>
-              Optional extras a client can add to any package when they book.
-            </p>
           </div>
         )}
       </aside>
