@@ -1215,6 +1215,9 @@ export default function BookingDetails({
                   booking exists, so no edit pencil on the Pricing section. */}
               {g.key !== 'PRICING' && sectionPencil(g.key as EditSection)}
             </div>
+            {g.key === 'EVENT' && (
+              <div style={{ borderTop: '1px solid var(--border,rgba(255,255,255,0.1))', margin: '12px 0 0' }} />
+            )}
             {g.key === 'EVENT' && (eventHeaderBlock || venueHeaderBlock)}
             {g.key === 'VENUE' && g.rows.length === 0 && (
               <div style={{ marginTop: 10, fontSize: '.82rem', color: 'var(--muted,#8a8aa0)' }}>
