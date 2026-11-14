@@ -732,6 +732,7 @@ export async function POST(req: Request) {
         is_quote: insertPayload.is_quote,
         cocktail_price: insertPayload.cocktail_price,
         ceremony_price: insertPayload.ceremony_price,
+        addons: insertPayload.addons,
       },
     });
   }
