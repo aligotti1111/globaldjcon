@@ -393,7 +393,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards:has(.flane.open) .flane.mobile .fh{border-top-color:var(--neon)}
 .gdc-landing .flowcards:has(.flane.open) .flane.club .fh{border-top-color:var(--amber)}
 .gdc-landing .flowcards:has(.flane.open) .flane.mobile{border-right:0}
-.gdc-landing .flowcards .fbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.gdc-landing .flowcards .fbody{max-height:0;overflow:hidden}
 .gdc-landing .flowcards .flane.open .fbody{max-height:1400px;padding-bottom:26px}
 .gdc-landing .flowcards .flane.mobile.open .fbody{margin-left:-30px;width:calc(200% + 120px)}
 .gdc-landing .flowcards .flane.club.open .fbody{margin-left:calc(-100% - 90px);width:calc(200% + 120px)}
