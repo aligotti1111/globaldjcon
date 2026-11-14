@@ -892,7 +892,7 @@ const LANDING_BODY = String.raw`
 </section>
 
 <!-- FINANCE SAMPLE -->
-<section id="financesample" style="padding:40px 0 0">
+<section id="financesample" style="padding:40px 0 70px">
   <div class="wrap">
     <div class="shead reveal">
       <div class="label">Know your numbers</div>
