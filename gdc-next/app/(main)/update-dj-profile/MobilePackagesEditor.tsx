@@ -661,11 +661,6 @@ export default function MobilePackagesEditor({
                 Edit Event Types (You DJ)
               </button>
             )}
-            {addableTypes.length > 0 && (
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '.72rem', lineHeight: 1.5, color: '#9a9ab0', margin: '.2rem .1rem 0' }}>
-Add pricing for an event type gives that event type its own packages.
-              </p>
-            )}
           </div>
         )}
         {/* ── ADD-ONS entry ── Its own sidebar item; selecting it swaps the
