@@ -1121,6 +1121,7 @@ export default function BookingDetails({
         <div className={styles.detailChip}><span>Package</span></div>
         {sectionPencil('PACKAGE')}
       </div>
+      <div style={{ borderTop: '1px solid var(--border,rgba(255,255,255,0.1))', margin: '12px 0 0' }} />
       {booking.package_title && (
         <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--white,#fff)', marginTop: 12 }}>
           {booking.package_title}{badgeFor('package_title')}
