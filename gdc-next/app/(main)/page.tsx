@@ -398,6 +398,12 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.mobile.open .fbody{margin-left:-30px;width:calc(200% + 120px)}
 .gdc-landing .flowcards .flane.club.open .fbody{margin-left:calc(-100% - 90px);width:calc(200% + 120px)}
 .gdc-landing .flowcards .flane.open .fbody .fli{max-width:720px;margin-left:auto;margin-right:auto}
+/* Unique open: the steps slide in from their own side (Mobile=left, Club=right),
+   with a soft color wash behind them so it reads as that side without a frame. */
+@keyframes gdcStepsInLeft{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+@keyframes gdcStepsInRight{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+.gdc-landing .flowcards .flane.mobile.open .fbody{animation:gdcStepsInLeft .4s cubic-bezier(.22,1,.36,1) both;background:linear-gradient(180deg,rgba(0,245,196,.08),transparent 55%)}
+.gdc-landing .flowcards .flane.club.open .fbody{animation:gdcStepsInRight .4s cubic-bezier(.22,1,.36,1) both;background:linear-gradient(180deg,rgba(245,230,66,.08),transparent 55%)}
 @media(max-width:640px){
 .gdc-landing .flowcards{flex-direction:column}
 .gdc-landing .flowcards .flane{display:block;flex:0 0 auto}
