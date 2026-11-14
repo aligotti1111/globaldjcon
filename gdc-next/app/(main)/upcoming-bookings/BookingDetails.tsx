@@ -792,10 +792,15 @@ export default function BookingDetails({
   // Pricing — each with a gradient chip header (Pricing tinted). Same rows, same
   // values; purely how they're visually grouped. A row is placed by its labels.
   type SectionKey = 'EVENT' | 'VENUE' | 'HOST' | 'PRICING';
+  // Chosen add-ons are itemized as their own pricing rows labeled with the
+  // add-on's title, so those titles must route into the Pricing section too.
+  const addonTitleSet = new Set(bookingAddons.map((a) => (a.title || '').trim()).filter(Boolean));
   const sectionForRow = (row: DetailRow): SectionKey => {
-    const s = row.map((c) => c.label).join('|');
+    const labels = row.map((c) => c.label);
+    const s = labels.join('|');
     if (/Booked By|Contact Phone|Email|Host name/.test(s)) return 'HOST';
-    if (/Agreed Rate|Reception|Price|Ceremony|Cocktail Hour|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
+    if (labels.some((l) => addonTitleSet.has((l || '').trim()))) return 'PRICING';
+    if (/Agreed Rate|Reception|Package price|Price|Ceremony|Cocktail Hour|Overtime|Deposit|Tax|Total|Balance|Offer|Rate/.test(s)) return 'PRICING';
     // Club/bar: the actual venue (name/type/address) gets its own card next to
     // Host; set type + equipment stay in the full-width "Details" card up top.
     if (djType === 'club') {
