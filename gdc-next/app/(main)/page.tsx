@@ -391,6 +391,12 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.open .fh small{text-align:center}
 .gdc-landing .flowcards .fhtoggle{position:absolute;right:22px;bottom:14px;width:11px;height:11px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .3s ease;opacity:.75}
 .gdc-landing .flowcards .flane.open .fhtoggle{transform:rotate(-135deg);bottom:10px}
+/* When a lane is open, keep each banner's color but center its title and run a
+   top accent line in that lane's own color across the top of the header. */
+.gdc-landing .flowcards:has(.flane.open) .fh{border-top:2px solid;align-items:center;text-align:center}
+.gdc-landing .flowcards:has(.flane.open) .flane.mobile .fh{border-top-color:rgba(0,245,196,.5)}
+.gdc-landing .flowcards:has(.flane.open) .flane.club .fh{border-top-color:rgba(245,230,66,.5)}
+.gdc-landing .flowcards:has(.flane.open) .flane:not(.open) .fhtitle{padding-left:1.2em}
 .gdc-landing .flowcards .fbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
 .gdc-landing .flowcards .flane.open .fbody{max-height:1400px;padding-bottom:26px}
 @media(max-width:640px){
