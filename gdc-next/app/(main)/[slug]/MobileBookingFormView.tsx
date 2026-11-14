@@ -520,7 +520,7 @@ export default function MobileBookingForm({
   // Show the itemized breakdown (Subtotal/Tax/Total…) when there's tax and/or
   // a deposit — otherwise the package price alone is the whole story.
   const showPriceBreakdown = !!priceResult && !priceResult.isQuote && priceResult.price != null
-    && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0);
+    && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0 || addonsTotal > 0);
 
   // The auto-selected "Request a Quote" card (a specialty / unpriced type with a
   // bare placeholder package) already says "Price on request" and explains the
@@ -1887,18 +1887,39 @@ export default function MobileBookingForm({
               </div>
             )}
 
-            {/* Itemized breakdown — the big Total sits at the bottom. */}
-            {showPriceBreakdown && discountedTotal != null && grandTotal != null && (
+            {/* Itemized breakdown — package first, each add-on on its own line,
+                tax (when it applies), then the big Total. */}
+            {showPriceBreakdown && discountedTotal != null && grandTotal != null && (() => {
+              const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              const rowStyle = { display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' } as const;
+              // The headline price already has add-ons folded in; split them back
+              // out so the package shows on its own line and each add-on separately.
+              const pkgBase = (priceResult.price ?? 0) - addonsTotal;
+              const pkgName = ((selectedPkg as { title?: string } | null)?.title || '').trim() || 'Package';
+              return (
               <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+                <div style={rowStyle}>
+                  <span>{pkgName}</span><span>{money2(pkgBase)}</span>
+                </div>
+                {selectedAddons.map((origIdx) => {
+                  const a = mobAddons.find((x) => x._idx === origIdx);
+                  if (!a) return null;
+                  const p = Number(a.price);
+                  return (
+                    <div key={origIdx} style={rowStyle}>
+                      <span>{a.title}</span><span>+{money2(Number.isFinite(p) ? p : 0)}</span>
+                    </div>
+                  );
+                })}
+                {discount.amount > 0 && (
+                  <div style={{ ...rowStyle, color: 'var(--neon,#00e0a4)' }}>
+                    <span>Discount</span><span>−{money2(discount.amount)}</span>
+                  </div>
+                )}
                 {taxPct > 0 && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Subtotal</span><span>{cur}{discountedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                      <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>{cur}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </>
+                  <div style={rowStyle}>
+                    <span>Tax ({taxPct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%)</span><span>{money2(taxAmount)}</span>
+                  </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.2rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6, paddingBottom: 10, borderBottom: '1px solid var(--border,rgba(255,255,255,.2))', marginBottom: 10 }}>
                   <span>Total</span><span>{cur}{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1914,7 +1935,8 @@ export default function MobileBookingForm({
                   </>
                 )}
               </div>
-            )}
+              );
+            })()}
             {priceResult.price != null && depositPct === 0 && taxPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
             )}
