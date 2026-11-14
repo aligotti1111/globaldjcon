@@ -343,15 +343,20 @@ export default function MobileBookingForm({
   // host toggles which they want; selected prices fold into the quoted total.
   // Indexes into the add-ons list (server re-reads prices by index — never
   // trusts a client-sent price).
+  // Only ACTIVE add-ons are offered. Keep each one's ORIGINAL index (_idx) into
+  // settings.mob_addons, because the server re-reads prices by that index — the
+  // filter here must never shift what an index points at.
   const mobAddons = useMemo(
-    () => ((bookingSettings as { mob_addons?: Array<{ title?: string; price?: number | string; photo?: string; details?: string }> }).mob_addons || [])
-      .filter((a) => a && (a.title || '').trim()),
+    () => ((bookingSettings as { mob_addons?: Array<{ title?: string; price?: number | string; photo?: string; details?: string; active?: boolean }> }).mob_addons || [])
+      .map((a, idx) => ({ ...a, _idx: idx }))
+      .filter((a) => a && (a.title || '').trim() && a.active),
     [bookingSettings],
   );
   const [selectedAddons, setSelectedAddons] = useState<number[]>([]);
   const addonsTotal = useMemo(
-    () => selectedAddons.reduce((sum, i) => {
-      const p = Number(mobAddons[i]?.price);
+    () => selectedAddons.reduce((sum, origIdx) => {
+      const a = mobAddons.find((x) => x._idx === origIdx);
+      const p = Number(a?.price);
       return sum + (Number.isFinite(p) && p > 0 ? p : 0);
     }, 0),
     [selectedAddons, mobAddons],
@@ -1748,15 +1753,15 @@ export default function MobileBookingForm({
               Add-ons
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {mobAddons.map((addon, i) => {
-                const on = selectedAddons.includes(i);
+              {mobAddons.map((addon) => {
+                const on = selectedAddons.includes(addon._idx);
                 const price = Number(addon.price);
                 const hasPrice = Number.isFinite(price) && price > 0;
                 return (
                   <button
-                    key={i}
+                    key={addon._idx}
                     type="button"
-                    onClick={() => toggleAddon(i)}
+                    onClick={() => toggleAddon(addon._idx)}
                     aria-pressed={on}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
