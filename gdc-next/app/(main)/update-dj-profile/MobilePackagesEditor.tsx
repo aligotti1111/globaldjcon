@@ -652,7 +652,11 @@ export default function MobilePackagesEditor({
         {renderCategory('general')}
         {railTypes.map((t) => renderCategory(t))}
         {/* ── ADD-ONS entry ── Sits right under the last event type, styled like a
-            category (no frame) with a neon left bar when it's the open view. */}
+            category (no frame) with a neon left bar when it's the open view. A
+            divider above sets it apart — add-ons aren't an event type. */}
+        {onAddonsChange && (
+          <div aria-hidden="true" style={{ borderTop: '1px solid var(--border)', margin: '6px 0 14px' }} />
+        )}
         {onAddonsChange && (
           <div
             style={{
