@@ -78,6 +78,9 @@ function acceptedMoneyPatch(b: BookingLite): Record<string, number | null> {
   const taxAmount = taxPct > 0 ? round2((agreed * taxPct) / 100) : 0;
   const totalWithTax = round2(agreed + taxAmount);
   return {
+    // Write the agreed price back to quoted_rate so no downstream surface is
+    // left reading a stale original-offer base after a counter.
+    quoted_rate: agreed,
     tax_amount: taxPct > 0 ? taxAmount : null,
     total_with_tax: totalWithTax,
     deposit_amount: depPct > 0 ? round2((totalWithTax * depPct) / 100) : null,
