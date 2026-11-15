@@ -132,30 +132,28 @@ export default function AddonsEditor({
         </button>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-        {(() => {
-          const isActive = !!working?.active;
-          const live = canActivate && !isActive; // can still be activated
-          return (
-            <button
-              type="button"
-              onClick={activate}
-              disabled={!live}
-              title={isActive ? 'Already active' : (canActivate ? 'Activate this add-on' : 'Add a title and price first')}
-              style={{
-                background: live ? 'rgba(56,232,176,.14)' : 'transparent',
-                border: `1px solid ${live ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
-                color: live ? '#38e8b0' : '#6b7080',
-                borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
-                cursor: live ? 'pointer' : 'default', letterSpacing: '.03em',
-                opacity: isActive ? 0.6 : 1,
-              }}
-            >
-              {isActive ? 'Activated' : 'Activate'}
-            </button>
-          );
-        })()}
-      </div>
+      {/* Footer Activate — ONLY while the working card hasn't been activated yet.
+          Once it's active the card is permanently in edit mode and shows its own
+          Save button instead, so the two never appear at the same time. */}
+      {!working?.active && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+          <button
+            type="button"
+            onClick={activate}
+            disabled={!canActivate}
+            title={canActivate ? 'Activate this add-on' : 'Add a title and price first'}
+            style={{
+              background: canActivate ? 'rgba(56,232,176,.14)' : 'transparent',
+              border: `1px solid ${canActivate ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
+              color: canActivate ? '#38e8b0' : '#6b7080',
+              borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700,
+              cursor: canActivate ? 'pointer' : 'default', letterSpacing: '.03em',
+            }}
+          >
+            Activate
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -177,6 +175,9 @@ function AddonCard({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
   const [collapsed, setCollapsed] = useState(!!startCollapsed);
+  // An activated card is permanently in edit mode: it can always fold/unfold and
+  // always shows Save — even when it's the only card on the list.
+  const foldable = !!collapsible || !!addon.active;
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -209,11 +210,11 @@ function AddonCard({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <button
           type="button"
-          onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
-          aria-expanded={collapsible ? !collapsed : undefined}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: collapsible ? 'pointer' : 'default', minWidth: 0, flex: 1, textAlign: 'left' }}
+          onClick={foldable ? () => setCollapsed((c) => !c) : undefined}
+          aria-expanded={foldable ? !collapsed : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: foldable ? 'pointer' : 'default', minWidth: 0, flex: 1, textAlign: 'left' }}
         >
-          {collapsible && (
+          {foldable && (
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }} aria-hidden="true">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -229,7 +230,7 @@ function AddonCard({
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {/* Explicit Edit affordance on a folded card — expands it to edit. */}
-          {collapsible && collapsed && (
+          {foldable && collapsed && (
             <button
               type="button"
               onClick={() => setCollapsed(false)}
@@ -354,11 +355,11 @@ function AddonCard({
         )}
       </div>
 
-      {/* Explicit Save when editing an add-on — folds the card back. Field
-          edits already flow up as you type; this is the clear "done editing"
-          action. Shown on every card that has content (the last/blank new card
-          uses the Activate button instead until it has a title). */}
-      {collapsible && (!isWorking || (addon.title || '').trim()) && (
+      {/* Explicit Save — shown once the add-on is ACTIVE (permanent edit mode),
+          never alongside the Activate button. Field edits already flow up as you
+          type; this is the clear "done editing" action that folds the card. A
+          not-yet-active card uses the Activate button below the list instead. */}
+      {addon.active && (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
