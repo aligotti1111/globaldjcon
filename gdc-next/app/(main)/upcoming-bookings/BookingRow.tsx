@@ -603,9 +603,14 @@ export default function BookingRow({
       setReqAmount(remaining > 0 ? remaining.toFixed(2) : '');
       setReqExpected({ amount: remaining, total, collected });
     } else {
-      setReqAmount(suggestedDeposit != null && suggestedDeposit > 0 ? String(suggestedDeposit) : '');
+      const hasAgreedDeposit = suggestedDeposit != null && suggestedDeposit > 0;
+      setReqAmount(hasAgreedDeposit ? String(suggestedDeposit) : '');
       const total = Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0);
-      setReqExpected(suggestedDeposit != null && suggestedDeposit > 0 ? { amount: suggestedDeposit, total, collected: 0 } : null);
+      // Always carry the agreed total so the modal's deposit-% picker can derive
+      // an amount even when NO deposit was ever set on this booking (deposit off
+      // or skipped). amount:0 keeps expectedAmount falsy, so the mismatch warning
+      // stays off until there's a real agreed deposit to compare against.
+      setReqExpected(hasAgreedDeposit ? { amount: suggestedDeposit, total, collected: 0 } : { amount: 0, total, collected: 0 });
     }
     setReqOpen(true);
   }
