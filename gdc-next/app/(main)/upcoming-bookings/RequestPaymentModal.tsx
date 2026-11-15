@@ -115,6 +115,26 @@ export default function RequestPaymentModal({
     if (!raw || !Number.isFinite(pct) || pct <= 0 || !(expectedTotal > 0)) return;
     setReqAmount(depForPct(pct).toFixed(2));
   }
+  // Editing the Amount by hand re-derives the % so the dropdown always reflects
+  // what's actually being requested (as a share of the agreed total). A value
+  // that doesn't land on a preset gets a one-off option added to the list.
+  function onAmountChange(v: string) {
+    setReqAmount(v);
+    setReqErr(null);
+    const amt = Number(v);
+    if (expectedTotal > 0 && Number.isFinite(amt) && amt > 0) {
+      setPctChoice(String(Math.round((amt / expectedTotal) * 10000) / 100));
+    } else {
+      setPctChoice('');
+    }
+  }
+  // Options shown in the % dropdown — the presets plus, when the DJ has typed an
+  // amount that isn't one of them, the derived % so the select can show it.
+  const pctChoiceNum = Number(pctChoice);
+  const pctSelectOptions = Array.from(new Set([
+    ...pctOptions,
+    ...(pctChoice && Number.isFinite(pctChoiceNum) && pctChoiceNum > 0 ? [pctChoiceNum] : []),
+  ])).sort((a, b) => a - b);
 
   return (
     <div
@@ -137,60 +157,75 @@ export default function RequestPaymentModal({
         </div>
 
         {/* Deposit-% picker — only for a deposit request, and only when we know
-            the agreed total to derive from. Picking a % fills the Amount below,
-            which the DJ can still edit. */}
-        {reqKind === 'deposit' && expectedTotal > 0 && (
-          <div style={{ marginBottom: '.7rem' }}>
-            <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
-              Deposit %
-            </label>
-            <select
-              value={pctChoice}
-              onChange={(e) => applyPct(e.target.value)}
-              style={{
-                width: '100%', background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
-                borderRadius: 6, color: 'var(--white,#fff)', padding: '.5rem .7rem',
-                fontFamily: "'Space Mono', monospace", fontSize: '.82rem', cursor: 'pointer',
-              }}
-            >
-              <option value="">Choose a %…</option>
-              {pctOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}% — {fmtMoney(depForPct(p), currency)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+            the agreed total to derive from. Picking a % fills the Amount beside
+            it, which the DJ can still edit. When the picker shows (deposit not
+            pre-configured), % and Amount sit on one line; otherwise Amount is
+            full-width on its own. */}
+        {(() => {
+          const showPctPicker = reqKind === 'deposit' && expectedTotal > 0;
+          return (
+            <div style={showPctPicker
+              ? { display: 'flex', gap: '.6rem', alignItems: 'flex-start', marginBottom: '.5rem' }
+              : { marginBottom: '.5rem' }}>
+              {showPctPicker && (
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
+                    Deposit %
+                  </label>
+                  <select
+                    value={pctChoice}
+                    onChange={(e) => applyPct(e.target.value)}
+                    style={{
+                      width: '100%', background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
+                      borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
+                      fontFamily: "'Space Mono', monospace", fontSize: '.82rem', cursor: 'pointer',
+                      boxSizing: 'border-box', height: '2.35rem',
+                    }}
+                  >
+                    <option value="">Choose a %…</option>
+                    {pctSelectOptions.map((p) => (
+                      <option key={p} value={p}>
+                        {p}% — {fmtMoney(depForPct(p), currency)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-        <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
-          Amount
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.5rem' }}>
-          <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>{currencySymbol(currency)}</span>
-          {/* Hide the number input's up/down spinner arrows (no CSS module here,
-              so the rule is inlined). */}
-          <style>{`
-            .gdcReqAmount::-webkit-outer-spin-button,
-            .gdcReqAmount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-            .gdcReqAmount { -moz-appearance: textfield; appearance: textfield; }
-          `}</style>
-          <input
-            autoFocus
-            className="gdcReqAmount"
-            type="number"
-            min="0"
-            step="0.01"
-            value={reqAmount}
-            onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) => { setReqAmount(e.target.value); setReqErr(null); setPctChoice(''); }}
-            style={{
-              flex: 1, background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
-              borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
-              fontFamily: "'Space Mono', monospace", fontSize: '.9rem',
-            }}
-          />
-        </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
+                  Amount
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                  <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>{currencySymbol(currency)}</span>
+                  {/* Hide the number input's up/down spinner arrows (no CSS module here,
+                      so the rule is inlined). */}
+                  <style>{`
+                    .gdcReqAmount::-webkit-outer-spin-button,
+                    .gdcReqAmount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                    .gdcReqAmount { -moz-appearance: textfield; appearance: textfield; }
+                  `}</style>
+                  <input
+                    autoFocus
+                    className="gdcReqAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={reqAmount}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onChange={(e) => onAmountChange(e.target.value)}
+                    style={{
+                      flex: 1, minWidth: 0, background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
+                      borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
+                      fontFamily: "'Space Mono', monospace", fontSize: '.9rem',
+                      boxSizing: 'border-box', height: '2.35rem',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {reqKind === 'deposit' && suggestedDeposit != null && suggestedDeposit > 0 && !mismatch && (
           <p style={{ margin: '0 0 .8rem', color: 'var(--muted,#8a8aa0)', fontSize: '.72rem' }}>
