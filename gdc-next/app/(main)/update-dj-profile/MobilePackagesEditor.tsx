@@ -472,25 +472,28 @@ export default function MobilePackagesEditor({
   // The tappable category header row (chevron + label + pkg count + remove ×).
   const renderCatHeader = (cat: string) => {
     const list = listFor(mob, cat);
-    const catOpen = !isNarrow || selCat === cat;
+    // Only the category being edited is expanded — on desktop too, matching the
+    // mobile accordion. A collapsed category shows just its header (chevron +
+    // name + pkg count); clicking it opens that category's first package.
+    const catOpen = selCat === cat;
     return (
       <div style={catLabel}>
-        {isNarrow ? (
-          <button type="button" onClick={() => { if (!catOpen) selectPkg(cat, 0); }} style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'none', border: 'none', color: catOpen ? 'var(--neon)' : '#fff', cursor: catOpen ? 'default' : 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', flex: 1, minWidth: 0, textAlign: 'left' }}>
-            <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0, color: catOpen ? 'var(--neon)' : '#9a9ab0' }}>{catOpen ? '▾' : '▸'}</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(cat)}</span>
-            {!catOpen && list.length > 0 && (
-              <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>{list.length} pkg{list.length === 1 ? '' : 's'}</span>
-            )}
-          </button>
-        ) : cat === 'general' ? (
-          <button type="button" onClick={() => setGenCoversOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: '.35rem', background: 'none', border: 'none', color: 'var(--neon)', cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}>
-            <span>{labelFor(cat)}</span>
-            <span style={{ fontSize: '.9rem', lineHeight: 1 }}>▾</span>
-          </button>
-        ) : (
-          <span>{labelFor(cat)}</span>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            if (!catOpen) { selectPkg(cat, 0); return; }
+            // Already open: General's header also toggles its "Pricing covers"
+            // list (desktop only); other open categories do nothing.
+            if (cat === 'general' && !isNarrow) setGenCoversOpen((o) => !o);
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'none', border: 'none', color: catOpen ? 'var(--neon)' : '#fff', cursor: (!catOpen || (cat === 'general' && !isNarrow)) ? 'pointer' : 'default', padding: 0, font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', flex: 1, minWidth: 0, textAlign: 'left' }}
+        >
+          <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0, color: catOpen ? 'var(--neon)' : '#9a9ab0' }}>{catOpen ? '▾' : '▸'}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelFor(cat)}</span>
+          {!catOpen && list.length > 0 && (
+            <span style={{ flexShrink: 0, fontFamily: "'Space Mono', monospace", fontSize: '.52rem', fontWeight: 700, letterSpacing: '.08em', color: 'var(--muted)' }}>{list.length} pkg{list.length === 1 ? '' : 's'}</span>
+          )}
+        </button>
         {cat !== 'general' && (
           <span role="button" title="Back under General" aria-label={`Put ${labelFor(cat)} back under General`} onClick={(e) => { e.stopPropagation(); removeEventType(cat); }} style={{ color: 'var(--muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>&times;</span>
         )}
@@ -547,7 +550,7 @@ export default function MobilePackagesEditor({
   // its body, and that body is indented so the packages read as nested under
   // the event type being edited.
   const renderCategory = (cat: string) => {
-    const open = !isNarrow || selCat === cat;
+    const open = selCat === cat;
     // Neon left bar + faint tint on the event type currently being edited, so
     // it's clear which type the open package belongs to.
     const beingEdited = view === 'packages' && selCat === cat;
