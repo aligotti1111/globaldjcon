@@ -42,7 +42,7 @@ export const dynamic = 'force-dynamic';
 const PATCH_WHITELIST = new Set<string>([
   'status',
   'counter_rate', 'counter_message', 'package_details',
-  'quoted_rate', 'deposit_amount', 'tax_pct', 'tax_amount', 'total_with_tax',
+  'quoted_rate', 'deposit_amount', 'deposit_pct', 'tax_pct', 'tax_amount', 'total_with_tax',
   'overtime_rate', 'offer_discount_pct', 'offer_discount_amount',
   'cocktail_price', 'cocktail_included', 'ceremony_price', 'ceremony_included',
   'quote_sent_at',
