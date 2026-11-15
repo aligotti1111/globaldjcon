@@ -11,13 +11,26 @@
 // is wired separately. Photo upload mirrors PackageEditor (Supabase storage
 // `avatars` bucket, keyed by userId).
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './updateDjProfile.module.css';
 import { createClient } from '@/lib/supabase/client';
 import RichTextEditor from './RichTextEditor';
 import { useConfirm } from '@/components/ConfirmModal';
 import type { MobAddon } from '@/app/(main)/[slug]/bookingSettings';
 import { currencySymbol } from '@/lib/constants';
+
+// An add-on that was STARTED but never finished: it has some content (a title,
+// a description or a photo) yet isn't a valid, activated extra (needs a title
+// AND a price > 0). These must never persist half-done — the DJ gets prompted
+// before leaving and an unfinished one is dropped if they go.
+function addonIncomplete(a: MobAddon): boolean {
+  if (a.active) return false; // activated add-ons already required title + price
+  const title = (a.title || '').trim();
+  const details = (a.details || '').replace(/<[^>]*>/g, '').trim();
+  const hasContent = !!title || !!details || !!a.photo;
+  const complete = !!title && Number(a.price) > 0;
+  return hasContent && !complete;
+}
 
 export default function AddonsEditor({
   addons,
@@ -37,6 +50,31 @@ export default function AddonsEditor({
   // saved — a blank starter card so the DJ can type straight in instead of
   // having to click "Add Add-on" first. Editing it promotes it into the list.
   const display: MobAddon[] = list.length ? list : [{ title: '', price: '', photo: '', details: '' }];
+
+  // An add-on in progress but missing its price (or title) — the exact state the
+  // screenshot showed persisting. Warn before the DJ loses or orphans it.
+  const hasIncomplete = list.some(addonIncomplete);
+
+  // Hard navigation (tab close, refresh, external link): native prompt lets the
+  // DJ cancel and stay to finish + save, or leave. Only armed while something's
+  // unfinished.
+  useEffect(() => {
+    if (!hasIncomplete) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasIncomplete]);
+
+  // Leaving the editor (unmount — e.g. switching settings tabs) drops any
+  // unfinished add-on so a half-filled one is never saved. Read the freshest
+  // list/onChange from a ref so the cleanup isn't stale.
+  const latest = useRef<{ list: MobAddon[]; onChange: (n: MobAddon[]) => void }>({ list, onChange });
+  latest.current = { list, onChange };
+  useEffect(() => () => {
+    const cur = latest.current;
+    const cleaned = cur.list.filter((a) => !addonIncomplete(a));
+    if (cleaned.length !== cur.list.length) cur.onChange(cleaned);
+  }, []);
 
   function update(idx: number, patch: Partial<MobAddon>) {
     // Editing the blank starter card (which isn't in the stored list yet)
