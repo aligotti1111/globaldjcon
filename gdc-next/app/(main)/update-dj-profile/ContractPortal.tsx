@@ -924,7 +924,7 @@ export default function ContractPortal({
                   {(() => { const locked = useLocked(c); return (
                     <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
                       onClick={() => { if (!locked) onUseContract?.(c.id); }}
-                      style={{ width: 104, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.6rem' }}>Use</button>
+                      style={{ width: 52, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.6rem' }}>Use</button>
                   ); })()}
                   {/* Edit Wording — only for contracts with editable text in our
                       system. Uploaded files have none, so a same-width spacer keeps
