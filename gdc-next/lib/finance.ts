@@ -64,10 +64,9 @@ export function isBookedEvent(b: FinanceBookingInput): boolean {
   return s !== 'cancelled' && s !== 'rejected' && s !== 'declined';
 }
 
-// A cancelled/rejected/declined booking never happened — its money (even a
-// deposit that was actually collected) must not count toward Received. The
-// Expected side already excludes these via isAccepted; this is the matching
-// guard for the collected side.
+// A cancelled/rejected/declined booking never happened. Its owed/Expected money
+// is excluded via isAccepted; on the collected side, money that actually came in
+// is still income UNLESS marked refunded (see isPaymentRetainedOnCancel).
 export function isCancelledBooking(b: FinanceBookingInput | undefined): boolean {
   if (!b) return false;
   const s = (b.status || '').toLowerCase();
@@ -396,9 +395,13 @@ export function buildReceivedEvents(
   for (const b of bookings) {
     const mr = manualReceived(b, ledger.get(b.id) || 0);
     if (!mr) continue;
-    // Cancelled booking → keep only a non-refunded deposit/balance that was
-    // settled off-app; drop anything else.
-    if (isCancelledBooking(b) && !isPaymentRetainedOnCancel(b, mr.kind)) continue;
+    // Cancelled booking: the off-app "mark complete" path only ever recognizes a
+    // kept DEPOSIT here (gated by deposit_refunded). A hand-marked full BALANCE
+    // is NOT auto-counted — on a cancelled event that lump would also swallow the
+    // deposit, and the two refund toggles could never attribute it correctly.
+    // Real balance money still counts via the ledger loop above (dropped only
+    // when balance_refunded is set).
+    if (isCancelledBooking(b) && (mr.kind !== 'deposit' || !isPaymentRetainedOnCancel(b, 'deposit'))) continue;
     const ratio = taxRatio(b);
     const tax = round2(mr.amount * ratio);
     // Same future-event rule as the ledger loop: money already handled off-app on
