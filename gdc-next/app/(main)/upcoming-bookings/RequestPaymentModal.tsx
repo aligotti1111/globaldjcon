@@ -94,19 +94,26 @@ export default function RequestPaymentModal({
   // or skipped), the DJ can still request one here: pick a % and we fill the
   // Amount off the agreed total — which they can then adjust by hand. The
   // booking's own deposit % (if any) is folded into the list and pre-selected.
+  // Pre-select the booking's own % only when it also has a real agreed deposit
+  // amount pre-filling the Amount — otherwise start blank so the DJ's first pick
+  // actually fires onChange (re-picking an already-selected option would not).
   const [pctChoice, setPctChoice] = useState<string>(
-    depositPct != null && depositPct > 0 ? String(depositPct) : '',
+    depositPct != null && depositPct > 0 && suggestedDeposit != null && suggestedDeposit > 0
+      ? String(depositPct) : '',
   );
   const pctOptions = Array.from(
     new Set([10, 15, 20, 25, 30, 33, 40, 50, ...(depositPct != null && depositPct > 0 ? [depositPct] : [])]),
   ).sort((a, b) => a - b);
-  const round2 = (n: number) => Math.round(n * 100) / 100;
+  // Match the cent-rounding the quote flow + create route use (toFixed on the
+  // raw product), so re-picking the booking's own % never drifts a cent off the
+  // agreed deposit and spuriously trips the mismatch warning.
+  const depForPct = (pct: number) => Number(((expectedTotal * pct) / 100).toFixed(2));
   function applyPct(raw: string) {
     setPctChoice(raw);
     setReqErr(null);
     const pct = Number(raw);
     if (!raw || !Number.isFinite(pct) || pct <= 0 || !(expectedTotal > 0)) return;
-    setReqAmount(round2((expectedTotal * pct) / 100).toFixed(2));
+    setReqAmount(depForPct(pct).toFixed(2));
   }
 
   return (
@@ -149,7 +156,7 @@ export default function RequestPaymentModal({
               <option value="">Choose a %…</option>
               {pctOptions.map((p) => (
                 <option key={p} value={p}>
-                  {p}% — {fmtMoney(round2((expectedTotal * p) / 100), currency)}
+                  {p}% — {fmtMoney(depForPct(p), currency)}
                 </option>
               ))}
             </select>
@@ -176,7 +183,7 @@ export default function RequestPaymentModal({
             step="0.01"
             value={reqAmount}
             onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) => { setReqAmount(e.target.value); setReqErr(null); }}
+            onChange={(e) => { setReqAmount(e.target.value); setReqErr(null); setPctChoice(''); }}
             style={{
               flex: 1, background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
               borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
