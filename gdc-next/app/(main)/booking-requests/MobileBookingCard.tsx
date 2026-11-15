@@ -380,7 +380,7 @@ export default function MobileBookingCard(props: Props) {
             borderRadius: 8,
           }}
         >
-          <div className={styles.tinyLabel} style={{ display: 'inline-block', fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700, background: 'rgba(0,245,196,0.12)', padding: '3px 8px', borderRadius: 4 }}>
+          <div className={styles.tinyLabel} style={{ fontSize: 11, letterSpacing: '.14em', color: 'var(--muted)', fontWeight: 700 }}>
             Package
             {isPackageEdited(b.package_details) && (
               <span
