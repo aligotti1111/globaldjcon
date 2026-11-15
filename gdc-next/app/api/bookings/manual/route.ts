@@ -96,7 +96,7 @@ async function sendManualChangeEmail(opts: {
   } catch (e) { console.error('[bookings/manual] change email failed', e); }
 }
 
-const SELECT_COLS = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount';
+const SELECT_COLS = 'id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, venue_type_desc, set_type, event_type, event_details, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, package_title, package_details, package_category, package_index, overtime_rate, booking_type, is_manual, flyer_url, host_email, host_email_sent_at, requester_name, offer_amount, original_rate, discount_code, discount_label, discount_amount, currency, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, addons';
 
 // Columns a client is allowed to set on a manual booking. Anything else in the
 // payload (id, dj_id, requester_id, status, is_manual…) is ignored — those are
