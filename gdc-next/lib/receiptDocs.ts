@@ -154,6 +154,8 @@ interface BookingDocRow {
   set_type: string | null;
   equipment: string | null;
   quoted_rate: number | null;
+  counter_rate: number | null;
+  offer_amount: number | null;
   tax_pct: number | null;
   tax_amount: number | null;
   total_with_tax: number | null;
@@ -260,7 +262,7 @@ export async function buildBookingDocAttachment(
   try {
     const { data: bData } = await admin
       .from('bookings')
-      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, tax_pct, tax_amount, total_with_tax, deposit_amount, status_overrides, requester_name, requester_id, host_email, receipt_overrides, addons')
+      .select('dj_type, event_type, event_date, venue_name, currency, start_time, end_time, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, package_title, package_details, set_type, equipment, quoted_rate, counter_rate, offer_amount, tax_pct, tax_amount, total_with_tax, deposit_amount, status_overrides, requester_name, requester_id, host_email, receipt_overrides, addons')
       .eq('id', args.bookingId)
       .maybeSingle();
     const b = bData as BookingDocRow | null;
@@ -410,12 +412,7 @@ export async function buildBookingDocAttachment(
     const snapTotal = b.total_with_tax != null ? round2(Number(b.total_with_tax)) : null;
     const services = snapTotal != null
       ? round2(snapTotal - tax)
-      : round2(Number(
-          (b as { counter_rate?: number | null }).counter_rate
-            ?? b.quoted_rate
-            ?? (b as { offer_amount?: number | null }).offer_amount
-            ?? 0,
-        ));
+      : round2(Number(b.counter_rate ?? b.quoted_rate ?? b.offer_amount ?? 0));
     const total = snapTotal != null ? snapTotal : round2(services + tax);
     const paidToDate = round2(Number(args.paidToDate ?? 0));
     const lines: DocMoneyLine[] = [];
