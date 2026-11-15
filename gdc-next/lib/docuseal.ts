@@ -130,7 +130,12 @@ const SIGNATURE_BLOCK = `<div style="margin-top:22px"><div style="font-weight:bo
 function contractLineDiv(line: string): string {
   if (line.trim() === '') return '<div style="height:10px"></div>';
   const t = line.trim();
-  const isHeading = /[A-Z]/.test(t) && !/[a-z]/.test(t) && !t.includes('{{') && !t.includes('<');
+  // Ignore HTML entities (e.g. "&amp;" from an escaped "&") when deciding if a
+  // line is an all-caps heading — otherwise the lowercase letters inside the
+  // entity (amp, lt, gt) would wrongly disqualify a heading like "PAYMENT
+  // SCHEDULE & BREAKDOWN".
+  const probe = t.replace(/&[a-z]+;/gi, '');
+  const isHeading = /[A-Z]/.test(probe) && !/[a-z]/.test(probe) && !t.includes('{{') && !t.includes('<');
   return isHeading
     ? `<div style="font-weight:bold;margin-top:14px">${line}</div>`
     : `<div>${line}</div>`;
