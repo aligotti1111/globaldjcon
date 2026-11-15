@@ -22,7 +22,7 @@ const OVERTIME_AGREED = `OVERTIME
 Performance beyond the scheduled end time may be arranged on the night by mutual agreement between the DJ and the Client, subject to venue approval.`;
 
 // Shared clauses used by all contract types; the overtime clause is injected.
-const sharedClauses = (overtime: string) => `PAYMENT
+const sharedClauses = (overtime: string) => `PAYMENT SCHEDULE & BREAKDOWN
 {{payment_terms}}
 
 CANCELLATION
