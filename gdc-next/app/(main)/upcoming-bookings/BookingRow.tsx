@@ -589,9 +589,21 @@ export default function BookingRow({
       // The DJ requesting a balance is billing the WHOLE remaining amount —
       // when a deposit went unpaid, they're overriding it, not netting it out.
       // So the balance is the full total minus what actually came in. The only
-      // deduction is a deposit collected OFF-APP (marked complete, no payment
-      // row) — that money is real, it just isn't in `paid`.
-      const depositMarked = !!overrides.deposit && depositRealPaid <= 0 ? Number(booking.deposit_amount || 0) : 0;
+      // deduction is a deposit collected OFF-APP (marked complete, no amount_paid
+      // captured in-app) — that money is real, it just isn't in `paid`.
+      //
+      // The figure to deduct is the deposit that was actually REQUESTED, which
+      // lives on the deposit payment row's `amount` — this is the only correct
+      // source when the deposit was off in settings (booking.deposit_amount is
+      // null/0) and the DJ typed a one-off amount into the Request Deposit modal.
+      // Fall back to booking.deposit_amount for a deposit hand-marked complete
+      // with no request row at all.
+      const depositSettledOffApp = (!!overrides.deposit
+        || (depositRow != null && (depositRow.status === 'paid' || depositRow.status === 'waived')))
+        && depositRealPaid <= 0;
+      const depositMarked = depositSettledOffApp
+        ? Number((depositRow?.amount ?? 0) || booking.deposit_amount || 0)
+        : 0;
       // A balance already settled BY HAND (mark-paid, no ledger row) records no
       // amount_paid either — the total it was paid-in-full at lives in
       // balance_settled_total. A "New Balance" after a price increase must bill
