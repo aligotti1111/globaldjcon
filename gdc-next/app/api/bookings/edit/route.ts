@@ -325,6 +325,18 @@ export async function POST(req: Request) {
       if (dp !== oldDepPct) {
         applyObj.deposit_pct = dp;
         editStamp.deposit_pct = nowISO;
+        // Re-snapshot the deposit amount too, or the stored deposit_amount stays
+        // frozen at the old percentage and every downstream surface (card,
+        // receipt, /pay) bills the stale figure. Base it on the frozen total
+        // when present, else the agreed rate + its tax.
+        const depBase = booking.total_with_tax != null
+          ? Number(booking.total_with_tax)
+          : (() => {
+              const agreed = Number(booking.counter_rate ?? booking.quoted_rate ?? booking.offer_amount ?? 0);
+              const tp = booking.tax_pct != null ? Number(booking.tax_pct) : 0;
+              return round2(agreed + round2((agreed * tp) / 100));
+            })();
+        applyObj.deposit_amount = dp > 0 ? round2((depBase * dp) / 100) : null;
         appliedLines.push({ label: 'Deposit', old: `${oldDepPct}%`, neu: `${dp}%`, col: 'deposit_pct' });
       }
     }
