@@ -352,6 +352,16 @@ export default function MobileBookingCard(props: Props) {
             <div className={styles.bigPrice} style={{ color: hasCounter ? 'var(--amber)' : 'var(--white)' }}>
               {cur}{Number(bigPriceVal).toLocaleString()}
             </div>
+            {(() => {
+              // Chosen add-ons itemized directly under the package price.
+              const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
+              if (reqAddons.length === 0) return null;
+              return reqAddons.map((a, i) => (
+                <div key={i} className={styles.priceSub}>
+                  {a.title}: {cur}{(Number(a.price) || 0).toLocaleString()}
+                </div>
+              ));
+            })()}
             {!hasCounter && b.discount_amount != null && b.discount_amount > 0 && (
               <div className={styles.priceSub}>
                 <span style={{ textDecoration: 'line-through', opacity: 0.55 }}>
@@ -432,7 +442,7 @@ export default function MobileBookingCard(props: Props) {
             borderRadius: 8,
           }}
         >
-          <div className={styles.tinyLabel}>
+          <div className={styles.tinyLabel} style={{ fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>
             Package
             {isPackageEdited(b.package_details) && (
               <span
@@ -453,6 +463,7 @@ export default function MobileBookingCard(props: Props) {
               </span>
             )}
           </div>
+          <div style={{ borderTop: '1px solid var(--border)', margin: '.5rem 0 .7rem' }} />
           <div className={styles.packageTitle} style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--white)' }}>{b.package_title}</div>
           {b.package_details && (
             <>
@@ -491,8 +502,9 @@ export default function MobileBookingCard(props: Props) {
             const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
             if (reqAddons.length === 0) return null;
             return (
-              <div style={{ marginTop: '.7rem' }}>
-                <div className={styles.tinyLabel} style={{ marginBottom: 4 }}>Add-ons/Extras</div>
+              <div style={{ marginTop: '.9rem' }}>
+                <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 .7rem' }} />
+                <div className={styles.tinyLabel} style={{ marginBottom: 6, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Add-ons/Extras</div>
                 {reqAddons.map((a, i) => (
                   <div
                     key={i}
