@@ -66,7 +66,21 @@ import {
 // show. The toggle stops propagation so it never toggles the add-on's selection
 // (the whole card is a button). Rendered as spans (role="button"), not nested
 // <button>s, since it lives inside the card's button.
+// Strip inline styling that rides along when a DJ pastes a description copied
+// from another website — background highlights, colors, fonts, alignment, and
+// stray class/id hooks — so the add-on reads in our own styling, not the source
+// site's. Keeps the tags (p/ul/li/b/…), drops only the presentational attrs.
+function stripPastedStyling(html: string): string {
+  return (html || '')
+    .replace(/\s(?:style|class|id|bgcolor|color|align|face|width|height|dir|lang)\s*=\s*"[^"]*"/gi, '')
+    .replace(/\s(?:style|class|id|bgcolor|color|align|face|width|height|dir|lang)\s*=\s*'[^']*'/gi, '')
+    // Drop <font>/<span> wrappers that only carried styling (tag kept-safe forms
+    // are harmless, but <font> is pure presentation).
+    .replace(/<\/?font[^>]*>/gi, '');
+}
+
 function AddonDetails({ html }: { html: string }) {
+  const clean = stripPastedStyling(html);
   const ref = useRef<HTMLSpanElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
@@ -81,7 +95,7 @@ function AddonDetails({ html }: { html: string }) {
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(check) : null;
     ro?.observe(el);
     return () => ro?.disconnect();
-  }, [html, expanded]);
+  }, [clean, expanded]);
 
   // ~4 lines at 12px / 1.5 line-height. A height clamp (not -webkit-line-clamp)
   // so rich-text block children — <ul>/<li>/<p> — lay out and keep their bullets
@@ -107,7 +121,7 @@ function AddonDetails({ html }: { html: string }) {
           ref={ref}
           className="gdc-addon-rtx"
           style={{ display: 'block', ...clampStyle }}
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: clean }}
         />
         {/* Soft fade over the last line while collapsed + overflowing. */}
         {!expanded && overflows && (
