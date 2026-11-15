@@ -380,7 +380,7 @@ export default function MobileBookingCard(props: Props) {
             borderRadius: 8,
           }}
         >
-          <div className={styles.tinyLabel} style={{ fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>
+          <div className={styles.tinyLabel} style={{ display: 'inline-block', fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700, background: 'rgba(0,245,196,0.12)', padding: '3px 8px', borderRadius: 4 }}>
             Package
             {isPackageEdited(b.package_details) && (
               <span
@@ -490,7 +490,7 @@ export default function MobileBookingCard(props: Props) {
         const divider = <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0' }} />;
         return (
           <div style={{ marginTop: '.75rem', padding: '1rem', background: 'rgba(0,0,0,0.28)', border: '1px solid var(--border)', borderRadius: 8 }}>
-            <div className={styles.tinyLabel} style={{ marginBottom: 8, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Cost Breakdown</div>
+            <div className={styles.tinyLabel} style={{ display: 'inline-block', marginBottom: 8, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700, background: 'rgba(0,245,196,0.12)', padding: '3px 8px', borderRadius: 4 }}>Cost Breakdown</div>
             {row('Package', money2(basePackage))}
             {reqAddons.map((a, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 14 }}>
