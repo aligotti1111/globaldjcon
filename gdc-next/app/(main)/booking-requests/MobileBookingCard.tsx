@@ -375,7 +375,7 @@ export default function MobileBookingCard(props: Props) {
           style={{
             marginTop: '.4rem',
             padding: '1rem',
-            background: 'linear-gradient(180deg, rgba(0,245,196,0.07), rgba(0,245,196,0))',
+            background: 'rgba(255,255,255,0.025)',
             border: '1px solid var(--border)',
             borderRadius: 8,
           }}
