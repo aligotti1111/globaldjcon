@@ -98,6 +98,9 @@ export async function POST(req: Request) {
     const depPct = Number(booking.deposit_pct) || 0;
     const taxAmount = taxPct > 0 ? round2((agreed * taxPct) / 100) : 0;
     const totalWithTax = round2(agreed + taxAmount);
+    // Write the agreed price back to quoted_rate so no downstream surface is
+    // left reading a stale original-offer base after a counter.
+    moneyPatch.quoted_rate = agreed;
     moneyPatch.tax_amount = taxPct > 0 ? taxAmount : null;
     moneyPatch.total_with_tax = totalWithTax;
     moneyPatch.deposit_amount = depPct > 0 ? round2((totalWithTax * depPct) / 100) : null;
