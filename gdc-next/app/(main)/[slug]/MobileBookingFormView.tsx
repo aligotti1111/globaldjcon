@@ -61,6 +61,85 @@ import {
   type AddressSuggestion,
 } from './mobileBookingForm';
 
+// An add-on's rich-text description, clamped to 6 lines with a soft fade at the
+// bottom, and an "Expand ⌄ / Less ⌃" toggle on the RIGHT when there's more to
+// show. The toggle stops propagation so it never toggles the add-on's selection
+// (the whole card is a button). Rendered as spans (role="button"), not nested
+// <button>s, since it lives inside the card's button.
+function AddonDetails({ html }: { html: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // While clamped, scrollHeight > clientHeight means the text is cut off.
+    const check = () => setOverflows(el.scrollHeight - el.clientHeight > 2);
+    check();
+    // Re-measure if fonts/layout settle after mount.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(check) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [html, expanded]);
+
+  // ~6 lines at 12px / 1.5 line-height. A height clamp (not -webkit-line-clamp)
+  // so rich-text block children — <ul>/<li>/<p> — lay out and keep their bullets
+  // instead of collapsing on top of each other inside a -webkit-box.
+  const COLLAPSED_MAX = 108;
+  const clampStyle: React.CSSProperties = expanded ? {} : { maxHeight: COLLAPSED_MAX, overflow: 'hidden' };
+
+  const toggle = (e: React.SyntheticEvent) => { e.stopPropagation(); setExpanded((v) => !v); };
+
+  return (
+    <span style={{ display: 'block', marginTop: 2 }}>
+      {/* List/paragraph spacing for the add-on's rich text — bullets indented,
+          tight but not overlapping. */}
+      <style>{`
+        .gdc-addon-rtx { font-size: 12px; color: #9aa0b4; line-height: 1.5; }
+        .gdc-addon-rtx p { margin: 0 0 4px; }
+        .gdc-addon-rtx ul, .gdc-addon-rtx ol { margin: 2px 0; padding-left: 18px; }
+        .gdc-addon-rtx li { margin: 1px 0; }
+        .gdc-addon-rtx > :last-child { margin-bottom: 0; }
+      `}</style>
+      <span style={{ position: 'relative', display: 'block' }}>
+        <span
+          ref={ref}
+          className="gdc-addon-rtx"
+          style={{ display: 'block', ...clampStyle }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+        {/* Soft fade over the last line while collapsed + overflowing. */}
+        {!expanded && overflows && (
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0, height: 28, pointerEvents: 'none',
+              background: 'linear-gradient(to bottom, rgba(14,14,20,0) 0%, rgba(14,14,20,.85) 85%, #0e0e14 100%)',
+            }}
+          />
+        )}
+      </span>
+      {overflows && (
+        <span style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 3 }}>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={toggle}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); } }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer', color: 'var(--neon,#00e0a4)', fontSize: 11, fontWeight: 700 }}
+          >
+            {expanded ? 'Less' : 'Expand'}
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 // Country list for the venue-address autocomplete scope — same set the
 // homepage DJ search uses (idx-filters.js parity). Each entry pairs an
 // ISO 3166-1 alpha-2 code (passed to Nominatim's countrycodes= param)
@@ -1803,7 +1882,7 @@ export default function MobileBookingForm({
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.04em', color: 'var(--neon,#00e0a4)', textTransform: 'uppercase', marginBottom: 8 }}>
               Add-ons/Extras
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 360, overflowY: 'auto', paddingRight: 4 }}>
               {mobAddons.map((addon) => {
                 const on = selectedAddons.includes(addon._idx);
                 const price = Number(addon.price);
@@ -1839,12 +1918,7 @@ export default function MobileBookingForm({
                         <span style={{ fontWeight: 700, fontSize: 14 }}>{addon.title}</span>
                         {hasPrice && <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>+{cur}{price.toLocaleString()}</span>}
                       </span>
-                      {addon.details && (
-                        <span
-                          style={{ display: 'block', fontSize: 12, color: '#9aa0b4', marginTop: 2, lineHeight: 1.4 }}
-                          dangerouslySetInnerHTML={{ __html: addon.details }}
-                        />
-                      )}
+                      {addon.details && <AddonDetails html={addon.details} />}
                     </span>
                     <span
                       aria-hidden
