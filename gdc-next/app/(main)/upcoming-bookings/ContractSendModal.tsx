@@ -81,10 +81,14 @@ interface SaveData { id?: number | string }
 // The completed preview is an <img class="max-h-44"> (176px). Cap both, and the
 // big "DJ Signature" title.
 const CUSTOM_CSS = `
-  .draw-canvas { max-width: 252px !important; max-height: 84px !important; margin-left: auto !important; margin-right: auto !important; }
-  img.max-h-44 { max-height: 84px !important; }
+  .draw-canvas { max-width: 360px !important; max-height: 120px !important; margin-left: auto !important; margin-right: auto !important; }
+  img.max-h-44 { max-height: 120px !important; }
   .field-name-label { font-size: 1.1rem !important; }
   #signature_text_input { font-size: 1.1rem !important; }
+  /* Shrink the whole signature CARD (not the signature area inside it): cap its
+     width, tighten its padding, and make the big submit button smaller. */
+  .field-area { max-width: 460px !important; margin-left: auto !important; margin-right: auto !important; padding: .9rem !important; }
+  button[type="submit"] { padding-top: .55rem !important; padding-bottom: .55rem !important; font-size: .8rem !important; min-height: 0 !important; }
 `;
 
 export default function ContractSendModal({
