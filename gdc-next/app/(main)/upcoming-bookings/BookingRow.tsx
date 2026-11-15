@@ -605,7 +605,15 @@ export default function BookingRow({
     } else {
       const hasAgreedDeposit = suggestedDeposit != null && suggestedDeposit > 0;
       setReqAmount(hasAgreedDeposit ? String(suggestedDeposit) : '');
-      const total = Number((booking as { total_with_tax?: number | null }).total_with_tax ?? (booking as { quoted_rate?: number | null }).quoted_rate ?? 0);
+      // Same fallback chain the server + overpayment flag use, so a countered or
+      // offer-only booking still derives a correct total for the deposit-% base.
+      const total = Number(
+        (booking as { total_with_tax?: number | null }).total_with_tax
+        ?? (booking as { counter_rate?: number | null }).counter_rate
+        ?? (booking as { quoted_rate?: number | null }).quoted_rate
+        ?? (booking as { offer_amount?: number | null }).offer_amount
+        ?? 0,
+      );
       // Always carry the agreed total so the modal's deposit-% picker can derive
       // an amount even when NO deposit was ever set on this booking (deposit off
       // or skipped). amount:0 keeps expectedAmount falsy, so the mismatch warning
