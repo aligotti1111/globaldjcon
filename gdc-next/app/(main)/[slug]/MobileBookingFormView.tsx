@@ -83,10 +83,10 @@ function AddonDetails({ html }: { html: string }) {
     return () => ro?.disconnect();
   }, [html, expanded]);
 
-  // ~6 lines at 12px / 1.5 line-height. A height clamp (not -webkit-line-clamp)
+  // ~4 lines at 12px / 1.5 line-height. A height clamp (not -webkit-line-clamp)
   // so rich-text block children — <ul>/<li>/<p> — lay out and keep their bullets
   // instead of collapsing on top of each other inside a -webkit-box.
-  const COLLAPSED_MAX = 108;
+  const COLLAPSED_MAX = 72;
   const clampStyle: React.CSSProperties = expanded ? {} : { maxHeight: COLLAPSED_MAX, overflow: 'hidden' };
 
   const toggle = (e: React.SyntheticEvent) => { e.stopPropagation(); setExpanded((v) => !v); };
