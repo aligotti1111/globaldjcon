@@ -109,6 +109,9 @@ const WRITABLE = new Set([
   'package_title', 'package_details', 'package_category', 'package_index', 'overtime_rate',
   'host_email', 'host_email_sent_at', 'requester_name', 'offer_amount', 'currency',
   'tax_pct', 'tax_amount', 'total_with_tax', 'deposit_pct', 'deposit_amount',
+  // Chosen mobile add-ons (title + price jsonb) — already folded into
+  // offer_amount; stored so the card, receipt and emails can itemize them.
+  'addons',
 ]);
 
 function clean(payload: Record<string, unknown> | null | undefined): Record<string, unknown> {
