@@ -28,7 +28,10 @@ const SITE_URL = 'https://globaldjconnect.com';
 // Only these keys can be overridden — guards against arbitrary JSON writes.
 // 'invoice' is the BALANCE step (the final invoice); marking it complete was
 // silently rejected before, so it never saved and never logged.
-const ALLOWED_KEYS = new Set(['contract', 'deposit', 'deposit_skipped', 'song_list', 'invoice']);
+// 'deposit_refunded' / 'balance_refunded' flag that collected money on a
+// CANCELLED booking was paid back — the Finance model then stops counting it as
+// income. They're plain status flags (no payment-row or email side effects).
+const ALLOWED_KEYS = new Set(['contract', 'deposit', 'deposit_skipped', 'song_list', 'invoice', 'deposit_refunded', 'balance_refunded']);
 
 function escHtml(s: string | null | undefined): string {
   if (!s) return '';
@@ -185,11 +188,16 @@ export async function POST(req: Request) {
   const stepLabel: Record<string, string> = {
     contract: 'Contract', deposit: 'Deposit', deposit_skipped: 'Deposit skip',
     invoice: 'Balance', song_list: 'Planner',
+    deposit_refunded: 'Deposit refund', balance_refunded: 'Balance refund',
   };
   const label = stepLabel[key] || key;
   const verb = key === 'deposit_skipped'
     ? (done ? 'Skipped the deposit' : 'Un-skipped the deposit')
-    : (done ? `Marked ${label.toLowerCase()} complete` : `Undid ${label.toLowerCase()} completion`);
+    : key === 'deposit_refunded'
+      ? (done ? 'Marked the deposit refunded' : 'Un-marked the deposit refund')
+      : key === 'balance_refunded'
+        ? (done ? 'Marked the balance refunded' : 'Un-marked the balance refund')
+        : (done ? `Marked ${label.toLowerCase()} complete` : `Undid ${label.toLowerCase()} completion`);
   await logActivity(acting, { action: `step.${key}.${done ? 'done' : 'undone'}`, summary: verb, bookingId });
 
   // When the DJ marks the DEPOSIT complete BY HAND (cash on the night, a bank
