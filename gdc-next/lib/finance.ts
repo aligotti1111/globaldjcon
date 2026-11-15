@@ -64,6 +64,34 @@ export function isBookedEvent(b: FinanceBookingInput): boolean {
   return s !== 'cancelled' && s !== 'rejected' && s !== 'declined';
 }
 
+// A cancelled/rejected/declined booking never happened — its money (even a
+// deposit that was actually collected) must not count toward Received. The
+// Expected side already excludes these via isAccepted; this is the matching
+// guard for the collected side.
+export function isCancelledBooking(b: FinanceBookingInput | undefined): boolean {
+  if (!b) return false;
+  const s = (b.status || '').toLowerCase();
+  return s === 'cancelled' || s === 'rejected' || s === 'declined';
+}
+
+// On a CANCELLED booking, money that was actually collected is still real
+// income (a kept non-refundable deposit, a balance paid before cancellation) —
+// UNLESS the DJ marked it refunded on the booking card. These flags
+// (status_overrides.deposit_refunded / balance_refunded) say the money went
+// back, so Finance drops it. Any other collected kind on a cancelled booking is
+// not retainable and never counts.
+export function isPaymentRetainedOnCancel(
+  b: FinanceBookingInput | undefined,
+  kind: string | null | undefined,
+): boolean {
+  if (!b) return false;
+  const k = (kind || '').toLowerCase();
+  const ov = b.status_overrides || {};
+  if (k === 'deposit') return ov.deposit_refunded !== true;
+  if (k === 'balance') return ov.balance_refunded !== true;
+  return false;
+}
+
 export interface FinancePaymentInput {
   id: string;
   booking_id: string;
@@ -297,6 +325,9 @@ export function buildReceivedEvents(
   for (const p of payments) {
     if (!isCollected(p)) continue;
     const b = byId.get(p.booking_id);
+    // Cancelled booking → only a KEPT (non-refunded) deposit or balance still
+    // counts as income; everything else on it is dropped.
+    if (isCancelledBooking(b) && !isPaymentRetainedOnCancel(b, p.kind)) continue;
     const ratio = b ? taxRatio(b) : 0;
     // collectedAmount, not amount_paid — so a WAIVED balance (marked settled with
     // amount_paid = 0) is still valued at what was owed instead of vanishing.
@@ -338,6 +369,7 @@ export function buildReceivedEvents(
   // Paid overtime — billed on the night, tracked on the booking's own columns,
   // never in the ledger. Its own tax field, so split directly.
   for (const b of bookings) {
+    if (isCancelledBooking(b)) continue;
     if (!b.overtime_paid_at || !(Number(b.overtime_amount) > 0)) continue;
     const gross = round2(Number(b.overtime_amount));
     const tax = round2(Number(b.overtime_tax ?? 0));
@@ -364,6 +396,9 @@ export function buildReceivedEvents(
   for (const b of bookings) {
     const mr = manualReceived(b, ledger.get(b.id) || 0);
     if (!mr) continue;
+    // Cancelled booking → keep only a non-refunded deposit/balance that was
+    // settled off-app; drop anything else.
+    if (isCancelledBooking(b) && !isPaymentRetainedOnCancel(b, mr.kind)) continue;
     const ratio = taxRatio(b);
     const tax = round2(mr.amount * ratio);
     // Same future-event rule as the ledger loop: money already handled off-app on
