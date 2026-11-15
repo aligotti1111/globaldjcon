@@ -169,19 +169,19 @@ export default function HeaderHostMenu({ name, avatarUrl, isAdmin = false }: Hea
           {/* Admin Panel — only for the single platform-admin account. */}
           {isAdmin && (
             <>
-              <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
                 <IconAdmin />Admin Panel
               </Link>
               <div className="hdr-dj-menu-sep" />
             </>
           )}
-          <Link href="/upcoming-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/upcoming-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
             <IconClock />Upcoming Events
           </Link>
-          <Link href="/past-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/past-events" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
             <IconArchive />Past Events
           </Link>
-          <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
             <IconSettings />Account Settings
           </Link>
 
