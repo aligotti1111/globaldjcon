@@ -270,9 +270,9 @@ function AddonCard({
             </div>
           )}
         </div>
-        <div style={{ flex: '1 1 120px' }}>
+        <div style={{ flex: '1 1 120px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <label className={styles.pkgFieldLabel}>Price</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
             <span style={{ color: '#9aa0b4', fontSize: 14 }}>{sym}</span>
             <input
               type="number"
@@ -354,10 +354,11 @@ function AddonCard({
         )}
       </div>
 
-      {/* Explicit Save when editing an existing/activated add-on — folds the
-          card back. Field edits already flow up as you type; this is the clear
-          "done editing" action the DJ clicks after making changes. */}
-      {collapsible && !isWorking && (
+      {/* Explicit Save when editing an add-on — folds the card back. Field
+          edits already flow up as you type; this is the clear "done editing"
+          action. Shown on every card that has content (the last/blank new card
+          uses the Activate button instead until it has a title). */}
+      {collapsible && (!isWorking || (addon.title || '').trim()) && (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
