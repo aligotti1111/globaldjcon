@@ -348,11 +348,18 @@ export default function MobileBookingCard(props: Props) {
               {(() => {
                 // Big top number = the taxed total (what the event costs all-in).
                 // The full itemized breakdown lives in the block below the package.
-                const bt = b as typeof b & { tax_amount?: number | null; total_with_tax?: number | null };
+                // Mirror the breakdown's freshness check: the stored snapshot is
+                // frozen at the original offer, so after a counter trust it only
+                // when it still matches the current price, else recompute.
+                const bt = b as typeof b & { tax_pct?: number | null; tax_amount?: number | null; total_with_tax?: number | null };
+                const r2 = (n: number) => Math.round(n * 100) / 100;
                 const subtotal = Number(bigPriceVal) || 0;
-                const totalWithTax = bt.total_with_tax != null
-                  ? Number(bt.total_with_tax)
-                  : subtotal + (Number(bt.tax_amount) || 0);
+                const snapTotal = bt.total_with_tax != null ? Number(bt.total_with_tax) : null;
+                const snapTax = Number(bt.tax_amount) || 0;
+                const snapshotFresh = snapTotal != null && Math.abs(r2(snapTotal - snapTax) - subtotal) < 0.01;
+                const taxPct = Number(bt.tax_pct) || 0;
+                const taxAmt = snapshotFresh ? snapTax : (taxPct > 0 ? r2(subtotal * taxPct / 100) : 0);
+                const totalWithTax = (snapshotFresh && snapTotal != null) ? snapTotal : r2(subtotal + taxAmt);
                 return `${cur}${totalWithTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               })()}
             </div>
