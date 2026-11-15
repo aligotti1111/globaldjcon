@@ -10,6 +10,47 @@
 import { useEffect, useRef } from 'react';
 import styles from './updateDjProfile.module.css';
 
+// Sanitize HTML pasted from another app/website: keep only the simple structural
+// tags our toolbar produces, strip EVERY attribute (so no pasted background
+// highlight, color, font or class leaks in), and map block wrappers to a line
+// break so copied paragraphs don't all run together. Everything else becomes
+// plain text. This is why a description copied off a site stops arriving with
+// that grey/white highlighted look.
+const PASTE_KEEP = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'BR']);
+const PASTE_BLOCK = new Set(['P', 'DIV', 'SECTION', 'ARTICLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+function escapeText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function sanitizePastedHtml(html: string): string {
+  if (typeof window === 'undefined' || !window.DOMParser) {
+    // No DOM available (shouldn't happen in the browser) — fall back to text.
+    return escapeText(html.replace(/<[^>]*>/g, ''));
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out: string[] = [];
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) { out.push(escapeText(child.textContent || '')); return; }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = (child as HTMLElement).tagName;
+      if (PASTE_KEEP.has(tag)) {
+        if (tag === 'BR') { out.push('<br>'); return; }
+        const t = tag.toLowerCase();
+        out.push(`<${t}>`); walk(child); out.push(`</${t}>`);
+      } else if (PASTE_BLOCK.has(tag)) {
+        // Preserve the line break a block implies, but drop the wrapper + styles.
+        walk(child);
+        if (out.length && out[out.length - 1] !== '<br>') out.push('<br>');
+      } else {
+        // Unknown/presentational tag (span, font, …): drop it, keep its text.
+        walk(child);
+      }
+    });
+  };
+  walk(doc.body);
+  return out.join('').replace(/(?:<br>)+$/, ''); // trim trailing breaks
+}
+
 export default function RichTextEditor({
   value,
   onChange,
@@ -79,6 +120,18 @@ export default function RichTextEditor({
     sync();
   }
 
+  // Paste handler — strip the source site's formatting so only clean, simply
+  // structured text lands in the field (no pasted highlight/color/font).
+  function onPaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const cb = e.clipboardData;
+    const html = cb?.getData('text/html');
+    const text = cb?.getData('text/plain') || '';
+    const clean = html ? sanitizePastedHtml(html) : escapeText(text).replace(/\r?\n/g, '<br>');
+    document.execCommand('insertHTML', false, clean);
+    sync();
+  }
+
   // Enter inside a list item: split the current <li> at the caret so an item
   // never disappears on Enter (browsers otherwise collapse the list).
   function onEditorKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -129,6 +182,7 @@ export default function RichTextEditor({
         data-placeholder={placeholder}
         className={`${styles.rteEditor} ${error ? styles.pkgFieldError : ''}`}
         onKeyDown={onEditorKeyDown}
+        onPaste={onPaste}
         onInput={(e) => {
           const html = (e.currentTarget as HTMLDivElement).innerHTML;
           lastSetRef.current = html;
