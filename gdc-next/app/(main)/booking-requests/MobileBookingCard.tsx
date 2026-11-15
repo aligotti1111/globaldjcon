@@ -447,13 +447,9 @@ export default function MobileBookingCard(props: Props) {
                 {reqAddons.map((a, i) => (
                   <div
                     key={i}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', gap: 12,
-                      fontSize: 14, color: 'var(--white)', padding: '3px 0',
-                    }}
+                    style={{ fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
                   >
-                    <span>{a.title}</span>
-                    <span style={{ color: 'var(--muted)' }}>{cur}{(Number(a.price) || 0).toLocaleString()}</span>
+                    {a.title}
                   </div>
                 ))}
               </div>
