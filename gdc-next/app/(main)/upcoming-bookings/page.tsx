@@ -526,6 +526,9 @@ export default async function UpcomingBookingsPage({
   // mobPackages is still needed below: the client uses it for the manual
   // add-booking form's package picker.
   const mobPackages = settings?.mob_packages;
+  // The DJ's global add-ons — threaded to the manual add-booking form so the DJ
+  // can attach extras (and their price) to a booking they enter by hand.
+  const mobAddons = (settings as { mob_addons?: unknown } | null)?.mob_addons ?? null;
 
   // Payment / planner rows for the page's bookings are read with the ADMIN
   // client, hard-scoped to these bookingIds — the same reason the bookings read
@@ -674,6 +677,7 @@ export default async function UpcomingBookingsPage({
       bookingsPerDay={bookingsPerDay}
       initialBookings={bookingRows}
       mobPackages={mobPackages ?? null}
+      mobAddons={mobAddons as never}
       initialPayments={paymentsByBooking}
       initialPlanners={plannersByBooking}
       canPro={canPro}
