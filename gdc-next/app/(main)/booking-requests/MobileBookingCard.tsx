@@ -505,8 +505,6 @@ export default function MobileBookingCard(props: Props) {
             {ceremonyP > 0 && row('Ceremony', money2(ceremonyP))}
             {cocktailP > 0 && row('Cocktail hour', money2(cocktailP))}
             {bt.discount_amount != null && Number(bt.discount_amount) > 0 && row(bt.discount_label || 'Discount', `−${money2(Number(bt.discount_amount))}`, false, true)}
-            {divider}
-            {row('Subtotal (before tax)', money2(subtotal))}
             {taxAmt > 0 && row(`Sales tax (${taxPct}%)`, money2(taxAmt))}
             {row('Total Event Cost (with tax)', money2(totalWithTax), true)}
             {depAmt > 0 && (
