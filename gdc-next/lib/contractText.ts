@@ -59,9 +59,9 @@ Time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}
 Address: {{event_address}}
 Price: {{price}}
-Overtime rate: {{overtime_rate}}/hr
 Tax: {{tax}}
 Total Event Cost with Tax: {{grand_total}}
+Overtime rate: {{overtime_rate}}/hr
 Package: {{package}}
 
 ${sharedClauses(OVERTIME_RATED)}`;
@@ -103,9 +103,9 @@ Reception time: {{start_time}} - {{end_time}}
 Venue: {{venue_name}}
 Address: {{event_address}}
 Price: {{price}}
-Overtime rate: {{overtime_rate}}/hr
 Tax: {{tax}}
 Total Event Cost with Tax: {{grand_total}}
+Overtime rate: {{overtime_rate}}/hr
 Package: {{package}}
 
 SERVICES
