@@ -65,7 +65,8 @@ export default function AddonsEditor({
   // the cards opens a new blank slot.
   const working = display[display.length - 1];
   const workingIsDup = dupFlags[display.length - 1];
-  const canActivate = !!(working && (working.title || '').trim()) && !workingIsDup;
+  // Title AND price are both required before an add-on can be activated.
+  const canActivate = !!(working && (working.title || '').trim()) && !workingIsDup && Number(working?.price) > 0;
   function activate() {
     if (!canActivate) return;
     const lastIdx = display.length - 1;
@@ -140,7 +141,7 @@ export default function AddonsEditor({
               type="button"
               onClick={activate}
               disabled={!live}
-              title={isActive ? 'Already active' : (canActivate ? 'Activate this add-on' : 'Add a title first')}
+              title={isActive ? 'Already active' : (canActivate ? 'Activate this add-on' : 'Add a title and price first')}
               style={{
                 background: live ? 'rgba(56,232,176,.14)' : 'transparent',
                 border: `1px solid ${live ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
@@ -277,8 +278,14 @@ function AddonCard({
               value={addon.price ?? ''}
               onChange={(e) => onChange({ price: e.target.value })}
               className={styles.pkgInput}
+              style={((addon.title || '').trim() && !(Number(addon.price) > 0)) ? { borderColor: '#f3899a' } : undefined}
             />
           </div>
+          {(addon.title || '').trim() && !(Number(addon.price) > 0) && (
+            <div style={{ marginTop: 4, fontSize: 12, color: '#f3899a' }}>
+              Price is required.
+            </div>
+          )}
         </div>
       </div>
 
