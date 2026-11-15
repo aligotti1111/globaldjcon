@@ -45,6 +45,10 @@ interface Props {
   // The DJ's saved mobile packages by category ('general' | 'wedding' |
   // 'mitzvah'), used to populate the manual-booking package dropdown.
   mobPackages: Record<string, MobilePackage[]> | null;
+  // The DJ's global add-ons (booking_settings.mob_addons) — passed to the manual
+  // booking form so extras can be attached by hand. Optional / loosely typed; the
+  // modal filters to active ones itself.
+  mobAddons?: unknown;
   // Archive mode — used by the dedicated /past-bookings page. Renders the same
   // rows read-only-ish (no add / schedule tools), newest-first, "Past Bookings".
   archive?: boolean;
@@ -107,7 +111,7 @@ type LightBooking = {
 
 
 export default function UpcomingBookingsClient({
-  userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, archive = false,
+  userId, actingRole = 'owner', djType, djCountry, djName, bookingsPerDay, initialBookings, mobPackages, mobAddons, archive = false,
   initialPayments, initialPlanners,
   canPro: canProProp, isPaid: isPaidProp, plannerLeadDays = 14, autoDepositReceipt = true, autoBalanceReceipt = true, settingsCurrency: settingsCurrencyProp,
   requireContract: requireContractProp, riderEnabled: riderEnabledProp,
@@ -970,6 +974,7 @@ export default function UpcomingBookingsClient({
           djName={djName}
           bookingsPerDay={bookingsPerDay}
           mobPackages={mobPackages}
+          addons={mobAddons as never}
           existingBookings={fullBookings}
           existing={editing}
           focusHost={focusHost}
