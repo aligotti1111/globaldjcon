@@ -13,7 +13,7 @@ import {
   searchAddresses, EVENT_SUBFIELDS, buildEventDetails, getPackageCategory,
   hoursBetween, durationLabel, resolvePackage, calcPrice,
 } from '../[slug]/mobileBookingForm';
-import { type MobilePackage, packageTiers } from '../[slug]/bookingSettings';
+import { type MobilePackage, packageTiers, type MobAddon } from '../[slug]/bookingSettings';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 import { currencySymbol, CLUB_EQUIPMENT_LABELS, CLUB_SET_TYPE_LABELS, CLUB_VENUE_TYPE_LABELS } from '@/lib/constants';
 import styles from './upcomingBookings.module.css';
@@ -21,7 +21,7 @@ import type { UpcomingBooking } from './page';
 import { MOBILE_EVENT_TYPES, TIME_OPTIONS, NEON, formatSentDate } from './shared';
 
 export default function AddManualBookingModal({
-  userId, djType, djCountry, djName, bookingsPerDay, mobPackages, existingBookings,
+  userId, djType, djCountry, djName, bookingsPerDay, mobPackages, addons, existingBookings,
   existing, focusHost, prefillDate, onClose, onAdded, onUpdated,
   taxEnabledDefault = false, taxPctDefault = 0, depositPctDefault = 0,
   settingsCurrency = 'USD',
@@ -32,6 +32,9 @@ export default function AddManualBookingModal({
   djName: string;
   bookingsPerDay: number;
   mobPackages: Record<string, MobilePackage[]> | null;
+  /** The DJ's global add-ons (booking_settings.mob_addons). Mobile-only; the DJ
+   *  can tick any active one and its price is added to the booking total. */
+  addons?: MobAddon[] | null;
   existingBookings: UpcomingBooking[];
   existing: UpcomingBooking | null;
   /** From the DJ's booking settings — the starting position of the two
@@ -340,21 +343,44 @@ export default function AddManualBookingModal({
     existing?.deposit_pct != null ? String(existing.deposit_pct) : (depositPctDefault ? String(depositPctDefault) : ''),
   );
 
+  // ── Add-ons (mobile only) ── the DJ's global extras the host could also tick
+  // on the public form. The DJ ticks whichever apply; each one's price is added
+  // to the subtotal before tax, and the chosen items are stored on the booking
+  // (same `addons` jsonb the public form writes) so the card, receipt and emails
+  // itemize them. Only ACTIVE add-ons with a title + price are offered.
+  const activeAddons = (Array.isArray(addons) ? addons : [])
+    .map((a, i) => ({ ...a, _idx: i }))
+    .filter((a) => djType === 'mobile' && a.active && (a.title || '').trim() && Number(a.price) > 0);
+  // Pre-tick add-ons already on the booking being edited (match by title).
+  const existingAddonTitles = new Set(
+    (((existing as { addons?: { title?: string }[] } | null)?.addons) || [])
+      .map((a) => (a.title || '').trim().toLowerCase()).filter(Boolean),
+  );
+  const [selectedAddons, setSelectedAddons] = useState<number[]>(() =>
+    activeAddons.filter((a) => existingAddonTitles.has((a.title || '').trim().toLowerCase())).map((a) => a._idx),
+  );
+  const toggleAddon = (idx: number) =>
+    setSelectedAddons((prev) => (prev.includes(idx) ? prev.filter((x) => x !== idx) : [...prev, idx]));
+  const chosenAddons = activeAddons.filter((a) => selectedAddons.includes(a._idx));
+  const addonsTotal = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
+
   /**
-   * The money, computed the same way the public booking form does it:
-   * tax on the rate, deposit on the tax-INCLUSIVE total. Getting that order
-   * wrong makes a manual booking's deposit disagree with an identical one
-   * booked through the site.
+   * The money, computed the same way the public booking form does it: tax on the
+   * subtotal (rate + selected add-ons), deposit on the tax-INCLUSIVE total.
+   * Getting that order wrong makes a manual booking's deposit disagree with an
+   * identical one booked through the site.
    */
   const moneyPreview = (() => {
-    const base = Number(rate.trim());
-    if (!Number.isFinite(base) || base <= 0) return null;
+    const rateBase = Number(rate.trim());
+    const base = Number.isFinite(rateBase) && rateBase > 0 ? rateBase : 0;
+    const subtotal = Number((base + addonsTotal).toFixed(2));
+    if (!(subtotal > 0)) return null;
     const tPct = applyTax ? Number(taxPctStr) || 0 : 0;
-    const taxAmount = tPct > 0 ? Number(((base * tPct) / 100).toFixed(2)) : 0;
-    const total = Number((base + taxAmount).toFixed(2));
+    const taxAmount = tPct > 0 ? Number(((subtotal * tPct) / 100).toFixed(2)) : 0;
+    const total = Number((subtotal + taxAmount).toFixed(2));
     const dPct = applyDeposit ? Number(depositPctStr) || 0 : 0;
     const depositAmount = dPct > 0 ? Number(((total * dPct) / 100).toFixed(2)) : 0;
-    return { base, tPct, taxAmount, total, dPct, depositAmount, balance: Number((total - depositAmount).toFixed(2)) };
+    return { base, addonsTotal, subtotal, tPct, taxAmount, total, dPct, depositAmount, balance: Number((total - depositAmount).toFixed(2)) };
   })();
 
   /**
@@ -485,6 +511,46 @@ export default function AddManualBookingModal({
         )}
       </label>
 
+      {/* ── Add-ons / Extras ── the DJ's global extras. Tick any that apply and
+          each one's price is added to the total below (and stored on the
+          booking, so the card, receipt and emails itemize them). Mobile only. */}
+      {djType === 'mobile' && activeAddons.length > 0 && (
+        <div style={{ marginTop: '.7rem' }}>
+          <div style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: '#7ef3d0', marginBottom: '.4rem' }}>
+            Add-ons / Extras
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {activeAddons.map((a) => {
+              const on = selectedAddons.includes(a._idx);
+              return (
+                <button
+                  key={a._idx}
+                  type="button"
+                  onClick={() => toggleAddon(a._idx)}
+                  aria-pressed={on}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                    width: '100%', padding: '.5rem .6rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                    background: 'rgba(255,255,255,.03)', color: 'inherit', font: 'inherit',
+                    border: `1.5px solid ${on ? NEON : 'rgba(255,255,255,.14)'}`,
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{
+                      width: 18, height: 18, flex: '0 0 auto', borderRadius: 5,
+                      border: `2px solid ${on ? NEON : 'rgba(255,255,255,.3)'}`, background: on ? NEON : 'transparent',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#06231b', fontSize: 12, fontWeight: 900,
+                    }}>{on ? '✓' : ''}</span>
+                    <span style={{ fontWeight: 700, fontSize: '.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span>
+                  </span>
+                  <span style={{ flexShrink: 0, fontSize: '.8rem', fontWeight: 700, color: 'var(--muted,#8a8aa0)' }}>+{money(Number(a.price) || 0)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Shown as soon as there's a rate, not only when tax or deposit are on.
           With both off the total simply equals the rate — and saying so is the
           point: the DJ can see at a glance that nothing was added, rather than
@@ -498,6 +564,12 @@ export default function AddManualBookingModal({
             <span>Rate</span>
             <span>{money(moneyPreview.base)}</span>
           </div>
+          {chosenAddons.map((a) => (
+            <div key={a._idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
+              <span>{(a.title || 'Add-on')}</span>
+              <span>+{money(Number(a.price) || 0)}</span>
+            </div>
+          ))}
           {moneyPreview.taxAmount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
               <span>Sales tax ({moneyPreview.tPct}%)</span>
@@ -949,8 +1021,19 @@ export default function AddManualBookingModal({
           ? Number(overtimeRate) : null,
         host_email: trimmedEmail || null,
         requester_name: hostName.trim() || null,
-        offer_amount: rateNum,
-        currency: rateNum != null ? rateCurrency : null,
+        // The agreed price INCLUDES the selected add-ons (same convention the
+        // public form uses for quoted_rate) — the card/receipt itemize them back
+        // out of `addons`. When only add-ons are picked (no base rate), the price
+        // is just their total.
+        offer_amount: rateNum != null
+          ? Number((rateNum + addonsTotal).toFixed(2))
+          : (addonsTotal > 0 ? Number(addonsTotal.toFixed(2)) : null),
+        // Chosen add-ons (title + price) — mobile only; itemized on the card,
+        // receipt and confirmation emails.
+        addons: chosenAddons.length
+          ? chosenAddons.map((a) => ({ title: (a.title || '').trim(), price: Number(a.price) || 0 }))
+          : null,
+        currency: (rateNum != null || addonsTotal > 0) ? rateCurrency : null,
         // Frozen at save, exactly like a site booking — so a later settings
         // change can't re-price an event that already happened.
         //
