@@ -235,6 +235,16 @@ function AddonCard({
               Activated
             </span>
           )}
+          {/* Explicit Edit affordance on a folded card — expands it to edit. */}
+          {collapsible && collapsed && (
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,.18)', color: '#9aa0b4', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '.03em' }}
+            >
+              Edit
+            </button>
+          )}
           {onRemove && (
             <button
               type="button"
@@ -350,6 +360,21 @@ function AddonCard({
           </div>
         )}
       </div>
+
+      {/* Explicit Save when editing an existing/activated add-on — folds the
+          card back. Field edits already flow up as you type; this is the clear
+          "done editing" action the DJ clicks after making changes. */}
+      {collapsible && !isWorking && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            style={{ background: 'rgba(56,232,176,.14)', border: '1px solid #38e8b0', color: '#38e8b0', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '.03em' }}
+          >
+            Save
+          </button>
+        </div>
+      )}
       </>)}
     </div>
   );
