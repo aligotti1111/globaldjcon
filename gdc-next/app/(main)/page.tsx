@@ -364,6 +364,7 @@ const LANDING_CSS = String.raw`
 .gdc-landing .flowcards .flane.mobile .fhbtn{color:var(--neon)}
 .gdc-landing .flowcards .flane.club .fhbtn{color:var(--amber)}
 .gdc-landing .flowcards .fhbtn:hover{opacity:.7}
+.gdc-landing.gdc-signedin .flowcards .fhbtn{display:none}
 .gdc-landing .flowcards .fli{counter-increment:step;padding:16px 0;border-top:1px solid var(--line);font-size:.86rem;font-weight:500;line-height:1.5;color:#c9c9d3;letter-spacing:.005em;display:grid;grid-template-columns:auto 1fr;column-gap:18px;align-items:center}
 .gdc-landing .flowcards .fli:first-of-type{border-top:0}
 .gdc-landing .flowcards .fli .smk{display:block;text-align:center;min-width:56px;padding-right:16px;line-height:1;font-family:var(--mono);font-weight:700;font-size:.46rem;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
