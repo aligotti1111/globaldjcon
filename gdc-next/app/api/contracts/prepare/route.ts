@@ -351,6 +351,26 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
   const rawEventType = ((b.event_type as string) || '');
   const eventTypeLabel = MOB_EVENT_LABELS[rawEventType.toLowerCase()] || rawEventType;
 
+  // ADD-ONS — itemize the host's selected extras on the contract, right under
+  // the package with a blank line between them (auto-fit sizes the {{package}}
+  // field to its text, so this works on every DJ's contract without a template
+  // change). Each line: "Title — $price". Stored as bookings.addons jsonb.
+  const bookingAddons: Array<{ title?: string; price?: number | string }> =
+    Array.isArray((b as { addons?: unknown }).addons)
+      ? ((b as { addons?: Array<{ title?: string; price?: number | string }> }).addons as Array<{ title?: string; price?: number | string }>)
+      : [];
+  const addonsBlock = (() => {
+    const lines = bookingAddons
+      .map((a) => {
+        const t = String(a?.title || '').trim();
+        if (!t) return '';
+        const p = Number(a?.price);
+        return Number.isFinite(p) && p > 0 ? `${t} — ${money(p, currency)}` : t;
+      })
+      .filter(Boolean);
+    return lines.length ? `\n\nAdd-ons:\n${lines.join('\n')}` : '';
+  })();
+
   // Pre-fill values (all read-only for signers — they're facts of the booking).
   const values: Record<string, string> = {
     agreement_date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
@@ -368,7 +388,7 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
     event_address: (b.venue_address as string) || '',
     start_time: fmtTime(b.start_time as string),
     end_time: fmtTime(b.end_time as string),
-    package: [(b.package_title as string) || '', htmlToText(b.package_details as string)].filter(Boolean).join(' — '),
+    package: [(b.package_title as string) || '', htmlToText(b.package_details as string)].filter(Boolean).join(' — ') + addonsBlock,
     set_type: (b.set_type as string) || '',
     equipment: (b.equipment as string) || '',
     duration: fmtDuration(b.start_time as string, b.end_time as string),
@@ -403,7 +423,11 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       // price), so relabel it — "Total with Tax:" when tax applies, "Total:"
       // otherwise. Works for both newly-seeded and already-saved standard bodies.
       const totalLabel = taxAmt > 0 ? 'Total with Tax' : 'Total';
-      const bodyForFit = (cData?.body_text || '').replace(/Total Event Cost with Tax\s*:/gi, `${totalLabel}:`);
+      const bodyForFit = (cData?.body_text || '')
+        .replace(/Total Event Cost with Tax\s*:/gi, `${totalLabel}:`)
+        // Relabel the old "PAYMENT" section heading to the new wording on
+        // already-saved bodies (new default templates already say this).
+        .replace(/(^|\n)PAYMENT(\r?\n)/, '$1PAYMENT SCHEDULE & BREAKDOWN$2');
       const html = buildBookedContractHtml(bodyForFit, values, cData?.logo_url || null);
       const fitTpl = await withTimeout<{ id?: string | number }>(
         docuseal.createTemplateFromHtml({
@@ -488,6 +512,12 @@ async function runPrepare(body: { bookingId?: unknown; clientEmail?: unknown; co
       if (timeRange) detailLines.push(`Time: ${timeRange}`);
       if (venueLine) detailLines.push(`Venue: ${venueLine}`);
       if (b.package_title) detailLines.push(`Package: ${b.package_title as string}`);
+      bookingAddons.forEach((a) => {
+        const t = String(a?.title || '').trim();
+        if (!t) return;
+        const p = Number(a?.price);
+        detailLines.push(`Add-on: ${t}${Number.isFinite(p) && p > 0 ? ` — ${money(p, currency)}` : ''}`);
+      });
       if (priceStr) detailLines.push(`Total: ${priceStr}`);
       if (depositStr) detailLines.push(`Deposit: ${depositStr}`);
     }
