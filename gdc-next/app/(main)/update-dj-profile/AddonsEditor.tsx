@@ -218,23 +218,16 @@ function AddonCard({
               <polyline points="6 9 12 15 18 9" />
             </svg>
           )}
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#9aa0b4', letterSpacing: '.04em', flexShrink: 0 }}>
-            ADD-ON {idx + 1}
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#e8e8ef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {(addon.title || '').trim() || 'New add-on'}
           </span>
-          {collapsed && (addon.title || '').trim() && (
-            <span style={{ fontSize: 13, color: '#e8e8ef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              · {addon.title}
+          {collapsed && Number(addon.price) > 0 && (
+            <span style={{ fontSize: 13, color: '#9aa0b4', flexShrink: 0 }}>
+              · {sym}{Number(addon.price).toLocaleString()}
             </span>
           )}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {/* Keep the Activated status visible on cards you're not currently
-              working on, so you can see at a glance which extras are live. */}
-          {!isWorking && addon.active && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#38e8b0', background: 'rgba(56,232,176,.14)', border: '1px solid #38e8b0', borderRadius: 8, padding: '3px 8px', letterSpacing: '.03em' }}>
-              Activated
-            </span>
-          )}
           {/* Explicit Edit affordance on a folded card — expands it to edit. */}
           {collapsible && collapsed && (
             <button
