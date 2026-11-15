@@ -476,11 +476,26 @@ export default function MobileBookingCard(props: Props) {
         const subtotal = Number(bigPriceVal) || 0;
         const basePackage = r2(subtotal - addonSum - cocktailP - ceremonyP);
         const taxPct = Number(bt.tax_pct) || 0;
-        const taxAmt = bt.tax_amount != null ? Number(bt.tax_amount) : (taxPct > 0 ? r2(subtotal * taxPct / 100) : 0);
-        const totalWithTax = bt.total_with_tax != null ? Number(bt.total_with_tax) : r2(subtotal + taxAmt);
+        // The stored tax/total/deposit snapshot was frozen at the ORIGINAL offer.
+        // After a counter, bigPriceVal (subtotal) changes but those fields don't,
+        // so they'd be stale. Trust the snapshot only when it still matches the
+        // current subtotal (total − tax ≈ subtotal); otherwise recompute from the
+        // frozen percentages so every row adds up.
+        const snapTotal = bt.total_with_tax != null ? Number(bt.total_with_tax) : null;
+        const snapTax = Number(bt.tax_amount) || 0;
+        const snapshotFresh = snapTotal != null && Math.abs(r2(snapTotal - snapTax) - subtotal) < 0.01;
+        const taxAmt = snapshotFresh ? snapTax : (taxPct > 0 ? r2(subtotal * taxPct / 100) : 0);
+        const totalWithTax = (snapshotFresh && snapTotal != null) ? snapTotal : r2(subtotal + taxAmt);
         const depPct = Number(bt.deposit_pct) || 0;
-        const depAmt = bt.deposit_amount != null ? Number(bt.deposit_amount) : (depPct > 0 ? r2(totalWithTax * depPct / 100) : 0);
+        const depAmt = (snapshotFresh && bt.deposit_amount != null)
+          ? Number(bt.deposit_amount)
+          : (depPct > 0 ? r2(totalWithTax * depPct / 100) : 0);
         const balance = depAmt > 0 ? r2(totalWithTax - depAmt) : null;
+        // The subtotal (and thus basePackage) is already post-discount. Show the
+        // Package line PRE-discount so the "−Discount" row below reconciles —
+        // otherwise the discount is subtracted twice.
+        const discountAmt = (bt.discount_amount != null && Number(bt.discount_amount) > 0) ? Number(bt.discount_amount) : 0;
+        const basePackageShown = r2(basePackage + discountAmt);
         const row = (l: string, v: string, strong = false, accent = false) => (
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 14, fontWeight: strong ? 700 : 400 }}>
             <span style={{ color: strong ? 'var(--white)' : 'var(--muted)' }}>{l}</span>
@@ -492,7 +507,7 @@ export default function MobileBookingCard(props: Props) {
           <div style={{ marginTop: '.75rem', padding: '1rem', background: 'rgba(0,0,0,0.28)', border: '1px solid var(--border)', borderRadius: 8 }}>
             <div className={styles.tinyLabel} style={{ marginBottom: 8, fontSize: 11, letterSpacing: '.14em', color: 'var(--muted)', fontWeight: 700 }}>Cost Breakdown</div>
             {divider}
-            {row('Package', money2(basePackage))}
+            {row('Package', money2(basePackageShown))}
             {reqAddons.map((a, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 14 }}>
                 <span style={{ color: 'var(--muted)' }}>{a.title || 'Add-on'}</span>
