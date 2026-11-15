@@ -401,10 +401,22 @@ export async function buildBookingDocAttachment(
     }
 
     // ── Money lines + headline ──
-    const services = round2(Number(b.quoted_rate ?? 0));
     const tax = round2(Number(b.tax_amount ?? 0));
     const taxPct = Number(b.tax_pct ?? 0);
-    const total = round2(Number(b.total_with_tax ?? services + tax));
+    // Pre-tax services figure. quoted_rate alone goes stale after a counter
+    // (the agreed price lives on counter_rate), which collapses the tax line and
+    // under/over-states the subtotal. Prefer the frozen total minus tax when a
+    // snapshot exists; otherwise fall back through counter → quoted → offer.
+    const snapTotal = b.total_with_tax != null ? round2(Number(b.total_with_tax)) : null;
+    const services = snapTotal != null
+      ? round2(snapTotal - tax)
+      : round2(Number(
+          (b as { counter_rate?: number | null }).counter_rate
+            ?? b.quoted_rate
+            ?? (b as { offer_amount?: number | null }).offer_amount
+            ?? 0,
+        ));
+    const total = snapTotal != null ? snapTotal : round2(services + tax);
     const paidToDate = round2(Number(args.paidToDate ?? 0));
     const lines: DocMoneyLine[] = [];
     let headline: { label: string; amount: number; hideAmount?: boolean };
