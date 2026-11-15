@@ -134,11 +134,6 @@ export default function MobileBookingCard(props: Props) {
   // overloaded counter_rate for quote bookings not yet backfilled.
   const overtimeRaw = b.overtime_rate ?? (isQuote ? b.counter_rate : null);
   const overtimeRate = overtimeRaw != null ? Number(overtimeRaw) : null;
-  const labelText = hasCounter
-    ? 'New Offer'
-    : hasPrice
-    ? (isApproved ? 'Agreed Price' : isQuote ? 'Quoted Price' : 'Package Price')
-    : '';
   // Agreed price for an approved booking. The negotiation_log holds the
   // full back-and-forth; its LAST entry's amount is what both sides
   // settled on — authoritative regardless of which column stored it.
@@ -347,77 +342,20 @@ export default function MobileBookingCard(props: Props) {
         <div className={styles.priceRow}>
           <div className={styles.priceCol}>
             <div className={styles.tinyLabel} style={{ color: hasCounter ? 'var(--amber)' : isApproved ? 'var(--neon)' : 'var(--amber)' }}>
-              {labelText}
+              Total Event Cost
             </div>
             <div className={styles.bigPrice} style={{ color: hasCounter ? 'var(--amber)' : 'var(--white)' }}>
-              {cur}{Number(bigPriceVal).toLocaleString()}
+              {(() => {
+                // Big top number = the taxed total (what the event costs all-in).
+                // The full itemized breakdown lives in the block below the package.
+                const bt = b as typeof b & { tax_amount?: number | null; total_with_tax?: number | null };
+                const subtotal = Number(bigPriceVal) || 0;
+                const totalWithTax = bt.total_with_tax != null
+                  ? Number(bt.total_with_tax)
+                  : subtotal + (Number(bt.tax_amount) || 0);
+                return `${cur}${totalWithTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              })()}
             </div>
-            {(() => {
-              // Chosen add-ons itemized directly under the package price.
-              const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
-              if (reqAddons.length === 0) return null;
-              return reqAddons.map((a, i) => (
-                <div key={i} className={styles.priceSub}>
-                  {a.title}: {cur}{(Number(a.price) || 0).toLocaleString()}
-                </div>
-              ));
-            })()}
-            {!hasCounter && b.discount_amount != null && b.discount_amount > 0 && (
-              <div className={styles.priceSub}>
-                <span style={{ textDecoration: 'line-through', opacity: 0.55 }}>
-                  {cur}{Number(b.original_rate ?? Number(bigPriceVal) + b.discount_amount).toLocaleString()}
-                </span>{' '}
-                <span style={{ color: 'var(--neon)' }}>
-                  {b.discount_label || 'Discount'} (−{cur}{Number(b.discount_amount).toLocaleString()})
-                </span>
-              </div>
-            )}
-            {hasCounter && (
-              <div className={styles.priceSub}>
-                Initial Offer: <span>{cur}{Number(b.quoted_rate).toLocaleString()}</span>
-              </div>
-            )}
-            {(() => {
-              // Sales tax + taxed total, when the offer was taxed. Stored on
-              // the booking by the DJ's offer (tax_pct/tax_amount/total_with_tax).
-              // Shown here so the booker sees tax before the deposit, not just
-              // a deposit that was silently computed on the taxed total.
-              const bt = b as typeof b & {
-                tax_pct?: number | null;
-                tax_amount?: number | null;
-                total_with_tax?: number | null;
-              };
-              const taxAmt = Number(bt.tax_amount) || 0;
-              const totalWithTax = bt.total_with_tax != null ? Number(bt.total_with_tax) : null;
-              if (taxAmt <= 0 || totalWithTax == null) return null;
-              const money = (n: number) =>
-                `${cur}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-              return (
-                <>
-                  <div className={styles.priceSub}>
-                    Sales tax ({Number(bt.tax_pct) || 0}%): {money(taxAmt)}
-                  </div>
-                  <div className={styles.priceSub} style={{ color: 'var(--white)', fontWeight: 700 }}>
-                    Total: {money(totalWithTax)}
-                  </div>
-                </>
-              );
-            })()}
-            {b.cocktail_price != null && Number(b.cocktail_price) > 0 && bigPriceVal != null && (
-              <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
-                {cur}{(Number(bigPriceVal) - Number(b.cocktail_price)).toLocaleString()} + {cur}{Number(b.cocktail_price).toLocaleString()} cocktail
-              </div>
-            )}
-            {b.ceremony_price != null && Number(b.ceremony_price) > 0 && bigPriceVal != null && (
-              <div className={styles.priceSub} style={{ color: 'var(--neon)' }}>
-                {cur}{(Number(bigPriceVal) - Number(b.ceremony_price)).toLocaleString()} + {cur}{Number(b.ceremony_price).toLocaleString()} ceremony
-              </div>
-            )}
-            {overtimeRate != null && (
-              <div className={styles.priceSub}>
-                Overtime: <span>{cur}{overtimeRate.toLocaleString()}/hr</span>
-              </div>
-            )}
           </div>
           {durationLabel && (
             <div className={styles.priceCol}>
@@ -467,7 +405,7 @@ export default function MobileBookingCard(props: Props) {
           <div className={styles.packageTitle} style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--white)' }}>{b.package_title}</div>
           {b.package_details && (
             <>
-              <div style={{ borderTop: '1px solid var(--border)', margin: '.5rem 0 .6rem' }} />
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0 .6rem' }} />
               <div
                 className={styles.packageDetails}
                 style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--white)' }}
@@ -509,9 +447,13 @@ export default function MobileBookingCard(props: Props) {
                 {reqAddons.map((a, i) => (
                   <div
                     key={i}
-                    style={{ fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', gap: 12,
+                      fontSize: 14, color: 'var(--white)', padding: '3px 0',
+                    }}
                   >
-                    {a.title}
+                    <span>{a.title}</span>
+                    <span style={{ color: 'var(--muted)' }}>{cur}{(Number(a.price) || 0).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -519,6 +461,66 @@ export default function MobileBookingCard(props: Props) {
           })()}
         </div>
       )}
+      {/* Full cost breakdown + payment schedule — the complete itemized
+          math (package, add-ons, tax, total with tax) and the deposit/balance
+          split, shown at the bottom of Package & Price. */}
+      {hasPrice && bigPriceVal != null && (() => {
+        const bt = b as typeof b & {
+          tax_pct?: number | null; tax_amount?: number | null; total_with_tax?: number | null;
+          deposit_pct?: number | null; deposit_amount?: number | null;
+          discount_amount?: number | null; discount_label?: string | null;
+        };
+        const r2 = (n: number) => Math.round(n * 100) / 100;
+        const money2 = (n: number) =>
+          `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
+        const addonSum = reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
+        const cocktailP = Number(b.cocktail_price) || 0;
+        const ceremonyP = Number(b.ceremony_price) || 0;
+        const subtotal = Number(bigPriceVal) || 0;
+        const basePackage = r2(subtotal - addonSum - cocktailP - ceremonyP);
+        const taxPct = Number(bt.tax_pct) || 0;
+        const taxAmt = bt.tax_amount != null ? Number(bt.tax_amount) : (taxPct > 0 ? r2(subtotal * taxPct / 100) : 0);
+        const totalWithTax = bt.total_with_tax != null ? Number(bt.total_with_tax) : r2(subtotal + taxAmt);
+        const depPct = Number(bt.deposit_pct) || 0;
+        const depAmt = bt.deposit_amount != null ? Number(bt.deposit_amount) : (depPct > 0 ? r2(totalWithTax * depPct / 100) : 0);
+        const balance = depAmt > 0 ? r2(totalWithTax - depAmt) : null;
+        const row = (l: string, v: string, strong = false, accent = false) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 14, fontWeight: strong ? 700 : 400 }}>
+            <span style={{ color: strong ? 'var(--white)' : 'var(--muted)' }}>{l}</span>
+            <span style={{ color: accent ? 'var(--neon)' : 'var(--white)' }}>{v}</span>
+          </div>
+        );
+        const divider = <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0' }} />;
+        return (
+          <div style={{ marginTop: '.4rem', padding: '1rem', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border)', borderRadius: 8 }}>
+            <div className={styles.tinyLabel} style={{ marginBottom: 8, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Cost Breakdown</div>
+            {row('Package', money2(basePackage))}
+            {reqAddons.map((a, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 14 }}>
+                <span style={{ color: 'var(--muted)' }}>{a.title || 'Add-on'}</span>
+                <span style={{ color: 'var(--white)' }}>{money2(Number(a.price) || 0)}</span>
+              </div>
+            ))}
+            {ceremonyP > 0 && row('Ceremony', money2(ceremonyP))}
+            {cocktailP > 0 && row('Cocktail hour', money2(cocktailP))}
+            {bt.discount_amount != null && Number(bt.discount_amount) > 0 && row(bt.discount_label || 'Discount', `−${money2(Number(bt.discount_amount))}`, false, true)}
+            {divider}
+            {row('Subtotal (before tax)', money2(subtotal))}
+            {taxAmt > 0 && row(`Sales tax (${taxPct}%)`, money2(taxAmt))}
+            {row('Total Event Cost (with tax)', money2(totalWithTax), true)}
+            {depAmt > 0 && (
+              <>
+                {divider}
+                <div className={styles.tinyLabel} style={{ marginBottom: 6, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Payment Schedule</div>
+                {row(depPct > 0 ? `Deposit (${depPct}%)` : 'Deposit', money2(depAmt))}
+                {balance != null && row('Balance due day of event', money2(balance))}
+              </>
+            )}
+            {overtimeRate != null && row('Overtime', `${money2(overtimeRate)}/hr`)}
+          </div>
+        );
+      })()}
       {/* View History — read-only modal of all counters/quotes on this
           booking. Only shown once there are 2+ entries. */}
       {(() => {
