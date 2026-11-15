@@ -217,6 +217,17 @@ function AddonCard({
   // always shows Save — even when it's the only card on the list.
   const foldable = !!collapsible || !!addon.active;
 
+  // Save is only clickable when there's actually something to save: the card has
+  // UNSAVED edits AND is valid (title + price > 0, no duplicate). Snapshot the
+  // last-saved state; any field change makes it dirty, a Save clears it.
+  const snapshot = (a: MobAddon) =>
+    JSON.stringify({ t: (a.title || '').trim(), p: String(a.price ?? ''), d: a.details || '', ph: a.photo || '' });
+  const [savedSnap, setSavedSnap] = useState<string>(() => snapshot(addon));
+  const curSnap = snapshot(addon);
+  const dirty = curSnap !== savedSnap;
+  const valid = !!(addon.title || '').trim() && Number(addon.price) > 0 && !duplicate;
+  const canSave = dirty && valid;
+
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -401,8 +412,16 @@ function AddonCard({
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
-            onClick={() => setCollapsed(true)}
-            style={{ background: 'rgba(56,232,176,.14)', border: '1px solid #38e8b0', color: '#38e8b0', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '.03em' }}
+            disabled={!canSave}
+            onClick={() => { if (!canSave) return; setSavedSnap(curSnap); setCollapsed(true); }}
+            title={!valid ? 'Add a title and price first' : !dirty ? 'No changes to save' : 'Save changes'}
+            style={{
+              background: canSave ? 'rgba(56,232,176,.14)' : 'transparent',
+              border: `1px solid ${canSave ? '#38e8b0' : 'rgba(255,255,255,.18)'}`,
+              color: canSave ? '#38e8b0' : '#6b7080',
+              borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700,
+              cursor: canSave ? 'pointer' : 'default', letterSpacing: '.03em',
+            }}
           >
             Save
           </button>
