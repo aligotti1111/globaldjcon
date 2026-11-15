@@ -298,8 +298,19 @@ export default function AddManualBookingModal({
   }, [focusHost]);
   // Optional flat rate. Stored as offer_amount + currency so it flows
   // through the same fields used by the normal booking flow.
+  //
+  // IMPORTANT when editing: offer_amount is the base rate WITH the add-ons
+  // already folded in (that's how it's saved — see the payload below). The Rate
+  // field is the base ONLY; the add-on rows add their prices back on top. So
+  // when re-opening a booking we must strip the stored add-on prices back out,
+  // or the add-ons get double-counted (base shows rate+add-ons, then add-ons
+  // are added again).
+  const existingStoredAddonsSum = (((existing as { addons?: { price?: unknown }[] } | null)?.addons) || [])
+    .reduce((s, a) => s + (Number(a?.price) || 0), 0);
   const [rate, setRate] = useState<string>(
-    existing?.offer_amount != null ? String(existing.offer_amount) : '',
+    existing?.offer_amount != null
+      ? String(Number((Number(existing.offer_amount) - existingStoredAddonsSum).toFixed(2)))
+      : '',
   );
   /**
    * Not a choice any more — it comes from the DJ's settings.
