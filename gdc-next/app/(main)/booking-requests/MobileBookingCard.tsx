@@ -489,7 +489,7 @@ export default function MobileBookingCard(props: Props) {
         );
         const divider = <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0' }} />;
         return (
-          <div style={{ marginTop: '.75rem', padding: '1rem', background: 'linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0))', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <div style={{ marginTop: '.75rem', padding: '1rem', background: 'rgba(0,0,0,0.28)', border: '1px solid var(--border)', borderRadius: 8 }}>
             <div className={styles.tinyLabel} style={{ marginBottom: 8, fontSize: 11, letterSpacing: '.14em', color: 'var(--muted)', fontWeight: 700 }}>Cost Breakdown</div>
             {divider}
             {row('Package', money2(basePackage))}
