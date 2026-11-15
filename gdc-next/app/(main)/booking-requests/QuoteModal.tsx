@@ -210,6 +210,10 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         // bill can itemize the add-ons back out of it.
         quoted_rate: subtotalNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
+        // Persist the percentage too, not just the amount — otherwise a later
+        // deposit edit or receipt recompute reads a missing/stale deposit_pct
+        // and the deposit silently drops to $0.
+        deposit_pct: depositPct > 0 ? depositPct : null,
         // Keep the frozen tax snapshot coherent: quote-mode bookings have no
         // price at creation, so their tax AMOUNTS were left null — fill them
         // now from the frozen % and the price the DJ just set. Never written
