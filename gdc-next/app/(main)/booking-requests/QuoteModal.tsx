@@ -265,6 +265,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         ...booking,
         quoted_rate: subtotalNum,
         deposit_amount: depositAmount ? parseFloat(depositAmount) : null,
+        deposit_pct: depositPct > 0 ? depositPct : null,
         ...(quoteTaxPct > 0
           ? { tax_pct: quoteTaxPct, tax_amount: quoteTaxAmount, total_with_tax: quoteTotalWithTax }
           : {}),
