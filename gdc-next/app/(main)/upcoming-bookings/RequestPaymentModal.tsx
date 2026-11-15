@@ -90,6 +90,25 @@ export default function RequestPaymentModal({
   const [ackMismatch, setAckMismatch] = useState(false);
   const blockedByMismatch = mismatch && !ackMismatch;
 
+  // Deposit-% picker. When no deposit was ever set on the booking (deposit off
+  // or skipped), the DJ can still request one here: pick a % and we fill the
+  // Amount off the agreed total — which they can then adjust by hand. The
+  // booking's own deposit % (if any) is folded into the list and pre-selected.
+  const [pctChoice, setPctChoice] = useState<string>(
+    depositPct != null && depositPct > 0 ? String(depositPct) : '',
+  );
+  const pctOptions = Array.from(
+    new Set([10, 15, 20, 25, 30, 33, 40, 50, ...(depositPct != null && depositPct > 0 ? [depositPct] : [])]),
+  ).sort((a, b) => a - b);
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  function applyPct(raw: string) {
+    setPctChoice(raw);
+    setReqErr(null);
+    const pct = Number(raw);
+    if (!raw || !Number.isFinite(pct) || pct <= 0 || !(expectedTotal > 0)) return;
+    setReqAmount(round2((expectedTotal * pct) / 100).toFixed(2));
+  }
+
   return (
     <div
       onClick={() => !reqBusy && onClose()}
@@ -109,6 +128,33 @@ export default function RequestPaymentModal({
         <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '.95rem', marginBottom: '.7rem' }}>
           {reqKind === 'balance' ? 'Request Balance' : 'Request Deposit'}
         </div>
+
+        {/* Deposit-% picker — only for a deposit request, and only when we know
+            the agreed total to derive from. Picking a % fills the Amount below,
+            which the DJ can still edit. */}
+        {reqKind === 'deposit' && expectedTotal > 0 && (
+          <div style={{ marginBottom: '.7rem' }}>
+            <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
+              Deposit %
+            </label>
+            <select
+              value={pctChoice}
+              onChange={(e) => applyPct(e.target.value)}
+              style={{
+                width: '100%', background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
+                borderRadius: 6, color: 'var(--white,#fff)', padding: '.5rem .7rem',
+                fontFamily: "'Space Mono', monospace", fontSize: '.82rem', cursor: 'pointer',
+              }}
+            >
+              <option value="">Choose a %…</option>
+              {pctOptions.map((p) => (
+                <option key={p} value={p}>
+                  {p}% — {fmtMoney(round2((expectedTotal * p) / 100), currency)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
           Amount
