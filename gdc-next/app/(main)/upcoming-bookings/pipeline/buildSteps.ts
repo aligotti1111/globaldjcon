@@ -1073,6 +1073,16 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
   }
 
   if (isCancelled) {
+    // Money ACTUALLY collected on a booking that was later cancelled. A kept
+    // deposit/balance is still real income (Finance counts it) until the DJ
+    // marks it refunded — so those two icons stay clickable with a refund toggle
+    // even though every other action is stripped.
+    const depositCollected = payments.some((p) => p.kind === 'deposit'
+      && (p.status === 'paid' || p.status === 'waived' || Number(p.amount_paid || 0) > 0)) || !!overrides.deposit;
+    const balanceCollected = payments.some((p) => p.kind === 'balance'
+      && (p.status === 'paid' || p.status === 'waived' || Number(p.amount_paid || 0) > 0)) || !!overrides.invoice;
+    const depositRefunded = !!overrides.deposit_refunded;
+    const balanceRefunded = !!overrides.balance_refunded;
     for (const st of steps) {
       // DOWNLOADS SURVIVE. Everything else on a cancelled booking is an action
       // on a night that isn't happening — but a signed contract is a record,
@@ -1085,6 +1095,28 @@ export function buildBookingSteps(ctx: BuildStepsCtx): { steps: PipelineStep[]; 
       // which meant the app said "this contract still applies" and then hid it.
       st.actions = (st.actions ?? []).filter((a) => a.label.includes('Download'));
       st.overridable = false;
+
+      // Refund toggle on a kept deposit — once refunded, Finance stops counting
+      // it and the cell reads "Refunded".
+      if (st.key === 'deposit' && depositCollected) {
+        st.actions = [
+          ...st.actions,
+          depositRefunded
+            ? { label: 'Mark deposit not refunded', run: () => toggleStep('deposit_refunded', false) }
+            : { label: 'Mark deposit refunded', run: () => toggleStep('deposit_refunded', true) },
+        ];
+        if (depositRefunded) { st.caption = 'Refunded'; st.color = MUTED; }
+      }
+      // Same for a kept balance.
+      if (st.key === 'invoice' && balanceCollected) {
+        st.actions = [
+          ...st.actions,
+          balanceRefunded
+            ? { label: 'Mark balance not refunded', run: () => toggleStep('balance_refunded', false) }
+            : { label: 'Mark balance refunded', run: () => toggleStep('balance_refunded', true) },
+        ];
+        if (balanceRefunded) { st.caption = 'Refunded'; st.color = MUTED; }
+      }
     }
   }
   return { steps, rowValue };
