@@ -467,6 +467,7 @@ export default function MobileBookingCard(props: Props) {
           <div className={styles.packageTitle} style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--white)' }}>{b.package_title}</div>
           {b.package_details && (
             <>
+              <div style={{ borderTop: '1px solid var(--border)', margin: '.5rem 0 .6rem' }} />
               <div
                 className={styles.packageDetails}
                 style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--white)' }}
@@ -508,13 +509,9 @@ export default function MobileBookingCard(props: Props) {
                 {reqAddons.map((a, i) => (
                   <div
                     key={i}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', gap: 12,
-                      fontSize: 14, color: 'var(--white)', padding: '3px 0',
-                    }}
+                    style={{ fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
                   >
-                    <span>{a.title}</span>
-                    <span style={{ color: 'var(--muted)' }}>{cur}{(Number(a.price) || 0).toLocaleString()}</span>
+                    {a.title}
                   </div>
                 ))}
               </div>
