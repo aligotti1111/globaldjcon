@@ -745,8 +745,13 @@ export default function BookingDetails({
           ...bookingAddons.map((a) => [{ label: a.title, value: money(a.price) }]),
         ] as DetailRow[])
       : ([
-          [{ label: isWedding ? 'Reception' : 'Price', value: agreedRateWithDiscount }],
+          [{ label: isWedding ? 'Reception' : 'Package price', value: agreedRateWithDiscount }],
         ] as DetailRow[])),
+    // Row 7a: Deposit due up front (part of the Payment schedule band). Only
+    // shown when the booking actually carries a deposit.
+    [
+      { label: (booking.deposit_pct != null && booking.deposit_pct > 0) ? `Deposit (${booking.deposit_pct}%)` : 'Deposit', value: (depositAmountNum != null && depositAmountNum > 0) ? money(depositAmountNum) : null },
+    ],
     // Row 7b: Balance due on the day of the event (tax-inclusive total minus the
     // deposit). Always shown so the receipt is complete.
     [
@@ -879,7 +884,7 @@ export default function BookingDetails({
       <>
         {main.map((c) => (
           <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
-            <span className={styles.priceKey}>{c.label}{(c.label === 'Agreed Rate' || c.label === 'Reception' || c.label === 'Price') ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
+            <span className={styles.priceKey}>{c.label}{(c.label === 'Agreed Rate' || c.label === 'Reception' || c.label === 'Price' || c.label === 'Package price') ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
             <span className={styles.priceVal}>{c.value}</span>
           </div>
         ))}
