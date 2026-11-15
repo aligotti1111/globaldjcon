@@ -102,7 +102,10 @@ export default function RequestPaymentModal({
       ? String(depositPct) : '',
   );
   const pctOptions = Array.from(
-    new Set([10, 15, 20, 25, 30, 33, 40, 50, ...(depositPct != null && depositPct > 0 ? [depositPct] : [])]),
+    new Set([
+      ...Array.from({ length: 19 }, (_, i) => (i + 1) * 5), // 5, 10, 15 … 95
+      ...(depositPct != null && depositPct > 0 ? [depositPct] : []),
+    ]),
   ).sort((a, b) => a - b);
   // Match the cent-rounding the quote flow + create route use (toFixed on the
   // raw product), so re-picking the booking's own % never drifts a cent off the
@@ -182,7 +185,7 @@ export default function RequestPaymentModal({
                       boxSizing: 'border-box', height: '2.35rem',
                     }}
                   >
-                    <option value="">Choose a %…</option>
+                    <option value="">%</option>
                     {pctSelectOptions.map((p) => (
                       <option key={p} value={p}>
                         {p}% — {fmtMoney(depForPct(p), currency)}
