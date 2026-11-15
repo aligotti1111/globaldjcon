@@ -268,12 +268,14 @@ function AddonCard({
               <polyline points="6 9 12 15 18 9" />
             </svg>
           )}
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#e8e8ef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: '#e8e8ef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {(addon.title || '').trim() || 'New add-on'}
           </span>
+          {/* Price pinned to the right edge of the header so every card lines its
+              price up in the same spot, regardless of name length. */}
           {collapsed && Number(addon.price) > 0 && (
-            <span style={{ fontSize: 13, color: '#9aa0b4', flexShrink: 0 }}>
-              · {sym}{Number(addon.price).toLocaleString()}
+            <span style={{ fontSize: 13, color: '#9aa0b4', flexShrink: 0, marginLeft: 8, textAlign: 'right' }}>
+              {sym}{Number(addon.price).toLocaleString()}
             </span>
           )}
         </button>
