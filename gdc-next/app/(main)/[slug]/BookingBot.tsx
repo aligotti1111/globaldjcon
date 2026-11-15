@@ -199,6 +199,14 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
     }
   };
 
+  // Re-open the booking form from the "already started" note — the prefill is
+  // already saved, so this just closes the chat and fires the open event again.
+  // Without this the hand-off note was dead text with nothing to click.
+  const goToForm = () => {
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent('gdc:open-booking', { detail: { slug } }));
+  };
+
   return (
     <>
       {!open && (
@@ -259,7 +267,9 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
                       the conversation instead of pinning to the bottom. */}
                   {!locked && startAnchor === i && (
                     requestSent ? (
-                      <span className={styles.sentNote}>✓ Your booking request was started for {name} — review &amp; submit it on the form.</span>
+                      <button className={styles.startBtn} onClick={goToForm}>
+                        ✓ Request started for {name} — review &amp; submit it on the form →
+                      </button>
                     ) : (
                       <button className={styles.startBtn} onClick={startRequest} disabled={prepping}>
                         {prepping ? 'Preparing…' : 'Start my booking request →'}
