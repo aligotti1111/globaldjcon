@@ -924,7 +924,7 @@ export default function ContractPortal({
                   {(() => { const locked = useLocked(c); return (
                     <button type="button" disabled={locked} title={locked ? useLockNote(c) : undefined}
                       onClick={() => { if (!locked) onUseContract?.(c.id); }}
-                      style={{ width: 104, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.6rem' }}>Use This Contract</button>
+                      style={{ width: 104, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: locked ? 'rgba(255,255,255,.08)' : 'var(--neon,#00e0a4)', border: 'none', color: locked ? '#777' : '#06231b', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '.6rem' }}>Use</button>
                   ); })()}
                   {/* Edit Wording — only for contracts with editable text in our
                       system. Uploaded files have none, so a same-width spacer keeps
@@ -938,11 +938,7 @@ export default function ContractPortal({
                       written/uploaded contracts (PDF documents). Standard contracts
                       are HTML templates: their fields are the chips in the wording,
                       edited via "Edit Wording", so they get a spacer here instead. */}
-                  {!c.is_standard ? (
-                    <button type="button" onClick={() => openCard(c)} style={{ width: 102, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: 'pointer', fontSize: '.6rem' }}>Edit Anchor Tags</button>
-                  ) : (
-                    <span aria-hidden style={{ width: 102, flexShrink: 0 }} />
-                  )}
+                  <button type="button" onClick={() => (c.is_standard ? openStandardAnchors(c) : openCard(c))} style={{ width: 102, flexShrink: 0, textAlign: 'center', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid var(--neon,#00e0a4)', color: 'var(--neon,#00e0a4)', fontWeight: 700, borderRadius: 5, padding: '.46rem .25rem', cursor: 'pointer', fontSize: '.6rem' }}>Edit Anchor Tags</button>
                 </>
               ) : (
                 <>
