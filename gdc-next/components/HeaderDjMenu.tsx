@@ -282,7 +282,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               account (gated by email in the Header). Sits at the very top. */}
           {isAdmin && (
             <>
-              <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              <Link href="/admin" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
                 <IconAdmin />Admin Panel
               </Link>
               <div className="hdr-dj-menu-sep" />
@@ -293,7 +293,7 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               app for the DJ's public page — the thing they show people — so it
               doesn't belong under a heading with settings. */}
           {slug && (
-            <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href={`/${slug}`} className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
               <IconUser />{isTeammate ? 'View Profile' : 'View My Profile'}
             </Link>
           )}
@@ -309,27 +309,27 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
               live plan. */}
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Bookings</div>
-          <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/upcoming-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
             <IconClock />Dashboard
           </Link>
-          <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/past-bookings" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
             <IconArchive />Past Bookings
           </Link>
           {(bookingEnabled || isTeammate) && canAddBookings && (
-            <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href="/upcoming-bookings?add=1" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
               <IconPlus />Add Booking Manually
             </Link>
           )}
           {/* Booking Settings is owner-only — hidden from teammates. Shown
               whether or not bookings are live (it's where you set them up). */}
           {!isTeammate && (
-            <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href="/booking-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
               <IconGear />Booking Settings
             </Link>
           )}
           {/* Discounts shortcut — owner/admin/manager, live plan only. */}
           {(bookingEnabled || isTeammate) && canMakeDiscounts && (
-            <Link href="/booking-settings?section=discounts" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href="/booking-settings?section=discounts" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
               <IconTag />Add Discount / Promo Code
             </Link>
           )}
@@ -337,14 +337,14 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
           {/* ── Account ── */}
           <div className="hdr-dj-menu-sep" />
           <div style={sectionLabelStyle}>Account</div>
-          <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/account-settings" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
             <IconSettings />Account Settings
           </Link>
           {/* Finance report — OWNER ONLY + paid feature. Hidden from teammates
               and from free accounts (bookingEnabled = live paid/comped tier);
               the page itself also hard-redirects anyone who reaches it by URL. */}
           {!isTeammate && bookingEnabled && (
-            <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href="/finance" className="hdr-dj-menu-item" role="menuitem" onClick={() => { setTimeout(() => setOpen(false), 0); }}>
               <IconChart />Finance/Earnings
             </Link>
           )}
