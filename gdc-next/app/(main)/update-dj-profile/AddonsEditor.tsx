@@ -103,6 +103,11 @@ export default function AddonsEditor({
             userId={userId}
             sym={sym}
             duplicate={dupFlags[idx]}
+            // Foldable once there's more than one card, so the list stays short.
+            // The last card (the one being added/edited) starts expanded.
+            collapsible={display.length > 1}
+            startCollapsed={display.length > 1 && idx !== display.length - 1}
+            isWorking={idx === display.length - 1}
             onChange={(p) => update(idx, p)}
             onRemove={idx < list.length ? () => remove(idx) : undefined}
           />
@@ -155,18 +160,22 @@ export default function AddonsEditor({
 }
 
 function AddonCard({
-  addon, idx, userId, sym, duplicate, onChange, onRemove,
+  addon, idx, userId, sym, duplicate, collapsible, startCollapsed, isWorking, onChange, onRemove,
 }: {
   addon: MobAddon;
   idx: number;
   userId: string;
   sym: string;
   duplicate?: boolean;
+  collapsible?: boolean;
+  startCollapsed?: boolean;
+  isWorking?: boolean;
   onChange: (patch: Partial<MobAddon>) => void;
   onRemove?: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<{ kind: 'idle' | 'uploading' | 'done' | 'error'; msg?: string }>({ kind: 'idle' });
+  const [collapsed, setCollapsed] = useState(!!startCollapsed);
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -197,21 +206,48 @@ function AddonCard({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#9aa0b4', letterSpacing: '.04em' }}>
-          ADD-ON {idx + 1}
-        </span>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove add-on"
-            style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
-          >
-            ✕
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
+          aria-expanded={collapsible ? !collapsed : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: collapsible ? 'pointer' : 'default', minWidth: 0, flex: 1, textAlign: 'left' }}
+        >
+          {collapsible && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }} aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          )}
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#9aa0b4', letterSpacing: '.04em', flexShrink: 0 }}>
+            ADD-ON {idx + 1}
+          </span>
+          {collapsed && (addon.title || '').trim() && (
+            <span style={{ fontSize: 13, color: '#e8e8ef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              · {addon.title}
+            </span>
+          )}
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          {/* Keep the Activated status visible on cards you're not currently
+              working on, so you can see at a glance which extras are live. */}
+          {!isWorking && addon.active && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#38e8b0', background: 'rgba(56,232,176,.14)', border: '1px solid #38e8b0', borderRadius: 8, padding: '3px 8px', letterSpacing: '.03em' }}>
+              Activated
+            </span>
+          )}
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label="Remove add-on"
+              style={{ background: 'none', border: 'none', color: '#f3899a', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
+      {!collapsed && (<>
       {/* Title + price on one row */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ flex: '2 1 200px' }}>
@@ -307,6 +343,7 @@ function AddonCard({
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 }
