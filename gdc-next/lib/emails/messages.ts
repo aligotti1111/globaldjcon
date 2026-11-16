@@ -790,7 +790,7 @@ export function buildManualBookingInviteBody(opts: {
     ? `<div style="border:1px solid #eeeeee;border-radius:8px;padding:16px 18px;margin:0 0 20px;">
            <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;">Price</div>
            <table style="width:100%;border-collapse:collapse;">
-             ${hasRate ? row(addonList.length > 0 ? 'Package price' : 'Rate', fmtAmt(rate as number)) : ''}
+             ${hasRate ? row(packageTitle ? `Package: ${escHtml(packageTitle)}` : (addonList.length > 0 ? 'Package price' : 'Rate'), fmtAmt(rate as number)) : ''}
              ${addonList.map((a) => row(escHtml(a.title), fmtAmt(Number(a.price) || 0))).join('')}
              ${taxAmount > 0 ? row(`Sales tax (${taxPct}%)`, fmtAmt(taxAmount)) : ''}
              ${row(taxAmount > 0 ? 'Total Event Cost (with tax)' : 'Total Event Cost', fmtAmt(total != null ? total : (hasRate ? (rate as number) : 0) + addonSum + taxAmount), true)}
@@ -840,18 +840,26 @@ export function buildManualBookingInviteBody(opts: {
           venueTypeText: djType === 'club' ? venueTypeLabel(venueType) : undefined,
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
-          packageTitle: djType === 'mobile' ? (packageTitle || undefined) : undefined,
-          packageDetails: djType === 'mobile' ? (packageDetails || undefined) : undefined,
-          addons: djType === 'mobile' ? addonList : undefined,
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
           // Cocktail-hour / ceremony start times (weddings) — surfaced in the box.
           isWedding: djType === 'mobile' && eventType === 'weddings',
           ceremonyStart: (djType === 'mobile' && ceremonyNeeded) ? (ceremonyStart || undefined) : undefined,
           cocktailStart: (djType === 'mobile' && cocktailNeeded) ? (cocktailStart || undefined) : undefined,
-          // Price moved into its own breakdown block below (rate + tax +
-          // payment schedule), so it's not duplicated as a bare "Rate" line here.
+          // Package + Add-ons moved to their own box below; price is itemized in
+          // the PRICE breakdown block, so neither is duplicated as a bare line here.
         })}
+        ${djType === 'mobile' ? (() => {
+          if (!packageTitle && !(packageDetails || '').trim() && addonList.length === 0) return '';
+          const parts: string[] = [];
+          if (packageTitle) parts.push(`<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(packageTitle)}</p>`);
+          if ((packageDetails || '').trim()) parts.push(`<div style="margin:6px 0 0;color:#999;font-size:12px;line-height:1.5;">${packageDetails}</div>`);
+          if (addonList.length > 0) {
+            parts.push(`<p style="margin:12px 0 2px;color:#1a1a2e;font-size:13px;font-weight:700;">Add-ons</p>`);
+            parts.push(`<ul style="margin:0;padding-left:18px;color:#666;font-size:13px;line-height:1.6;">${addonList.map((a) => `<li>${escHtml(a.title)}</li>`).join('')}</ul>`);
+          }
+          return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:0 0 20px;">${parts.join('')}</div>`;
+        })() : ''}
         ${priceBlock}
         ${accountBlock}
         <p style="color:#999999;margin-top:24px;font-size:12px;line-height:1.6;text-align:center;">If you weren't expecting this email, please reply to let us know.</p>
