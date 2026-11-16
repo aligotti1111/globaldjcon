@@ -72,6 +72,7 @@ export function bookingInfoBox(opts: {
   timeRange?: string;           // pre-formatted, e.g. "9:00 PM – 1:00 AM"
   packageTitle?: string;
   packageDetails?: string;      // mobile only — package description (HTML)
+  addons?: { title: string; price: number }[]; // mobile add-ons, listed under Package
   venueTypeText?: string;       // pre-formatted, e.g. "Bar"
   venueName?: string;
   venueAddress?: string;
@@ -104,6 +105,12 @@ export function bookingInfoBox(opts: {
   }
   // Package goes under the Address (matches the request/confirmation card order).
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
+  {
+    const biAddons = (Array.isArray(opts.addons) ? opts.addons : []).filter((a) => a && (a.title || '').trim());
+    if (biAddons.length > 0) {
+      rows.push(`<p style="margin:0 0 4px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Add-ons:</strong></p><ul style="margin:0 0 8px;padding-left:18px;color:#666;font-size:13px;line-height:1.6;">${biAddons.map((a) => `<li>${escHtml(a.title)}</li>`).join('')}</ul>`);
+    }
+  }
   if (opts.venueTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue Type:</strong> ${escHtml(opts.venueTypeText)}</p>`);
   if (opts.setTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Set Type:</strong> ${escHtml(opts.setTypeText)}</p>`);
   if (opts.equipmentText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Equipment:</strong> ${escHtml(opts.equipmentText)}</p>`);
@@ -135,6 +142,7 @@ export function mobileBookingRequestBox(opts: {
   venueAddress?: string;
   packageTitle?: string;
   packageDetails?: string;
+  addons?: { title: string; price: number }[];
   rateLabel?: string;
   rateValue?: string;
   rateBreakdown?: string;
@@ -240,11 +248,15 @@ export function mobileBookingRequestBox(opts: {
   // The package gets its OWN box under the event card — the title (and the
   // DJ-authored details HTML, when there is any) read as a unit instead of
   // being buried among the event rows.
-  const packageBox = opts.packageTitle
+  const pkgAddons = (Array.isArray(opts.addons) ? opts.addons : []).filter((a) => a && (a.title || '').trim());
+  const packageBox = (opts.packageTitle || pkgAddons.length > 0)
     ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
-         <p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>
+         ${opts.packageTitle ? `<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}</p>` : ''}
          ${opts.packageDetails && opts.packageDetails.trim()
            ? `<div style="margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;">${opts.packageDetails}</div>`
+           : ''}
+         ${pkgAddons.length > 0
+           ? `<p style="margin:12px 0 2px;color:#1a1a2e;font-size:13px;font-weight:700;">Add-ons</p><ul style="margin:0;padding-left:18px;color:#666;font-size:13px;line-height:1.6;">${pkgAddons.map((a) => `<li>${escHtml(a.title)}</li>`).join('')}</ul>`
            : ''}
        </div>`
     : '';
