@@ -169,6 +169,7 @@ export function buildBookingRequestBody(opts: {
   eventDetails: string | undefined;
   packageTitle: string | undefined;
   packageDetails: string | undefined;
+  addons?: { title: string; price: number }[];
   eventDate: string | undefined;
   startTime: string | undefined;
   endTime: string | undefined;
@@ -198,7 +199,7 @@ export function buildBookingRequestBody(opts: {
   billBox: string;
 }): string {
   const {
-    djName, requesterName, eventType, eventDetails, packageTitle, packageDetails,
+    djName, requesterName, eventType, eventDetails, packageTitle, packageDetails, addons,
     eventDate, startTime, endTime, venueName, venueAddress,
     isWedding, cocktailNeeded, cocktailStart, cocktailSameRoom,
     ceremonyNeeded, ceremonyStart, ceremonySameRoom, setupHours,
@@ -278,6 +279,7 @@ export function buildBookingRequestBody(opts: {
     venueAddress,
     packageTitle,
     packageDetails,
+    addons,
     rateLabel: rateValueNum != null && !isNaN(rateValueNum) ? 'Quoted Rate' : undefined,
     rateValue: rateValueNum != null && !isNaN(rateValueNum)
       ? `${currencySymbol(offerCurrency)}${rateValueNum.toLocaleString()}`
@@ -412,6 +414,7 @@ export function buildBookingRequestConfirmationBody(opts: {
         venueAddress,
         packageTitle,
         packageDetails,
+        addons: parseBookingAddons(addons),
         rateLabel: confRateNum != null && !isNaN(confRateNum) ? 'Quoted Rate' : undefined,
         rateValue: confRateNum != null && !isNaN(confRateNum)
           ? `${currencySymbol(confCurrency)}${confRateNum.toLocaleString()}`
@@ -432,6 +435,7 @@ export function buildBookingRequestConfirmationBody(opts: {
         date: eventDate,
         timeRange: fmtTimeRange(startTime, endTime),
         packageTitle,
+        addons: parseBookingAddons(addons),
         venueTypeText: venueTypeLabel(venueType),
         venueName,
         venueAddress,
@@ -637,6 +641,8 @@ export function buildBookingApprovedBody(opts: {
   startTime: string | undefined;
   endTime: string | undefined;
   packageTitle: string | undefined;
+  packageDetails?: string | undefined;
+  addons?: { title: string; price: number }[];
   agreedPrice: number | undefined;
   overtimeRate: number | undefined;
   currency: string;
@@ -645,7 +651,7 @@ export function buildBookingApprovedBody(opts: {
   billBox: string;
   progressBox: string;
 }): string {
-  const { recipientName, otherPartyName, recipientRole, eventType, eventDetails, setType, venueType, venueName, venueAddress, startTime, endTime, packageTitle, agreedPrice, overtimeRate, currency, eventDate, equipNeedsText, billBox, progressBox } = opts;
+  const { recipientName, otherPartyName, recipientRole, eventType, eventDetails, setType, venueType, venueName, venueAddress, startTime, endTime, packageTitle, packageDetails, addons, agreedPrice, overtimeRate, currency, eventDate, equipNeedsText, billBox, progressBox } = opts;
   const sym = currencySymbol(currency);
   const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
   // ── Add to Calendar ── A one-tap Google Calendar link so this single
@@ -680,7 +686,18 @@ export function buildBookingApprovedBody(opts: {
           // Agreed Price moved out — the PRICE breakdown below is the single
           // source for money. Package moved to its own box just below.
         })}
-        ${packageTitle ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:0 0 20px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(packageTitle)}</p></div>` : ''}
+        ${(() => {
+          const addonList = (Array.isArray(addons) ? addons : []).filter((a) => a && (a.title || '').trim());
+          if (!packageTitle && !(packageDetails || '').trim() && addonList.length === 0) return '';
+          const parts: string[] = [];
+          if (packageTitle) parts.push(`<p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(packageTitle)}</p>`);
+          if ((packageDetails || '').trim()) parts.push(`<div style="margin:6px 0 0;color:#999;font-size:12px;line-height:1.5;">${packageDetails}</div>`);
+          if (addonList.length > 0) {
+            parts.push(`<p style="margin:12px 0 2px;color:#1a1a2e;font-size:13px;font-weight:700;">Add-ons</p>`);
+            parts.push(`<ul style="margin:0;padding-left:18px;color:#666;font-size:13px;line-height:1.6;">${addonList.map((a) => `<li>${escHtml(a.title)}</li>`).join('')}</ul>`);
+          }
+          return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:0 0 20px;">${parts.join('')}</div>`;
+        })()}
         ${billBox}
         ${overtimeRate != null
           ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()}/hr</p></div>`
@@ -824,6 +841,7 @@ export function buildManualBookingInviteBody(opts: {
           timeRange: fmtTimeRange(startTime, endTime),
           packageTitle: djType === 'mobile' ? (packageTitle || undefined) : undefined,
           packageDetails: djType === 'mobile' ? (packageDetails || undefined) : undefined,
+          addons: djType === 'mobile' ? addonList : undefined,
           venueName: venueName || undefined,
           venueAddress: venueAddress || undefined,
           // Cocktail-hour / ceremony start times (weddings) — surfaced in the box.
