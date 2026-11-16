@@ -601,19 +601,50 @@ export default function BookingRow({
       const depositSettledOffApp = (!!overrides.deposit
         || (depositRow != null && (depositRow.status === 'paid' || depositRow.status === 'waived')))
         && depositRealPaid <= 0;
-      const depositMarked = depositSettledOffApp
-        ? Number((depositRow?.amount ?? 0) || booking.deposit_amount || 0)
-        : 0;
+      // The deposit figure we can net out, if we know it: a requested deposit
+      // row's amount, the booking's frozen deposit_amount, or one derived from
+      // its deposit %. Zero means "marked paid but no amount on record".
+      const knownDeposit = (depositRow != null && Number(depositRow.amount) > 0)
+        ? Number(depositRow.amount)
+        : (booking.deposit_amount != null && Number(booking.deposit_amount) > 0
+          ? Number(booking.deposit_amount)
+          : (booking.deposit_pct != null && Number(booking.deposit_pct) > 0 && total > 0
+            ? Number((total * Number(booking.deposit_pct) / 100).toFixed(2))
+            : 0));
       // A balance already settled BY HAND (mark-paid, no ledger row) records no
       // amount_paid either — the total it was paid-in-full at lives in
       // balance_settled_total. A "New Balance" after a price increase must bill
       // only the DIFFERENCE (new total − what was already collected), not the
       // whole thing again. Use the snapshot as the collected floor.
       const settledSnap = Number((booking as { balance_settled_total?: number | null }).balance_settled_total ?? 0);
-      const collected = Math.max(paid + depositMarked, settledSnap);
-      const remaining = Math.max(0, Math.round((total - collected) * 100) / 100);
-      setReqAmount(remaining > 0 ? remaining.toFixed(2) : '');
-      setReqExpected({ amount: remaining, total, collected });
+      const openBal = (depMarked: number) => {
+        const collected = Math.max(paid + depMarked, settledSnap);
+        const remaining = Math.max(0, Math.round((total - collected) * 100) / 100);
+        setReqAmount(remaining > 0 ? remaining.toFixed(2) : '');
+        setReqExpected({ amount: remaining, total, collected });
+        setReqOpen(true);
+      };
+      // Deposit was marked paid by hand but no amount is on record (deposits
+      // were off, never requested) — so the balance has nothing to net out and
+      // would double-bill the deposit. Ask for it now, store it on the booking,
+      // then bill the net. This also fixes bookings marked paid before amounts
+      // were captured at mark-paid time.
+      if (depositSettledOffApp && knownDeposit <= 0 && total > 0) {
+        setConfirmModal({
+          title: 'Deposit amount needed',
+          body: 'This deposit was marked paid but no amount was recorded. Enter what you collected so it can be deducted from the balance.',
+          okLabel: 'Save & continue',
+          amountPrompt: { label: 'Deposit collected', currency: booking.currency || 'USD' },
+          onOk: async (amt?: number) => {
+            const d = amt && amt > 0 ? amt : 0;
+            if (d > 0) await persistDepositAmount(d);
+            openBal(d);
+          },
+        });
+        return;
+      }
+      openBal(depositSettledOffApp ? knownDeposit : 0);
+      return;
     } else {
       const hasAgreedDeposit = suggestedDeposit != null && suggestedDeposit > 0;
       setReqAmount(hasAgreedDeposit ? String(suggestedDeposit) : '');
