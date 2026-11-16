@@ -844,12 +844,15 @@ function SingleMonthView({
       year === today.getFullYear() &&
       month === today.getMonth() &&
       d === today.getDate();
-    const isBooked = (countByDate[key] || 0) > 0 || !!dayData.booked;
     const isUnavail = !!dayData.unavailable;
-    const bookingsLeft =
-      dayData.bookings_available != null
-        ? dayData.bookings_available
-        : defaultBookingsPerDay;
+    // A day is BOOKED/full only once the approved bookings REACH the company-wide
+    // "max bookings per day" — not at the first booking. countByDate (the real
+    // ledger) counts all approved bookings (manual + client) and is authoritative,
+    // so a stale remaining-counter can't wrongly close a day. The owner's manual
+    // "booked" flag still closes it outright.
+    const approvedCount = countByDate[key] || 0;
+    const isBooked = !!dayData.booked || approvedCount >= defaultBookingsPerDay;
+    const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
     const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
     // A day that's hit its booking capacity is BOOKED for display purposes
     // (red), not "unavailable" (gray). Unavailable is reserved for days the
@@ -1125,12 +1128,13 @@ function RollingMonthsView({
       const key = dateKey(yr, mo, d);
       const dayData: MobileDayData = bookingDays[key] || {};
       const isPast = key < todayKey;
-      const isBooked = (countByDate[key] || 0) > 0 || !!dayData.booked;
       const isUnavail = !!dayData.unavailable;
-      const bookingsLeft =
-        dayData.bookings_available != null
-          ? dayData.bookings_available
-          : defaultBookingsPerDay;
+      // Booked/full only once approved bookings reach the company-wide "max
+      // bookings per day" (the ledger count is authoritative), or the owner
+      // marked it booked.
+      const approvedCount = countByDate[key] || 0;
+      const isBooked = !!dayData.booked || approvedCount >= defaultBookingsPerDay;
+      const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
       const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
       const isToday = key === todayKey;
       const isAvail = !isPast && !isBooked && !isUnavail && !isFull;
