@@ -14,6 +14,7 @@ import { getActingContext } from '@/lib/acting';
 import { effectiveTier, type AccessFields } from '@/lib/access';
 import { BOT_MIN_TIER } from '@/lib/bookingBot';
 import { parseBotTraining, serializeBotTraining } from '@/lib/bookingBotTraining';
+import { fetchSiteText, BOT_SITE_URL_MAX } from '@/lib/botSite';
 
 export const runtime = 'nodejs';
 
@@ -34,6 +35,23 @@ async function readInstructions(db: SupabaseClient, djId: string): Promise<strin
   } catch { return ''; }
 }
 
+// Best-effort read of the website columns (URL + last-fetched + whether a text
+// snapshot exists). Swallows the error on a not-yet-migrated DB.
+async function readSite(db: SupabaseClient, djId: string): Promise<{ url: string; fetchedAt: string | null; hasText: boolean }> {
+  try {
+    const { data, error } = await db.from('users')
+      .select('booking_bot_site_url, booking_bot_site_text, booking_bot_site_fetched_at')
+      .eq('id', djId)
+      .maybeSingle<{ booking_bot_site_url: string | null; booking_bot_site_text: string | null; booking_bot_site_fetched_at: string | null }>();
+    if (error || !data) return { url: '', fetchedAt: null, hasText: false };
+    return {
+      url: data.booking_bot_site_url || '',
+      fetchedAt: data.booking_bot_site_fetched_at || null,
+      hasText: !!(data.booking_bot_site_text && data.booking_bot_site_text.trim()),
+    };
+  } catch { return { url: '', fetchedAt: null, hasText: false }; }
+}
+
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,10 +61,14 @@ export async function GET() {
   const { data } = await db.from('users').select(COLS).eq('id', acting.djId).maybeSingle<Row>();
   const eligible = !!data && effectiveTier(data as AccessFields) >= BOT_MIN_TIER;
   const instructions = await readInstructions(db, acting.djId);
+  const site = await readSite(db, acting.djId);
   return NextResponse.json({
     ok: true,
     enabled: data?.booking_bot_enabled === true,
     instructions,
+    siteUrl: site.url,
+    siteFetchedAt: site.fetchedAt,
+    siteHasText: site.hasText,
     eligible,
   });
 }
@@ -60,20 +82,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Only the account owner can change this.' }, { status: 403 });
   }
 
-  let body: { enabled?: unknown; instructions?: unknown };
+  let body: { enabled?: unknown; instructions?: unknown; siteUrl?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
 
   const hasEnabled = typeof body.enabled === 'boolean';
   const hasInstructions = typeof body.instructions === 'string';
-  if (!hasEnabled && !hasInstructions) {
+  const hasSiteUrl = typeof body.siteUrl === 'string';
+  if (!hasEnabled && !hasInstructions && !hasSiteUrl) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
   const db = createAdminClient() as unknown as SupabaseClient;
   const { data } = await db.from('users').select(COLS).eq('id', acting.djId).maybeSingle<Row>();
   const eligible = !!data && effectiveTier(data as AccessFields) >= BOT_MIN_TIER;
-  // Turning the bot on, or setting custom instructions, both require Premium Pro.
-  if ((body.enabled === true || hasInstructions) && !eligible) {
+  // Turning the bot on, or editing instructions/website, all require Premium Pro.
+  if ((body.enabled === true || hasInstructions || hasSiteUrl) && !eligible) {
     return NextResponse.json({ error: 'The booking assistant is a Premium Pro feature.' }, { status: 403 });
   }
 
@@ -99,9 +122,44 @@ export async function POST(req: Request) {
     savedInstructions = next;
   }
 
+  // Website fallback: fetch the page NOW (never on every chat turn), store a
+  // plain-text snapshot + timestamp. An empty string clears it. A fetch failure
+  // still saves the URL (with an empty snapshot) and reports why.
+  let site = await readSite(db, acting.djId);
+  let siteStatus: { ok: boolean; message?: string } | undefined;
+  if (hasSiteUrl) {
+    const url = String(body.siteUrl).trim().slice(0, BOT_SITE_URL_MAX);
+    if (!url) {
+      const { error } = await db.from('users')
+        .update({ booking_bot_site_url: null, booking_bot_site_text: null, booking_bot_site_fetched_at: null })
+        .eq('id', acting.djId);
+      if (error) return NextResponse.json({ error: 'Your website needs a quick database update first (the booking_bot_site_* columns).' }, { status: 409 });
+      site = { url: '', fetchedAt: null, hasText: false };
+      siteStatus = { ok: true };
+    } else {
+      const fetched = await fetchSiteText(url);
+      const { error } = await db.from('users')
+        .update({
+          booking_bot_site_url: url,
+          booking_bot_site_text: fetched.ok ? fetched.text : null,
+          booking_bot_site_fetched_at: new Date().toISOString(),
+        })
+        .eq('id', acting.djId);
+      if (error) return NextResponse.json({ error: 'Your website needs a quick database update first (the booking_bot_site_* columns).' }, { status: 409 });
+      site = await readSite(db, acting.djId);
+      siteStatus = fetched.ok
+        ? { ok: true }
+        : { ok: false, message: fetched.error || "We saved the link but couldn't read the page." };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     enabled: hasEnabled ? (body.enabled as boolean) : data?.booking_bot_enabled === true,
     instructions: savedInstructions,
+    siteUrl: site.url,
+    siteFetchedAt: site.fetchedAt,
+    siteHasText: site.hasText,
+    siteStatus,
   });
 }
