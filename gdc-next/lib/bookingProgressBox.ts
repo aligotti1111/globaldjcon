@@ -98,10 +98,15 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
       const awaitingHost = b.contract_status === 'awaiting_client' && !contractDone;
       steps.push({
         left: contractSent ? 'Contract sent' : 'Contract',
-        right: contractDone ? 'Signed' : 'Pending',
+        // "Pending" means the contract is out with the host awaiting signature —
+        // that only makes sense once it was actually SENT. An unsent/upcoming
+        // contract shows no status word (like any other not-yet-started step),
+        // never "Pending".
+        right: contractDone ? 'Signed' : (contractSent ? 'Pending' : ''),
         done: contractDone,
-        // "Pending" (awaiting the host's signature) is a live status, so show it.
-        rightAlways: true,
+        // Only show a live right-hand word when the contract was sent (Pending)
+        // or signed — otherwise hide it, same as future steps.
+        rightAlways: contractDone || contractSent,
         href: awaitingHost ? `${SITE_URL}/api/contracts/sign-redirect?bookingId=${bookingId}` : undefined,
       });
     }
