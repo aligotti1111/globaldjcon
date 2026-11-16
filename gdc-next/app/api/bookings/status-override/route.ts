@@ -85,10 +85,10 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('bookings')
-    .select('status_overrides, receipt_overrides, dj_id, total_with_tax')
+    .select('status_overrides, receipt_overrides, dj_id, total_with_tax, deposit_amount')
     .eq('id', bookingId)
     .maybeSingle();
-  const row = data as { status_overrides?: Record<string, boolean> | null; receipt_overrides?: Record<string, Record<string, unknown>> | null; dj_id?: string | null; total_with_tax?: number | null } | null;
+  const row = data as { status_overrides?: Record<string, boolean> | null; receipt_overrides?: Record<string, Record<string, unknown>> | null; dj_id?: string | null; total_with_tax?: number | null; deposit_amount?: number | null } | null;
   if (!row) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
   if (row.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
@@ -115,6 +115,22 @@ export async function POST(req: Request) {
     // log can show the action, mirroring the contract case above.
     if (done) patch.deposit_completed_at = now;
     else patch.deposit_completion_undone_at = now;
+    // CAPTURE THE DEPOSIT FIGURE before the pending deposit request row is
+    // deleted below. When deposits were off in settings, booking.deposit_amount
+    // is null and the amount the DJ requested lives ONLY on that row — deleting
+    // it on mark-paid would lose the figure, so the balance can't net it out and
+    // the deposit receipt falls back to the full event total. Stamp the row's
+    // amount onto the booking (only when none is configured) so both read right.
+    if (done && !(Number(row.deposit_amount ?? 0) > 0)) {
+      try {
+        const pdb = admin as unknown as import('@supabase/supabase-js').SupabaseClient;
+        const { data: depRows } = await pdb
+          .from('booking_payments').select('amount, amount_paid').eq('booking_id', bookingId).eq('kind', 'deposit');
+        const captured = ((depRows as { amount?: number; amount_paid?: number }[] | null) || [])
+          .reduce((m, r) => Math.max(m, Number(r.amount_paid || 0) || Number(r.amount || 0)), 0);
+        if (captured > 0) patch.deposit_amount = Math.round(captured * 100) / 100;
+      } catch { /* non-fatal — the override still saves */ }
+    }
   } else if (key === 'invoice') {
     // "Mark Complete" on the BALANCE / final invoice handled outside the app.
     if (done) patch.balance_completed_at = now;
