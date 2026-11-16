@@ -464,6 +464,7 @@ export function buildBookingRequestConfirmationBody(opts: {
   // Full bill breakdown for a package-priced (auto-quoted) booking.
   const confBill = billBreakdownBox({
     quotedRate: confRateNum != null && !isNaN(confRateNum) ? confRateNum : null,
+    packageTitle,
     cocktailPrice: cocktailPrice != null ? Number(cocktailPrice) : null,
     ceremonyPrice: ceremonyPrice != null ? Number(ceremonyPrice) : null,
     addons: parseBookingAddons(addons),
