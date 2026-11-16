@@ -1532,6 +1532,14 @@ export async function POST(req: Request) {
     // schedule (deposit now, balance on the event day).
     const taxPct = Number(body.taxPct) || 0;
     const taxAmount = Number(body.taxAmount) || 0;
+    // Chosen add-ons (mobile). The `rate` is the base only; each add-on's price
+    // was folded into `total`, so list them under the rate or the add-on money
+    // shows up as an unexplained gap between rate + tax and total.
+    const invAddons = Array.isArray(body.addons)
+      ? (body.addons as { title?: unknown; price?: unknown }[])
+          .map((a) => ({ title: typeof a?.title === 'string' ? a.title.trim() : '', price: Number(a?.price) || 0 }))
+          .filter((a) => a.title)
+      : [];
     const total = body.total != null && Number.isFinite(Number(body.total)) ? Number(body.total) : null;
     const depositPct = Number(body.depositPct) || 0;
     const depositAmount = Number(body.depositAmount) || 0;
@@ -1572,7 +1580,7 @@ export async function POST(req: Request) {
       html: emailTemplate(buildManualBookingInviteBody({
         djName, djType, bookingId, eventDate, startTime, endTime,
         venueName, venueAddress, venueType, setType, eventType, eventDetails,
-        packageTitle, packageDetails, rate, currency, isResend,
+        packageTitle, packageDetails, rate, currency, isResend, addons: invAddons,
         taxPct, taxAmount, total, depositPct, depositAmount, balanceDue, overtimeRate,
         cocktailNeeded, cocktailStart, ceremonyNeeded, ceremonyStart,
         existingUserId, recipientEmail,
