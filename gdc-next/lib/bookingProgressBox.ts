@@ -19,10 +19,10 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     const admin = createAdminClient();
     const { data: b } = await admin
       .from('bookings')
-      .select('dj_id, booking_type, contract_status, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount, planner_status, planner_sent_at')
+      .select('dj_id, booking_type, contract_status, contract_sent_log_at, requires_contract, event_date, deposit_amount, deposit_pct, status_overrides, total_with_tax, counter_rate, quoted_rate, offer_amount, planner_status, planner_sent_at')
       .eq('id', bookingId)
       .maybeSingle<{
-        dj_id: string | null; booking_type: string | null; contract_status: string | null; requires_contract: boolean | null; event_date: string | null;
+        dj_id: string | null; booking_type: string | null; contract_status: string | null; contract_sent_log_at: string | null; requires_contract: boolean | null; event_date: string | null;
         deposit_amount: number | null; deposit_pct: number | null;
         status_overrides: Record<string, boolean> | null; total_with_tax: number | null;
         counter_rate: number | null; quoted_rate: number | null; offer_amount: number | null;
@@ -77,7 +77,15 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
     // gone out, so the step reads "Contract" (upcoming) rather than claiming a
     // dead one was sent. It still shows if the DJ requires a contract.
     const contractCancelled = b.contract_status === 'cancelled' || b.contract_status === 'voided';
-    const contractSent = hasContract && !contractCancelled;
+    // "Sent" means it actually went out to the host — a real send timestamp, or
+    // a signed/completed contract (which could only have been signed if it was
+    // sent). A contract merely prepared but not sent (no send stamp) is NOT
+    // "sent", so the step reads "Contract" (upcoming), not "Contract sent" —
+    // important when a later step (e.g. a deposit) was marked first and the
+    // contract is still the pending/next step.
+    const contractEverSent = b.contract_sent_log_at != null
+      || b.contract_status === 'signed' || b.contract_status === 'completed';
+    const contractSent = hasContract && !contractCancelled && contractEverSent;
     // Done when the contract was signed in-app OR the DJ marked it complete by
     // hand (signed on paper, handled off-platform) — status_overrides.contract.
     // Without the override the step wrongly stayed "next" even after later steps
