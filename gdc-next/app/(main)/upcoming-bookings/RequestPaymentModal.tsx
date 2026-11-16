@@ -165,7 +165,12 @@ export default function RequestPaymentModal({
             pre-configured), % and Amount sit on one line; otherwise Amount is
             full-width on its own. */}
         {(() => {
-          const showPctPicker = reqKind === 'deposit' && expectedTotal > 0;
+          // The booking already has a deposit configured (deposit on, with an
+          // agreed % and amount) — the DJ doesn't need to set one, so hide the
+          // %-picker box and show just the pre-filled Amount. Show the picker
+          // only when the deposit is off and they have to choose one here.
+          const depositPreset = depositPct != null && depositPct > 0 && suggestedDeposit != null && suggestedDeposit > 0;
+          const showPctPicker = reqKind === 'deposit' && expectedTotal > 0 && !depositPreset;
           return (
             <div style={showPctPicker
               ? { display: 'flex', gap: '.6rem', alignItems: 'flex-start', marginBottom: '.5rem' }
