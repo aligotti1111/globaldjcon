@@ -99,10 +99,10 @@ export default function BookingBotSection() {
       <SectionBanner icon="bell" title="AI Booking Assistant" subtitle="A chat helper on your public profile that answers clients and starts their request." />
       <div style={{ padding: '1.5rem' }}>
         <p style={{ color: MUTED, fontSize: '.85rem', lineHeight: 1.6, margin: '0 0 1rem' }}>
-          Adds a chat bubble to your public profile. It answers potential clients&apos;
-          questions, gives them a ballpark price from your packages (or your hourly/flat
-          rate), and collects their event details to start a booking request — which
-          you still approve. It never confirms a date or takes payment.
+          Adds your personal AI chat to your public profile. It answers potential clients&apos;
+          questions, and collects their event details to start a booking request. Responses
+          are based off packages, prices, about, quick facts you input on your profile and
+          any additional information you add here.
         </p>
 
         {!eligible ? (
