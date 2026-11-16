@@ -336,6 +336,12 @@
   outline: none;
   transition: border-color .2s, box-shadow .2s;
 }
+/* Example/placeholder text sits well back from the real entered value —
+   dimmer than the white input text so the samples read as hints, not input. */
+.formGroup input::placeholder {
+  color: rgba(255, 255, 255, .28);
+  opacity: 1;
+}
 .formGroup input:focus,
 .formGroup select:focus {
   border-color: var(--neon);
