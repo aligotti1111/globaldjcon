@@ -743,6 +743,9 @@ export function buildManualBookingInviteBody(opts: {
   rate: number | null | undefined;
   currency: string;
   isResend: boolean;
+  /** Chosen add-ons (mobile). The rate is the base only; each add-on is listed
+   *  under it so the total adds up on the host's screen. */
+  addons?: { title: string; price: number }[];
   taxPct: number;
   taxAmount: number;
   total: number | null;
@@ -757,8 +760,11 @@ export function buildManualBookingInviteBody(opts: {
   existingUserId: string | null;
   recipientEmail: string;
 }): string {
-  const { djName, djType, bookingId, eventDate, startTime, endTime, venueName, venueAddress, venueType, setType, eventType, eventDetails, packageTitle, packageDetails, rate, currency, isResend, taxPct, taxAmount, total, depositPct, depositAmount, balanceDue, overtimeRate, cocktailNeeded, cocktailStart, ceremonyNeeded, ceremonyStart, existingUserId, recipientEmail } = opts;
-  const hasPrice = rate != null && Number.isFinite(rate) && rate > 0;
+  const { djName, djType, bookingId, eventDate, startTime, endTime, venueName, venueAddress, venueType, setType, eventType, eventDetails, packageTitle, packageDetails, rate, currency, isResend, addons, taxPct, taxAmount, total, depositPct, depositAmount, balanceDue, overtimeRate, cocktailNeeded, cocktailStart, ceremonyNeeded, ceremonyStart, existingUserId, recipientEmail } = opts;
+  const addonList = (Array.isArray(addons) ? addons : []).filter((a) => a && (a.title || '').trim());
+  const addonSum = addonList.reduce((s, a) => s + (Number(a.price) || 0), 0);
+  const hasRate = rate != null && Number.isFinite(rate) && rate > 0;
+  const hasPrice = hasRate || addonSum > 0;
   const fmtAmt = (n: number) => `${currencySymbol(currency)}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const row = (label: string, val: string, bold = false, muted = false) =>
     `<tr><td style="padding:4px 0;font-size:14px;color:${muted ? '#888888' : '#333333'};${bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:4px 0;font-size:14px;text-align:right;color:${muted ? '#888888' : '#1a1a2e'};${bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
@@ -766,9 +772,10 @@ export function buildManualBookingInviteBody(opts: {
     ? `<div style="border:1px solid #eeeeee;border-radius:8px;padding:16px 18px;margin:0 0 20px;">
            <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;">Price</div>
            <table style="width:100%;border-collapse:collapse;">
-             ${row('Rate', fmtAmt(rate as number))}
+             ${hasRate ? row(addonList.length > 0 ? 'Package price' : 'Rate', fmtAmt(rate as number)) : ''}
+             ${addonList.map((a) => row(escHtml(a.title), fmtAmt(Number(a.price) || 0))).join('')}
              ${taxAmount > 0 ? row(`Sales tax (${taxPct}%)`, fmtAmt(taxAmount)) : ''}
-             ${row('Total', fmtAmt(total != null ? total : (rate as number) + taxAmount), true)}
+             ${row('Total', fmtAmt(total != null ? total : (hasRate ? (rate as number) : 0) + addonSum + taxAmount), true)}
            </table>
            ${depositAmount > 0 ? `
            <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin:22px 0 10px;text-transform:uppercase;letter-spacing:.04em;">Payment Schedule</div>
