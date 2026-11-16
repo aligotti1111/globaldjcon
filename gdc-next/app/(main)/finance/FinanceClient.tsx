@@ -119,6 +119,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
   // Independent quick-filter for the payments table only (leaves the charts on
   // the main period above). 'period' = whatever the charts show.
   const [tableRange, setTableRange] = useState<'period' | 'last_30' | 'last_90' | 'last_year'>('period');
+  // Payments table pagination: show PAY_PAGE_SIZE rows per page.
+  const PAY_PAGE_SIZE = 20;
+  const [payPage, setPayPage] = useState(0);
   // Booking whose detail card is open (null = none). Clicking a payments row
   // opens an in-page pop-up rather than navigating away from Finance.
   const [openBooking, setOpenBooking] = useState<string | null>(null);
@@ -721,7 +724,7 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
               className={styles.rangeSelect}
               aria-label="Payments range"
               value={tableRange}
-              onChange={(e) => setTableRange(e.target.value as typeof tableRange)}
+              onChange={(e) => { setTableRange(e.target.value as typeof tableRange); setPayPage(0); }}
             >
               <option value="period">Selected period</option>
               <option value="last_30">Last 30 days</option>
@@ -735,7 +738,15 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
         </div>
         {tableEvents.length === 0 ? (
           <div className={styles.empty}>No payments received in this range.</div>
-        ) : (
+        ) : (() => {
+          // Newest first, then show one page at a time (PAY_PAGE_SIZE rows).
+          const sorted = [...tableEvents].sort((a, z) => z.paidDate.localeCompare(a.paidDate));
+          const pageCount = Math.max(1, Math.ceil(sorted.length / PAY_PAGE_SIZE));
+          const page = Math.min(payPage, pageCount - 1); // clamp if the list shrank
+          const start = page * PAY_PAGE_SIZE;
+          const pageRows = sorted.slice(start, start + PAY_PAGE_SIZE);
+          return (
+          <>
           <div className={styles.tScroll}>
             <table className={styles.table}>
               <thead>
@@ -750,9 +761,9 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
                 </tr>
               </thead>
               <tbody>
-                {[...tableEvents].sort((a, z) => z.paidDate.localeCompare(a.paidDate)).map((e, i) => (
+                {pageRows.map((e, i) => (
                   <tr
-                    key={`${e.bookingId}-${e.paidDate}-${i}`}
+                    key={`${e.bookingId}-${e.paidDate}-${start + i}`}
                     onClick={() => setOpenBooking(e.bookingId)}
                     style={{ cursor: 'pointer' }}
                     title="View booking details"
@@ -777,7 +788,32 @@ export default function FinanceClient({ events, eventItems, expectedItems, booki
               </tfoot>
             </table>
           </div>
-        )}
+          {pageCount > 1 && (
+            <div className={styles.pager}>
+              <button
+                type="button"
+                className={styles.pagerBtn}
+                onClick={() => setPayPage(Math.max(0, page - 1))}
+                disabled={page === 0}
+              >
+                ← Prev
+              </button>
+              <span className={styles.pagerInfo}>
+                {start + 1}–{Math.min(start + PAY_PAGE_SIZE, sorted.length)} of {sorted.length} · Page {page + 1} of {pageCount}
+              </span>
+              <button
+                type="button"
+                className={styles.pagerBtn}
+                onClick={() => setPayPage(Math.min(pageCount - 1, page + 1))}
+                disabled={page >= pageCount - 1}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+          </>
+          );
+        })()}
       </div>
 
       <p className={styles.note}>
