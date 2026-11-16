@@ -334,7 +334,7 @@ export function billBreakdownBox(
     );
   }
   if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
-  rows.push(row('Total', money(total), { bold: true, top: true }));
+  rows.push(row(taxAmt > 0 ? 'Total Event Cost (with tax)' : 'Total Event Cost', money(total), { bold: true, top: true }));
   if (depAmt > 0) {
     // Visual break so the payment schedule reads as its own section, not
     // as more line items rolling into the Total above it.
