@@ -12,7 +12,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { effectiveTier, type AccessFields } from '@/lib/access';
-import { BOT_MIN_TIER, BOT_MAX_INSTRUCTIONS } from '@/lib/bookingBot';
+import { BOT_MIN_TIER } from '@/lib/bookingBot';
+import { parseBotTraining, serializeBotTraining } from '@/lib/bookingBotTraining';
 
 export const runtime = 'nodejs';
 
@@ -87,7 +88,10 @@ export async function POST(req: Request) {
   // specifically instead of failing the whole request.
   let savedInstructions = await readInstructions(db, acting.djId);
   if (hasInstructions) {
-    const next = String(body.instructions).slice(0, BOT_MAX_INSTRUCTIONS);
+    // Normalize server-side: parse → re-serialize drops unknown keys, caps each
+    // field, and discards anything that isn't valid structured training — so the
+    // client can't store an oversized or malformed blob.
+    const next = serializeBotTraining(parseBotTraining(String(body.instructions)));
     const { error } = await db.from('users').update({ booking_bot_instructions: next }).eq('id', acting.djId);
     if (error) {
       return NextResponse.json({ error: 'Your settings are saved, but custom instructions need a quick database update first (the booking_bot_instructions column).' }, { status: 409 });
