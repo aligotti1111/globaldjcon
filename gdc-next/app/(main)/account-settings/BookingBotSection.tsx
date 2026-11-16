@@ -269,7 +269,8 @@ export default function BookingBotSection() {
                   <p style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 .7rem' }}>
                     Add your website and the assistant can pull from it to answer questions your profile
                     doesn&apos;t cover. Your Global DJ Connect info always comes first — the website is only a
-                    fallback, and it never quotes exact prices. We read it when you save; save again anytime to refresh.
+                    fallback. Pricing never comes from your website; all prices come only from your Global DJ
+                    Connect packages. We read it when you save; save again anytime to refresh.
                   </p>
                   <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
