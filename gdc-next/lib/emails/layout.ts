@@ -350,13 +350,20 @@ export function billBreakdownBox(
   }
   if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
   rows.push(row(taxAmt > 0 ? 'Total Event Cost (with tax)' : 'Total Event Cost', money(total), { bold: true, top: true }));
+  // Payment schedule lives in its own table under a "Payment Schedule" heading
+  // (matching the manual-booking email) rather than as more rows under Total.
+  const scheduleRows: string[] = [];
   if (depAmt > 0) {
-    // Visual break so the payment schedule reads as its own section, not
-    // as more line items rolling into the Total above it.
-    rows.push('<tr><td colspan="2" style="height:14px;line-height:14px;font-size:0;">&nbsp;</td></tr>');
-    rows.push('<tr><td colspan="2" style="border-top:1px solid #e0e0e0;padding:12px 0 8px;text-align:center;color:#1a1a2e;font-size:14px;font-weight:700;">Payment Schedule</td></tr>');
-    rows.push(row(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, money(depAmt)));
-    rows.push(row('Balance due day of event', money(balance), { bold: true }));
+    scheduleRows.push(row(`Deposit${depPct > 0 ? ` (${depPct}%)` : ''} — to reserve`, money(depAmt)));
+    scheduleRows.push(row('Balance due day of event', money(balance), { bold: true }));
   }
-  return `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:8px 20px;margin:-12px 0 24px;"><table style="width:100%;border-collapse:collapse;">${rows.join('')}</table></div>`;
+  const heading = (text: string, first: boolean) =>
+    `<div style="font-size:17px;font-weight:800;color:#1a1a2e;margin:${first ? '0' : '22px'} 0 10px;text-transform:uppercase;letter-spacing:.04em;">${text}</div>`;
+  return `<div style="border:1px solid #eeeeee;border-radius:8px;padding:16px 18px;margin:0 0 24px;">`
+    + heading('Price', true)
+    + `<table style="width:100%;border-collapse:collapse;">${rows.join('')}</table>`
+    + (scheduleRows.length > 0
+        ? heading('Payment Schedule', false) + `<table style="width:100%;border-collapse:collapse;">${scheduleRows.join('')}</table>`
+        : '')
+    + `</div>`;
 }
