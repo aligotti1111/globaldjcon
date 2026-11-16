@@ -673,14 +673,14 @@ export function buildBookingApprovedBody(opts: {
           setTypeText: setTypeLabel(setType),
           date: eventDate,
           timeRange: fmtTimeRange(startTime, endTime),
-          packageTitle,
           venueTypeText: venueTypeLabel(venueType),
           venueName,
           venueAddress,
           equipmentText: equipNeedsText ? `Venue provides all — DJ needs: ${equipNeedsText}` : undefined,
-          rateLabel: 'Agreed Price',
-          rateValue: agreedPrice ? `${sym}${Number(agreedPrice).toLocaleString()}` : '',
+          // Agreed Price moved out — the PRICE breakdown below is the single
+          // source for money. Package moved to its own box just below.
         })}
+        ${packageTitle ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:0 0 20px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(packageTitle)}</p></div>` : ''}
         ${billBox}
         ${overtimeRate != null
           ? `<div style="background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin:20px 0 28px;"><p style="margin:0;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Hourly Overtime Rate:</strong> ${sym}${Number(overtimeRate).toLocaleString()}/hr</p></div>`
