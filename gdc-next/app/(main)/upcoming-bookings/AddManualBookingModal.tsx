@@ -708,6 +708,10 @@ export default function AddManualBookingModal({
       packageDetails: djType === 'mobile' ? ((editedDetails ?? sel?.details) || '') : '',
       rate: rateNum,
       currency: rateCurrency,
+      // Chosen add-ons (mobile) so the email's PRICE box can itemize them under
+      // the base rate — the `total` already includes them, so without these
+      // lines the add-on money shows up as an unexplained gap.
+      addons: chosenAddons.map((a) => ({ title: (a.title || '').trim(), price: Number(a.price) || 0 })),
       // Full price breakdown so the email can show tax + the payment schedule
       // (deposit now, balance later), not just the bare rate.
       taxPct: moneyPreview ? moneyPreview.tPct : 0,
@@ -750,6 +754,7 @@ export default function AddManualBookingModal({
       packageDetails: string;
       rate: number | null;
       currency: string;
+      addons?: { title: string; price: number }[];
       taxPct?: number;
       taxAmount?: number;
       total?: number | null;
@@ -786,6 +791,7 @@ export default function AddManualBookingModal({
           packageDetails: opts.snapshot.packageDetails || null,
           rate: opts.snapshot.rate,
           currency: opts.snapshot.currency,
+          addons: opts.snapshot.addons ?? [],
           taxPct: opts.snapshot.taxPct ?? 0,
           taxAmount: opts.snapshot.taxAmount ?? 0,
           total: opts.snapshot.total ?? null,
