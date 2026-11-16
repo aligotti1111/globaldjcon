@@ -17,10 +17,10 @@ export interface BotTrainingQuestion {
 // DJs. The DJ answers the ones that apply and leaves the rest blank.
 export const BOT_TRAINING_QUESTIONS: BotTrainingQuestion[] = [
   { key: 'standout', label: 'What makes you stand out?', placeholder: 'e.g. 15+ years, bilingual MC, huge open-format library' },
-  { key: 'included', label: "What's included in your pricing?", placeholder: 'e.g. DJ + MC, premium sound, dance-floor lighting, setup & teardown' },
-  { key: 'travel', label: 'Do you travel — how far, and any travel fee?', placeholder: 'e.g. Up to 2 hours from NYC; small fee past the first hour' },
+  { key: 'music', label: 'Tell clients about your music library', placeholder: 'e.g. 50,000+ tracks, every era and format, constantly updated with the latest releases' },
+  { key: 'weddings_experience', label: 'Weddings — how experienced are you, and do you MC?', placeholder: 'e.g. 300+ weddings; I MC all announcements — grand entrance, first dance, toasts, cake cutting' },
+  { key: 'weddings_coordination', label: 'Weddings — how do you plan and coordinate the day?', placeholder: 'e.g. Planning call + online form for your timeline and must-plays; I coordinate with your planner & venue and keep the night on schedule' },
   { key: 'requests', label: 'Do you take song requests or a do-not-play list?', placeholder: 'e.g. Yes — clients send must-plays and a do-not-play list' },
-  { key: 'extras', label: 'What add-ons or extras do you offer?', placeholder: 'e.g. Uplighting, photo booth, cold sparklers' },
   { key: 'book_ahead', label: 'How far ahead should clients book?', placeholder: 'e.g. 3–6 months out for weddings; sooner for peak dates' },
 ];
 
