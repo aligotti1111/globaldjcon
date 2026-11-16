@@ -572,7 +572,7 @@ export default function AddManualBookingModal({
               then PAYMENT SCHEDULE (deposit → balance). */}
           <div style={{ display: 'block', background: 'linear-gradient(100deg, rgba(34,227,173,.16), rgba(49,208,255,.16))', borderLeft: '3px solid #22e3ad', color: '#7ef3d0', fontWeight: 800, fontSize: '.62rem', letterSpacing: '.1em', textTransform: 'uppercase', padding: '.28rem .6rem', borderRadius: 4, marginBottom: '.4rem' }}>Price</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '.15rem 0', color: 'var(--muted,#8a8aa0)' }}>
-            <span>Rate</span>
+            <span>{chosenAddons.length > 0 ? 'Package price' : 'Rate'}</span>
             <span>{money(moneyPreview.base)}</span>
           </div>
           {chosenAddons.map((a) => (
