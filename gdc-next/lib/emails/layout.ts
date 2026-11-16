@@ -291,6 +291,9 @@ export function billBreakdownBox(
     // Chosen add-ons (title + price). Their prices are already folded into
     // quotedRate, so they're netted out of the package price and itemized.
     addons?: { title: string; price: number }[];
+    // The package name — when present, the base-price row reads "Package: <name>"
+    // instead of the generic "Package price".
+    packageTitle?: string | null;
   },
   sym: string,
   currency: string,
@@ -325,7 +328,7 @@ export function billBreakdownBox(
     `<tr><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${label}</td><td style="padding:6px 0;${o?.top ? 'border-top:1px solid #e0e0e0;' : ''}text-align:right;color:${o?.muted ? '#888' : '#1a1a2e'};font-size:14px;${o?.bold ? 'font-weight:700;' : ''}">${val}</td></tr>`;
   const rows: string[] = [];
   if (cocktailAdd > 0 || ceremonyAdd > 0 || addonAdd > 0) {
-    rows.push(row('Package price', money(basePrice)));
+    rows.push(row(b.packageTitle ? `Package: ${escHtml(b.packageTitle)}` : 'Package price', money(basePrice)));
     if (cocktailAdd > 0) rows.push(row('Cocktail Hour', `+${money(cocktailAdd)}`, { muted: true }));
     if (ceremonyAdd > 0) rows.push(row('Music For Ceremony', `+${money(ceremonyAdd)}`, { muted: true }));
     for (const a of addonItems) {
