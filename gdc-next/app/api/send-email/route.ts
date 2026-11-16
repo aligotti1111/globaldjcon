@@ -13,6 +13,7 @@ import { resolveUserEmail, resolveUserIdByEmail, createAdminClient } from '@/lib
 import { getActingContext } from '@/lib/acting';
 import { loadBookingParties, recipientForParty } from '@/lib/emails/recipients';
 import { parseBookingSettings } from '@/app/(main)/[slug]/bookingSettings';
+import { parseBookingAddons } from '@/lib/addons';
 import { sendSmsNotification, withSmsFooter, notifyBookingSms, type SmsEvent, type BookingSmsStage } from '@/lib/supabase/sms';
 // Shared email identity/links + the render + formatting helpers, now extracted
 // into lib/emails/* so this route holds orchestration + the per-type branches.
@@ -488,6 +489,7 @@ export async function POST(req: Request) {
         djName, requesterName, eventType,
         eventDetails: body.eventDetails as string | undefined,
         packageTitle, packageDetails,
+        addons: parseBookingAddons(body.addons),
         eventDate, startTime, endTime, venueName, venueAddress,
         isWedding, cocktailNeeded, cocktailStart, cocktailSameRoom,
         ceremonyNeeded, ceremonyStart, ceremonySameRoom, setupHours,
@@ -1400,15 +1402,20 @@ export async function POST(req: Request) {
     // the DJ listed specific equipment they need, surface it on the confirmation
     // so the venue/host is reminded of exactly what to supply.
     let baEquipNeeds = '';
+    // Package description + chosen add-ons for the confirmation's Package box.
+    let baPackageDetails = (body.packageDetails as string | undefined) || undefined;
+    let baAddons: { title: string; price: number }[] = [];
     try {
       if (body.bookingId) {
         const adminC = createAdminClient();
         const { data: bRow } = await adminC
           .from('bookings')
-          .select('equipment, dj_id')
+          .select('equipment, dj_id, package_details, addons')
           .eq('id', body.bookingId as string)
           .maybeSingle();
-        const br = bRow as { equipment?: string | null; dj_id?: string | null } | null;
+        const br = bRow as { equipment?: string | null; dj_id?: string | null; package_details?: string | null; addons?: unknown } | null;
+        if (br?.package_details && br.package_details.trim()) baPackageDetails = br.package_details;
+        baAddons = parseBookingAddons(br?.addons);
         if (br?.equipment === 'venue_provides' && br.dj_id) {
           const { data: djRow } = await adminC
             .from('users')
@@ -1432,6 +1439,8 @@ export async function POST(req: Request) {
         eventDetails: body.eventDetails as string | undefined,
         setType, venueType, venueName, venueAddress,
         startTime, endTime, packageTitle,
+        packageDetails: baPackageDetails,
+        addons: baAddons,
         agreedPrice, overtimeRate, currency, eventDate,
         equipNeedsText: baEquipNeeds || undefined,
         billBox, progressBox,
