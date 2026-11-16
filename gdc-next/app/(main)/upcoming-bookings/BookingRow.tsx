@@ -444,7 +444,7 @@ export default function BookingRow({
   // everything needed to post the request and fold the new row into state.
   const [reqOpen, setReqOpen] = useState(false);
   // Themed confirm dialog (replaces window.confirm so it matches the site).
-  const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; cancelLabel?: string; danger?: boolean; onOk: () => void } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ title: string; body: string; okLabel: string; cancelLabel?: string; danger?: boolean; amountPrompt?: { label: string; initial?: string; currency?: string }; onOk: (amount?: number) => void } | null>(null);
   // Phase 2 — Edit Receipt modal target (which paid stage's receipt is open).
   const [editReceiptKind, setEditReceiptKind] = useState<'deposit' | 'balance' | null>(null);
   const [reqAmount, setReqAmount] = useState('');
@@ -818,6 +818,20 @@ export default function BookingRow({
       if (res.ok) onMutated?.();
     } catch { /* keep optimistic UI; will reconcile on next load */ }
   }
+  // Persist a hand-entered deposit figure onto the booking (deposit_amount) when
+  // one was marked paid but no amount was ever recorded (deposits off, never
+  // requested). The balance's deduction reads booking.deposit_amount as its
+  // fallback, so storing it here is what lets the balance net the deposit out.
+  async function persistDepositAmount(amount: number) {
+    try {
+      const res = await fetch('/api/bookings/manual', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: booking.id, payload: { deposit_amount: Number(amount.toFixed(2)) } }),
+      });
+      if (res.ok) onMutated?.();
+    } catch { /* best effort — the mark-paid still proceeds */ }
+  }
   // "Mark complete" on a MONEY step has downstream impact, so confirm it and
   // spell out what happens next — a deposit gets deducted from the balance you
   // later bill; a balance send the client their final receipt. `done` is the
@@ -836,12 +850,46 @@ export default function BookingRow({
       if (done && key === 'invoice') { sendReceipt('balance', true); }
     };
     if (done && key === 'deposit') {
-      setConfirmModal({
-        title: 'Mark deposit as paid?',
-        body: 'Marking this deposit paid will deduct it from the balance owed when you request the balance.',
-        okLabel: 'Mark deposit paid',
-        onOk: proceed,
-      });
+      // What deposit figure do we already know for this booking? The amount on a
+      // requested deposit row, the booking's own frozen deposit_amount, or a %
+      // we can derive from the agreed total. If NONE — deposits were off and one
+      // was never requested — marking it paid records no dollar figure anywhere,
+      // so the balance later has nothing to net out. In that case, capture the
+      // amount now and store it as the booking's deposit_amount.
+      const totalForDep = Number(
+        (booking as { total_with_tax?: number | null }).total_with_tax
+        ?? (booking as { counter_rate?: number | null }).counter_rate
+        ?? (booking as { quoted_rate?: number | null }).quoted_rate
+        ?? (booking as { offer_amount?: number | null }).offer_amount
+        ?? 0,
+      );
+      const rowDepAmt = payments.filter((p) => p.kind === 'deposit').reduce((mx, p) => Math.max(mx, Number(p.amount || 0)), 0);
+      const knownDeposit = rowDepAmt > 0
+        ? rowDepAmt
+        : (booking.deposit_amount != null && Number(booking.deposit_amount) > 0
+          ? Number(booking.deposit_amount)
+          : (booking.deposit_pct != null && Number(booking.deposit_pct) > 0 && totalForDep > 0
+            ? Number((totalForDep * Number(booking.deposit_pct) / 100).toFixed(2))
+            : 0));
+      if (knownDeposit > 0) {
+        setConfirmModal({
+          title: 'Mark deposit as paid?',
+          body: 'Marking this deposit paid will deduct it from the balance owed when you request the balance.',
+          okLabel: 'Mark deposit paid',
+          onOk: proceed,
+        });
+      } else {
+        setConfirmModal({
+          title: 'Mark deposit as paid?',
+          body: 'This booking has no deposit amount on record. Enter the deposit you collected so it can be deducted from the balance when you bill it.',
+          okLabel: 'Mark deposit paid',
+          amountPrompt: { label: 'Deposit collected', currency: booking.currency || 'USD' },
+          onOk: async (amount?: number) => {
+            if (amount && amount > 0) await persistDepositAmount(amount);
+            await proceed();
+          },
+        });
+      }
       return;
     }
     // Balance: no confirmation step — marking it paid runs straight through
