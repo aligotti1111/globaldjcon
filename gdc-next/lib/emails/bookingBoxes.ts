@@ -222,8 +222,10 @@ export async function bookingProgressBox(bookingId: string | undefined | null): 
         : '';
       const wrapOpen = `<div style="background:${bg};border:${border};border-radius:10px;padding:${pad};margin:0 0 8px;">`;
       // Two columns: step name on the LEFT, its status word (+ ✓ on done)
-      // right-aligned so "Signed / Paid / Submitted" line up down the right edge.
-      const rightCell = s.right ? `<span style="color:${rightColor};">${s.right}</span>${check}` : check;
+      // right-aligned. Show the status word ONLY on a DONE step — a future step
+      // must NOT preview "Paid"/"Submitted" in grey, or the host reads it as
+      // already completed.
+      const rightCell = (s.done && s.right) ? `<span style="color:${rightColor};">${s.right}</span>${check}` : check;
       // The reliable email trick for left/right on one line in iOS Gmail:
       // make the LEFT cell greedy (width:100%) so it expands and shoves the
       // status cell to the far RIGHT edge. The right cell has no width and
