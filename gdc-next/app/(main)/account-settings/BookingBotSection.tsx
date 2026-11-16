@@ -34,12 +34,21 @@ export default function BookingBotSection() {
   const [instrSaving, setInstrSaving] = useState(false);
   const [instrSaved, setInstrSaved] = useState(false);
 
+  // Optional website used as a LAST-RESORT fallback source. Fetched server-side
+  // when saved; we show the last-fetched time and whether the page was readable.
+  const [siteUrl, setSiteUrl] = useState('');
+  const [savedSiteUrl, setSavedSiteUrl] = useState('');
+  const [siteFetchedAt, setSiteFetchedAt] = useState<string | null>(null);
+  const [siteHasText, setSiteHasText] = useState(false);
+  const [siteSaving, setSiteSaving] = useState(false);
+  const [siteMsg, setSiteMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const res = await fetch('/api/dj/booking-bot-setting');
-        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; eligible?: boolean; instructions?: string };
+        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; eligible?: boolean; instructions?: string; siteUrl?: string; siteFetchedAt?: string | null; siteHasText?: boolean };
         if (alive && res.ok && d.ok) {
           setEnabled(d.enabled === true);
           setEligible(d.eligible !== false);
@@ -47,12 +56,43 @@ export default function BookingBotSection() {
           setAnswers(t.answers);
           setExtra(t.extra);
           setSavedSerialized(serializeBotTraining(t));
+          setSiteUrl(d.siteUrl || '');
+          setSavedSiteUrl(d.siteUrl || '');
+          setSiteFetchedAt(d.siteFetchedAt || null);
+          setSiteHasText(d.siteHasText === true);
         }
       } catch { /* keep defaults */ }
       finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false; };
   }, []);
+
+  async function saveSite() {
+    const next = siteUrl.trim();
+    setSiteSaving(true); setSiteMsg(null); setErr(null);
+    try {
+      const res = await fetch('/api/dj/booking-bot-setting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteUrl: next }),
+      });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; siteUrl?: string; siteFetchedAt?: string | null; siteHasText?: boolean; siteStatus?: { ok?: boolean; message?: string } };
+      if (!res.ok || !d.ok) throw new Error(d.error || 'Could not save.');
+      setSavedSiteUrl(d.siteUrl || '');
+      setSiteUrl(d.siteUrl || '');
+      setSiteFetchedAt(d.siteFetchedAt || null);
+      setSiteHasText(d.siteHasText === true);
+      if (!next) setSiteMsg({ ok: true, text: 'Website removed.' });
+      else if (d.siteStatus && d.siteStatus.ok === false) setSiteMsg({ ok: false, text: d.siteStatus.message || "Saved, but we couldn't read the page." });
+      else setSiteMsg({ ok: true, text: 'Saved — the assistant can now use your website as a fallback.' });
+    } catch (e) {
+      setSiteMsg({ ok: false, text: e instanceof Error ? e.message : 'Could not save.' });
+    } finally {
+      setSiteSaving(false);
+    }
+  }
+
+  const siteDirty = siteUrl.trim() !== savedSiteUrl.trim();
 
   const currentSerialized = serializeBotTraining({ answers, extra });
   const trainingDirty = currentSerialized !== savedSerialized;
@@ -219,6 +259,55 @@ export default function BookingBotSection() {
                     {instrSaving ? 'Saving…' : 'Save'}
                   </button>
                   {instrSaved && <span style={{ color: NEON, fontSize: '.8rem', fontWeight: 700 }}>Saved ✓</span>}
+                </div>
+
+                {/* Website fallback */}
+                <div style={{ marginTop: '1.4rem', borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: '1.25rem' }}>
+                  <label style={{ display: 'block', color: '#fff', fontSize: '.9rem', fontWeight: 700, marginBottom: '.25rem' }}>
+                    Your website <span style={{ color: MUTED, fontWeight: 400 }}>(optional fallback)</span>
+                  </label>
+                  <p style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 .7rem' }}>
+                    Add your website and the assistant can pull from it to answer questions your profile
+                    doesn&apos;t cover. Your Global DJ Connect info always comes first — the website is only a
+                    fallback, and it never quotes exact prices. We read it when you save; save again anytime to refresh.
+                  </p>
+                  <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="url"
+                      inputMode="url"
+                      value={siteUrl}
+                      onChange={(e) => setSiteUrl(e.target.value.slice(0, 300))}
+                      placeholder="https://yourdjsite.com"
+                      style={{
+                        flex: 1, minWidth: 200, boxSizing: 'border-box',
+                        background: '#15151c', color: '#eaeaf0',
+                        border: '1px solid rgba(255,255,255,.14)', borderRadius: 8,
+                        padding: '.55rem .7rem', fontSize: '.86rem', fontFamily: 'inherit',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={saveSite}
+                      disabled={siteSaving || !siteDirty}
+                      style={{
+                        background: !siteDirty ? '#2a2a33' : NEON,
+                        color: !siteDirty ? MUTED : '#04120d',
+                        border: 'none', borderRadius: 8, padding: '.5rem 1.1rem',
+                        fontSize: '.85rem', fontWeight: 700,
+                        cursor: (siteSaving || !siteDirty) ? 'default' : 'pointer', flex: '0 0 auto',
+                      }}
+                    >
+                      {siteSaving ? 'Reading…' : (savedSiteUrl ? 'Update' : 'Save')}
+                    </button>
+                  </div>
+                  {siteMsg && (
+                    <p style={{ color: siteMsg.ok ? NEON : '#ff9a9a', fontSize: '.78rem', lineHeight: 1.5, margin: '.5rem 0 0' }}>{siteMsg.text}</p>
+                  )}
+                  {!siteMsg && savedSiteUrl && siteFetchedAt && (
+                    <p style={{ color: MUTED, fontSize: '.75rem', margin: '.5rem 0 0' }}>
+                      {siteHasText ? 'Last read' : 'Last attempted'} {new Date(siteFetchedAt).toLocaleDateString()}{!siteHasText ? ' — nothing readable was found.' : '.'}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
