@@ -478,7 +478,12 @@ export async function POST(req: Request) {
       from: FROM,
       replyTo: REPLY_TO,
       to: [djEmail],
-      subject: `New Booking Request from ${requesterName || 'a booker'} – ${dateStr}`,
+      subject: `New Booking Request – ${dateStr}${(() => {
+        // After the date: the mobile event type (e.g. "Sweet 16"), or — for a
+        // club/bar booking — the venue name. Omitted when neither is known.
+        const t = eventType ? eventTypeLabel(eventType) : (venueName ? venueName.trim() : '');
+        return t ? ` · ${t}` : '';
+      })()}`,
       html: emailTemplate(buildBookingRequestBody({
         djName, requesterName, eventType,
         eventDetails: body.eventDetails as string | undefined,
