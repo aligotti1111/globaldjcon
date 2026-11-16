@@ -775,7 +775,7 @@ export function buildManualBookingInviteBody(opts: {
              ${hasRate ? row(addonList.length > 0 ? 'Package price' : 'Rate', fmtAmt(rate as number)) : ''}
              ${addonList.map((a) => row(escHtml(a.title), fmtAmt(Number(a.price) || 0))).join('')}
              ${taxAmount > 0 ? row(`Sales tax (${taxPct}%)`, fmtAmt(taxAmount)) : ''}
-             ${row('Total', fmtAmt(total != null ? total : (hasRate ? (rate as number) : 0) + addonSum + taxAmount), true)}
+             ${row(taxAmount > 0 ? 'Total Event Cost (with tax)' : 'Total Event Cost', fmtAmt(total != null ? total : (hasRate ? (rate as number) : 0) + addonSum + taxAmount), true)}
            </table>
            ${depositAmount > 0 ? `
            <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin:22px 0 10px;text-transform:uppercase;letter-spacing:.04em;">Payment Schedule</div>
