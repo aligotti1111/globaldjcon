@@ -44,6 +44,7 @@ interface DjRow extends AccessFields {
   dj_type: string | null;
   booking_bot_enabled: boolean | null;
   booking_bot_instructions: string | null;
+  booking_bot_site_text: string | null;
   phone: string | null;
   faqs: string | null;
   booking_settings: unknown;
@@ -314,6 +315,7 @@ export async function POST(req: Request) {
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
     { depositPct, requireContract, equipment, packages, exclusions, travel, payments, windowMonths, todayLabel, cutoffLabel, blockedDates }, existingBooking, about,
+    row.booking_bot_site_text || '',
   );
 
   let reply = '';
