@@ -70,7 +70,7 @@ export default function AssistantSection() {
 
         {err && <p style={{ color: '#ff9a9a', fontSize: '.82rem', margin: '0 0 .7rem' }}>{err}</p>}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', justifyContent: 'flex-end' }}>
           <button
             type="button"
             role="switch"
