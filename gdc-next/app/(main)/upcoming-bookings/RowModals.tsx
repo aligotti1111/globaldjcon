@@ -8,7 +8,9 @@
 //    everywhere.
 // Both are pure presentation; the row keeps the open/close state.
 
+import { useState } from 'react';
 import { NEON } from './shared';
+import { currencySymbol } from '@/lib/constants';
 import PaymentMethodsSection from '../update-dj-profile/PaymentMethodsSection';
 
 export interface ConfirmDescriptor {
@@ -17,10 +19,27 @@ export interface ConfirmDescriptor {
   okLabel: string;
   cancelLabel?: string;
   danger?: boolean;
-  onOk: () => void;
+  // When set, the dialog shows a required amount field (e.g. "how much was this
+  // deposit?") and passes the entered number to onOk. Used when marking a
+  // deposit paid by hand on a booking that never had a deposit figure recorded,
+  // so the balance can later net it out.
+  amountPrompt?: { label: string; initial?: string; currency?: string };
+  onOk: (amount?: number) => void;
 }
 
 export function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmDescriptor; onClose: () => void }) {
+  const [amt, setAmt] = useState<string>(confirm.amountPrompt?.initial ?? '');
+  const [err, setErr] = useState<string | null>(null);
+  const needsAmount = !!confirm.amountPrompt;
+  function submit() {
+    if (needsAmount) {
+      const n = Number(amt);
+      if (!Number.isFinite(n) || n <= 0) { setErr('Enter an amount greater than zero.'); return; }
+      const ok = confirm.onOk; onClose(); ok(n);
+      return;
+    }
+    const ok = confirm.onOk; onClose(); ok();
+  }
   return (
     <div
       onClick={onClose}
@@ -40,9 +59,34 @@ export function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmDescriptor
         <div style={{ fontWeight: 800, color: 'var(--white,#fff)', fontSize: '1rem', marginBottom: '.55rem' }}>
           {confirm.title}
         </div>
-        <div style={{ color: 'var(--muted,#b7b7c6)', fontSize: '.85rem', lineHeight: 1.55, marginBottom: '1.1rem' }}>
+        <div style={{ color: 'var(--muted,#b7b7c6)', fontSize: '.85rem', lineHeight: 1.55, marginBottom: needsAmount ? '.8rem' : '1.1rem' }}>
           {confirm.body}
         </div>
+        {needsAmount && (
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
+              {confirm.amountPrompt?.label ?? 'Amount'}
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+              <span style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.95rem' }}>{currencySymbol(confirm.amountPrompt?.currency || 'USD')}</span>
+              <input
+                autoFocus
+                type="number"
+                min="0"
+                step="0.01"
+                value={amt}
+                onChange={(e) => { setAmt(e.target.value); setErr(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+                style={{
+                  flex: 1, minWidth: 0, background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
+                  borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
+                  fontFamily: "'Space Mono', monospace", fontSize: '.9rem', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            {err && <p style={{ margin: '.4rem 0 0', color: '#ff6b6b', fontSize: '.72rem' }}>{err}</p>}
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>
           <button
             type="button"
@@ -53,7 +97,7 @@ export function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmDescriptor
           </button>
           <button
             type="button"
-            onClick={() => { const ok = confirm.onOk; onClose(); ok(); }}
+            onClick={submit}
             style={{ background: confirm.danger ? '#ff6b6b' : NEON, border: 'none', color: confirm.danger ? '#2a0a0a' : '#06231b', fontWeight: 800, fontSize: '.82rem', borderRadius: 8, padding: '.55rem 1.2rem', cursor: 'pointer' }}
           >
             {confirm.okLabel}
