@@ -96,13 +96,14 @@ export function bookingInfoBox(opts: {
   }
   // Weddings label the main slot "Reception Time"; everything else is "Time".
   if (opts.timeRange && opts.timeRange !== '—') rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">${opts.isWedding ? 'Reception Time' : 'Time'}:</strong> ${escHtml(opts.timeRange)}</p>`);
-  if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
   if (opts.eventTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Event Type:</strong> ${escHtml(opts.eventTypeText)}${opts.eventDetails ? `<br><span style="color:#999;font-size:12px;">${escHtml(opts.eventDetails)}</span>` : ''}</p>`);
   if (opts.venueName) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue:</strong> ${escHtml(opts.venueName)}</p>`);
   if (opts.venueAddress) {
     const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.venueAddress)}`;
     rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> <a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(opts.venueAddress)}</a></p>`);
   }
+  // Package goes under the Address (matches the request/confirmation card order).
+  if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
   if (opts.venueTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Venue Type:</strong> ${escHtml(opts.venueTypeText)}</p>`);
   if (opts.setTypeText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Set Type:</strong> ${escHtml(opts.setTypeText)}</p>`);
   if (opts.equipmentText) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Equipment:</strong> ${escHtml(opts.equipmentText)}</p>`);
