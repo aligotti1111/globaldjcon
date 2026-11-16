@@ -251,6 +251,18 @@
   padding: 7px 11px; border-radius: 8px; cursor: pointer;
 }
 .rangeSelect:hover { border-color: var(--accent, #00f5c4); }
+/* Payments-table pager — Prev / "x–y of N · Page a of b" / Next. */
+.pager { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 12px 6px 6px; }
+.pagerBtn {
+  border: 1px solid var(--line, #2a2a38);
+  background: var(--card2, #1b1b26);
+  color: var(--text, #e8e8f0);
+  font: inherit; font-size: .8rem; font-weight: 600;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer;
+}
+.pagerBtn:hover:not(:disabled) { border-color: var(--accent, #00f5c4); color: var(--accent, #00f5c4); }
+.pagerBtn:disabled { opacity: .4; cursor: default; }
+.pagerInfo { font-size: .78rem; color: var(--muted, #8a8aa0); font-variant-numeric: tabular-nums; }
 /* Totals footer row — heavier, a hairline rule above, tabular figures. */
 .totalRow td {
   border-top: 2px solid var(--line, #262633);
