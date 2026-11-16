@@ -143,20 +143,22 @@ export default function BookingBotSection() {
             {enabled && (
               <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: '1.25rem' }}>
                 <label style={{ display: 'block', color: '#fff', fontSize: '.9rem', fontWeight: 600, marginBottom: '.4rem' }}>
-                  Custom instructions <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
+                  What the assistant should know <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
                 </label>
                 <p style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 .7rem' }}>
-                  Shape how the assistant sounds and what it highlights — tone, phrases, things to
-                  mention (e.g. &ldquo;keep it upbeat and casual,&rdquo; &ldquo;we specialize in weddings and
-                  bilingual events,&rdquo; &ldquo;always suggest adding uplighting&rdquo;). It still follows the
-                  core rules: it won&apos;t quote exact prices, confirm dates, or take payment.
+                  Give the assistant facts about your business so it can answer clients accurately — what
+                  you specialize in, what&apos;s included, your gear, travel area, availability notes, and
+                  answers to questions you get asked a lot (e.g. &ldquo;we specialize in weddings and bilingual
+                  events,&rdquo; &ldquo;the premium package includes uplighting and a photo booth,&rdquo; &ldquo;we travel up to
+                  2 hours,&rdquo; &ldquo;we bring backup equipment to every event&rdquo;). It still follows the core rules:
+                  it won&apos;t quote exact prices, confirm dates, or take payment.
                 </p>
                 <textarea
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value.slice(0, INSTR_MAX))}
                   maxLength={INSTR_MAX}
                   rows={4}
-                  placeholder="e.g. Friendly and concise. We mainly do weddings and corporate events. Mention our premium package includes uplighting and a photo booth add-on."
+                  placeholder="e.g. We mainly do weddings and corporate events and can MC in English and Spanish. The premium package includes uplighting and a photo booth add-on. We travel up to 2 hours from NYC and always bring backup equipment."
                   style={{
                     width: '100%', boxSizing: 'border-box', resize: 'vertical',
                     background: '#15151c', color: '#eaeaf0',
@@ -177,7 +179,7 @@ export default function BookingBotSection() {
                       cursor: (instrSaving || instructions === savedInstructions) ? 'default' : 'pointer',
                     }}
                   >
-                    {instrSaving ? 'Saving…' : 'Save instructions'}
+                    {instrSaving ? 'Saving…' : 'Save'}
                   </button>
                   {instrSaved && <span style={{ color: NEON, fontSize: '.8rem', fontWeight: 700 }}>Saved ✓</span>}
                   <span style={{ color: MUTED, fontSize: '.75rem', marginLeft: 'auto' }}>{instructions.length}/{INSTR_MAX}</span>
