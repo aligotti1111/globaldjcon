@@ -1432,7 +1432,12 @@ export async function POST(req: Request) {
       from: FROM,
       replyTo: REPLY_TO,
       to: [recipientEmail],
-      subject: `Booking confirmed with ${otherPartyName || otherLabel} – ${dateStr}`,
+      subject: `Booking confirmed – ${dateStr}${(() => {
+        // After the date: the mobile event type (e.g. "Corporate Event"), or the
+        // club/bar venue name. Omitted when neither is known. (Host name removed.)
+        const t = eventType ? eventTypeLabel(eventType) : (venueName ? venueName.trim() : '');
+        return t ? ` · ${t}` : '';
+      })()}`,
       html: emailTemplate(buildBookingApprovedBody({
         recipientName, otherPartyName, recipientRole,
         eventType,
