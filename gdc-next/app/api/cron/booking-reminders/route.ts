@@ -24,7 +24,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
-import { MAX_RESPONSE_DAYS } from '@/lib/bookingExpiry';
+import { MAX_RESPONSE_DAYS, expiryInfo, effectiveTimezone } from '@/lib/bookingExpiry';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -187,6 +187,15 @@ export async function GET(req: Request) {
     const email = await resolveUserEmail(djId);
     if (!email) continue;
 
+    // The DJ's response window is measured in their own timezone (saved choice,
+    // else derived from ZIP, else US Eastern) — the same math the request cards
+    // and the auto-decline cron use, so the email's countdown agrees with them.
+    const { data: djTz } = await db.from('users').select('timezone, zip').eq('id', djId).maybeSingle();
+    const tz = effectiveTimezone(
+      (djTz as { timezone?: string | null } | null)?.timezone,
+      (djTz as { zip?: string | null } | null)?.zip,
+    );
+
     // Newest first, so the freshest request is at the top.
     list.sort((a, b) => Date.parse(b.created_at || '') - Date.parse(a.created_at || ''));
 
@@ -197,8 +206,9 @@ export async function GET(req: Request) {
       // an in-flight counter). Null on quote requests with no rate yet.
       const rate = b.quoted_rate ?? b.offer_amount ?? b.counter_rate ?? null;
       const price = rate != null ? money(Number(rate), b.currency) : null;
-      const days = b.created_at ? Math.max(0, Math.floor((nowMs - Date.parse(b.created_at)) / 86400000)) : null;
-      const waited = days === null ? '' : days === 0 ? 'Received today' : days === 1 ? 'Waiting 1 day' : `Waiting ${days} days`;
+      // When the request auto-declines if left unanswered — e.g. "Expires in 3
+      // days" / "Expires today" / "Offer expired" — instead of how long it's sat.
+      const waited = expiryInfo(b.created_at, b.event_date, tz, nowMs).label;
       return `<tr>
 <td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;">
 <div style="font-size:15px;color:#111;font-weight:700;">${label}</div>
