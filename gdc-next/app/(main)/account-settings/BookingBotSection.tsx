@@ -10,11 +10,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import SectionBanner from '../update-dj-profile/SectionBanner';
+import {
+  BOT_TRAINING_QUESTIONS, parseBotTraining, serializeBotTraining,
+  BOT_TRAINING_ANSWER_MAX, BOT_TRAINING_EXTRA_MAX,
+} from '@/lib/bookingBotTraining';
 
 const NEON = 'var(--neon,#00e0a4)';
 const MUTED = 'var(--muted,#8a8aa0)';
-
-const INSTR_MAX = 600;
 
 export default function BookingBotSection() {
   const [enabled, setEnabled] = useState(false);
@@ -24,9 +26,11 @@ export default function BookingBotSection() {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Custom instructions (tone / emphasis) the DJ can give the bot.
-  const [instructions, setInstructions] = useState('');
-  const [savedInstructions, setSavedInstructions] = useState('');
+  // "Train your assistant": the DJ's short answers to common client questions,
+  // plus an optional notes box. Stored as one serialized string on the account.
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [extra, setExtra] = useState('');
+  const [savedSerialized, setSavedSerialized] = useState('');
   const [instrSaving, setInstrSaving] = useState(false);
   const [instrSaved, setInstrSaved] = useState(false);
 
@@ -39,8 +43,10 @@ export default function BookingBotSection() {
         if (alive && res.ok && d.ok) {
           setEnabled(d.enabled === true);
           setEligible(d.eligible !== false);
-          setInstructions(d.instructions || '');
-          setSavedInstructions(d.instructions || '');
+          const t = parseBotTraining(d.instructions || '');
+          setAnswers(t.answers);
+          setExtra(t.extra);
+          setSavedSerialized(serializeBotTraining(t));
         }
       } catch { /* keep defaults */ }
       finally { if (alive) setLoading(false); }
@@ -48,8 +54,11 @@ export default function BookingBotSection() {
     return () => { alive = false; };
   }, []);
 
+  const currentSerialized = serializeBotTraining({ answers, extra });
+  const trainingDirty = currentSerialized !== savedSerialized;
+
   async function saveInstructions() {
-    const next = instructions.slice(0, INSTR_MAX);
+    const next = currentSerialized;
     setInstrSaving(true); setInstrSaved(false); setErr(null);
     try {
       const res = await fetch('/api/dj/booking-bot-setting', {
@@ -59,7 +68,7 @@ export default function BookingBotSection() {
       });
       const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) throw new Error(d.error || 'Could not save.');
-      setSavedInstructions(next);
+      setSavedSerialized(next);
       setInstrSaved(true);
       setTimeout(() => setInstrSaved(false), 2000);
     } catch (e) {
@@ -142,47 +151,74 @@ export default function BookingBotSection() {
 
             {enabled && (
               <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: '1.25rem' }}>
-                <label style={{ display: 'block', color: '#fff', fontSize: '.9rem', fontWeight: 600, marginBottom: '.4rem' }}>
-                  What the assistant should know <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
+                <label style={{ display: 'block', color: '#fff', fontSize: '.95rem', fontWeight: 700, marginBottom: '.25rem' }}>
+                  Train your assistant
                 </label>
-                <p style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 .7rem' }}>
-                  Give the assistant facts about your business so it can answer clients accurately — what
-                  you specialize in, what&apos;s included, your gear, travel area, availability notes, and
-                  answers to questions you get asked a lot (e.g. &ldquo;we specialize in weddings and bilingual
-                  events,&rdquo; &ldquo;the premium package includes uplighting and a photo booth,&rdquo; &ldquo;we travel up to
-                  2 hours,&rdquo; &ldquo;we bring backup equipment to every event&rdquo;). It still follows the core rules:
-                  it won&apos;t quote exact prices, confirm dates, or take payment.
+                <p style={{ color: MUTED, fontSize: '.82rem', lineHeight: 1.6, margin: '0 0 1.1rem' }}>
+                  Answer the questions your clients ask most. The assistant uses your answers to reply.
+                  Fill in what applies and skip the rest — all optional.
                 </p>
-                <textarea
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value.slice(0, INSTR_MAX))}
-                  maxLength={INSTR_MAX}
-                  rows={4}
-                  placeholder="e.g. We mainly do weddings and corporate events and can MC in English and Spanish. The premium package includes uplighting and a photo booth add-on. We travel up to 2 hours from NYC and always bring backup equipment."
-                  style={{
-                    width: '100%', boxSizing: 'border-box', resize: 'vertical',
-                    background: '#15151c', color: '#eaeaf0',
-                    border: '1px solid rgba(255,255,255,.14)', borderRadius: 10,
-                    padding: '.7rem .8rem', fontSize: '.88rem', lineHeight: 1.5, fontFamily: 'inherit',
-                  }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', marginTop: '.7rem' }}>
+
+                {BOT_TRAINING_QUESTIONS.map((q) => (
+                  <div key={q.key} style={{ marginBottom: '.9rem' }}>
+                    <label style={{ display: 'block', color: '#eaeaf0', fontSize: '.84rem', fontWeight: 600, marginBottom: '.3rem' }}>
+                      {q.label}
+                    </label>
+                    <input
+                      type="text"
+                      value={answers[q.key] || ''}
+                      maxLength={BOT_TRAINING_ANSWER_MAX}
+                      onChange={(e) => setAnswers((prev) => ({ ...prev, [q.key]: e.target.value.slice(0, BOT_TRAINING_ANSWER_MAX) }))}
+                      placeholder={q.placeholder}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        background: '#15151c', color: '#eaeaf0',
+                        border: '1px solid rgba(255,255,255,.14)', borderRadius: 8,
+                        padding: '.55rem .7rem', fontSize: '.86rem', fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                ))}
+
+                <div style={{ marginBottom: '.5rem' }}>
+                  <label style={{ display: 'block', color: '#eaeaf0', fontSize: '.84rem', fontWeight: 600, marginBottom: '.3rem' }}>
+                    Anything else the assistant should know? <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
+                  </label>
+                  <textarea
+                    value={extra}
+                    onChange={(e) => setExtra(e.target.value.slice(0, BOT_TRAINING_EXTRA_MAX))}
+                    maxLength={BOT_TRAINING_EXTRA_MAX}
+                    rows={3}
+                    placeholder="e.g. We bring backup equipment to every event and can MC in English and Spanish."
+                    style={{
+                      width: '100%', boxSizing: 'border-box', resize: 'vertical',
+                      background: '#15151c', color: '#eaeaf0',
+                      border: '1px solid rgba(255,255,255,.14)', borderRadius: 8,
+                      padding: '.55rem .7rem', fontSize: '.86rem', lineHeight: 1.5, fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+
+                <p style={{ color: MUTED, fontSize: '.74rem', lineHeight: 1.5, margin: '0 0 .7rem' }}>
+                  The assistant still follows the core rules — it won&apos;t quote exact prices, confirm dates, or take payment.
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem' }}>
                   <button
                     type="button"
                     onClick={saveInstructions}
-                    disabled={instrSaving || instructions === savedInstructions}
+                    disabled={instrSaving || !trainingDirty}
                     style={{
-                      background: instructions === savedInstructions ? '#2a2a33' : NEON,
-                      color: instructions === savedInstructions ? MUTED : '#04120d',
+                      background: !trainingDirty ? '#2a2a33' : NEON,
+                      color: !trainingDirty ? MUTED : '#04120d',
                       border: 'none', borderRadius: 8, padding: '.5rem 1.1rem',
                       fontSize: '.85rem', fontWeight: 700,
-                      cursor: (instrSaving || instructions === savedInstructions) ? 'default' : 'pointer',
+                      cursor: (instrSaving || !trainingDirty) ? 'default' : 'pointer',
                     }}
                   >
                     {instrSaving ? 'Saving…' : 'Save'}
                   </button>
                   {instrSaved && <span style={{ color: NEON, fontSize: '.8rem', fontWeight: 700 }}>Saved ✓</span>}
-                  <span style={{ color: MUTED, fontSize: '.75rem', marginLeft: 'auto' }}>{instructions.length}/{INSTR_MAX}</span>
                 </div>
               </div>
             )}
