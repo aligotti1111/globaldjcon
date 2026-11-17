@@ -9,6 +9,7 @@ import dj from '../upcoming-bookings/upcomingBookings.module.css';
 import HostPipelineStrip from './HostPipelineStrip';
 import NotesFeed from '@/components/NotesFeed';
 import { parseDateParts, formatTimeRange, formatLongDate, formatTime12 } from './upcomingEvents.helpers';
+import { parseBookingAddons, addonsTotal } from '@/lib/addons';
 
 // ── Row ───────────────────────────────────────────────────────────────
 
@@ -245,7 +246,26 @@ export function EventRow({
     // Agreed rate — shown when we have it (may be absent on legacy rows that
     // only stored a tax-inclusive total).
     const hasRate = rate != null && Number.isFinite(rate);
-    if (hasRate) rows.push({ label: 'Agreed Rate', value: money(rate!) });
+    // Add-ons / cocktail / ceremony are folded into the rate; itemize them on
+    // their own lines and net them out of the base — the DJ's exact receipt.
+    // Club/bar bookings never carry these, so this only affects mobile events.
+    const rawCharges = event as unknown as { cocktail_price?: number | null; ceremony_price?: number | null; addons?: unknown };
+    const bookingAddons = parseBookingAddons(rawCharges.addons);
+    const addonSum = addonsTotal(bookingAddons);
+    const cocktailCharge = rawCharges.cocktail_price != null ? Number(rawCharges.cocktail_price) : 0;
+    const ceremonyCharge = rawCharges.ceremony_price != null ? Number(rawCharges.ceremony_price) : 0;
+    const itemized = hasRate && (addonSum > 0 || cocktailCharge > 0 || ceremonyCharge > 0);
+    if (hasRate) {
+      if (itemized) {
+        const base = Math.max(0, Math.round((rate! - cocktailCharge - ceremonyCharge - addonSum) * 100) / 100);
+        rows.push({ label: 'Agreed Rate', value: money(base) });
+        if (ceremonyCharge > 0) rows.push({ label: 'Ceremony', value: money(ceremonyCharge) });
+        if (cocktailCharge > 0) rows.push({ label: 'Cocktail Hour', value: money(cocktailCharge) });
+        bookingAddons.forEach((a) => rows.push({ label: a.title, value: money(a.price) }));
+      } else {
+        rows.push({ label: 'Agreed Rate', value: money(rate!) });
+      }
+    }
 
     // Total (tax-inclusive): the stored snapshot when present, else the rate.
     const total = totalWithTax != null && Number.isFinite(totalWithTax) ? totalWithTax : rate!;
@@ -648,8 +668,12 @@ export function EventRow({
             )}
 
             {/* Package — full-width card (matches the DJ card): title + the
-                package description underneath. */}
-            {(event.package_title?.trim() || event.package_details?.trim()) && (
+                package description, then any chosen add-ons/extras. Club/bar
+                bookings carry none of these, so this stays hidden for them. */}
+            {(() => {
+              const pkgAddons = isMobile ? parseBookingAddons((event as unknown as { addons?: unknown }).addons) : [];
+              if (!(event.package_title?.trim() || event.package_details?.trim() || pkgAddons.length > 0)) return null;
+              return (
               <div className={dj.detailSection} style={{ gridColumn: '1 / -1' }}>
                 <div className={dj.detailChip}><span>Package</span></div>
                 {event.package_title?.trim() && (
@@ -663,8 +687,19 @@ export function EventRow({
                     dangerouslySetInnerHTML={{ __html: event.package_details }}
                   />
                 )}
+                {pkgAddons.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: 6 }}>Add-ons/Extras</div>
+                    {pkgAddons.map((a, i) => (
+                      <div key={`ad${i}`} style={{ fontSize: 14, color: '#e8e8f0', lineHeight: 1.6 }}>
+                        {a.title}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             {/* Pricing — the DJ's exact receipt: Agreed Rate → Tax → Total, then
                 a separated Payment schedule band (Deposit / Balance). */}
