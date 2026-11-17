@@ -713,7 +713,7 @@ export default function BookingTab({
                             <div style={{
                               width: 38, height: 38, borderRadius: 6,
                               border: '1px solid rgba(255,255,255,.18)',
-                              background: `linear-gradient(115deg, rgba(255,95,95,0.55) ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) ${(ex.taken / ex.total) * 100}%)`,
+                              background: `linear-gradient(to bottom right, rgba(255,95,95,0.55) ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) ${(ex.taken / ex.total) * 100}%)`,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               color: '#fff', fontSize: '.78rem', fontWeight: 700,
                             }}>
