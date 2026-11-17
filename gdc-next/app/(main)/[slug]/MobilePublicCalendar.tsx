@@ -928,6 +928,12 @@ function SingleMonthView({
       const forcedClosed = !!dayData.booked;
       const realBooking = (countByDate[key] || 0) > 0;
       const quickIsReopen = forcedClosed || isUnavail;
+      // A day already full from real bookings (count reached the per-day max)
+      // has nothing for the ✕ to do — it's booked, not closable, and can't be
+      // reopened without removing a booking (the pencil). Mirrors the club
+      // calendar's `naturallyFull` guard so both hide the quick-mark there.
+      const naturallyFull = realBooking && approvedCount >= defaultBookingsPerDay;
+      const hideQuickMark = isFull || naturallyFull;
       const quickTitle = forcedClosed
         ? 'Re-open this date'
         : realBooking
@@ -937,7 +943,7 @@ function SingleMonthView({
             : 'Mark unavailable';
       inner = (
         <div className={styles.ownerControls}>
-          {!isFull && (
+          {!hideQuickMark && (
             <button
               type="button"
               onClick={(e) => {
