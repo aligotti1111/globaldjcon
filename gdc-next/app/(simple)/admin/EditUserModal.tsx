@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from './admin.module.css';
-import { updateUserAction, getUserEmailAction, grantCompAction, clearCompAction } from './actions';
+import { updateUserAction, getUserEmailAction, grantCompAction, clearCompAction, getContractUsageAction, setContractUsageAction, type ContractUsageInfo } from './actions';
 import type { AdminUserRow } from './page';
 import { COUNTRIES, US_STATES, TRAVEL_DISTANCES } from '../../(main)/update-dj-profile/constants';
 
@@ -111,6 +111,43 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
 
   // Live slug preview
   const slugPreview = (slug || '').toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'slug';
+
+  // ── Contracts used this cycle (admin override) ───────────────────
+  // Shown only for DJs with a live allowance (subscribed / comp / promo).
+  // The admin edits the USED number; the ALLOWED number comes from the plan.
+  const [usage, setUsage] = useState<ContractUsageInfo | null>(null);
+  const [usageInput, setUsageInput] = useState('');
+  const [usageSaving, setUsageSaving] = useState(false);
+  const [usageMsg, setUsageMsg] = useState<{ msg: string; ok: boolean } | null>(null);
+  useEffect(() => {
+    if (!user?.id || (user.role && user.role !== 'dj')) return;
+    let cancelled = false;
+    getContractUsageAction({ user_id: user.id }).then((r) => {
+      if (cancelled) return;
+      if (r.success && r.usage) {
+        setUsage(r.usage);
+        setUsageInput(String(r.usage.used));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, user?.role]);
+
+  async function saveUsage() {
+    if (!user?.id) return;
+    const n = parseInt(usageInput, 10);
+    if (!Number.isFinite(n) || n < 0) { setUsageMsg({ msg: 'Enter a whole number of 0 or more.', ok: false }); return; }
+    setUsageSaving(true);
+    setUsageMsg(null);
+    const r = await setContractUsageAction({ user_id: user.id, used: n });
+    setUsageSaving(false);
+    if (r.success && r.usage) {
+      setUsage(r.usage);
+      setUsageInput(String(r.usage.used));
+      setUsageMsg({ msg: '✓ Contracts used updated.', ok: true });
+    } else {
+      setUsageMsg({ msg: '✗ ' + (r.error || 'Could not update.'), ok: false });
+    }
+  }
 
   // Look up the email if it's missing or stale (no email passed in initialEmail)
   useEffect(() => {
@@ -485,6 +522,53 @@ export default function EditUserModal({ user, email: initialEmail, onClose, onSa
             </p>
           </div>
         </div>
+
+        {/* Contracts used this cycle — only for DJs with a live allowance
+            (subscribed, comp, or promo). Admin edits the USED count; the ALLOWED
+            number is the plan's and isn't editable here. */}
+        {usage?.eligible && (
+          <>
+            <div className={styles.formDivider} />
+            <div className={styles.formSectionLabel}>Contracts This Cycle</div>
+            <p className={styles.formHint} style={{ marginTop: '-.25rem', marginBottom: '.6rem' }}>
+              Currently <b>{usage.used}</b> of <b>{usage.quota}</b> signed contracts used
+              {usage.cycleEnd ? ` this cycle (resets ${new Date(usage.cycleEnd).toLocaleDateString()})` : ' this cycle'}.
+              Change the number USED below — the allowance ({usage.quota}) comes from their plan. Doesn’t affect any contract.
+            </p>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Contracts used</label>
+                <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                  <input
+                    className={styles.formInput}
+                    type="number"
+                    min={0}
+                    max={usage.quota}
+                    step={1}
+                    value={usageInput}
+                    onChange={(e) => { setUsageInput(e.target.value); setUsageMsg(null); }}
+                    style={{ width: 110 }}
+                  />
+                  <span className={styles.formHint} style={{ margin: 0 }}>of {usage.quota} allowed</span>
+                  <button
+                    type="button"
+                    onClick={saveUsage}
+                    disabled={usageSaving || usageInput === String(usage.used)}
+                    className={`${styles.btn} ${styles.btnAdmin}`}
+                    style={(usageSaving || usageInput === String(usage.used)) ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  >
+                    {usageSaving ? 'Saving…' : 'Update'}
+                  </button>
+                </div>
+                {usageMsg && (
+                  <p className={styles.formHint} style={{ color: usageMsg.ok ? 'var(--neon,#00e0a4)' : '#ff6b6b' }}>
+                    {usageMsg.msg}
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Save bar */}
         <div className={styles.editSaveBar}>
