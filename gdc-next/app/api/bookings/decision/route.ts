@@ -102,8 +102,9 @@ async function markCalendar(
     .single<{ booking_settings: string | null }>();
   let bs: {
     mob_bookings_per_day?: number;
+    club_bookings_per_day?: number;
     mob_booking_days?: Record<string, { bookings_available?: number; booked?: boolean; unavailable?: boolean }>;
-    booking_days?: Record<string, { booked?: boolean; unavailable?: boolean }>;
+    booking_days?: Record<string, { booked?: boolean; unavailable?: boolean; day_capacity?: number }>;
   } = {};
   if (djRow?.booking_settings) {
     try {
@@ -115,7 +116,22 @@ async function markCalendar(
   if (isClub) {
     if (!bs.booking_days) bs.booking_days = {};
     const existing = bs.booking_days[b.event_date] || {};
-    bs.booking_days[b.event_date] = { ...existing, booked: true };
+    // Capacity-aware: a club day only flips to fully `booked` once the
+    // approved bookings on it reach the day's capacity (per-day override,
+    // else the DJ-wide club_bookings_per_day, default 1). Below capacity we
+    // leave the flag off so the public calendar can show it partly booked /
+    // still open. This booking is already `approved` at this point, so the
+    // count includes it.
+    const cap = Math.min(3, Math.max(1,
+      existing.day_capacity != null ? existing.day_capacity : (bs.club_bookings_per_day || 1)));
+    const { count } = await admin
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('dj_id', djId)
+      .eq('event_date', b.event_date)
+      .eq('status', 'approved');
+    const approvedCount = count || 0;
+    bs.booking_days[b.event_date] = { ...existing, booked: approvedCount >= cap };
   } else {
     const defaultPerDay = bs.mob_bookings_per_day || 1;
     if (!bs.mob_booking_days) bs.mob_booking_days = {};
