@@ -17,6 +17,7 @@ import { Resend } from 'resend';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
+import { referenceCode } from '@/lib/paymentMethods';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -333,6 +334,7 @@ export async function POST(req: Request) {
             <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(djName.split(' ')[0])}, your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} has been signed by all parties. Your signed copy and the audit log are attached to this email.</p>
             <p style="color:#666;margin-bottom:24px;">You can also download them anytime from your Upcoming Bookings.</p>
             ${ctaButton(`${SITE_URL}/upcoming-bookings`, 'View Booking')}
+            <p style="color:#bbb;font-size:11px;line-height:1.6;text-align:right;margin-top:18px;">Reference: ${escHtml(referenceCode(booking.id, 'other'))}</p>
           `),
           attachments: attachments.length ? attachments : undefined,
         } as unknown as Parameters<typeof resend.emails.send>[0]);
@@ -375,6 +377,7 @@ export async function POST(req: Request) {
             <p style="color:#666;margin-bottom:24px;">Thanks for booking through Global DJ Connect.</p>
             ${ctaButton(`${SITE_URL}`, 'Visit Global DJ Connect')}
             ${progressBox ? `<div style="margin-top:28px;">${progressBox}</div>` : ''}
+            <p style="color:#bbb;font-size:11px;line-height:1.6;text-align:right;margin-top:18px;">Reference: ${escHtml(referenceCode(booking.id, 'other'))}</p>
           `),
           attachments: cAtt.length ? cAtt : undefined,
         } as unknown as Parameters<typeof resend.emails.send>[0]);
