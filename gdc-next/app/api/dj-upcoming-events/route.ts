@@ -51,7 +51,11 @@ export async function GET(req: Request) {
       .eq('dj_id', djId)
       .gte('event_date', from)
       .lt('event_date', to)
-      .or('status.eq.approved,is_manual.eq.true')
+      // Only confirmed bookings count toward a day (and show in the list).
+      // Manual bookings are created with status 'approved', so this still
+      // covers them — while PENDING/countered/denied/cancelled requests are
+      // excluded, so an un-accepted request never occupies a calendar slot.
+      .eq('status', 'approved')
       .order('event_date', { ascending: true })
       .order('start_time', { ascending: true });
     if (error) {
