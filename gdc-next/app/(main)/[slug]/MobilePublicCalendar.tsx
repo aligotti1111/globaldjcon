@@ -855,14 +855,12 @@ function SingleMonthView({
     const approvedCount = countByDate[key] || 0;
     // Whole-cell RED ("booked/closed"): the approved bookings reach the
     // company-wide max per day, the owner marked the day booked, or the owner
-    // marked it unavailable AND it either has a real booking behind it OR is
-    // being viewed by a client (to the public a closed day reads as red, not a
-    // grey "unavailable"). Partial-fill only applies to genuinely-open days.
+    // marked it unavailable AND it has a real booking behind it. An EMPTY day the
+    // owner marked unavailable keeps the grey "unavailable" design.
     const isBooked =
       approvedCount >= defaultBookingsPerDay
       || !!dayData.booked
-      || (unavailManual && (approvedCount > 0 || !isOwnProfile));
-    // Grey "unavailable" stays only for the OWNER on an empty closed day.
+      || (unavailManual && approvedCount > 0);
     const isUnavail = unavailManual && !isBooked;
     const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
     const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
@@ -1161,11 +1159,11 @@ function RollingMonthsView({
       const unavailManual = !!dayData.unavailable;
       const approvedCount = countByDate[key] || 0;
       // Whole-cell RED when at capacity, manually booked, or manually unavailable
-      // with a booking behind it / viewed by a client (closed reads red to the public).
+      // WITH a booking behind it. An empty unavailable day keeps the grey design.
       const isBooked =
         approvedCount >= defaultBookingsPerDay
         || !!dayData.booked
-        || (unavailManual && (approvedCount > 0 || !isOwnProfile));
+        || (unavailManual && approvedCount > 0);
       const isUnavail = unavailManual && !isBooked;
       const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
       const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
