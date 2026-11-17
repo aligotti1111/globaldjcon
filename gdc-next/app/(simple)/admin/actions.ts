@@ -21,6 +21,10 @@ import { getStripe } from '@/lib/stripe/server';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { type AccessFields, contractQuotaFor } from '@/lib/access';
+import { getContractUsage } from '@/lib/contractQuota';
+
+const ACCESS_COLS = 'sub_tier, sub_status, sub_period_start, sub_period_end, comp_tier, comp_expires_at, comp_source';
 
 // The generated Supabase types don't include the new comp_codes tables yet, so
 // for those calls we use an untyped client (same pattern as the redeem route).
@@ -642,6 +646,104 @@ export async function clearCompAction(input: {
 
   revalidatePath('/admin');
   return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CONTRACT USAGE — read + admin override of the "contracts used this cycle"
+// count. The used count is derived live from signed bookings (lib/contractQuota)
+// with no counter column, so to let an admin correct it we store a flat offset
+// (users.contract_usage_adjustment) that is added to the derived count. Only
+// meaningful for DJs with a live allowance (subscribed, comp, or promo) — a
+// free/lapsed DJ has a 0 quota and no meter.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface ContractUsageInfo {
+  eligible: boolean;   // has a live allowance (quota > 0) — else nothing to edit
+  quota: number;
+  used: number;        // derived + adjustment (what the DJ sees)
+  rawUsed: number;     // derived from signed bookings alone
+  adjustment: number;  // the stored offset
+  remaining: number;
+  cycleEnd: string | null;
+}
+
+async function readUsage(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<ContractUsageInfo> {
+  const { data: row } = await admin
+    .from('users')
+    .select(ACCESS_COLS)
+    .eq('id', userId)
+    .maybeSingle();
+  const access = (row || {}) as unknown as AccessFields;
+  const quota = contractQuotaFor(access);
+  if (quota <= 0) {
+    return { eligible: false, quota: 0, used: 0, rawUsed: 0, adjustment: 0, remaining: 0, cycleEnd: null };
+  }
+  const u = await getContractUsage(admin, userId, access);
+  return {
+    eligible: true,
+    quota: u.quota,
+    used: u.used,
+    rawUsed: u.rawUsed,
+    adjustment: u.adjustment,
+    remaining: u.remaining,
+    cycleEnd: u.cycleEnd,
+  };
+}
+
+// Read a DJ's current contract-usage state for the admin modal.
+export async function getContractUsageAction(input: {
+  user_id: string;
+}): Promise<{ success: boolean; usage?: ContractUsageInfo; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient() as unknown as SupabaseClient;
+  if (!input.user_id) return { success: false, error: 'user_id required' };
+  try {
+    return { success: true, usage: await readUsage(admin, input.user_id) };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Failed to read usage' };
+  }
+}
+
+// Set a DJ's "used this cycle" to an exact number. We translate the target into
+// an offset over the live-derived count (adjustment = target − rawUsed) so the
+// displayed used lands on `used` even as new contracts get signed. Only the
+// USED count is editable here — the ALLOWED number (quota) comes from the tier.
+export async function setContractUsageAction(input: {
+  user_id: string;
+  used: number;
+}): Promise<{ success: boolean; usage?: ContractUsageInfo; error?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient() as unknown as SupabaseClient;
+  if (!input.user_id) return { success: false, error: 'user_id required' };
+
+  const current = await readUsage(admin, input.user_id);
+  if (!current.eligible) {
+    return { success: false, error: 'This DJ has no active plan, comp, or promo — there’s no contract allowance to adjust.' };
+  }
+
+  const target = Math.trunc(Number(input.used));
+  if (!Number.isFinite(target) || target < 0) {
+    return { success: false, error: 'Enter a whole number of 0 or more.' };
+  }
+  if (target > current.quota) {
+    return { success: false, error: `Used can’t exceed the plan’s allowance of ${current.quota}.` };
+  }
+
+  // Offset over the live-derived count. used = max(0, rawUsed + adjustment),
+  // so adjustment = target − rawUsed (may be negative to free slots back).
+  const adjustment = target - current.rawUsed;
+
+  const { error } = await admin
+    .from('users')
+    .update({ contract_usage_adjustment: adjustment } as unknown as never)
+    .eq('id', input.user_id);
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/admin');
+  return { success: true, usage: await readUsage(admin, input.user_id) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
