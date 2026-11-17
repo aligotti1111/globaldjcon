@@ -35,6 +35,7 @@ import {
   buildManualBookingInviteBody, buildEventInviteFromHostBody, buildBookingActivityBody,
 } from '@/lib/emails/messages';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { referenceCode } from '@/lib/paymentMethods';
 
 // All email types supported by this route. Mirror of vanilla send-email.js.
 type EmailType =
@@ -1448,6 +1449,7 @@ export async function POST(req: Request) {
         addons: baAddons,
         agreedPrice, overtimeRate, currency, eventDate,
         equipNeedsText: baEquipNeeds || undefined,
+        reference: typeof body.bookingId === 'string' && body.bookingId ? referenceCode(body.bookingId, 'other') : undefined,
         billBox, progressBox,
       })),
     };
