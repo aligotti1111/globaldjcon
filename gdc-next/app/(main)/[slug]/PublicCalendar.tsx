@@ -154,7 +154,15 @@ export default function PublicCalendar({
   // saves can clobber each other. Chaining them guarantees each write sees the
   // prior one.
   const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // Once the owner makes a local calendar edit this session, their edits are
+  // the source of truth (optimistic + persisted to the server). The parent's
+  // `initialBookingDays` prop is a page-load snapshot that does NOT refetch
+  // after a calendar write, so letting the prop-sync effect below overwrite
+  // local state would clobber a just-made edit (e.g. reopening a closed date
+  // snaps back to booked). This flag tells that effect to stand down.
+  const ownerEditedRef = useRef(false);
   function applyBookingDays(next: BookingDays) {
+    ownerEditedRef.current = true;
     bookingDaysRef.current = next;
     setBookingDays(next);
     persistQueueRef.current = persistQueueRef.current
@@ -289,6 +297,10 @@ export default function PublicCalendar({
   // actually changes — owner edits flow through setBookingDays here
   // and would be clobbered if we mirrored the prop on every render.
   useEffect(() => {
+    // Don't clobber the owner's own in-session edits with the stale page-load
+    // prop (see ownerEditedRef). The prop only carries fresh data on a real
+    // reload, at which point this component remounts and the flag is false.
+    if (ownerEditedRef.current) return;
     bookingDaysRef.current = initialBookingDays;
     setBookingDays(initialBookingDays);
     // eslint-disable-next-line react-hooks/exhaustive-deps
